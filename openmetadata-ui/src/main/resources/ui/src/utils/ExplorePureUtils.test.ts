@@ -12,12 +12,12 @@
  */
 import {
   ExploreQuickFilterField,
-  ExploreSearchIndex,
   SearchHitCounts,
 } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
+import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { TabsInfoData } from '../pages/ExplorePage/ExplorePage.interface';
 import {
   buildTreeCountQueryFilter,

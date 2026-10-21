@@ -18,7 +18,7 @@ import {
   ROUTES,
 } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
+import { TestCasePageTabs } from '../enums/TestSuite.enum';
 import { TaskEntityStatus, type Task as TaskEntity } from '../rest/tasksAPI';
 import {
   getEntityDetailsPath,
@@ -27,6 +27,7 @@ import {
   getUserPath,
 } from './RouterUtils';
 import { getEncodedFqn } from './StringUtils';
+import { getTaskDetailPath, isOntologyReviewTask } from './TaskUtils';
 
 export const TASK_ENTITIES = [
   EntityType.TABLE,
@@ -59,10 +60,11 @@ export const getKnowledgeCenterPagePath = (
   return `${ROUTES.CONTEXT_CENTER_ARTICLES}/${encodedFqn}/${tab}/${subTab}`;
 };
 
-export const getTaskDetailPathFromTask = (task: TaskEntity) => {
-  const entityFqn = task.about?.fullyQualifiedName ?? '';
-  const entityType = (task.about?.type as EntityType) ?? '';
-
+/** The tasks tab of an asset, where the asset's tasks are opened. */
+export const getEntityTasksPath = (
+  entityType: EntityType,
+  entityFqn: string
+) => {
   if (entityType === EntityType.TEST_CASE) {
     return getTestCaseDetailPagePath(entityFqn, TestCasePageTabs.ISSUES);
   } else if (entityType === EntityType.USER) {
@@ -93,6 +95,36 @@ export const getTaskDetailPathFromTask = (task: TaskEntity) => {
     EntityTabs.ACTIVITY_FEED,
     ActivityFeedTabs.TASKS
   );
+};
+
+export const getTaskDetailPathFromTask = (task: TaskEntity) =>
+  isOntologyReviewTask(task)
+    ? getTaskDetailPath(task)
+    : getEntityTasksPath(
+        (task.about?.type as EntityType) ?? '',
+        task.about?.fullyQualifiedName ?? ''
+      );
+
+/**
+ * Where a task's asset lives, for a task that may not name one: an incident
+ * carries no `about`, only the failing test case's FQN, which the caller
+ * derives from its description. Empty when neither is available.
+ *
+ * Routing knowledge stays here rather than in the inbox's components, which
+ * have no business importing a page's tab enum.
+ */
+export const getTaskAboutPath = (
+  task: TaskEntity,
+  incidentTestCaseFqn: string
+): string => {
+  if (task.about?.fullyQualifiedName) {
+    return getTaskDetailPathFromTask(task);
+  }
+
+  // A bare word is not an FQN, so it cannot address a test case page.
+  return incidentTestCaseFqn.includes('.')
+    ? getTestCaseDetailPagePath(incidentTestCaseFqn, TestCasePageTabs.ISSUES)
+    : '';
 };
 
 export const getTaskDisplayId = (taskId?: string) => {

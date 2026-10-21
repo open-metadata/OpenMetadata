@@ -12,7 +12,11 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
-import { okJson, withNotFoundRetry } from '../../utils/apiResponse';
+import {
+  deleteFixtureEntity,
+  okJson,
+  withNotFoundRetry,
+} from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
@@ -30,6 +34,7 @@ type ResponseDataType = {
   policies?: string[];
   owners?: EntityReference[];
   isJoinable?: boolean;
+  parents?: string[];
 };
 
 export class TeamClass {
@@ -114,9 +119,13 @@ export class TeamClass {
     return data;
   }
 
-  async delete(apiContext: APIRequestContext) {
-    const response = await apiContext.delete(
-      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=false`
+  async delete(
+    apiContext: APIRequestContext,
+    { recursive = false }: { recursive?: boolean } = {}
+  ) {
+    const response = await deleteFixtureEntity(
+      apiContext,
+      `/api/v1/teams/${this.responseData.id}?hardDelete=true&recursive=${recursive}`
     );
 
     return await response.json();

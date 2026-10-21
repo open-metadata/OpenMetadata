@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined } from '@ant-design/icons';
-import { Modal, Space, Tabs, TabsProps } from 'antd';
+import {
+  Box,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,12 +30,13 @@ import {
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { WidgetWidths } from '../../../../enums/CustomizablePage.enum';
 import { Document } from '../../../../generated/entity/docStore/document';
+import { useVisitedTabs } from '../../../../hooks/useVisitedTabs';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
+import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
-import './add-widget-modal.less';
 import {
   AddWidgetModalProps,
   WidgetSizeInfo,
@@ -70,9 +77,9 @@ function AddWidgetModal({
     [handleAddWidget, placeholderWidgetKey]
   );
 
-  const tabItems: TabsProps['items'] = useMemo(
+  const tabItems: DetailsTabItem[] = useMemo(
     () =>
-      widgetsList?.map((widget) => {
+      (widgetsList ?? []).map((widget) => {
         const widgetSizeOptions: Array<WidgetSizeInfo> =
           widget.data.gridSizes.map((size: WidgetWidths) => ({
             label: (
@@ -85,20 +92,24 @@ function AddWidgetModal({
 
         return {
           label: (
-            <Space data-testid={`${widget.name}-widget-tab-label`}>
+            <Box
+              align="center"
+              data-testid={`${widget.name}-widget-tab-label`}
+              direction="row"
+              gap={1}>
               <span>{widget.name}</span>
               {addedWidgetsList.some(
                 (w) =>
                   w.startsWith(widget.fullyQualifiedName) &&
                   !w.includes('EmptyWidgetPlaceholder')
               ) && (
-                <CheckOutlined
-                  className="m-l-xs"
+                <Check
+                  className="m-l-xs tw:size-4"
                   data-testid={`${widget.name}-check-icon`}
                   style={{ color: LIGHT_GREEN_COLOR }}
                 />
               )}
-            </Space>
+            </Box>
           ),
           key: widget.fullyQualifiedName,
           children: (
@@ -114,9 +125,14 @@ function AddWidgetModal({
     [widgetsList, addedWidgetsList, getAddWidgetHandler, maxGridSizeSupport]
   );
 
+  const [selectedTab, setSelectedTab] = useState<string>();
+  const activeTab = selectedTab ?? tabItems[0]?.key ?? '';
+  // Keeps the widget size picked on a tab when the user browses other widgets.
+  const visitedTabs = useVisitedTabs(activeTab);
+
   useEffect(() => {
-    fetchKnowledgePanels();
-  }, []);
+    void fetchKnowledgePanels();
+  }, [fetchKnowledgePanels]);
 
   const widgetsInfo = useMemo(() => {
     if (loading) {
@@ -136,25 +152,48 @@ function AddWidgetModal({
 
     return (
       <Tabs
+        className="tw:flex-row"
         data-testid="widget-info-tabs"
-        items={tabItems}
-        tabPosition="left"
-      />
+        orientation="vertical"
+        selectedKey={activeTab}
+        onSelectionChange={(key) => setSelectedTab(String(key))}>
+        <Tabs.List
+          className="tw:shrink-0 tw:border-r tw:border-secondary tw:p-4"
+          type="line">
+          {tabItems.map(({ key, label }) => (
+            <Tabs.Item id={key} key={key}>
+              {label}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabItems.map(({ key, children }) => (
+          <Tabs.Panel
+            className="tw:min-w-0 tw:flex-1 tw:p-4 tw:data-inert:hidden"
+            id={key}
+            key={key}
+            shouldForceMount={visitedTabs.has(key)}>
+            {children}
+          </Tabs.Panel>
+        ))}
+      </Tabs>
     );
-  }, [loading, widgetsList, tabItems]);
+  }, [loading, widgetsList, tabItems, activeTab, visitedTabs, t]);
 
   return (
-    <Modal
-      centered
-      className="add-widget-modal"
-      data-testid="add-widget-modal"
-      footer={null}
-      open={open}
-      title={t('label.add-new-entity', { entity: t('label.widget') })}
-      width={750}
-      onCancel={handleCloseAddWidgetModal}>
-      {widgetsInfo}
-    </Modal>
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && handleCloseAddWidgetModal()}>
+      <Modal className="add-widget-modal">
+        <Dialog
+          data-testid="add-widget-modal"
+          dividers="scroll"
+          title={t('label.add-new-entity', { entity: t('label.widget') })}
+          width={750}
+          onClose={handleCloseAddWidgetModal}>
+          <Dialog.Content>{widgetsInfo}</Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 }
 

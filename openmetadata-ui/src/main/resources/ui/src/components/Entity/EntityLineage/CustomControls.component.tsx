@@ -16,61 +16,54 @@ import {
   ButtonUtility,
   Dropdown,
   Tabs,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Download01,
+  FilterLines,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import QueryString from 'qs';
 import {
   FC,
   memo,
   MouseEventHandler,
-  ReactNode,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
-import { useFocusable } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
+import { useShallow } from 'zustand/react/shallow';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
-import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
-import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
 import { getLineageDropdownItems } from '../../../constants/AdvancedSearch.constants';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   FULLSCREEN_QUERY_PARAM_KEY,
 } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
-import { SERVICE_TYPES } from '../../../constants/Services.constant';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
-import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
-import { LineageBand } from '../../../generated/api/lineage/lineageScene';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { useLineageStore } from '../../../hooks/useLineageStore';
-import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { LineageConfig } from '../../../interface/lineage.interface';
+import { QueryFieldInterface } from '../../../interface/queryFilter.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
 import { getSearchNameEsQuery } from '../../../utils/Lineage/LineagePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
+import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
-import { LineageConfig } from './EntityLineage.interface';
 import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 import LineageTimeFilter from './LineageTimeFilter.component';
@@ -80,37 +73,11 @@ type LineageFilterNodeData = {
   sceneNode?: { sourceEntity?: { id?: string } };
 };
 
-const DisabledEditTooltipTrigger = ({
-  children,
-  label,
-}: {
-  children: ReactNode;
-  label: string;
-}) => {
-  const ref = useRef<HTMLSpanElement>(null);
-  // Disabled controls ignore the tooltip context; a focusable span keeps the
-  // hint available without nesting the disabled button in another button.
-  const { focusableProps } = useFocusable({}, ref);
-
-  return (
-    <span
-      {...focusableProps}
-      aria-label={label}
-      className="tw:inline-flex"
-      ref={ref}
-      role="group">
-      {children}
-    </span>
-  );
-};
-
 const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
   searchValue?: string;
   queryFilterNodeIds?: string[];
-  deleted?: boolean;
-  hasEditAccess?: boolean;
   impactLevel?: EImpactLevel;
   // Reset the host's pagination to page 1 when the user narrows the result set
   // via a quick-filter value change or "Clear all". Hosts that have no
@@ -121,28 +88,27 @@ const CustomControls: FC<{
   onSearchValueChange,
   searchValue,
   queryFilterNodeIds,
-  deleted = false,
-  hasEditAccess = false,
   impactLevel,
   onPageReset,
 }) => {
   const { t } = useTranslation();
+  const { onExportClick } = useLineageHandlers();
   const {
-    setSelectedQuickFilters,
     nodes,
     selectedQuickFilters,
-    onExportClick,
     timeFilter,
+    setSelectedQuickFilters,
     setTimeFilter,
-  } = useLineageProvider();
-  const {
-    lineageConfig,
-    toggleEditMode,
-    isEditMode,
-    platformView,
-    sceneBand,
-    setLineageConfig,
-  } = useLineageStore();
+  } = useLineageStore(
+    useShallow((s) => ({
+      nodes: s.nodes,
+      selectedQuickFilters: s.selectedQuickFilters,
+      timeFilter: s.timeFilter,
+      setSelectedQuickFilters: s.setSelectedQuickFilters,
+      setTimeFilter: s.setTimeFilter,
+    }))
+  );
+  const { lineageConfig, setLineageConfig } = useLineageStore();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
   const navigate = useNavigate();
@@ -224,9 +190,11 @@ const CustomControls: FC<{
     const updatedQuickFilters = getLineageDropdownItems(
       impactLevel === EImpactLevel.ColumnLevel
     ).map((selectedFilterItem) => {
-      const originalFilterItem = selectedQuickFilters?.find(
-        (filter) => filter.key === selectedFilterItem.key
-      );
+      const originalFilterItem = useLineageStore
+        .getState()
+        .selectedQuickFilters?.find(
+          (filter) => filter.key === selectedFilterItem.key
+        );
 
       return {
         ...(originalFilterItem || selectedFilterItem),
@@ -237,7 +205,7 @@ const CustomControls: FC<{
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-  }, [impactLevel]);
+  }, [impactLevel, setSelectedQuickFilters]);
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -294,7 +262,7 @@ const CustomControls: FC<{
       });
       params['mode'] = key;
       handleClearAllFilters();
-      navigate({ search: QueryString.stringify(params) });
+      void navigate({ search: QueryString.stringify(params) });
     },
     [navigate, location.search, handleClearAllFilters]
   );
@@ -315,7 +283,7 @@ const CustomControls: FC<{
         }
       }
 
-      navigate(
+      void navigate(
         {
           search: QueryString.stringify(params, {
             encode: false,
@@ -325,7 +293,7 @@ const CustomControls: FC<{
         { replace: true }
       );
     },
-    [location.search]
+    [location.search, navigate]
   );
 
   const toggleFilterSelection: MouseEventHandler<HTMLButtonElement> =
@@ -373,8 +341,15 @@ const CustomControls: FC<{
   }, [activeTab, handleImpactAnalysisExport, onExportClick]);
 
   const handleDialogSave = (newConfig: LineageConfig) => {
-    // Implement save logic here
     setLineageConfig(newConfig);
+    if (activeTab === 'impact_analysis') {
+      updateURLParams({
+        depth:
+          lineageDirection === LineageDirection.Upstream
+            ? newConfig.upstreamDepth
+            : newConfig.downstreamDepth,
+      });
+    }
     setDialogVisible(false);
   };
 
@@ -425,54 +400,6 @@ const CustomControls: FC<{
     },
     [updateURLParams]
   );
-  const lineageEditButton = useMemo(() => {
-    const isEditableLineageView =
-      hasEditAccess && !deleted && platformView === LineagePlatformView.None;
-    const showEditOption =
-      isEditableLineageView &&
-      entityType &&
-      !SERVICE_TYPES.includes(entityType as AssetsUnion);
-    const isLayerBand = sceneBand === LineageBand.Layer;
-    const editLabel = t('label.edit-entity', { entity: t('label.lineage') });
-    const editButton = (
-      <Button
-        aria-label={editLabel}
-        color={isEditMode ? 'primary' : 'secondary'}
-        data-testid="edit-lineage"
-        iconLeading={EditIcon}
-        isDisabled={isLayerBand}
-        onClick={toggleEditMode}
-      />
-    );
-
-    return showEditOption ? (
-      <Tooltip
-        placement="top"
-        title={
-          isLayerBand
-            ? t('label.zoom-in')
-            : t('label.edit-entity', { entity: t('label.lineage') })
-        }>
-        {isLayerBand ? (
-          <DisabledEditTooltipTrigger label={editLabel}>
-            {editButton}
-          </DisabledEditTooltipTrigger>
-        ) : (
-          editButton
-        )}
-      </Tooltip>
-    ) : null;
-  }, [
-    hasEditAccess,
-    deleted,
-    platformView,
-    entityType,
-    isEditMode,
-    sceneBand,
-    toggleEditMode,
-    t,
-  ]);
-
   const settingsButton = useMemo(() => {
     const handleSettingsClick = () => {
       setDialogVisible(true);
@@ -481,7 +408,7 @@ const CustomControls: FC<{
     return (
       <ButtonUtility
         data-testid="lineage-config"
-        icon={SettingsOutlined}
+        icon={Settings01}
         onClick={handleSettingsClick}
       />
     );
@@ -507,22 +434,21 @@ const CustomControls: FC<{
   );
 
   const tabsSection = useMemo(
-    () =>
-      isEditMode ? null : (
-        <Tabs
-          selectedKey={activeTab}
-          onSelectionChange={(key) => handleTabChange(key as string)}>
-          <Tabs.List size="sm" type="button-border">
-            <Tabs.Item id="lineage" key="lineage">
-              {t('label.lineage')}
-            </Tabs.Item>
-            <Tabs.Item id="impact_analysis" key="impact_analysis">
-              {t('label.impact-analysis')}
-            </Tabs.Item>
-          </Tabs.List>
-        </Tabs>
-      ),
-    [isEditMode, activeTab, handleTabChange, t]
+    () => (
+      <Tabs
+        selectedKey={activeTab}
+        onSelectionChange={(key) => handleTabChange(key as string)}>
+        <Tabs.List size="sm" type="button-border">
+          <Tabs.Item id="lineage" key="lineage">
+            {t('label.lineage')}
+          </Tabs.Item>
+          <Tabs.Item id="impact_analysis" key="impact_analysis">
+            {t('label.impact-analysis')}
+          </Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    ),
+    [activeTab, handleTabChange, t]
   );
 
   const filterSelectionSection = useMemo(
@@ -539,10 +465,10 @@ const CustomControls: FC<{
                     </Typography>
                     <Typography
                       as="span"
-                      className="tw:text-brand-600 tw:font-normal">
+                      className="tw:text-utility-brand-600 tw:font-normal">
                       {nodeDepth}
                     </Typography>
-                    <DropdownIcon height={12} width={12} />
+                    <ChevronDown height={12} width={12} />
                   </div>
                 </Button>
                 <Dropdown.Popover className="tw:max-w-32">
@@ -586,15 +512,15 @@ const CustomControls: FC<{
     [
       filterSelectionActive,
       activeTab,
-      nodeDepthOptions,
+      t,
       nodeDepth,
-      handleNodeDepthUpdate,
+      nodeDepthOptions,
       queryFilter,
       filteredQuickFilters,
       handleQuickFiltersValueSelect,
       filterApplied,
-      handleClearAllFilters,
-      t,
+      handleClearAllClick,
+      handleNodeDepthUpdate,
     ]
   );
 
@@ -602,55 +528,46 @@ const CustomControls: FC<{
     <div>
       <div className={classNames('tw:flex tw:w-full tw:justify-between')}>
         <div className="tw:flex tw:items-center tw:gap-4">
-          <Tooltip placement="top" title={t('label.filter-plural')}>
-            <TooltipTrigger>
-              <Button
-                aria-label={t('label.filter-plural')}
-                color={filterSelectionActive ? 'primary' : 'secondary'}
-                data-testid="filters-button"
-                iconLeading={FilterLinesIcon}
-                onClick={toggleFilterSelection}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <Button
+            aria-label={t('label.filter-plural')}
+            color={filterSelectionActive ? 'primary' : 'secondary'}
+            data-testid="filters-button"
+            iconLeading={FilterLines}
+            tooltip={t('label.filter-plural')}
+            onClick={toggleFilterSelection}
+          />
+
           {searchBarComponent}
         </div>
         <div className="tw:flex tw:gap-4 tw:items-center">
           {tabsSection}
 
-          {activeTab === 'impact_analysis' && (
-            <LineageTimeFilter
-              endTime={timeFilter?.endTime}
-              startTime={timeFilter?.startTime}
-              onChange={setTimeFilter}
-            />
-          )}
-          {lineageEditButton}
-          <Tooltip placement="top" title={exportButtonLabel}>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={exportButtonLabel}
-                data-testid="export-button"
-                disabled={isEditMode}
-                icon={DownloadIcon}
-                onClick={handleExportClick}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          <LineageTimeFilter
+            endTime={timeFilter?.endTime}
+            startTime={timeFilter?.startTime}
+            onChange={setTimeFilter}
+          />
+
+          <ButtonUtility
+            aria-label={exportButtonLabel}
+            data-testid="export-button"
+            icon={Download01}
+            tooltip={exportButtonLabel}
+            onClick={handleExportClick}
+          />
+
           {settingsButton}
-          <Tooltip placement="top" title={fullScreenLabel}>
-            <TooltipTrigger>
-              <ButtonUtility
-                aria-label={fullScreenLabel}
-                icon={fullScreenIcon}
-                onClick={() =>
-                  updateURLParams({
-                    [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                  })
-                }
-              />
-            </TooltipTrigger>
-          </Tooltip>
+
+          <ButtonUtility
+            aria-label={fullScreenLabel}
+            icon={fullScreenIcon}
+            tooltip={fullScreenLabel}
+            onClick={() =>
+              updateURLParams({
+                [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
+              })
+            }
+          />
         </div>
       </div>
       {filterSelectionSection}

@@ -17,10 +17,8 @@
  * carries a data-testid the tests query directly; a real associated label would
  * add nothing to the mock.
  */
-/* eslint-disable jsx-a11y/control-has-associated-label */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { ReactNode } from 'react';
 import {
   AlertType,
   ProviderType,
@@ -32,16 +30,13 @@ import {
   ModifiedEventSubscription,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import AlertEditModal from './AlertEditModal.component';
+import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
-const mockUseObservabilityAlertForm = jest.fn();
+const mockUseAlertFormData = jest.fn();
 
-jest.mock(
-  '../../../pages/AddObservabilityPage/hooks/useObservabilityAlertForm',
-  () => ({
-    useObservabilityAlertForm: (params: unknown) =>
-      mockUseObservabilityAlertForm(params),
-  })
-);
+jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+  useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
+}));
 
 jest.mock('../../../components/common/Loader/Loader', () => ({
   __esModule: true,
@@ -54,17 +49,32 @@ jest.mock('./AlertAiForm.component', () => ({
     mode,
     onChange,
     onSubmit,
+    shouldShowActionsSection,
     showHint,
+    templateResourcePermission,
+    templatesLoading,
     value,
   }: {
     mode: string;
     onChange: (value: ModifiedCreateEventSubscription) => void;
     onSubmit: (value: ModifiedCreateEventSubscription) => void;
+    shouldShowActionsSection?: boolean;
     showHint?: boolean;
+    templateResourcePermission?: Record<string, boolean>;
+    templatesLoading?: boolean;
     value: ModifiedCreateEventSubscription;
   }) => (
     <div data-testid="alert-ai-form">
       <span data-testid="form-mode">{mode}</span>
+      <span data-testid="form-shows-triggers">
+        {String(Boolean(shouldShowActionsSection))}
+      </span>
+      <span data-testid="form-template-permission">
+        {JSON.stringify(templateResourcePermission ?? null)}
+      </span>
+      <span data-testid="form-templates-loading">
+        {String(Boolean(templatesLoading))}
+      </span>
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
@@ -78,93 +88,6 @@ jest.mock('./AlertAiForm.component', () => ({
       </button>
     </div>
   ),
-}));
-
-// AlertEditModal delegates its chrome to AiFormModal; its own job is to wire
-// props and render the form (or loader) as children. Mock AiFormModal to that
-// boundary — its rendering is covered by the Data Quality suites. The mock
-// exposes the pieces AlertEditModal passes: header actions (Show Hint toggle),
-// the body, footer actions, and the guarded close handler.
-jest.mock('../../../components/common/atoms/drawer/AiFormModal', () => ({
-  AiFormModal: ({
-    children,
-    footerActions,
-    headerActions,
-    hintOpen,
-    open,
-    subtitle,
-    title,
-    onClose,
-    onHintToggle,
-  }: {
-    children?: ReactNode;
-    footerActions?: ReactNode;
-    headerActions?: ReactNode;
-    hintOpen?: boolean;
-    open?: boolean;
-    subtitle?: ReactNode;
-    title?: ReactNode;
-    onClose?: () => void;
-    onHintToggle?: (next: boolean) => void;
-  }) =>
-    open ? (
-      <div data-testid="ai-form-modal">
-        <div data-testid="modal-title">{title}</div>
-        <div data-testid="modal-subtitle">{subtitle}</div>
-        <div data-testid="modal-header-actions">{headerActions}</div>
-        {/* The Show Hint control itself belongs to AiFormModal now, so this
-              stands in for it: the contract under test is that AlertEditModal
-              hands down hintOpen and reacts to onHintToggle. */}
-        <div data-testid="modal-hint-open">{String(hintOpen)}</div>
-        <button
-          data-testid="modal-hint-toggle"
-          onClick={() => onHintToggle?.(!hintOpen)}>
-          toggle hint
-        </button>
-        <button data-testid="modal-close" onClick={() => onClose?.()}>
-          close
-        </button>
-        <div data-testid="modal-body">{children}</div>
-        <div data-testid="modal-footer-actions">{footerActions}</div>
-      </div>
-    ) : null,
-}));
-
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({
-    children,
-    className,
-  }: {
-    children?: ReactNode;
-    className?: string;
-  }) => <div className={className}>{children}</div>,
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
-  Toggle: ({
-    'data-testid': testId,
-    isDisabled,
-    isSelected,
-    onChange,
-  }: {
-    'data-testid'?: string;
-    isDisabled?: boolean;
-    isSelected?: boolean;
-    onChange?: (isSelected: boolean) => void;
-  }) => (
-    <input
-      checked={Boolean(isSelected)}
-      data-testid={testId}
-      disabled={isDisabled}
-      type="checkbox"
-      onChange={(event) => onChange?.(event.target.checked)}
-    />
-  ),
-}));
-
-jest.mock('@untitledui/icons', () => ({
-  AlertTriangle: () => null,
-  Lightbulb05: () => null,
 }));
 
 jest.mock('react-i18next', () => ({
@@ -192,18 +115,14 @@ const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
   filterResources: [],
-  form: {
-    setFieldValue: jest.fn(),
-    setFieldsValue: jest.fn(),
-  },
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
+  loadingState: { alerts: false, functions: false, templates: false },
   saving: false,
   shouldShowActionsSection: true,
+  selection: { support: { supportedFilters: [], supportedTriggers: [] } },
   shouldShowFiltersSection: true,
-  supportedFilters: [],
-  supportedTriggers: [],
   templateResourcePermission: undefined,
   templates: [],
   ...overrides,
@@ -212,10 +131,10 @@ const getHookState = (overrides = {}) => ({
 describe('AlertEditModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockUseObservabilityAlertForm.mockReturnValue(getHookState());
+    mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
-  it('passes fqn, save callback, and close callback to the OSS alert form hook', () => {
+  it('passes fqn, save callback, close callback and the chosen sources to the alert form hook', async () => {
     const onClose = jest.fn();
     const onSaved = jest.fn();
 
@@ -228,15 +147,84 @@ describe('AlertEditModal', () => {
       />
     );
 
-    expect(mockUseObservabilityAlertForm).toHaveBeenCalledWith({
+    expect(mockUseAlertFormData).toHaveBeenCalledWith({
       afterSaveAction: onSaved,
+      alertType: AlertType.Observability,
       fqn: 'service.alert',
       onCancel: onClose,
+      sources: [],
     });
+
+    await waitFor(() =>
+      expect(mockUseAlertFormData).toHaveBeenLastCalledWith({
+        afterSaveAction: onSaved,
+        alertType: AlertType.Observability,
+        fqn: 'service.alert',
+        onCancel: onClose,
+        sources: ['table'],
+      })
+    );
+  });
+
+  it('passes the form values, and no antd form, to extra form buttons', async () => {
+    const ExtraButton = jest.fn(
+      ({ values }: { values?: ModifiedCreateEventSubscription }) => (
+        <span data-testid="extra-button">{values?.resources?.[0]}</span>
+      )
+    );
+    mockUseAlertFormData.mockReturnValue(
+      getHookState({ extraFormButtons: { ExtraButton } })
+    );
+
+    render(
+      <AlertEditModal
+        isOpen
+        fqn="service.alert"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('extra-button')).toHaveTextContent('table')
+    );
+
+    for (const [props] of ExtraButton.mock.calls) {
+      expect(props).not.toHaveProperty('formRef');
+    }
+  });
+
+  it('creates a notification alert when opened for notifications', () => {
+    const handleSave = jest.fn();
+    mockUseAlertFormData.mockReturnValue(getHookState({ handleSave }));
+
+    render(
+      <AlertEditModal
+        isOpen
+        kind={NOTIFICATION_ALERT_KIND}
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(mockUseAlertFormData).toHaveBeenCalledWith(
+      expect.objectContaining({ alertType: AlertType.Notification })
+    );
+    // Notification alerts have no trigger section, even before a source is picked.
+    expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
+      'false'
+    );
+
+    fireEvent.click(screen.getByTestId('submit-form'));
+
+    expect(handleSave).toHaveBeenCalledWith(
+      expect.objectContaining({ alertType: AlertType.Notification })
+    );
   });
 
   it('shows loader while edit alert details are loading', () => {
-    mockUseObservabilityAlertForm.mockReturnValue(
+    mockUseAlertFormData.mockReturnValue(
       getHookState({ alert: undefined, isLoading: false })
     );
 
@@ -248,7 +236,6 @@ describe('AlertEditModal', () => {
 
   it('renders edit form with fetched alert values and submits through hook', async () => {
     const handleSave = jest.fn();
-    const form = { setFieldValue: jest.fn(), setFieldsValue: jest.fn() };
     const notificationTemplate = JSON.stringify({
       id: 'template-id',
       name: 'template-name',
@@ -266,8 +253,8 @@ describe('AlertEditModal', () => {
       notificationTemplate,
     } as ModifiedEventSubscription;
 
-    mockUseObservabilityAlertForm.mockReturnValue(
-      getHookState({ alert: alertWithTestTemplateFields, form, handleSave })
+    mockUseAlertFormData.mockReturnValue(
+      getHookState({ alert: alertWithTestTemplateFields, handleSave })
     );
 
     render(
@@ -286,12 +273,8 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-display-name')).toHaveTextContent(
       'Display Alert'
     );
-    expect(form.setFieldsValue).toHaveBeenCalledWith(
-      expect.objectContaining({
-        destinations: alertWithTestTemplateFields.destinations,
-        notificationTemplate,
-        resources: ['table'],
-      })
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
     );
 
     fireEvent.click(screen.getByTestId('submit-form'));
@@ -317,37 +300,38 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-mode')).toHaveTextContent('add');
     expect(screen.getByTestId('form-name')).toHaveTextContent('');
     expect(screen.getByTestId('form-display-name')).toHaveTextContent('');
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: [] })
+    );
   });
 
-  it('keeps the modal and the AI form on the same show hint state', async () => {
+  it('keeps the Show Hint toggle and the AI form on the same show hint state', async () => {
     render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const toggle = screen.getByRole('switch', { name: 'label.show-hint' });
 
     await waitFor(() =>
       expect(screen.getByTestId('form-show-hint')).toHaveTextContent('true')
     );
 
-    expect(screen.getByTestId('modal-hint-open')).toHaveTextContent('true');
+    expect(toggle).toBeChecked();
 
-    // AiFormModal renders the control; this component owns the boolean, because
-    // the form needs it too. Both sides have to move together.
-    fireEvent.click(screen.getByTestId('modal-hint-toggle'));
+    fireEvent.click(toggle);
 
     expect(screen.getByTestId('form-show-hint')).toHaveTextContent('false');
-    expect(screen.getByTestId('modal-hint-open')).toHaveTextContent('false');
+    expect(toggle).not.toBeChecked();
   });
 
   it('prevents dismissal while saving', () => {
     const onClose = jest.fn();
 
-    mockUseObservabilityAlertForm.mockReturnValue(
-      getHookState({ saving: true })
-    );
+    mockUseAlertFormData.mockReturnValue(getHookState({ saving: true }));
 
     render(<AlertEditModal isOpen onClose={onClose} onSaved={jest.fn()} />);
 
-    // The close handler passed to AiFormModal is guarded: while saving it must
-    // not propagate to the caller's onClose.
-    fireEvent.click(screen.getByTestId('modal-close'));
+    // The drawer's close handler is guarded: while saving it must not
+    // propagate to the caller's onClose.
+    fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -357,8 +341,33 @@ describe('AlertEditModal', () => {
 
     render(<AlertEditModal isOpen onClose={onClose} onSaved={jest.fn()} />);
 
-    fireEvent.click(screen.getByTestId('modal-close'));
+    fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the template permission and loading state to the form', () => {
+    mockUseAlertFormData.mockReturnValue(
+      getHookState({
+        loadingState: { alerts: false, functions: false, templates: true },
+        templateResourcePermission: { Create: true },
+      })
+    );
+
+    render(
+      <AlertEditModal
+        isOpen
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('form-template-permission')).toHaveTextContent(
+      '{"Create":true}'
+    );
+    expect(screen.getByTestId('form-templates-loading')).toHaveTextContent(
+      'true'
+    );
   });
 });

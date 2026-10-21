@@ -23,7 +23,7 @@ import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -268,7 +268,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   @Override
   public EntityRepository<SearchIndex>.EntityUpdater getUpdater(
       SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
-    return new SearchIndexUpdater(original, updated, operation);
+    return new SearchIndexUpdater(original, updated, operation, changeSource);
   }
 
   public SearchIndex getSampleData(UUID searchIndexId, boolean authorizePII) {
@@ -338,7 +338,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
     for (SearchIndexField field : listOrEmpty(fields)) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }
@@ -370,7 +370,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public EntityInterface getParentEntity(SearchIndex entity, String fields) {
+  public EntityInterface<?> getParentEntity(SearchIndex entity, String fields) {
     if (entity.getService() == null) {
       return null;
     }
@@ -378,7 +378,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   }
 
   @Override
-  public List<TagLabel> getAllTags(EntityInterface entity) {
+  public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     List<TagLabel> allTags = new ArrayList<>();
     SearchIndex searchIndex = (SearchIndex) entity;
     EntityUtil.mergeTags(allTags, searchIndex.getTags());
@@ -424,8 +424,9 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
   public class SearchIndexUpdater extends EntityUpdater {
     public static final String FIELD_DATA_TYPE_DISPLAY = "dataTypeDisplay";
 
-    public SearchIndexUpdater(SearchIndex original, SearchIndex updated, Operation operation) {
-      super(original, updated, operation);
+    public SearchIndexUpdater(
+        SearchIndex original, SearchIndex updated, Operation operation, ChangeSource changeSource) {
+      super(original, updated, operation, changeSource);
     }
 
     @Transaction
@@ -484,7 +485,12 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
           if (nullOrEmpty(addedField.getDescription())) {
             addedField.setDescription(deleted.getDescription());
           }
-          if (nullOrEmpty(addedField.getTags()) && nullOrEmpty(deleted.getTags())) {
+          // Carry the tags forward only when the re-added field has none of its own and the
+          // deleted one actually had some. A field is re-added rather than updated whenever its
+          // dataType changes (see EntityUtil.searchIndexFieldMatch), and the
+          // deleteTagsByTarget below would otherwise drop user-applied tags from a field that
+          // still exists under the same FQN.
+          if (nullOrEmpty(addedField.getTags()) && !nullOrEmpty(deleted.getTags())) {
             addedField.setTags(deleted.getTags());
           }
         }

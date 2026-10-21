@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DataProductsDetailsPage from './DataProductsDetailsPage.component';
@@ -214,12 +214,33 @@ describe('DataProductsDetailsPage — Request Data Access delegation', () => {
     getDataProductClassBase().getRequestDataAccessBanner.mockReturnValue(null);
   });
 
+  it('ends the breadcrumb with the data product itself', () => {
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    const crumbs = within(screen.getAllByTestId('breadcrumb')[0]).getAllByRole(
+      'listitem'
+    );
+
+    expect(crumbs[crumbs.length - 1]).toHaveTextContent('Test Data Product');
+  });
+
   it('delegates the DAR button to dataProductClassBase', () => {
     render(<DataProductsDetailsPage {...defaultProps} />);
 
     expect(
       getDataProductClassBase().getRequestDataAccessButton
     ).toHaveBeenCalled();
+  });
+
+  it('reloads the data product once a task on it is decided', () => {
+    const onRefresh = jest.fn();
+    render(<DataProductsDetailsPage {...defaultProps} onRefresh={onRefresh} />);
+
+    expect(
+      getDataProductClassBase().getDataProductDetailPageTabs
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ onUpdateEntityDetails: onRefresh })
+    );
   });
 
   it('delegates the DAR banner to dataProductClassBase', () => {
@@ -430,5 +451,60 @@ describe('DataProductsDetailsPage — Add Assets picker domain scoping', () => {
     render(<DataProductsDetailsPage {...domainScopedProps} />);
 
     expect(hasDomainTerm(getPickerQueryFilter())).toBe(true);
+  });
+});
+
+describe('DataProductsDetailsPage — contract latest-result button', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+  });
+
+  it('renders the aborted state as an orange button linking to the contract tab', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Aborted },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
+
+    expect(badge.tagName).toBe('A');
+    expect(badge).toHaveClass(
+      'tw:bg-utility-orange-50!',
+      'tw:text-utility-orange-700!'
+    );
+    expect(badge).toHaveAttribute(
+      'href',
+      '/data-product/test.dataproduct/contract'
+    );
+  });
+
+  it('keeps the selected version when linking to the contract tab from version history', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Failed },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} isVersionsView />);
+
+    const badge = await screen.findByTestId('data-contract-latest-result-btn');
+    const href = badge.getAttribute('href') ?? '';
+
+    expect(href).toContain('/versions/0.1');
+    expect(href.endsWith('/contract')).toBe(true);
+  });
+
+  it('does not render the button for a passing contract', async () => {
+    (getContractByEntityId as jest.Mock).mockResolvedValueOnce({
+      latestResult: { status: ContractExecutionStatus.Success },
+    });
+
+    render(<DataProductsDetailsPage {...defaultProps} />);
+
+    await waitFor(() => expect(getContractByEntityId).toHaveBeenCalled());
+
+    expect(
+      screen.queryByTestId('data-contract-latest-result-btn')
+    ).not.toBeInTheDocument();
   });
 });

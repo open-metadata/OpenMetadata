@@ -288,7 +288,8 @@ test.describe(
         await page.goto(
           `/glossary/${encodeURIComponent(
             term.responseData.fullyQualifiedName
-          )}`
+          )}`,
+          { waitUntil: 'domcontentloaded' }
         );
 
         await termRes;

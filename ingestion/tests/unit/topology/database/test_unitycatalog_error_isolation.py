@@ -171,12 +171,16 @@ class TestListingErrorIsolation:
         uc_source.source_config.includeTags = True
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = None
-        uc_source.client.tables.list.return_value = _raising_listing(
-            [
-                TableInfo(name="t1", table_type=DatabricksTableType.MANAGED),
-                TableInfo(name="t2", table_type=DatabricksTableType.MANAGED),
-            ],
-            Exception("connection reset"),
+        # The listing is hand-rolled against the raw endpoint, so the failure has to
+        # land on the second page rather than mid-iteration of an SDK generator.
+        uc_source.client.api_client.do = MagicMock(
+            side_effect=[
+                {
+                    "tables": [{"name": "t1", "table_type": "MANAGED"}, {"name": "t2", "table_type": "MANAGED"}],
+                    "next_page_token": "page-2",
+                },
+                Exception("connection reset"),
+            ]
         )
 
         tables = list(uc_source.get_tables_name_and_type())

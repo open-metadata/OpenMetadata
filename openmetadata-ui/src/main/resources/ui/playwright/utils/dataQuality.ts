@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Response } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import { redirectToHomePage, uuid } from './common';
@@ -18,14 +19,15 @@ import { waitForAllLoadersToDisappear } from './entity';
 import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
 import { submitTestCaseForm } from './testCases';
+import { waitForResponseWithStatus } from './waitHelpers';
 
-/** Recharts PieChart id for the Test Case Result pie on the Data Quality dashboard. */
+/** Wrapper id of the Test Case Result pie on the Data Quality dashboard. */
 export const TEST_CASE_STATUS_PIE_CHART_TEST_ID = 'test-case-result-pie-chart';
 
-/** Recharts PieChart id for the Entity Health Status pie on the Data Quality dashboard. */
+/** Wrapper id of the Entity Health Status pie on the Data Quality dashboard. */
 export const ENTITY_HEALTH_PIE_CHART_TEST_ID = 'healthy-data-assets-pie-chart';
 
-/** Recharts PieChart id for the Data Assets Coverage pie on the Data Quality dashboard. */
+/** Wrapper id of the Data Assets Coverage pie on the Data Quality dashboard. */
 export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
@@ -44,15 +46,27 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
- * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
- * heading. This is a deterministic outside-click that closes the react-aria
- * combobox popover without the ambiguity of a page-level Escape — which, when
- * the menu happens to already be closed, would bubble up and dismiss the whole
- * drawer.
+ * The test case drawer's Form Hint panel titles its doc with the active
+ * field's label. includeHidden: an open select's listbox aria-hides the rest
+ * of the page, the hint included, while it is still on screen.
+ */
+export const expectFormHint = async (page: Page, heading: string) => {
+  await expect(
+    page
+      .getByRole('note', { includeHidden: true })
+      .getByRole('heading', { name: heading, exact: true, includeHidden: true })
+  ).toBeVisible();
+};
+
+/**
+ * Escape must target an open picker: otherwise it bubbles to the parent drawer.
  */
 export const dismissTagSuggestions = async (page: Page) => {
-  await page.getByTestId('form-heading').click();
-  await expect(page.locator('[role="listbox"]')).toBeHidden();
+  const pickerSearch = page.getByTestId('search-input');
+  if (await pickerSearch.isVisible()) {
+    await pickerSearch.press('Escape');
+  }
+  await expect(pickerSearch).toBeHidden();
 };
 
 /**
@@ -108,7 +122,12 @@ export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await dataQualityReportResponse;
 }
 
-/** Clicks a segment by 0-based index (targets .custom-pie-chart-clickable path). */
+/**
+ * Clicks a pie slice by 0-based index. ECharts hit-tests pointer
+ * coordinates, so this waits for the slice to settle before clicking an interior
+ * point with the real mouse; a synthetic DOM click would miss. The first path is the
+ * grey track ring; slices follow in data order (zero slices are not drawn).
+ */
 export async function clickPieChartSegmentByIndex(
   page: Page,
   chartTestId: string,
@@ -116,13 +135,91 @@ export async function clickPieChartSegmentByIndex(
 ): Promise<void> {
   const chart = page.locator(`#${chartTestId}`);
   await expect(chart).toBeVisible();
-  const segmentPath = chart
-    .locator('.custom-pie-chart-clickable path')
-    .nth(segmentIndex);
-  await expect(segmentPath).toBeVisible();
-  await segmentPath.evaluate((el) => {
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  });
+  const slice = chart.locator('svg path').nth(segmentIndex + 1);
+  await expect(slice).toBeVisible();
+  await slice.scrollIntoViewIfNeeded();
+
+  const dashboardUrl = page.url();
+
+  // Every slice navigates. A click that lands while the chart re-renders (a
+  // late data refresh redraws the arcs) hits nothing and leaves the page on
+  // the dashboard, so re-measure and click again until it navigates.
+  await expect(async () => {
+    let previousGeometry: string | undefined;
+    let stableSamples = 0;
+    // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
+    await expect
+      .poll(
+        async () => {
+          const geometry = await slice.evaluate(
+            (el) => {
+              const path = el as SVGPathElement;
+
+              return JSON.stringify({
+                path: path.getAttribute('d'),
+                matrix: path.getScreenCTM(),
+              });
+            },
+            undefined,
+            { timeout: 5_000 }
+          );
+          stableSamples = geometry === previousGeometry ? stableSamples + 1 : 0;
+          previousGeometry = geometry;
+
+          return stableSamples;
+        },
+        {
+          message: 'Pie slice is still animating',
+          timeout: 10_000,
+          intervals: [100],
+        }
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    const point = await slice.evaluate(
+      (el) => {
+        const path = el as SVGPathElement;
+        const svg = path.ownerSVGElement as SVGSVGElement;
+        const box = path.getBBox();
+        const matrix = path.getScreenCTM() as DOMMatrix;
+        const probe = svg.createSVGPoint();
+        const length = path.getTotalLength();
+        const boundary = Array.from({ length: 64 }, (_, index) =>
+          path.getPointAtLength((length * index) / 64)
+        );
+        const steps = 24;
+        let bestPoint: { x: number; y: number } | null = null;
+        let bestClearance = -1;
+        for (let i = 1; i < steps; i++) {
+          for (let j = 1; j < steps; j++) {
+            probe.x = box.x + (box.width * i) / steps;
+            probe.y = box.y + (box.height * j) / steps;
+            if (path.isPointInFill(probe)) {
+              const clearance = Math.min(
+                ...boundary.map(
+                  (edge) => (probe.x - edge.x) ** 2 + (probe.y - edge.y) ** 2
+                )
+              );
+              if (clearance > bestClearance) {
+                const screen = probe.matrixTransform(matrix);
+                bestPoint = { x: screen.x, y: screen.y };
+                bestClearance = clearance;
+              }
+            }
+          }
+        }
+
+        return bestPoint;
+      },
+      undefined,
+      { timeout: 5_000 }
+    );
+    if (!point) {
+      throw new Error(`No clickable point in pie slice ${segmentIndex}`);
+    }
+    await page.mouse.click(point.x, point.y);
+    await expect(page).not.toHaveURL(dashboardUrl, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 export enum ObservabilityFeature {
@@ -153,15 +250,11 @@ export const clickEditTestCaseButton = async (
   page: Page,
   testCaseName: string
 ) => {
-  const testCaseDoc = page.waitForResponse(
-    '/locales/en-US/OpenMetadata/TestCaseForm.md'
-  );
   const testDefinitionResponse = page.waitForResponse(
     '/api/v1/dataQuality/testDefinitions/*'
   );
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`edit-${testCaseName}`).click();
-  await testCaseDoc;
   await testDefinitionResponse;
 };
 
@@ -207,7 +300,9 @@ export const addTestCaseToLogicalTestSuite = async (
   testSuiteName: string,
   testCaseName: string
 ) => {
-  await page.goto(`test-suites/${testSuiteName}`);
+  await page.goto(`test-suites/${testSuiteName}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await waitForAllLoadersToDisappear(page);
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
@@ -280,11 +375,13 @@ export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
   await pipelineTab.click();
-  const testSuiteByNameResponse = page.waitForResponse(
+  const testSuiteByNameResponse = waitForResponseWithStatus(
+    page,
     (res) =>
+      res.request().method() === 'GET' &&
       res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.url().includes('fields=owners') &&
-      res.status() === 200
+      res.url().includes('fields=owners'),
+    200
   );
   const emptyStateAddButton = page
     .getByTestId('empty-placeholder')
@@ -295,19 +392,22 @@ export const addTestSuitePipeline = async (page: Page) => {
   await addButton.click();
   await testSuiteByNameResponse;
 
+  // The pipeline form's toggle shares this testid with the test-case list's
+  // checkbox; the toggle's wrapper is the one holding a switch.
   const selectAllTestCases = page
     .getByTestId('select-all-test-cases')
-    .and(page.getByRole('switch'));
+    .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
   await selectAllTestCases.click();
 
   await expectScheduleFrequencySelected(page, 'day');
 
-  const deployResponse = page.waitForResponse(
+  const deployResponse = waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/services/ingestionPipelines/deploy') &&
-      res.request().method() === 'POST' &&
-      res.status() === 200
+      res.request().method() === 'POST',
+    200
   );
   await page.getByTestId('deploy-button').click();
   await deployResponse;
@@ -317,10 +417,12 @@ export const addTestSuitePipeline = async (page: Page) => {
     /has been created and deployed successfully/
   );
 
-  const testSuiteDetailsResponse = page.waitForResponse(
+  const testSuiteDetailsResponse = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/name/'),
+    200
   );
   await page.getByTestId('view-service-button').click();
   await testSuiteDetailsResponse;
@@ -343,11 +445,10 @@ export const selectTestCasesByCheckbox = async (
   const rows = page.locator(
     '[data-testid="test-case-table"] tbody tr[data-key]'
   );
-  await expect(rows.first()).toBeVisible();
+  await expect(rows.filter({ visible: true })).not.toHaveCount(0);
 
-  for (let i = 0; i < count; i++) {
-    const checkboxLabel = rows.nth(i).locator('label[slot="selection"]');
-    await checkboxLabel.click();
+  for (const row of (await rows.all()).slice(0, count)) {
+    await row.locator('label[slot="selection"]').click();
   }
 };
 
@@ -402,7 +503,7 @@ export async function waitForTestCasesToBeIndexed(
           );
 
           if (!res.ok()) {
-            return false;
+            throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
           }
 
           const body = await res.json();
@@ -438,11 +539,13 @@ export const searchAndSelectTestCase = async (
   page: Page,
   testCase: OwnedTestCase
 ) => {
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (res) =>
+      res.request().method() === 'GET' &&
       res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.url().includes(testCase.searchTerm) &&
-      res.status() === 200
+      res.url().includes(testCase.searchTerm),
+    200
   );
   await page.getByTestId('searchbar').fill(testCase.searchTerm);
   await searchResponse;
@@ -509,14 +612,13 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
-  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
-  // react-aria stack), so scope to the visible antd dropdown and its option
-  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
-  // (e.g. the header asset search) and resolves ambiguously.
-  const dropdown = page.locator('.ant-select-dropdown:visible');
-  const option = dropdown.locator('.ant-select-item-option', {
-    hasText: suiteName,
-  });
+  // Scope to the popover owned by this combobox: a generic listbox locator
+  // also matches other listboxes on the page (e.g. the header asset search).
+  await expect(dropdownInput).toHaveAttribute('aria-controls', /.+/);
+  const listboxId = (await dropdownInput.getAttribute('aria-controls')) ?? '';
+  const option = page
+    .locator(`[role="listbox"][id="${listboxId}"]`)
+    .getByRole('option', { name: suiteName });
 
   await expect(option).toBeVisible();
   await option.click();
@@ -559,7 +661,7 @@ export const verifyBundleSuitePageLoaded = async (
     .getByRole('row');
 
   await expect(testCaseRows).toHaveCount(expectedTestCaseCount, {
-    timeout: 30000,
+    timeout: ACTION_TIMEOUT,
   });
 };
 
@@ -718,7 +820,7 @@ export async function waitForIncidentToBeIndexed(
         );
 
         if (!res.ok()) {
-          return false;
+          throw new Error(`HTTP ${res.status()} querying ${res.url()}`);
         }
 
         const body = await res.json();

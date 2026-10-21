@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../../utils/apiResponse';
@@ -26,8 +27,9 @@ import {
   ServiceEntity,
 } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class DatabaseServiceClass extends EntityClass {
+export class DatabaseServiceClass extends EntityClass implements ParentNode {
   entity: ServiceEntity = {
     name: `pw-database-service-${uuid()}`,
     serviceType: 'Mysql',
@@ -49,11 +51,19 @@ export class DatabaseServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
-  constructor(name?: string, entity?: ServiceEntity) {
+  /** `entity` overrides the connector config (e.g. BigQuery); its name is optional. */
+  constructor(
+    name?: string,
+    entity?: Omit<ServiceEntity, 'name'> & { name?: string }
+  ) {
     super(EntityTypeEndpoint.DatabaseService);
-    this.entity = entity ?? this.entity;
-    this.entity.name = name ?? this.entity.name;
+    this.entity = {
+      ...this.entity,
+      ...entity,
+      name: name ?? entity?.name ?? this.entity.name,
+    };
     this.type = 'Database Service';
   }
 
@@ -109,8 +119,27 @@ export class DatabaseServiceClass extends EntityClass {
     );
   }
 
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/databaseServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
+  }
+
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/databaseServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

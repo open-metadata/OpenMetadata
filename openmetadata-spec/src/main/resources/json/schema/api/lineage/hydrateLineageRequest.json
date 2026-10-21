@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/api/lineage/hydrateLineageRequest.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "HydrateLineageRequest",
   "description": "Batch-hydrate a set of lineage nodes into full entity objects. Replaces N per-node entity GETs with one round-trip. Response groups hydrated entities by entityType. Each EntityReference in `entities` only requires `type` and `id`; other reference fields are ignored.",
   "javaType": "org.openmetadata.schema.api.lineage.HydrateLineageRequest",

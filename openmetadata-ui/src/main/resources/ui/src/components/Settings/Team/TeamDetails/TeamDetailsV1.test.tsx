@@ -31,8 +31,11 @@ jest.mock('../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: true }),
 }));
 
+let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
+  id: 'admin-id',
+};
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'admin-id' } }),
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
 let mockLocationSearch = '';
@@ -431,6 +434,29 @@ describe('TeamDetailsV1 rolesTabRender/policiesTabRender permission gate (ungate
 
     expect(
       await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 leave team', () => {
+  afterEach(() => {
+    mockCurrentUser = { id: 'admin-id' };
+  });
+
+  it('opens the leave confirmation before the team users have loaded', async () => {
+    const groupTeam = {
+      ...NON_ORG_TEAM,
+      teamType: TeamType.Group,
+      users: undefined,
+    } as unknown as Team;
+    mockCurrentUser = { id: 'admin-id', teams: [{ id: groupTeam.id }] };
+
+    renderComponent({ currentTeam: groupTeam });
+
+    fireEvent.click(await screen.findByTestId('leave-team-button'));
+
+    expect(
+      await screen.findByText('message.are-you-sure-want-to-text')
     ).toBeInTheDocument();
   });
 });

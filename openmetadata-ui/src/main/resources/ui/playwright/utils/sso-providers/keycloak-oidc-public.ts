@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { OM_BASE_URL, SSO_ENV } from '../../constant/ssoAuth';
 import {
   applyProviderConfig,
@@ -28,6 +29,10 @@ import {
   KEYCLOAK_SEEDED_CREDS,
   performProviderLogin,
 } from './keycloak-saml';
+import {
+  endKeycloakSession,
+  trackPromptNoneNavigations,
+} from './silent-reauth';
 
 // Public client — no secret. The browser (oidc-client UserManager) drives the
 // whole authorization-code flow, so this is the fixture that exercises
@@ -116,7 +121,10 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   // via oidc-client's signinSilent — same-origin refresh with no popup.
   supportsSilentCallback: true,
   usesBackendRefresh: false,
+  hasBackendIssuedRefreshCookie: false,
+  usesPkce: true,
   supportsColdLoadRefresh: true,
+  supportsSilentReauth: true,
 
   expectedResponseType: 'code',
   signInButtonPattern: /(sign in|log in) with Keycloak/i,
@@ -137,7 +145,7 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   async performLogin(page: Page) {
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: this.signInButtonPattern }).click();
     await performProviderLogin(page, {
       username: KEYCLOAK_SEEDED_CREDS.username,
@@ -165,20 +173,28 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
     // /callback, and the signup completion never ran.
     const sidebarLocator = page.getByTestId('app-bar-item-my-data');
     const createButton = page.getByTestId('create-button');
+    // Match the signup POST specifically. A bare `.includes('/api/v1/users')`
+    // matches the 404 from `GET /api/v1/users/loggedInUser` that fires first
+    // (that's the response that routes the SPA to /signup), so the waiter
+    // would resolve before the actual submission and skip the wait.
     const submissionPending = page
       .waitForResponse(
-        (resp) => resp.url().includes('/api/v1/users') && resp.status() < 400
+        (resp) =>
+          resp.url().includes('/api/v1/users') &&
+          resp.request().method() !== 'GET'
       )
       .catch(() => undefined);
     const signupAppeared = await Promise.race([
-      createButton.waitFor({ state: 'visible', timeout: 30_000 }).then(
+      createButton.waitFor({ state: 'visible', timeout: ACTION_TIMEOUT }).then(
         () => true,
         () => false
       ),
-      sidebarLocator.waitFor({ state: 'visible', timeout: 30_000 }).then(
-        () => false,
-        () => false
-      ),
+      sidebarLocator
+        .waitFor({ state: 'visible', timeout: ACTION_TIMEOUT })
+        .then(
+          () => false,
+          () => false
+        ),
     ]);
     if (signupAppeared) {
       // displayName is required; the SPA pre-fills it from token claims but
@@ -230,4 +246,31 @@ export const keycloakOidcPublicProviderFixture: SsoProviderFixture = {
   },
 
   forceTokenExpiry,
+
+  // What a dead renewal looks like to signinSilent. oidc-client renews with
+  // the refresh token Keycloak issued, so refuse that grant the way Keycloak
+  // refuses a token it no longer honours; without a refresh token it would
+  // use the hidden iframe, which third-party cookie blocking starves. The
+  // top-level redirect to Keycloak, and its authorization-code exchange, are
+  // unaffected.
+  async breakSilentRenewal(page: Page) {
+    await page.route('**/silent-callback*', (route) => route.abort());
+    await page.route('**/protocol/openid-connect/token', (route) =>
+      route.request().postData()?.includes('grant_type=refresh_token')
+        ? route.fulfill({
+            status: 400,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: 'invalid_grant',
+              error_description: 'Token is not active',
+            }),
+          })
+        : route.fallback()
+    );
+  },
+
+  killIdpSession: endKeycloakSession,
+
+  trackSilentReauth: (page: Page) =>
+    trackPromptNoneNavigations(page, /\/protocol\/openid-connect\/auth/),
 };

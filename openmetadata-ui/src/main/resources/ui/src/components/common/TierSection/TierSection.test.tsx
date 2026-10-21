@@ -13,8 +13,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
-import * as useEditableSectionHook from '../../../hooks/useEditableSection';
-import * as EntityUpdateUtils from '../../../utils/EntityUpdateUtils';
+import { useEditableSection } from '../../../hooks/useEditableSection';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import TierSection from './TierSection';
 
 const mockStartEditing = jest.fn();
@@ -24,28 +24,40 @@ const mockSetIsLoading = jest.fn();
 const mockSetPopoverOpen = jest.fn();
 const mockSetDisplayTier = jest.fn();
 
-const mockUseEditableSection = jest.spyOn(
-  useEditableSectionHook,
-  'useEditableSection'
-);
-const mockUpdateEntityField = jest.spyOn(
-  EntityUpdateUtils,
-  'updateEntityField'
-);
+jest.mock('../../../hooks/useEditableSection', () => {
+  const actual = jest.requireActual('../../../hooks/useEditableSection');
+
+  return {
+    ...actual,
+    useEditableSection: jest.fn(actual.useEditableSection),
+  };
+});
+
+jest.mock('../../../utils/EntityUpdateUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUpdateUtils');
+
+  return { ...actual, updateEntityField: jest.fn(actual.updateEntityField) };
+});
+
+const mockUseEditableSection = jest.mocked(useEditableSection);
+const mockUpdateEntityField = jest.mocked(updateEntityField);
 
 jest.mock('../TierCard/TierCard', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(({ children, onClose, updateTier }) => (
-    <div data-testid="tier-card">
-      {children}
-      <button data-testid="update-tier" onClick={() => updateTier?.()}>
-        Update Tier
-      </button>
-      <button data-testid="close-tier" onClick={onClose}>
-        Close
-      </button>
-    </div>
-  )),
+  default: jest
+    .fn()
+    .mockImplementation(({ children, open, onOpenChange, updateTier }) => (
+      <div data-testid="tier-card">
+        {/* Like FilterSelect, the trigger toggles the picker. */}
+        <span onClickCapture={() => onOpenChange?.(!open)}>{children}</span>
+        <button data-testid="update-tier" onClick={() => updateTier?.()}>
+          Update Tier
+        </button>
+        <button data-testid="close-tier" onClick={() => onOpenChange?.(false)}>
+          Close
+        </button>
+      </div>
+    )),
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -447,8 +459,42 @@ describe('TierSection', () => {
 
     fireEvent.click(closeButton);
 
-    expect(mockSetPopoverOpen).toHaveBeenCalledWith(false);
     expect(mockCancelEditing).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the picker when its edit button is pressed while open', () => {
+    mockUseEditableSection.mockImplementation((initialData) => ({
+      isEditing: true,
+      isLoading: false,
+      popoverOpen: true,
+      displayData: initialData,
+      setDisplayData: mockSetDisplayTier,
+      setIsLoading: mockSetIsLoading,
+      setPopoverOpen: mockSetPopoverOpen,
+      startEditing: mockStartEditing,
+      completeEditing: mockCompleteEditing,
+      cancelEditing: mockCancelEditing,
+    }));
+
+    render(
+      <TierSection
+        hasPermission
+        entityId="test-id"
+        entityType={EntityType.TABLE}
+        tier={{
+          labelType: LabelType.Manual,
+          source: TagSource.Classification,
+          state: State.Confirmed,
+          tagFQN: 'Tier.Tier1',
+        }}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('edit-icon-tier'));
+
+    expect(mockCancelEditing).toHaveBeenCalledTimes(1);
+    expect(mockStartEditing).not.toHaveBeenCalled();
+    expect(mockUpdateEntityField).not.toHaveBeenCalled();
   });
 
   it('should filter out existing tier tags when updating', async () => {

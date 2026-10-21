@@ -17,7 +17,7 @@ import { capitalize } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { StatusType } from '../../../components/common/StatusBadge/StatusBadge.interface';
@@ -28,7 +28,6 @@ import {
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import { getStatusMapping } from '../../../constants/WorkflowBuilder.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
 import {
@@ -49,9 +48,17 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
 
-export const WorkflowExecutionHistory: React.FC = () => {
+interface WorkflowExecutionHistoryProps {
+  /** The workflow whose runs are listed; the route's workflow when unset. */
+  workflowFqn?: string;
+}
+
+export const WorkflowExecutionHistory: React.FC<
+  WorkflowExecutionHistoryProps
+> = ({ workflowFqn: workflowFqnProp }) => {
   const { t } = useTranslation();
-  const { fqn: workflowFqn } = useFqn();
+  const { fqn: routeFqn } = useFqn();
+  const workflowFqn = workflowFqnProp ?? routeFqn;
   const [instances, setInstances] = useState<WorkflowInstance[]>([]);
   const [loading, setLoading] = useState(false);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
@@ -220,10 +227,14 @@ export const WorkflowExecutionHistory: React.FC = () => {
     fetchExecutionHistory();
   }, [workflowFqn, pageSize, fetchExecutionHistory]);
 
-  if (!workflowFqn) {
+  const isEmpty = !loading && instances.length === 0;
+
+  if (!workflowFqn || isEmpty) {
     return (
-      <div className="tw:flex tw:justify-center tw:items-center tw:min-h-100">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
+      <div
+        className="tw:relative tw:flex-1 tw:min-h-0"
+        data-testid="workflow-execution-history-empty">
+        <NoDataPlaceholder />
       </div>
     );
   }
@@ -240,14 +251,10 @@ export const WorkflowExecutionHistory: React.FC = () => {
           sticky
           cellClassName="tw:p-2 tw:align-middle"
           columns={columns}
+          containerClassName="tw:rounded-xl tw:border-subtle"
           data-testid="workflow-execution-history-table"
           dataSource={instances}
           loading={loading}
-          locale={{
-            emptyText: (
-              <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-            ),
-          }}
           pagination={false}
           rowKey={(record) => record.id ?? ''}
           size="small"

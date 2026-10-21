@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from 'antd';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -190,7 +190,7 @@ const CommentCard = ({
       <div className="w-full">
         <div className="d-flex items-center gap-2 tw:justify-between">
           <div className="d-flex items-center gap-2 flex-wrap">
-            <Typography.Text className="activity-feed-user-name reply-card-user-name">
+            <Typography className="activity-feed-user-name reply-card-user-name not-prose">
               <UserPopOverCard userName={authorName}>
                 <Link
                   className="reply-card-user-name"
@@ -198,22 +198,25 @@ const CommentCard = ({
                   {getEntityName(user)}
                 </Link>
               </UserPopOverCard>
-            </Typography.Text>
-            <Typography.Text className="seperator m-b-xss">
+            </Typography>
+            <Typography
+              className="m-b-xss"
+              color="secondary"
+              size="text-lg"
+              weight="bold">
               {seperator}
-            </Typography.Text>
-            <Typography.Text>
-              <Tooltip
-                color="white"
-                overlayClassName="timestamp-tooltip"
-                title={formatDateTime(createdAt)}>
-                <Typography.Text
-                  className="feed-card-header-v2-timestamp mr-2"
-                  data-testid="timestamp">
-                  {getRelativeTime(createdAt)}
-                </Typography.Text>
-              </Tooltip>
-            </Typography.Text>
+            </Typography>
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={formatDateTime(createdAt)}>
+              <Typography
+                className="feed-card-header-v2-timestamp mr-2"
+                color="secondary"
+                data-testid="timestamp"
+                size="text-xs">
+                {getRelativeTime(createdAt)}
+              </Typography>
+            </Tooltip>
           </div>
           <ActivityFeedActions
             isReply

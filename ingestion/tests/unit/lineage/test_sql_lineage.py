@@ -104,6 +104,161 @@ class SqlLineageTest(TestCase):
         # Then
         assert len(col_lineage) == 1
 
+    def test_get_column_lineage_count_star_not_treated_as_select_all(self):
+        """
+        COUNT(*) AS nb produces a ("nb", "*") pair.  That must NOT trigger the
+        SELECT * expansion — only an explicit ("*", "*") wildcard pair should.
+        """
+        # Given: COUNT(*) AS nb, region, SUM(amount) AS total
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("nb", "*"),
+                    ("region", "region"),
+                    ("total", "amount"),
+                ]
+            }
+        }
+
+        def _make_table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "NUMBER",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _make_table("testdb.public.target", ["nb", "region", "total"])
+        from_entity = _make_table("testdb.public.sales", ["region", "amount"])
+
+        # When
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        # Then: only (region→region) and (amount→total) — nb→* has no column match and is skipped
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
+        self.assertIn(("region", "region"), pairs)
+        self.assertIn(("amount", "total"), pairs)
+        # SELECT * expansion must NOT have fired — target only has 3 columns and
+        # we must not end up with sales columns mapped by name to target columns
+        self.assertNotIn(("amount", "amount"), pairs)
+
+    def test_get_column_lineage_count_star_first_does_not_drop_explicit_columns(self):
+        """
+        When COUNT(*) AS nb is the first pair (index 0), the two explicit column
+        mappings must still survive.  The bug: the old code checked [0] for any '*'
+        and replaced the whole list with a SELECT * expansion, erasing region→region
+        and amount→total.
+        """
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("nb", "*"),  # COUNT(*) — first element, triggers old bug
+                    ("region", "region"),
+                    ("total", "amount"),
+                ]
+            }
+        }
+
+        def _table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "NUMBER",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _table("testdb.public.target", ["nb", "region", "total"])
+        from_entity = _table("testdb.public.sales", ["region", "amount"])
+
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        fqns = [(c.fromColumns[0].root, c.toColumn.root) for c in col_lineage]
+        from_names = {p[0].split(".")[-1] for p in fqns}
+        to_names = {p[1].split(".")[-1] for p in fqns}
+
+        self.assertIn("region", from_names)
+        self.assertIn("amount", from_names)
+        self.assertIn("region", to_names)
+        self.assertIn("total", to_names)
+        # The COUNT(*) pair ("nb", "*") finds no from-column named "*" — it is
+        # silently dropped, which is correct.
+        self.assertEqual(len(col_lineage), 2)
+
+    def test_get_column_lineage_mixed_explicit_and_select_all(self):
+        """
+        SELECT upper(name) AS name_upper, * FROM t produces pairs like
+        [("name_upper","name"), ("*","*")].  The ("*","*") wildcard must expand
+        all source columns while the explicit ("name_upper","name") is preserved —
+        not overwritten by the expansion.
+        """
+        column_lineage_map = {
+            "testdb.public.target": {
+                "testdb.public.sales": [
+                    ("name_upper", "name"),  # SELECT upper(name) AS name_upper
+                    ("*", "*"),  # SELECT *
+                ]
+            }
+        }
+
+        def _table(fqn_str, cols):
+            return Table(
+                id=uuid.uuid4(),
+                name=fqn_str.split(".")[-1],
+                fullyQualifiedName=fqn_str,
+                columns=[
+                    {
+                        "name": c,
+                        "dataType": "VARCHAR",
+                        "fullyQualifiedName": f"{fqn_str}.{c}",
+                    }
+                    for c in cols
+                ],
+            )
+
+        to_entity = _table("testdb.public.target", ["name_upper", "name", "region"])
+        from_entity = _table("testdb.public.sales", ["name", "region"])
+
+        col_lineage = get_column_lineage(
+            to_entity=to_entity,
+            to_table_raw_name="testdb.public.target",
+            from_entity=from_entity,
+            from_table_raw_name="testdb.public.sales",
+            column_lineage_map=column_lineage_map,
+        )
+
+        pairs = {(c.fromColumns[0].root.split(".")[-1], c.toColumn.root.split(".")[-1]) for c in col_lineage}
+        # Explicit non-wildcard pair must be present
+        self.assertIn(("name", "name_upper"), pairs)
+        # Wildcard expansion must also be present
+        self.assertIn(("name", "name"), pairs)
+        self.assertIn(("region", "region"), pairs)
+
     def test_populate_column_lineage_map_select_all(self):
         """
         Method to test column lineage map populate func

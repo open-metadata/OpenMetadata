@@ -30,6 +30,7 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_COLUMNS,
     ORACLE_GET_MVIEW_QUERY_BY_NAME,
     ORACLE_GET_TABLE_NAMES,
+    ORACLE_GET_TEMPORARY_TABLE_NAMES,
     ORACLE_GET_VIEW_DEFINITION_BY_NAME,
     ORACLE_GET_VIEW_TEXT_BY_NAME,
     ORACLE_IDENTITY_TYPE,
@@ -374,6 +375,28 @@ def get_table_names(self, connection, schema=None, **kw):
     return [row[0] for row in cursor]
 
 
+def get_temporary_table_names(dialect, connection, schema=None):
+    """Return Global Temporary Table names in `schema`.
+
+    Oracle GTTs have permanent definitions in the data dictionary
+    (DURATION = 'SYS$SESSION' or 'SYS$TRANSACTION'); only their data is
+    session-scoped. They are excluded from get_table_names() to preserve
+    the historical default and are surfaced separately so callers can tag
+    them (e.g., as TableType.Local).
+    """
+    schema = dialect.denormalize_name(schema or dialect.default_schema_name)
+    if schema is None:
+        schema = dialect.default_schema_name
+
+    tablespace = ""
+    if dialect.exclude_tablespaces:
+        exclude_tablespace = ", ".join([f"'{ts}'" for ts in dialect.exclude_tablespaces])
+        tablespace = f"nvl(tablespace_name, 'no tablespace') NOT IN ({exclude_tablespace}) AND "
+    sql_str = ORACLE_GET_TEMPORARY_TABLE_NAMES.format(tablespace=tablespace, prefix=_get_table_prefix(dialect))
+    cursor = connection.execute(sql.text(sql_str), {"owner": schema})
+    return [row[0] for row in cursor]
+
+
 def get_view_names(self, schema=None):
     """Return all materialized view names in `schema`.
 
@@ -529,7 +552,11 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
 
         constraint_name = self.normalize_name(row[0])
         local_column = self.normalize_name(row[2])
-        remote_table = self.normalize_name(row[3])
+        # Report the dictionary name verbatim, exactly as get_table_names does, so
+        # referred_table always matches the Table entity's FQN. Normalising here produced
+        # a name that never matched, so common_db_source's exact get_by_name lookup
+        # missed and every Oracle foreign key was silently discarded.
+        remote_table = row[3]
         remote_column = self.normalize_name(row[4])
         remote_owner = self.normalize_name(row[5])
 

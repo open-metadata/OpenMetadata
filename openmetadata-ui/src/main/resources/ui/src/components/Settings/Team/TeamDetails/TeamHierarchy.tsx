@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Modal, Skeleton, Space, Switch, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  SimpleModal,
+  Skeleton,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -110,10 +117,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'subTeams',
         render: (childrenCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             childrenCount ?? 0
           ),
@@ -125,10 +129,7 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'users',
         render: (userCount: number) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
             userCount ?? 0
           ),
@@ -142,14 +143,13 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         key: 'owns',
         render: (fullyQualifiedName: string) =>
           isFetchingAllTeamAdvancedDetails ? (
-            <Skeleton
-              active={isFetchingAllTeamAdvancedDetails}
-              paragraph={{ rows: 0 }}
-            />
+            <Skeleton height={16} width="38%" />
           ) : (
-            <Typography.Text data-testid="team-asset-count">
+            <Typography
+              className="tw:text-primary"
+              data-testid="team-asset-count">
               {teamAssetCounts?.[fullyQualifiedName] ?? 0}
-            </Typography.Text>
+            </Typography>
           ),
       },
       ...descriptionTableObject<Team>({ width: 300 }),
@@ -326,27 +326,30 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
           dragAndDropHooks={dragAndDropHooks}
           expandable={expandableConfig}
           extraTableFilters={
-            <Space align="center">
-              <span>
-                <Switch
-                  checked={showDeletedTeam}
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
+              <span className="tw:inline-flex tw:items-center">
+                <Toggle
                   data-testid="show-deleted"
-                  onClick={onShowDeletedTeamChange}
+                  isSelected={showDeletedTeam}
+                  onChange={onShowDeletedTeamChange}
                 />
-                <Typography.Text className="m-l-xs">
-                  {t('label.deleted')}
-                </Typography.Text>
+                <Typography className="m-l-xs">{t('label.deleted')}</Typography>
               </span>
 
               {createTeamPermission && !isTeamDeleted && (
                 <Button
+                  color="primary"
                   data-testid="add-team"
-                  type="primary"
                   onClick={handleAddTeamButtonClick}>
                   {t('label.add-entity', { entity: t('label.team') })}
                 </Button>
               )}
-            </Space>
+            </Box>
           }
           loading={isTableLoading || isTeamBasicDataLoading || isSearchLoading}
           locale={{
@@ -359,28 +362,27 @@ const TeamHierarchy: FC<TeamHierarchyProps> = ({
         />
       </DropZone>
 
-      <Modal
-        centered
-        destroyOnClose
-        closable={false}
-        confirmLoading={isTableLoading}
+      <SimpleModal
         data-testid="confirmation-modal"
-        maskClosable={false}
+        isDismissable={false}
+        isOkLoading={isTableLoading}
+        isOpen={isModalOpen}
         okText={t('label.confirm')}
-        open={isModalOpen}
         title={t('label.move-the-entity', { entity: t('label.team') })}
         onCancel={onDragConfirmationModalClose}
         onOk={handleChangeTeam}>
-        <Transi18next
-          i18nKey="message.entity-transfer-message"
-          renderElement={<strong />}
-          values={{
-            from: movedTeam?.from.name,
-            to: movedTeam?.to?.name ?? getEntityName(currentTeam),
-            entity: t('label.team-lowercase'),
-          }}
-        />
-      </Modal>
+        <p>
+          <Transi18next
+            i18nKey="message.entity-transfer-message"
+            renderElement={<strong />}
+            values={{
+              from: movedTeam?.from.name,
+              to: movedTeam?.to?.name ?? getEntityName(currentTeam),
+              entity: t('label.team-lowercase'),
+            }}
+          />
+        </p>
+      </SimpleModal>
     </div>
   );
 };

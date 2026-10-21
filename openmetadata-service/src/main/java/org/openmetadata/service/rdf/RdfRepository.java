@@ -5,12 +5,10 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import java.io.ByteArrayOutputStream;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -23,21 +21,14 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.jena.query.Query;
-import org.apache.jena.query.QueryExecution;
-import org.apache.jena.query.QueryExecutionFactory;
-import org.apache.jena.query.QueryFactory;
-import org.apache.jena.query.ResultSet;
-import org.apache.jena.query.ResultSetFormatter;
-import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
@@ -62,8 +53,6 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
-import org.openmetadata.service.rdf.reasoning.InferenceEngine;
-import org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
@@ -104,9 +93,8 @@ public class RdfRepository {
   static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 100;
   static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 100;
   static final int DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE = 50;
-  static final int DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES = 100_000;
-  private static final int INFERENCE_MODEL_CACHE_MAX_SIZE = 2;
-  private static final long INFERENCE_MODEL_CACHE_TTL_SECONDS = 60L;
+  private static final String NO_INFERENCE_LEVEL = "none";
+  private static final String CUSTOM_INFERENCE_LEVEL = "custom";
   private static final String OPEN_METADATA_ONTOLOGY_NAMESPACE =
       "https://open-metadata.org/ontology/";
   private static final Pattern RELATION_TYPE_NAME_PATTERN = Pattern.compile("[a-zA-Z][a-zA-Z0-9]*");
@@ -164,7 +152,12 @@ public class RdfRepository {
   private final RdfStorageInterface materializationStorageService;
   private final JsonLdTranslator translator;
   private final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier;
-  private final BiFunction<String, UUID, EntityInterface> projectionEntityLoader;
+  private final RdfProjectionLoaders projectionLoaders;
+  private final AssertedOnlyQueries assertedOnlyQueries =
+      new AssertedOnlyQueries(
+          this::listAllGraphs,
+          () -> InferenceRuleRepository.inferredGraphPrefix(getBaseUri()),
+          AssertedOnlyQueries.GRAPH_LIST_TTL);
   private final Cache<String, String> entityGraphCache =
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
@@ -174,11 +167,6 @@ public class RdfRepository {
       Caffeine.newBuilder()
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
           .expireAfterWrite(Duration.ofSeconds(TRUNCATED_GRAPH_CACHE_TTL_SECONDS))
-          .build();
-  private final Cache<InferenceCacheKey, InfModel> inferenceModelCache =
-      Caffeine.newBuilder()
-          .maximumSize(INFERENCE_MODEL_CACHE_MAX_SIZE)
-          .expireAfterWrite(Duration.ofSeconds(INFERENCE_MODEL_CACHE_TTL_SECONDS))
           .build();
   private static RdfRepository INSTANCE;
 
@@ -198,7 +186,7 @@ public class RdfRepository {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.relationshipTypeResolverSupplier = RdfRepository::configuredRelationshipTypeResolver;
-    this.projectionEntityLoader = RdfRepository::loadProjectionEntity;
+    this.projectionLoaders = RdfProjectionLoaders.defaults();
     if (config.getEnabled() != null && config.getEnabled()) {
       final RdfStorageInterface configuredStorage = RdfStorageFactory.createStorage(config);
       this.datasetManager =
@@ -216,11 +204,15 @@ public class RdfRepository {
               Clock.systemUTC(),
               config.getBaseUri().toString());
       this.storageService =
-          new InferenceInvalidatingRdfStorage(
-              materializationStorageService, inferenceRuleRepository);
+          new AssertedGraphTrackingRdfStorage(
+              new InferenceInvalidatingRdfStorage(
+                  materializationStorageService, inferenceRuleRepository),
+              assertedOnlyQueries,
+              KNOWLEDGE_GRAPH);
       this.translator =
           new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
       LOG.info("RDF Repository initialized with {} storage", config.getStorageType());
+      warnAboutIgnoredInferenceSettings(config);
 
       loadOntologies();
     } else {
@@ -229,6 +221,16 @@ public class RdfRepository {
       this.materializationStorageService = null;
       this.translator = null;
       LOG.info("RDF Repository disabled");
+    }
+  }
+
+  private static void warnAboutIgnoredInferenceSettings(final RdfConfiguration rdfConfiguration) {
+    if (Boolean.TRUE.equals(rdfConfiguration.getInferenceEnabled())
+        || Boolean.TRUE.equals(rdfConfiguration.getCacheInferredTriples())) {
+      LOG.warn(
+          "rdf.inferenceEnabled, defaultInferenceLevel, cacheInferredTriples and "
+              + "maxInMemoryInferenceTriples are ignored: OpenMetadata no longer runs reasoners in "
+              + "its own process. Enable materializedInferenceEnabled to query custom rules.");
     }
   }
 
@@ -247,7 +249,7 @@ public class RdfRepository {
         storageService,
         translator,
         relationshipTypeResolverSupplier,
-        RdfRepository::loadProjectionEntity);
+        RdfProjectionLoaders.defaults());
   }
 
   RdfRepository(
@@ -255,7 +257,7 @@ public class RdfRepository {
       final RdfStorageInterface storageService,
       final JsonLdTranslator translator,
       final Supplier<RelationshipTypeResolver> relationshipTypeResolverSupplier,
-      final BiFunction<String, UUID, EntityInterface> projectionEntityLoader) {
+      final RdfProjectionLoaders projectionLoaders) {
     this.config = config;
     this.datasetNames = RdfDatasetNames.from(config);
     this.datasetManager = null;
@@ -263,7 +265,7 @@ public class RdfRepository {
     this.materializationStorageService = storageService;
     this.translator = translator;
     this.relationshipTypeResolverSupplier = relationshipTypeResolverSupplier;
-    this.projectionEntityLoader = projectionEntityLoader;
+    this.projectionLoaders = projectionLoaders;
   }
 
   static int resolveBulkEntityBatchSize(RdfConfiguration config) {
@@ -273,11 +275,6 @@ public class RdfRepository {
   static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
     return positiveInt(
         config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
-  }
-
-  static int resolveMaxInMemoryInferenceTriples(RdfConfiguration config) {
-    return positiveInt(
-        config.getMaxInMemoryInferenceTriples(), DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES);
   }
 
   static int resolveBulkLineageEdgeBatchSize(RdfConfiguration config) {
@@ -330,7 +327,7 @@ public class RdfRepository {
             : requireDatasetManager().buildStorage(new BuildTarget(rebuildId, dataset));
     final RdfRepository view =
         new RdfRepository(
-            config, storage, translator, relationshipTypeResolverSupplier, projectionEntityLoader);
+            config, storage, translator, relationshipTypeResolverSupplier, projectionLoaders);
     view.setAppendPayloadBudgetOverride(appendBudget);
     return view;
   }
@@ -357,6 +354,7 @@ public class RdfRepository {
   /** Replay live mutations and atomically publish the completed rebuild generation. */
   public void activateDataset(String datasetName, String rebuildId, String updatedBy) {
     requireDatasetManager().promote(new BuildTarget(rebuildId, datasetName), updatedBy);
+    assertedOnlyQueries.graphsChanged();
     LOG.info("RDF serving dataset switched to '{}'", datasetName);
   }
 
@@ -491,9 +489,9 @@ public class RdfRepository {
   }
 
   public void refreshEntity(final String entityType, final UUID entityId) {
-    final EntityInterface entity;
+    final EntityInterface<?> entity;
     try {
-      entity = projectionEntityLoader.apply(entityType, entityId);
+      entity = projectionLoaders.entityLoader().apply(entityType, entityId);
     } catch (EntityNotFoundException exception) {
       // A queued update can outlive a hard delete. Reconcile that tombstone instead of restoring
       // an obsolete snapshot or leaving an unrecoverable retry at the head of the queue.
@@ -503,17 +501,44 @@ public class RdfRepository {
     createOrUpdate(entity);
   }
 
-  private static EntityInterface loadProjectionEntity(
-      final String entityType, final UUID entityId) {
-    return Entity.getEntity(
-        entityType,
-        entityId,
-        String.join(",", RdfIndexingFields.forEntityType(entityType)),
-        Include.ALL,
-        false);
+  public void refreshOntologyGraph(final UUID ontologyId) {
+    projectionLoaders.ontologyGraphs().get().refresh(ontologyId, storageService);
   }
 
-  public void createOrUpdate(EntityInterface entity) {
+  public void rebuildOntologyGraphs() {
+    projectionLoaders.ontologyGraphs().get().rebuild(storageService);
+  }
+
+  /**
+   * Projects a lineage edge with the details stored for it now, including column lineage, so live
+   * edits and reindexing write the same triples. A replay that finds the edge gone, such as an add
+   * replayed after the edge was deleted, removes it instead of restoring it without details.
+   */
+  public void refreshLineage(final EntityRelationship lineage) {
+    final Optional<RdfProjectionLoaders.StoredLineageEdge> storedEdge =
+        projectionLoaders.lineageDetailsLoader().load(lineage.getFromId(), lineage.getToId());
+    if (storedEdge.isEmpty()) {
+      removeRelationship(lineage);
+    } else {
+      projectLineage(lineage, storedEdge.get().details());
+    }
+  }
+
+  private void projectLineage(final EntityRelationship lineage, final LineageDetails details) {
+    try {
+      addLineageWithDetails(
+          lineage.getFromEntity(),
+          lineage.getFromId(),
+          lineage.getToEntity(),
+          lineage.getToId(),
+          details);
+    } catch (RuntimeException exception) {
+      RdfProjectionHealth.markDegraded(exception);
+      throw exception;
+    }
+  }
+
+  public void createOrUpdate(EntityInterface<?> entity) {
     if (!isEnabled()) {
       return;
     }
@@ -562,11 +587,12 @@ public class RdfRepository {
    * The per-entity fallback in {@code RdfBatchProcessor.processEntities} keeps
    * row-level failure attribution when a chunk fails.
    */
-  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
+  public void bulkCreateOrUpdate(List<? extends EntityInterface<?>> entities) {
     bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
-  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities, RdfWriteMode writeMode) {
+  public void bulkCreateOrUpdate(
+      List<? extends EntityInterface<?>> entities, RdfWriteMode writeMode) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
       return;
     }
@@ -587,10 +613,10 @@ public class RdfRepository {
    * thread turns translate time into overlap instead of writer-lock idle time.
    */
   public List<RdfStorageInterface.EntityWriteRequest> translateEntities(
-      List<? extends EntityInterface> entities) {
+      List<? extends EntityInterface<?>> entities) {
     List<RdfStorageInterface.EntityWriteRequest> requests = new ArrayList<>(entities.size());
     if (isEnabled()) {
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         // Per-entity isolation: mapEntityToRdf propagates mapping failures, and the sink
         // translates a whole batch in one task, so an unguarded throw here would record
         // every entity in the batch as failed instead of the one that is actually bad.
@@ -1249,17 +1275,15 @@ public class RdfRepository {
               model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
 
           if (colLineage.getFromColumns() != null) {
-            Property fromColumnProp =
-                model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
             for (String fromCol : colLineage.getFromColumns()) {
-              colLineageResource.addProperty(fromColumnProp, fromCol);
+              addColumnLineageEndpoint(
+                  model, colLineageResource, ColumnLineageEndpoint.SOURCE, fromCol);
             }
           }
 
           if (colLineage.getToColumn() != null) {
-            colLineageResource.addProperty(
-                model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
-                colLineage.getToColumn());
+            addColumnLineageEndpoint(
+                model, colLineageResource, ColumnLineageEndpoint.TARGET, colLineage.getToColumn());
           }
 
           if (colLineage.getFunction() != null) {
@@ -1322,6 +1346,39 @@ public class RdfRepository {
     }
 
     return model;
+  }
+
+  /**
+   * Column endpoints reference the same column IRIs the table projection mints, so rules can join
+   * column lineage with column tags; the FQN literal keeps string matching possible. Only the table
+   * projection describes the column itself, so deleting a lineage edge never leaves column triples.
+   */
+  private void addColumnLineageEndpoint(
+      final Model model,
+      final Resource columnLineage,
+      final ColumnLineageEndpoint endpoint,
+      final String columnFqn) {
+    final String columnUri = RdfUtils.columnUri(config.getBaseUri().toString(), columnFqn);
+    if (columnUri != null) {
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.columnPredicate),
+          model.createResource(columnUri));
+      columnLineage.addProperty(
+          model.createProperty(OPEN_METADATA_ONTOLOGY_NAMESPACE, endpoint.fqnPredicate), columnFqn);
+    }
+  }
+
+  private enum ColumnLineageEndpoint {
+    SOURCE("fromColumn", "fromColumnFqn"),
+    TARGET("toColumn", "toColumnFqn");
+
+    private final String columnPredicate;
+    private final String fqnPredicate;
+
+    ColumnLineageEndpoint(final String columnPredicate, final String fqnPredicate) {
+      this.columnPredicate = columnPredicate;
+      this.fqnPredicate = fqnPredicate;
+    }
   }
 
   public record LineageEdgeData(
@@ -1554,7 +1611,7 @@ public class RdfRepository {
 
     try {
       // Get entity to convert to JSON-LD directly
-      EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
 
       // Convert directly to JSON-LD without going through RDF model
       return translator.toJsonLdString(entity, true);
@@ -1574,7 +1631,7 @@ public class RdfRepository {
 
     try {
       // Get the entity and convert to RDF
-      EntityInterface entity = Entity.getEntity(entityType, entityId, "*", null);
+      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
       Model rdfModel = translator.toRdf(entity);
 
       // Convert model to requested format
@@ -1599,23 +1656,9 @@ public class RdfRepository {
   }
 
   public String executeSparqlQuery(String query, String format) {
-    if (!isEnabled()) {
-      throw new IllegalStateException("RDF not enabled");
-    }
-
-    // Check if inference is enabled by default in configuration
-    if (isInferenceEnabledByDefault()) {
-      String defaultLevel = getDefaultInferenceLevel();
-      return executeSparqlQueryWithInference(query, format, defaultLevel);
-    }
-
-    return storageService.executeSparqlQuery(query, format);
+    return executeSparqlQueryDirect(query, format);
   }
 
-  /**
-   * Execute SPARQL query without inference, regardless of configuration. Use this for internal
-   * queries where inference overhead is not needed.
-   */
   public String executeSparqlQueryDirect(String query, String format) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
@@ -1623,15 +1666,31 @@ public class RdfRepository {
     return storageService.executeSparqlQuery(query, format);
   }
 
-  public boolean isInferenceEnabledByDefault() {
-    return config.getInferenceEnabled() != null && config.getInferenceEnabled();
+  /**
+   * Runs a read query against asserted data only. Fuseki's union default graph also holds the
+   * graphs materialized inference writes, so a query that must not see derived triples, such as
+   * one at inference level {@code none}, is restricted to the other graphs. A query that declares
+   * its own dataset with FROM or FROM NAMED runs as written.
+   */
+  public String executeAssertedSparqlQuery(final String query, final String format) {
+    return executeSparqlQueryDirect(assertedOnly(query), format);
   }
 
-  public String getDefaultInferenceLevel() {
-    if (config.getDefaultInferenceLevel() != null) {
-      return config.getDefaultInferenceLevel().value();
-    }
-    return "NONE";
+  private String assertedOnly(final String query) {
+    return supportsMaterializedInference(config) ? assertedOnlyQueries.restrict(query) : query;
+  }
+
+  private List<String> listAllGraphs() {
+    return storageService.getAllGraphs();
+  }
+
+  /**
+   * Whether custom inference rules are materialized into named graphs inside the triplestore, the
+   * only form of inference OpenMetadata answers. Static so status reporting needs no repository.
+   */
+  public static boolean supportsMaterializedInference(final RdfConfiguration rdfConfiguration) {
+    return Boolean.TRUE.equals(rdfConfiguration.getMaterializedInferenceEnabled())
+        && rdfConfiguration.getStorageType() == RdfConfiguration.StorageType.FUSEKI;
   }
 
   public RdfConfiguration getConfig() {
@@ -1645,12 +1704,6 @@ public class RdfRepository {
 
   public List<Map<String, String>> executeSparqlQueryDirectAsJson(String query) {
     String result = executeSparqlQueryDirect(query, "json");
-    return parseSparqlJsonResults(result);
-  }
-
-  public List<Map<String, String>> executeSparqlQueryWithInferenceAsJson(
-      String query, String inferenceLevel) {
-    String result = executeSparqlQueryWithInference(query, "json", inferenceLevel);
     return parseSparqlJsonResults(result);
   }
 
@@ -1678,192 +1731,47 @@ public class RdfRepository {
     return results;
   }
 
-  public String executeSparqlQueryWithInference(
-      String query, String format, String inferenceLevel) {
-    return executeSparqlQueryWithInferenceResult(query, format, inferenceLevel).results();
-  }
-
+  /**
+   * Runs a query at an inference level. Only materialized custom rules are available: their
+   * named graphs are part of the store's union graph, so the query runs unchanged. OpenMetadata
+   * never builds an inference model in its own heap; other levels report they are unavailable.
+   */
   public InferenceQueryResult executeSparqlQueryWithInferenceResult(
       final String query, final String format, final String inferenceLevel) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
     }
-
-    final InferenceQueryResult result;
+    requireAvailableInference(inferenceLevel);
+    final String results;
     try {
-      final ReasoningLevel level = reasoningLevel(inferenceLevel);
-      result =
-          usesDirectMaterializedQuery(level)
-              ? directInferenceResult(query, format)
-              : executeLegacyInference(query, format, inferenceLevel, level);
+      results = storageService.executeSparqlQuery(query, format);
+    } catch (UnsupportedRdfSerializationException exception) {
+      // The caller asked for a format the result cannot be written in: a 400, not a server fault.
+      throw exception;
     } catch (RuntimeException exception) {
       LOG.error("Error executing SPARQL query with inference", exception);
       throw new IllegalStateException("Failed to execute query with inference", exception);
     }
-    return result;
-  }
-
-  private boolean usesDirectMaterializedQuery(final ReasoningLevel level) {
-    return level == ReasoningLevel.NONE
-        || (level == ReasoningLevel.CUSTOM
-            && Boolean.TRUE.equals(config.getMaterializedInferenceEnabled()));
-  }
-
-  private InferenceQueryResult executeLegacyInference(
-      final String query,
-      final String format,
-      final String inferenceLevel,
-      final ReasoningLevel level) {
-    final long tripleCount = storageService.getTripleCount();
-    final int limit = resolveMaxInMemoryInferenceTriples(config);
-    final InferenceQueryResult result =
-        tripleCount > limit
-            ? limitedInferenceResult(query, format, tripleCount, limit)
-            : inMemoryInferenceResult(query, format, inferenceLevel, level, tripleCount);
-    return result;
-  }
-
-  private InferenceQueryResult limitedInferenceResult(
-      final String query, final String format, final long tripleCount, final int limit) {
-    final String warning =
-        "Inference was skipped because the RDF store contains %,d triples, exceeding the in-memory limit of %,d"
-            .formatted(tripleCount, limit);
-    LOG.warn("{}; executing the SPARQL query directly", warning);
-    return new InferenceQueryResult(executeSparqlQueryDirect(query, format), warning);
-  }
-
-  private InferenceQueryResult inMemoryInferenceResult(
-      final String query,
-      final String format,
-      final String inferenceLevel,
-      final ReasoningLevel level,
-      final long tripleCount) {
-    LOG.info(
-        "Executing SPARQL query with {} inference over {} triples", inferenceLevel, tripleCount);
-    final boolean isCacheEnabled = Boolean.TRUE.equals(config.getCacheInferredTriples());
-    final InfModel inferenceModel = inferenceModel(level, tripleCount, isCacheEnabled);
-    final String results = queryInferenceModel(query, format, inferenceModel, isCacheEnabled);
     return new InferenceQueryResult(results, null);
   }
 
-  private String queryInferenceModel(
-      final String query,
-      final String format,
-      final InfModel inferenceModel,
-      final boolean isCacheEnabled) {
-    final String results;
-    try {
-      results = executeThreadSafeInferenceQuery(query, format, inferenceModel, isCacheEnabled);
-    } finally {
-      if (!isCacheEnabled) {
-        inferenceModel.close();
-      }
-    }
-    return results;
-  }
-
-  private String executeThreadSafeInferenceQuery(
-      final String query,
-      final String format,
-      final InfModel inferenceModel,
-      final boolean isCacheEnabled) {
-    final String results;
-    if (isCacheEnabled) {
-      synchronized (inferenceModel) {
-        results = executeInferenceQuery(query, format, inferenceModel);
-      }
-    } else {
-      results = executeInferenceQuery(query, format, inferenceModel);
-    }
-    return results;
-  }
-
-  private InferenceQueryResult directInferenceResult(final String query, final String format) {
-    return new InferenceQueryResult(executeSparqlQueryDirect(query, format), null);
-  }
-
-  private ReasoningLevel reasoningLevel(String inferenceLevel) {
-    if (inferenceLevel == null) {
-      return ReasoningLevel.NONE;
-    }
-    return switch (inferenceLevel.toLowerCase(Locale.ROOT)) {
-      case "rdfs" -> ReasoningLevel.RDFS;
-      case "owl" -> ReasoningLevel.OWL_LITE;
-      case "custom" -> ReasoningLevel.CUSTOM;
-      default -> ReasoningLevel.NONE;
-    };
-  }
-
-  private InfModel inferenceModel(ReasoningLevel level, long tripleCount, boolean cacheEnabled) {
-    if (!cacheEnabled) {
-      return buildInferenceModel(level);
-    }
-    return inferenceModelCache.get(
-        new InferenceCacheKey(level, tripleCount), ignored -> buildInferenceModel(level));
-  }
-
-  private InfModel buildInferenceModel(ReasoningLevel level) {
-    String allDataQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
-    String allData = storageService.executeSparqlQuery(allDataQuery, "text/turtle");
-    Model baseModel = ModelFactory.createDefaultModel();
-    if (!nullOrEmpty(allData)) {
-      baseModel.read(new StringReader(allData), null, "TURTLE");
-    }
-
-    Model ontologyModel = ModelFactory.createDefaultModel();
-    String ontologyQuery =
-        "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
-    String ontologyData = storageService.executeSparqlQuery(ontologyQuery, "text/turtle");
-    if (!nullOrEmpty(ontologyData)) {
-      ontologyModel.read(new StringReader(ontologyData), null, "TURTLE");
-    }
-    return new InferenceEngine(level).createInferenceModel(baseModel, ontologyModel);
-  }
-
-  private String executeInferenceQuery(String query, String format, InfModel infModel) {
-    Query jenaQuery = QueryFactory.create(query);
-    try (QueryExecution queryExecution = QueryExecutionFactory.create(jenaQuery, infModel);
-        ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-      if (jenaQuery.isSelectType()) {
-        writeSelectResults(queryExecution.execSelect(), format, output);
-      } else if (jenaQuery.isConstructType()) {
-        queryExecution.execConstruct().write(output, getJenaFormat(format));
-      } else if (jenaQuery.isAskType()) {
-        output.write(
-            ("{\"head\":{},\"boolean\":" + queryExecution.execAsk() + "}")
-                .getBytes(StandardCharsets.UTF_8));
-      } else if (jenaQuery.isDescribeType()) {
-        queryExecution.execDescribe().write(output, getJenaFormat(format));
-      }
-      return output.toString(StandardCharsets.UTF_8);
-    } catch (IOException e) {
-      throw new IllegalStateException("Failed to serialize inference query results", e);
+  private void requireAvailableInference(final String inferenceLevel) {
+    final String level =
+        inferenceLevel == null ? NO_INFERENCE_LEVEL : inferenceLevel.toLowerCase(Locale.ROOT);
+    if (!isAvailableInferenceLevel(level)) {
+      throw new ServiceUnavailableException(
+          ("SPARQL inference level '%s' is not available. OpenMetadata does not run reasoners in "
+                  + "its own process; use '%s', or '%s' with materialized inference enabled.")
+              .formatted(level, NO_INFERENCE_LEVEL, CUSTOM_INFERENCE_LEVEL));
     }
   }
 
-  private void writeSelectResults(ResultSet results, String format, ByteArrayOutputStream output) {
-    if (format.contains("json")) {
-      ResultSetFormatter.outputAsJSON(output, results);
-    } else if (format.contains("xml")) {
-      ResultSetFormatter.outputAsXML(output, results);
-    } else if (format.contains("csv")) {
-      ResultSetFormatter.outputAsCSV(output, results);
-    } else if (format.contains("tsv")) {
-      ResultSetFormatter.outputAsTSV(output, results);
-    }
+  private boolean isAvailableInferenceLevel(final String level) {
+    return NO_INFERENCE_LEVEL.equals(level)
+        || (CUSTOM_INFERENCE_LEVEL.equals(level) && supportsMaterializedInference(config));
   }
 
   public record InferenceQueryResult(String results, String warning) {}
-
-  private record InferenceCacheKey(ReasoningLevel level, long tripleCount) {}
-
-  private String getJenaFormat(String mimeType) {
-    if (mimeType.contains("turtle")) return "TURTLE";
-    if (mimeType.contains("rdf+xml")) return "RDF/XML";
-    if (mimeType.contains("n-triples")) return "N-TRIPLES";
-    if (mimeType.contains("json-ld") || mimeType.contains("ld+json")) return "JSON-LD";
-    return "TURTLE"; // default
-  }
 
   public String getEntityGraph(
       UUID entityId,
@@ -3035,11 +2943,11 @@ public class RdfRepository {
    */
   private void enhanceNodesWithEntityDetails(
       Map<String, com.fasterxml.jackson.databind.node.ObjectNode> nodeMap) {
-    Map<String, EntityInterface> entitiesById = fetchEntitiesForNodes(nodeMap.values());
+    Map<String, EntityInterface<?>> entitiesById = fetchEntitiesForNodes(nodeMap.values());
     for (com.fasterxml.jackson.databind.node.ObjectNode node : nodeMap.values()) {
       String entityId = node.get("entityId").asText();
       String entityType = node.get("type").asText();
-      EntityInterface entity = entitiesById.get(entityId);
+      EntityInterface<?> entity = entitiesById.get(entityId);
       if (entity != null) {
         populateNodeFromEntity(node, entity);
       } else {
@@ -3048,7 +2956,7 @@ public class RdfRepository {
     }
   }
 
-  private Map<String, EntityInterface> fetchEntitiesForNodes(
+  private Map<String, EntityInterface<?>> fetchEntitiesForNodes(
       Collection<com.fasterxml.jackson.databind.node.ObjectNode> nodes) {
     Map<String, List<EntityReference>> refsByType = new HashMap<>();
     for (com.fasterxml.jackson.databind.node.ObjectNode node : nodes) {
@@ -3059,7 +2967,7 @@ public class RdfRepository {
       }
     }
 
-    Map<String, EntityInterface> entitiesById = new HashMap<>();
+    Map<String, EntityInterface<?>> entitiesById = new HashMap<>();
     refsByType.forEach((entityType, refs) -> fetchEntityBatch(entityType, refs, entitiesById));
     return entitiesById;
   }
@@ -3075,12 +2983,12 @@ public class RdfRepository {
   }
 
   private void fetchEntityBatch(
-      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+      String entityType, List<EntityReference> refs, Map<String, EntityInterface<?>> target) {
     String fields = "";
     try {
       fields = graphNodeFields(entityType);
-      List<EntityInterface> entities = Entity.getEntities(refs, fields, Include.ALL);
-      for (EntityInterface entity : entities) {
+      List<EntityInterface<?>> entities = Entity.getEntities(refs, fields, Include.ALL);
+      for (EntityInterface<?> entity : entities) {
         target.put(entity.getId().toString(), entity);
       }
     } catch (RuntimeException e) {
@@ -3101,11 +3009,11 @@ public class RdfRepository {
   private void fetchEntitiesIndividually(
       String entityType,
       List<EntityReference> refs,
-      Map<String, EntityInterface> target,
+      Map<String, EntityInterface<?>> target,
       String fields) {
     for (EntityReference ref : refs) {
       try {
-        EntityInterface entity = Entity.getEntity(entityType, ref.getId(), fields, Include.ALL);
+        EntityInterface<?> entity = Entity.getEntity(entityType, ref.getId(), fields, Include.ALL);
         target.put(entity.getId().toString(), entity);
       } catch (RuntimeException e) {
         LOG.warn(
@@ -3122,7 +3030,7 @@ public class RdfRepository {
   }
 
   private void populateNodeFromEntity(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
     String displayLabel =
         entity.getDisplayName() != null ? entity.getDisplayName() : entity.getName();
     node.put("label", displayLabel);
@@ -3135,7 +3043,7 @@ public class RdfRepository {
   }
 
   private void applyNodeTags(
-      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface entity) {
+      com.fasterxml.jackson.databind.node.ObjectNode node, EntityInterface<?> entity) {
     if (!nullOrEmpty(entity.getTags())) {
       com.fasterxml.jackson.databind.node.ArrayNode tagsArray =
           JsonUtils.getObjectMapper().createArrayNode();
@@ -3952,7 +3860,7 @@ public class RdfRepository {
         config.getStorageType().toString());
   }
 
-  public void bulkSyncEntities(String entityType, List<? extends EntityInterface> entities) {
+  public void bulkSyncEntities(String entityType, List<? extends EntityInterface<?>> entities) {
     if (!isEnabled()) {
       return;
     }
@@ -3961,7 +3869,7 @@ public class RdfRepository {
       LOG.info(
           "Starting bulk sync for entity type: {} with {} entities", entityType, entities.size());
 
-      for (EntityInterface entity : entities) {
+      for (EntityInterface<?> entity : entities) {
         try {
           createOrUpdate(entity);
         } catch (Exception e) {
@@ -4039,14 +3947,11 @@ public class RdfRepository {
     try {
       String fromUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + fromTermId;
       String toUri = config.getBaseUri().toString() + "entity/glossaryTerm/" + toTermId;
-      String predicateUri = getGlossaryTermRelationPredicateUri(relationType);
+      final Set<String> predicateUris = getGlossaryTermRelationPredicateUris(relationType);
 
-      // Delete BOTH directions. The add path runs through
-      // EntityRepository.addRelationship which writes the reverse direction
-      // for bidirectional relationships, so a one-sided delete leaves a
-      // stale "<to> om:<predicate> <from>" triple — visible as a lingering
-      // edge in the relations graph after the user removed the relation.
-      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUri);
+      // The target term sees the inverse type, and live or rebuilt graphs may contain either
+      // predicate in either direction for the same SQL relation.
+      String sparqlUpdate = buildGlossaryTermRelationDeleteUpdate(fromUri, toUri, predicateUris);
 
       storageService.executeSparqlUpdate(sparqlUpdate);
       LOG.debug("Removed glossary term relation {} -> {} ({})", fromTermId, toTermId, relationType);
@@ -4062,16 +3967,31 @@ public class RdfRepository {
     }
   }
 
-  private String getGlossaryTermRelationPredicateUri(String relationType) {
-    String resolvedType = relationType == null ? "relatedTo" : relationType;
-    return relationshipTypeResolver().requireIgnoreCase(resolvedType).getRdfPredicate().toString();
+  private Set<String> getGlossaryTermRelationPredicateUris(final String relationType) {
+    final RelationshipTypeResolver resolver = relationshipTypeResolver();
+    final RelationshipType type =
+        resolver.requireIgnoreCase(relationType == null ? "relatedTo" : relationType);
+    final Set<String> predicateUris = new LinkedHashSet<>();
+    predicateUris.add(type.getRdfPredicate().toString());
+    if (type.getInverse() != null && !type.getName().equals(type.getInverse().getName())) {
+      predicateUris.add(resolver.require(type.getInverse().getName()).getRdfPredicate().toString());
+    }
+    return predicateUris;
   }
 
   static String buildGlossaryTermRelationDeleteUpdate(
-      String fromUri, String toUri, String predicateUri) {
-    return String.format(
-        "DELETE DATA { GRAPH <%s> { <%s> <%s> <%s> . <%s> <%s> <%s> . } }",
-        KNOWLEDGE_GRAPH, fromUri, predicateUri, toUri, toUri, predicateUri, fromUri);
+      final String fromUri, final String toUri, final Collection<String> predicateUris) {
+    final String triples =
+        String.join(
+            " ",
+            predicateUris.stream()
+                .map(
+                    predicateUri ->
+                        String.format(
+                            "<%s> <%s> <%s> . <%s> <%s> <%s> .",
+                            fromUri, predicateUri, toUri, toUri, predicateUri, fromUri))
+                .toList());
+    return String.format("DELETE DATA { GRAPH <%s> { %s } }", KNOWLEDGE_GRAPH, triples);
   }
 
   /**
@@ -4337,8 +4257,6 @@ public class RdfRepository {
   }
 
   public void close() {
-    new HashSet<>(inferenceModelCache.asMap().values()).forEach(InfModel::close);
-    inferenceModelCache.invalidateAll();
     if (storageService != null) {
       storageService.close();
     }

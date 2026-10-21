@@ -11,18 +11,27 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
+import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
 const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
 const mockSetItems = jest.fn();
 const mockSetTotal = jest.fn();
-const mockReload = jest.fn();
 const mockInvalidateQueries = jest.fn();
 let capturedFetchPage: (after?: string) => unknown;
-let hookState: { items: Task[]; isLoading: boolean; total: number };
+let capturedQueryKey: unknown[];
+let capturedCanLoadMore: ((loaded: unknown[]) => boolean) | undefined;
+let hookState: {
+  items: Task[];
+  isLoading: boolean;
+  total: number;
+  hasMore?: boolean;
+};
 // Extra fields merged into the task the mock panel resolves with, so a test can
 // simulate resolving into a specific status/type (e.g. an Approved DAR).
 let resolvedPayload: Record<string, unknown> = {};
@@ -35,22 +44,30 @@ jest.mock('@tanstack/react-query', () => ({
   useQueries: () => [{ data: 0 }, { data: 0 }, { data: 0 }],
 }));
 
-jest.mock('../useInboxCounts', () => ({
-  INBOX_COUNTS_QUERY_KEY: 'inbox-counts',
+let mockCurrentUserIds: ReadonlySet<string> = new Set();
+
+jest.mock('../useCurrentUserIds', () => ({
+  useCurrentUserIds: () => mockCurrentUserIds,
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
-  useInboxInfiniteList: (fetchPage: (after?: string) => unknown) => {
+  useInboxInfiniteList: (
+    queryKey: unknown[],
+    fetchPage: (after?: string) => unknown,
+    canLoadMore?: (loaded: unknown[]) => boolean
+  ) => {
+    capturedQueryKey = queryKey;
     capturedFetchPage = fetchPage;
+    capturedCanLoadMore = canLoadMore;
 
     return {
       items: hookState.items,
       isLoading: hookState.isLoading,
       isLoadingMore: false,
+      hasMore: Boolean(hookState.hasMore),
       total: hookState.total,
       scrollRef: { current: null },
       sentinelRef: { current: null },
-      reload: mockReload,
       setItems: mockSetItems,
       setTotal: mockSetTotal,
     };
@@ -61,11 +78,64 @@ jest.mock('rest/tasksAPI', () => ({
   listTasks: (...a: unknown[]) => mockListTasks(...a),
   listMyVisibleTasks: (...a: unknown[]) => mockListVisibleTasks(...a),
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
+  // The task-type titles are keyed by it (constants/Task.constant).
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
 }));
 
-jest.mock('../components/InboxFilterBar', () => ({
+// The toolbar has its own suite; here it only has to report what the user
+// chose, so the tab's own contract (a searched query reaching the server, a
+// type narrowing the list) can be asserted.
+jest.mock('../components/InboxTaskListToolbar', () => ({
   __esModule: true,
-  default: ({ left }: { left?: ReactNode }) => <div>{left}</div>,
+  default: ({
+    statusTabs,
+    statusOptions,
+    statusFilter,
+    onStatusFilterChange,
+    onSearchChange,
+    onGroupingChange,
+    onTypeFilterChange,
+  }: {
+    statusTabs: ReactNode;
+    statusOptions: string[];
+    statusFilter: string[];
+    onStatusFilterChange: (value: string[]) => void;
+    onSearchChange: (value: string) => void;
+    onGroupingChange: (value: string) => void;
+    onTypeFilterChange: (value: string[]) => void;
+  }) => (
+    <div
+      data-status={statusFilter.join(',')}
+      data-status-options={statusOptions.join(',')}
+      data-testid="toolbar">
+      {statusTabs}
+      <button
+        data-testid="toolbar-status-pending"
+        onClick={() => onStatusFilterChange(['pending-approval'])}>
+        pending approval
+      </button>
+      <button
+        data-testid="toolbar-search-title"
+        onClick={() => onSearchChange('Request TestCase orders')}>
+        search title
+      </button>
+      <button
+        data-testid="toolbar-search"
+        onClick={() => onSearchChange('customer')}>
+        search
+      </button>
+      <button
+        data-testid="toolbar-group-none"
+        onClick={() => onGroupingChange('none')}>
+        group none
+      </button>
+      <button
+        data-testid="toolbar-filter-tag"
+        onClick={() => onTypeFilterChange(['label.tag-request'])}>
+        filter tag
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock('../components/InboxTaskListItem', () => ({
@@ -137,12 +207,22 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const TabsList = ({ children }: { children?: ReactNode }) => (
     <div>{children}</div>
   );
-  const TabsItem = ({ id, label }: { id: string; label?: ReactNode }) => (
+  const TabsItem = ({
+    id,
+    label,
+    children,
+  }: {
+    id: string;
+    label?: ReactNode;
+    children?: ReactNode | ((state: { isSelected: boolean }) => ReactNode);
+  }) => (
     <button
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
-      {label}
+      {typeof children === 'function'
+        ? children({ isSelected: false })
+        : children ?? label}
     </button>
   );
 
@@ -162,6 +242,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+    Badge: ({ children }: { children?: ReactNode }) => (
+      <span data-testid="count-badge">{children}</span>
+    ),
     Skeleton: () => <div data-testid="skeleton" />,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -169,36 +252,48 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({
       title,
       description,
+      actions,
       ...props
     }: {
       title?: ReactNode;
       description?: ReactNode;
+      actions?: { key: string; label: ReactNode; onPress?: () => void }[];
       'data-testid'?: string;
     }) => (
       <div data-testid={props['data-testid']}>
         <span>{title}</span>
         <span>{description}</span>
+        {actions?.map(({ key, label, onPress }) => (
+          <button key={key} onClick={onPress}>
+            {label}
+          </button>
+        ))}
       </div>
     ),
     Tabs,
   };
 });
 
+// One task type's title prefix is translated, so a title search can name it.
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === 'message.request-test-case-failure-resolution-message'
+        ? 'Request TestCase Failure Resolution for'
+        : key,
+  }),
 }));
 
 import TasksTab, { TasksTabProps } from './TasksTab';
 
-// defaultDateRange / onDateRangeChange are required by the shared filter bar;
-// the tests only care about scope / aboutEntity / className, so stub the rest.
-const renderTab = (props: Partial<TasksTabProps> = {}) =>
+const renderTab = (
+  props: Partial<TasksTabProps> = {},
+  initialEntry = '/inbox/tasks'
+) =>
   render(
-    <TasksTab
-      defaultDateRange={{ startTs: 0, endTs: 0 }}
-      onDateRangeChange={jest.fn()}
-      {...props}
-    />
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TasksTab {...props} />
+    </MemoryRouter>
   );
 
 describe('TasksTab', () => {
@@ -217,6 +312,103 @@ describe('TasksTab', () => {
 
     // Defaults to the Open filter, so the Open empty state renders.
     expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+  });
+
+  // A filter that matches nothing must not claim the queue is empty.
+  it('says nothing matches a filter, and clears it on request', () => {
+    hookState = {
+      items: [{ id: 't2', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 1,
+    };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(screen.getByTestId('inbox-tasks-no-match')).toHaveTextContent(
+      'message.no-match-found'
+    );
+    expect(
+      screen.queryByText('label.no-open-tasks-yet')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.clear-all'));
+
+    expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+  });
+
+  // Type and Status narrow loaded pages, so later pages may still match.
+  it('waits for the pages still to come before saying nothing matches', () => {
+    hookState = {
+      items: [{ id: 't2', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 30,
+      hasMore: true,
+    };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(
+      screen.queryByTestId('inbox-tasks-no-match')
+    ).not.toBeInTheDocument();
+  });
+
+  // A short narrowed list keeps the sentinel in view; the scan must end.
+  it('stops paging a narrowed list after a bounded scan', () => {
+    renderTab();
+    const longScan = new Array(200);
+
+    expect(capturedCanLoadMore?.(longScan)).toBe(true);
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(capturedCanLoadMore?.(longScan)).toBe(false);
+    expect(capturedCanLoadMore?.([])).toBe(true);
+  });
+
+  // The scan stopped at its cap with pages unread: matches may still exist.
+  it('says only the scanned tasks lack a match, and scans further on request', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(
+      screen.getByTestId('inbox-tasks-no-match-scanned')
+    ).toHaveTextContent('message.no-match-in-first-tasks');
+    expect(
+      screen.queryByTestId('inbox-tasks-no-match')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
+  });
+
+  // The raised cap belongs to the narrowing it was raised for.
+  it('drops a raised scan cap once the filters change', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+    renderTab();
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+    fireEvent.click(screen.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
+
+    fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(false);
   });
 
   it('shows the skeleton while loading', () => {
@@ -273,6 +465,16 @@ describe('TasksTab', () => {
     });
   });
 
+  // A work queue: an open task must never age out of it.
+  it('sends no date window', () => {
+    renderTab();
+
+    capturedFetchPage(undefined);
+
+    expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('startTs');
+    expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('endTs');
+  });
+
   it('lists all entity tasks (listTasks) when scoped to an entity', () => {
     renderTab({ aboutEntity: 'svc.db.schema.table.tc' });
 
@@ -303,6 +505,24 @@ describe('TasksTab', () => {
     renderTab();
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t1');
+  });
+
+  // The landing page's My Tasks card links here; its task may sit past the
+  // loaded page, so the selection must not fall back to the top row.
+  it('opens on the task a link names, even past the loaded page', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 30,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t-elsewhere');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t-elsewhere');
+
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t2');
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
@@ -336,7 +556,7 @@ describe('TasksTab', () => {
     expect(mockSetTotal).not.toHaveBeenCalled();
   });
 
-  it('reloads the list and invalidates the count caches after an assignee change', () => {
+  it('refetches the lists and invalidates the count caches after an assignee change', () => {
     hookState = {
       items: [{ id: 't1' }] as unknown as Task[],
       isLoading: false,
@@ -349,12 +569,15 @@ describe('TasksTab', () => {
 
     // A reassigned task can leave the current user's visible set, so the list
     // must re-sync with the server rather than being patched client-side.
-    expect(mockReload).toHaveBeenCalled();
-    expect(mockSetTotal).not.toHaveBeenCalled();
-    // Both the tab-badge and the All/Open/Closed status-count caches are
-    // invalidated so their React Query fetches re-run.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: ['inbox-task-list', 'me'],
+      refetchType: 'active',
+    });
+    expect(mockSetTotal).not.toHaveBeenCalled();
+    // Both the open-task badge and the All/Open/Closed status-count caches
+    // are invalidated so their React Query fetches re-run.
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
@@ -377,10 +600,26 @@ describe('TasksTab', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
     });
-    // ...and the tab-badge react-query cache.
+    // ...and the open-task badge the Triage tab and sidebar share.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    // The other status lists may now hold or miss this task; they re-read on
+    // their next visit while the showing list keeps its in-place edit.
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['inbox-task-list', 'me'],
+      refetchType: 'none',
+    });
+  });
+
+  // Each status and search is its own cached list, so switching back to one
+  // reads the cache instead of refetching it.
+  it('keys the list on scope, status and search', () => {
+    hookState = { items: [], isLoading: false, total: 0 };
+
+    renderTab();
+
+    expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
   });
 
   it('invalidates the sidebar open-task count after a task is resolved', () => {
@@ -398,6 +637,216 @@ describe('TasksTab', () => {
 
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-open-task-count'],
+    });
+  });
+
+  it.each(['resolve', 'update'])(
+    'marks the home page My Tasks card stale after a task %s',
+    (action) => {
+      // The card caches the same open tasks for its TTL, so without this a
+      // return home would still offer actions on the task just handled here.
+      hookState = {
+        items: [{ id: 't1' }] as unknown as Task[],
+        isLoading: false,
+        total: 1,
+      };
+
+      renderTab();
+
+      fireEvent.click(screen.getByTestId(action));
+
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: MY_TASKS_QUERY_KEY,
+      });
+    }
+  );
+
+  describe('shaping the queue', () => {
+    const TAG_TASK = {
+      id: 't1',
+      type: 'TagUpdate',
+    } as unknown as Task;
+    const INCIDENT_TASK = {
+      id: 't2',
+      type: 'TestCaseResolution',
+    } as unknown as Task;
+
+    beforeEach(() => {
+      hookState = {
+        items: [TAG_TASK, INCIDENT_TASK],
+        isLoading: false,
+        total: 2,
+      };
+    });
+
+    it('groups the loaded tasks by type, most urgent type first', () => {
+      renderTab();
+
+      const headers = screen.getAllByTestId('inbox-task-group');
+
+      expect(headers).toHaveLength(2);
+      expect(headers[0]).toHaveTextContent('label.incident');
+      expect(headers[1]).toHaveTextContent('label.tag');
+    });
+
+    // The server lists the tag task first, but grouping puts the incident on
+    // top; opening the server's first task selected a row mid-list on reload.
+    it('opens the top row of the grouped list, not the server’s first task', () => {
+      renderTab();
+
+      expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+    });
+
+    it('drops the group headers when grouping is turned off', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-group-none'));
+
+      expect(screen.queryByTestId('inbox-task-group')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+    });
+
+    // The scoped list endpoints have no `type` param, so the chosen types
+    // narrow the pages already loaded.
+    it('narrows the list to the chosen type without refetching', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
+      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+    });
+
+    it('sends the search text to the server once typing settles', () => {
+      jest.useFakeTimers();
+      try {
+        renderTab();
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('toolbar-search'));
+        });
+        act(() => {
+          jest.advanceTimersByTime(300);
+        });
+        capturedFetchPage();
+
+        expect(mockListVisibleTasks).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'customer' })
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // The composed title's type words are matched against the shown title;
+    // the server only gets the rest, since it never stores the title.
+    it('matches a search that opens with a type title against the shown title', () => {
+      jest.useFakeTimers();
+      try {
+        hookState = {
+          items: [
+            {
+              id: 'inc',
+              type: 'TestCaseResolution',
+              about: { id: 'tc', type: 'testCase', name: 'orders_rows' },
+            },
+            { id: 'tag', type: 'TagUpdate', displayName: 'Tag the table' },
+            // An authored title sharing the words matches whatever its type.
+            {
+              id: 'doc',
+              type: 'DescriptionUpdate',
+              displayName: 'Request TestCase docs',
+            },
+          ] as unknown as Task[],
+          isLoading: false,
+          total: 2,
+        };
+        renderTab();
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('toolbar-search-title'));
+        });
+        act(() => {
+          jest.advanceTimersByTime(300);
+        });
+        capturedFetchPage();
+
+        expect(mockListVisibleTasks).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'orders' })
+        );
+        expect(screen.getByTestId('task-inc')).toBeInTheDocument();
+        expect(screen.getByTestId('task-doc')).toBeInTheDocument();
+        expect(screen.queryByTestId('task-tag')).not.toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('asks for everything again when the search is cleared', () => {
+      renderTab();
+      capturedFetchPage();
+
+      expect(mockListVisibleTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ q: undefined })
+      );
+    });
+  });
+
+  describe('the Status filter', () => {
+    const MINE = {
+      id: 't1',
+      status: 'Open',
+      assignees: [{ id: 'u1' }],
+    } as unknown as Task;
+    const THEIRS = {
+      id: 't2',
+      status: 'InProgress',
+      assignees: [{ id: 'u9' }],
+    } as unknown as Task;
+
+    beforeEach(() => {
+      mockCurrentUserIds = new Set(['u1']);
+      hookState = { items: [MINE, THEIRS], isLoading: false, total: 2 };
+    });
+
+    it('shows the whole tab until a status is chosen', () => {
+      renderTab();
+
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('task-t2')).toBeInTheDocument();
+    });
+
+    it('offers the Open tab only whose move it is', () => {
+      renderTab();
+
+      expect(screen.getByTestId('toolbar')).toHaveAttribute(
+        'data-status-options',
+        'pending-approval,in-review'
+      );
+    });
+
+    it('narrows the tab to tasks waiting on the viewer', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
+    });
+
+    it('offers outcomes on Closed and clears the choice on a tab switch', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+      fireEvent.click(screen.getByTestId('task-status-closed'));
+
+      expect(screen.getByTestId('toolbar')).toHaveAttribute(
+        'data-status-options',
+        'approved,rejected'
+      );
+      expect(screen.getByTestId('toolbar')).toHaveAttribute('data-status', '');
     });
   });
 });

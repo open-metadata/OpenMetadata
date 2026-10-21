@@ -16,12 +16,19 @@ import { createPortal } from 'react-dom';
 import { ThemeProvider, useTheme } from './theme-provider';
 import { BrandColors } from './theme-provider.interface';
 
+let mockIsAiMode = true;
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
+}));
+
 const ThemeProbe = () => {
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme, themePreference } = useTheme();
 
   return (
     <>
       <span data-testid="active-theme">{theme}</span>
+      <span data-testid="theme-preference">{themePreference}</span>
       <span data-testid="theme-class-ready">
         {String(
           document.documentElement.classList.contains('dark-mode') ===
@@ -33,6 +40,9 @@ const ThemeProbe = () => {
       </button>
       <button type="button" onClick={() => setTheme('light')}>
         Use light theme
+      </button>
+      <button type="button" onClick={() => setTheme('system')}>
+        Follow the system theme
       </button>
     </>
   );
@@ -63,7 +73,13 @@ const setSystemTheme = (theme: 'light' | 'dark') => {
         changeListener = listener;
       }
     ),
-    removeEventListener: jest.fn(),
+    removeEventListener: jest.fn(
+      (_event: string, listener: (event: MediaQueryListEvent) => void) => {
+        if (changeListener === listener) {
+          changeListener = undefined;
+        }
+      }
+    ),
   };
 
   window.matchMedia = jest
@@ -78,6 +94,7 @@ const setSystemTheme = (theme: 'light' | 'dark') => {
 
 describe('ThemeProvider', () => {
   afterEach(() => {
+    mockIsAiMode = true;
     jest.restoreAllMocks();
     localStorage.clear();
     document.documentElement.classList.remove('dark-mode');
@@ -89,6 +106,18 @@ describe('ThemeProvider', () => {
       .forEach((property) =>
         document.documentElement.style.removeProperty(property)
       );
+  });
+
+  it('forces light in classic mode without changing the stored preference', () => {
+    mockIsAiMode = false;
+    localStorage.setItem('ui-theme', 'dark');
+
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('dark');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(localStorage.getItem('ui-theme')).toBe('dark');
   });
 
   it('uses light mode when no preference is stored', () => {
@@ -142,6 +171,42 @@ describe('ThemeProvider', () => {
 
     expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
     expect(document.documentElement).not.toHaveClass('dark-mode');
+  });
+
+  it('follows a stored system preference, including later system changes', () => {
+    localStorage.setItem('ui-theme', 'system');
+    const changeSystemTheme = setSystemTheme('dark');
+    renderProvider();
+
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('system');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+    expect(document.documentElement).toHaveClass('dark-mode');
+
+    act(() => changeSystemTheme('light'));
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+    expect(document.documentElement).not.toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveStyle({ colorScheme: 'light' });
+  });
+
+  it('persists a switch to the system theme and stops following it on an explicit choice', () => {
+    const changeSystemTheme = setSystemTheme('dark');
+    renderProvider();
+
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Follow the system theme' })
+    );
+
+    expect(localStorage.getItem('ui-theme')).toBe('system');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('dark');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+    act(() => changeSystemTheme('dark'));
+
+    expect(screen.getByTestId('theme-preference')).toHaveTextContent('light');
+    expect(screen.getByTestId('active-theme')).toHaveTextContent('light');
   });
 
   it('uses light mode when the stored preference cannot be read', () => {
@@ -260,6 +325,35 @@ describe('ThemeProvider', () => {
     expect(
       document.documentElement.style.getPropertyValue('--tw-color-error-600')
     ).toBe('#a10000');
+  });
+
+  it('drops light-only brand shades in dark so the dark palette applies', () => {
+    const brandColors: BrandColors = {
+      hoverColor: '#d1e9ff',
+      primaryColor: '#1570ef',
+      selectedColor: '#175cd3',
+    };
+    const inlineVar = (name: string) =>
+      document.documentElement.style.getPropertyValue(name);
+
+    render(
+      <ThemeProvider brandColors={brandColors}>
+        <ThemeProbe />
+      </ThemeProvider>
+    );
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('#175cd3');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('');
+    expect(inlineVar('--tw-color-utility-brand-700')).toBe('');
+    expect(inlineVar('--tw-color-brand-600')).toBe('#1570ef');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use light theme' }));
+
+    expect(inlineVar('--tw-background-color-brand-secondary')).toBe('#d1e9ff');
   });
 
   it('replaces customer branding without retaining stale variables', () => {

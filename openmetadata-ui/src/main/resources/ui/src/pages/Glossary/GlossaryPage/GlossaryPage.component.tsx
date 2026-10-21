@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,8 +15,13 @@ import {
   Button as CoreButton,
   EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
+import {
+  BookOpen01,
+  Data,
+  File02,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { BookOpen01, Data, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -28,20 +33,24 @@ import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDat
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
-import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
 import GlossaryV1 from '../../../components/Glossary/GlossaryV1.component';
+import { useGlossaryCreateDrawer } from '../../../components/Glossary/hooks/useGlossaryCreateDrawer';
 import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import SuggestionsProvider from '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
+import {
+  PAGE_SIZE_LARGE,
+  pagingObject,
+  ROUTES,
+} from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
@@ -49,6 +58,7 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -57,6 +67,7 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
+import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import {
   getGlossariesByName,
   getGlossariesList,
@@ -161,51 +172,67 @@ const GlossaryPage = () => {
     };
   }, [permissions, isGlossaryActive]);
 
-  const handleAddGlossaryClick = useCallback(() => {
-    navigate(ROUTES.ADD_GLOSSARY);
-  }, [navigate]);
+  const fetchGlossaryList = useCallback(
+    async (startAfter?: string, targetFqn?: string) => {
+      try {
+        let allGlossaries: Glossary[] = [];
+        // `startAfter` lets a caller force a page-1 refresh by passing `''`,
+        // bypassing a stale `paging.after` captured in this callback's deps.
+        let nextPage = startAfter ?? paging.after;
+        const lookupFqn = targetFqn ?? glossaryFqn;
+        let isGlossaryFound = false;
+        let settledPaging: Paging | undefined;
+        setIsLoading(true);
 
-  const fetchGlossaryList = useCallback(async () => {
-    try {
-      let allGlossaries: Glossary[] = [];
-      let nextPage = paging.after;
-      let isGlossaryFound = false;
-      let settledPaging: Paging | undefined;
-      setIsLoading(true);
+        do {
+          const { data, paging: glossaryPaging } = await getGlossariesList({
+            fields: GLOSSARY_LIST_FIELDS,
+            limit: PAGE_SIZE_LARGE,
+            ...(nextPage && { after: nextPage }),
+          });
 
-      do {
-        const { data, paging: glossaryPaging } = await getGlossariesList({
-          fields: GLOSSARY_LIST_FIELDS,
-          limit: PAGE_SIZE_LARGE,
-          ...(nextPage && { after: nextPage }),
-        });
+          allGlossaries = [...allGlossaries, ...data];
 
-        allGlossaries = [...allGlossaries, ...data];
+          if (lookupFqn) {
+            isGlossaryFound = allGlossaries.some(
+              (item) => item.fullyQualifiedName === lookupFqn
+            );
+          } else {
+            isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+          }
 
-        if (glossaryFqn) {
-          isGlossaryFound = allGlossaries.some(
-            (item) => item.fullyQualifiedName === glossaryFqn
-          );
-        } else {
-          isGlossaryFound = true; // limit to first 50 records only if no glossaryFqn
+          nextPage = glossaryPaging?.after;
+          settledPaging = glossaryPaging;
+        } while (nextPage && !isGlossaryFound);
+
+        setGlossaries(allGlossaries);
+
+        if (settledPaging) {
+          handlePagingChange(settledPaging);
         }
-
-        nextPage = glossaryPaging?.after;
-        settledPaging = glossaryPaging;
-      } while (nextPage && !isGlossaryFound);
-
-      setGlossaries(allGlossaries);
-
-      if (settledPaging) {
-        handlePagingChange(settledPaging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+        setInitialised(true);
       }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-      setInitialised(true);
-    }
-  }, [paging.after, glossaryFqn]);
+    },
+    [paging.after, glossaryFqn]
+  );
+
+  // Post-create refresher: reset paging state and force a page-1 fetch so the
+  // refresh does not reuse the stale `paging.after` cursor captured by
+  // `fetchGlossaryList` (which would otherwise discard all pre-cursor pages
+  // via the `setGlossaries(allGlossaries)` replace). `newFqn` is the freshly
+  // created glossary's FQN, used as the loop's stop target so the new entry is
+  // guaranteed to land in the refreshed list regardless of where it sorts.
+  const refreshGlossaryListAfterCreate = useCallback(
+    async (newFqn?: string) => {
+      handlePagingChange(pagingObject);
+      await fetchGlossaryList('', newFqn);
+    },
+    [fetchGlossaryList, handlePagingChange]
+  );
 
   const fetchNextGlossaryItems = async (after?: string) => {
     try {
@@ -230,6 +257,9 @@ const GlossaryPage = () => {
     }
   };
 
+  const { formDrawer: addGlossaryDrawer, openDrawer: handleAddGlossaryClick } =
+    useGlossaryCreateDrawer(refreshGlossaryListAfterCreate);
+
   useEffect(() => {
     if (!initialised) {
       fetchGlossaryList();
@@ -247,7 +277,24 @@ const GlossaryPage = () => {
     [glossaryFqn]
   );
 
-  const isTermView = !isGlossaryActive && Boolean(glossaryFqn);
+  const { isTermView, isGlossaryView } = useMemo(() => {
+    const hasFqn = Boolean(glossaryFqn);
+
+    return {
+      isTermView: !isGlossaryActive && hasFqn,
+      isGlossaryView: isGlossaryActive && hasFqn,
+    };
+  }, [isGlossaryActive, glossaryFqn]);
+
+  // When the list has already fetched this glossary, use it directly and skip
+  // the redundant FQN lookup. Checked against the live Zustand list so the
+  // optimisation kicks in as soon as any list page returns the entry — without
+  // waiting for the full list to paginate — and the FQN query still fires
+  // immediately for non-existent FQNs, preserving fast 404 behaviour.
+  const glossaryFoundInList = useMemo(
+    () => glossaries.find((g) => g.fullyQualifiedName === glossaryFqn),
+    [glossaries, glossaryFqn]
+  );
 
   const {
     data: glossaryTermDetails,
@@ -258,6 +305,30 @@ const GlossaryPage = () => {
     queryFn: glossaryTermQueryFn(glossaryFqn, GLOSSARY_TERM_DEFAULT_FIELDS),
     enabled: isTermView,
   });
+
+  const glossaryQueryEnabled = useMemo(
+    () => isGlossaryView && !glossaryFoundInList,
+    [isGlossaryView, glossaryFoundInList]
+  );
+
+  // Resolve the active glossary by FQN so a nonexistent FQN produces a real
+  // 404 instead of silently rendering the first glossary from the list.
+  // Skipped when glossaryFoundInList is truthy — the list data is sufficient.
+  const {
+    data: glossaryFetchedDetails,
+    isFetching: glossaryFetching,
+    error: glossaryError,
+  } = useQuery({
+    queryKey: ['glossary', glossaryFqn] as const,
+    queryFn: () =>
+      getGlossariesByName(glossaryFqn, { fields: GLOSSARY_LIST_FIELDS }),
+    enabled: glossaryQueryEnabled,
+  });
+
+  const glossaryDetails = useMemo(
+    () => glossaryFoundInList ?? glossaryFetchedDetails,
+    [glossaryFoundInList, glossaryFetchedDetails]
+  );
 
   const setGlossaryTermDetails = useCallback(
     (
@@ -280,12 +351,13 @@ const GlossaryPage = () => {
   );
 
   useEffect(() => {
-    const status = (glossaryTermError as AxiosError | undefined)?.response
-      ?.status;
+    const status = (
+      (glossaryTermError ?? glossaryError) as AxiosError | undefined
+    )?.response?.status;
     if (status === ClientErrors.FORBIDDEN) {
       navigate(ROUTES.FORBIDDEN, { replace: true });
     }
-  }, [glossaryTermError, navigate]);
+  }, [glossaryTermError, glossaryError, navigate]);
 
   // Sync the fetched term into the Zustand store consumed by {@code GlossaryV1}. The
   // store is also written to by the glossary-list code path below, so the two writers
@@ -296,38 +368,73 @@ const GlossaryPage = () => {
     }
   }, [isTermView, glossaryTermDetails, setActiveGlossary]);
 
+  // Sync the FQN-resolved glossary into the store. Only a real glossary lands
+  // here; a nonexistent FQN errors out and falls through to the not-found state.
   useEffect(() => {
-    if (glossaries.length && isGlossaryActive) {
-      setActiveGlossary(
-        glossaries.find(
-          (glossary) => glossary.fullyQualifiedName === glossaryFqn
-        ) || glossaries[0]
-      );
+    if (isGlossaryView && glossaryDetails) {
+      setActiveGlossary(glossaryDetails as ModifiedGlossary);
+    }
+  }, [isGlossaryView, glossaryDetails, setActiveGlossary]);
 
-      if (isEmpty(glossaryFqn) && glossaries[0].fullyQualifiedName) {
+  // No FQN in the URL: land on the first glossary from the list.
+  useEffect(() => {
+    if (glossaries.length && isGlossaryActive && isEmpty(glossaryFqn)) {
+      setActiveGlossary(glossaries[0]);
+      if (glossaries[0].fullyQualifiedName) {
         navigate(getGlossaryPath(glossaries[0].fullyQualifiedName), {
           replace: true,
         });
       }
     }
-  }, [isGlossaryActive, glossaryFqn, glossaries]);
-
-  const isRightPanelLoading = useMemo(() => {
-    if (!glossaries.length) {
-      return true;
-    }
-    if (isTermView) {
-      return glossaryTermFetching;
-    }
-
-    return false;
-  }, [glossaries.length, isTermView, glossaryTermFetching]);
+  }, [isGlossaryActive, glossaryFqn, glossaries, navigate, setActiveGlossary]);
 
   const isTermNotFound = useMemo(
     () =>
       isTermView &&
       (glossaryTermError as AxiosError | undefined)?.response?.status === 404,
     [isTermView, glossaryTermError]
+  );
+
+  const isGlossaryNotFound = useMemo(
+    () =>
+      isGlossaryView &&
+      (glossaryError as AxiosError | undefined)?.response?.status === 404,
+    [isGlossaryView, glossaryError]
+  );
+
+  const isRightPanelLoading = useMemo(() => {
+    // A confirmed 404 must surface immediately — do not keep the right panel
+    // in a loading state while the sidebar list is still paginating.
+    if (isGlossaryNotFound || isTermNotFound) {
+      return false;
+    }
+    if (!glossaries.length) {
+      return true;
+    }
+    if (isTermView) {
+      // Background refetches (e.g. after accepting a suggestion) keep the term
+      // mounted so its tab, scroll and suggestion state survive.
+      return glossaryTermFetching && !glossaryTermDetails;
+    }
+    if (isGlossaryView) {
+      return glossaryFetching;
+    }
+
+    return false;
+  }, [
+    isGlossaryNotFound,
+    isTermNotFound,
+    glossaries.length,
+    isTermView,
+    glossaryTermFetching,
+    glossaryTermDetails,
+    isGlossaryView,
+    glossaryFetching,
+  ]);
+
+  const showFullPageLoader = useMemo(
+    () => isLoading && !isGlossaryNotFound && !isTermNotFound,
+    [isLoading, isGlossaryNotFound, isTermNotFound]
   );
 
   const updateGlossary = useCallback(
@@ -491,7 +598,7 @@ const GlossaryPage = () => {
     []
   );
 
-  if (isLoading) {
+  if (showFullPageLoader) {
     return <Loader />;
   }
 
@@ -529,6 +636,7 @@ const GlossaryPage = () => {
   if (glossaries.length === 0 && !isLoading) {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
+        {addGlossaryDrawer}
         <EmptyPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
@@ -563,12 +671,14 @@ const GlossaryPage = () => {
     if (isRightPanelLoading) {
       return <Loader />;
     }
-    if (isTermNotFound) {
+    if (isTermNotFound || isGlossaryNotFound) {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
             description={getEntityMissingMessage(
-              t('label.glossary-term'),
+              isGlossaryNotFound
+                ? t('label.glossary')
+                : t('label.glossary-term'),
               glossaryFqn
             )}
           />
@@ -576,7 +686,7 @@ const GlossaryPage = () => {
       );
     }
 
-    return (
+    const glossaryV1 = (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -591,6 +701,14 @@ const GlossaryPage = () => {
         onGlossaryTermDelete={handleGlossaryTermDelete}
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
+    );
+
+    return isTermView ? (
+      <SuggestionsProvider entityType={EntityType.GLOSSARY_TERM}>
+        {glossaryV1}
+      </SuggestionsProvider>
+    ) : (
+      glossaryV1
     );
   };
 
@@ -608,7 +726,10 @@ const GlossaryPage = () => {
         title: t('label.glossary'),
         children: (
           <>
-            <GlossaryLeftPanel glossaries={glossaries} />
+            <GlossaryLeftPanel
+              glossaries={glossaries}
+              onAddGlossary={handleAddGlossaryClick}
+            />
             <div
               className="w-full"
               data-testid="glossary-left-panel-scroller"
@@ -634,7 +755,12 @@ const GlossaryPage = () => {
     glossaryElement
   );
 
-  return <div>{resizableLayout}</div>;
+  return (
+    <div>
+      {resizableLayout}
+      {addGlossaryDrawer}
+    </div>
+  );
 };
 
 export default withPageLayout(GlossaryPage);

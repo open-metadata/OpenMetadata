@@ -266,7 +266,13 @@ describe('SwTokenStorageUtils', () => {
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
     });
 
-    it('propagates a service-worker setItem rejection instead of falling back to memory', async () => {
+    it('propagates a service-worker setItem rejection but keeps the fresh token in memory for this tab', async () => {
+      // Greptile P1 (r4039793087): the earlier version threw without
+      // retaining the token, so the coordinator's `refresh-failed` path
+      // signed the user out even though the renewer produced a valid
+      // token. This tab now keeps the token in memory (getOidcToken
+      // returns it) while still throwing so the CrossTabLock's own
+      // catch broadcasts `failed` to followers.
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(jest.fn());
@@ -274,19 +280,24 @@ describe('SwTokenStorageUtils', () => {
       const swFailure = new Error('IndexedDB write failed');
       mockSetItem.mockRejectedValue(swFailure);
 
-      await expect(setOidcTokenStrict('never-persisted')).rejects.toBe(
+      await expect(setOidcTokenStrict('leader-persisted')).rejects.toBe(
         swFailure
       );
       // Nothing may reach localStorage (SECURITY invariant preserved) and
-      // subsequent callers must see the SW as broken so they stop paying the
-      // controller-wait timeout — same side effect as the fail-silent path.
+      // subsequent callers must see the SW as broken so they stop paying
+      // the controller-wait timeout — same side effect as the fail-silent
+      // path.
       expect(mockLocalStorage.setItem).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalledTimes(1);
+      // The fresh token must survive in memory for this tab's remaining
+      // session — the broken-storage verdict short-circuits getAppState
+      // to the in-memory fallback so this read never hits `swTokenStorage`.
+      expect(await getOidcToken()).toBe('leader-persisted');
 
       consoleSpy.mockRestore();
     });
 
-    it('throws when the service worker has already been marked broken (in-memory does not survive reload)', async () => {
+    it('throws when the service worker has already been marked broken but still stages the fresh token in memory', async () => {
       const consoleSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(jest.fn());
@@ -303,6 +314,10 @@ describe('SwTokenStorageUtils', () => {
       // Must not silently attempt the SW again — that's the whole point of
       // the `swStorageBroken` short-circuit.
       expect(mockSetItem).not.toHaveBeenCalled();
+      // Even though the write is not durable, the current tab must keep
+      // the fresh token so the coordinator's callers can drain the
+      // queue with it (Greptile P1 r4039793087).
+      expect(await getOidcToken()).toBe('leader-persisted');
 
       consoleSpy.mockRestore();
     });

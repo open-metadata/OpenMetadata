@@ -39,7 +39,7 @@ const test = base.extend<{
   },
   consumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await consumerUser.login(page);
+    await consumerUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -94,7 +94,9 @@ test.describe(
       test.slow();
 
       await test.step('Navigate to marketplace as consumer', async () => {
-        await consumerPage.goto('/data-marketplace');
+        await consumerPage.goto('/data-marketplace', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(consumerPage);
       });
 

@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -58,6 +60,7 @@ import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -158,6 +161,9 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by domain FQN", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
@@ -165,6 +171,11 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
+    if (!nullOrEmpty(domain)) {
+      EntityReference domainReference =
+          Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
+      filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -434,9 +445,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -687,7 +696,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
               + "glossary terms and typed relations through the glossary repository. SKOS concepts / "
               + "OWL classes become GlossaryTerms, skos:broader / rdfs:subClassOf become the parent "
               + "hierarchy, skos:*Match become concept mappings, owl:DatatypeProperty definitions "
-              + "become per-concept attributes, and owl:ObjectProperty edges become governed typed "
+              + "become glossary custom properties with admin permission, and owl:ObjectProperty edges become typed "
               + "relationships. JSON-LD may use inline contexts or bundled OpenMetadata contexts. "
               + "The RDF triplestore is optional; when enabled the created terms are mirrored "
               + "automatically.",
@@ -734,7 +743,7 @@ public class GlossaryResource extends EntityResource<Glossary, GlossaryRepositor
       operationId = "exportGlossaryOntology",
       summary = "Export a glossary as an ontology",
       description =
-          "Export the database-primary glossary model, governed relationship types, OWL axioms, "
+          "Export the glossary vocabulary, configured term relations, "
               + "and its lossless annex. This endpoint remains available when RDF storage is off.")
   public Response exportOntology(
       @Context final SecurityContext securityContext,

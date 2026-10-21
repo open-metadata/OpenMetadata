@@ -16,8 +16,10 @@ package org.openmetadata.service.util;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ReadBundleContext;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
+import org.openmetadata.service.security.ActiveDomainContext;
 import org.openmetadata.service.security.ActivePersonaContext;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.policyevaluator.ServiceAttributeCache;
 
 /**
  * Clears the ThreadLocal state that is scoped to a single unit of work.
@@ -38,8 +40,10 @@ public final class PerRequestContextCleaner {
   public static void clear() {
     ImpersonationContext.clear();
     ActivePersonaContext.clear();
+    ActiveDomainContext.clear();
     ETagRequestFilter.clearIfMatchHeader();
     RequestEntityCache.clear();
+    ServiceAttributeCache.clear();
     ReadBundleContext.clear();
     Entity.clearRepositoryThreadLocals();
   }

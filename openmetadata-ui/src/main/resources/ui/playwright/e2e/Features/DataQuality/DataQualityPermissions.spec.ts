@@ -81,73 +81,73 @@ const test = base.extend<{
   },
   createPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await createUser.login(page);
+    await createUser.signIn(page);
     await use(page);
     await page.close();
   },
   deletePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await deleteUser.login(page);
+    await deleteUser.signIn(page);
     await use(page);
     await page.close();
   },
   suitePage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await suiteUser.login(page);
+    await suiteUser.signIn(page);
     await use(page);
     await page.close();
   },
   viewBasicPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewBasicUser.login(page);
+    await viewBasicUser.signIn(page);
     await use(page);
     await page.close();
   },
   consumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataConsumerUser.login(page);
+    await dataConsumerUser.signIn(page);
     await use(page);
     await page.close();
   },
   stewardPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await dataStewardUser.login(page);
+    await dataStewardUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableCreateTestsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableCreateTestsUser.login(page);
+    await tableCreateTestsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editTestCaseUser.login(page);
+    await editTestCaseUser.signIn(page);
     await use(page);
     await page.close();
   },
   tableEditPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await tableEditTestsUser.login(page);
+    await tableEditTestsUser.signIn(page);
     await use(page);
     await page.close();
   },
   editTestsPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await editTestsOnTcUser.login(page);
+    await editTestsOnTcUser.signIn(page);
     await use(page);
     await page.close();
   },
   viewAllPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await viewAllTcUser.login(page);
+    await viewAllTcUser.signIn(page);
     await use(page);
     await page.close();
   },
   suiteEditOnlyPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await suiteEditOnlyUser.login(page);
+    await suiteEditOnlyUser.signIn(page);
     await use(page);
     await page.close();
   },
@@ -314,6 +314,16 @@ test.describe(
         permissionsPromise,
         tablePermissionsPromise,
       ]);
+
+      // The list response resolving is not the same as its rows being on
+      // screen. Most tests below reach straight for `action-dropdown-<name>`,
+      // which exists only once that row has rendered, so gate it here instead
+      // of leaving each of them to race the render. Every caller is a user who
+      // can see the test case; the negative cases are about the controls on
+      // the row, never the row itself.
+      await expect(
+        page.getByTestId(table.testCasesResponseData[0].name)
+      ).toBeVisible();
     };
 
     test.describe('Standard Roles (Negative Scenarios)', () => {
@@ -596,7 +606,8 @@ test.describe(
         const testCaseDetailsPromise =
           waitForTestCaseDetailsResponse(viewBasicPage);
         await viewBasicPage.goto(
-          `/test-case/${encodeURIComponent(testCaseFqn)}`
+          `/test-case/${encodeURIComponent(testCaseFqn)}`,
+          { waitUntil: 'domcontentloaded' }
         );
         await testCaseDetailsPromise;
         await verifyTestCaseLastRunBanner(viewBasicPage, 'not-run-yet');

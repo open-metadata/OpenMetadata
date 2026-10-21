@@ -21,7 +21,15 @@ from unittest.mock import patch
 
 import pytest
 from requests.utils import quote
+from tenacity import Retrying, retry_if_result, stop_after_delay, wait_fixed
 
+from metadata.entity_resolution.engine import (
+    EntityResolutionPlan,
+    EntityResolver,
+    FqnCandidate,
+    FqnLookupMode,
+    ResolutionTier,
+)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -52,6 +60,41 @@ from metadata.utils import fqn
 from ..integration_base import TIER1_TAG, generate_name, get_create_entity  # noqa: TID252
 
 FIELDS = "owners,domains"
+
+
+@pytest.mark.parametrize("table_name", ["MixedCase", "with.dot", "literal*name"])
+def test_candidate_resolution_rehydrates_recreated_table(metadata, es_schema, table_name):
+    request = CreateTableRequest(
+        name=table_name,
+        databaseSchema=es_schema.fullyQualifiedName,
+        columns=[Column(name="id", dataType=DataType.BIGINT)],
+    )
+    original = metadata.create_or_update(request)
+    name = original.fullyQualifiedName.root
+    ci_plan = EntityResolutionPlan(
+        Table, (ResolutionTier((FqnCandidate(name.upper(), FqnLookupMode.CASE_INSENSITIVE_EXACT),)),)
+    )
+    wildcard_plan = EntityResolutionPlan(
+        Table, (ResolutionTier((FqnCandidate(f"{es_schema.fullyQualifiedName.root}.*", FqnLookupMode.WILDCARD),)),)
+    )
+    first = EntityResolver(metadata)
+    second = EntityResolver(metadata)
+    current = original
+    try:
+        indexed = Retrying(
+            stop=stop_after_delay(30), wait=wait_fixed(0.25), retry=retry_if_result(lambda result: not result)
+        )
+        assert [entity.id for entity in indexed(first.resolve, ci_plan)] == [original.id]
+        assert [entity.id for entity in first.resolve(wildcard_plan)] == [original.id]
+        metadata.delete(Table, original.id, hard_delete=True)
+        current = metadata.create_or_update(request)
+        assert current.id != original.id
+        assert [entity.id for entity in indexed(second.resolve, ci_plan)] == [current.id]
+        assert [entity.id for entity in second.resolve(wildcard_plan)] == [current.id]
+    finally:
+        first.close()
+        second.close()
+        metadata.delete(Table, current.id, hard_delete=True)
 
 
 @pytest.fixture(scope="module")
@@ -302,6 +345,86 @@ class TestOMetaESAPI:
         """Check the payload from ES"""
         res = metadata.es_get_queries_with_lineage(es_service.name.root)
         assert es_queries["checksum"] in res
+
+    def test_lineage_processed_queries_belong_to_the_service(self, metadata, es_service, es_queries):
+        """Only the service's queries processed for lineage are returned, with the entities they are used in"""
+        checksums = [query.checksum for query in es_queries["queries"]]
+        expected = {es_queries["checksum"]: set()}
+
+        lookup = Retrying(
+            stop=stop_after_delay(30), wait=wait_fixed(0.25), retry=retry_if_result(lambda result: result != expected)
+        )
+
+        assert lookup(metadata.es_get_lineage_processed_queries, es_service.name.root, checksums) == expected
+
+    def test_soft_deleted_table_stays_indexed_until_hard_deleted(self, metadata, es_schema):
+        """A soft-deleted table keeps its lineage edges, so the id lookup still finds it"""
+        table = metadata.create_or_update(
+            CreateTableRequest(
+                name=generate_name(),
+                databaseSchema=es_schema.fullyQualifiedName,
+                columns=[Column(name="id", dataType=DataType.BIGINT)],
+            )
+        )
+        table_id = str(table.id.root)
+        ids_filter = quote(json.dumps({"query": {"ids": {"values": [table_id]}}}))
+
+        def indexed_ids(expected):
+            lookup = Retrying(
+                stop=stop_after_delay(30),
+                wait=wait_fixed(0.25),
+                retry=retry_if_result(lambda result: set(result) != expected),
+            )
+            return set(lookup(metadata.es_get_upstream_entity_ids, Table, [table_id]))
+
+        def indexed_as_deleted():
+            hits = metadata.client.get(
+                f"/search/query?q=&index=table_search_index&deleted=true&query_filter={ids_filter}"
+            )
+            return bool(hits["hits"]["hits"])
+
+        assert indexed_ids({table_id}) == {table_id}
+
+        metadata.delete(entity=Table, entity_id=table.id)
+        assert Retrying(stop=stop_after_delay(30), wait=wait_fixed(0.25), retry=retry_if_result(lambda ok: not ok))(
+            indexed_as_deleted
+        )
+        assert set(metadata.es_get_upstream_entity_ids(Table, [table_id])) == {table_id}
+
+        metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
+        assert indexed_ids(set()) == set()
+
+    def test_upstream_entity_ids_follow_the_lineage_edges(self, metadata, es_schema):
+        """A table reports the id of every table its upstream lineage edges come from"""
+        source, target = (
+            metadata.create_or_update(
+                CreateTableRequest(
+                    name=generate_name(),
+                    databaseSchema=es_schema.fullyQualifiedName,
+                    columns=[Column(name="id", dataType=DataType.BIGINT)],
+                )
+            )
+            for _ in range(2)
+        )
+        source_id, target_id = str(source.id.root), str(target.id.root)
+        try:
+            metadata.add_lineage_by_name(
+                from_entity_fqn=source.fullyQualifiedName.root,
+                from_entity_type="table",
+                to_entity_fqn=target.fullyQualifiedName.root,
+                to_entity_type="table",
+            )
+            expected = {source_id: set(), target_id: {source_id}}
+            lookup = Retrying(
+                stop=stop_after_delay(30),
+                wait=wait_fixed(0.25),
+                retry=retry_if_result(lambda result: result != expected),
+            )
+
+            assert lookup(metadata.es_get_upstream_entity_ids, Table, [source_id, target_id]) == expected
+        finally:
+            for table in (source, target):
+                metadata.delete(entity=Table, entity_id=table.id, hard_delete=True)
 
     def test_paginate_no_filter(self, metadata):
         """We can paginate all the data"""

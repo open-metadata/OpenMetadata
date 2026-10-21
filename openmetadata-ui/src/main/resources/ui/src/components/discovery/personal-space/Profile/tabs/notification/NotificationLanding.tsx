@@ -1,0 +1,135 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import {
+  EXTENSION_POINTS,
+  NotificationSectionContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
+import type {
+  NotificationLandingCard,
+  NotificationLandingProps,
+} from './Notification.types';
+import {
+  buildSectionCards,
+  getNotificationMenuItems,
+} from './Notification.utils';
+
+const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
+  const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
+  const { getContributions } = useApplicationsProvider();
+
+  const cards = useMemo<NotificationLandingCard[]>(() => {
+    const alertsCard: NotificationLandingCard = {
+      id: 'alerts',
+      icon: Bell01,
+      title: t('label.alert-plural'),
+      description: t('message.alerts-description'),
+      view: { type: 'list' },
+    };
+
+    // Native sections, then those downstream builds (e.g. Collate) contribute;
+    // every card comes from the global-settings Notifications menu.
+    const contributions = [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
+        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+      ),
+    ];
+
+    return [
+      alertsCard,
+      ...buildSectionCards(
+        getNotificationMenuItems(permissions, Boolean(isAdminUser)),
+        contributions
+      ),
+    ];
+  }, [getContributions, permissions, isAdminUser, t]);
+
+  return (
+    <div
+      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
+      data-testid="notification-landing">
+      {cards.map((card, index) => {
+        const Icon = card.icon;
+
+        return (
+          <Card
+            isClickable
+            key={card.id}
+            role="button"
+            size="md"
+            tabIndex={0}
+            variant="muted"
+            onClick={() => onNavigate(card.view)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNavigate(card.view);
+              }
+            }}>
+            <Card.Content>
+              <Box
+                align="start"
+                data-testid={`notification-card-${card.id}`}
+                direction="row"
+                gap={4}>
+                <Box
+                  align="center"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
+                  justify="center">
+                  <Icon className="tw:size-6" />
+                </Box>
+                <Box className="tw:min-w-0" direction="col" gap={1}>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {card.title}
+                    </Typography>
+                    {card.isBeta && (
+                      <Badge color="gray" size="sm" type="pill-color">
+                        {t('label.beta')}
+                      </Badge>
+                    )}
+                  </Box>
+                  <Typography
+                    className="tw:text-tertiary tw:line-clamp-2"
+                    size="text-sm"
+                    weight="regular">
+                    {card.description}
+                  </Typography>
+                </Box>
+              </Box>
+            </Card.Content>
+          </Card>
+        );
+      })}
+    </div>
+  );
+};
+
+export default NotificationLanding;

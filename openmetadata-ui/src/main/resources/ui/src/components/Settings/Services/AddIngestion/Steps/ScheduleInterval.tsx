@@ -21,7 +21,7 @@ import {
   TimePickerValue,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock } from '@untitledui/icons';
+import { Clock } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';

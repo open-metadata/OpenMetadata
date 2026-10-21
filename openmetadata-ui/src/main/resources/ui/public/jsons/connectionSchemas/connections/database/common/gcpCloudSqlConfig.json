@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "GCP CloudSQL Configuration Source",
   "description": "GCP CloudSQL Database Connection Config. Uses the Google Cloud SQL Python Connector.",
   "type": "object",
@@ -20,7 +19,6 @@
     "gcpConfig": {
       "title": "GCP Credentials Configuration",
       "description": "GCP credentials to use. If not provided, Application Default Credentials will be used.",
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "type": "object",
       "javaType": "org.openmetadata.schema.security.credentials.GCPCredentials",
       "definitions": {
@@ -118,7 +116,6 @@
           "description": "We support two ways of authenticating to GCP i.e via GCP Credentials Values or GCP Credentials Path",
           "oneOf": [
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPValues",
               "title": "GCP Credentials Values",
@@ -209,6 +206,12 @@
                   "description": "Google Cloud client certificate uri.",
                   "type": "string",
                   "format": "uri"
+                },
+                "universeDomain": {
+                  "title": "Universe Domain",
+                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                  "type": "string",
+                  "default": "googleapis.com"
                 }
               },
               "additionalProperties": false
@@ -251,7 +254,6 @@
               }
             },
             {
-              "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
               "javaType": "org.openmetadata.schema.security.credentials.GCPExternalAccount",
               "title": "GCP External Account",

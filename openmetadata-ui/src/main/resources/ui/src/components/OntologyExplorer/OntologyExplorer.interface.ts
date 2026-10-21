@@ -20,6 +20,7 @@ import {
   LayoutType,
   type LayoutEngineType,
 } from './OntologyExplorer.constants';
+import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
 export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
@@ -34,6 +35,8 @@ export interface OntologyExplorerProps {
   isEditMode?: boolean;
   surface?: OntologyStudioSurface;
   showHealth?: boolean;
+  /** Sub-bar element the concept search renders into; it floats on the canvas without one. */
+  searchSlot?: HTMLElement | null;
   globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
@@ -46,6 +49,18 @@ export interface OntologyExplorerProps {
   onConceptCreated?: (concept: GlossaryTerm) => void;
   onConceptDraftClose?: () => void;
   onRequestEdit?: () => void;
+  proposalPermissions?: OntologyProposalPermissions;
+}
+
+export interface OntologyProposalPermissions {
+  canApprove: boolean;
+  canReject: boolean;
+}
+
+/** Points a canvas node or edge at the AI draft operation that proposes it. */
+export interface OntologyProposalRef {
+  changeSetId: string;
+  operationId: string;
 }
 
 export interface OntologyNode {
@@ -72,6 +87,7 @@ export interface OntologyNode {
   isDraft?: boolean;
   isOptimistic?: boolean;
   isDataModeSeed?: boolean;
+  proposal?: OntologyProposalRef;
 }
 
 export interface OntologyEdge {
@@ -87,13 +103,13 @@ export interface OntologyEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
 }
 
 export type OntologyEdgeKind =
   | 'ontology'
   | 'assetBinding'
-  | 'semanticProjection'
-  | 'observedLineage';
+  | 'semanticProjection';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
@@ -129,6 +145,8 @@ export interface OntologyGraphHandle {
   getNodePositions: () => Record<string, { x: number; y: number }>;
   exportAsPng: () => Promise<void>;
   exportAsSvg: () => Promise<void>;
+  /** Forget the clicked edge, so the next click on it is reported again. */
+  clearEdgeSelection: () => void;
 }
 
 export interface HierarchyComboInfo {
@@ -156,6 +174,10 @@ export interface OntologyGraphProps {
   isAuthoringMode?: boolean;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  /** Edge colours for relation types that are not glossary relationship types. */
+  relationColors?: Record<string, string>;
+  relationTypeGroups?: RelationTypeOptionGroup[];
+  canCreateRelationType?: boolean;
   studioMode?: boolean;
   onCreateRelation?: (
     fromId: string,
@@ -218,6 +240,7 @@ export interface MergedEdge {
   createdBy?: string;
   createdAt?: number;
   relationshipType?: EntityReference;
+  proposal?: OntologyProposalRef;
 }
 
 export interface LayoutConfig {
@@ -277,5 +300,6 @@ export interface BuildGraphDataProps {
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   isEditMode?: boolean;
   relationTypes?: RelationshipType[];
+  relationColors?: Record<string, string>;
   studioMode?: boolean;
 }

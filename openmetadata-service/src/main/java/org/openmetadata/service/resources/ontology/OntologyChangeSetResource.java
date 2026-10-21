@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.resources.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -34,32 +38,38 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateOntologyChangeSet;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyChanges;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService;
+import org.openmetadata.service.ontology.OntologyChangeSetValidator;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy;
 import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.RestUtil.PutResponse;
@@ -86,7 +96,6 @@ public class OntologyChangeSetResource
         new OntologyChangeApplicationService(
             repository,
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
-            (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
             clock);
     lockService =
         new OntologyEditLockService(Entity.getJdbi(), clock, new OntologyEditLeasePolicy());
@@ -100,14 +109,22 @@ public class OntologyChangeSetResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @QueryParam("fields") final String fields,
-      @QueryParam("state") final OntologyChangeSetState state,
+      @Parameter(description = "Comma-separated change set states to include") @QueryParam("state")
+          final String state,
+      @Parameter(description = "Return only drafts proposed from context memories")
+          @QueryParam("memorySourced")
+          @DefaultValue("false")
+          final boolean memorySourced,
       @QueryParam("limit") @DefaultValue("50") @Min(0) @Max(1000000) final int limit,
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
     final ListFilter filter = new ListFilter(include);
-    if (state != null) {
-      filter.addQueryParam("state", state.value());
+    if (state != null && !state.isBlank()) {
+      filter.addQueryParam("state", requireStates(state));
+    }
+    if (memorySourced) {
+      filter.addQueryParam("memorySourced", "true");
     }
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
@@ -131,7 +148,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyChangeSet request) {
     final OntologyChangeSet entity = mapper.createToEntity(request, user(securityContext));
-    authorizeGlossaries(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
     return create(uriInfo, securityContext, entity);
   }
 
@@ -186,7 +203,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final OntologyChangeSetCommand request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
     requireLease(id, request.getLease(), securityContext);
     return repository
         .transition(uriInfo, user(securityContext), id, OntologyChangeSetState.SUBMITTED, null)
@@ -202,7 +219,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final ApplyOntologyChangeSet request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     requireLease(id, request.getLease(), securityContext);
     final PutResponse<OntologyChangeSet> response =
         applicationService.apply(uriInfo, id, user(securityContext));
@@ -268,6 +285,19 @@ public class OntologyChangeSetResource
     return repository.get(null, id, repository.getFields(FIELDS), Include.NON_DELETED, false);
   }
 
+  // Normalizes a comma-separated filter such as "DRAFT,SUBMITTED" and rejects unknown states.
+  private static String requireStates(final String states) {
+    try {
+      return Arrays.stream(states.split(","))
+          .map(String::trim)
+          .map(value -> OntologyChangeSetState.fromValue(value).value())
+          .distinct()
+          .collect(Collectors.joining(","));
+    } catch (IllegalArgumentException exception) {
+      throw new BadRequestException("Unknown ontology change set state in: " + states);
+    }
+  }
+
   private void authorizeChangeSet(final SecurityContext securityContext, final UUID changeSetId) {
     authorizer.authorize(
         securityContext,
@@ -275,15 +305,69 @@ public class OntologyChangeSetResource
         getResourceContextById(changeSetId));
   }
 
-  private void authorizeGlossaries(
+  private void authorizeScope(
       final SecurityContext securityContext,
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
+    OntologyChangeSetValidator.normalizeAndValidate(changeSet);
+    if (changeSet.getOntology() != null) {
+      authorizeNativeScope(securityContext, changeSet);
+      return;
+    }
     for (final EntityReference glossary : changeSet.getGlossaries()) {
+      final Glossary planned =
+          listOrEmpty(changeSet.getOperations()).stream()
+              .filter(change -> change.getGlossary() != null)
+              .map(change -> change.getGlossary())
+              .filter(candidate -> candidate.getId().equals(glossary.getId()))
+              .findFirst()
+              .orElse(null);
+      if (planned != null) {
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
+            new CreateResourceContext<>(Entity.GLOSSARY, planned));
+        continue;
+      }
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.GLOSSARY, operation),
           new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+    }
+  }
+
+  private void authorizeNativeScope(
+      final SecurityContext context, final OntologyChangeSet changeSet) {
+    authorizer.authorize(
+        context,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(Entity.ONTOLOGY, changeSet.getOntology().getId(), null));
+    for (final OntologyChangeOperation change :
+        changeSet.getOperations().subList(0, changeSet.getUndoCursor())) {
+      final String type = NativeOntologyChanges.entityType(change);
+      if (change.getTargetId() == null) {
+        authorizer.authorize(
+            context,
+            new OperationContext(type, MetadataOperation.CREATE),
+            new CreateResourceContext<>(type, NativeOntologyChanges.definition(change)));
+      } else {
+        final MetadataOperation operation =
+            NativeOntologyChanges.isDelete(change)
+                ? MetadataOperation.DELETE
+                : MetadataOperation.EDIT_ALL;
+        authorizer.authorize(
+            context,
+            new OperationContext(type, operation),
+            new ResourceContext<>(type, change.getTargetId(), null));
+      }
+      if (change.getSourceMemoryIds() != null) {
+        for (final UUID memoryId : change.getSourceMemoryIds()) {
+          authorizer.authorize(
+              context,
+              new OperationContext(Entity.CONTEXT_MEMORY, MetadataOperation.VIEW_ALL),
+              new ResourceContext<>(Entity.CONTEXT_MEMORY, memoryId, null));
+        }
+      }
     }
   }
 

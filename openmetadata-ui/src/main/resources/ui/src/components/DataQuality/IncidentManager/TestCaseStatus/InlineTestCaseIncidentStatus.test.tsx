@@ -31,7 +31,7 @@ import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { createTask } from '../../../../rest/tasksAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ArrowLeft: () => <svg data-testid="icon-arrow-left" />,
   Check: () => <svg data-testid="icon-check" />,
   ChevronDown: () => <svg data-testid="icon-chevron-down" />,
@@ -312,6 +312,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
+  // Spread the real module: the transition ids are plain constants the
+  // source reads at import time, and a bare factory leaves them undefined.
+  ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   transitionIncident: jest.fn().mockResolvedValue({}),
   postTestCaseIncidentStatus: jest
     .fn()
@@ -585,6 +588,25 @@ describe('InlineTestCaseIncidentStatus', () => {
       await waitFor(() => {
         expect(screen.getByTestId('user1')).toBeInTheDocument();
       });
+    });
+
+    it('shows a plain-text empty state when no users match', async () => {
+      (getUserAndTeamSearch as jest.Mock).mockResolvedValueOnce({
+        data: { hits: { hits: [] } },
+      });
+
+      renderComponent({
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+      });
+
+      expect(
+        await screen.findByText('label.no-entity-found')
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/<0>/)).not.toBeInTheDocument();
     });
 
     it('calls getUserAndTeamSearch with query when typing in search', async () => {

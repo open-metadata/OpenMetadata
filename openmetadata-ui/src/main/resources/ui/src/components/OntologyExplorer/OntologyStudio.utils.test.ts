@@ -18,7 +18,9 @@ import { GraphFilters, OntologyGraphData } from './OntologyExplorer.interface';
 import {
   buildOntologyQuerySuggestions,
   buildOntologyTreeGroups,
+  buildOntologyTreeMetrics,
   getOntologyHealthSummary,
+  nestTreeRows,
   resolveOntologyTermLabel,
 } from './OntologyStudio.utils';
 
@@ -96,6 +98,13 @@ const GRAPH: OntologyGraphData = {
   ],
 };
 
+const parentOf = (from: string, to: string) => ({
+  from,
+  to,
+  label: 'Parent of',
+  relationType: 'parentOf',
+});
+
 describe('OntologyStudio utils', () => {
   it('resolves a human label without allowing an entity UUID to win', () => {
     const id = '002e5485-0c59-45cc-912e-15fbc7e350bf';
@@ -156,6 +165,219 @@ describe('OntologyStudio utils', () => {
     expect(groups[0].glossaryName).toBe('Finance');
     expect(child).toMatchObject({ depth: 1, parentCount: 2 });
     expect(detached).toMatchObject({ isIsolated: true, relationCount: 0 });
+  });
+
+  it('nests the part under the whole and counts an inverse pair once', () => {
+    const graph: OntologyGraphData = {
+      nodes: [
+        {
+          id: 'whole',
+          label: 'Retention',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+        {
+          id: 'part',
+          label: 'Churn Rate',
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        },
+      ],
+      edges: [
+        {
+          id: 'relation-1',
+          from: 'part',
+          to: 'whole',
+          label: 'partOf',
+          relationType: 'partOf',
+        },
+        {
+          id: 'relation-1',
+          from: 'whole',
+          to: 'part',
+          label: 'hasPart',
+          relationType: 'hasPart',
+        },
+      ],
+    };
+    const [group] = buildOntologyTreeGroups(
+      graph,
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      [
+        createRelationshipTypeMock({ name: 'partOf' }),
+        createRelationshipTypeMock({ name: 'hasPart' }),
+      ]
+    );
+
+    expect(group.rows.map((row) => row.node.id)).toEqual(['whole', 'part']);
+    expect(group.rows[0]).toMatchObject({
+      depth: 0,
+      parentCount: 0,
+      relationCount: 1,
+    });
+    expect(group.rows[1]).toMatchObject({
+      depth: 1,
+      parentCount: 1,
+      relationCount: 1,
+    });
+  });
+
+  it('lists every child directly under its own parent', () => {
+    const term = (id: string, label: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId: 'g1',
+    });
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('retention', 'Retention'),
+          term('churn', 'Churn'),
+          term('voluntary', 'Voluntary Churn'),
+          term('churnRate', 'Churn Rate'),
+        ],
+        edges: [
+          parentOf('retention', 'churn'),
+          parentOf('churn', 'voluntary'),
+          parentOf('retention', 'churnRate'),
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+
+    expect(group.rows.map((row) => [row.node.label, row.depth])).toEqual([
+      ['Retention', 0],
+      ['Churn', 1],
+      ['Voluntary Churn', 2],
+      ['Churn Rate', 1],
+    ]);
+  });
+
+  it('starts a term whose parent is in another glossary at the root of its own glossary', () => {
+    const term = (id: string, label: string, glossaryId: string) => ({
+      id,
+      label,
+      type: 'glossaryTerm',
+      glossaryId,
+    });
+    const groups = buildOntologyTreeGroups(
+      {
+        nodes: [
+          term('revenue', 'Revenue', 'g1'),
+          term('policy', 'Revenue Policy', 'g2'),
+          term('rule', 'Recognition Rule', 'g2'),
+        ],
+        edges: [parentOf('revenue', 'policy'), parentOf('policy', 'rule')],
+      },
+      { ...FILTERS, glossaryIds: ['g1', 'g2'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    const rowsOf = (glossaryName: string) =>
+      groups
+        .find((group) => group.glossaryName === glossaryName)
+        ?.rows.map((row) => [row.node.label, row.depth]);
+
+    expect(rowsOf('Finance')).toEqual([['Revenue', 0]]);
+    expect(rowsOf('Compliance')).toEqual([
+      ['Revenue Policy', 0],
+      ['Recognition Rule', 1],
+    ]);
+  });
+
+  it('nests depth-ordered rows back under their parents', () => {
+    const row = (id: string, depth: number) => ({
+      depth,
+      isIsolated: false,
+      node: { id, label: id, type: 'glossaryTerm' },
+      parentCount: 0,
+      relationCount: 1,
+    });
+    const tree = nestTreeRows([
+      row('a', 0),
+      row('b', 1),
+      row('c', 2),
+      row('d', 1),
+      row('e', 0),
+    ]);
+    const shape = (items: typeof tree): unknown[] =>
+      items.map((item) => [item.node.id, shape(item.children)]);
+
+    expect(shape(tree)).toEqual([
+      [
+        'a',
+        [
+          ['b', [['c', []]]],
+          ['d', []],
+        ],
+      ],
+      ['e', []],
+    ]);
+  });
+
+  it('keeps the real depth so a hierarchy deeper than the indent cap nests correctly', () => {
+    const ids = Array.from({ length: 20 }, (_, index) => `t${index}`);
+    const [group] = buildOntologyTreeGroups(
+      {
+        nodes: ids.map((id) => ({
+          id,
+          label: id,
+          type: 'glossaryTerm',
+          glossaryId: 'g1',
+        })),
+        edges: ids.slice(1).map((id, index) => parentOf(ids[index], id)),
+      },
+      { ...FILTERS, glossaryIds: ['g1'] },
+      GLOSSARIES,
+      RELATION_TYPES
+    );
+    let item = nestTreeRows(group.rows)[0];
+    const chain = [item.node.id];
+    while (item.children.length > 0) {
+      expect(item.children).toHaveLength(1);
+
+      item = item.children[0];
+      chain.push(item.node.id);
+    }
+
+    expect(group.rows[19].depth).toBe(19);
+    expect(chain).toEqual(ids);
+  });
+
+  it('lists only metrics that measure a scoped term', () => {
+    const metrics = buildOntologyTreeMetrics(
+      {
+        nodes: [
+          { id: 'a', label: 'Revenue', type: 'glossaryTerm', glossaryId: 'g1' },
+          { id: 'b', label: 'Policy', type: 'glossaryTerm', glossaryId: 'g2' },
+          { id: 'm1', label: 'Net Revenue', type: 'metric' },
+          { id: 'm2', label: 'Policy Count', type: 'metric' },
+        ],
+        edges: [
+          {
+            from: 'm1',
+            to: 'a',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+          {
+            from: 'm2',
+            to: 'b',
+            label: 'Metric for',
+            relationType: 'metricFor',
+          },
+        ],
+      },
+      { ...FILTERS, glossaryIds: ['g1'] }
+    );
+
+    expect(metrics).toHaveLength(1);
+    expect(metrics[0].node.id).toBe('m1');
+    expect(metrics[0].measures.map((term) => term.id)).toEqual(['a']);
   });
 
   it('derives executable query suggestions from scoped ontology relations', () => {

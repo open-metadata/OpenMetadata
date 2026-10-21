@@ -19,7 +19,7 @@ import {
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { get, sortBy, toLower } from 'lodash';
+import { get, sortBy } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
@@ -41,15 +41,16 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { EntityStatus } from '../generated/entity/data/glossaryTerm';
 import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
+import { lifecycleStatusAutocomplete } from './governance/lifecycle/LifecycleStatus.utils';
 import { t } from './i18next/LocalUtil';
 import type { QueryBuilderConfigModes } from './queryBuilder/types';
 import { OMConfig } from './QueryBuilderOMConfig';
 import { getFieldsByKeys } from './QueryBuilderPureUtils';
-import { toTagSelectOptions } from './SearchPureUtils';
+import { withGlossaryTermField } from './queryBuilderWidgets/glossaryTermQueryField';
+import { matchesTagSelectOption, toTagSelectOptions } from './SearchPureUtils';
 
 // The value format RAQB's `date` widget stores and the native `<input type="date">` renders.
 const DATE_WIDGET_VALUE_FORMAT = 'YYYY-MM-DD';
@@ -469,12 +470,9 @@ class JSONLogicSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
-          listValues: Object.values(EntityStatus).map((status) => ({
-            value: status,
-            title: status,
-          })),
+          asyncFetch: lifecycleStatusAutocomplete([SearchIndex.TABLE]),
           showSearch: true,
-          useAsyncSearch: false,
+          useAsyncSearch: true,
         },
       },
 
@@ -545,14 +543,14 @@ class JSONLogicSearchClassBase {
             defaultOperator: 'multiselect_equals',
             mainWidgetProps: this.mainWidgetProps,
             operators: MULTISELECT_FIELD_OPERATORS,
-            fieldSettings: {
+            fieldSettings: withGlossaryTermField({
               asyncFetch: this.searchAutocomplete({
                 searchIndex: SearchIndex.GLOSSARY_TERM,
                 fieldName: 'fullyQualifiedName',
                 fieldLabel: 'name',
               }),
               useAsyncSearch: true,
-            },
+            }),
           },
         },
       },
@@ -691,15 +689,27 @@ class JSONLogicSearchClassBase {
       values: !search
         ? resolvedTierOptions
         : resolvedTierOptions.filter((tier: ListItem) =>
-            tier.title?.toLowerCase()?.includes(toLower(search))
+            matchesTagSelectOption(tier, search)
           ),
       hasMore: false,
     } as AsyncFetchListValuesResult;
   };
 
-  public getCommonConfig = () => {
+  public getCommonConfig = (
+    entitySearchIndex: SearchIndex[] = [SearchIndex.TABLE]
+  ): Fields => {
+    const common = getFieldsByKeys(COMMON_ENTITY_FIELDS_KEYS, this.mapFields);
+
     return {
-      ...getFieldsByKeys(COMMON_ENTITY_FIELDS_KEYS, this.mapFields),
+      ...common,
+      [EntityReferenceFields.ENTITY_STATUS]: {
+        ...common[EntityReferenceFields.ENTITY_STATUS],
+        fieldSettings: {
+          asyncFetch: lifecycleStatusAutocomplete(entitySearchIndex),
+          showSearch: true,
+          useAsyncSearch: true,
+        },
+      },
     };
   };
 
@@ -749,7 +759,7 @@ class JSONLogicSearchClassBase {
     entitySearchIndex?: Array<SearchIndex>;
   }) => {
     const fieldsConfig = {
-      ...this.getCommonConfig(),
+      ...this.getCommonConfig(entitySearchIndex),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
     };
 

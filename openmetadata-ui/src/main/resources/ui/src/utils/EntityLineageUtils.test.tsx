@@ -12,15 +12,15 @@
  */
 
 import { Edge, Node } from 'reactflow';
-import {
-  EdgeDetails,
-  LineageData,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { EntityType } from '../enums/entity.enum';
 import { AddLineage, ColumnLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import {
+  EdgeDetails,
+  LineageData,
+  LineageNodeType,
+} from '../interface/lineage.interface';
 import { MOCK_NODES_AND_EDGES } from '../mocks/Lineage.mock';
 import { addLineage } from '../rest/miscAPI';
 import {
@@ -1814,60 +1814,6 @@ describe('parseLineageData', () => {
 
       expect(result.nodes).toHaveLength(1);
       expect(result.nodes[0].fullyQualifiedName).toBeUndefined();
-    });
-  });
-
-  describe('Unique filtering', () => {
-    it('should call uniqWith to remove duplicate nodes', () => {
-      // Set up the mocks to expect calls
-      mockUniqWith.mockReturnValue([]);
-      mockIsEqual.mockReturnValue(false);
-
-      parseLineageData(mockLineageData, mockEntityFqn, mockRootFqn);
-
-      expect(mockUniqWith).toHaveBeenCalled();
-    });
-
-    it('should handle duplicate nodes in input data', () => {
-      const duplicateNodeData = {
-        ...mockNodeData,
-        node1_duplicate: mockNodeData.node1,
-      };
-
-      const dataWithDuplicates = {
-        ...mockLineageData,
-        nodes: duplicateNodeData,
-      };
-
-      // Mock uniqWith to actually remove duplicates
-      mockUniqWith.mockImplementation((array, compareFn?) => {
-        if (!array) {
-          return [];
-        }
-        const unique: unknown[] = [];
-        for (const item of array) {
-          if (
-            !unique.some((existing) =>
-              compareFn ? compareFn(existing, item) : existing === item
-            )
-          ) {
-            unique.push(item);
-          }
-        }
-
-        return unique as ReturnType<typeof uniqWith>;
-      });
-
-      mockIsEqual.mockImplementation((a, b) => {
-        const aObj = a as { fullyQualifiedName?: string };
-        const bObj = b as { fullyQualifiedName?: string };
-
-        return aObj.fullyQualifiedName === bObj.fullyQualifiedName;
-      });
-
-      parseLineageData(dataWithDuplicates, mockEntityFqn, mockRootFqn);
-
-      expect(mockUniqWith).toHaveBeenCalled();
     });
   });
 });

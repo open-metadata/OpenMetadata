@@ -71,12 +71,17 @@ show_contexts = true
 
 [tool.pytest.ini_options]
 markers = [
+    "metadata: connector metadata ingestion and reflection",
+    "lineage: connector lineage extraction and ingestion",
+    "usage: connector query usage ingestion",
+    "profiler: connector profiling, sampling, and metric computation",
+    "dataquality: connector data quality validation",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "xdist_group(name): group tests to run on the same xdist worker"
 ]
 
 # Skip tests that are known to fail or are not ready to run until issue #21736 is solved
-addopts = "--ignore=ingestion/tests/unit/topology/database/test_deltalake.py --ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
+addopts = "--ignore=ingestion/tests/integration/sources/mlmodels/mlflow/test_mlflow.py"
 [project.entry-points.pytest11]
 pytest_openmetadata = "_openmetadata_testutils.pytest_openmetadata.plugin"
 
@@ -226,6 +231,12 @@ ignore = [
 # lands in a later stage tests don't immediately error out.
 "tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
 "ingestion/tests/**/*.py" = ["S101", "PLR2004", "PLC0415"]
+# v2 CLI E2E framework uses relative imports by design (connector-centric
+# layout — connectors live in subdirs and import from `..core.*` / `.connector`).
+# `T201` (print) is allowed in the top-level conftest for the session-start
+# posture banner. Path listed twice for the dual-cwd pattern above.
+"tests/cli_e2e_v2/**/*.py" = ["S101", "PLR2004", "PLC0415", "TID252", "T201"]
+"ingestion/tests/cli_e2e_v2/**/*.py" = ["S101", "PLR2004", "PLC0415", "TID252", "T201"]
 # Auto-generated from JSON Schema — never edit, never lint.
 "src/metadata/generated/**" = ["ALL"]
 "ingestion/src/metadata/generated/**" = ["ALL"]
@@ -260,6 +271,7 @@ ban-relative-imports = "all"
 # the `metadata.` package directly.
 "ingestion.src.metadata".msg     = "Use `metadata.` imports instead of `ingestion.src.metadata`."
 "ingestion.build.lib".msg        = "Don't import build artifacts; use `metadata.` directly."
+"testcontainers.cockroachdb.CockroachDBContainer".msg = "Use the shared cockroach_container fixture in tests/integration/cockroach/conftest.py."
 
 [tool.basedpyright]
 include = ["src"]

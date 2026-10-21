@@ -23,6 +23,7 @@ import { performAdminLogin } from '../../utils/admin';
 import { getApiContext } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { setupUserWithPolicy } from '../../utils/permission';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const VIEWER_RULES: PolicyRulesType[] = [
   {
@@ -107,11 +108,12 @@ const createSuggestionTask = async (
 };
 
 const openSuggesterSuggestions = async (page: Page, table: TableClass) => {
-  const suggestionsResponse = page.waitForResponse(
+  const suggestionsResponse = waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes('/api/v1/tasks') &&
-      response.url().includes('type=Suggestion') &&
-      response.status() === 200
+      response.url().includes('type=Suggestion'),
+    200
   );
   await table.visitEntityPage(page);
   await suggestionsResponse;
@@ -162,7 +164,7 @@ test.describe(
         // Suggestions are created as the suggester so their avatar drives the carousel
         const suggesterPage = await browser.newPage();
         try {
-          await suggesterUser.login(suggesterPage);
+          await suggesterUser.signIn(suggesterPage);
           const { apiContext: suggesterContext, afterAction: disposeContext } =
             await getApiContext(suggesterPage);
 
@@ -234,7 +236,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await adminUser.login(page);
+      await adminUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -256,7 +258,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await viewerUser.login(page);
+      await viewerUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -283,7 +285,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -304,7 +306,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, descriptionOnlyTable);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Card } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -37,10 +37,10 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary tw:bg-primary"
+    <Card
+      className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
       data-testid="membership-section"
-      direction="col">
+      variant="muted">
       <TeamsRow updateUserDetails={updateUserDetails} userData={userData} />
       <RolesRow updateUserDetails={updateUserDetails} userData={userData} />
       <div className="tw:px-5 tw:py-4">
@@ -54,7 +54,7 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
           />
         </FieldRow>
       </div>
-    </Box>
+    </Card>
   );
 };
 

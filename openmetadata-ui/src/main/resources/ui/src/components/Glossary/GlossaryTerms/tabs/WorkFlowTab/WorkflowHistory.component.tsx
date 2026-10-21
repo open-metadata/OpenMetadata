@@ -10,14 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Empty, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  EmptyPlaceholder,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  memo,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
-import { GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME } from '../../../../../constants/Glossary.contant';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -27,26 +39,49 @@ import {
   WorkflowStatus,
 } from '../../../../../generated/governance/workflows/workflowInstanceState';
 import {
-  getWorkflowInstancesForApplication,
-  getWorkflowInstanceStateById,
-} from '../../../../../rest/workflowAPI';
-import {
   getCurrentMillis,
   getEpochMillisForPastDays,
   getShortRelativeTime,
 } from '../../../../../utils/date-time/DateTimeUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
-import { handleKeyboardActivation } from '../../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
-
-const { Text } = Typography;
+import { getLatestWorkflowRun } from './WorkflowHistory.utils';
 
 interface WorkflowHistoryProps {
   glossaryTerm?: GlossaryTerm;
 }
+
+interface WorkflowHistoryContainerProps {
+  isWidget: boolean;
+  className?: string;
+  children: ReactNode;
+  'data-testid'?: string;
+}
+
+// The right-panel widget is a card of its own; inside the status popover the
+// popover already is the surface, so the content renders bare.
+const WorkflowHistoryContainer = ({
+  isWidget,
+  className,
+  children,
+  'data-testid': dataTestId,
+}: WorkflowHistoryContainerProps) =>
+  isWidget ? (
+    <Card
+      className={classNames('tw:w-full tw:px-5 tw:pt-4.5 tw:pb-3', className)}
+      data-testid={dataTestId}
+      size="sm">
+      {children}
+    </Card>
+  ) : (
+    <div className={className} data-testid={dataTestId}>
+      {children}
+    </div>
+  );
 
 const WorkflowHistory = memo(
   ({ glossaryTerm: propGlossaryTerm }: WorkflowHistoryProps) => {
@@ -59,6 +94,7 @@ const WorkflowHistory = memo(
     const [workflowHistory, setWorkflowHistory] = useState<
       WorkflowInstanceState[]
     >([]);
+    const [workflowName, setWorkflowName] = useState('');
     const [isLoading, setIsLoading] = useState(false);
 
     // Collapse only when status is approved
@@ -81,42 +117,21 @@ const WorkflowHistory = memo(
 
       setIsLoading(true);
       try {
-        const startTs = getEpochMillisForPastDays(180);
-        const endTs = getCurrentMillis();
+        const timeRange = {
+          startTs: getEpochMillisForPastDays(180),
+          endTs: getCurrentMillis(),
+        };
         const entityLink = createGlossaryTermEntityLink(
           glossaryTerm.fullyQualifiedName
         );
 
-        // First, get workflow instances
-        const instancesResponse = await getWorkflowInstancesForApplication({
-          startTs,
-          endTs,
-          entityLink,
-          workflowDefinitionName:
-            GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
-        });
+        const latestRun = await getLatestWorkflowRun(entityLink, timeRange);
 
-        const instances = instancesResponse.data || [];
-
-        if (instances.length === 0) {
-          setWorkflowHistory([]);
-
-          return;
-        }
-
-        // Then fetch detailed states for each instance
-        const statesPromises = await getWorkflowInstanceStateById(
-          GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME,
-          instances[0]?.id ?? '',
-          {
-            startTs,
-            endTs,
-          }
-        );
-        const reverseStates = statesPromises.data.reverse();
-        setWorkflowHistory(reverseStates);
+        setWorkflowName(getEntityName(latestRun?.definition));
+        setWorkflowHistory(latestRun?.states ?? []);
       } catch (error) {
         showErrorToast(error as string);
+        setWorkflowName('');
         setWorkflowHistory([]);
       } finally {
         setIsLoading(false);
@@ -201,73 +216,92 @@ const WorkflowHistory = memo(
 
     const workflowContent = useMemo(() => {
       const workflowHistoryLabel = t('label.workflow-history');
+      const isWidget = !propGlossaryTerm;
 
       if (isLoading) {
         return (
-          <div
-            className={classNames('flex-center h-40', {
-              'workflow-history-widget-rightPanel': !propGlossaryTerm,
-            })}>
+          <WorkflowHistoryContainer
+            className="flex-center h-40"
+            isWidget={isWidget}>
             <Loader size="small" />
-          </div>
+          </WorkflowHistoryContainer>
         );
       }
 
       if (isEmpty(workflowHistory)) {
         return (
-          <div
-            className={classNames('workflow-history-widget', {
-              'workflow-history-widget-rightPanel': !propGlossaryTerm,
-            })}>
-            <Empty
-              description={
-                <Text className="text-grey-muted">
-                  {t('label.no-entity-available', {
-                    entity: workflowHistoryLabel,
-                  })}
-                </Text>
-              }
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-            />
-          </div>
+          <WorkflowHistoryContainer
+            className="workflow-history-widget"
+            isWidget={isWidget}>
+            <div className="tw:relative tw:min-h-24">
+              <EmptyPlaceholder
+                title={t('label.no-entity-available', {
+                  entity: workflowHistoryLabel,
+                })}
+                variant="blank"
+                width="100%"
+              />
+            </div>
+          </WorkflowHistoryContainer>
         );
       }
 
       return (
-        <div
-          className={classNames('workflow-history-widget', {
-            'workflow-history-widget-rightPanel': !propGlossaryTerm,
-          })}
-          data-testid="workflow-history-widget">
-          <div
+        <WorkflowHistoryContainer
+          className="workflow-history-widget"
+          data-testid="workflow-history-widget"
+          isWidget={isWidget}>
+          <AriaButton
+            aria-expanded={!isCollapsed}
             aria-label={workflowHistoryLabel}
-            className=" cursor-pointer d-flex flex-col w-full gap-2"
-            role="button"
-            tabIndex={0}
-            onClick={toggleCollapse}
-            onKeyDown={handleKeyboardActivation(toggleCollapse)}>
-            <div className="workflow-header d-flex justify-between align-center w-full">
-              <div className="d-flex align-center gap-2">
-                <Text className="workflow-title">{workflowHistoryLabel}</Text>
-              </div>
-              <Text className="workflow-counter">
+            className="tw:flex tw:w-full tw:cursor-pointer tw:flex-col tw:gap-2 tw:rounded-md tw:text-left tw:outline-focus-ring tw:focus-visible:outline-2"
+            onPress={toggleCollapse}>
+            <Box
+              align="center"
+              className="workflow-header tw:w-full"
+              gap={2}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col">
+                <Typography
+                  as="span"
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="medium">
+                  {workflowHistoryLabel}
+                </Typography>
+                {workflowName && (
+                  <Typography
+                    as="span"
+                    className="tw:truncate tw:text-tertiary"
+                    data-testid="workflow-history-workflow-name"
+                    size="text-xs"
+                    title={workflowName}>
+                    {workflowName}
+                  </Typography>
+                )}
+              </Box>
+              <Typography
+                as="span"
+                className="tw:shrink-0 tw:text-tertiary"
+                size="text-sm">
                 {completedSteps}/{totalSteps}
-              </Text>
-            </div>
-            <div className="workflow-progress w-full">
+              </Typography>
+            </Box>
+            <div className="workflow-progress tw:w-full">
               <div className="workflow-steps">{workflowSteps}</div>
             </div>
-          </div>
+          </AriaButton>
           {!isCollapsed && (
             <div className="workflow-timeline flex flex-col">
               {workflowHistory.map(renderTimelineItem)}
             </div>
           )}
-        </div>
+        </WorkflowHistoryContainer>
       );
     }, [
       isLoading,
       workflowHistory,
+      workflowName,
       completedSteps,
       totalSteps,
       workflowSteps,

@@ -35,10 +35,10 @@ import {
   QuickLinkFormModalFormData,
 } from '../../KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import { Intent } from '../../platform/ai-shell/AppModule.types';
+import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import { LiveRefreshBoundary } from '../../platform/ai-shell/LiveRefreshBoundary/LiveRefreshBoundary';
 import { useIntent } from '../../platform/ai-shell/useIntent';
 import UploadDocumentModal from '../UploadDocumentModal/UploadDocumentModal.component';
-import './ContextCenterLayout.less';
 
 const ADD_QUICK_LINK_PERMISSIONS = {
   EditAll: true,
@@ -55,21 +55,36 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddQuickLinkOpen, setIsAddQuickLinkOpen] = useState(false);
 
+  // Every Context Center route mounts its own ContextCenterLayout, and the
+  // intent bus keeps a single listener per name. Navigating to a non-cacheable
+  // detail route (e.g. a `/context-center/articles/:fqn`) mounts a second
+  // layout that clobbers this one's listener and, on its unmount, deletes the
+  // shared slot — leaving this kept-alive layout silently unsubscribed. Bump a
+  // token whenever this route becomes visible again so the intent listeners are
+  // re-claimed on reactivation.
+  const [activationEpoch, setActivationEpoch] = useState(0);
+  useRouteActivation(
+    useCallback(() => setActivationEpoch((epoch) => epoch + 1), [])
+  );
+
   useIntent(
     Intent.UploadFile,
-    useCallback(() => setIsUploadModalOpen(true), [])
+    useCallback(() => setIsUploadModalOpen(true), []),
+    activationEpoch
   );
 
   useIntent(
     Intent.CreateArticle,
     useCallback(() => {
       createArticleKnowledgePage(currentUser?.id ?? '', navigate);
-    }, [currentUser?.id, navigate])
+    }, [currentUser?.id, navigate]),
+    activationEpoch
   );
 
   useIntent(
     Intent.AddQuickLink,
-    useCallback(() => setIsAddQuickLinkOpen(true), [])
+    useCallback(() => setIsAddQuickLinkOpen(true), []),
+    activationEpoch
   );
 
   const handleSaveQuickLink = useCallback(
@@ -110,7 +125,7 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   );
 
   return (
-    <div className="context-center-layout tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:pt-5">
+    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:bg-canvas">
       {/* Reloads the embedded page on a contextMemory/page change for the active CC route
           (registry → markRouteDirty); the layout, its modals and intents stay mounted. */}
       <LiveRefreshBoundary>{children}</LiveRefreshBoundary>

@@ -19,6 +19,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  * cannot make this test pass; omitting the shared-state replacement leaves the primed snapshot in
  * Redis and makes the cross-node assertion fail.
  */
+@Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
 @EnabledIf(value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
 class TokenRevocationRedisMultiNodeIT {

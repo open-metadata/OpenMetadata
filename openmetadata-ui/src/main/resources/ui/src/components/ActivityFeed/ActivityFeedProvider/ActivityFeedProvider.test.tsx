@@ -31,6 +31,8 @@ import {
   DummyChildrenDeletePostComponent,
   DummyChildrenEntityComponent,
   DummyChildrenTaskCloseComponent,
+  DummyChildrenTaskMentionsComponent,
+  DummyConversationReactionComponent,
   DummyEntityActivityFeedComponent,
   DummyFollowingActivityComponent,
   DummySetActiveActivityComponent,
@@ -48,6 +50,8 @@ import {
   removeActivityReaction,
 } from '../../../rest/activityAPI';
 import {
+  addConversationReaction,
+  addConversationReplyReaction,
   createConversationReply,
   deleteConversation,
   deleteConversationReply,
@@ -219,7 +223,26 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
-  it('lists conversations through the conversation API', async () => {
+  it('status-filters mentioned tasks like every other task branch', async () => {
+    // The MENTIONS branch spread `common` instead of `scoped`, dropping
+    // statusGroup, so the My Tasks widget listed closed tasks under Mentions.
+    render(
+      <ActivityFeedProvider>
+        <DummyChildrenTaskMentionsComponent />
+      </ActivityFeedProvider>
+    );
+
+    await waitFor(() =>
+      expect(listTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mentionedUser: 'admin',
+          statusGroup: 'open',
+        })
+      )
+    );
+  });
+
+  it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>
         <DummyChildrenEntityComponent />
@@ -228,7 +251,10 @@ describe('ActivityFeedProvider', () => {
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenCalledWith(
-        expect.objectContaining({ entityLink: '<#E::table::admin>' })
+        expect.objectContaining({
+          entityLink: '<#E::table::admin>',
+          includeFields: true,
+        })
       )
     );
   });
@@ -786,6 +812,82 @@ describe('ActivityFeedProvider', () => {
         'none'
       );
       expect(screen.getByTestId('activity-reply-count')).toHaveTextContent('0');
+    });
+  });
+
+  describe('updateReactions rejection handling', () => {
+    const conversationReaction = {
+      id: 'feed-thread',
+      reactions: [
+        { reactionType: ReactionType.ThumbsUp, user: { id: 'user-1' } },
+      ],
+    };
+
+    it('shows an error toast when addConversationReaction rejects (thread)', async () => {
+      const error = new Error('boom');
+      (addConversationReaction as jest.Mock).mockRejectedValueOnce(error);
+
+      render(
+        <ActivityFeedProvider>
+          <DummyConversationReactionComponent />
+        </ActivityFeedProvider>
+      );
+      fireEvent.click(screen.getByTestId('add-conversation-reaction'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+    });
+
+    it('shows an error toast when addConversationReplyReaction rejects (reply)', async () => {
+      const error = new Error('boom');
+      (addConversationReplyReaction as jest.Mock).mockRejectedValueOnce(error);
+
+      render(
+        <ActivityFeedProvider>
+          <DummyConversationReactionComponent />
+        </ActivityFeedProvider>
+      );
+      fireEvent.click(screen.getByTestId('add-reply-reaction'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+    });
+
+    it('does not toast when a conversation reaction succeeds (no double-toast)', async () => {
+      (addConversationReaction as jest.Mock).mockResolvedValueOnce(
+        conversationReaction
+      );
+
+      render(
+        <ActivityFeedProvider>
+          <DummyConversationReactionComponent />
+        </ActivityFeedProvider>
+      );
+      fireEvent.click(screen.getByTestId('add-conversation-reaction'));
+
+      await waitFor(() =>
+        expect(screen.getByTestId('reaction-call-status')).toHaveTextContent(
+          'done'
+        )
+      );
+
+      expect(showErrorToast).not.toHaveBeenCalled();
+    });
+
+    it('swallows the rejection so the awaiting caller observes a resolved promise', async () => {
+      const error = new Error('boom');
+      (addConversationReaction as jest.Mock).mockRejectedValueOnce(error);
+
+      render(
+        <ActivityFeedProvider>
+          <DummyConversationReactionComponent />
+        </ActivityFeedProvider>
+      );
+      fireEvent.click(screen.getByTestId('add-conversation-reaction'));
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+      expect(screen.getByTestId('reaction-call-status')).toHaveTextContent(
+        'done'
+      );
     });
   });
 });

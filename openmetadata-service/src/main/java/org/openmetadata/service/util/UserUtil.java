@@ -19,6 +19,7 @@ import static org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthT
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
@@ -32,11 +33,13 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -52,14 +55,18 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.SecurityUtil;
@@ -708,7 +715,7 @@ public final class UserUtil {
   }
 
   // The raw accessor, not getUserRoles(): the latter normalizes null to an empty set, which would
-  // make "no roles claim in the token" indistinguishable from "the provider revoked every role".
+  // make "nothing to sync from" indistinguishable from "the provider revoked every role".
   public static Set<String> getRolesFromAuthorizationToken(
       CatalogSecurityContext catalogSecurityContext) {
     return catalogSecurityContext.userRoles();
@@ -733,32 +740,37 @@ public final class UserUtil {
   }
 
   /**
-   * Syncs a user's roles to what the identity provider reported. {@code rolesFromToken} is
-   * authoritative when non-null, including when empty - that is the provider revoking every role. A
-   * null set means the provider said nothing (no roles claim, or the feature is off) and the user's
-   * OpenMetadata roles are left alone.
+   * Syncs a user's roles and admin status to what the identity provider reported. {@code
+   * rolesFromToken} is authoritative when non-null, including when empty - that is the provider
+   * revoking every role. A null set means there is nothing to sync from (the feature is off, or the
+   * token was minted by OpenMetadata) and the user is left alone.
    *
-   * <p>Admin is promotion-only. Demoting on a missing admin role would lock out anyone who is an
-   * admin through the {@code adminPrincipals} configuration rather than through the provider.
+   * <p>Admin follows the provider's {@code Admin} role, except for users named in {@code
+   * adminEmails} or {@code adminPrincipals}: the provider never granted them admin, so its silence
+   * must not demote them. ADR:2026-10-13-provider-token-is-authoritative-for-roles-and-admin
    */
   public static boolean reSyncUserRolesFromToken(
-      UriInfo uriInfo, User user, Set<String> rolesFromToken) {
+      UriInfo uriInfo,
+      User user,
+      Set<String> rolesFromToken,
+      AuthorizerConfiguration authorizerConfiguration) {
     if (rolesFromToken == null) {
       return false;
     }
     boolean syncUser = false;
     Set<String> mutableRolesFromToken = new HashSet<>(rolesFromToken);
+    boolean adminFromProvider = mutableRolesFromToken.remove(ADMIN_ROLE);
 
     User updatedUser = JsonUtils.deepCopy(user, User.class);
-    // Check if Admin User
-    if (mutableRolesFromToken.contains(ADMIN_ROLE)) {
-      if (Boolean.FALSE.equals(user.getIsAdmin())) {
-        syncUser = true;
-        updatedUser.setIsAdmin(true);
-      }
-
-      // Remove the Admin Role from the list
-      mutableRolesFromToken.remove(ADMIN_ROLE);
+    boolean isAdmin = Boolean.TRUE.equals(user.getIsAdmin());
+    if (adminFromProvider && !isAdmin) {
+      syncUser = true;
+      updatedUser.setIsAdmin(true);
+    } else if (!adminFromProvider
+        && isAdmin
+        && !isConfiguredAdmin(authorizerConfiguration, user.getEmail(), user.getName())) {
+      syncUser = true;
+      updatedUser.setIsAdmin(false);
     }
 
     Set<String> rolesFromUser = getRoleListFromUser(user);
@@ -799,6 +811,7 @@ public final class UserUtil {
         .withPersonas(create.getPersonas())
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
+        .withExtension(create.getExtension())
         .withUpdatedBy(updatedBy.toLowerCase())
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
@@ -868,6 +881,62 @@ public final class UserUtil {
     return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
   }
 
+  /**
+   * Rejects a user that the sign-in email-domain rule would refuse, so an admin learns it when
+   * creating the user instead of at the user's first login (issue #19306). Called from the
+   * user-facing create paths only: users that server-side code creates, such as the bootstrap
+   * admins or support access, sign in with OpenMetadata-issued tokens and are not checked.
+   * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+   */
+  public static void validateEmailDomain(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    Optional<String> rejection = emailDomainRejection(user, authConfig, authorizerConfig);
+    if (rejection.isPresent()) {
+      throw new BadRequestException(rejection.get());
+    }
+  }
+
+  /**
+   * Why the sign-in email-domain rule would refuse this user, or empty when it would not. The rule
+   * applies only where login applies it: never to bots, and never under the native-password
+   * providers, whose sessions use OpenMetadata-issued tokens that login does not domain-check.
+   */
+  public static Optional<String> emailDomainRejection(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    List<String> allowedDomains = signInEmailDomains(user, authConfig, authorizerConfig);
+    String emailDomain = emailDomainOf(user.getEmail());
+    boolean isRefused =
+        !allowedDomains.isEmpty()
+            && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase);
+    return isRefused
+        ? Optional.of(CatalogExceptionMessage.invalidEmailDomain(emailDomain, allowedDomains))
+        : Optional.empty();
+  }
+
+  /** Empty when no sign-in email-domain rule applies to this user. */
+  private static List<String> signInEmailDomains(
+      User user, AuthenticationConfiguration authConfig, AuthorizerConfiguration authorizerConfig) {
+    if (Boolean.TRUE.equals(user.getIsBot())
+        || authConfig == null
+        || authorizerConfig == null
+        || SecurityConfigurationManager.isNativePasswordProvider(authConfig.getProvider())) {
+      return List.of();
+    }
+    Set<String> allowedEmailDomains = authorizerConfig.getAllowedEmailDomains();
+    return SecurityUtil.configuredEmailDomains(
+        allowedEmailDomains == null ? List.of() : new ArrayList<>(allowedEmailDomains),
+        authorizerConfig.getPrincipalDomain(),
+        authorizerConfig.getAllowedDomains(),
+        authorizerConfig.getEnforcePrincipalDomain());
+  }
+
+  private static String emailDomainOf(String email) {
+    if (nullOrEmpty(email) || !email.contains("@")) {
+      return "";
+    }
+    return email.substring(email.indexOf('@') + 1);
+  }
+
   public static void validateUserPersonaPreferencesImage(LandingPageSettings settings) {
     if (settings.getHeaderImage() != null && !settings.getHeaderImage().isEmpty()) {
       try {
@@ -880,5 +949,39 @@ public final class UserUtil {
         throw new BadRequestException("Header image must be a valid URL: " + e.getMessage());
       }
     }
+  }
+
+  /** Every admin user. */
+  public static List<EntityReference> getAdmins() {
+    final List<EntityReference> admins = new ArrayList<>();
+    final UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    final ListFilter filter = new ListFilter(NON_DELETED);
+    filter.addQueryParam("isAdmin", "true");
+    String after = null;
+    do {
+      final ResultList<User> page = users.listAfter(null, Fields.EMPTY_FIELDS, filter, 50, after);
+      page.getData().forEach(user -> admins.add(user.getEntityReference()));
+      after = page.getPaging().getAfter();
+    } while (after != null);
+    return admins;
+  }
+
+  /** The email of every admin user. */
+  public static Set<String> getAdminEmails() {
+    Set<String> emails = new HashSet<>();
+    UserRepository users = (UserRepository) Entity.getEntityRepository(USER);
+    ListFilter admins = new ListFilter(Include.ALL);
+    admins.addQueryParam("isAdmin", "true");
+    String after = null;
+    try {
+      do {
+        ResultList<User> page = users.listAfter(null, users.getFields("email"), admins, 50, after);
+        page.getData().stream().map(User::getEmail).forEach(emails::add);
+        after = page.getPaging().getAfter();
+      } while (after != null);
+    } catch (Exception ex) {
+      LOG.error("Failed in listing all Users , Reason", ex);
+    }
+    return emails;
   }
 }

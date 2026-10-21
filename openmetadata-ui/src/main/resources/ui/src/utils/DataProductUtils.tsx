@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
-import { Space, Typography } from 'antd';
-import { noop } from 'lodash';
+
 import { lazy } from 'react';
 import {
   ReactComponent as DataProductIcon,
@@ -35,8 +34,8 @@ import { DataProductDomainWidget } from '../components/DataProducts/DataProductD
 import DataQualityDashboard from '../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { EntityDetailsObjectInterface } from '../components/Explore/ExplorePage.interface';
 import type { AssetsTabRef } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
-import { AssetsOfEntity } from '../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import type { EntityReference } from '../generated/entity/data/table';
@@ -132,6 +131,8 @@ export interface DataProductDetailPageTabProps {
   handleAssetSave: () => void;
   feedCount: FeedCounts;
   getEntityFeedCount: () => void;
+  // Reloads the data product after a task on it is decided, so its status and fields are current.
+  onUpdateEntityDetails?: () => void;
   labelMap?: Record<EntityTabs, string>;
 }
 
@@ -178,6 +179,7 @@ type DataProductNonVersionTabsProps = Pick<
   | 'handleAssetClick'
   | 'handleAssetSave'
   | 'labelMap'
+  | 'onUpdateEntityDetails'
   | 'previewAsset'
   | 'setAssetModalVisible'
   | 'setPreviewAsset'
@@ -212,6 +214,7 @@ const getDataProductNonVersionTabs = ({
   handleAssetClick,
   handleAssetSave,
   labelMap,
+  onUpdateEntityDetails,
   previewAsset,
   setAssetModalVisible,
   setPreviewAsset,
@@ -240,7 +243,7 @@ const getDataProductNonVersionTabs = ({
           layoutType={ActivityFeedLayoutType.THREE_PANEL}
           owners={dataProduct.owners}
           onFeedUpdate={getEntityFeedCount}
-          onUpdateEntityDetails={noop}
+          onUpdateEntityDetails={onUpdateEntityDetails}
         />
       </ActivityFeedProvider>
     ),
@@ -382,6 +385,7 @@ export const getDataProductDetailTabs = ({
   feedCount,
   getEntityFeedCount,
   labelMap,
+  onUpdateEntityDetails,
 }: DataProductDetailPageTabProps) => {
   const totalPortsCount = (inputPortsCount ?? 0) + (outputPortsCount ?? 0);
 
@@ -396,7 +400,7 @@ export const getDataProductDetailTabs = ({
         />
       ),
       key: EntityTabs.DOCUMENTATION,
-      children: <GenericTab type={PageType.DataProduct} variant="flat" />,
+      children: <GenericTab type={PageType.DataProduct} />,
     },
     ...(isVersionsView
       ? []
@@ -411,6 +415,7 @@ export const getDataProductDetailTabs = ({
           handleAssetClick,
           handleAssetSave,
           labelMap,
+          onUpdateEntityDetails,
           previewAsset,
           setAssetModalVisible,
           setPreviewAsset,
@@ -449,21 +454,33 @@ export const getDataProductDetailTabs = ({
 
 export const DataProductListItemRenderer = (props: EntityReference) => {
   return (
-    <Space direction="vertical" size={0}>
-      <Space>
-        <Icon component={DataProductIcon} style={{ fontSize: '16px' }} />
-        <Typography.Text>{getEntityName(props)}</Typography.Text>
-      </Space>
+    <Box
+      inline
+      align="stretch"
+      className="layout-space"
+      direction="col"
+      gap={0}
+      itemClassName="layout-space-item">
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal"
+        gap={2}
+        itemClassName="layout-space-item">
+        <DataProductIcon className="tw:size-4 tw:shrink-0" />
+        <Typography>{getEntityName(props)}</Typography>
+      </Box>
       {props.description && (
-        <Typography.Paragraph
+        <Typography
+          as="div"
           className="data-product-list-description"
           ellipsis={{
             tooltip: props.description,
             rows: 2,
           }}>
           <RichTextEditorPreviewerV1 markdown={props.description} />
-        </Typography.Paragraph>
+        </Typography>
       )}
-    </Space>
+    </Box>
   );
 };

@@ -18,6 +18,7 @@ from abc import abstractmethod
 from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.result_messages import SamplingStability
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
     TestCaseStatus,
@@ -33,6 +34,8 @@ ROW_COUNT = "rowCount"
 
 class BaseTableRowCountToEqualValidator(BaseTestValidator):
     """Validator for table row count to equal test case"""
+
+    SAMPLING_STABILITY = SamplingStability.SCALES_WITH_SAMPLE
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
@@ -63,14 +66,14 @@ class BaseTableRowCountToEqualValidator(BaseTestValidator):
             default=float("-inf"),
         )
 
+        # `value` defaults to an infinity, so it is never None despite what the loosely
+        # typed parameter reader declares.
+        matched = self.matches_expected(res, cast("float", expected_count), "the expected rowCount")
+
         return self.get_test_case_result_object(
             self.execution_date,
-            # `value` defaults to an infinity, so it is never None despite what the loosely
-            # typed parameter reader declares.
-            self.get_test_case_status(
-                self.matches_expected(res, cast("float", expected_count), "the expected rowCount")
-            ),
-            f"Found rowCount={res} rows vs. the expected {expected_count}",
+            self.get_test_case_status(matched),
+            self.format_expected_value_message("Row count", res, expected_count, matched),
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )
 

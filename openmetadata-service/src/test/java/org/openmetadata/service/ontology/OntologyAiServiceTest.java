@@ -42,7 +42,6 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
-import org.openmetadata.schema.type.OntologyConfiguration;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.service.exception.OntologyAiProviderException;
@@ -63,7 +62,7 @@ class OntologyAiServiceTest {
 
   @BeforeEach
   void setUp() {
-    glossary = glossary(GLOSSARY_FQN, false);
+    glossary = glossary(GLOSSARY_FQN);
     source = term("provider", glossary, 1.2D);
     target = term("facility", glossary, 2.1D);
     relationshipType = relationshipType();
@@ -250,8 +249,8 @@ class OntologyAiServiceTest {
   }
 
   @Test
-  void rejectsCrossGlossaryTermsAndReadOnlyOntologiesBeforeCompletion() {
-    final Glossary otherGlossary = glossary("other", false);
+  void rejectsCrossGlossaryTermsBeforeCompletion() {
+    final Glossary otherGlossary = glossary("other");
     final GlossaryTerm otherTerm = term("otherTerm", otherGlossary, 0.1D);
     service =
         service(
@@ -260,9 +259,6 @@ class OntologyAiServiceTest {
         relationshipRequest().withCandidateTermIds(Set.of(otherTerm.getId()));
     assertThrows(IllegalArgumentException.class, () -> service.suggestRelationships(request));
 
-    final Glossary readOnly = glossary(GLOSSARY_FQN, true);
-    service = service(true, new TestCatalog(readOnly, List.of(source, target), relationshipType));
-    assertThrows(IllegalArgumentException.class, () -> service.suggestMappings(mappingRequest()));
     assertEquals(0, gateway.invocationCount);
   }
 
@@ -329,13 +325,12 @@ class OntologyAiServiceTest {
         OntologyAiProviderException.class, () -> service.generateSparql(naturalLanguageRequest()));
   }
 
-  private static Glossary glossary(final String name, final boolean readOnly) {
+  private static Glossary glossary(final String name) {
     return new Glossary()
         .withId(UUID.randomUUID())
         .withName(name)
         .withFullyQualifiedName(name)
-        .withDescription("Test glossary")
-        .withOntologyConfiguration(new OntologyConfiguration().withReadOnly(readOnly));
+        .withDescription("Test glossary");
   }
 
   private static GlossaryTerm term(
@@ -423,6 +418,11 @@ class OntologyAiServiceTest {
       invocationCount++;
       assertEquals(GLOSSARY_FQN, prompt.glossary());
       return domainCompletion;
+    }
+
+    @Override
+    public Completion<MemoryTermCandidate> deriveTermsFromMemories(final MemoryTermPrompt prompt) {
+      throw new UnsupportedOperationException("Memory derivation is tested separately");
     }
   }
 }

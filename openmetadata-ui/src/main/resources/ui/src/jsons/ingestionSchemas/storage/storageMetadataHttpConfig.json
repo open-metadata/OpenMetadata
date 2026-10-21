@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Storage Metadata Http Config",
   "description": "Storage Metadata Manifest file HTTP path config.",
   "javaType": "org.openmetadata.schema.metadataIngestion.storage.StorageMetadataHttpConfig",

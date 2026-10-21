@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/governance/workflows/elements/nodes/userTask/userApprovalTask.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "UserApprovalTaskDefinition",
   "description": "Defines a Task for a given User to approve.",
   "javaInterfaces": [
@@ -60,13 +60,27 @@
               "default": []
             },
             "emptyAssigneeStrategy": {
-              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen.",
+              "description": "Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none' keeps the default behavior (the gateway auto-approves event-driven approvals and leaves workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins, excluding the requester so self-approval can never happen. 'wait' creates an unassigned task when no eligible assignee is available, without auto-approval or an admin fallback.",
               "type": "string",
-              "enum": ["none", "assignAdmins"],
+              "enum": [
+                "none",
+                "assignAdmins",
+                "wait"
+              ],
               "default": "none"
+            },
+            "addDomainOwners": {
+              "description": "Resolve owners from the asset’s domains at execution time. For a domain, use its own owners.",
+              "type": "boolean"
             }
           },
           "additionalProperties": false
+        },
+        "allowPartialDecisions": {
+          "title": "Allow Partial Decisions",
+          "description": "In a workflow in Enforce approval mode, let reviewers approve or reject some of a change request's changes and leave the rest pending. Changes reviewers agree to approve are published and changes they agree to reject are dropped, while this task stays open with the remaining changes; the workflow leaves it through approve or reject once nothing is pending. A change is agreed once it reaches the approval or rejection threshold.",
+          "type": "boolean",
+          "default": false
         },
         "approvalThreshold": {
           "title": "Approval Threshold",
@@ -91,6 +105,27 @@
           "title": "Stage Display Name",
           "description": "Human-readable stage label shown to task assignees.",
           "type": "string"
+        },
+        "lifecycleMove": {
+          "title": "Lifecycle Move",
+          "description": "Set when the approval gates a lifecycle stage move: the task then asks to approve moving the asset from one stage to the next instead of listing the changes that led to it.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
+          "properties": {
+            "stage": {
+              "description": "Stage the asset is in while the approval is pending.",
+              "$ref": "../../../../../type/status.json"
+            },
+            "targetStage": {
+              "description": "Stage the asset moves to once approved.",
+              "$ref": "../../../../../type/status.json"
+            }
+          },
+          "required": [
+            "stage",
+            "targetStage"
+          ],
+          "additionalProperties": false
         },
         "taskStatus": {
           "title": "Task Status",
@@ -132,7 +167,12 @@
                 "default": false
               }
             },
-            "required": ["id", "label", "targetStageId", "targetTaskStatus"],
+            "required": [
+              "id",
+              "label",
+              "targetStageId",
+              "targetTaskStatus"
+            ],
             "additionalProperties": false
           },
           "default": []
@@ -160,22 +200,37 @@
               "$ref": "../../../../../entity/tasks/task.json#/definitions/resolutionType"
             }
           },
-          "required": ["transitionId"],
+          "required": [
+            "transitionId"
+          ],
           "oneOf": [
-            {"required": ["durationVariable"]},
-            {"required": ["dateVariable"]}
+            {
+              "required": [
+                "durationVariable"
+              ]
+            },
+            {
+              "required": [
+                "dateVariable"
+              ]
+            }
           ],
           "additionalProperties": false
         }
       },
-      "required": ["assignees"],
+      "required": [
+        "assignees"
+      ],
       "additionalProperties": false
     },
     "input": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["relatedEntity"],
-      "additionalItems": false,
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "relatedEntity"
+      ],
       "minItems": 1,
       "maxItems": 1
     },
@@ -188,21 +243,30 @@
         }
       },
       "additionalProperties": false,
-      "required": ["relatedEntity"]
+      "required": [
+        "relatedEntity"
+      ]
     },
     "output": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["updatedBy"],
-      "additionalItems": false,
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "updatedBy"
+      ],
       "minItems": 1,
       "maxItems": 1
     },
     "branches": {
       "type": "array",
-      "items": { "type":  "string" },
-      "default": ["true", "false"],
-      "additionalItems": false,
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "true",
+        "false"
+      ],
       "minItems": 2,
       "maxItems": 2
     }

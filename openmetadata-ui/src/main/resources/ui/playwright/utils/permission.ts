@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../constant/common';
 import {
   DATA_CONSUMER_RULES,
   ORGANIZATION_POLICY_RULES,
@@ -22,6 +23,7 @@ import { UserClass } from '../support/user/UserClass';
 import { getApiContext, redirectToHomePage } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { dismissLineageMapOnboarding } from './lineage';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 let policy: PolicyClass;
 let role: RolesClass;
@@ -141,8 +143,10 @@ export const validateViewPermissions = async (
     const editDisplayNameButton = page.locator(
       '[data-testid="edit-displayName-button"]'
     );
-    await expect(editDisplayNameButton.first()).toBeVisible({
-      timeout: 30_000,
+    await expect(
+      editDisplayNameButton.filter({ visible: true })
+    ).not.toHaveCount(0, {
+      timeout: ACTION_TIMEOUT,
     });
   } else {
     await expect(
@@ -181,9 +185,12 @@ export const validateViewPermissions = async (
     await page.click('[data-testid="manage-button"]');
     await page.click('[data-testid="rename-button"]');
     await page.fill('#displayName', 'updated-table-name');
-    const updateDisplayNameResponse = page.waitForResponse(
+    const updateDisplayNameResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('api/v1/tables/') && response.status() === 200
+        response.request().method() === 'PATCH' &&
+        response.url().includes('api/v1/tables/'),
+      200
     );
     await page.click('[data-testid="save-button"]');
 
@@ -218,7 +225,8 @@ export const validateViewPermissions = async (
   await waitForAllLoadersToDisappear(page);
   await dismissLineageMapOnboarding(page);
 
-  await expect(page.getByTestId('edit-lineage')).not.toBeVisible();
+  await expect(page.locator('.react-flow__node')).not.toHaveCount(0);
+  await expect(page.getByTestId('lineage-node-menu')).toHaveCount(0);
 
   await page.click('[data-testid="custom_properties"]');
   await waitForAllLoadersToDisappear(page);

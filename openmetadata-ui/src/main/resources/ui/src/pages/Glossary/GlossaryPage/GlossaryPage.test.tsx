@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,10 +15,12 @@ import { act, fireEvent, screen } from '@testing-library/react';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import * as useGlossaryStoreModule from '../../../components/Glossary/useGlossary.store';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import { useFqn } from '../../../hooks/useFqn';
 import { MOCK_GLOSSARY } from '../../../mocks/Glossary.mock';
 import {
   getGlossariesByName,
   getGlossariesList,
+  getGlossaryTermByFQN,
   patchGlossaryTerm,
 } from '../../../rest/glossaryAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -28,7 +30,7 @@ const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
 
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'Business Glossary' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'Business glossary' }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -133,6 +135,11 @@ jest.mock('../../../components/Glossary/GlossaryV1.component', () => {
     </div>
   ));
 });
+
+jest.mock(
+  '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider',
+  () => jest.fn(({ children }) => children)
+);
 
 jest.mock('../GlossaryLeftPanel/GlossaryLeftPanel.component', () => {
   return jest
@@ -252,7 +259,7 @@ describe('Glossary list paging', () => {
     });
 
     expect(getGlossariesByName).toHaveBeenCalledWith(
-      'Business Glossary',
+      'Business glossary',
       expect.anything()
     );
     expect(mockUpdateGlossaryInList).toHaveBeenCalledWith(MOCK_GLOSSARY);
@@ -393,6 +400,7 @@ describe('Test GlossaryComponent page', () => {
         fullyQualifiedName: 'Glossary 3',
       };
 
+      (useFqn as jest.Mock).mockReturnValue({ fqn: 'Glossary 2' });
       (
         useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
       ).mockImplementation(() => ({
@@ -432,5 +440,79 @@ describe('Test GlossaryComponent page', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('GlossaryPage nonexistent glossary FQN', () => {
+  const NON_EXISTENT_FQN = 'NonExistentGlossary_1789732487181';
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useFqn as jest.Mock).mockReturnValue({ fqn: NON_EXISTENT_FQN });
+    (getGlossariesByName as jest.Mock).mockRejectedValue({
+      response: { status: 404 },
+    });
+    (
+      useGlossaryStoreModule.useGlossaryStore as unknown as jest.Mock
+    ).mockImplementation(() => ({
+      glossaries: [MOCK_GLOSSARY],
+      setGlossaries: mockSetGlossaries,
+      activeGlossary: MOCK_GLOSSARY,
+      setActiveGlossary: mockSetActiveGlossary,
+      updateActiveGlossary: mockUpdateActiveGlossary,
+    }));
+  });
+
+  it('should fetch the glossary by FQN instead of relying on the list', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(getGlossariesByName).toHaveBeenCalledWith(
+      NON_EXISTENT_FQN,
+      expect.anything()
+    );
+  });
+
+  it('should render not-found and not fall back to the first glossary on 404', async () => {
+    await act(async () => {
+      renderWithQueryClient(<GlossaryPage {...mockProps} />);
+    });
+
+    expect(screen.queryByText(/Glossary.component/i)).not.toBeInTheDocument();
+    expect(mockSetActiveGlossary).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('GlossaryPage term view refetch', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'Business glossary.Term' });
+  });
+
+  it('keeps the term mounted while its details refetch in the background', async () => {
+    const { queryClient } = renderWithQueryClient(
+      <GlossaryPage {...mockProps} />
+    );
+
+    expect(await screen.findByText(/Glossary.component/i)).toBeInTheDocument();
+
+    let resolveRefetch: ((value: unknown) => void) | undefined;
+    (getGlossaryTermByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise((resolve) => (resolveRefetch = resolve))
+    );
+
+    await act(async () => {
+      queryClient.invalidateQueries({ queryKey: ['glossaryTerm'] });
+      // React Query batches observer notifications on a (fake) timer.
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(getGlossaryTermByFQN).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(/Glossary.component/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+
+    await act(async () => resolveRefetch?.({ data: MOCK_GLOSSARY }));
   });
 });

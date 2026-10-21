@@ -43,16 +43,6 @@
 .ant-tabs.tabs-new {
   width: 100%;
 
-  .ant-btn.ant-btn-icon-only.tab-expand-icon {
-    padding: 0;
-    height: 20px;
-    width: 20px;
-    vertical-align: middle;
-    * {
-      font-size: var(--om-font-size-xl) !important;
-    }
-  }
-
   .ant-tabs-nav {
     margin: 0;
     padding: 0 var(--om-space-20);
@@ -75,12 +65,6 @@
         &.ant-tabs-tab-active {
           color: @primary-color;
           font-weight: var(--om-font-weight-semibold);
-
-          [data-testid='count'] > span {
-            background-color: @primary-color;
-            border-color: @primary-color;
-            color: var(--tw-color-text-white);
-          }
         }
       }
     }
@@ -99,7 +83,6 @@
   }
 }
 
-.glossary-details,
 .entity-details-page-tabs {
   .ant-tabs.tabs-new {
     .ant-tabs-tabpane {

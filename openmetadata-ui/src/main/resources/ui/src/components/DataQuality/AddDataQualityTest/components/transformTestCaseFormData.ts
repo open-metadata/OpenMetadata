@@ -32,6 +32,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import { omitInapplicableDimensionParams } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
 import {
   getParamPrefillKind,
   normalizeParamsForPayload,
@@ -71,7 +72,12 @@ export interface TestCaseTransformContext {
 }
 
 export interface PipelinePayloadContext {
-  testSuite: TestSuite;
+  /**
+   * Only `id` is read. Callers pass `TestCase.testSuite`, which is an
+   * `EntityReference` rather than a `TestSuite`, so no wider field is safe to
+   * rely on here.
+   */
+  testSuite: Pick<TestSuite, 'id'>;
   createdTestCaseName: string;
   selectedTable?: string;
   table?: Table;
@@ -161,9 +167,14 @@ export const transformTestCaseFormData = (
 
   const entityLink = resolveEntityLink(ctx);
 
+  const isDimensionalTest = values.testLevel === TestLevel.COLUMN_DIMENSION;
   const normalizedValues = normalizeFormValuesForPayload(
     values,
     ctx.selectedDefinition
+  );
+  normalizedValues.params = omitInapplicableDimensionParams(
+    normalizedValues.params,
+    isDimensionalTest
   );
 
   return {
@@ -172,14 +183,10 @@ export const transformTestCaseFormData = (
     computePassedFailedRowCount: values.computePassedFailedRowCount,
     entityLink,
     testDefinition: unwrapSelectValue(values.testTypeId) ?? '',
-    dimensionColumns:
-      values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? unwrapSelectValues(values.dimensionColumns)
-        : undefined,
-    topDimensions:
-      values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? values.topDimensions
-        : undefined,
+    dimensionColumns: isDimensionalTest
+      ? unwrapSelectValues(values.dimensionColumns)
+      : undefined,
+    topDimensions: isDimensionalTest ? values.topDimensions : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
     // Left out when untouched so the API falls back to the test definition's
     // dimension, which is what the field is prefilled with anyway.
@@ -206,9 +213,9 @@ export const buildTestSuitePipelinePayload = (
 ): CreateIngestionPipeline => {
   const selectedTestCases = normalizeSelectedTestProp(values.testCases);
 
-  const tableName = replaceAllSpacialCharWith_(
-    ctx.selectedTable ?? ctx.table?.fullyQualifiedName ?? ''
-  );
+  const tableFqn = ctx.selectedTable ?? ctx.table?.fullyQualifiedName;
+
+  const tableName = replaceAllSpacialCharWith_(tableFqn ?? '');
 
   const updatedName =
     values.pipelineName || getIngestionName(tableName, PipelineType.TestSuite);
@@ -229,7 +236,10 @@ export const buildTestSuitePipelinePayload = (
     sourceConfig: {
       config: {
         type: ConfigType.TestSuite,
-        entityFullyQualifiedName: ctx.testSuite.fullyQualifiedName,
+        // The entity under test, i.e. the table — not the test suite that holds
+        // the test cases. A suite FQN here resolves to no table and the run
+        // falls through to the logical-suite path.
+        entityFullyQualifiedName: tableFqn,
         testCases:
           values.selectAllTestCases === false
             ? [ctx.createdTestCaseName, ...selectedTestCases]

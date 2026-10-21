@@ -15,11 +15,12 @@ import {
   Button,
   Checkbox,
   Input,
+  Toggle,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Node } from 'reactflow';
@@ -43,6 +44,7 @@ interface UserApprovalFormProps {
   onSave: (nodeId: string, config: Record<string, unknown>) => void;
   onClose: () => void;
   onDelete?: (nodeId: string) => void;
+  isEnforceMode?: boolean;
 }
 
 const DEFAULT_USER_APPROVAL_TRANSITIONS = [
@@ -80,6 +82,7 @@ interface UserApprovalInitialState {
   addOwners: boolean;
   emptyAssigneeStrategy: 'none' | 'assignAdmins';
   candidates: EntityReference[];
+  allowPartialDecisions: boolean;
 }
 
 const buildAssigneesState = (assignees: AssigneesConfigSlice) => ({
@@ -96,6 +99,7 @@ const buildInitialState = (
     approvalThreshold?: number;
     rejectionThreshold?: number;
     assignees?: AssigneesConfigSlice;
+    allowPartialDecisions?: boolean;
   };
   const displayName = node?.data?.displayName ?? node?.data?.label ?? '';
 
@@ -105,6 +109,7 @@ const buildInitialState = (
     approvalThreshold: nodeConfig.approvalThreshold ?? 1,
     rejectionThreshold: nodeConfig.rejectionThreshold ?? 1,
     ...buildAssigneesState(nodeConfig.assignees ?? {}),
+    allowPartialDecisions: nodeConfig.allowPartialDecisions ?? false,
   };
 };
 
@@ -113,6 +118,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
   onSave,
   onClose,
   onDelete,
+  isEnforceMode = false,
 }) => {
   const [displayName, setDisplayName] = useState('');
   const [description, setDescription] = useState('');
@@ -124,6 +130,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
     'none' | 'assignAdmins'
   >('none');
   const [candidates, setCandidates] = useState<EntityReference[]>([]);
+  const [allowPartialDecisions, setAllowPartialDecisions] = useState(false);
   const { t } = useTranslation();
   const { isFormDisabled } = useWorkflowModeContext();
 
@@ -140,6 +147,7 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
     setAddOwners(initial.addOwners);
     setEmptyAssigneeStrategy(initial.emptyAssigneeStrategy);
     setCandidates(initial.candidates);
+    setAllowPartialDecisions(initial.allowPartialDecisions);
   }, [node]);
 
   const handleSave = () => {
@@ -163,15 +171,22 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
         ? existingTransitionMetadata
         : DEFAULT_USER_APPROVAL_TRANSITIONS;
 
+    // Settings this form does not edit, such as domain-owner approvers or the task status, keep
+    // their saved values.
+    const savedConfig = (node?.data?.config ?? {}) as Record<string, unknown>;
     const config = createNodeConfig({
       displayName,
       description,
       type: NodeType.UserTask,
       subType: NodeSubType.UserApprovalTask,
       config: {
+        ...savedConfig,
+        // Only a workflow that holds changes can decide them one by one.
+        allowPartialDecisions: isEnforceMode && allowPartialDecisions,
         approvalThreshold,
         rejectionThreshold,
         assignees: {
+          ...(savedConfig.assignees as AssigneesConfigSlice | undefined),
           addReviewers,
           addOwners,
           emptyAssigneeStrategy,
@@ -261,6 +276,20 @@ export const UserApprovalForm: React.FC<UserApprovalFormProps> = ({
             }}
           />
         </div>
+
+        {isEnforceMode && (
+          <div className="tw:mb-6">
+            <Toggle
+              data-testid="user-approval-allow-partial-decisions"
+              hint={t('message.allow-partial-decisions-hint')}
+              isDisabled={isFormDisabled}
+              isSelected={allowPartialDecisions}
+              label={t('label.allow-partial-decisions')}
+              size="sm"
+              onChange={setAllowPartialDecisions}
+            />
+          </div>
+        )}
 
         <div className="tw:mb-6">
           <div className="tw:flex tw:flex-col tw:gap-4">

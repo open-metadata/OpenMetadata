@@ -88,7 +88,9 @@ test.describe('Entity Summary Panel', () => {
     test(`should display summary panel for ${entityType}`, async ({ page }) => {
       await openEntitySummaryPanel(page, entityType as EntityType);
 
-      await page.locator('.entity-summary-panel-container').isVisible();
+      await expect(
+        page.locator('.entity-summary-panel-container')
+      ).toBeVisible();
 
       await verifyEntitySummaryPanelStructure(page);
       await verifyEntityDetailsInPanel(page);

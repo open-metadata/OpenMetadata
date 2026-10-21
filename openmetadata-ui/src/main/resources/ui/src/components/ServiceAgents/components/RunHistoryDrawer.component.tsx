@@ -20,9 +20,12 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlignLeft, LinkExternal02 } from '@untitledui/icons';
+import {
+  AlignLeft,
+  LinkExternal02,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useEffect, useRef, useState } from 'react';
+import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
@@ -30,6 +33,7 @@ import {
   Agent,
   AgentActionPermissions,
   AgentRun,
+  RenderRunAction,
   RunStatus,
 } from '../AgentsPage.interface';
 import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
@@ -156,9 +160,16 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
 interface SelectedRunPanelProps {
   run?: AgentRun;
   isLoading: boolean;
+  action?: ReactNode;
 }
 
-const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
+const ACTIONABLE_RUN_STATUSES: RunStatus[] = ['failed', 'partial'];
+
+const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
+  run,
+  isLoading,
+  action,
+}) => {
   const { t } = useTranslation();
   const meta = run ? RUN_META[run.status] : undefined;
   const tot = run?.totals;
@@ -196,6 +207,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({ run, isLoading }) => {
           type="pill-color">
           {runLabel}
         </Badge>
+        {action}
       </Box>
 
       {/* stat strip */}
@@ -288,6 +300,7 @@ interface RunHistoryDrawerProps {
     href: string;
     label: string;
   };
+  renderRunAction?: RenderRunAction;
 }
 
 const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
@@ -300,6 +313,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   onOpenLogs,
   onRun,
   agentLinkProps,
+  renderRunAction,
 }) => {
   const { t } = useTranslation();
   const { isPending, isUnavailable } = useAgentActionAvailability();
@@ -406,7 +420,15 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
         </div>
         <RunHistory runs={runs} selectedId={selId} onSelect={setSelId} />
 
-        <SelectedRunPanel isLoading={isLoading} run={run} />
+        <SelectedRunPanel
+          action={
+            run && ACTIONABLE_RUN_STATUSES.includes(run.status)
+              ? renderRunAction?.(agent, run, onClose)
+              : undefined
+          }
+          isLoading={isLoading}
+          run={run}
+        />
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );
