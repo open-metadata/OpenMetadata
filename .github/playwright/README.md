@@ -44,7 +44,7 @@ Specs that repeat the same scenarios for every entity type (Entity, Lineage, Cus
 
 The preparation job runs migrations, sample ingestion, reindexing, authentication setup, and shared entity prerequisites once. The fixture manifest records the source commit, schema hash, seed hash/version, Playwright-state hash, PostgreSQL and OpenSearch image digests, search cluster alias, and the ingestion image ID. Each shard validates the manifest, extracts database/search/auth state under `/dev/shm`, verifies the seeded search indexes, and starts the built OpenMetadata distribution directly on the host with the recorded alias. The pre-seeded response manifest keeps the randomly named shared entities stable across the fixture builder and shard processes.
 
-The Airflow ingestion image is built and cached by its own `prepare-ingestion-image` job, alongside `build`, so it is never on the fixture builder's path. The fixture is still re-seeded from scratch whenever any of its inputs change.
+The Airflow ingestion image is restored or built once by its own `prepare-ingestion-image` job, alongside `build`. A fixture rebuild loads that image (`OM_INGESTION_IMAGE_PRELOADED=true` makes `run_local_docker` skip building it) and still seeds from scratch whenever any fixture input changes; the Airflow shards load the same image.
 
 Standard shards do not build Docker images, run migrations, start Airflow, ingest sample data, reindex, repeat authentication, or recreate shared entity prerequisites. PostgreSQL durability is disabled for the disposable clone, OpenSearch uses a 2 GiB heap and zero replicas, and routine logs are bounded.
 
