@@ -153,15 +153,19 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       placeholder: t('label.email'),
       // The email is the user's identity; it can't be changed once created.
       props: { 'data-testid': 'email', isDisabled: isEdit },
-      rules: {
-        required: t('label.field-required', { field: t('label.email') }),
-        pattern: {
-          value: EMAIL_REG_EX,
-          message: t('message.field-text-is-invalid', {
-            fieldText: t('label.email'),
-          }),
-        },
-      },
+      // Locked and never sent in the edit patch, so validating it could only
+      // block Save (e.g. an existing `user@localhost` fails EMAIL_REG_EX).
+      rules: isEdit
+        ? undefined
+        : {
+            required: t('label.field-required', { field: t('label.email') }),
+            pattern: {
+              value: EMAIL_REG_EX,
+              message: t('message.field-text-is-invalid', {
+                fieldText: t('label.email'),
+              }),
+            },
+          },
     },
     {
       name: 'displayName',

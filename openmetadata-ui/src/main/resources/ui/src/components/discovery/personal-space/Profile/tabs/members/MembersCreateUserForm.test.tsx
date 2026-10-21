@@ -220,5 +220,25 @@ describe('MembersCreateUserForm', () => {
       expect(createUser).not.toHaveBeenCalled();
       expect(onNavigate).toHaveBeenCalledWith({ type: 'users' });
     });
+
+    it('saves a user whose locked email would fail the create-time email check', async () => {
+      render(
+        <MembersCreateUserForm
+          user={{ ...user, email: 'jane@localhost' }}
+          onNavigate={jest.fn()}
+        />
+      );
+
+      const displayName = (
+        await screen.findByTestId('displayName')
+      ).querySelector('input') as HTMLInputElement;
+      fireEvent.change(displayName, { target: { value: 'Jane Doe' } });
+      await waitFor(() =>
+        expect(screen.getByTestId('save-user')).toBeEnabled()
+      );
+      fireEvent.click(screen.getByTestId('save-user'));
+
+      await waitFor(() => expect(updateUserDetail).toHaveBeenCalled());
+    });
   });
 });
