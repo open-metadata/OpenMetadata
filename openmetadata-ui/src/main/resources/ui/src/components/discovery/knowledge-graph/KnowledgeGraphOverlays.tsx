@@ -32,7 +32,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useOverlay } from 'react-aria';
+import { useKeyboard } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -566,13 +566,24 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
-  // The inspector is the topmost overlay inside fullscreen, so Escape closes
-  // only the panel; useOverlay stops the key and skips non-topmost overlays.
-  const inspectorRef = useRef<HTMLDivElement>(null);
-  const { overlayProps: inspectorOverlayProps } = useOverlay(
-    { isOpen: inspectorOpen, onClose: closeInspector },
-    inspectorRef
-  );
+  // Escape inside the panel closes only the panel; the fullscreen overlay above
+  // it must not also see the key. Not useOverlay: that would make the panel the
+  // topmost overlay, and fullscreen would ignore Escape pressed elsewhere.
+  // react-aria shares one stop-propagation flag across this handler's events,
+  // so Escape restores it explicitly rather than relying on the default.
+  const { keyboardProps: inspectorKeyboardProps } = useKeyboard({
+    onKeyDown: (event) => {
+      if (event.key !== 'Escape') {
+        event.continuePropagation();
+
+        return;
+      }
+      if (!event.isPropagationStopped()) {
+        event.stopPropagation();
+      }
+      closeInspector();
+    },
+  });
   // Leaving the drilled-into relationship (canvas click, close, another row)
   // ends the trip, so a later direct selection of that edge offers no "back".
   useEffect(() => {
@@ -678,8 +689,7 @@ const KnowledgeGraphOverlays = ({
           className="kg-inspector tw:relative tw:z-10 tw:flex tw:h-full tw:min-h-0 tw:min-w-0 tw:flex-col tw:overflow-hidden tw:bg-surface"
           data-testid="graph-inspector"
           role="dialog"
-          {...inspectorOverlayProps}
-          ref={inspectorRef}>
+          {...inspectorKeyboardProps}>
           <InspectorHeader
             headingRef={headingRef}
             subtitle={getInspectorSubtitle(
