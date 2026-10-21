@@ -33,28 +33,26 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
           }
         )}
         footer={
-          <>
-            <Typography as="p" className="tw:mb-3.5! tw:text-primary">
-              <Tooltip title={t('label.documentation')}>
-                <span>
-                  <Transi18next
-                    i18nKey="message.refer-to-our-doc"
-                    renderElement={
-                      <a
-                        aria-label={t('label.documentation')}
-                        href={DATA_INSIGHT_DOCS}
-                        rel="noreferrer"
-                        target="_blank"
-                      />
-                    }
-                    values={{
-                      doc: t('label.doc-plural-lowercase'),
-                    }}
-                  />
-                </span>
-              </Tooltip>
-            </Typography>
-          </>
+          <Typography as="p">
+            <Tooltip title={t('label.documentation')}>
+              <span>
+                <Transi18next
+                  i18nKey="message.refer-to-our-doc"
+                  renderElement={
+                    <a
+                      aria-label={t('label.documentation')}
+                      href={DATA_INSIGHT_DOCS}
+                      rel="noreferrer"
+                      target="_blank"
+                    />
+                  }
+                  values={{
+                    doc: t('label.doc-plural-lowercase'),
+                  }}
+                />
+              </span>
+            </Tooltip>
+          </Typography>
         }
         icon={icon ?? <Database01 />}
       />
