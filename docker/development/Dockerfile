@@ -25,10 +25,7 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/bin && \
     ln -s /busybox/sh /shim/bin/sh && \
     printf '#!/busybox/sh\nexec /busybox/sh "$@"\n' > /shim/bin/bash && \
-    chmod 755 /shim/bin/bash && \
-    # Required for openmetadata-ops.sh
-    mkdir -p /shim/usr/bin && \
-    ln -s /busybox/env /shim/usr/bin/env
+    chmod 755 /shim/bin/bash
 
 FROM eclipse-temurin:21-jdk AS jre-builder
 
