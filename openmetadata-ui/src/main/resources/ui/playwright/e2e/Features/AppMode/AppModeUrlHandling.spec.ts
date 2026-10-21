@@ -136,7 +136,11 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
       });
 
       await test.step('Click the team in the owner popover', async () => {
-        await page.getByTestId('owner-link').getByTestId(teamName).hover();
+        // The owner chip's testid is the owner's display name, not its name.
+        await page
+          .getByTestId('owner-link')
+          .getByTestId(team.responseData.displayName)
+          .hover();
         const popover = page.getByTestId('user-popover-card');
         await expect(popover).toBeVisible();
         await popover.getByTestId('team-name').click();
