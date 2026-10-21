@@ -46,7 +46,7 @@ describe('EntitySummaryProgressBar component', () => {
 
     const entityName = await screen.findByTestId('entity-name');
 
-    expect(entityName).toHaveClass('tw:wrap-break-word');
+    expect(entityName).toHaveClass('tw:wrap-anywhere');
     expect(entityName).not.toHaveClass('break-all');
   });
 
