@@ -12,9 +12,11 @@
  */
 
 import { Toggle } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { ReadOnlyRow } from './SettingsSection';
 
 interface UserAdminRowProps {
@@ -38,9 +40,10 @@ const UserAdminRow: React.FC<UserAdminRowProps> = ({
   const handleChange = async (isAdmin: boolean) => {
     setIsSaving(true);
     try {
-      // updateUserDetails toasts its own failures; the toggle then reverts
-      // because it reads the unchanged userData.
       await updateUserDetails({ isAdmin }, 'isAdmin');
+    } catch (error) {
+      // The toggle reverts on its own: it reads the unchanged userData.
+      showErrorToast(error as AxiosError);
     } finally {
       setIsSaving(false);
     }

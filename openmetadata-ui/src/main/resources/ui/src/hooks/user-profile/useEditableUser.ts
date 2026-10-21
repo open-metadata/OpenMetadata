@@ -120,30 +120,31 @@ export const useEditableUser = (
         return;
       }
       const jsonPatch = compare(userData, { ...userData, ...data });
-      try {
-        const response = await updateUserDetail(userData.id, jsonPatch);
-        if (!response) {
-          return;
-        }
-        // Roles also flip isAdmin, and teams can change inherited domains, so
-        // those keys pull the related fields back from the response too.
-        const nonTeamKeyData =
-          key === 'roles'
-            ? { roles: response.roles, isAdmin: response.isAdmin }
-            : { [key]: response[key] };
-        const updatedKeyData =
-          key === 'teams'
-            ? { teams: response.teams, domains: response.domains }
-            : nonTeamKeyData;
-        setUserData(
-          omitBy({ ...userData, ...updatedKeyData }, isUndefined) as User
-        );
-        showSuccessToast(
-          t('server.update-entity-success', { entity: t('label.profile') })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+      // Errors propagate (no toast here) so an inline editor stays open with
+      // the user's draft; the caller surfaces the failure.
+      const response = await updateUserDetail(userData.id, jsonPatch);
+      if (!response) {
+        return;
       }
+      // Roles also flip isAdmin, and teams can change inherited domains, so
+      // those keys pull the related fields back from the response too.
+      const nonTeamKeyData =
+        key === 'roles'
+          ? { roles: response.roles, isAdmin: response.isAdmin }
+          : { [key]: response[key] };
+      const updatedKeyData =
+        key === 'teams'
+          ? { teams: response.teams, domains: response.domains }
+          : nonTeamKeyData;
+      // Merge into the latest state, not the copy this save started from, so
+      // two overlapping saves can't overwrite each other's field.
+      setUserData(
+        (prev) =>
+          prev && (omitBy({ ...prev, ...updatedKeyData }, isUndefined) as User)
+      );
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.profile') })
+      );
     },
     [userData, t]
   );

@@ -14,6 +14,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { User } from '../../../../../generated/entity/teams/user';
 import UserDescriptionRow from './UserDescriptionRow';
 
+jest.mock('../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -76,4 +80,25 @@ describe('UserDescriptionRow', () => {
       'description'
     );
   });
+
+  it('keeps the editor open with the draft when the save fails', async () => {
+    render(
+      <UserDescriptionRow
+        canEdit
+        updateUserDetails={jest.fn().mockRejectedValue(new Error('boom'))}
+        userData={{ id: 'u1', name: 'jane' } as User}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('user-description-edit'));
+    fireEvent.change(screen.getByTestId('editor'), {
+      target: { value: 'Unsaved draft' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('user-description-save'));
+    });
+
+    expect(screen.getByTestId('editor')).toHaveValue('Unsaved draft');
+  });
 });
+

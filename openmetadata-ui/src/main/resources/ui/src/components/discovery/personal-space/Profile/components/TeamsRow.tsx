@@ -68,13 +68,15 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
   const [draftTeamIds, setDraftTeamIds] = useState<string[]>(initialTeamIds);
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
 
-  // The joinable-teams list only feeds the edit dropdown; fetch it lazily when
-  // the row enters edit mode rather than on every Permissions page load.
+  // The teams list only feeds the edit dropdown; fetch it lazily when the row
+  // enters edit mode rather than on every Permissions page load. Admins may add
+  // users to closed teams (the server allows it), so they get every team;
+  // everyone else only the joinable ones.
   const loadTeams = useCallback(() => {
-    getTeamsHierarchy(true)
+    getTeamsHierarchy(!isAdminUser)
       .then((res) => setTeamOptions(flattenTeams(res.data ?? [])))
       .catch((err) => showErrorToast(err as AxiosError));
-  }, []);
+  }, [isAdminUser]);
 
   // Merge fetched joinable teams with the user's current teams so a team not in
   // the joinable list is still shown and not silently dropped on save.

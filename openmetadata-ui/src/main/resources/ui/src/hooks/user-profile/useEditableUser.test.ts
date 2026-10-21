@@ -120,4 +120,53 @@ describe('useEditableUser', () => {
     expect(mockGetUserByName).not.toHaveBeenCalled();
     expect(result.current.userData?.email).toBe('harsh@acme.io');
   });
+
+  it('keeps both fields when two saves overlap', async () => {
+    mockGetUserByName.mockResolvedValue({
+      id: 'u2',
+      name: 'jane',
+      isAdmin: false,
+      description: '',
+    });
+    let resolveAdmin!: (value: unknown) => void;
+    mockUpdateUserDetail
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveAdmin = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ id: 'u2', name: 'jane', description: 'Hi' });
+
+    const { result } = renderHook(() => useEditableUser('jane'));
+    await act(async () => undefined);
+
+    let adminSave!: Promise<void>;
+    await act(async () => {
+      adminSave = result.current.updateUserDetails({ isAdmin: true }, 'isAdmin');
+      await result.current.updateUserDetails({ description: 'Hi' }, 'description');
+    });
+    await act(async () => {
+      resolveAdmin({ id: 'u2', name: 'jane', isAdmin: true });
+      await adminSave;
+    });
+
+    expect(result.current.userData).toEqual(
+      expect.objectContaining({ isAdmin: true, description: 'Hi' })
+    );
+  });
+
+  it('rejects a failed save without toasting, so the caller keeps its draft', async () => {
+    mockGetUserByName.mockResolvedValue({ id: 'u2', name: 'jane' });
+    mockUpdateUserDetail.mockRejectedValue(new Error('boom'));
+
+    const { result } = renderHook(() => useEditableUser('jane'));
+    await act(async () => undefined);
+
+    await expect(
+      result.current.updateUserDetails({ description: 'x' }, 'description')
+    ).rejects.toThrow('boom');
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
 });
+

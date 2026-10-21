@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 let mockIsAdmin: boolean | undefined;
+const mockGetTeamsHierarchy = jest.fn().mockResolvedValue({ data: [] });
+
+jest.mock('../../../../../rest/teamsAPI', () => ({
+  getTeamsHierarchy: (...args: unknown[]) => mockGetTeamsHierarchy(...args),
+}));
 
 jest.mock(
   'components/Settings/Team/TeamsSelectable/TeamsSelectableNew',
@@ -42,12 +47,17 @@ jest.mock('./InlineEditCard', () => ({
     view,
     canEdit,
     isSaveDisabled,
+    onEnterEdit,
   }: {
     view?: ReactNode;
     canEdit?: boolean;
     isSaveDisabled?: boolean;
+    onEnterEdit?: () => void;
   }) => (
     <div>
+      <button data-testid="enter-edit" type="button" onClick={onEnterEdit}>
+        edit
+      </button>
       <span data-testid="can-edit">{String(canEdit)}</span>
       <span data-testid="save-disabled">{String(isSaveDisabled)}</span>
       {view}
@@ -84,4 +94,27 @@ describe('TeamsRow', () => {
     expect(screen.getByTestId('can-edit')).toHaveTextContent('true');
     expect(screen.getByTestId('save-disabled')).toHaveTextContent('true');
   });
+
+  it.each([
+    [true, false],
+    [false, true],
+  ])(
+    'admin=%s loads teams with joinableOnly=%s (admins also see closed teams)',
+    async (isAdmin, joinableOnly) => {
+      mockIsAdmin = isAdmin;
+      render(
+        <TeamsRow
+          updateUserDetails={jest.fn()}
+          userData={{ name: 'harsh', teams: [] } as unknown as User}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('enter-edit'));
+      });
+
+      expect(mockGetTeamsHierarchy).toHaveBeenCalledWith(joinableOnly);
+    }
+  );
 });
+
