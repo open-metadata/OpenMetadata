@@ -14,9 +14,9 @@ import { act, render, screen } from '@testing-library/react';
 import { useFillViewportHeight } from './useFillViewportHeight';
 
 const Panel = () => {
-  const { ref, height } = useFillViewportHeight<HTMLDivElement>();
+  const ref = useFillViewportHeight<HTMLDivElement>();
 
-  return <div data-height={height} data-testid="panel" ref={ref} />;
+  return <div data-testid="panel" ref={ref} />;
 };
 
 const setTop = (top: number) =>
@@ -25,6 +25,14 @@ const setTop = (top: number) =>
     .mockReturnValue({ top } as DOMRect);
 
 describe('useFillViewportHeight', () => {
+  beforeEach(() =>
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      cb(0);
+
+      return 1;
+    })
+  );
+
   afterEach(() => jest.restoreAllMocks());
 
   it('fills the viewport below the element, less the bottom gap', () => {
@@ -32,7 +40,7 @@ describe('useFillViewportHeight', () => {
     setTop(286);
     render(<Panel />);
 
-    expect(screen.getByTestId('panel')).toHaveAttribute('data-height', '598');
+    expect(screen.getByTestId('panel')).toHaveStyle({ height: '598px' });
   });
 
   it('re-measures when the viewport resizes', () => {
@@ -45,7 +53,7 @@ describe('useFillViewportHeight', () => {
       window.dispatchEvent(new Event('resize'));
     });
 
-    expect(screen.getByTestId('panel')).toHaveAttribute('data-height', '798');
+    expect(screen.getByTestId('panel')).toHaveStyle({ height: '798px' });
   });
 
   it('never shrinks below the minimum height', () => {
@@ -53,6 +61,31 @@ describe('useFillViewportHeight', () => {
     setTop(286);
     render(<Panel />);
 
-    expect(screen.getByTestId('panel')).toHaveAttribute('data-height', '240');
+    expect(screen.getByTestId('panel')).toHaveStyle({ height: '240px' });
+  });
+
+  it('collapses a burst of resize events into one measurement per frame', () => {
+    window.innerHeight = 900;
+    const rect = setTop(286);
+    render(<Panel />);
+    const queued: FrameRequestCallback[] = [];
+    jest.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      queued.push(cb);
+
+      return queued.length;
+    });
+    rect.mockClear();
+
+    act(() => {
+      for (let i = 0; i < 5; i++) {
+        window.dispatchEvent(new Event('resize'));
+      }
+    });
+
+    expect(queued).toHaveLength(1);
+
+    act(() => queued[0](0));
+
+    expect(rect).toHaveBeenCalledTimes(1);
   });
 });

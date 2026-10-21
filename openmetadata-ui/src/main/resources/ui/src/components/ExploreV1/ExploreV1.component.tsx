@@ -631,8 +631,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
-  const { ref: panelsRef, height: panelsHeight } =
-    useFillViewportHeight<HTMLDivElement>();
+  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -1393,7 +1392,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <div ref={panelsRef} style={{ height: panelsHeight }}>
+      <div ref={panelsRef}>
         <ResizableLeftPanels
           showLearningIcon
           className="tw:h-full"

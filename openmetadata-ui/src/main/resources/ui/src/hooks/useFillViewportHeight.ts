@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
 const MIN_HEIGHT = 240;
 
@@ -19,41 +19,56 @@ const MIN_HEIGHT = 240;
  * `calc(100vh - offset)` cannot follow content above it that changes height
  * (a filter bar wrapping to a second row, applied-filter chips), so the element
  * is measured instead. Re-measures when the viewport or the parent resizes.
+ *
+ * The height is written to the element's style rather than React state, so a
+ * window drag never re-renders the page that owns the element, and bursts of
+ * resize/observer events collapse to one measurement per animation frame.
  */
 export const useFillViewportHeight = <T extends HTMLElement>(
   bottomGap = 16
 ) => {
   const ref = useRef<T>(null);
-  const [height, setHeight] = useState<number>();
 
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) {
       return;
     }
-    const update = () => {
-      const next = Math.max(
+    let frame = 0;
+    const measure = () => {
+      frame = 0;
+      const next = `${Math.max(
         MIN_HEIGHT,
         Math.floor(
           window.innerHeight - element.getBoundingClientRect().top - bottomGap
         )
-      );
-      setHeight((prev) => (prev === next ? prev : next));
+      )}px`;
+      if (element.style.height !== next) {
+        element.style.height = next;
+      }
     };
-    update();
-    window.addEventListener('resize', update);
+    const schedule = () => {
+      if (!frame) {
+        frame = requestAnimationFrame(measure);
+      }
+    };
+    measure();
+    window.addEventListener('resize', schedule);
     // Content above the element grows its parent and pushes its top down.
     const observer =
-      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(schedule);
     if (element.parentElement) {
       observer?.observe(element.parentElement);
     }
 
     return () => {
-      window.removeEventListener('resize', update);
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', schedule);
       observer?.disconnect();
     };
   }, [bottomGap]);
 
-  return { ref, height };
+  return ref;
 };
