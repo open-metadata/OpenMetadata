@@ -231,6 +231,12 @@ const RequestDescriptionPage = withPageSuspenseFallback(
   )
 );
 
+const TaskDetailsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/entity/tasks/TaskDetailsPage/TaskDetailsPage')
+  )
+);
+
 const RequestTagsPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/TasksPage/RequestTagPage/RequestTagPage')
@@ -520,6 +526,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route element={<BotDetailsPage />} path={ROUTES.BOTS_PROFILE} />
+      <Route element={<TaskDetailsPage />} path={ROUTES.TASK_DETAIL} />
       <Route
         element={<AddCustomProperty />}
         path={ROUTES.ADD_CUSTOM_PROPERTY}

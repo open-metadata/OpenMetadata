@@ -38,7 +38,7 @@ jest.mock('../observability/Alerts/AlertDetailsPage', () => ({
   ),
 }));
 
-jest.mock('../../pages/AddNotificationPage/AddNotificationPage', () => ({
+jest.mock('../../pages/AddObservabilityPage/AddObservabilityPage', () => ({
   __esModule: true,
   default: jest.fn().mockReturnValue(<div>AddNotificationPage</div>),
 }));

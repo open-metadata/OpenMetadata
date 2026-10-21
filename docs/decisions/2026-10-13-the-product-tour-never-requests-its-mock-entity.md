@@ -1,10 +1,10 @@
 # The product tour never sends a request about its mock table
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-15 (Tour spec removed; guard is `reviewer`
+  until the redesigned tour ships its own spec)
 - **Deciders:** @harsh-vador
-- **Guard:** `playwright/e2e/Flow/Tour.spec.ts`, "Tour should work from help section": it records every
-  API request naming the mock table and fails if there are any
+- **Guard:** `reviewer` — see the v2 amendment
 - **Related:** #34473, #35090
 
 ## Context
@@ -47,3 +47,16 @@ lineage step. Neither the specs nor the unit tests could see this.
 - The guards live in each component rather than in one interceptor. A blanket block in the REST
   layer would turn every leak into a component error state, which is the failure this record
   removes. It would also require the REST layer to depend on UI routing.
+
+## Amendment (v2, 2026-10-15)
+
+The new landing page (#34770) no longer renders `#feedWidgetData`, the anchor `TourPage` waits for
+before it opens the tour, so `/tour` renders the landing page and the tour never starts. The tour is
+being redesigned, and every test in `playwright/e2e/Flow/Tour.spec.ts` walked the old steps, so the
+spec was deleted rather than kept quarantined (the AUT nightly ran it regardless and failed on it).
+That removed the request check this record named as its guard.
+
+The decision is unchanged: `/tour` still renders on mock data, and the `isTourPage` gates stay. The
+redesigned tour's spec must restore the request check — record every API request naming the mock
+table's FQN or id, or an empty entity link, and fail if there are any — and this record's `Guard`
+must point at it again in the same PR.

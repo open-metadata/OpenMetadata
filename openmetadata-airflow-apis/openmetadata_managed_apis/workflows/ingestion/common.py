@@ -301,7 +301,7 @@ def build_dag_configs(ingestion_pipeline: IngestionPipeline) -> dict:
         "start_date": start_date,
         "end_date": ingestion_pipeline.airflowConfig.endDate.root if ingestion_pipeline.airflowConfig.endDate else None,
         "max_active_runs": ingestion_pipeline.airflowConfig.maxActiveRuns,
-        "dagrun_timeout": timedelta(ingestion_pipeline.airflowConfig.workflowTimeout)
+        "dagrun_timeout": timedelta(seconds=ingestion_pipeline.airflowConfig.workflowTimeout)
         if ingestion_pipeline.airflowConfig.workflowTimeout
         else None,
         "is_paused_upon_creation": ingestion_pipeline.airflowConfig.pausePipeline or False,

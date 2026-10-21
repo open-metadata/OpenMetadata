@@ -13,6 +13,7 @@
 
 import { act, render, screen } from '@testing-library/react';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
+import { TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TeamType } from '../../generated/entity/teams/team';
 import { Include } from '../../generated/type/include';
@@ -415,6 +416,24 @@ describe('Test Teams Page', () => {
         expect.objectContaining({
           include: Include.NonDeleted,
         })
+      );
+    });
+
+    it('should not request owned assets, since the asset column reads /teams/assets/counts', async () => {
+      setMockPermissions({ ViewBasic: true });
+
+      await act(async () => {
+        render(<TeamsPage />);
+      });
+
+      const advancedFetches = (getTeams as jest.Mock).mock.calls.filter(
+        ([params]) => params?.fields
+      );
+
+      expect(advancedFetches.length).toBeGreaterThan(0);
+
+      advancedFetches.forEach(([params]) =>
+        expect(params.fields).not.toContain(TabSpecificField.OWNS)
       );
     });
 

@@ -129,6 +129,10 @@
       "title": "Supports Profiler",
       "$ref": "../connectionBasicType.json#/definitions/supportsProfiler"
     },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "$ref": "../connectionBasicType.json#/definitions/supportsAutoPartitionDetection"
+    },
     "supportsDatabase": {
       "title": "Supports Database",
       "$ref": "../connectionBasicType.json#/definitions/supportsDatabase"

@@ -237,9 +237,9 @@ public class GlossaryTagChildPropagationIT {
    * Assets tab — does the term still show on the table's test cases?
    *
    * <p>Test cases are entities, not fields, so nothing rebuilds their docs from the parent the way
-   * column docs are rebuilt. The bulk API also re-indexes through {@code updateEntity(ref)}, which
-   * clears the change description, so the descriptor-driven cascade never fired and the term stayed
-   * on the test case doc. {@code SearchRepository.propagateTagChangeToChildren} drives it explicitly.
+   * column docs are rebuilt. The Assets tab saves the table as its own PATCH, so the change
+   * description that PATCH records drives the descriptor-driven cascade to the test case doc, as any
+   * edit of the table's tags does.
    *
    * <p>The time-series documents that embed a copy of the test case are covered by {@code
    * CustomIndexTest#testTestCaseResultIndex_derivesParentTableGlossaryTerms} and its

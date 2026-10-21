@@ -22,6 +22,9 @@ import { FC } from 'react';
 export enum TopicKey {
   PLATFORM_HEALTH = 'platformHealth',
   DATA_ESTATE = 'dataEstate',
+  TOTAL_DATA_ASSETS = 'totalDataAssets',
+  MY_TASKS = 'myTasks',
+  PIPELINE_STATUS = 'pipelineStatus',
   TEAM_ACTIVITY = 'teamActivity',
   YOURS_AND_FOLLOWED = 'yoursAndFollowed',
   CONTEXT_CENTER = 'contextCenter',
@@ -61,6 +64,19 @@ export interface TopicEmptyStateConfig {
    */
   needsSetup?: boolean;
   /** Absent when the viewer may not create what the card is waiting for. */
+  action?: TopicAction;
+  /**
+   * Keeps the card's footer while it is empty: a line of context ("0 assets")
+   * and the link that fills the card. When set, `action` is ignored — the step
+   * to take is the footer link, as on the populated card — and the body shows
+   * only the icon, title and description.
+   */
+  footer?: TopicEmptyStateFooter;
+}
+
+export interface TopicEmptyStateFooter {
+  meta: string;
+  /** Absent when the viewer may not take the step the card is waiting for. */
   action?: TopicAction;
 }
 

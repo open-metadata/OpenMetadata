@@ -58,6 +58,24 @@ describe('CoreBooleanField', () => {
     jest.clearAllMocks();
   });
 
+  it('names a map entry toggle by its key instead of repeating it as a label', () => {
+    render(
+      <CoreBooleanField
+        {...baseProps}
+        name="verifyCerts"
+        schema={{ type: 'boolean', __additional_property: true }}
+      />
+    );
+
+    expect(Toggle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: undefined,
+        'aria-label': 'verifyCerts',
+      }),
+      expect.anything()
+    );
+  });
+
   it('renders with schema title as label', () => {
     render(<CoreBooleanField {...baseProps} />);
 

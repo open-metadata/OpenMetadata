@@ -14,6 +14,7 @@ import { contextCenterModule } from '../components/discovery/context-center/cont
 import { entityModule } from '../components/discovery/entity/entity.module';
 import { exploreModule } from '../components/discovery/explore/explore.module';
 import { homeModule } from '../components/discovery/home/home.module';
+import { lineageModule } from '../components/discovery/lineage/lineage.module';
 import { personalSpaceModule } from '../components/discovery/personal-space/personalSpace.module';
 import { governModule } from '../components/governance/govern/govern.module';
 import { marketplaceModule } from '../components/governance/marketplace/marketplace.module';
@@ -34,6 +35,7 @@ import {
 const APP_MODE_MODULES: Array<AppModule> = [
   homeModule,
   exploreModule,
+  lineageModule,
   entityModule,
   connectionsModule,
   observabilityModule,

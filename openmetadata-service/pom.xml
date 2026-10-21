@@ -682,21 +682,9 @@
       <groupId>org.apache.johnzon</groupId>
       <artifactId>johnzon-core</artifactId>
     </dependency>
-    <!-- Json-Patch since Johnzon JSONPatch.createDiff doesn't work as expected -->
-    <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-      <version>1.13</version>
-      <scope>compile</scope>
-    </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr353</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>com.flipkart.zjsonpatch</groupId>
-      <artifactId>zjsonpatch</artifactId>
-      <version>0.4.16</version>
     </dependency>
     <!-- https://mvnrepository.com/artifact/org.json/json -->
     <dependency>
@@ -722,14 +710,6 @@
       <artifactId>snakeyaml</artifactId>
       <version>${snakeyaml.version}</version>
     </dependency>
-
-    <!-- https://mvnrepository.com/artifact/io.jsonwebtoken/jjwt -->
-    <dependency>
-      <groupId>io.jsonwebtoken</groupId>
-      <artifactId>jjwt</artifactId>
-      <version>${jjwt.version}</version>
-    </dependency>
-
 
     <!-- https://mvnrepository.com/artifact/com.auth0/java-jwt -->
     <dependency>

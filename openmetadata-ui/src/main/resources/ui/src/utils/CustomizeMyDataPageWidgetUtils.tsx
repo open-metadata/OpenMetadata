@@ -42,6 +42,25 @@ const DataEstateWidget = withSuspenseFallback(
       import('../components/MyData/Widgets/DataEstateWidget/DataEstateWidget')
   )
 ) as ComponentType<WidgetCommonProps>;
+const TotalDataAssetsWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/TotalDataAssetsWidget/TotalDataAssetsWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
+const MyTasksWidget = withSuspenseFallback(
+  lazy(() => import('../components/MyData/Widgets/MyTasksWidget/MyTasksWidget'))
+) as ComponentType<WidgetCommonProps>;
+const PipelineStatusWidget = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../components/MyData/Widgets/PipelineStatusWidget/PipelineStatusWidget'
+      )
+  )
+) as ComponentType<WidgetCommonProps>;
 const TeamActivityWidget = withSuspenseFallback(
   lazy(
     () =>
@@ -116,6 +135,9 @@ const WIDGET_KEY_PREFIX_MAP: Array<
 > = [
   [LandingPageWidgetKeys.PLATFORM_HEALTH, PlatformHealthWidget],
   [LandingPageWidgetKeys.DATA_ESTATE, DataEstateWidget],
+  [LandingPageWidgetKeys.TOTAL_DATA_ASSETS, TotalDataAssetsWidget],
+  [LandingPageWidgetKeys.MY_TASK, MyTasksWidget],
+  [LandingPageWidgetKeys.PIPELINE_STATUS, PipelineStatusWidget],
   [LandingPageWidgetKeys.ACTIVITY_FEED, TeamActivityWidget],
   [LandingPageWidgetKeys.YOURS_AND_FOLLOWED, YoursAndFollowedWidget],
   [LandingPageWidgetKeys.KNOWLEDGE_CENTER, ContextCenterWidget],

@@ -167,7 +167,6 @@
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
     <java-jwt.version>4.6.2</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
-    <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <!-- CVE-2026-84939: relative path traversal via ClassTemplateLoader / WebappTemplateLoader
          during localized template lookup, fixed in 2.3.35. -->
@@ -195,7 +194,6 @@
     <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
-    <json-patch.version>1.13</json-patch.version>
     <!-- 12.1.12 clears CVE-2026-19203 (jetty-http) and CVE-2026-19204 (jetty-websocket-core-common). -->
     <jetty.version>12.1.12</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
@@ -772,11 +770,6 @@
         </exclusions>
       </dependency>
     <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-      <version>${json-patch.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.jknack</groupId>
       <artifactId>handlebars</artifactId>
       <version>${handlebars.version}</version>
@@ -1284,6 +1277,13 @@
                 <requireMavenVersion>
                   <version>3.6.0</version>
                 </requireMavenVersion>
+                <bannedDependencies>
+                  <message>java-json-tools is abandoned and jackson-coreutils 2.0 has unfixed CVEs. Diff with org.openmetadata.schema.utils.JsonDiff and apply with JsonUtils.applyPatch (ADR:2026-10-15-json-patches-are-computed-in-house-and-applied-with-parsson).</message>
+                  <excludes>
+                    <exclude>com.github.java-json-tools</exclude>
+                    <exclude>com.github.fge</exclude>
+                  </excludes>
+                </bannedDependencies>
               </rules>
             </configuration>
           </execution>

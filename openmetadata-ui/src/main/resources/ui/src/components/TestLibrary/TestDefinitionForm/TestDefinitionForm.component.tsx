@@ -14,7 +14,6 @@ import {
   Box,
   EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
@@ -22,6 +21,10 @@ import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import {
+  FORM_DRAWER_WIDTH_WITHOUT_HINT,
+  FORM_DRAWER_WIDTH_WITH_HINT,
+} from '../../../constants/common/formHint.constants';
 import {
   createTestDefinition,
   patchTestDefinition,
@@ -33,6 +36,7 @@ import {
   isSystemTestDefinition,
 } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import { ShowHintToggle } from '../../common/atoms/drawer/ShowHintToggle';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -197,18 +201,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     />
   );
 
-  const renderHintLabel = (label: string) => (
-    <>
-      <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
-      <Typography
-        className="tw:whitespace-nowrap tw:text-secondary"
-        size="text-sm"
-        weight="medium">
-        {label}
-      </Typography>
-    </>
-  );
-
   const drawerForm = (
     <HookForm
       emptyFieldDoc={
@@ -227,7 +219,13 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       fieldDocDisplay="panel"
       fieldDocHeader={
         <Box align="center" className="tw:gap-2" direction="row">
-          {renderHintLabel(t('label.form-hint'))}
+          <Lightbulb05 aria-hidden className="tw:size-4 tw:text-secondary" />
+          <Typography
+            className="tw:whitespace-nowrap tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.form-hint')}
+          </Typography>
         </Box>
       }
       form={form}
@@ -249,15 +247,8 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   // pr-10 clears the header's absolutely positioned close button.
   const hintToggle = (
-    <Box align="center" className="tw:gap-2 tw:pr-10" direction="row">
-      {renderHintLabel(t('label.show-hint'))}
-      <Toggle
-        aria-label={t('label.show-hint')}
-        data-testid="show-hint-toggle"
-        isSelected={showHint}
-        size="sm"
-        onChange={setShowHint}
-      />
+    <Box className="tw:pr-10">
+      <ShowHintToggle isSelected={showHint} onChange={setShowHint} />
     </Box>
   );
 
@@ -277,7 +268,9 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       // Columns scroll on their own: drop Content's padding, gap and stacking.
       body: { className: 'tw:flex-row tw:gap-0 tw:px-0 tw:md:px-0' },
       // Without the hint, narrow the drawer instead of stretching the form.
-      width: showHint ? '80vw' : '60vw',
+      width: showHint
+        ? FORM_DRAWER_WIDTH_WITH_HINT
+        : FORM_DRAWER_WIDTH_WITHOUT_HINT,
       submitLabel: t('label.save'),
       submitTestId: 'save-test-definition',
       onClose: handleDismiss,
