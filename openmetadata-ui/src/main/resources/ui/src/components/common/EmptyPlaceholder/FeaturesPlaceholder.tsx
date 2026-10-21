@@ -17,6 +17,8 @@ import { EmptyPlaceholderVariantProps } from './EmptyPlaceholder.interface';
  * Onboarding empty state: a title and description above feature columns
  * (`features`), with optional actions. Use it where a collection is empty
  * because the feature has not been set up yet, rather than for "no data".
+ * Kept as a wrapper so every empty state shares one entry point
+ * (ADR:2026-10-21-empty-states-render-through-the-placeholder-wrappers).
  *
  * The underlying `EmptyPlaceholder` is absolutely positioned, so the host
  * container must set `position: relative` for it to be visible.
