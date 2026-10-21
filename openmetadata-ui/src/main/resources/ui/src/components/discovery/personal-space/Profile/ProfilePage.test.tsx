@@ -13,6 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { getUserPath } from '../../../../utils/RouterUtils';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
   tab: null,
@@ -43,9 +44,15 @@ jest.mock('utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
+let mockIsAdmin = false;
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    currentUser: { id: 'u1', name: 'harsh' },
+    currentUser: { id: 'u1', name: 'harsh', isAdmin: mockIsAdmin },
     updateCurrentUser: jest.fn(),
   }),
 }));
@@ -140,6 +147,7 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
+    mockIsAdmin = false;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
@@ -207,7 +215,8 @@ describe('ProfilePage', () => {
     );
   });
 
-  it("redirects a legacy #profile/<other user> link to that user's edit view", async () => {
+  it("redirects an admin's legacy #profile/<other user> link to that user's edit form", async () => {
+    mockIsAdmin = true;
     mockHashState = { tab: 'profile', subPath: 'jane%40acme.io', params: {} };
 
     await act(async () => {
@@ -218,6 +227,19 @@ describe('ProfilePage', () => {
       'members',
       `user/${encodeURIComponent('jane@acme.io')}`
     );
+  });
+
+  it("sends a non-admin's legacy #profile/<other user> link to the read-only user page, not Members", async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane%40acme.io', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(getUserPath('jane@acme.io'), {
+      replace: true,
+    });
+    expect(mockSetHash).not.toHaveBeenCalledWith('members', expect.anything());
   });
 
   it('collapses a legacy #profile/<own name> link to #profile', async () => {

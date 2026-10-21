@@ -323,4 +323,22 @@ test.describe('AI Profile Users', () => {
     ).toBeVisible();
     await expect(dataConsumerPage.getByTestId('persona-edit')).toBeHidden();
   });
+
+  test("Non-admin's legacy #profile/<other user> link opens that user's read-only page", async ({
+    dataConsumerPage,
+  }) => {
+    await openAiProfile(dataConsumerPage);
+    await expect(
+      dataConsumerPage.getByTestId('profile-details-panel')
+    ).toBeVisible();
+
+    // Members (the edit form) is admin-only, so the link must not fall back to
+    // the viewer's own profile; it leaves for the classic user page instead.
+    await dataConsumerPage.evaluate(() => {
+      globalThis.location.hash = 'profile/admin';
+    });
+
+    await expect(dataConsumerPage).toHaveURL(/\/users\/admin(\/|$|\?)/);
+    await expect(dataConsumerPage.getByTestId('ai-profile-page')).toBeHidden();
+  });
 });

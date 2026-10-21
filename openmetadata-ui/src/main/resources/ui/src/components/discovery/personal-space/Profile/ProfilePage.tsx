@@ -15,6 +15,7 @@ import { Box } from '@openmetadata/ui-core-components';
 import { Link01 } from '@openmetadata/ui-core-components/icons';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { User } from '../../../../generated/entity/teams/user';
@@ -27,6 +28,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
+import { getUserPath } from '../../../../utils/RouterUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
@@ -58,6 +60,7 @@ const ProfilePage: React.FC = () => {
     updateUserDetails,
   } = useEditableUser(currentUser?.name, currentUser as User | undefined);
   const { state: hashState, setHash } = useSettingsHash();
+  const navigate = useNavigate();
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
@@ -80,8 +83,9 @@ const ProfilePage: React.FC = () => {
   }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Old `#profile/<username>` links (bookmarks, shared URLs) predate the edit
-  // view: your own name collapses to `#profile`, anyone else's opens their
-  // Members edit view.
+  // view: your own name collapses to `#profile`; anyone else's opens their Edit
+  // User form for admins, and the read-only classic user page for everyone
+  // else, who can't reach the admin-only Members tab.
   useEffect(() => {
     if (hashState.tab !== DEFAULT_PROFILE_NAV_ID || !hashState.subPath) {
       return;
@@ -89,11 +93,21 @@ const ProfilePage: React.FC = () => {
     const linkedName = safeDecodeURIComponent(hashState.subPath);
     if (linkedName === currentUser?.name) {
       setHash(DEFAULT_PROFILE_NAV_ID);
-    } else {
+    } else if (currentUser?.isAdmin) {
       const target = profileHash.user(linkedName);
       setHash(target.tab, target.subPath);
+    } else {
+      // Leaving the modal's route drops the hash, which closes the modal.
+      navigate(getUserPath(linkedName), { replace: true });
     }
-  }, [hashState.tab, hashState.subPath, currentUser?.name, setHash]);
+  }, [
+    hashState.tab,
+    hashState.subPath,
+    currentUser?.name,
+    currentUser?.isAdmin,
+    setHash,
+    navigate,
+  ]);
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
   // tabs through the `profile.tabs` extension point. Map each surviving
