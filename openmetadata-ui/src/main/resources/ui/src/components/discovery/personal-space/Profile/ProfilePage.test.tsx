@@ -86,8 +86,12 @@ jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
 }));
 
 let mockPermissions: Record<string, unknown> = {};
+let mockIsPermissionsLoading = false;
 jest.mock('context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: () => ({ permissions: mockPermissions }),
+  usePermissionProvider: () => ({
+    permissions: mockPermissions,
+    isPermissionsLoading: mockIsPermissionsLoading,
+  }),
 }));
 
 jest.mock('./tabs/notification/NotificationPanel', () => ({
@@ -158,6 +162,7 @@ describe('ProfilePage', () => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
     mockPermissions = {};
+    mockIsPermissionsLoading = false;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
     mockApplicationsProvider = {
@@ -337,7 +342,8 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('profile-nav-members')).not.toBeInTheDocument();
   });
 
-  it('waits on the loader while permissions are still empty', async () => {
+  it('waits on the loader while permissions are still loading', async () => {
+    mockIsPermissionsLoading = true;
     mockHashState = { tab: 'members', subPath: '', params: {} };
 
     await act(async () => {
@@ -348,6 +354,22 @@ describe('ProfilePage', () => {
     expect(
       screen.queryByTestId('permission-error-placeholder')
     ).not.toBeInTheDocument();
+  });
+
+  // PermissionProvider finishes loading even when its request fails, leaving
+  // the map empty: that is a loaded result, so a non-admin opening `#members`
+  // gets no-access instead of a loader that never finishes.
+  it('shows no-access, not the loader, once a failed permissions load leaves them empty', async () => {
+    mockHashState = { tab: 'members', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
   // A refresh on `#my-connections` (or Collate's `#billing/...`) resolves the

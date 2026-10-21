@@ -15,7 +15,7 @@ import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty, isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy } from 'lodash';
 import React, {
   FC,
   useCallback,
@@ -63,7 +63,7 @@ import ProfileSideNav from './ProfileSideNav';
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { permissions } = usePermissionProvider();
+  const { permissions, isPermissionsLoading } = usePermissionProvider();
   const { getContributions, contributionsReady } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
@@ -349,8 +349,10 @@ const ProfilePage: React.FC = () => {
 
     // Permissions and plugin contributions load after the page mounts; until
     // both are in, a permission-gated or contributed tab (e.g. `#billing`)
-    // reads as missing, so wait instead of flashing no-access.
-    if (!selectedItem && (isEmpty(permissions) || !contributionsReady)) {
+    // reads as missing, so wait instead of flashing no-access. Wait on the
+    // provider's loading flag, not on an empty map: a failed request leaves
+    // the map empty for good and must show no-access, not spin forever.
+    if (!selectedItem && (isPermissionsLoading || !contributionsReady)) {
       return <Loader />;
     }
 
