@@ -31,9 +31,11 @@ jest.mock('hooks/useSettingsHash', () => ({
 }));
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   updateUserDetail: jest.fn(),
 }));
 
@@ -149,6 +151,7 @@ describe('ProfilePage', () => {
     mockHashState = { tab: null, subPath: '', params: {} };
     mockIsAdmin = false;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
 
@@ -193,12 +196,13 @@ describe('ProfilePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('refreshes user data on mount', async () => {
+  it('refreshes your own data from the logged-in user endpoint, which never masks your email', async () => {
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
   it('loads only the logged-in user even when the hash names someone else', async () => {
@@ -208,11 +212,8 @@ describe('ProfilePage', () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
-    expect(mockGetUserByName).not.toHaveBeenCalledWith(
-      'jane',
-      expect.anything()
-    );
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
   it("redirects an admin's legacy #profile/<other user> link to that user's edit form", async () => {

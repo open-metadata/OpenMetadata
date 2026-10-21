@@ -20,7 +20,11 @@ import { ClientErrors } from '../../enums/Axios.enum';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { User } from '../../generated/entity/teams/user';
 import { Include } from '../../generated/type/include';
-import { getUserByName, updateUserDetail } from '../../rest/userAPI';
+import {
+  getLoggedInUser,
+  getUserByName,
+  updateUserDetail,
+} from '../../rest/userAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const USER_FIELDS = [
@@ -44,10 +48,14 @@ export interface EditableUser {
  * and patches it in place. `seed` (the logged-in user from the store) renders
  * the page chrome before the fetch lands and backfills `isAdmin`, which the
  * fields list does not return.
+ *
+ * `isSelf` loads through `/users/loggedInUser`: `/users/name/<you>` masks the
+ * email for non-admins (server-side PII masking), even on your own profile.
  */
 export const useEditableUser = (
   username: string | undefined,
-  seed?: User
+  seed?: User,
+  isSelf = false
 ): EditableUser => {
   const { t } = useTranslation();
   const [userData, setUserData] = useState<User | undefined>(seed);
@@ -72,10 +80,12 @@ export const useEditableUser = (
     setIsNotFound(false);
     setUserData(seedRef.current);
     try {
-      const res = await getUserByName(username, {
-        fields: USER_FIELDS,
-        include: Include.All,
-      });
+      const res = isSelf
+        ? await getLoggedInUser({ fields: USER_FIELDS })
+        : await getUserByName(username, {
+            fields: USER_FIELDS,
+            include: Include.All,
+          });
       if (reqId === requestRef.current) {
         setUserData({
           ...res,
@@ -98,7 +108,7 @@ export const useEditableUser = (
         setIsLoading(false);
       }
     }
-  }, [username]);
+  }, [username, isSelf]);
 
   useEffect(() => {
     fetchUser();

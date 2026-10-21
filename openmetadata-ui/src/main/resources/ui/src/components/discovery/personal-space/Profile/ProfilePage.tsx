@@ -58,7 +58,7 @@ const ProfilePage: React.FC = () => {
     userData,
     isLoading: isProfileLoading,
     updateUserDetails,
-  } = useEditableUser(currentUser?.name, currentUser as User | undefined);
+  } = useEditableUser(currentUser?.name, currentUser as User | undefined, true);
   const { state: hashState, setHash } = useSettingsHash();
   const navigate = useNavigate();
 

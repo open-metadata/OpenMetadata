@@ -14,11 +14,13 @@ import { act, renderHook } from '@testing-library/react';
 import { useEditableUser } from './useEditableUser';
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 const mockUpdateUserDetail = jest.fn();
 const mockShowErrorToast = jest.fn();
 
 jest.mock('../../rest/userAPI', () => ({
   getUserByName: (...args: unknown[]) => mockGetUserByName(...args),
+  getLoggedInUser: (...args: unknown[]) => mockGetLoggedInUser(...args),
   updateUserDetail: (...args: unknown[]) => mockUpdateUserDetail(...args),
 }));
 
@@ -102,4 +104,21 @@ describe('useEditableUser', () => {
     ]);
     expect(result.current.userData?.displayName).toBe('Jane Doe');
   });
+
+  it('loads your own profile from the logged-in user endpoint', async () => {
+    mockGetLoggedInUser.mockResolvedValue({
+      id: 'u1',
+      name: 'harsh',
+      email: 'harsh@acme.io',
+    });
+
+    const { result } = renderHook(() =>
+      useEditableUser('harsh', undefined, true)
+    );
+    await act(async () => undefined);
+
+    expect(mockGetUserByName).not.toHaveBeenCalled();
+    expect(result.current.userData?.email).toBe('harsh@acme.io');
+  });
 });
+
