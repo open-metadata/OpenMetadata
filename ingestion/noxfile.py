@@ -12,7 +12,9 @@
 Nox sessions for testing and formatting checks.
 """
 
+import json
 import os
+from pathlib import Path
 
 import nox
 from nox.virtualenv import PassthroughEnv
@@ -24,7 +26,7 @@ from nox.virtualenv import PassthroughEnv
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
-SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
+SUPPORTED_PYTHON_VERSIONS = json.loads(Path(__file__).with_name("python-versions.json").read_text())["tested"]
 
 
 def get_python_versions():
@@ -156,10 +158,7 @@ def unit_tests(session):
     install(session, ".[all]")
     install(session, ".[test]")
 
-    # Separate test paths from pytest flags in posargs
     args = list(session.posargs)
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
 
     pytest_args = [
         "-c",
@@ -177,8 +176,8 @@ def unit_tests(session):
         "--durations=20",
     ]
 
-    pytest_args.extend(test_paths or ["tests/unit/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(["-o", "testpaths=tests/unit"])
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
@@ -216,10 +215,6 @@ def integration_tests(session):
         workers = args[idx + 1]
         args = args[:idx] + args[idx + 2 :]
 
-    # Separate test paths from pytest flags in posargs
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
-
     pytest_args = [
         "-c",
         "pyproject.toml",
@@ -235,8 +230,8 @@ def integration_tests(session):
     if use_xdist:
         pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
 
-    pytest_args.extend(test_paths or ["tests/integration/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(["-o", "testpaths=tests/integration"])
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
