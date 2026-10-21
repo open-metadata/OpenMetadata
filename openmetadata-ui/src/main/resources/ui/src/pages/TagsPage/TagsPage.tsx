@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
   NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -36,6 +35,7 @@ import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -792,7 +792,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -828,7 +828,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -841,13 +840,7 @@ const TagsPage = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography as="p" className="tw:text-center tw:m-auto">
-                {error}
-              </Typography>
-            </>
-          }
+          description={error}
         />
       </div>
     );

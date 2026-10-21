@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Card,
-  EmptyPlaceholder,
   Input,
   Select,
   SelectItem,
@@ -45,6 +44,7 @@ import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -159,15 +159,9 @@ const SelectServiceType = ({
         {isEmpty(filteredConnectors) && (
           <div className="flex-center">
             <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 data-testid="no-data-placeholder"
-                footer={
-                  <>
-                    <Typography>
-                      {t('message.no-connectors-available-for-service')}
-                    </Typography>
-                  </>
-                }
+                description={t('message.no-connectors-available-for-service')}
                 icon={<Database01 />}
               />
             </div>

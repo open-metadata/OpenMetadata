@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   FilterSelect,
   Input,
   PaginationCardWithControls,
@@ -61,6 +60,9 @@ import {
   getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
 type ColumnId =
@@ -320,7 +322,7 @@ const SystemAnnouncementsTable = ({
     if (isError) {
       return (
         <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+          <SomethingWentWrongPlaceholder
             actions={[
               {
                 color: 'primary' as const,
@@ -341,7 +343,7 @@ const SystemAnnouncementsTable = ({
 
     return hasFilters ? (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           data-testid="announcements-no-match"
           description={t('message.check-spelling-or-try-different-term')}
           icon={<NoSearch className="tw:text-quaternary" />}
@@ -350,7 +352,7 @@ const SystemAnnouncementsTable = ({
       </div>
     ) : (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={[
             {
               color: 'primary' as const,

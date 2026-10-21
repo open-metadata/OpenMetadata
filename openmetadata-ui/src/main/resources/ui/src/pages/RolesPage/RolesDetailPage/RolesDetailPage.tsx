@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   SimpleModal,
   Tabs,
   Typography,
@@ -28,6 +27,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as RoleIcon } from '../../../assets/svg/role-colored.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import Loader from '../../../components/common/Loader/Loader';
@@ -357,25 +357,16 @@ const RolesDetailPage = () => {
 
         {isEmpty(role) ? (
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               data-testid="no-data-placeholder"
+              description={t('message.no-entity-found-for-name', {
+                entity: t('label.role'),
+                name: fqn,
+              })}
               footer={
-                <>
-                  <div className="text-center">
-                    <p>
-                      {t('message.no-entity-found-for-name', {
-                        entity: t('label.role'),
-                        name: fqn,
-                      })}
-                    </p>
-                    <Button
-                      className="tw:mt-3"
-                      color="primary"
-                      onClick={() => navigate(rolesPath)}>
-                      {t('label.go-back')}
-                    </Button>
-                  </div>
-                </>
+                <Button color="primary" onClick={() => navigate(rolesPath)}>
+                  {t('label.go-back')}
+                </Button>
               }
               icon={<Database01 />}
             />

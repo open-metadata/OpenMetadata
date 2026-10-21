@@ -530,11 +530,9 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} />);
 
-      const paragraph = screen.getByText('label.lineage-not-found');
-
-      expect(paragraph).toBeInTheDocument();
-      expect(paragraph).toHaveClass('text-center');
-      expect(paragraph).toHaveClass('no-data-placeholder');
+      expect(screen.getByTestId('no-data-placeholder')).toContainElement(
+        screen.getByText('label.lineage-not-found')
+      );
     });
   });
 

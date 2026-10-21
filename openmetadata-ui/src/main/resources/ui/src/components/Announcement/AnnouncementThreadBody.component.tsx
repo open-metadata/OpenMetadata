@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
@@ -23,6 +22,7 @@ import {
   listAnnouncements,
 } from '../../rest/announcementsAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   AnnouncementThreadBodyProp,
   ConfirmState,
@@ -134,17 +134,12 @@ const AnnouncementThreadBody = ({
   if (isEmpty(announcements) && !isThreadLoading) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography
-                as="p"
-                className="tw:text-secondary"
-                data-testid="announcement-error">
-                {t('message.no-announcement-message')}
-              </Typography>
-            </>
+          description={
+            <span data-testid="announcement-error">
+              {t('message.no-announcement-message')}
+            </span>
           }
           icon={<Announcement02 />}
         />

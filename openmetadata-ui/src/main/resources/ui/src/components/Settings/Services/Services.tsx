@@ -16,7 +16,6 @@ import {
   Button,
   Button as CoreButton,
   Card,
-  EmptyPlaceholder,
   Grid,
   Tooltip,
   Typography,
@@ -307,7 +306,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <div
         className="tw:relative tw:min-h-[400px]"
         data-testid="services-empty-placeholder">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t(descriptionKey)}
           // `footer` rather than `actions` so the button keeps the same LimitWrapper the header
           // button has — service creation is limit-gated wherever the action appears.
@@ -328,7 +327,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           }
           icon={<EmptyStateIcon className={SERVICE_EMPTY_STATE_ICON_CLASS} />}
           title={t(titleKey)}
-          variant="blank"
         />
       </div>
     );

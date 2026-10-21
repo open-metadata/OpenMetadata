@@ -43,7 +43,10 @@ const NoFilteredResultsPlaceholder = ({
         'clear-filters',
         t('label.clear-filter-plural')
       )}
-      description={description ?? t('message.nothing-matches-current-filter')}
+      description={
+        description ??
+        (title ? undefined : t('message.nothing-matches-current-filter'))
+      }
       icon={icon ?? <NoFilterFunnel />}
       title={title ?? t('label.no-result-for-these-filter-plural')}
       variant="blank"

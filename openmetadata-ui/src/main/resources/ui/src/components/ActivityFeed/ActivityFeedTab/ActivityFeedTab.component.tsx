@@ -16,7 +16,6 @@ import {
   ButtonGroupItem,
   Divider,
   Dropdown,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FilterLines } from '@openmetadata/ui-core-components/icons';
@@ -75,6 +74,7 @@ import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -419,17 +419,9 @@ const ActivityFeedTabRightPanel = ({
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     data-testid="no-data-placeholder"
-                    footer={
-                      <>
-                        <Typography
-                          as="div"
-                          className="placeholder-text tw:mb-4 tw:break-words">
-                          {placeholder}
-                        </Typography>
-                      </>
-                    }
+                    description={placeholder}
                     icon={<NoConversationsIcon />}
                   />
                 </div>

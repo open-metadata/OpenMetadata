@@ -18,7 +18,6 @@ import {
   AccordionPanel,
   BadgeWithIcon,
   Box,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Select,
   Skeleton,
@@ -56,6 +55,7 @@ import { computeTotalPages } from '../../../utils/PaginationUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { AlertEventDetailsToDisplay } from '../../Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { renderSelectItem } from './AlertAiFormFieldsSelectUtils';
 
 const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
@@ -254,7 +254,7 @@ const AlertAiRecentEventsTab = ({
     if (isEmpty(events)) {
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'
@@ -272,7 +272,6 @@ const AlertAiRecentEventsTab = ({
                 ? 'message.no-results-for-filters'
                 : 'message.no-recent-events'
             )}
-            variant="blank"
           />
         </Box>
       );

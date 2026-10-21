@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Input,
   Table,
   TableCard,
@@ -34,6 +33,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   countFor,
   fetchDimensionList,
@@ -191,7 +191,7 @@ const DataQualitySettings = ({
           <Table.Body
             items={dimensions}
             renderEmptyState={() => (
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 icon={<DataQuality className="tw:text-quaternary" />}
                 title={
                   searchTerm

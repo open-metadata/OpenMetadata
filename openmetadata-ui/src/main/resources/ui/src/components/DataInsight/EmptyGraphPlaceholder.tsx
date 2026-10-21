@@ -11,34 +11,29 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 
 export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
   const { t } = useTranslation();
 
   return (
     <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="no-data-placeholder"
+        description={t(
+          'message.adding-new-entity-is-easy-just-give-it-a-spin',
+          {
+            entity: t('label.data-insight'),
+          }
+        )}
         footer={
           <>
-            <Typography
-              as="p"
-              className="tw:text-primary"
-              style={{ marginBottom: '0' }}>
-              {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                entity: t('label.data-insight'),
-              })}
-            </Typography>
             <Typography as="p" className="tw:mb-3.5! tw:text-primary">
               <Tooltip title={t('label.documentation')}>
                 <span>

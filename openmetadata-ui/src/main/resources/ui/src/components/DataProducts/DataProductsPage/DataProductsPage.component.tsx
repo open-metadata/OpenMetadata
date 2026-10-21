@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -47,6 +47,7 @@ import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
@@ -327,25 +328,16 @@ const DataProductsPage = () => {
   if (!dataProduct) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
+          description={t('message.no-entity-found-for-name', {
+            entity: t('label.data-product'),
+            name: dataProductFqn,
+          })}
           footer={
-            <>
-              <div className="text-center">
-                <p>
-                  {t('message.no-entity-found-for-name', {
-                    entity: t('label.data-product'),
-                    name: dataProductFqn,
-                  })}
-                </p>
-                <Button
-                  className="tw:mt-2"
-                  color="primary"
-                  onPress={() => navigate(getDomainPath())}>
-                  {t('label.go-back')}
-                </Button>
-              </div>
-            </>
+            <Button color="primary" onPress={() => navigate(getDomainPath())}>
+              {t('label.go-back')}
+            </Button>
           }
           icon={<Database01 />}
         />

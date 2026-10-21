@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Grid,
   Tooltip,
   Typography,
@@ -525,15 +524,14 @@ const TableQueries: FC<TableQueriesProp> = ({
     return (
       <div data-testid="no-queries">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                {t('message.field-data-is-not-available-for-deleted-entities', {
-                  field: t('label.query-plural'),
-                })}
-              </>
-            }
+            description={t(
+              'message.field-data-is-not-available-for-deleted-entities',
+              {
+                field: t('label.query-plural'),
+              }
+            )}
             icon={<Database01 />}
           />
         </div>
@@ -549,15 +547,12 @@ const TableQueries: FC<TableQueriesProp> = ({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography as="p">
-                {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: t('label.query-lowercase-plural'),
-                })}
-              </Typography>
-            </>
-          }
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.query-lowercase-plural'),
+            }
+          )}
         />
       </div>
     </Grid.Item>

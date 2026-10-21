@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import type {
   ChartLegendProps,
   ChartPixel,
@@ -68,6 +64,7 @@ import {
   DATE_TIME_12_HOUR_FORMAT,
   formatDateTimeLong,
 } from '../../../../utils/date-time/DateTimeUtils';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import { useTestCaseStore } from '../../../DataQuality/IncidentManager/useTestCase.store';
 import { TestCaseChartDataType } from '../ProfilerDashboard/profilerDashboard.interface';
 import TestSummaryCustomTooltip from '../TestSummaryCustomTooltip/TestSummaryCustomTooltip.component';
@@ -572,13 +569,12 @@ function TestSummaryGraph({
   if (isEmpty(testCaseResults)) {
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           description={t('message.try-extending-time-frame')}
           icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
           title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}
-          variant="blank"
         />
       </Box>
     );

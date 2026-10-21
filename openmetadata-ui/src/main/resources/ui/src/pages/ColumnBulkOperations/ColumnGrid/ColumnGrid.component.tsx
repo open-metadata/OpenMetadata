@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   FeaturedIcon,
   GlossaryTag,
   Input,
@@ -59,6 +58,9 @@ import {
   CellRenderer,
   ColumnConfig,
 } from '../../../components/common/atoms/shared/types';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import GlossaryTermPicker from '../../../components/common/GlossaryTermPicker/GlossaryTermPicker';
 import Loader from '../../../components/common/Loader/Loader';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
@@ -2612,18 +2614,17 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const emptyPlaceholder = useMemo(() => {
     if (hasActiveSearch) {
       return (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           description={t('message.check-spelling-or-try-shorter-term')}
           icon={<NoSearch className="tw:text-fg-secondary" />}
           title={t('label.no-matching-result-plural')}
-          variant="blank"
         />
       );
     }
 
     if (hasActiveFilters) {
       return (
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={[
             {
               color: 'primary',
@@ -2635,17 +2636,15 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
           description={t('message.nothing-matches-current-filter')}
           icon={<NoFilterFunnel className="tw:text-fg-secondary" />}
           title={t('label.no-result-for-these-filter-plural')}
-          variant="blank"
         />
       );
     }
 
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={t('message.column-bulk-empty-description')}
         icon={<TableIcon className="tw:text-fg-secondary" />}
         title={t('message.no-columns-to-work-with')}
-        variant="blank"
       />
     );
   }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);

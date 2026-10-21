@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Skeleton,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import TopicCardControls from './TopicCardControls';
 import TopicCardFooter from './TopicCardFooter';
 import TopicCardHeader from './TopicCardHeader';
@@ -120,7 +117,7 @@ const TopicError = ({
   return (
     // `tw:static` lifts the placeholder out of its page-level absolute
     // positioning, so it sits in the card's flow instead of covering it.
-    <EmptyPlaceholder
+    <SomethingWentWrongPlaceholder
       actions={
         onRetry
           ? [

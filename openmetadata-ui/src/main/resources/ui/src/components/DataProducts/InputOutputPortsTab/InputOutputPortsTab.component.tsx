@@ -17,7 +17,6 @@ import {
   AccordionItem,
   AccordionPanel,
   Button,
-  EmptyPlaceholder,
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -42,6 +41,7 @@ import { getDataProductPortsView } from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
@@ -211,13 +211,11 @@ const InputPortsAccordionSection = ({
               style={{ height: 'calc(100vh - 460px)' }}>
               {inputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     data-testid="no-data-placeholder"
+                    description={t('message.no-input-ports-added')}
                     footer={
                       <>
-                        <Typography as="p" className="tw:text-center">
-                          {t('message.no-input-ports-added')}
-                        </Typography>
                         {canEditAll && (
                           <Button
                             className="tw:mt-2"
@@ -339,13 +337,11 @@ const OutputPortsAccordionSection = ({
               style={{ height: 'calc(100vh - 460px)' }}>
               {outputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     data-testid="no-data-placeholder"
+                    description={emptyStateMessage}
                     footer={
                       <>
-                        <Typography as="p" className="tw:text-center">
-                          {emptyStateMessage}
-                        </Typography>
                         {showEmptyStateAddButton && (
                           <Button
                             className="tw:mt-2"

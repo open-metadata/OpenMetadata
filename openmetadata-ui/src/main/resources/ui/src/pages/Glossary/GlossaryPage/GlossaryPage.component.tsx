@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button as CoreButton,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import {
   BookOpen01,
   Data,
@@ -29,6 +26,7 @@ import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -637,7 +635,7 @@ const GlossaryPage = () => {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         {addGlossaryDrawer}
-        <EmptyPlaceholder
+        <FeaturesPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
             {
@@ -661,7 +659,6 @@ const GlossaryPage = () => {
           ]}
           footer={renderEmptyStateFooter()}
           title={t('message.build-your-business-dictionary')}
-          variant="features"
         />
       </div>
     );

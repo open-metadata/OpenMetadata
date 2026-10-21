@@ -12,7 +12,6 @@
  */
 
 import {
-  EmptyPlaceholder,
   Owner,
   Tabs,
   Tooltip,
@@ -34,6 +33,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -283,17 +283,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
         ) : (
           <div>
             <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 data-testid="no-data-placeholder"
-                footer={
-                  <>
-                    <Typography
-                      as="p"
-                      className="text-center  no-data-placeholder">
-                      {t('label.lineage-not-found')}
-                    </Typography>
-                  </>
-                }
+                description={t('label.lineage-not-found')}
                 icon={<AddPlaceHolderIcon height={100} width={100} />}
               />
             </div>

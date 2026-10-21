@@ -37,13 +37,14 @@ const PermissionPlaceholder = ({
   return (
     <EmptyPlaceholder
       description={
-        description ?? (
+        description ??
+        (title ? undefined : (
           <Transi18next
             i18nKey="message.no-access-placeholder"
             renderElement={<b />}
             values={{ entity: permissionValue ?? t('label.resource') }}
           />
-        )
+        ))
       }
       icon={icon ?? <Lock01 />}
       title={title ?? t('label.access-denied')}

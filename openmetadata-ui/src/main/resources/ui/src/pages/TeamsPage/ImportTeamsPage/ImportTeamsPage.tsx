@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EmptyPlaceholder,
-  Grid,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
@@ -198,17 +194,11 @@ const ImportTeamsPage = () => {
   if (team.teamType === TeamType.Group && type === ImportType.TEAMS) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <div className="m-t-sm text-center text-sm font-normal">
-                <Typography as="p" className="w-80">
-                  {t('message.group-type-team-not-allowed-to-have-sub-team')}
-                </Typography>
-              </div>
-            </>
-          }
+          description={t(
+            'message.group-type-team-not-allowed-to-have-sub-team'
+          )}
           icon={<Database01 />}
         />
       </div>

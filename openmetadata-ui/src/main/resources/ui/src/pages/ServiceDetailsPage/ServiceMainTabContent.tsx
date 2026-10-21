@@ -13,12 +13,13 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -480,7 +481,7 @@ function ServiceMainTabContent({
                         emptyText: (
                           <div className="tw:relative tw:min-h-42">
                             {searchValue ? (
-                              <EmptyPlaceholder
+                              <NoSearchResultsPlaceholder
                                 description={t(
                                   'message.check-spelling-or-try-shorter-term'
                                 )}
@@ -488,17 +489,15 @@ function ServiceMainTabContent({
                                   <NoSearch className="tw:text-secondary" />
                                 }
                                 title={t('label.no-matching-result-plural')}
-                                variant="blank"
                               />
                             ) : (
-                              <EmptyPlaceholder
+                              <NoDataPlaceholder
                                 icon={
                                   <Assets className="tw:text-utility-gray-600" />
                                 }
                                 title={t('message.no-entity-data-available', {
                                   entity: getCountLabel(serviceCategory),
                                 })}
-                                variant="blank"
                               />
                             )}
                           </div>

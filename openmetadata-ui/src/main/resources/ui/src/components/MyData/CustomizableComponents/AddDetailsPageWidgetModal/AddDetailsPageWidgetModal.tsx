@@ -12,7 +12,6 @@
  */
 import {
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tabs,
@@ -25,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { CommonWidgetType } from '../../../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../../../enums/CustomizeDetailPage.enum';
 import type { WidgetConfig } from '../../../../interface/customization.interface';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { AddCustomPropertiesWidgetTabContent } from './AddCustomPropertiesWidgetTabContent';
 import { AddDetailsPageWidgetTabContent } from './AddDetailsPageWidgetTabContent';
 
@@ -86,9 +86,9 @@ function AddDetailsPageWidgetModal({
     if (isEmpty(widgetsList)) {
       return (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={<>{t('message.no-widgets-to-add')}</>}
+            description={t('message.no-widgets-to-add')}
             icon={<Database01 />}
           />
         </div>

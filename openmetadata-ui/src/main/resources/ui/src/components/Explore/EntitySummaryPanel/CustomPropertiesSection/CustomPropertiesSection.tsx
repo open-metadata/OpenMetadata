@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Input,
   Tooltip,
   Typography,
@@ -27,6 +26,7 @@ import { CustomProperty } from '../../../../generated/entity/type';
 import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { CustomPropertyListItem } from '../../../common/CustomPropertyTable/CustomPropertiesWidget/CustomPropertyListItem';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
@@ -106,34 +106,30 @@ const CustomPropertiesSection = ({
     return (
       <div className="lineage-items-list tw:min-w-0 tw:px-4">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <div className="p-t-md no-data-placeholder tw:text-center tw:break-words">
-                  <Tooltip
-                    title={t('label.documentation')}
-                    triggerClassName="tw:block tw:whitespace-normal">
-                    <span>
-                      <Transi18next
-                        i18nKey="message.no-custom-properties-entity"
-                        renderElement={
-                          <a
-                            aria-label={t('label.documentation')}
-                            href={CUSTOM_PROPERTIES_DOCS}
-                            rel="noreferrer"
-                            target="_blank"
-                          />
-                        }
-                        values={{
-                          entity: emptyStateMessage ?? t('label.entity'),
-                          docs: t('label.doc-plural-lowercase'),
-                        }}
+            description={
+              <Tooltip
+                title={t('label.documentation')}
+                triggerClassName="tw:block tw:whitespace-normal">
+                <span>
+                  <Transi18next
+                    i18nKey="message.no-custom-properties-entity"
+                    renderElement={
+                      <a
+                        aria-label={t('label.documentation')}
+                        href={CUSTOM_PROPERTIES_DOCS}
+                        rel="noreferrer"
+                        target="_blank"
                       />
-                    </span>
-                  </Tooltip>
-                </div>
-              </>
+                    }
+                    values={{
+                      entity: emptyStateMessage ?? t('label.entity'),
+                      docs: t('label.doc-plural-lowercase'),
+                    }}
+                  />
+                </span>
+              </Tooltip>
             }
             icon={<AddPlaceHolderIcon height={100} width={100} />}
           />

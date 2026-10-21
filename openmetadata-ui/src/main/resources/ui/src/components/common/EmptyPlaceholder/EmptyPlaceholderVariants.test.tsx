@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import CreatePlaceholder from './CreatePlaceholder';
+import FeaturesPlaceholder from './FeaturesPlaceholder';
 import NoDataPlaceholder from './NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from './NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from './NoSearchResultsPlaceholder';
@@ -257,5 +258,76 @@ describe('CreatePlaceholder', () => {
     expect(
       screen.getByText('message.no-access-placeholder')
     ).toBeInTheDocument();
+  });
+});
+
+describe('Caller copy replaces wrapper defaults', () => {
+  it('does not stack the default no-data title above a caller footer', () => {
+    render(<NoDataPlaceholder footer={<span>own footer copy</span>} />);
+
+    expect(screen.getByText('own footer copy')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a caller description as the no-data title', () => {
+    render(<NoDataPlaceholder description="Nothing here yet" />);
+
+    expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'NoSearchResultsPlaceholder',
+      NoSearchResultsPlaceholder,
+      'message.check-spelling-or-try-shorter-term',
+    ],
+    [
+      'NoFilteredResultsPlaceholder',
+      NoFilteredResultsPlaceholder,
+      'message.nothing-matches-current-filter',
+    ],
+    [
+      'SomethingWentWrongPlaceholder',
+      SomethingWentWrongPlaceholder,
+      'message.temporary-error-try-reloading',
+    ],
+    [
+      'PermissionPlaceholder',
+      PermissionPlaceholder,
+      'message.no-access-placeholder',
+    ],
+  ])(
+    '%s skips its default description when the caller sets a title',
+    (_, Placeholder, defaultDescription) => {
+      render(<Placeholder title="Caller title" />);
+
+      expect(screen.getByText('Caller title')).toBeInTheDocument();
+      expect(screen.queryByText(defaultDescription)).not.toBeInTheDocument();
+    }
+  );
+});
+
+describe('FeaturesPlaceholder', () => {
+  it('renders the title, description and feature columns', () => {
+    render(
+      <FeaturesPlaceholder
+        description="Set it up in three steps"
+        features={[
+          { key: 'one', title: 'Define it', description: 'Step one' },
+          { key: 'two', title: 'Own it', description: 'Step two' },
+        ]}
+        title="Get started"
+      />
+    );
+
+    expect(screen.getByText('Get started')).toBeInTheDocument();
+    expect(screen.getByText('Set it up in three steps')).toBeInTheDocument();
+    expect(screen.getByText('Define it')).toBeInTheDocument();
+    expect(screen.getByText('Own it')).toBeInTheDocument();
   });
 });

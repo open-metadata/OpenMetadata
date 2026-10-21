@@ -13,7 +13,6 @@
 
 import {
   Badge,
-  EmptyPlaceholder,
   Select,
   Skeleton,
   Table,
@@ -43,6 +42,7 @@ import {
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -285,19 +285,17 @@ const DimensionalityTab = () => {
 
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <TransWithComponents
-                components={{
-                  0: <span className="tw:text-sm" />,
-                  1: <span className="tw:text-sm" />,
-                  2: <Link to={pipelineLink} />,
-                }}
-                i18nKey="message.no-dimension-description"
-              />
-            </>
+          description={
+            <TransWithComponents
+              components={{
+                0: <span className="tw:text-sm" />,
+                1: <span className="tw:text-sm" />,
+                2: <Link to={pipelineLink} />,
+              }}
+              i18nKey="message.no-dimension-description"
+            />
           }
           icon={<Database01 />}
         />

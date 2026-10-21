@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
 import {
@@ -47,6 +42,8 @@ import {
   getUserPath,
 } from '../../utils/RouterUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   AuditLogListItemProps,
@@ -766,7 +763,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
     if (hasActiveSearch) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.check-spelling-or-try-different-term')}
           icon={<NoSearch className="tw:text-quaternary" />}
@@ -775,7 +772,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
       );
     } else if (hasActiveFilters) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.no-results-for-filters-description')}
           icon={<NoSearch className="tw:text-quaternary" />}
@@ -784,10 +781,9 @@ const AuditLogList: FC<AuditLogListProps> = ({
       );
     } else {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-audit-logs-description')}
           title={t('label.no-audit-logs-yet')}
-          variant="blank"
         />
       );
     }

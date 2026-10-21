@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as NoAccessPlaceHolderIcon } from '../../assets/svg/no-access-placeholder.svg';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { SIZE } from '../../enums/common.enum';
 
 const AccessNotAllowedPage = () => {
@@ -21,7 +22,7 @@ const AccessNotAllowedPage = () => {
 
   return (
     <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         data-testid="no-data-placeholder"
         footer={
           <>

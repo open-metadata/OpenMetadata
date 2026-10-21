@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useEffect, useState } from 'react';
@@ -153,20 +152,15 @@ const BotDetailsPage = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography
-                as="p"
-                className="text-base"
-                data-testid="error-message">
-                {t('message.no-entity-available-with-name', {
-                  entity: t('label.bot-plural'),
-                })}{' '}
-                <span className="font-medium" data-testid="username">
-                  {botsName}
-                </span>{' '}
-              </Typography>
-            </>
+          description={
+            <span data-testid="error-message">
+              {t('message.no-entity-available-with-name', {
+                entity: t('label.bot-plural'),
+              })}{' '}
+              <span className="font-medium" data-testid="username">
+                {botsName}
+              </span>{' '}
+            </span>
           }
         />
       </div>

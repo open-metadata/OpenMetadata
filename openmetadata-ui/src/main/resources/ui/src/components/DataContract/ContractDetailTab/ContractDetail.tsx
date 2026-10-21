@@ -19,7 +19,6 @@ import {
   Card,
   Divider,
   Dropdown,
-  EmptyPlaceholder,
   Owner,
   Tooltip,
   TooltipTrigger,
@@ -43,6 +42,7 @@ import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new-thick.s
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 import {
   ContractImportFormat,
@@ -565,7 +565,7 @@ const ContractDetail: React.FC<{
     if (!hasEditPermission) {
       return (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={t('message.no-contract-description')}
             icon={DataContractIcon}
@@ -587,7 +587,7 @@ const ContractDetail: React.FC<{
           onSuccess={handleImportSuccess}
         />
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={t('message.create-contract-description')}
             footer={

@@ -15,13 +15,14 @@ import {
   Box,
   Button,
   Divider,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   TableCard,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 // The core-components icon barrel re-exports the design team's own SVG set
 import {
   Search,
@@ -283,7 +284,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
         <Box
           className="tw:relative tw:min-h-80 tw:w-full"
           data-testid="incident-groups-no-match">
-          <EmptyPlaceholder
+          <NoFilteredResultsPlaceholder
             actions={[
               {
                 key: 'clear-filters',
@@ -296,18 +297,16 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             description={t('message.try-adjusting-filter')}
             icon={<Search className="tw:text-fg-quaternary" />}
             title={t('message.no-match-found')}
-            variant="blank"
           />
         </Box>
       ) : (
         <Box
           className="tw:relative tw:min-h-80 tw:w-full"
           data-testid="incident-groups-empty">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             description={t('message.no-active-incidents-description')}
             icon={<ShieldTick className="tw:text-fg-brand-primary" />}
             title={t('message.no-active-incidents')}
-            variant="blank"
           />
         </Box>
       );
@@ -397,7 +396,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
       <Box
         className="tw:relative tw:min-h-80 tw:w-full"
         data-testid="incident-group-detail-missing">
-        <EmptyPlaceholder
+        <NoFilteredResultsPlaceholder
           actions={[
             {
               key: 'back',
@@ -409,7 +408,6 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
           description={t('message.try-adjusting-filter')}
           icon={<Search className="tw:text-fg-quaternary" />}
           title={t('message.no-match-found')}
-          variant="blank"
         />
       </Box>
     );

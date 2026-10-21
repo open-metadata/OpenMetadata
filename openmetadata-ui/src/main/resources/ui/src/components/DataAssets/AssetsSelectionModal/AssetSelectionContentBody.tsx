@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Alert, Box, Button, Checkbox } from '@openmetadata/ui-core-components';
 import { Loading01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useState } from 'react';
@@ -231,13 +225,7 @@ const AssetSelectionList = ({
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                {emptyPlaceHolderText && (
-                  <Typography as="p">{emptyPlaceHolderText}</Typography>
-                )}
-              </>
-            }
+            description={emptyPlaceHolderText}
           />
         </div>
       )}

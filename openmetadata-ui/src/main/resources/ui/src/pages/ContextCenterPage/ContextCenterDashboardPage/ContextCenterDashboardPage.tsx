@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -37,6 +36,7 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -486,7 +486,7 @@ const ContextCenterDashboardPage: FC = () => {
           data-testid="dashboard-detail-card">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={
                   hasCreatePermission
                     ? [
@@ -539,7 +539,6 @@ const ContextCenterDashboardPage: FC = () => {
                   },
                 ]}
                 title={t('label.give-your-ai-something-to-know')}
-                variant="features"
               />
             </div>
           ) : (

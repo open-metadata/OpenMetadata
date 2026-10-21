@@ -296,26 +296,22 @@ const SampleDataTable: FC<SampleDataProps> = ({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-[calc(100vh-255px)] tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:in-[.assistant-content]:min-h-60">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography as="p" className="tw:mb-3.5!">
-                <Transi18next
-                  i18nKey="message.view-sample-data-entity"
-                  renderElement={
-                    <a
-                      aria-label={t('label.auto-classification')}
-                      href={AUTO_CLASSIFICATION_DOCS}
-                      rel="noreferrer"
-                      style={{ color: theme.primaryColor }}
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    entity: t('label.auto-classification'),
-                  }}
+          description={
+            <Transi18next
+              i18nKey="message.view-sample-data-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.auto-classification')}
+                  href={AUTO_CLASSIFICATION_DOCS}
+                  rel="noreferrer"
+                  style={{ color: theme.primaryColor }}
+                  target="_blank"
                 />
-              </Typography>
-            </>
+              }
+              values={{
+                entity: t('label.auto-classification'),
+              }}
+            />
           }
         />
       </div>

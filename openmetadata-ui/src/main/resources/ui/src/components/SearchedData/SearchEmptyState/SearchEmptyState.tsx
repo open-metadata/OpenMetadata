@@ -11,14 +11,10 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Grid,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 import Qs from 'qs';
 import { useMemo } from 'react';
@@ -128,28 +124,19 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
     return (
       <div className="text-center tw:w-full" data-testid="no-search-results">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
+            description={
+              <Transi18next
+                i18nKey="message.add-data-asset-domain"
+                renderElement={<b />}
+                values={{
+                  domain: activeDomain,
+                }}
+              />
+            }
             footer={
               <>
-                <Typography as="p" style={{ marginBottom: '0' }}>
-                  <Transi18next
-                    i18nKey="message.no-data-available-entity"
-                    renderElement={<b />}
-                    values={{
-                      entity: activeDomain,
-                    }}
-                  />
-                </Typography>
-                <Typography as="p" style={{ marginBottom: '0' }}>
-                  <Transi18next
-                    i18nKey="message.add-data-asset-domain"
-                    renderElement={<b />}
-                    values={{
-                      domain: activeDomain,
-                    }}
-                  />
-                </Typography>
                 <Typography as="p">
                   <Transi18next
                     i18nKey="message.refer-to-our-doc"
@@ -170,6 +157,15 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
               </>
             }
             icon={<Database01 />}
+            title={
+              <Transi18next
+                i18nKey="message.no-data-available-entity"
+                renderElement={<b />}
+                values={{
+                  entity: activeDomain,
+                }}
+              />
+            }
           />
         </div>
       </div>

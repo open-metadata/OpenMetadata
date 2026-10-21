@@ -13,7 +13,6 @@
 import type { Selection } from '@openmetadata/ui-core-components';
 import {
   Badge,
-  EmptyPlaceholder,
   Tooltip,
   Tree,
   Typography,
@@ -72,6 +71,7 @@ import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
 import {
@@ -880,17 +880,12 @@ const ExploreTree = ({
   if (treeData.length === 0) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
+          description={t('message.add-service-and-data-assets')}
           footer={
             <>
-              <Typography as="p" className="tw:m-0 tw:font-medium">
-                {t('message.no-data-yet')}
-              </Typography>
-              <Typography as="p" className="tw:m-0">
-                {t('message.add-service-and-data-assets')}
-              </Typography>
-              <Typography as="p" className="tw:mt-0 tw:mb-[1em]">
+              <Typography as="p">
                 <Transi18next
                   i18nKey="message.need-help-message"
                   renderElement={
@@ -910,6 +905,7 @@ const ExploreTree = ({
             </>
           }
           icon={<Database01 />}
+          title={t('message.no-data-yet')}
         />
       </div>
     );

@@ -11,14 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Card,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Card } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import { ProviderType } from '../../generated/entity/events/notificationTemplate';
@@ -43,15 +40,9 @@ function AddObservabilityPage({
   if (alert?.provider === ProviderType.System) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography as="p" className="tw:max-w-md">
-                {t('message.system-alert-edit-message')}
-              </Typography>
-            </>
-          }
+          description={t('message.system-alert-edit-message')}
           icon={<Database01 />}
         />
       </div>

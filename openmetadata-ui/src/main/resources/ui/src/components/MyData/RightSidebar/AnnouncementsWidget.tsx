@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Alert, Box, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,6 +22,7 @@ import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import './announcements-widget.less';
 
@@ -54,17 +50,11 @@ function AnnouncementsWidget({
       return (
         <div className="flex-center h-full">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              footer={
-                <>
-                  <Typography as="p">
-                    {t('message.no-entity-data-available', {
-                      entity: t('label.announcement-lowercase'),
-                    })}
-                  </Typography>
-                </>
-              }
+              description={t('message.no-entity-data-available', {
+                entity: t('label.announcement-lowercase'),
+              })}
               icon={
                 <AnnouncementsEmptyIcon
                   height={SIZE.X_SMALL}

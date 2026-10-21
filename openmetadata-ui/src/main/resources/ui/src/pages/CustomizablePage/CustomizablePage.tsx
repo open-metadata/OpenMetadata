@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  EmptyPlaceholder,
-  Grid,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -524,28 +520,24 @@ const CustomizablePageContent = () => {
       <Grid className="layout-row layout-grid bg-white h-full">
         <Grid.Item className="layout-column" span={24}>
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              footer={
-                <>
-                  <Typography as="p" className="w-max-500">
-                    <Transi18next
-                      i18nKey="message.no-persona-message"
-                      renderElement={
-                        <Link
-                          style={{ color: theme.primaryColor }}
-                          to={getSettingPath(
-                            GlobalSettingsMenuCategory.MEMBERS,
-                            GlobalSettingOptions.PERSONA
-                          )}
-                        />
-                      }
-                      values={{
-                        link: t('label.here-lowercase'),
-                      }}
+              description={
+                <Transi18next
+                  i18nKey="message.no-persona-message"
+                  renderElement={
+                    <Link
+                      style={{ color: theme.primaryColor }}
+                      to={getSettingPath(
+                        GlobalSettingsMenuCategory.MEMBERS,
+                        GlobalSettingOptions.PERSONA
+                      )}
                     />
-                  </Typography>
-                </>
+                  }
+                  values={{
+                    link: t('label.here-lowercase'),
+                  }}
+                />
               }
               icon={<Database01 />}
             />

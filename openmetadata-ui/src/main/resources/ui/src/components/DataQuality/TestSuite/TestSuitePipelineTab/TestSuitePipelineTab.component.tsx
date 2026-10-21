@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   TableCard,
@@ -359,7 +358,7 @@ const TestSuitePipelineTab = ({
     () =>
       testSuite ? (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -378,7 +377,6 @@ const TestSuitePipelineTab = ({
             description={t('message.no-table-pipeline')}
             icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
             title={t('message.no-pipelines-yet')}
-            variant="blank"
           />
         </Box>
       ) : (

@@ -15,7 +15,6 @@ import {
   Avatar,
   Box,
   Button,
-  EmptyPlaceholder,
   Grid,
   SimpleModal,
   Tabs,
@@ -96,6 +95,7 @@ import {
   ExtentionEntitiesKeys,
 } from '../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../common/EntityDescription/Description';
 import ManageButton from '../../../common/EntityPageInfos/ManageButton/ManageButton';
 import { ManageMenuItem as ItemType } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
@@ -731,15 +731,16 @@ const TeamDetailsV1 = ({
 
     return showEmptyTeamPlaceholder ? (
       <div className={TEAM_TAB_EMPTY_STATE_CLASS}>
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.team'),
+            }
+          )}
           footer={
             <>
-              <Typography as="p" style={{ marginBottom: '0' }}>
-                {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-                  entity: t('label.team'),
-                })}
-              </Typography>
               <Typography as="p">
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"

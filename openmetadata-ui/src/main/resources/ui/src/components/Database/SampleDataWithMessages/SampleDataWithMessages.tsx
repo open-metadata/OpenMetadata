@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { isUndefined } from 'lodash';
@@ -68,26 +68,22 @@ const SampleDataWithMessages: FC<{
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <Typography as="p">
-                  <Transi18next
-                    i18nKey="message.view-sample-data-entity"
-                    renderElement={
-                      <a
-                        aria-label={t('label.documentation')}
-                        href={WORKFLOWS_METADATA_DOCS}
-                        rel="noreferrer"
-                        style={{ color: theme.primaryColor }}
-                        target="_blank"
-                      />
-                    }
-                    values={{
-                      entity: t('label.metadata-ingestion'),
-                    }}
+            description={
+              <Transi18next
+                i18nKey="message.view-sample-data-entity"
+                renderElement={
+                  <a
+                    aria-label={t('label.documentation')}
+                    href={WORKFLOWS_METADATA_DOCS}
+                    rel="noreferrer"
+                    style={{ color: theme.primaryColor }}
+                    target="_blank"
                   />
-                </Typography>
-              </>
+                }
+                values={{
+                  entity: t('label.metadata-ingestion'),
+                }}
+              />
             }
           />
         </div>

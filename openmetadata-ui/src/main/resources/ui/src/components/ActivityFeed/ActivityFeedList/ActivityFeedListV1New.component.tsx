@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../generated/entity/feed/conversation';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
@@ -217,17 +217,9 @@ const ActivityFeedListV1New = ({
         data-testid="no-data-placeholder-container"
         id="feedData">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <Typography
-                  as="div"
-                  className="placeholder-text tw:break-words">
-                  {emptyPlaceholderText}
-                </Typography>
-              </>
-            }
+            description={emptyPlaceholderText}
             icon={<FeedEmptyIcon height={140} width={140} />}
           />
         </div>

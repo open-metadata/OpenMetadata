@@ -15,7 +15,6 @@ import {
   Box,
   Card,
   Divider,
-  EmptyPlaceholder,
   Owner,
   Tabs,
   Typography,
@@ -48,6 +47,7 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
@@ -663,19 +663,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (statusCounts.total === 0) {
       return (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <Typography
-                  as="div"
-                  className="text-center p-x-md no-data-placeholder tw:mb-4"
-                  color="secondary"
-                  size="text-xs">
-                  {t('message.no-data-quality-test-message')}
-                </Typography>
-              </>
-            }
+            description={t('message.no-data-quality-test-message')}
             icon={<AddPlaceHolderIcon height={100} width={100} />}
           />
         </div>
@@ -729,19 +719,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       return (
         <div className="m-t-lg">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              footer={
-                <>
-                  <Typography
-                    as="div"
-                    className="text-center p-x-md no-data-placeholder tw:mb-4"
-                    color="secondary"
-                    size="text-xs">
-                    {t('message.no-data-quality-test-message')}
-                  </Typography>
-                </>
-              }
+              description={t('message.no-data-quality-test-message')}
               icon={<AddPlaceHolderIcon height={100} width={100} />}
             />
           </div>

@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -24,6 +20,7 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type { PlatformInsightsWidgetProps } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import type { TotalAssetsWidgetProps } from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget.interface';
@@ -225,29 +222,25 @@ export const getServiceInsightsWidgetPlaceholder = ({
 
   return (
     <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="no-data-placeholder"
-        footer={
-          <>
-            <Typography as="p" className="w-max-350 tw:mb-3.5! tw:text-primary">
-              <Tooltip title={t('label.learn-more')}>
-                <span>
-                  <Transi18next
-                    i18nKey={localizationKey}
-                    renderElement={
-                      <a
-                        aria-label={t('label.learn-more')}
-                        href={docsLink}
-                        rel="noreferrer"
-                        style={{ color: theme.primaryColor }}
-                        target="_blank"
-                      />
-                    }
+        description={
+          <Tooltip title={t('label.learn-more')}>
+            <span>
+              <Transi18next
+                i18nKey={localizationKey}
+                renderElement={
+                  <a
+                    aria-label={t('label.learn-more')}
+                    href={docsLink}
+                    rel="noreferrer"
+                    style={{ color: theme.primaryColor }}
+                    target="_blank"
                   />
-                </span>
-              </Tooltip>
-            </Typography>
-          </>
+                }
+              />
+            </span>
+          </Tooltip>
         }
         icon={<Icon className={iconClassName} height={height} width={width} />}
       />

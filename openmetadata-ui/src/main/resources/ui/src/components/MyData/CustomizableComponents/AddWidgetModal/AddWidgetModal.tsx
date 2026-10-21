@@ -14,7 +14,6 @@
 import {
   Box,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tabs,
@@ -35,6 +34,7 @@ import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import { getWidgetWidthLabelFromKey } from '../../../../utils/CustomizableLandingPagePureUtils';
 import { DetailsTabItem } from '../../../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import {
   AddWidgetModalProps,
@@ -141,9 +141,9 @@ function AddWidgetModal({
     if (isEmpty(widgetsList)) {
       return (
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={<>{t('message.no-widgets-to-add')}</>}
+            description={t('message.no-widgets-to-add')}
             icon={<Database01 />}
           />
         </div>

@@ -528,23 +528,17 @@ const PoliciesDetailPage = () => {
             <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
               <NoDataPlaceholder
                 data-testid="no-data-placeholder"
+                description={t('message.no-entity-found-for-name', {
+                  entity: t('label.policy-lowercase'),
+                  name: fqn,
+                })}
                 footer={
-                  <>
-                    <div className="text-center">
-                      <p className="m-y-sm">
-                        {t('message.no-entity-found-for-name', {
-                          entity: t('label.policy-lowercase'),
-                          name: fqn,
-                        })}
-                      </p>
-                      <Button
-                        color="primary"
-                        size="xs"
-                        onClick={() => navigate(policiesPath)}>
-                        {t('label.go-back')}
-                      </Button>
-                    </div>
-                  </>
+                  <Button
+                    color="primary"
+                    size="xs"
+                    onClick={() => navigate(policiesPath)}>
+                    {t('label.go-back')}
+                  </Button>
                 }
               />
             </div>

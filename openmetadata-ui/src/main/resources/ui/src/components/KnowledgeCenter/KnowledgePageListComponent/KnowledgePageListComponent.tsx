@@ -14,7 +14,6 @@ import {
   Box,
   Button as CoreButton,
   Dropdown,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   SkeletonParagraph,
@@ -25,6 +24,9 @@ import {
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -156,7 +158,7 @@ const KnowledgePageAccessDenied = () => {
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={
           <Transi18next
             i18nKey="message.no-access-placeholder"
@@ -180,11 +182,10 @@ const KnowledgePageNoSearchResults = () => {
 
   return (
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
         icon={<NoSearchResultIcon className="tw:text-quaternary" />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );
@@ -216,7 +217,7 @@ const KnowledgePageEmptyState = ({
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={
           <Transi18next
             i18nKey="message.refer-to-our-doc"

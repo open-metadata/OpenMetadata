@@ -16,7 +16,6 @@ import {
   Avatar,
   Badge,
   Box,
-  EmptyPlaceholder,
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -56,6 +55,8 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ResizableLeftPanels from '../../common/ResizablePanels/ResizableLeftPanels';
 import DomainDetails from '../../Domain/DomainDetails/DomainDetails.component';
@@ -1005,7 +1006,7 @@ const DomainTreeView = ({
     if (searchQuery?.trim() || hasActiveFilters) {
       return (
         <div className="tw:relative tw:flex-1 tw:h-full">
-          <EmptyPlaceholder
+          <NoSearchResultsPlaceholder
             actions={[
               {
                 color: 'primary',
@@ -1024,7 +1025,7 @@ const DomainTreeView = ({
 
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             permissions.domain?.Create
               ? [

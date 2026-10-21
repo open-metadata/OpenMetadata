@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -46,6 +45,7 @@ import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -262,16 +262,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          footer={
-            <>
-              <Typography as="p">
-                {isTaskClosed
-                  ? t('message.no-closed-task')
-                  : t('message.no-open-task')}
-              </Typography>
-            </>
+          description={
+            isTaskClosed
+              ? t('message.no-closed-task')
+              : t('message.no-open-task')
           }
           icon={<MessageChatSquare />}
         />

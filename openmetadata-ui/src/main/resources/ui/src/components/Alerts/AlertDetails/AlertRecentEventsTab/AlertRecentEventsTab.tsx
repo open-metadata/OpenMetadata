@@ -19,7 +19,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   Tooltip,
@@ -57,6 +56,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import {
@@ -181,7 +181,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'
@@ -199,7 +199,6 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                 ? 'message.no-results-for-filters'
                 : 'message.no-recent-events'
             )}
-            variant="blank"
           />
         </Box>
       );

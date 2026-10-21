@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
 import { Task } from '../../../rest/tasksAPI';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
 
@@ -88,17 +88,9 @@ const TaskListV1 = ({
         data-testid="no-data-placeholder-container"
         id="taskData">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <Typography
-                  as="div"
-                  className="placeholder-text tw:break-words">
-                  {emptyPlaceholderText}
-                </Typography>
-              </>
-            }
+            description={emptyPlaceholderText}
             icon={<FeedEmptyIcon height={140} width={140} />}
           />
         </div>

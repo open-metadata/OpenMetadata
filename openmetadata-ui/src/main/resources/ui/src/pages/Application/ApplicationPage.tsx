@@ -14,7 +14,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Grid,
   SkeletonParagraph,
   Toggle,
@@ -136,13 +135,9 @@ const ApplicationPage = () => {
     return (
       <Grid.Item className="layout-column mt-24 text-center" span={24}>
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            footer={
-              <>
-                <div>{t('message.no-installed-applications-found')}</div>
-              </>
-            }
+            description={t('message.no-installed-applications-found')}
             icon={<Database01 />}
           />
         </div>

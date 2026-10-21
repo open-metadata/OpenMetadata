@@ -18,7 +18,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   Input,
   SelectItemType,
   Skeleton,
@@ -58,6 +57,7 @@ import {
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -672,7 +672,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   if (!botData || !botUserData) {
     return (
       <div className="tw:relative tw:h-full tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           title={t('label.no-entity-found', {
             entity: t('label.bot'),
           })}

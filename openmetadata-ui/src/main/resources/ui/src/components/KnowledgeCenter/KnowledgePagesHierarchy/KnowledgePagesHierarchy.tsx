@@ -17,7 +17,6 @@ import {
   ButtonUtility,
   Card,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Tree,
@@ -103,6 +102,7 @@ import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageU
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -909,7 +909,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         {isHierarchyEmpty && (
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-articles-listed')}
               icon={<Articles className="tw:text-secondary" />}
               title={t('label.no-entity', {

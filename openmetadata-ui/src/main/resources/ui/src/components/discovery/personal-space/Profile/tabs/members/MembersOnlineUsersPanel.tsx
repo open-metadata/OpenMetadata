@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Select,
   Typography,
@@ -41,6 +40,7 @@ import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils'
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -306,7 +306,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 title={t('label.no-entity-found', {
                   entity: t('label.online-user-plural'),
                 })}
