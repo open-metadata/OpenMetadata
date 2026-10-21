@@ -56,9 +56,11 @@ export const SummaryCard = ({
   }
 
   return (
+    // Top-aligned: callers stretch cards in a row to one height, and a
+    // centred label then floats mid-card on the shorter ones.
     <Box
       inline
-      align="center"
+      align="start"
       className={`layout-space layout-space-horizontal ${classNames(
         'summary-card',
         cardBackgroundClass,
