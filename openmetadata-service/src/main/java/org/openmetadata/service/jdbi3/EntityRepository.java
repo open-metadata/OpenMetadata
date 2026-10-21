@@ -176,6 +176,7 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
@@ -3409,11 +3410,69 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return decodedCursor;
   }
 
+  /** Creates distinct new FQNs in request order, leaving existing entities unchanged. */
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
-    for (T e : entities) {
-      prepareInternal(e, false);
+    final List<T> pending = findNewEntities(entities);
+    pending.forEach(entity -> prepareInternal(entity, false));
+    final List<T> created = new ArrayList<>();
+    for (int start = 0; start < pending.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
+      final int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, pending.size());
+      created.addAll(createManyChunk(new ArrayList<>(pending.subList(start, end))));
     }
-    return createManyEntities(entities);
+    return List.copyOf(created);
+  }
+
+  private List<T> findNewEntities(List<T> entities) {
+    entities.forEach(this::setFullyQualifiedName);
+    final Set<String> seen =
+        dao
+            .findReferencesByFqns(entities.stream().map(T::getFullyQualifiedName).toList(), ALL)
+            .stream()
+            .map(reference -> FullyQualifiedName.buildHash(reference.getFullyQualifiedName()))
+            .collect(Collectors.toCollection(HashSet::new));
+    final List<T> pending = new ArrayList<>();
+    for (T entity : entities) {
+      if (seen.add(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()))) {
+        pending.add(entity);
+      }
+    }
+    return pending;
+  }
+
+  private List<T> createManyChunk(List<T> pending) {
+    while (!pending.isEmpty()) {
+      try {
+        return createManyEntities(pending);
+      } catch (UnableToExecuteStatementException exception) {
+        // The failed transaction has rolled back; each retry must remove a concurrent winner.
+        if (!isDuplicateKeyException(exception) || !removeConcurrentDuplicates(pending)) {
+          throw exception;
+        }
+        LOG.warn(
+            "Skipped existing {} entities after a duplicate-key conflict; {} left in chunk",
+            entityType,
+            pending.size());
+      }
+    }
+    return List.of();
+  }
+
+  private boolean removeConcurrentDuplicates(List<T> entities) {
+    final Map<String, UUID> existing =
+        dao
+            .findReferencesByFqns(entities.stream().map(T::getFullyQualifiedName).toList(), ALL)
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    reference -> FullyQualifiedName.buildHash(reference.getFullyQualifiedName()),
+                    EntityReference::getId));
+    return entities.removeIf(
+        entity -> {
+          final UUID storedId =
+              existing.get(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
+          // Our own committed IDs must not hide a failure in postCreate as a duplicate.
+          return storedId != null && !storedId.equals(entity.getId());
+        });
   }
 
   public final T create(UriInfo uriInfo, T entity) {

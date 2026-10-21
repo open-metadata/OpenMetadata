@@ -24,6 +24,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -380,6 +382,73 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate term in same glossary should fail");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void createMany_skipsExistingAndRepeatedNames(boolean softDeleted, TestNamespace ns) {
+    final Glossary glossary =
+        GlossaryTestFactory.createWithName(ns, "bulk_existing_" + softDeleted);
+    final CreateGlossaryTerm existingRequest =
+        new CreateGlossaryTerm()
+            .withName("existing")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Existing description");
+    final GlossaryTerm existing = createEntity(existingRequest);
+    if (softDeleted) {
+      deleteEntity(existing.getId().toString());
+    }
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First occurrence");
+    final CreateGlossaryTerm repeated =
+        new CreateGlossaryTerm()
+            .withName(fresh.getName())
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Must not replace the first occurrence");
+    existingRequest.setDescription("Must not overwrite the existing term");
+
+    final List<GlossaryTerm> created = createManyTerms(List.of(fresh, existingRequest, repeated));
+
+    assertEquals(List.of(fresh.getName()), created.stream().map(GlossaryTerm::getName).toList());
+    assertEquals(
+        fresh.getDescription(), getEntity(created.getFirst().getId().toString()).getDescription());
+    final GlossaryTerm stored =
+        SdkClients.adminClient().glossaryTerms().get(existing.getId().toString(), "", "all");
+    assertEquals(existing.getDescription(), stored.getDescription());
+    assertEquals(softDeleted, stored.getDeleted());
+    assertTrue(createManyTerms(List.of(existingRequest)).isEmpty());
+  }
+
+  @Test
+  void createMany_sameNameInDifferentGlossariesCreatesBoth(TestNamespace ns) {
+    final Glossary first = GlossaryTestFactory.createWithName(ns, "first");
+    final Glossary second = GlossaryTestFactory.createWithName(ns, "second");
+    final List<GlossaryTerm> created =
+        createManyTerms(
+            List.of(
+                new CreateGlossaryTerm()
+                    .withName("shared")
+                    .withGlossary(first.getFullyQualifiedName())
+                    .withDescription("First"),
+                new CreateGlossaryTerm()
+                    .withName("shared")
+                    .withGlossary(second.getFullyQualifiedName())
+                    .withDescription("Second")));
+
+    assertEquals(2, created.size());
+    assertNotEquals(
+        created.getFirst().getFullyQualifiedName(), created.getLast().getFullyQualifiedName());
+  }
+
+  private List<GlossaryTerm> createManyTerms(List<CreateGlossaryTerm> requests) {
+    return List.of(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST, "/v1/glossaryTerms/createMany", requests, GlossaryTerm[].class));
   }
 
   @Test

@@ -41,6 +41,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -996,6 +998,84 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
     // The batch wrote nothing: the valid test can still be created on its own.
     assertEquals(valid.getName(), createEntity(valid).getName());
+  }
+
+  @Test
+  void createMany_withDuplicateNamesInRequest_createsEachNameOnce(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = rowCountRequest(table, ns.prefix("duplicate_in_batch"));
+    request.setDescription("First occurrence");
+    CreateTestCase duplicate =
+        rowCountRequest(table, request.getName()).withDescription("Later occurrence");
+    CreateTestCase fresh = rowCountRequest(table, ns.prefix("new_in_batch"));
+
+    List<TestCase> created =
+        SdkClients.adminClient().testCases().createMany(List.of(request, duplicate, fresh));
+
+    assertEquals(
+        List.of(request.getName(), fresh.getName()),
+        created.stream().map(TestCase::getName).toList());
+    for (TestCase testCase : created) {
+      TestCase stored =
+          SdkClients.adminClient()
+              .testCases()
+              .get(testCase.getId().toString(), "testSuite,testDefinition");
+      assertEquals(testCase.getFullyQualifiedName(), stored.getFullyQualifiedName());
+      assertNotNull(stored.getTestSuite());
+      assertNotNull(stored.getTestDefinition());
+    }
+    assertEquals(
+        request.getDescription(),
+        getEntity(created.getFirst().getId().toString()).getDescription());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void createMany_withExistingName_skipsDuplicateAndPreservesStoredTest(
+      boolean softDeleted, TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_in_batch"));
+    TestCase existing = createEntity(existingRequest);
+    if (softDeleted) {
+      deleteEntity(existing.getId().toString());
+    }
+    CreateTestCase freshRequest = rowCountRequest(table, ns.prefix("new_in_batch"));
+    existingRequest.setDescription("Must not overwrite the existing test");
+
+    List<TestCase> created =
+        SdkClients.adminClient().testCases().createMany(List.of(freshRequest, existingRequest));
+
+    assertEquals(List.of(freshRequest.getName()), created.stream().map(TestCase::getName).toList());
+    assertEquals(
+        created.getFirst().getId(),
+        getEntityByName(created.getFirst().getFullyQualifiedName()).getId());
+    TestCase stored =
+        SdkClients.adminClient().testCases().get(existing.getId().toString(), "", "all");
+    assertEquals(existing.getDescription(), stored.getDescription());
+    assertEquals(softDeleted, stored.getDeleted());
+    assertTrue(SdkClients.adminClient().testCases().createMany(List.of(existingRequest)).isEmpty());
+  }
+
+  @Test
+  void createMany_withSameNameOnDifferentTables_createsBoth(TestNamespace ns) {
+    CreateTestCase first = rowCountRequest(createTable(ns), ns.prefix("same_name"));
+    CreateTestCase second = rowCountRequest(createTable(ns), first.getName());
+
+    List<TestCase> created =
+        SdkClients.adminClient().testCases().createMany(List.of(first, second));
+
+    assertEquals(2, created.size());
+    assertNotEquals(
+        created.getFirst().getFullyQualifiedName(), created.getLast().getFullyQualifiedName());
+  }
+
+  private static CreateTestCase rowCountRequest(Table table, String name) {
+    return new CreateTestCase()
+        .withName(name)
+        .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+        .withTestDefinition("tableRowCountToEqual")
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withName("value").withValue("100")));
   }
 
   @Test

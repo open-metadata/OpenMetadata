@@ -745,11 +745,14 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "createManyTestCase",
       summary = "Create multiple test cases at once",
-      description = "Create multiple test cases at once up to a limit of 100 per request.",
+      description =
+          "Create multiple test cases at once up to a limit of 100 per request. Existing fully "
+              + "qualified names, including soft-deleted tests, are skipped. Returns only newly "
+              + "created tests; repeated names in the request use the first occurrence.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The test",
+            description = "The newly created tests",
             content =
                 @Content(
                     mediaType = "application/json",
@@ -798,8 +801,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
           testCases.add(test);
         });
-    repository.createMany(uriInfo, testCases);
-    return Response.ok(testCases).build();
+    return Response.ok(repository.createMany(uriInfo, testCases)).build();
   }
 
   @PATCH

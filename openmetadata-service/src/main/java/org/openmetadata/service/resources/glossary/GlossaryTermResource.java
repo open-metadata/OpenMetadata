@@ -881,11 +881,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   @Operation(
       operationId = "createManyGlossaryTerm",
       summary = "Create multiple glossary terms at once",
-      description = "Create multiple new glossary terms.",
+      description =
+          "Create multiple new glossary terms. Existing fully qualified names, including soft-deleted"
+              + " terms, are skipped. Repeated fully qualified names use the first occurrence."
+              + " Returns only newly created terms.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The glossary term",
+            description = "The newly created glossary terms",
             content =
                 @Content(
                     mediaType = "application/json",

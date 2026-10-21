@@ -69,10 +69,11 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   // ===================================================================
 
   /**
-   * Create multiple test cases in a single request.
+   * Create multiple test cases in a single request, skipping existing fully qualified names
+   * (including soft-deleted tests) and keeping the first occurrence of repeated names.
    *
    * @param requests List of test case creation requests
-   * @return List of created test cases
+   * @return Only newly created test cases, or an empty list when all names already exist
    */
   public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
     try {
