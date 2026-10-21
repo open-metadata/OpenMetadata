@@ -18,7 +18,7 @@ Presidio's upstream implementation and fixed by our subclass.
 import pytest
 
 from metadata.pii.algorithms.presidio_utils import (
-    ValidatedAuAcnRecognizer,
+    SeparatorTolerantAuAcnRecognizer,
     ValidatedFiPersonalIdentityCodeRecognizer,
     ValidatedItFiscalCodeRecognizer,
     ValidatedPlPeselRecognizer,
@@ -97,11 +97,11 @@ class TestValidatedItFiscalCodeRecognizer:
 # ---------------------------------------------------------------------------
 
 
-class TestValidatedAuAcnRecognizer:
+class TestSeparatorTolerantAuAcnRecognizer:
     """ACN check digit = (10 - weighted_sum % 10) % 10."""
 
     def setup_method(self):
-        self.rec = ValidatedAuAcnRecognizer()
+        self.rec = SeparatorTolerantAuAcnRecognizer()
 
     @pytest.mark.parametrize(
         "acn",

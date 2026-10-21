@@ -57,7 +57,7 @@ const downloadRelationships = async (page: Page) => {
 };
 const chooseView = async (page: Page, name: string) => {
   if (name === 'Ontology' || name === 'Knowledge Graph') {
-    await page.getByRole('radio', { name, exact: true }).click();
+    await page.getByRole('tab', { name, exact: true }).click();
 
     return;
   }
@@ -844,7 +844,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toHaveText('Concept');
     await expect(
       page.getByTestId('node-Orders').getByTestId('label')
-    ).toHaveCSS('font-size', '15px');
+    ).toHaveCSS('font-size', '16px');
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'font-family',
       /Inter/
@@ -852,7 +852,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.getByTestId('graph-status')).not.toContainText('Level 2');
     await expect(page.getByTestId('knowledge-graph-export')).toHaveCount(0);
     await expect(
-      page.getByRole('radio', { name: 'Ontology', exact: true })
+      page.getByRole('tab', { name: 'Ontology', exact: true })
     ).toBeVisible();
     await page.getByTestId('graph-view-menu').click();
     await expect(
@@ -998,7 +998,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ]);
   });
 
-  test('ontology explores real concepts, directed predicates, properties and root-only exports', async ({
+  test('ontology view explores glossary relations, directed predicates and root-only exports', async ({
     page,
   }) => {
     const graph = fixture();
@@ -1033,25 +1033,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         json: responseFor(new URL(route.request().url()), false, graph),
       })
     );
-    await page.route('**/api/v1/glossaryTerms/byIds?**', (route) =>
-      route.fulfill({
-        json: [
-          {
-            id: 'account',
-            name: 'Account',
-            attributes: [
-              {
-                id: 'account-id',
-                name: 'accountId',
-                dataType: 'STRING',
-                isIdentifier: true,
-              },
-            ],
-          },
-          { id: 'term', name: 'Revenue', attributes: [] },
-        ],
-      })
-    );
     await page.route('**/api/v1/rdf/graph/explore/export?**', (route) =>
       route.fulfill({ body: 'concept', contentType: 'text/plain' })
     );
@@ -1071,7 +1052,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       '1'
     );
     await expect(page.getByTestId('graph-mode')).toHaveText('Ontology');
-    await expect(page.getByTestId('node-accountId')).toHaveCount(1);
     await page.getByTestId('graph-open-relationships').click();
     const details = page.getByTestId('graph-details');
     const serves = details.getByRole('row').filter({ hasText: 'Serves' });
@@ -1085,28 +1065,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toHaveAttribute('href', /Business.Account/);
     await expect(inspector).not.toContainText('Derived relationship');
     await inspector.getByRole('button', { name: 'Close', exact: true }).click();
-    await details.getByRole('tab', { name: 'Properties', exact: true }).click();
-    await expect(
-      details.getByRole('row').filter({ hasText: 'accountId' })
-    ).toContainText('At most one');
-    await details.getByRole('row').filter({ hasText: 'accountId' }).click();
-    await expect(inspector).toContainText('Range: STRING');
-    await expect(
-      inspector.getByText('Range: STRING', { exact: true })
-    ).toBeInViewport();
-    await expect(inspector).toContainText('At most one');
-    await page.screenshot({
-      path: test.info().outputPath('ontology-property-inspector.png'),
-    });
-    await inspector.getByRole('button', { name: 'Close', exact: true }).click();
     await details.getByRole('button', { name: 'Close', exact: true }).click();
     await chooseLevel(page, 1);
-    // A concept's level 1 is the assets mapped onto it and its declared
-    // properties; neighbouring concepts wait for level 2.
-    await expect(page.locator('[data-node-id]')).toHaveCount(3);
-    await expect(page.locator('[data-edge-id]')).toHaveCount(2);
+    // Level 1 includes mapped assets; neighbouring glossary terms wait for level 2.
+    await expect(page.locator('[data-node-id]')).toHaveCount(2);
+    await expect(page.locator('[data-edge-id]')).toHaveCount(1);
     await expect(page.getByTestId('node-Customers')).toBeVisible();
-    await expect(page.getByTestId('node-accountId')).toBeVisible();
     await expect(page.getByTestId('node-Revenue')).toHaveCount(0);
     const exportRequest = page.waitForRequest((request) =>
       request.url().includes('/rdf/graph/explore/export?')

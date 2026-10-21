@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react';
 import IngestionStatusCount from './IngestionStatusCount';
 
 describe('IngestionStatusCount', () => {
-  it('renders each count as a status-coloured badge', () => {
+  it('renders each count as a status-coloured tile', () => {
     render(
       <IngestionStatusCount
         runId="run-1"

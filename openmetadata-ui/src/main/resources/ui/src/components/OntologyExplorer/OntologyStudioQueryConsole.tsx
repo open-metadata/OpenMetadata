@@ -49,6 +49,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { useSparqlQueryLibrary } from '../../hooks/useSparqlQueryLibrary';
 import {
   runGlossarySparqlQuery,
+  runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
   SparqlPlaygroundResult,
@@ -60,6 +61,7 @@ import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyQueryResults from './OntologyQueryResults';
 import {
   buildOntologyQuerySuggestions,
+  NEW_NATIVE_ONTOLOGY_QUERY,
   NEW_ONTOLOGY_QUERY,
   OntologyQuerySuggestion,
 } from './OntologyStudio.utils';
@@ -73,6 +75,7 @@ interface OntologyStudioQueryConsoleProps {
   readonly graphData: OntologyGraphData | null;
   readonly relationTypes: RelationshipType[];
   readonly selectedGlossaryIds: string[];
+  readonly selectedOntologyId?: string;
 }
 
 type SaveTarget = 'personal' | 'template';
@@ -600,6 +603,7 @@ const OntologyStudioQueryConsole = ({
   graphData,
   relationTypes,
   selectedGlossaryIds,
+  selectedOntologyId,
 }: OntologyStudioQueryConsoleProps) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -622,8 +626,11 @@ const OntologyStudioQueryConsole = ({
     [graphData, relationTypes, selectedGlossaryIds]
   );
   const defaultSuggestion = querySuggestions[0];
+  const newQuery = selectedOntologyId
+    ? NEW_NATIVE_ONTOLOGY_QUERY
+    : NEW_ONTOLOGY_QUERY;
   const [query, setQuery] = useState(
-    initialQuery ?? defaultSuggestion?.query ?? NEW_ONTOLOGY_QUERY
+    initialQuery ?? defaultSuggestion?.query ?? newQuery
   );
   // The text the active query was opened with, so edits can be flagged and discarded.
   const [openedQuery, setOpenedQuery] = useState(query);
@@ -695,14 +702,22 @@ const OntologyStudioQueryConsole = ({
           inference: 'none' as const,
         };
         const glossaryId = selectedGlossaryIds[0];
-        if (!glossaryId && !isAdminUser) {
+        if (!glossaryId && !selectedOntologyId && !isAdminUser) {
           throw new Error(
             t('label.please-select-entity', { entity: t('label.glossary') })
           );
         }
-        const nextResult = glossaryId
-          ? await runGlossarySparqlQuery(glossaryId, queryParams)
-          : await runSparqlQuery(queryParams);
+        let nextResult;
+        if (selectedOntologyId) {
+          nextResult = await runOntologySparqlQuery(
+            selectedOntologyId,
+            queryParams
+          );
+        } else if (glossaryId) {
+          nextResult = await runGlossarySparqlQuery(glossaryId, queryParams);
+        } else {
+          nextResult = await runSparqlQuery(queryParams);
+        }
         setResult(nextResult);
       } catch (error) {
         let message: string;
@@ -720,7 +735,7 @@ const OntologyStudioQueryConsole = ({
         setRunning(false);
       }
     },
-    [isAdminUser, selectedGlossaryIds, t]
+    [isAdminUser, selectedGlossaryIds, selectedOntologyId, t]
   );
 
   const runListedQuery = useCallback(
@@ -738,16 +753,16 @@ const OntologyStudioQueryConsole = ({
     const created = await upsertSavedQuery({
       id,
       name: t('label.untitled-query'),
-      query: NEW_ONTOLOGY_QUERY,
+      query: newQuery,
       format: 'json',
       inference: 'none',
       savedAt: Date.now(),
     });
-    openQuery(created ? `saved-${id}` : 'draft', NEW_ONTOLOGY_QUERY);
+    openQuery(created ? `saved-${id}` : 'draft', newQuery);
     setRenameValue(undefined);
     setResult(null);
     setErrorMessage(null);
-  }, [openQuery, t, upsertSavedQuery]);
+  }, [newQuery, openQuery, t, upsertSavedQuery]);
 
   useEffect(() => {
     // The ref keeps a re-run (React strict mode) from creating a second query.

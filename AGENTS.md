@@ -52,8 +52,7 @@ and Docker infrastructure.
   The last line installs the `pre-commit` hooks (`.pre-commit-config.yaml`): on `git commit` they run
   Java format (spotless), Python format (ruff), UI format (prettier), design-token, and Apache-2.0
   license checks on your changed files, matching CI. Do not skip them with `--no-verify`.
-- **Java**: Java 21; use `mvn`. **Frontend**: use `yarn` (never `npm`); frontend root is
-  `openmetadata-ui/src/main/resources/ui/`.
+- **Java**: Java 21; use `mvn`. **Frontend**: use `yarn` (never `npm`); frontend root is `openmetadata-ui/src/main/resources/ui/`.
 - **Docker dev services**: `docker compose -f docker/development/docker-compose.yml up -d`.
 
 ## Repository layout
@@ -73,8 +72,7 @@ Maven modules (reactor order is computed from the graph, not this list):
 - `openmetadata-dist/` — packaging/distribution
 - `openmetadata-clients/` — client artifacts
 
-Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` (DB migrations),
-`conf/` (configuration), `docker/` (local + prod deployment).
+Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` (DB migrations), `conf/` (configuration), `docker/` (local + prod deployment).
 
 ## Hard cross-cutting constraints (apply to every session, all languages)
 
@@ -151,6 +149,8 @@ on functionality over education. Do not add unnecessary blank lines between pros
   top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
   `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
   `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
+- `REVIEW.md` — **the review bar every PR is held to**: the logic defects, test gaps and flaky-test
+  shapes reviewers keep finding here. Read it before writing code; `pr-checklist` self-reviews against it.
 - `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
   arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
   record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
@@ -166,14 +166,14 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, Playwright for UI |
 | `java-affected-tests` | before a PR touching Java/schemas/migrations — runs the impacted unit tests + ITs (PR CI runs no ITs) |
 | `verification` | before claiming "done" — run real commands, show evidence |
-| `code-review` | reviewing a diff/PR — spec compliance then code quality |
+| `code-review` | reviewing a local diff before it is a PR — `REVIEW.md` as the bar, spec compliance then code quality |
 | `java-checkstyle` | after touching `.java` — runs `mvn spotless:apply` and verifies |
 | `ui-checkstyle` | after touching UI `*.{ts,tsx,js,jsx,json}` — the exact CI ESLint+Prettier+organize-imports pass |
 | `ui-core-components` | building UI layout/color before reaching for raw `<div>` + Tailwind |
 | `test-locally` | spinning up the full local Docker stack to test a change/connector |
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
-| `pr-checklist` / `ui-pr-recording` | creating a PR for a UI feature or feature task — run the PR build in Docker with sample data and upload its screen recording into the description |
+| `pr-checklist` / `ui-pr-recording` | opening any PR — self-review against `REVIEW.md`, test evidence, the body; a UI feature PR also runs the build in Docker with sample data and uploads its screen recording |
 | `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at

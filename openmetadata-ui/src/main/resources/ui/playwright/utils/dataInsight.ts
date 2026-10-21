@@ -119,3 +119,11 @@ export const addKpi = async (page: Page, data: KPIData) => {
 
   return { ...kpi, id: kpi.id, fullyQualifiedName: kpi.fullyQualifiedName };
 };
+
+export const openDataInsightTab = async (
+  page: Page,
+  tab: 'kpi' | 'app-analytics'
+) => {
+  await page.getByTestId(`data-insight-tab-${tab}`).click();
+  await page.waitForURL(`**/data-insights/${tab}`);
+};

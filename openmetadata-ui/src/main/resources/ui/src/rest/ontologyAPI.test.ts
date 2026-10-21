@@ -11,24 +11,35 @@
  *  limitations under the License.
  */
 
+import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
 import {
+  activateOntologyRelease,
+  captureOntologyRelease,
+  createOntology,
+  createOntologyConcept,
   generateOntologyDomainDraft,
   generateOntologySparql,
   getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
+  getOntologyByName,
   getOntologyChangeSet,
+  getOntologyRelease,
   getRdfEntityDiff,
   installOntologyPack,
   listInferenceRules,
+  listOntologies,
   listOntologyBulkJobs,
   listOntologyChangeSets,
+  listOntologyConcepts,
   listOntologyPacks,
+  listOntologyReleases,
   listRelationshipTypes,
   materializeInferenceRules,
+  patchOntologyConcept,
   proposeTermFromMemory,
   releaseOntologyEditLock,
   submitOntologyBulkOperation,
@@ -50,7 +61,150 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
 describe('ontologyAPI', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+  });
+
+  it('recovers a native ontology by its frozen encoded name', async () => {
+    const ontology = {
+      id: 'ontology-id',
+      name: 'library name',
+      iri: 'urn:library',
+    };
+    mockedApiClient.get.mockResolvedValue({ data: ontology });
+
+    expect(await getOntologyByName('library name')).toEqual(ontology);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontologies/name/library%20name'
+    );
+  });
+
+  it('creates native ontology definitions and patches by identity', async () => {
+    const ontology = {
+      name: 'Sales',
+      iri: 'urn:sales',
+      namespace: 'urn:sales:',
+    };
+    const concept = {
+      name: 'Customer',
+      ontology: 'Sales',
+      conceptType: OntologyConceptType.OwlClass,
+    };
+    mockedApiClient.post.mockResolvedValue({ data: { id: 'created' } });
+    mockedApiClient.patch.mockResolvedValue({ data: { id: 'updated' } });
+
+    expect(await createOntology(ontology)).toEqual({ id: 'created' });
+    expect(mockedApiClient.post).toHaveBeenLastCalledWith(
+      '/ontologies',
+      ontology
+    );
+    expect(await createOntologyConcept(concept)).toEqual({ id: 'created' });
+    expect(mockedApiClient.post).toHaveBeenLastCalledWith(
+      '/ontologyConcepts',
+      concept
+    );
+
+    const patch = [{ op: 'test' as const, path: '/version', value: 0.1 }];
+
+    expect(await patchOntologyConcept('concept/id', patch)).toEqual({
+      id: 'updated',
+    });
+    expect(mockedApiClient.patch).toHaveBeenCalledWith(
+      '/ontologyConcepts/concept%2Fid',
+      patch,
+      {
+        headers: { 'Content-Type': 'application/json-patch+json' },
+      }
+    );
+  });
+
+  it('browses sealed releases by native owner and reads a selected release', async () => {
+    const release = { id: 'release-id', ontology: { id: 'ontology-id' } };
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { data: [release], paging: { total: 1 } },
+      })
+      .mockResolvedValueOnce({ data: release });
+    const signal = new AbortController().signal;
+
+    await listOntologyReleases(
+      'ontology-id',
+      { limit: 25, after: 'cursor' },
+      signal
+    );
+
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologyReleases', {
+      params: { ontologyId: 'ontology-id', limit: 25, after: 'cursor' },
+      signal,
+    });
+    expect(await getOntologyRelease('release-id', signal)).toEqual(release);
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith(
+      '/ontologyReleases/release-id',
+      { signal }
+    );
+  });
+
+  it('uses dedicated ontology collections and preserves cursor paging', async () => {
+    const response = {
+      data: { data: [], paging: { total: 150, after: 'next' } },
+    };
+    mockedApiClient.get.mockResolvedValue(response);
+    const signal = new AbortController().signal;
+
+    expect(await listOntologies({ limit: 25, after: 'first' }, signal)).toEqual(
+      response.data
+    );
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologies', {
+      params: { limit: 25, after: 'first' },
+      signal,
+    });
+
+    await listOntologyConcepts(
+      { ontology: 'Sales', fields: 'superClasses,subClasses', limit: 25 },
+      signal
+    );
+
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith('/ontologyConcepts', {
+      params: {
+        ontology: 'Sales',
+        fields: 'superClasses,subClasses',
+        limit: 25,
+      },
+      signal,
+    });
+  });
+
+  it('captures the selected working revision', async () => {
+    const request = {
+      expectedWorkingRevision: 7,
+    };
+    const release = { id: 'candidate', contentDigest: 'sealed' };
+    mockedApiClient.post.mockResolvedValue({ data: release });
+
+    expect(await captureOntologyRelease('ontology-id', request)).toEqual(
+      release
+    );
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/releases',
+      request
+    );
+  });
+
+  it('preserves activation conflicts for a reload instead of retrying with a newer revision', async () => {
+    const conflict = new Error('Activation changed');
+    const request = {
+      releaseId: 'approved-release',
+      expectedActivationRevision: 2,
+    };
+    mockedApiClient.put.mockRejectedValue(conflict);
+
+    await expect(activateOntologyRelease('ontology-id', request)).rejects.toBe(
+      conflict
+    );
+    expect(mockedApiClient.put).toHaveBeenCalledTimes(1);
+    expect(mockedApiClient.put).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/activation',
+      request
+    );
   });
 
   it('lists governed relationship types with paging parameters', async () => {

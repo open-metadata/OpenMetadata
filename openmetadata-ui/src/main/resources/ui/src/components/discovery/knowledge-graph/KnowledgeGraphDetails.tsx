@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
+  Badge,
   Box,
   Button,
   Input,
@@ -19,11 +21,10 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Column } from '../../../generated/entity/data/table';
+import { TagLabel } from '../../../generated/type/tagLabel';
 import { transformToG6Format } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphNodeHref } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import { isCoverageNode } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
@@ -31,6 +32,8 @@ import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
+import DataTypeBadge from '../database/DataTypeBadge/DataTypeBadge';
 import {
   GraphData,
   GraphNode,
@@ -43,6 +46,14 @@ import {
   RelationCategory,
   RELATION_CATEGORIES,
 } from './KnowledgeGraph.relations';
+import {
+  CellTone,
+  CELL_TONE_PROPS,
+  CHIP_LIMIT,
+  FAMILY_BADGE_COLORS,
+} from './KnowledgeGraphDetails.constants';
+import { getTagsText } from './KnowledgeGraphDetails.utils';
+import KnowledgeGraphDetailsFooter from './KnowledgeGraphDetailsFooter';
 
 interface DetailsProps {
   drawer: KnowledgeGraphDrawer;
@@ -55,12 +66,6 @@ interface DetailsProps {
     error: unknown;
     loadMore: () => void;
   };
-  concepts: {
-    terms: GlossaryTerm[];
-    loading: boolean;
-    error: unknown;
-    partial: boolean;
-  };
   coverage: Map<string, MappingCoverage>;
   relationshipScope?: { label: string; edgeIds: string[] } | null;
   onClearRelationshipScope?: () => void;
@@ -70,12 +75,17 @@ interface DetailsProps {
   onRetry: () => void;
 }
 
-type CellTone = 'mono' | 'muted' | 'brand' | 'warning' | 'success';
-
 interface DetailCell {
+  /** Plain text of the cell; also what the search box matches against. */
   text: string;
   tone?: CellTone;
   href?: string;
+  /** Renders the text as a coloured badge. */
+  badge?: BadgeColors;
+  /** Renders a column data-type badge; `text` is the display form. */
+  dataType?: string;
+  /** Renders tag / glossary-term chips (TagsViewer) instead of the text. */
+  tags?: TagLabel[];
 }
 
 interface DetailRow {
@@ -93,14 +103,6 @@ const UNKNOWN: MappingCoverage = 'unknown';
 const COVERAGE_STATUSES: MappingCoverage[] = ['mapped', 'unmapped', UNKNOWN];
 /** Gaps surfaces only the actionable statuses — mapped rows aren't a gap. */
 const GAPS_STATUSES: MappingCoverage[] = ['unmapped', UNKNOWN];
-
-const CELL_TONES: Record<CellTone, string> = {
-  mono: 'tw:font-mono tw:text-primary',
-  muted: 'tw:text-tertiary',
-  brand: 'tw:text-brand-secondary',
-  warning: 'tw:font-semibold tw:text-warning-primary',
-  success: 'tw:text-success-primary',
-};
 
 const getColumnCoverage = (
   termCount: number,
@@ -134,19 +136,15 @@ const getDetailsState = ({
   drawer,
   mode,
   columns,
-  concepts,
-}: Pick<DetailsProps, 'drawer' | 'mode' | 'columns' | 'concepts'>) => {
-  const metadata = mode === 'ontology' ? concepts : columns;
-
+}: Pick<DetailsProps, 'drawer' | 'mode' | 'columns'>) => {
   return {
-    loading: drawer === 'columns' && metadata.loading,
-    error: drawer === 'columns' && metadata.error,
+    loading: drawer === 'columns' && mode !== 'ontology' && columns.loading,
+    error: drawer === 'columns' && mode !== 'ontology' && columns.error,
     showFilters: drawer !== 'columns' || mode !== 'ontology',
     hasMoreColumns:
       drawer === 'columns' &&
       mode !== 'ontology' &&
       columns.columns.length < columns.total,
-    partial: mode === 'ontology' && concepts.partial,
   };
 };
 
@@ -263,7 +261,6 @@ const KnowledgeGraphDetails = ({
   mode,
   data,
   columns,
-  concepts,
   coverage,
   relationshipScope,
   onClearRelationshipScope,
@@ -303,7 +300,7 @@ const KnowledgeGraphDetails = ({
     relationships: t(DETAIL_LABELS[mode].relationships),
     coverage: t(DETAIL_LABELS[mode].coverage),
   };
-  const view = getDetailsState({ drawer, mode, columns, concepts });
+  const view = getDetailsState({ drawer, mode, columns });
   const model = useMemo((): {
     headings: string[];
     rows: DetailRow[];
@@ -331,12 +328,18 @@ const KnowledgeGraphDetails = ({
             target: String(edge.id),
             family: edge.data.category,
             cells: [
-              { text: nodeMap.get(edge.source)?.label ?? edge.source },
-              { text: edge.data.label, tone: 'mono' },
-              { text: nodeMap.get(edge.target)?.label ?? edge.target },
+              {
+                text: nodeMap.get(edge.source)?.label ?? edge.source,
+                tone: 'primary',
+              },
+              { text: edge.data.label, tone: 'primary' },
+              {
+                text: nodeMap.get(edge.target)?.label ?? edge.target,
+                tone: 'primary',
+              },
               {
                 text: t(getRelationStyle(edge.data.category).labelKey),
-                tone: 'muted',
+                badge: FAMILY_BADGE_COLORS[edge.data.category],
               },
             ],
           })),
@@ -367,7 +370,7 @@ const KnowledgeGraphDetails = ({
               target: node.id,
               coverage: status,
               cells: [
-                { text: node.label, tone: 'mono' },
+                { text: node.label, tone: 'primary' },
                 { text: describeLocation(node), tone: 'muted' },
                 coverageCell(status, t),
                 suggestedFixCell(status, node, t),
@@ -385,44 +388,35 @@ const KnowledgeGraphDetails = ({
           t('label.kg-cardinality'),
         ],
         hint: t('message.kg-properties-scope'),
-        rows: concepts.terms.flatMap((term) =>
-          (term.effectiveAttributes ?? term.attributes ?? []).map(
-            (attribute) => ({
-              id: term.id + ':' + attribute.id,
-              kind: 'node',
-              // An inherited attribute is drawn once, on the ancestor that
-              // declares it, so its node id keys off the declaring concept.
-              target: nodeMap.get(
-                attribute.iri ??
-                  'kg:property:' +
-                    (attribute.declaringTerm?.id ?? term.id) +
-                    ':' +
-                    attribute.id
-              )?.id,
-              cells: [
-                { text: attribute.name, tone: 'mono' },
-                {
-                  text: attribute.datatypeIri ?? attribute.dataType,
-                  tone: 'muted',
-                },
-                {
-                  text:
-                    attribute.declaringTerm?.displayName ??
-                    attribute.declaringTerm?.name ??
-                    term.displayName ??
-                    term.name,
-                  tone: 'brand',
-                },
-                {
-                  text: attribute.isIdentifier
-                    ? t('label.kg-at-most-one')
-                    : t('label.kg-not-declared'),
-                  tone: 'muted',
-                },
-              ],
-            })
-          )
-        ),
+        rows: data.nodes
+          .filter((node) => node.type === 'property')
+          .map((node) => ({
+            id: node.id,
+            kind: 'node',
+            target: node.id,
+            cells: [
+              { text: node.label, tone: 'primary' },
+              { text: node.ontologyProperty?.range ?? '', tone: 'muted' },
+              {
+                text: data.edges
+                  .filter(
+                    (edge) =>
+                      edge.from === node.id &&
+                      edge.relationType ===
+                        'http://www.w3.org/2000/01/rdf-schema#domain'
+                  )
+                  .map((edge) => nodeMap.get(edge.to)?.label ?? '')
+                  .join(', '),
+                tone: 'brand',
+              },
+              {
+                text: node.ontologyProperty?.functional
+                  ? t('label.kg-at-most-one')
+                  : t('label.kg-not-declared'),
+                tone: 'muted',
+              },
+            ],
+          })),
       };
     }
     const graphColumns = new Map(
@@ -446,9 +440,10 @@ const KnowledgeGraphDetails = ({
           column.tags?.filter((tag) => tag.source === 'Glossary') ?? [];
         const node = graphColumns.get(column.fullyQualifiedName ?? column.name);
         const mapping = getColumnCoverage(terms.length, node, coverage);
-        const termNames = terms
-          .map((term) => term.displayName ?? term.name ?? term.tagFQN)
-          .join(', ');
+        const classificationTags = (column.tags ?? []).filter(
+          (tag) => tag.source !== 'Glossary'
+        );
+        const dataType = column.dataTypeDisplay ?? column.dataType;
 
         return {
           id: column.fullyQualifiedName ?? column.name,
@@ -456,33 +451,22 @@ const KnowledgeGraphDetails = ({
           target: node?.id,
           coverage: mapping,
           cells: [
-            { text: column.name, tone: 'mono' },
-            { text: column.dataTypeDisplay ?? column.dataType, tone: 'muted' },
-            termNames
-              ? { text: termNames, tone: 'brand' }
+            { text: column.name, tone: 'primary' },
+            { text: dataType, dataType: column.dataType },
+            terms.length > 0
+              ? { text: getTagsText(terms), tags: terms }
               : { text: t('label.kg-' + mapping), tone: 'muted' },
-            {
-              text:
-                (column.tags ?? [])
-                  .filter((tag) => tag.source !== 'Glossary')
-                  .map((tag) => tag.displayName ?? tag.name ?? tag.tagFQN)
-                  .join(', ') || '—',
-              tone: 'muted',
-            },
+            classificationTags.length > 0
+              ? {
+                  text: getTagsText(classificationTags),
+                  tags: classificationTags,
+                }
+              : { text: '—', tone: 'muted' },
           ],
         };
       }),
     };
-  }, [
-    drawer,
-    mode,
-    data,
-    columns.columns,
-    concepts.terms,
-    coverage,
-    t,
-    relationshipScope,
-  ]);
+  }, [drawer, mode, data, columns.columns, coverage, t, relationshipScope]);
   const tableLocale = useMemo(
     () => ({
       emptyText: view.loading ? t('label.loading') : t('label.kg-no-results'),
@@ -522,10 +506,27 @@ const KnowledgeGraphDetails = ({
           if (!cell) {
             return null;
           }
-          const className = classNames(
-            cell.tone && CELL_TONES[cell.tone],
-            'tw:text-xs'
-          );
+          if (cell.tags) {
+            return (
+              <TagsViewer
+                showNoDataPlaceholder={false}
+                sizeCap={CHIP_LIMIT}
+                tags={cell.tags}
+              />
+            );
+          }
+          if (cell.dataType) {
+            return (
+              <DataTypeBadge dataType={cell.dataType} displayName={cell.text} />
+            );
+          }
+          if (cell.badge) {
+            return (
+              <Badge color={cell.badge} size="sm" type="color">
+                {cell.text}
+              </Badge>
+            );
+          }
           if (cell.href) {
             return (
               <Button
@@ -539,7 +540,13 @@ const KnowledgeGraphDetails = ({
             );
           }
 
-          return <span className={className}>{cell.text}</span>;
+          return (
+            <Typography
+              size="text-sm"
+              {...(cell.tone && CELL_TONE_PROPS[cell.tone])}>
+              {cell.text}
+            </Typography>
+          );
         },
       })),
     [model.headings]
@@ -631,7 +638,7 @@ const KnowledgeGraphDetails = ({
           )}
           <Button
             aria-label={t('label.close')}
-            color="secondary"
+            color="tertiary"
             iconLeading={XClose}
             size="sm"
             onPress={close}
@@ -703,44 +710,17 @@ const KnowledgeGraphDetails = ({
               onRow={getRowHandlers}
             />
           </Box>
-          <Box
-            align="center"
-            className="tw:min-h-8 tw:shrink-0 tw:border-t tw:border-secondary tw:px-3.5 tw:py-1"
-            gap={3}
-            justify="between"
-            wrap="wrap">
-            <Typography
-              aria-live="polite"
-              className="tw:text-tertiary"
-              size="text-xs">
-              {t('label.kg-list-count', { count: rows.length })}
-              {view.partial ? ' · ' + t('message.kg-partial-graph') : ''}
-            </Typography>
-            <Box align="center" gap={3}>
-              {view.hasMoreColumns && (
-                <Button
-                  color="link-color"
-                  isLoading={columns.loading}
-                  size="sm"
-                  onPress={columns.loadMore}>
-                  {t('label.kg-load-columns', {
-                    count: columns.total - columns.columns.length,
-                  })}
-                </Button>
-              )}
-              {rows.length > limit && (
-                <Button
-                  color="link-color"
-                  size="sm"
-                  onPress={() => setLimit(limit + PAGE_SIZE)}>
-                  {t('label.kg-show-more', {
-                    count: Math.min(PAGE_SIZE, rows.length - limit),
-                    total: rows.length,
-                  })}
-                </Button>
-              )}
-            </Box>
-          </Box>
+          <KnowledgeGraphDetailsFooter
+            isLoadingColumns={columns.loading}
+            limit={limit}
+            pageSize={PAGE_SIZE}
+            total={rows.length}
+            unloadedColumns={
+              view.hasMoreColumns ? columns.total - columns.columns.length : 0
+            }
+            onLoadColumns={columns.loadMore}
+            onShowMore={() => setLimit(limit + PAGE_SIZE)}
+          />
         </Tabs.Panel>
       </Tabs>
     </Box>

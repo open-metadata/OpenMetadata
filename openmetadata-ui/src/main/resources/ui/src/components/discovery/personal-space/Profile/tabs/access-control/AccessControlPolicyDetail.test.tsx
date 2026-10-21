@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 
@@ -50,8 +50,10 @@ const mockPolicy = {
 };
 
 jest.mock('../../../../../../rest/rolesAPIV1', () => ({
-  getPolicyByName: jest.fn().mockResolvedValue(mockPolicy),
-  patchPolicy: jest.fn().mockResolvedValue(mockPolicy),
+  getPolicyByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockPolicy)),
+  patchPolicy: jest.fn().mockImplementation(() => Promise.resolve(mockPolicy)),
 }));
 
 jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
@@ -181,5 +183,27 @@ describe('AccessControlPolicyDetail', () => {
     });
 
     expect(screen.getByText('AllowViewRule')).toBeInTheDocument();
+  });
+
+  it('opens the rule page to add or edit a rule instead of an inline form', async () => {
+    renderComponent();
+
+    fireEvent.click(await screen.findByTestId('add-rule'));
+
+    expect(mockOnNavigate).toHaveBeenLastCalledWith({
+      type: 'policies-rule',
+      fqn: 'TestPolicy',
+      name: 'Test Policy',
+    });
+
+    fireEvent.click(screen.getByTestId('edit-rule-AllowViewRule'));
+
+    expect(mockOnNavigate).toHaveBeenLastCalledWith({
+      type: 'policies-rule',
+      fqn: 'TestPolicy',
+      name: 'Test Policy',
+      ruleName: 'AllowViewRule',
+    });
+    expect(screen.queryByTestId('rule-form')).not.toBeInTheDocument();
   });
 });
