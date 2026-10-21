@@ -35,6 +35,10 @@ public record UpdatedDomainsResourceContext(
     ResourceContextInterface storedResource, List<EntityReference> updatedDomains)
     implements ResourceContextInterface {
 
+  public UpdatedDomainsResourceContext {
+    updatedDomains = List.copyOf(updatedDomains);
+  }
+
   @Override
   public String getResource() {
     return storedResource.getResource();

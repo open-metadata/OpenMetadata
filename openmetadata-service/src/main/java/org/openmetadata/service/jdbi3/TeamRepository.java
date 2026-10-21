@@ -1505,8 +1505,9 @@ public class TeamRepository extends EntityRepository<Team> {
   /** A team is given the domains an update sends; only a bot's PUT keeps a non-empty assignment. */
   @Override
   protected List<EntityReference> writtenDomains(
-      Team original, Team updated, Operation operation, boolean byBot) {
-    boolean botKeepsStored = operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+      final Team original, final Team updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
     return botKeepsStored
         ? null
         : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));

@@ -4907,13 +4907,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final PatchResponse<T> patch(
-      UriInfo uriInfo,
-      UUID id,
-      ChangeActor actor,
-      JsonPatch patch,
-      ChangeSource changeSource,
-      String ifMatchHeader) {
-    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+      final UriInfo uriInfo,
+      final UUID id,
+      final ChangeActor actor,
+      final JsonPatch patch,
+      final ChangeSource changeSource,
+      final String ifMatchHeader) {
+    final Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
 
     // Get only the fields relevant to this patch operation
     T original;
@@ -4985,13 +4985,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final PatchResponse<T> patch(
-      UriInfo uriInfo,
-      String fqn,
-      ChangeActor actor,
-      JsonPatch patch,
-      ChangeSource changeSource,
-      String ifMatchHeader) {
-    Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
+      final UriInfo uriInfo,
+      final String fqn,
+      final ChangeActor actor,
+      final JsonPatch patch,
+      final ChangeSource changeSource,
+      final String ifMatchHeader) {
+    final Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
 
     // Get only the fields relevant to this patch operation
     T original;
@@ -9531,17 +9531,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * it.
    */
   protected List<EntityReference> writtenDomains(
-      T original, T updated, Operation operation, boolean byBot) {
-    List<EntityReference> sent = EntityUpdater.getEntityReferences(updated.getDomains());
-    boolean keepsStored =
+      final T original, final T updated, final Operation operation, final boolean byBot) {
+    final List<EntityReference> sent = EntityUpdater.getEntityReferences(updated.getDomains());
+    final boolean keepsStored =
         (!operation.isPatch() && sent.isEmpty())
             || (operation.isPut() && byBot && !nullOrEmpty(original.getDomains()));
     return keepsStored ? null : sent;
   }
 
   /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
-  protected static User authorOf(String userName) {
-    User author =
+  protected static User authorOf(final String userName) {
+    final User author =
         userName.equalsIgnoreCase(ADMIN_USER_NAME)
             ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
             : findEntityByNameOrNull(USER, userName, ALL);
@@ -9553,15 +9553,39 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * EditDomains, evaluated on the entity as the write leaves it. Every way of writing an entity
    * calls this before the write is stored or held for approval. A system write is not checked.
    */
-  private void authorizeDomainWrite(T original, T updated, ChangeActor actor, Edit.Kind kind) {
-    List<EntityReference> written =
+  private void authorizeDomainWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit.Kind kind) {
+    final List<EntityReference> written =
         checksDomainsWrittenBy(actor) ? domainsWrittenBy(original, updated, actor, kind) : null;
-    if (written != null && changesDomains(original.getDomains(), written)) {
-      authorizeDomains(original, written, actor);
+    final List<List<EntityReference>> targets =
+        written == null
+            ? List.of()
+            : moveTargets(EntityUpdater.getEntityReferences(original.getDomains()), written);
+    if (!targets.isEmpty()) {
+      authorizeDomains(original, targets, actor);
     }
   }
 
-  private boolean checksDomainsWrittenBy(ChangeActor actor) {
+  /**
+   * The domain lists a write is authorized against, given the entity's own domains and the ones the
+   * write leaves. Each domain the write adds is a target of its own, because hasDomain() passes when
+   * any domain matches. A write that only removes domains is authorized against the domains it
+   * leaves, and one that keeps them needs no check. See
+   * ADR:2026-10-21-domain-moves-are-authorized-in-the-write-pipeline.
+   */
+  static List<List<EntityReference>> moveTargets(
+      final List<EntityReference> ownDomains, final List<EntityReference> written) {
+    final Set<UUID> storedIds = domainIds(ownDomains);
+    final List<List<EntityReference>> added =
+        written.stream()
+            .filter(domain -> !storedIds.contains(domain.getId()))
+            .map(List::of)
+            .toList();
+    final boolean removesOnly = added.isEmpty() && !storedIds.equals(domainIds(written));
+    return removesOnly ? List.of(written) : added;
+  }
+
+  private boolean checksDomainsWrittenBy(final ChangeActor actor) {
     return authorDecidesDomains() && !actor.system();
   }
 
@@ -9575,7 +9599,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private List<EntityReference> domainsWrittenBy(
-      T original, T updated, ChangeActor actor, Edit.Kind kind) {
+      final T original, final T updated, final ChangeActor actor, final Edit.Kind kind) {
     return switch (kind) {
       case PATCH -> writtenDomains(original, updated, Operation.PATCH, false);
       case PUT -> writtenDomains(
@@ -9587,33 +9611,41 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     };
   }
 
-  private boolean changesDomains(List<EntityReference> stored, List<EntityReference> written) {
-    return !domainIds(EntityUpdater.getEntityReferences(stored)).equals(domainIds(written));
-  }
-
-  private static Set<UUID> domainIds(List<EntityReference> domains) {
+  private static Set<UUID> domainIds(final List<EntityReference> domains) {
     return domains.stream().map(EntityReference::getId).collect(Collectors.toSet());
   }
 
   // A user's write is never let through unchecked: without an authorizer it is refused.
-  private void authorizeDomains(T original, List<EntityReference> written, ChangeActor actor) {
-    Authorizer authorizer = Entity.getAuthorizer();
+  private void authorizeDomains(
+      final T original, final List<List<EntityReference>> targets, final ChangeActor actor) {
+    final Authorizer authorizer = Entity.getAuthorizer();
     if (authorizer == null) {
       throw new IllegalStateException(
           "No authorizer is registered to check the domain change by " + actor.userName());
     }
-    OperationContext editDomains = new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS);
     // Loaded by id as a request is authorized: a PUT or bulk original carries no inherited owners,
     // so an owner through the parent would not be seen.
-    ResourceContextInterface moved =
-        new UpdatedDomainsResourceContext(
-            new ResourceContext<>(entityType, original.getId(), null, ALL), written);
+    final ResourceContextInterface stored =
+        new ResourceContext<>(entityType, original.getId(), null, ALL);
+    for (final List<EntityReference> target : targets) {
+      authorizeMove(authorizer, actor, stored, target);
+    }
+  }
+
+  private void authorizeMove(
+      final Authorizer authorizer,
+      final ChangeActor actor,
+      final ResourceContextInterface stored,
+      final List<EntityReference> target) {
+    final OperationContext editDomains =
+        new OperationContext(entityType, MetadataOperation.EDIT_DOMAINS);
     try {
-      authorizer.authorizeActor(actor, editDomains, moved);
+      authorizer.authorizeActor(
+          actor, editDomains, new UpdatedDomainsResourceContext(stored, target));
     } catch (AuthorizationException e) {
       throw new AuthorizationException(
           CatalogExceptionMessage.domainPermissionNotAllowed(
-              actor.userName(), written, List.of(MetadataOperation.EDIT_DOMAINS)),
+              actor.userName(), target, List.of(MetadataOperation.EDIT_DOMAINS)),
           e);
     }
   }
@@ -9622,26 +9654,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Admits a write of {@code original}, loaded with the fields policies read: its domain move is
    * authorized, then an approval workflow may hold it.
    */
-  public final Optional<StagedChange> admit(T original, T updated, ChangeActor actor, Edit edit) {
+  public final Optional<StagedChange> admit(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {
     authorizeDomainWrite(original, updated, actor, edit.kind());
     return ApprovalGate.admit(original, updated, actor.userName(), actor.impersonatedBy(), edit);
   }
 
-  // A batched import replaces each row's domains, and only a row that sends some can move an entity
-  // into one. Those rows' entities are loaded in one query with the fields a PATCH authorizes on.
-  private void authorizeImportedDomains(List<T> originals, List<T> updates, ChangeActor actor) {
-    Map<UUID, T> rowsSendingDomains =
+  /**
+   * Refuses imported rows that move their entities into domains the importer may not move them
+   * into. A batched import replaces each row's domains, and only a row that sends some can move an
+   * entity into one. Those rows' entities are loaded in one query with the fields a PATCH authorizes
+   * on. A CSV dry run calls this too, so it refuses what the import would.
+   */
+  public final void authorizeImportedDomains(
+      final List<T> originals, final List<T> updates, final ChangeActor actor) {
+    final Map<UUID, T> rowsSendingDomains =
         checksDomainsWrittenBy(actor) ? rowsSendingDomains(originals, updates) : Map.of();
     if (!rowsSendingDomains.isEmpty()) {
-      for (T stored : get(null, List.copyOf(rowsSendingDomains.keySet()), patchFields, ALL)) {
+      for (final T stored : get(null, List.copyOf(rowsSendingDomains.keySet()), patchFields, ALL)) {
         authorizeDomainWrite(
             stored, rowsSendingDomains.get(stored.getId()), actor, Edit.Kind.IMPORT_UPDATE);
       }
     }
   }
 
-  private Map<UUID, T> rowsSendingDomains(List<T> originals, List<T> updates) {
-    Map<UUID, T> rows = new HashMap<>();
+  private Map<UUID, T> rowsSendingDomains(final List<T> originals, final List<T> updates) {
+    final Map<UUID, T> rows = new HashMap<>();
     for (int i = 0; i < originals.size(); i++) {
       if (!EntityUpdater.getEntityReferences(updates.get(i).getDomains()).isEmpty()) {
         rows.put(originals.get(i).getId(), updates.get(i));
@@ -11379,10 +11417,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Stores the domains a write leaves, or keeps the stored ones when it leaves them alone.
-    private void storeWrittenDomains(List<EntityReference> writtenDomains) {
-      List<EntityReference> origDomains = getEntityReferences(original.getDomains());
-      List<EntityReference> addedDomains = new ArrayList<>();
-      List<EntityReference> removedDomains = new ArrayList<>();
+    private void storeWrittenDomains(final List<EntityReference> writtenDomains) {
+      final List<EntityReference> origDomains = getEntityReferences(original.getDomains());
+      final List<EntityReference> addedDomains = new ArrayList<>();
+      final List<EntityReference> removedDomains = new ArrayList<>();
       if (writtenDomains != null
           && recordListChange(
               FIELD_DOMAINS,

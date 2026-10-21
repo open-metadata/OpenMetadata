@@ -75,9 +75,9 @@ public class NoopAuthorizer implements Authorizer {
 
   @Override
   public void authorizeActor(
-      ChangeActor actor,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext) {
+      final ChangeActor actor,
+      final OperationContext operationContext,
+      final ResourceContextInterface resourceContext) {
     /* Always authorize */
   }
 

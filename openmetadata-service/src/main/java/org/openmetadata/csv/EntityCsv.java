@@ -1424,17 +1424,19 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
 
   @SuppressWarnings({"unchecked", "rawtypes"})
   private Optional<StagedChange> admission(
-      String type, EntityInterface original, EntityInterface entity) {
+      final String type, final EntityInterface original, final EntityInterface entity) {
     Optional<StagedChange> staged = Optional.empty();
+    final EntityRepository repository = Entity.getEntityRepository(type);
+    final ChangeActor actor = ChangeActor.recorded(importedBy, null);
     if (original != null && isGated(type)) {
-      EntityRepository repository = Entity.getEntityRepository(type);
-      EntityInterface hydrated =
+      final EntityInterface hydrated =
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
       // A row entity carries a fresh id until the write aligns it; compare it as the same asset.
       entity.setId(original.getId());
-      staged =
-          repository.admit(
-              hydrated, entity, ChangeActor.recorded(importedBy, null), Edit.importRow());
+      staged = repository.admit(hydrated, entity, actor, Edit.importRow());
+    } else if (original != null && Boolean.TRUE.equals(importResult.getDryRun())) {
+      // A dry run stores nothing, so the domain check the batched write makes runs here.
+      repository.authorizeImportedDomains(List.of(original), List.of(entity), actor);
     }
     return staged;
   }

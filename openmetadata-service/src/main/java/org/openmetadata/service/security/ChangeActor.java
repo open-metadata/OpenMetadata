@@ -19,11 +19,11 @@ public record ChangeActor(String userName, String impersonatedBy, boolean system
         securityContext.getUserPrincipal().getName(), ImpersonationContext.getImpersonatedBy());
   }
 
-  public static ChangeActor user(String userName, String impersonatedBy) {
+  public static ChangeActor user(final String userName, final String impersonatedBy) {
     return new ChangeActor(userName, impersonatedBy, false);
   }
 
-  public static ChangeActor system(String userName, String impersonatedBy) {
+  public static ChangeActor system(final String userName, final String impersonatedBy) {
     return new ChangeActor(userName, impersonatedBy, true);
   }
 
@@ -31,7 +31,7 @@ public record ChangeActor(String userName, String impersonatedBy, boolean system
    * The actor of a write that records only the names. {@code admin} is the author the platform
    * records its own writes under, as the entity updater also treats it.
    */
-  public static ChangeActor recorded(String userName, String impersonatedBy) {
+  public static ChangeActor recorded(final String userName, final String impersonatedBy) {
     return new ChangeActor(userName, impersonatedBy, ADMIN_USER_NAME.equalsIgnoreCase(userName));
   }
 }

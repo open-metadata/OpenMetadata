@@ -148,15 +148,15 @@ public class DefaultAuthorizer implements Authorizer {
 
   @Override
   public void authorizeActor(
-      ChangeActor actor,
-      OperationContext operationContext,
-      ResourceContextInterface resourceContext) {
+      final ChangeActor actor,
+      final OperationContext operationContext,
+      final ResourceContextInterface resourceContext) {
     authorizeSubject(actorSubjectContext(actor), operationContext, resourceContext);
   }
 
   // The impersonation was validated when the request came in; the write only records it. An author
   // that no longer resolves to a user is refused, never let through.
-  private static SubjectContext actorSubjectContext(ChangeActor actor) {
+  private static SubjectContext actorSubjectContext(final ChangeActor actor) {
     try {
       return SubjectContext.getSubjectContext(actor.userName(), actor.impersonatedBy());
     } catch (EntityNotFoundException e) {

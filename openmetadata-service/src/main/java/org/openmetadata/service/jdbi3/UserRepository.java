@@ -1828,8 +1828,9 @@ public class UserRepository extends EntityRepository<User> {
    */
   @Override
   protected List<EntityReference> writtenDomains(
-      User original, User updated, Operation operation, boolean byBot) {
-    boolean botKeepsStored = operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+      final User original, final User updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
     return botKeepsStored
         ? null
         : filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
