@@ -102,7 +102,6 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
@@ -177,7 +176,6 @@ import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
-import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
@@ -200,6 +198,8 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
@@ -346,7 +346,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * deadlock window so a large ingestion batch can't pin one connection for thousands of rows.
    * Atomicity is per-chunk, which is far better than today's per-DAO-call autocommit.
    */
-  private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
+  static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
 
   /**
    * Max entities hydrated + purged per chunk in {@link #bulkHardDeleteSubtree(List, String)}. The
@@ -3411,73 +3411,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return decodedCursor;
   }
 
-  /** Creates distinct new FQNs in request order, leaving existing entities unchanged. */
-  public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
-    entities.forEach(this::setFullyQualifiedName);
-    final Set<String> seen = new HashSet<>(existingIdsByFqn(entities).keySet());
-    final List<T> pending =
-        entities.stream()
-            .filter(
-                entity -> seen.add(FullyQualifiedName.buildHash(entity.getFullyQualifiedName())))
-            .filter(this::prepareForBulkCreate)
-            .toList();
-    final List<T> created = new ArrayList<>();
-    for (List<T> chunk : Lists.partition(pending, BULK_CREATE_TXN_CHUNK_SIZE)) {
-      created.addAll(createManyChunk(new ArrayList<>(chunk)));
-    }
-    return List.copyOf(created);
+  /** Creates new FQNs and reports one outcome per input, skipping conflicts by default. */
+  public final BulkCreateResult createMany(UriInfo uriInfo, List<T> entities) {
+    return createMany(entities, Function.identity(), BulkCreateConflictPolicy.SKIP);
   }
 
-  private boolean prepareForBulkCreate(T entity) {
-    try {
-      prepareInternal(entity, false);
-      return true;
-    } catch (IllegalArgumentException exception) {
-      final UUID storedId =
-          existingIdsByFqn(List.of(entity))
-              .get(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
-      if (storedId == null || storedId.equals(entity.getId())) {
-        throw exception;
-      }
-      LOG.warn("Skipping existing {}: {}", entityType, entity.getFullyQualifiedName());
-      return false;
-    }
-  }
-
-  private List<T> createManyChunk(List<T> pending) {
-    while (!pending.isEmpty()) {
-      try {
-        return createManyEntities(pending);
-      } catch (UnableToExecuteStatementException exception) {
-        // The failed transaction has rolled back; each retry must remove a concurrent winner.
-        if (!isDuplicateKeyException(exception) || !removeConcurrentDuplicates(pending)) {
-          throw exception;
-        }
-        LOG.warn("Skipping duplicate {}; {} remaining in chunk", entityType, pending.size());
-      }
-    }
-    return List.of();
-  }
-
-  private boolean removeConcurrentDuplicates(List<T> entities) {
-    final Map<String, UUID> existing = existingIdsByFqn(entities);
-    return entities.removeIf(
-        entity -> {
-          final UUID storedId =
-              existing.get(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
-          // Our own committed IDs must not hide a failure in postCreate as a duplicate.
-          return storedId != null && !storedId.equals(entity.getId());
-        });
-  }
-
-  private Map<String, UUID> existingIdsByFqn(List<T> entities) {
-    final List<String> fqns = entities.stream().map(T::getFullyQualifiedName).toList();
-    final Map<String, UUID> existing = new HashMap<>();
-    for (EntityReference reference : dao.findReferencesByFqns(fqns, ALL)) {
-      existing.put(
-          FullyQualifiedName.buildHash(reference.getFullyQualifiedName()), reference.getId());
-    }
-    return existing;
+  /** Applies the conflict policy per input; valid non-conflicting inputs continue. */
+  public final <C> BulkCreateResult createMany(
+      List<C> requests, Function<C, T> mapper, BulkCreateConflictPolicy onConflict) {
+    return new BulkEntityCreator<>(this, this::createManyEntities, onConflict)
+        .create(requests, mapper);
   }
 
   public final T create(UriInfo uriInfo, T entity) {
@@ -15238,7 +15181,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return result;
   }
 
-  private static boolean isDuplicateKeyException(Exception e) {
+  static boolean isDuplicateKeyException(Exception e) {
     Throwable cause = e.getCause();
     if (cause instanceof SQLException sqlEx) {
       // MySQL: error code 1062 = ER_DUP_ENTRY

@@ -32,6 +32,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -68,6 +69,8 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -98,6 +101,7 @@ import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -882,30 +886,48 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       operationId = "createManyGlossaryTerm",
       summary = "Create multiple glossary terms at once",
       description =
-          "Create multiple new glossary terms. Existing fully qualified names, including soft-deleted"
-              + " terms, are skipped. Repeated fully qualified names use the first occurrence."
-              + " Returns only newly created terms.",
+          "Create glossary terms and return an ordered outcome for every input, with created,"
+              + " skipped, and failed counts. onConflict=skip (default) skips existing and repeated"
+              + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
+              + " inputs and preserve existing and soft-deleted terms. Validation failures include"
+              + " a reason and message. Unexpected server failures remain HTTP errors; earlier"
+              + " transaction chunks may already have committed.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The newly created glossary terms",
+            description = "Per-input creation outcomes, including partial failures",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = GlossaryTerm.class))),
+                    schema = @Schema(implementation = BulkCreateResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createMany(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<CreateGlossaryTerm> creates) {
-    List<GlossaryTerm> terms =
-        creates.stream()
-            .map(
-                create ->
-                    mapper.createToEntity(create, securityContext.getUserPrincipal().getName()))
-            .toList();
-    List<GlossaryTerm> result = repository.createMany(uriInfo, terms);
+      @NotNull @Valid List<@NotNull CreateGlossaryTerm> creates,
+      @Parameter(
+              description =
+                  "Report conflicting inputs as skipped or failed; other inputs continue.",
+              schema = @Schema(implementation = BulkCreateConflictPolicy.class))
+          @QueryParam("onConflict")
+          @DefaultValue("skip")
+          String onConflict) {
+    final BulkCreateConflictPolicy conflictPolicy = BulkCreateConflictPolicy.fromValue(onConflict);
+    final BulkCreateResult result =
+        repository.createMany(
+            creates,
+            create -> {
+              final GlossaryTerm term =
+                  mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+              final CreateResourceContext<GlossaryTerm> context =
+                  new CreateResourceContext<>(entityType, term);
+              final OperationContext operation =
+                  new OperationContext(entityType, MetadataOperation.CREATE);
+              limits.enforceLimits(securityContext, context, operation);
+              authorizer.authorize(securityContext, operation, context);
+              return term;
+            },
+            conflictPolicy);
     return Response.ok(result).build();
   }
 

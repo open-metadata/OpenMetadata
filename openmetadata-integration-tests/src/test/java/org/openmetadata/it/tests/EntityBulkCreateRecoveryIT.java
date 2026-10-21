@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -9,6 +10,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
@@ -43,6 +45,11 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult;
+import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
+import org.openmetadata.schema.type.BulkCreateItemResult.Status;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -60,9 +67,9 @@ class EntityBulkCreateRecoveryIT {
   private static final String CREATE_MANY_TERMS = "/v1/glossaryTerms/createMany";
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void concurrentDuplicateSkipsWinnerAndCreatesRemainingTests(
-      boolean includeFresh, TestNamespace ns) {
+  @CsvSource({"false,skip", "true,skip", "false,fail", "true,fail"})
+  void concurrentDuplicateReportsWinnerAndCreatesRemainingTests(
+      boolean includeFresh, String onConflict, TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Table table = createTable(ns);
     final TestCase seed = client.testCases().create(request(table, ns.shortPrefix("seed")));
@@ -73,7 +80,7 @@ class EntityBulkCreateRecoveryIT {
     final var jdbi = Entity.getJdbi();
     final SqlLogger previous = jdbi.getConfig(SqlStatements.class).getSqlLogger();
 
-    List<TestCase> created;
+    BulkCreateResult result;
     jdbi.setSqlLogger(
         concurrentCreateLogger(
             previous,
@@ -82,16 +89,24 @@ class EntityBulkCreateRecoveryIT {
             () -> winner.set(client.testCases().create(duplicate)),
             conflicts));
     try {
-      created =
+      result =
           client
               .testCases()
-              .createMany(includeFresh ? List.of(fresh, duplicate) : List.of(duplicate));
+              .createMany(
+                  includeFresh ? List.of(fresh, duplicate) : List.of(duplicate),
+                  BulkCreateConflictPolicy.fromValue(onConflict));
     } finally {
       jdbi.setSqlLogger(previous);
     }
 
     assertNotNull(winner.get());
     assertTrue(conflicts.get() > 0, "The batch must encounter a real duplicate-key error");
+    assertConflictOutcome(result, result.getResults().getLast(), winner.get().getId());
+    final List<TestCase> created =
+        result.getResults().stream()
+            .filter(item -> item.getStatus() == Status.CREATED)
+            .map(item -> client.testCases().get(item.getId().toString()))
+            .toList();
     assertEquals(
         includeFresh ? List.of(fresh.getName()) : List.of(),
         created.stream().map(TestCase::getName).toList());
@@ -126,8 +141,10 @@ class EntityBulkCreateRecoveryIT {
         "Only the seed, concurrent winner and any new test have relationships");
   }
 
-  @Test
-  void duplicateDuringPreparationSkipsWinnerAndCreatesRemainingTerms(TestNamespace ns) {
+  @ParameterizedTest
+  @ValueSource(strings = {"skip", "fail"})
+  void duplicateDuringPreparationReportsWinnerAndCreatesRemainingTerms(
+      String onConflict, TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Glossary glossary = GlossaryTestFactory.createSimple(ns);
     final List<CreateGlossaryTerm> requests = termRequests(glossary, 2);
@@ -141,18 +158,19 @@ class EntityBulkCreateRecoveryIT {
             1,
             () -> winner.set(client.glossaryTerms().create(requests.getFirst())),
             new AtomicInteger()));
-    List<GlossaryTerm> created;
+    BulkCreateResult result;
     try {
-      created =
-          List.of(
-              client
-                  .getHttpClient()
-                  .execute(HttpMethod.POST, CREATE_MANY_TERMS, requests, GlossaryTerm[].class));
+      result =
+          client
+              .glossaryTerms()
+              .createMany(requests, BulkCreateConflictPolicy.fromValue(onConflict));
     } finally {
       jdbi.setSqlLogger(previous);
     }
 
     assertNotNull(winner.get(), "The competing request must commit before preparation");
+    assertConflictOutcome(result, result.getResults().getFirst(), winner.get().getId());
+    final List<GlossaryTerm> created = createdTerms(result);
     assertEquals(
         List.of(requests.getLast().getName()),
         created.stream().map(GlossaryTerm::getName).toList());
@@ -198,8 +216,9 @@ class EntityBulkCreateRecoveryIT {
     };
   }
 
-  @Test
-  void duplicateInLaterChunkPreservesEarlierGlossaryTerms(TestNamespace ns) {
+  @ParameterizedTest
+  @ValueSource(strings = {"skip", "fail"})
+  void duplicateInLaterChunkPreservesEarlierGlossaryTerms(String onConflict, TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final Glossary glossary = GlossaryTestFactory.createSimple(ns);
     final List<CreateGlossaryTerm> requests = termRequests(glossary, 102);
@@ -219,18 +238,20 @@ class EntityBulkCreateRecoveryIT {
               winner.set(client.glossaryTerms().create(requests.get(100)));
             },
             conflicts));
-    List<GlossaryTerm> created;
+    BulkCreateResult result;
     try {
-      created =
-          List.of(
-              client
-                  .getHttpClient()
-                  .execute(HttpMethod.POST, CREATE_MANY_TERMS, requests, GlossaryTerm[].class));
+      result =
+          client
+              .glossaryTerms()
+              .createMany(requests, BulkCreateConflictPolicy.fromValue(onConflict));
     } finally {
       jdbi.setSqlLogger(previous);
     }
 
     assertTrue(conflicts.get() > 0, "The second transaction must hit a real duplicate");
+    assertConflictOutcome(result, result.getResults().get(100), winner.get().getId());
+    assertEquals(101, result.getCreatedCount());
+    final List<GlossaryTerm> created = createdTerms(result);
     assertEquals(
         IntStream.range(0, 102).filter(i -> i != 100).mapToObj(i -> "term_" + i).toList(),
         created.stream().map(GlossaryTerm::getName).toList());
@@ -279,7 +300,8 @@ class EntityBulkCreateRecoveryIT {
               () ->
                   client
                       .getHttpClient()
-                      .execute(HttpMethod.POST, CREATE_MANY_TERMS, requests, GlossaryTerm[].class));
+                      .execute(
+                          HttpMethod.POST, CREATE_MANY_TERMS, requests, BulkCreateResult.class));
       assertTrue(failure.injected());
       assertEquals(400, error.getStatusCode());
     }
@@ -308,6 +330,27 @@ class EntityBulkCreateRecoveryIT {
                     .withGlossary(glossary.getFullyQualifiedName())
                     .withDescription("Bulk term " + i))
         .toList();
+  }
+
+  private List<GlossaryTerm> createdTerms(BulkCreateResult result) {
+    return result.getResults().stream()
+        .filter(item -> item.getStatus() == Status.CREATED)
+        .map(item -> SdkClients.adminClient().glossaryTerms().get(item.getId().toString()))
+        .toList();
+  }
+
+  private void assertConflictOutcome(
+      BulkCreateResult result, BulkCreateItemResult item, UUID winnerId) {
+    final boolean skip = result.getOnConflict() == BulkCreateConflictPolicy.SKIP;
+    assertEquals(skip ? 1 : 0, result.getSkippedCount());
+    assertEquals(skip ? 0 : 1, result.getFailedCount());
+    assertEquals(skip ? Status.SKIPPED : Status.FAILED, item.getStatus());
+    assertEquals(Reason.ALREADY_EXISTS, item.getReason());
+    assertEquals(winnerId, item.getId());
+    assertFalse(item.getMessage().isBlank());
+    assertEquals(
+        result.getResults().size(),
+        result.getCreatedCount() + result.getSkippedCount() + result.getFailedCount());
   }
 
   private void assertSearchable(GlossaryTerm term) {

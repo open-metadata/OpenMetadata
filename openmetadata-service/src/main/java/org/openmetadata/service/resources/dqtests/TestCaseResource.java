@@ -20,6 +20,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -60,6 +61,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -746,27 +749,35 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       operationId = "createManyTestCase",
       summary = "Create multiple test cases at once",
       description =
-          "Create multiple test cases at once up to a limit of 100 per request. Existing fully "
-              + "qualified names, including soft-deleted tests, are skipped. Returns only newly "
-              + "created tests; repeated names in the request use the first occurrence.",
+          "Create up to 100 test cases and return an ordered outcome for every input, with created,"
+              + " skipped, and failed counts. onConflict=skip (default) skips existing and repeated"
+              + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
+              + " inputs and preserve existing and soft-deleted tests. Validation failures include"
+              + " a reason and message. Unexpected server failures remain HTTP errors.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The newly created tests",
+            description = "Per-input creation outcomes, including partial failures",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class))),
+                    schema = @Schema(implementation = BulkCreateResult.class))),
         @ApiResponse(responseCode = "400", description = "Bad request"),
         @ApiResponse(
             responseCode = "413",
             description = "Request entity too large (more than 100 test cases)")
       })
   public Response createMany(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<CreateTestCase> createTestCases) {
-    List<TestCase> testCases = new ArrayList<>();
+      @NotNull @Valid List<@NotNull CreateTestCase> createTestCases,
+      @Parameter(
+              description =
+                  "Report conflicting inputs as skipped or failed; other inputs continue.",
+              schema = @Schema(implementation = BulkCreateConflictPolicy.class))
+          @QueryParam("onConflict")
+          @DefaultValue("skip")
+          String onConflict) {
+    final BulkCreateConflictPolicy conflictPolicy = BulkCreateConflictPolicy.fromValue(onConflict);
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
 
@@ -791,17 +802,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
-    createTestCases.forEach(
-        create -> {
-          TestCase test =
-              mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-          limits.enforceLimits(
-              securityContext,
-              new CreateResourceContext<>(entityType, test),
-              new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
-          testCases.add(test);
-        });
-    return Response.ok(repository.createMany(uriInfo, testCases)).build();
+    final BulkCreateResult result =
+        repository.createMany(
+            createTestCases,
+            create -> {
+              final TestCase test =
+                  mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+              limits.enforceLimits(
+                  securityContext,
+                  new CreateResourceContext<>(entityType, test),
+                  new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
+              return test;
+            },
+            conflictPolicy);
+    return Response.ok(result).build();
   }
 
   @PATCH

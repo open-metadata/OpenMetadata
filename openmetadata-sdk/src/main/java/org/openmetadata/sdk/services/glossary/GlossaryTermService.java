@@ -9,6 +9,8 @@ import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.OntologyDataGraph;
 import org.openmetadata.schema.api.data.OntologySummary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
@@ -33,6 +35,24 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
 
   public GlossaryTerm create(CreateGlossaryTerm request) throws OpenMetadataException {
     return httpClient.execute(HttpMethod.POST, basePath, request, GlossaryTerm.class);
+  }
+
+  /** Creates glossary terms, skipping conflicts and reporting one outcome per input. */
+  public BulkCreateResult createMany(List<CreateGlossaryTerm> requests)
+      throws OpenMetadataException {
+    return createMany(requests, BulkCreateConflictPolicy.SKIP);
+  }
+
+  /** Conflicts fail or skip only the affected inputs; callers must inspect the returned outcomes. */
+  public BulkCreateResult createMany(
+      List<CreateGlossaryTerm> requests, BulkCreateConflictPolicy onConflict)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/createMany",
+        requests,
+        BulkCreateResult.class,
+        RequestOptions.builder().queryParam("onConflict", onConflict.value()).build());
   }
 
   /**

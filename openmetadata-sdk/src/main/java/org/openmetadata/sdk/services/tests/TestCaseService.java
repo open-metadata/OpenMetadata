@@ -1,6 +1,5 @@
 package org.openmetadata.sdk.services.tests;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -13,6 +12,8 @@ import java.util.UUID;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -69,23 +70,25 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   // ===================================================================
 
   /**
-   * Create multiple test cases in a single request, skipping existing fully qualified names
-   * (including soft-deleted tests) and keeping the first occurrence of repeated names.
+   * Create multiple test cases, skipping conflicts and reporting one outcome per input.
    *
    * @param requests List of test case creation requests
-   * @return Only newly created test cases, or an empty list when all names already exist
+   * @return Creation, skip, and failure counts and ordered per-input outcomes
    */
-  public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
-    try {
-      String response =
-          httpClient.executeForString(HttpMethod.POST, basePath + "/createMany", requests);
-      if (response == null || response.isEmpty()) {
-        return new ArrayList<>();
-      }
-      return objectMapper.readValue(response, new TypeReference<List<TestCase>>() {});
-    } catch (Exception e) {
-      throw new OpenMetadataException("Failed to create test cases: " + e.getMessage(), e);
-    }
+  public BulkCreateResult createMany(List<CreateTestCase> requests) throws OpenMetadataException {
+    return createMany(requests, BulkCreateConflictPolicy.SKIP);
+  }
+
+  /** Conflicts fail or skip only the affected inputs; callers must inspect the returned outcomes. */
+  public BulkCreateResult createMany(
+      List<CreateTestCase> requests, BulkCreateConflictPolicy onConflict)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/createMany",
+        requests,
+        BulkCreateResult.class,
+        RequestOptions.builder().queryParam("onConflict", onConflict.value()).build());
   }
 
   // ===================================================================
