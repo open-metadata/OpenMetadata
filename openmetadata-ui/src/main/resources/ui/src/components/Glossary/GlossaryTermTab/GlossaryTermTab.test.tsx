@@ -559,12 +559,17 @@ describe('Test GlossaryTermTab component', () => {
       const proposedRow = screen.getByTestId('glossary-row-0');
 
       expect(proposedRow).toHaveClass('glossary-person-proposal-row');
+
+      const workflowTrigger = within(proposedRow).getByRole('button', {
+        name: /label.proposed-by-name/,
+      });
+
       expect(
-        within(proposedRow).queryByTestId('Business Glossary.Clothing-status')
-      ).not.toBeInTheDocument();
-      expect(
-        within(proposedRow).getByTestId('proposal-status-badge')
+        within(workflowTrigger).getByTestId('proposal-status-badge')
       ).toHaveTextContent('label.proposed-by-name');
+      expect(
+        within(proposedRow).queryByText('Draft', { exact: true })
+      ).not.toBeInTheDocument();
     });
 
     it('should render owner labels', async () => {

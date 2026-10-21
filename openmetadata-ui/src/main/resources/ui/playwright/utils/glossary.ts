@@ -661,14 +661,15 @@ export const validateGlossaryTerm = async (
   } else {
     await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
-    await expect(page.locator(statusSelector)).toBeVisible();
-
-    // If status is Draft, then check for either Draft or In Review
-    if (status === 'Draft') {
-      await expect(page.locator(statusSelector)).toContainText(
-        /Draft|In Review/
-      );
+    if (status === 'Draft' || status === 'In Review') {
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-status-badge')
+      ).toContainText('Proposed by');
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-source-person')
+      ).toBeVisible();
     } else {
+      await expect(page.locator(statusSelector)).toBeVisible();
       await expect(page.locator(statusSelector)).toContainText(status);
     }
   }

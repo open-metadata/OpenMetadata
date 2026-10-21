@@ -43,6 +43,7 @@ import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
 import {
   lazy,
   MouseEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -476,11 +477,13 @@ const GlossaryTermNameCell = ({
 interface GlossaryTermStatusCellProps {
   record: ModifiedGlossaryTerm;
   status: EntityStatus;
+  children?: ReactNode;
 }
 
 const GlossaryTermStatusCell = ({
   record,
   status,
+  children,
 }: GlossaryTermStatusCellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -532,15 +535,14 @@ const GlossaryTermStatusCell = ({
     <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <AriaButton
         className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+        data-testid={`${record.fullyQualifiedName ?? ''}-status`}
         ref={triggerRef}
         onHoverEnd={closePopover}
         onHoverStart={openPopover}
         onKeyDown={(event) => event.key === 'Escape' && setIsOpen(false)}>
-        <StatusBadge
-          dataTestId={`${record.fullyQualifiedName ?? ''}-status`}
-          label={status}
-          status={EntityStatusClass[status]}
-        />
+        {children ?? (
+          <StatusBadge label={status} status={EntityStatusClass[status]} />
+        )}
       </AriaButton>
       <Popover isNonModal placement="top start">
         <div
@@ -1323,13 +1325,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               getGlossaryEntityLink(record.fullyQualifiedName ?? '')
             ]?.[0];
 
-          return (
+          const proposalBadge = (
             <ProposalStatusBadge
               author={getRequestAuthor(approvalTask, record.updatedBy)}
               derivation={derivationByTermId.get(record.id)}
               source={proposalSource}
               updatedAt={record.updatedAt}
             />
+          );
+
+          return proposalSource === 'person' ? (
+            <GlossaryTermStatusCell record={record} status={status}>
+              {proposalBadge}
+            </GlossaryTermStatusCell>
+          ) : (
+            proposalBadge
           );
         },
         onFilter: (value, record) => record.entityStatus === value,
