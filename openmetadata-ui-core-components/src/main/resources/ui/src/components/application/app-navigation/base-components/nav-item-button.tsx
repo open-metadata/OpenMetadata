@@ -1,5 +1,5 @@
 import { shouldClientNavigate, useRouter } from '@react-aria/utils';
-import type { FC, MouseEvent, MouseEventHandler } from 'react';
+import type { FC, MouseEvent } from 'react';
 import { Button as AriaButton, Pressable } from 'react-aria-components';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
@@ -48,9 +48,7 @@ interface NavItemButtonProps {
   size?: 'md' | 'lg';
   /** Visual style; `solid` matches NavItemBase's solid variant. */
   variant?: keyof typeof variants;
-  /** Handler for click events on the link form (`href` set). */
-  onClick?: MouseEventHandler;
-  /** Handler for presses on the button form (no `href`), e.g. a menu trigger or an action. */
+  /** Fires when the item is activated, whether it renders as a link (`href` set) or a button. */
   onPress?: () => void;
   /** Additional CSS classes to apply to the button. */
   className?: string;
@@ -68,7 +66,6 @@ export const NavItemButton = ({
   className,
   tooltipPlacement = 'right',
   variant = 'default',
-  onClick,
   onPress,
 }: NavItemButtonProps) => {
   const router = useRouter();
@@ -76,7 +73,7 @@ export const NavItemButton = ({
   // A plain anchor would reload the whole app; under a RouterProvider, hand
   // same-tab clicks to the client router the way react-aria's Link does.
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    onClick?.(event);
+    onPress?.();
     if (
       href &&
       !event.defaultPrevented &&

@@ -125,7 +125,6 @@ const LeftSidebar = () => {
             label={t(item.title)}
             size="lg"
             variant="solid"
-            onClick={() => navigateToItem(item, parentKey)}
             onPress={handleSelect}
           />
         </span>
