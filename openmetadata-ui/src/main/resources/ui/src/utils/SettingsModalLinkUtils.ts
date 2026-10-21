@@ -45,7 +45,7 @@ type HashMapper = (rest: string[]) => string | undefined;
 const withSub = (tab: string, subPath?: string) =>
   subPath ? `${tab}/${subPath}` : tab;
 
-const lookup = (table: Record<string, string>, key: string) =>
+const lookup = <T>(table: Record<string, T>, key: string) =>
   Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
 
 const {
