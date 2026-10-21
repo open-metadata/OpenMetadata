@@ -3314,6 +3314,53 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_putUser_keepsOwnDomainButCannotClaimTeamDomain(TestNamespace ns) {
+    // A domain held only through a team goes away with the membership, so naming it on a PUT would
+    // turn it into a direct assignment that outlives the team.
+    final Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("domainTeam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDomains(List.of(testSubDomain().getFullyQualifiedName())));
+    final String localPart = "teamdomainput" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+    final OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users", userBodyInTeam(user, team, List.of(testDomain())));
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        userBodyInTeam(user, team, List.of(testDomain(), testSubDomain()))));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "A team's domain is not the user's own: " + exception.getMessage());
+
+    final List<UUID> directDomainIds =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(testDomain().getId()), directDomainIds);
+  }
+
+  @Test
   void test_createUser_selfSignUpWithDomains_forbidden(TestNamespace ns) {
     // The name must equal the email local part for JwtFilter to resolve the caller.
     final String userName = "domainsignup" + ns.shortPrefix();
@@ -3447,6 +3494,17 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
         + "\",\"domains\":[\""
         + testDomain().getFullyQualifiedName()
         + "\"]}";
+  }
+
+  // Naming the team keeps the user in it; without teams the server moves them to the organization.
+  private static String userBodyInTeam(
+      final User user, final Team team, final List<Domain> domains) {
+    final ObjectNode body =
+        PATCH_MAPPER.createObjectNode().put("name", user.getName()).put("email", user.getEmail());
+    body.putArray("teams").add(team.getId().toString());
+    final ArrayNode domainFqns = body.putArray("domains");
+    domains.forEach(domain -> domainFqns.add(domain.getFullyQualifiedName()));
+    return body.toString();
   }
 
   private void assertHoldsNoDomain(final User user) {
