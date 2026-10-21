@@ -14,6 +14,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
@@ -170,6 +172,86 @@ class ContextMemoryDerivationIT {
     assertNull(jobs.lockOpenMemoryGlossaryBatch(batchKey(file), 100, 0));
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void editsDuringDerivationKeepOneFollowUpForTheLatestContent(boolean fromFile, TestNamespace ns)
+      throws Exception {
+    ContextFile file = fromFile ? orgWideFile(ns) : null;
+    ContextMemory published =
+        publish(ns, "editedDuringDerivation", file, fromFile ? file.getEntityReference() : null);
+    BackgroundJob running = claimMemoryJob(published);
+    String latestAnswer = "A qualified customer has completed nine paid orders.";
+    AiProviderHolder.setForTesting(
+        provider(
+            Optional.of(
+                snapshots -> {
+                  assertEquals(published.getAnswer(), snapshots.getFirst().getAnswer());
+                  editAnswer(published, "A qualified customer has completed eight paid orders.");
+                  BackgroundJob followUp = pendingMemoryJob(published);
+                  editAnswer(published, latestAnswer);
+                  assertEquals(followUp.getId(), pendingMemoryJob(published).getId());
+                  assertEquals(
+                      2,
+                      Entity.getJobDAO()
+                          .countInFlightMemoryGlossaryJobs(published.getId().toString()));
+                  return List.of();
+                })));
+
+    new MemoryGlossaryDerivationJobHandler().runJob(running);
+    assertTrue(completedTerms(running).isEmpty(), "the stale proposal is discarded");
+    AiProviderHolder.setForTesting(provider(Optional.of(this::derive)));
+    BackgroundJob followUp = claimMemoryJob(published);
+    new MemoryGlossaryDerivationJobHandler().runJob(followUp);
+
+    List<EntityReference> terms = completedTerms(followUp);
+    assertEquals(1, terms.size());
+    assertDraftAutomationTerm(terms.getFirst());
+    assertEquals(
+        latestAnswer,
+        SdkClients.adminClient().glossaryTerms().get(terms.getFirst().getId()).getDescription());
+    assertEquals(
+        List.of(terms.getFirst().getId()),
+        memories()
+            .get(published.getId().toString(), "derivedEntities")
+            .getDerivedEntities()
+            .stream()
+            .map(EntityReference::getId)
+            .toList());
+    assertEquals(
+        0, Entity.getJobDAO().countInFlightMemoryGlossaryJobs(published.getId().toString()));
+  }
+
+  private BackgroundJob claimMemoryJob(ContextMemory memory) {
+    BackgroundJob pending = pendingMemoryJob(memory);
+    assertEquals(1, Entity.getJobDAO().claimPendingJob(pending.getId()));
+    return Entity.getJobDAO().fetchJobById(pending.getId()).orElseThrow();
+  }
+
+  private BackgroundJob pendingMemoryJob(ContextMemory memory) {
+    List<BackgroundJob> pending =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(
+                            "SELECT id FROM background_jobs WHERE jobType = :jobType AND status = :status")
+                        .bind("jobType", BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name())
+                        .bind("status", BackgroundJob.Status.PENDING.name())
+                        .mapTo(Long.class)
+                        .list())
+            .stream()
+            .map(id -> Entity.getJobDAO().fetchJobById(id).orElseThrow())
+            .filter(
+                job ->
+                    JsonUtils.convertValue(
+                            job.getJobArgs(), MemoryGlossaryDerivationJobHandler.Args.class)
+                        .memoryIds()
+                        .contains(memory.getId()))
+            .toList();
+    assertEquals(1, pending.size(), "the memory must have exactly one pending derivation");
+    return pending.getFirst();
+  }
+
   private AiProvider provider(Optional<MemoryGlossaryDeriver> deriver) {
     DocumentMemoryExtractor extractor = previousProvider.documentExtractor();
     return new AiProvider() {
@@ -244,10 +326,16 @@ class ContextMemoryDerivationIT {
             .withQuestion("What is a qualified customer in " + name + "?")
             .withAnswer("A qualified customer in " + name + " has completed seven paid orders.")
             .withEntityStatus(ContextMemoryStatus.APPROVED)
-            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
-            .withSourceEntity(source.getEntityReference())
             .withPrimaryEntity(anchor)
-            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+            .withShareConfig(
+                new MemoryShareConfig()
+                    .withVisibility(
+                        source == null ? MemoryVisibility.PUBLIC : MemoryVisibility.ENTITY));
+    if (source != null) {
+      request
+          .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+          .withSourceEntity(source.getEntityReference());
+    }
     return ns.trackRoot(Entity.CONTEXT_MEMORY, memories().create(request));
   }
 

@@ -107,6 +107,7 @@ public final class MemoryGlossaryDerivationQueue {
       final ContextMemory previous, final ContextMemory updated) {
     return isPublished(updated)
         && (!isPublished(previous)
+            || !Objects.equals(previous.getTitle(), updated.getTitle())
             || !Objects.equals(previous.getQuestion(), updated.getQuestion())
             || !Objects.equals(previous.getAnswer(), updated.getAnswer()));
   }

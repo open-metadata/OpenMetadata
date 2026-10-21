@@ -25,6 +25,11 @@ import org.openmetadata.schema.type.EntityReference;
  * approves it, and a {@code DERIVED_FROM} relationship to its memory, which the memory reads back
  * as {@code derivedEntities}. Write that relationship with {@link MemoryDerivations#record}, so it
  * carries the confidence and reasons a reviewer reads in the glossary.
+ *
+ * <p>Edits can queue another job while a derivation is running, including on another server. Before
+ * publishing, lock and reload the source memory, reject stale or unpublished content, and skip a
+ * memory that already has a derived term. Create the term and its provenance in that transaction;
+ * do not hold the lock during the agent call.
  */
 public interface MemoryGlossaryDeriver {
   /** Derives terms for the memories that define a business concept; returns the terms created. */

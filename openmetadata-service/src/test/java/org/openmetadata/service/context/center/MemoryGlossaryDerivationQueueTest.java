@@ -153,6 +153,16 @@ class MemoryGlossaryDerivationQueueTest {
   }
 
   @Test
+  void queuesWhenPublishedMemoryTitleChanges() {
+    UUID memoryId = UUID.randomUUID();
+    ContextMemory previous = memory(memoryId, MemoryVisibility.PUBLIC).withTitle("Revenue churn");
+    ContextMemory updated =
+        memory(memoryId, MemoryVisibility.PUBLIC).withTitle("Monthly revenue churn");
+
+    assertTrue(MemoryGlossaryDerivationQueue.hasNewPublishedContent(previous, updated));
+  }
+
+  @Test
   void skipsUnchangedContentAndQueuesWhenMemoryBecomesPublished() {
     UUID memoryId = UUID.randomUUID();
     ContextMemory previous = memory(memoryId, MemoryVisibility.SHARED);

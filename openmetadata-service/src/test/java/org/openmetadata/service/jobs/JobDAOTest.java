@@ -121,10 +121,10 @@ class JobDAOTest {
   }
 
   @Test
-  void memoryBatchSkipsAMemoryAlreadyInFlight() {
+  void memoryBatchSkipsAMemoryAlreadyPending() {
     JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
     when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
-    when(jobDao.countInFlightMemoryGlossaryJobs("memory-id")).thenReturn(1);
+    when(jobDao.countInFlightMemoryGlossaryJobs("memory-id", false)).thenReturn(1);
 
     assertTrue(
         jobDao

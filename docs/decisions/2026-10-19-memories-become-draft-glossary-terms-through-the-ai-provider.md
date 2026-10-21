@@ -1,7 +1,7 @@
 # Memories become Draft glossary terms through the AI provider
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server)
+- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server); v5 2026-10-21 (preserve a pending derivation for edits during agent calls)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `ContextMemoryDerivationIT`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `PendingReviewPanel.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension
@@ -34,6 +34,13 @@ inherit policies that restrict the source memory. This is an intentional publica
 not an extension of access to the memory itself. The original memory and the agent's evidence
 continue to require the caller's memory permissions, including policy checks. A change to the
 memory's content, status or sharing while the agent is working invalidates that proposed result.
+
+Only pending jobs deduplicate an enqueue: they reload the latest memory when they run. An edit to
+the title, question or answer during a running derivation retains one pending follow-up, so
+discarding the stale result does not lose the corrected content. Further edits coalesce into that
+pending job. Across servers, overlapping derivations may reach the provider; its final freshness
+and existing-term checks, term creation and provenance write must share the source memory's row
+lock and transaction, so at most one term is published. The agent call holds no database lock.
 
 A derived term has the `automation` provider and a `glossaryTerm -DERIVED_FROM-> contextMemory`
 relationship, which the memory reads back as `derivedEntities` and Context Center shows as its

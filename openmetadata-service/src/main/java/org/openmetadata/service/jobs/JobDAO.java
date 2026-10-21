@@ -141,22 +141,27 @@ public interface JobDAO {
   int countInFlightMemoryJobs(
       @Bind("jobKey") String jobKey, @Bind("includeRunning") boolean includeRunning);
 
+  default int countInFlightMemoryGlossaryJobs(String memoryId) {
+    return countInFlightMemoryGlossaryJobs(memoryId, true);
+  }
+
   @ConnectionAwareSqlQuery(
       value =
           "SELECT COUNT(*) FROM background_jobs "
               + "WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
-              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
               + "AND JSON_SEARCH(jobArgs, 'one', :memoryId, NULL, '$.memoryIds[*]') IS NOT NULL",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
           "SELECT COUNT(*) FROM background_jobs "
               + "WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
-              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
               + "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jobArgs->'memoryIds') "
               + "AS source(memoryId) WHERE source.memoryId = :memoryId)",
       connectionType = POSTGRES)
-  int countInFlightMemoryGlossaryJobs(@Bind("memoryId") String memoryId);
+  int countInFlightMemoryGlossaryJobs(
+      @Bind("memoryId") String memoryId, @Bind("includeRunning") boolean includeRunning);
 
   String MEMORY_GLOSSARY_DERIVATION_HANDLER = "MemoryGlossaryDerivationJobHandler";
   String MEMORY_GLOSSARY_DERIVATION_JOB_TYPE = "MEMORY_GLOSSARY_DERIVATION";
@@ -164,12 +169,14 @@ public interface JobDAO {
   // A batch only grows while its start is still this far away, so no worker can have read it yet.
   long MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS = 5_000L;
 
+  // A pending job reloads the latest memory, but a running job may already hold stale content.
+  // Deduplicate pending jobs only, so an edit retains one follow-up if its old result is discarded.
   @Transaction
   default Optional<Long> enqueueMemoryGlossaryDerivationJob(
       List<String> memoryIds, String jobArgs, String createdBy) {
     for (String memoryId : memoryIds.stream().distinct().sorted().toList()) {
       if (lockMemoryForGlossaryQueue(memoryId) == null
-          || countInFlightMemoryGlossaryJobs(memoryId) > 0) {
+          || countInFlightMemoryGlossaryJobs(memoryId, false) > 0) {
         return Optional.empty();
       }
     }
@@ -188,7 +195,7 @@ public interface JobDAO {
   default Optional<Long> enqueueMemoryGlossaryDerivationBatch(
       String memoryId, String batchKey, String jobArgs, String createdBy, long runAt) {
     if (lockMemoryForGlossaryQueue(memoryId) == null
-        || countInFlightMemoryGlossaryJobs(memoryId) > 0) {
+        || countInFlightMemoryGlossaryJobs(memoryId, false) > 0) {
       return Optional.empty();
     }
     Long pendingId =
