@@ -16,6 +16,7 @@ import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suit
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
+import type { ExportData } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import i18n from '../../utils/i18next/LocalUtil';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
@@ -97,7 +98,8 @@ class DataQualityClassBase {
   }
 
   public getExportDataQualityDashboardButton(
-    _activeTab: DataQualityPageTabs
+    _activeTab: DataQualityPageTabs,
+    _showModal: (data: ExportData) => void
   ): React.ReactNode {
     return null;
   }

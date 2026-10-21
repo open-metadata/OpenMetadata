@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import DataQualityClassBase from './DataQualityClassBase';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
@@ -51,6 +52,16 @@ const renderDataQualityPage = (initialPath: string) =>
 
 // Mock navigation function
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
+
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: jest.fn(() => ({
+      showModal: mockShowModal,
+    })),
+  })
+);
 
 jest.mock('./DataQualityProvider', () => ({
   __esModule: true,
@@ -381,6 +392,16 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('data-quality-add-button-menu')
       ).toBeInTheDocument();
       expect(screen.getByText('label.add')).toBeInTheDocument();
+    });
+
+    it('should pass the active tab and showModal to getExportDataQualityDashboardButton', async () => {
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.dashboard);
+
+      await screen.findByTestId('tabs');
+
+      expect(
+        DataQualityClassBase.getExportDataQualityDashboardButton
+      ).toHaveBeenCalledWith(DataQualityPageTabs.DASHBOARD, mockShowModal);
     });
   });
 });
