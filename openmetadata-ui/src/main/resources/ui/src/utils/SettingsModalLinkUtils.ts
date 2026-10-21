@@ -281,6 +281,7 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
 export const settingsPathToHash = (path: string): string | undefined => {
   const [pathname, search = ''] = path.split('#')[0].split('?', 2);
   const [root = '', ...rest] = pathname.split('/').filter(Boolean);
+
   return dispatchMapper(
     ROOT_HASH_MAPPERS,
     root,
