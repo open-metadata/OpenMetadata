@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
@@ -177,7 +178,7 @@ const CustomizeAppModeSidebarPage = () => {
     }
 
     const timer = setTimeout(
-      () => navigate(getPersonaDetailsPath(personaFqn)),
+      () => navigate(getSettingsLink(getPersonaDetailsPath(personaFqn))),
       100
     );
 
@@ -246,7 +247,7 @@ const CustomizeAppModeSidebarPage = () => {
   }, [items]);
 
   const handleCancel = useCallback(() => {
-    navigate(getPersonaDetailsPath(personaFqn));
+    navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
   }, [navigate, personaFqn]);
 
   const handleVisibilityToggle = useCallback(

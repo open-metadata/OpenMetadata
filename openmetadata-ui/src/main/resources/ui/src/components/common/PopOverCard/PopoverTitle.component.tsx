@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { Button } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -45,7 +46,7 @@ export const PopoverTitle = React.memo(
               e.stopPropagation();
               navigate(
                 type === OwnerType.TEAM
-                  ? getTeamAndUserDetailsPath(name)
+                  ? getSettingsLink(getTeamAndUserDetailsPath(name))
                   : getUserPath(name)
               );
             }}>

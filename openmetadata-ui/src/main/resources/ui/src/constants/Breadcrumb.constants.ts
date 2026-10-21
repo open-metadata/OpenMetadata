@@ -32,10 +32,7 @@ export const ADD_KPI_BREADCRUMB = [
   },
 ];
 
-// Functions, not constants: the settings route builders are mode-aware
-// (ADR:2026-10-21-settings-pages-are-classic-only), so the URLs must be built
-// at render time rather than frozen in the mode active at import time.
-export const getAddPolicyPageBreadcrumb = () => [
+export const ADD_POLICY_PAGE_BREADCRUMB = [
   {
     name: 'label.setting-plural',
     url: getSettingPath(),
@@ -51,7 +48,7 @@ export const getAddPolicyPageBreadcrumb = () => [
   },
 ];
 
-export const getAddRolePageBreadcrumb = () => [
+export const ADD_ROLE_PAGE_BREADCRUMB = [
   {
     name: 'label.setting-plural',
     url: getSettingPath(),

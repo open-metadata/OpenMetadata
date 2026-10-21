@@ -1049,8 +1049,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   pluginTabKeysRef.current = pluginTabs.map((tab) => tab.key);
 
-  // `#members/teams/<fqn>?activeTab=<key>` (`getTeamsWithFqnPath(fqn, {
-  // activeTab })`) opens on that tab once it exists: built-in tabs follow the
+  // `#members/teams/<fqn>?activeTab=<key>` (`getSettingsLink(getTeamsWithFqnPath(fqn, {
+  // activeTab }))`) opens on that tab once it exists: built-in tabs follow the
   // team type, contributed ones register after mount. Applied once per request
   // so later tab clicks are not pulled back to it.
   const requestedTab = hashState.params.activeTab;

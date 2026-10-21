@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import {
   Badge,
   Box,
@@ -111,7 +112,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(team)}
               </Link>
             ))}
@@ -141,7 +144,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getTeamsWithFqnPath(team.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                  getTeamsWithFqnPath(team.fullyQualifiedName ?? '')
+                )}>
                         {getEntityName(team)}
                       </Link>
                     ))}
@@ -182,7 +187,9 @@ export const commonUserDetailColumns = (
               <Link
                 className="cursor-pointer"
                 key={uniqueId()}
-                to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                to={getSettingsLink(
+                  getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                )}>
                 {getEntityName(role)}
               </Link>
             ))}
@@ -212,7 +219,9 @@ export const commonUserDetailColumns = (
                       <Link
                         className="cursor-pointer"
                         key={uniqueId()}
-                        to={getRoleWithFqnPath(role.fullyQualifiedName ?? '')}>
+                        to={getSettingsLink(
+                  getRoleWithFqnPath(role.fullyQualifiedName ?? '')
+                )}>
                         {getEntityName(role)}
                       </Link>
                     ))}

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { Button } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -38,7 +39,7 @@ export const TeamPopoverTitle = React.memo(
             size="sm"
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();
-              navigate(getTeamAndUserDetailsPath(name));
+              navigate(getSettingsLink(getTeamAndUserDetailsPath(name)));
             }}>
             <span className="font-medium m-r-xs" data-testid="team-name">
               {displayName || teamName}

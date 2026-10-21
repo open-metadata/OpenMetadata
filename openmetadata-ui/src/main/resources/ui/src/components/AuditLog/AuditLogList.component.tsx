@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import {
   Box,
   EmptyPlaceholder,
@@ -160,7 +161,7 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
 const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
   tags: getTagPath,
   dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-  teams: getTeamsWithFqnPath,
+  teams: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
   domain: getDomainPath,
   owner: getUserPath,
   reviewers: getUserPath,

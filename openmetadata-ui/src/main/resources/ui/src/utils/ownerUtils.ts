@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import type { OwnerEntityReference } from '@openmetadata/ui-core-components';
 import { OwnerType } from '../enums/user.enum';
 import { EntityReference } from '../generated/entity/data/table';
@@ -23,7 +24,9 @@ export const getOwnerPath = (owner: EntityReference): string => {
   // fullyQualifiedName, so fall back to name to avoid linking every team to
   // the Organization page.
   return owner.type === OwnerType.TEAM
-    ? getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
+    ? getSettingsLink(
+        getTeamAndUserDetailsPath(owner.fullyQualifiedName ?? owner.name ?? '')
+      )
     : getUserPath(owner.name ?? '');
 };
 

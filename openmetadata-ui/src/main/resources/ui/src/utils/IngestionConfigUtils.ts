@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import type { ServicesUpdateRequest } from 'Models';
 import { DATA_INSIGHTS_APP_NAME } from '../constants/Applications.constant';
@@ -72,12 +73,14 @@ export const getIngestionHeadingName = (
 
 // Data Insights and search reindexing run as applications now; their old
 // preferences pages are gone, so a "settings pipeline" leads to its app (the
-// settings modal's applications tab in AI mode, via getApplicationDetailsPath).
+// settings modal's applications tab in AI mode, via getSettingsLink).
 export const getSettingsPathFromPipelineType = (pipelineType: string) =>
-  getApplicationDetailsPath(
-    pipelineType === PipelineType.DataInsight
-      ? DATA_INSIGHTS_APP_NAME
-      : SEARCH_INDEXING_APPLICATION
+  getSettingsLink(
+    getApplicationDetailsPath(
+      pipelineType === PipelineType.DataInsight
+        ? DATA_INSIGHTS_APP_NAME
+        : SEARCH_INDEXING_APPLICATION
+    )
   );
 
 export const getBreadCrumbsArray = (

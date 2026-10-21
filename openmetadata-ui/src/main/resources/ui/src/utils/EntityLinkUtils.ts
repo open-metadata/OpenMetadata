@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
@@ -83,7 +84,7 @@ const getEventSubscriptionLink = (
 ) =>
   (entity as EventSubscription)?.alertType === AlertType.Observability
     ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-    : getNotificationAlertDetailsPath(fullyQualifiedName);
+    : getSettingsLink(getNotificationAlertDetailsPath(fullyQualifiedName));
 
 const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
   Record<EntityType, (fullyQualifiedName: string) => string>
@@ -93,9 +94,9 @@ const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
   [EntityType.GLOSSARY_TERM]: getGlossaryTermDetailsPath,
   [EntityType.TAG]: getClassificationTagPath,
   [EntityType.CLASSIFICATION]: getTagsDetailsPath,
-  [EntityType.BOT]: getBotsPath,
-  [EntityType.TEAM]: getTeamsWithFqnPath,
-  [EntityType.APPLICATION]: getApplicationDetailsPath,
+  [EntityType.BOT]: (fqn) => getSettingsLink(getBotsPath(fqn)),
+  [EntityType.TEAM]: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
+  [EntityType.APPLICATION]: (fqn) => getSettingsLink(getApplicationDetailsPath(fqn)),
   [EntityType.TEST_CASE]: getTestCaseDetailPagePath,
   [EntityType.TEST_SUITE]: (fullyQualifiedName: string) =>
     getEntityDetailsPath(
@@ -104,9 +105,9 @@ const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
       EntityTabs.PROFILER
     ),
   [EntityType.DOMAIN]: getDomainDetailsPath,
-  [EntityType.ROLE]: getRoleWithFqnPath,
-  [EntityType.POLICY]: getPolicyWithFqnPath,
-  [EntityType.PERSONA]: getPersonaDetailsPath,
+  [EntityType.ROLE]: (fqn) => getSettingsLink(getRoleWithFqnPath(fqn)),
+  [EntityType.POLICY]: (fqn) => getSettingsLink(getPolicyWithFqnPath(fqn)),
+  [EntityType.PERSONA]: (fqn) => getSettingsLink(getPersonaDetailsPath(fqn)),
   [EntityType.KPI]: getKpiPath,
   [EntityType.KNOWLEDGE_PAGE]: getKnowledgePagePath,
 };

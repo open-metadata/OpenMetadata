@@ -44,7 +44,6 @@ import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.i
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getSettingPath } from './RouterPaths';
-import { getSettingsLink } from './SettingsModalLinkUtils';
 import { getEncodedFqn } from './StringUtils';
 
 // Moved to RouterPaths so callers needing only a profile URL (the app
@@ -214,24 +213,20 @@ export const getApplicationDetailsPath = (fqn: string) => {
     )
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getMarketPlaceAppDetailsPath = (fqn: string) => {
-  return getSettingsLink(
-    ROUTES.MARKETPLACE_APP_DETAILS.replace(
-      PLACEHOLDER_ROUTE_FQN,
-      getEncodedFqn(fqn)
-    )
+  return ROUTES.MARKETPLACE_APP_DETAILS.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
   );
 };
 
 export const getAppInstallPath = (fqn: string) => {
-  return getSettingsLink(
-    ROUTES.MARKETPLACE_APP_INSTALL.replace(
-      PLACEHOLDER_ROUTE_FQN,
-      getEncodedFqn(fqn)
-    )
+  return ROUTES.MARKETPLACE_APP_INSTALL.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
   );
 };
 
@@ -265,7 +260,7 @@ export const getSettingsPathWithFqn = (
   path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getSettingCategoryPath = (category: string) => {
@@ -280,8 +275,9 @@ export const getSettingCategoryPath = (category: string) => {
 
 /**
  * A team's page, optionally opened on one of its tabs (built-in or contributed,
- * e.g. Collate's `sql-studio`). Classic: `/settings/members/teams/<fqn>?activeTab=<key>`.
- * AI: `#members/teams/<fqn>?activeTab=<key>` over the current page.
+ * e.g. Collate's `sql-studio`): `/settings/members/teams/<fqn>?activeTab=<key>`.
+ * A classic path, like every route builder here; wrap it in `getSettingsLink`
+ * (or `useSettingsLink`) where a link must also work in AI mode.
  */
 export const getTeamsWithFqnPath = (
   fqn: string,
@@ -298,7 +294,7 @@ export const getTeamsWithFqnPath = (
     ? `?activeTab=${encodeURIComponent(options.activeTab)}`
     : '';
 
-  return getSettingsLink(`${path}${query}`);
+  return `${path}${query}`;
 };
 
 export const getRoleWithFqnPath = (fqn: string) => {
@@ -309,7 +305,7 @@ export const getRoleWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.ROLES)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getPolicyWithFqnPath = (fqn: string) => {
@@ -320,7 +316,7 @@ export const getPolicyWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.POLICIES)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getPath = (pathName: string) => {
@@ -359,7 +355,7 @@ export const getAddPolicyRulePath = (fqn: string) => {
 
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
@@ -370,7 +366,7 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
     // rule name is same as entity fqn so we need to encode it to pass it as a param
     .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getTagPath = (fqn?: string) => {
@@ -607,7 +603,7 @@ export const getPersonaDetailsPath = (fqn: string) => {
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getObservabilityAlertsEditPath = (fqn: string) => {
@@ -623,7 +619,7 @@ export const getNotificationAlertsEditPath = (fqn: string) => {
 
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getObservabilityAlertDetailsPath = (fqn: string, tab?: string) => {
@@ -651,7 +647,7 @@ export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
     tab ?? AlertDetailTabs.CONFIGURATION
   );
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getTagsDetailsPath = (entityFQN: string) => {
@@ -820,7 +816,7 @@ export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getCreateUserPath = (bot: boolean) => {
@@ -830,21 +826,17 @@ export const getCreateUserPath = (bot: boolean) => {
     path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
   }
 
-  return getSettingsLink(path);
+  return path;
 };
 
 export const getUsersPagePath = (isAdmin?: boolean) => {
-  return getSettingsLink(
-    `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
-      isAdmin ? 'admins' : 'users'
-    }`
-  );
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+    isAdmin ? 'admins' : 'users'
+  }`;
 };
 
 export const getBotsPagePath = () => {
-  return getSettingsLink(
-    `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`
-  );
+  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
 };
 
 export const getKpiPath = (kpiName: string) => {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import {
   Accordion,
   AccordionHeader,
@@ -68,11 +69,11 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
   const getEntityLink = (entityType: string, fqn: string) => {
     switch (entityType) {
       case EntityType.POLICY:
-        return getPolicyWithFqnPath(fqn);
+        return getSettingsLink(getPolicyWithFqnPath(fqn));
       case EntityType.ROLE:
-        return getRoleWithFqnPath(fqn);
+        return getSettingsLink(getRoleWithFqnPath(fqn));
       case EntityType.TEAM:
-        return getTeamsWithFqnPath(fqn);
+        return getSettingsLink(getTeamsWithFqnPath(fqn));
       default:
         return getEntityDetailsPath(entityType as EntityType, fqn);
     }

@@ -28,6 +28,12 @@ import {
 } from './RouterUtils';
 import { getSettingsLink, settingsPathToHash } from './SettingsModalLinkUtils';
 
+const mockIsDev = jest.fn().mockReturnValue(false);
+
+jest.mock('./EnvironmentUtils', () => ({
+  isDev: () => mockIsDev(),
+}));
+
 jest.mock('./GlobalSettingsClassBase', () => ({
   __esModule: true,
   default: { getGlobalSettingsMenuWithPermission: jest.fn(() => []) },
@@ -187,35 +193,67 @@ describe('getSettingsLink', () => {
   afterEach(() => {
     useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
     registerAppModeSessionPredicate(() => false);
+    mockIsDev.mockReturnValue(false);
+    globalThis.history.replaceState(null, '', '/');
   });
 
   it('returns the classic path unchanged in classic mode', () => {
     expect(getSettingsLink('/settings/bots')).toBe('/settings/bots');
-    expect(getTeamsWithFqnPath('Org')).toBe('/settings/members/teams/Org');
   });
 
-  it('returns the modal hash in AI mode', () => {
+  it('returns the modal hash over the current search in AI mode', () => {
     useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/x?a=1');
 
-    expect(getSettingsLink('/settings/bots')).toBe('#bots');
-    expect(getTeamsWithFqnPath('Org')).toBe('#members/teams/Org');
-    expect(getEditPolicyRulePath('OrgPolicy', 'my rule')).toBe(
-      '#access-control/policies/OrgPolicy/rules/my%20rule/edit'
+    expect(getSettingsLink('/settings/bots')).toBe('?a=1#bots');
+    expect(getSettingsLink(getTeamsWithFqnPath('Org'))).toBe(
+      '?a=1#members/teams/Org'
     );
+    expect(getSettingsLink(getEditPolicyRulePath('OrgPolicy', 'my rule'))).toBe(
+      '?a=1#access-control/policies/OrgPolicy/rules/my%20rule/edit'
+    );
+    expect(getSettingsLink(getNotificationAlertDetailsPath('a1'))).toBe(
+      '?a=1#notification/alerts/a1'
+    );
+  });
+
+  // The builders feed `pathname:` targets (PersonaDetailsCard, TeamDetailsV1,
+  // UserTab, ImportTeamsPage), so they must stay paths in every mode.
+  it('leaves the route builders pure paths in AI mode', () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/x?a=1');
+
+    expect(getTeamsWithFqnPath('Org')).toBe('/settings/members/teams/Org');
+    expect(getSettingPath('bots')).toBe('/settings/bots');
     expect(getNotificationAlertDetailsPath('a1')).toBe(
-      '#notification/alerts/a1'
+      '/settings/notifications/alerts/a1/configuration'
     );
+  });
+
+  // Nothing memoises a link: each render or click rebuilds it, so it carries
+  // the search of that moment, not the one the page had when first rendered.
+  it('reads the current search on every call', () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/x?a=1');
+
+    expect(getSettingsLink('/settings/bots')).toBe('?a=1#bots');
+
+    globalThis.history.replaceState(null, '', '/x?a=2');
+
+    expect(getSettingsLink('/settings/bots')).toBe('?a=2#bots');
   });
 
   // Collate's SQL Studio link opens a team on its contributed tab.
   it('opens a team on a given tab in both modes', () => {
-    expect(getTeamsWithFqnPath('Data', { activeTab: 'sql-studio' })).toBe(
+    const teamOnTab = getTeamsWithFqnPath('Data', { activeTab: 'sql-studio' });
+
+    expect(getSettingsLink(teamOnTab)).toBe(
       '/settings/members/teams/Data?activeTab=sql-studio'
     );
 
     useAppModeStore.getState().setMode(AI_APP_MODE);
 
-    expect(getTeamsWithFqnPath('Data', { activeTab: 'sql-studio' })).toBe(
+    expect(getSettingsLink(teamOnTab)).toBe(
       '#members/teams/Data?activeTab=sql-studio'
     );
     // Only a team page carries the tab; the team list has none to open.
@@ -227,7 +265,7 @@ describe('getSettingsLink', () => {
   it('follows an active app-mode session like AppRouter does', () => {
     registerAppModeSessionPredicate(() => true);
 
-    expect(getSettingPath('bots')).toBe('#bots');
+    expect(getSettingsLink(getSettingPath('bots'))).toBe('#bots');
   });
 
   it('keeps a path with no modal equivalent in AI mode', () => {
@@ -238,11 +276,37 @@ describe('getSettingsLink', () => {
     );
   });
 
-  it('keeps route templates unchanged in AI mode', () => {
-    useAppModeStore.getState().setMode(AI_APP_MODE);
+  describe('a settings path with no modal equivalent', () => {
+    let warn: jest.SpyInstance;
 
-    expect(getSettingPath('members', 'teams', true)).toBe(
-      '/settings/members/teams/:fqn'
-    );
+    beforeEach(() => {
+      warn = jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => warn.mockRestore());
+
+    it('warns in development, naming the path, in AI mode only', () => {
+      mockIsDev.mockReturnValue(true);
+      getSettingsLink('/settings/services/databases');
+
+      expect(warn).not.toHaveBeenCalled();
+
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      getSettingsLink('/settings/bots');
+
+      expect(warn).not.toHaveBeenCalled();
+
+      getSettingsLink('/settings/services/databases');
+
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0][0]).toContain('/settings/services/databases');
+    });
+
+    it('stays silent outside development', () => {
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      getSettingsLink('/settings/services/databases');
+
+      expect(warn).not.toHaveBeenCalled();
+    });
   });
 });

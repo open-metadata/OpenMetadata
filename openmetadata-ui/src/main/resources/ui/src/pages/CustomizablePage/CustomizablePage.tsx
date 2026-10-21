@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -522,9 +523,11 @@ const CustomizablePageContent = () => {
                 renderElement={
                   <Link
                     style={{ color: theme.primaryColor }}
-                    to={getSettingPath(
-                      GlobalSettingsMenuCategory.MEMBERS,
-                      GlobalSettingOptions.PERSONA
+                    to={getSettingsLink(
+                      getSettingPath(
+                        GlobalSettingsMenuCategory.MEMBERS,
+                        GlobalSettingOptions.PERSONA
+                      )
                     )}
                   />
                 }

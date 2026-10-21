@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import {
   Box,
   Breadcrumbs,
@@ -81,7 +82,7 @@ export const CustomizablePageHeader = ({
   const requestExit = useCallback(
     (id: string) => {
       if (!chrome) {
-        navigate(getPersonaDetailsPath(personaFqn));
+        navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
 
         return;
       }
@@ -157,7 +158,7 @@ export const CustomizablePageHeader = ({
       onPress={handleClose}
     />
   ) : (
-    <Link to={getPersonaDetailsPath(personaFqn)} />
+    <Link to={getSettingsLink(getPersonaDetailsPath(personaFqn))} />
   );
 
   return (

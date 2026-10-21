@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { HoverCard } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
@@ -93,7 +94,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           to={
             to ??
             (type === OwnerType.TEAM
-              ? getTeamAndUserDetailsPath(userName)
+              ? getSettingsLink(getTeamAndUserDetailsPath(userName))
               : getUserPath(userName))
           }
           onClick={handleTitleClick}>

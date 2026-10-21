@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { Alert, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -32,7 +33,9 @@ export const IndexNotFoundBanner = () => {
           renderElement={
             <Link
               className="alert-link"
-              to={getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)}
+              to={getSettingsLink(
+                getApplicationDetailsPath(SEARCH_INDEXING_APPLICATION)
+              )}
             />
           }
           values={{

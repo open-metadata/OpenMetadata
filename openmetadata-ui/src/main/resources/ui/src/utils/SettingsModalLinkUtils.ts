@@ -26,6 +26,7 @@ import {
 } from '../constants/GlobalSettings.constants';
 import { useAppModeStore } from '../hooks/useAppMode';
 import { isAppModeSessionActive } from './appModeSession';
+import { isDev } from './EnvironmentUtils';
 
 /**
  * In AI mode the classic `/settings/*`, `/marketplace*` and `/bots/*` pages are
@@ -296,17 +297,34 @@ export const isAiShell = (): boolean =>
   isAppModeSessionActive();
 
 /**
- * Mode-aware link to a classic settings, marketplace or bots page — usable as a
- * react-router `to`, a `navigate()` target or an `href`. Classic: the path,
- * unchanged. AI: `<current search>#<tab>/<subPath>`, which keeps the current
- * page and opens the settings modal on it (`useSettingsHash` adopts pushed
- * hashes). The search is spelled out because react-router resolves a bare
- * `#hash` target with an empty search, dropping the page's query string. A
- * path with no modal equivalent is returned unchanged and lands on the AI
- * not-found page. Route builders call this, so callers stay unchanged.
+ * Mode-aware link to a classic settings, marketplace or bots page, for a
+ * react-router `to`, a `navigate()` target or an `href` — never a `pathname`.
+ * The route builders (`getSettingPath`, `getTeamsWithFqnPath`…) always return
+ * the classic path; this is the one place it turns into a link. Classic: the
+ * path, unchanged. AI: `<current search>#<tab>/<subPath>`, which keeps the
+ * current page and opens the settings modal on it (`useSettingsHash` adopts
+ * pushed hashes). The search is spelled out because react-router resolves a
+ * bare `#hash` target with an empty search, dropping the page's query string.
+ * A path with no modal equivalent is returned unchanged and lands on the AI
+ * not-found page (warned in development).
+ *
+ * It reads the mode and the search when called, so call it at click time
+ * (`onClick={() => navigate(getSettingsLink(path))}`) or during render — never
+ * at module scope or inside a `useMemo`/`useCallback`, where the link would
+ * keep the search and mode it was built with.
+ * ADR:2026-10-21-settings-pages-are-classic-only
  */
 export const getSettingsLink = (path: string): string => {
-  const hash = isAiShell() ? settingsPathToHash(path) : undefined;
+  if (!isAiShell()) {
+    return path;
+  }
+  const hash = settingsPathToHash(path);
+  if (hash === undefined && isDev()) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[settings link] "${path}" has no settings-modal equivalent; in AI mode it lands on not-found. Map it in settingsPathToHash.`
+    );
+  }
 
   return hash === undefined ? path : `${globalThis.location.search}#${hash}`;
 };

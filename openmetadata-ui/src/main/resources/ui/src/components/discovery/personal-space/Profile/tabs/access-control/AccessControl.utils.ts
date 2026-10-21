@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { getSettingsLink } from '../../../../../../utils/SettingsModalLinkUtils';
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { uniqBy } from 'lodash';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -185,11 +186,11 @@ export function viewToSubPath(view: AccessControlView): string | undefined {
 export const getEntityLink = (entityType: string, fqn: string): string => {
   switch (entityType) {
     case EntityType.POLICY:
-      return getPolicyWithFqnPath(fqn);
+      return getSettingsLink(getPolicyWithFqnPath(fqn));
     case EntityType.ROLE:
-      return getRoleWithFqnPath(fqn);
+      return getSettingsLink(getRoleWithFqnPath(fqn));
     case EntityType.TEAM:
-      return getTeamsWithFqnPath(fqn);
+      return getSettingsLink(getTeamsWithFqnPath(fqn));
     default:
       return getEntityDetailsPath(entityType as EntityType, fqn);
   }

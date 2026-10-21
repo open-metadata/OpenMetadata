@@ -1194,13 +1194,19 @@
       ]
     },
     {
-      "_comment": "Mode-aware settings links (ADR:2026-10-21-settings-pages-are-classic-only): the path-to-modal-hash map, the route builders that return through it, and the hash router that opens the settings modal from a pushed link. Classic keeps its paths, so the classic settings specs whose links these builders produce run too.",
+      "_comment": "Mode-aware settings links (ADR:2026-10-21-settings-pages-are-classic-only): the path-to-modal-hash map, the route builders (pure paths) and the call sites that wrap them in getSettingsLink, and the hash router that opens the settings modal from a pushed link. Classic keeps its paths, so the classic settings specs whose links these builders produce run too.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/SettingsModalLinkUtils*",
         "openmetadata-ui/src/main/resources/ui/src/utils/RouterPaths.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/RouterUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityGovernanceBreadcrumbUtils*",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useSettingsHash*"
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useSettingsHash*",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/TeamPopoverTitle.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/CustomizablePage/CustomizablePage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLinkUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Users.util.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ownerUtils.ts"
       ],
       "projects": ["chromium"],
       "specs": [
