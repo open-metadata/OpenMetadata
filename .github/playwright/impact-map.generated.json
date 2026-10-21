@@ -2211,6 +2211,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/base.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
@@ -3337,6 +3338,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/apiResponse.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
@@ -3711,6 +3713,7 @@
         "playwright/e2e/Features/Workflows/WorkflowExecutionHistoryEntity.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowOssRestrictions.spec.ts",
         "playwright/e2e/Flow/AddRoleAndAssignToUser.spec.ts",
+        "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/ApiCollection.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
         "playwright/e2e/Flow/ApiServiceRest.spec.ts",
@@ -5334,6 +5337,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/waitHelpers.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
@@ -8622,7 +8626,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
@@ -11464,7 +11467,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -12965,7 +12967,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
