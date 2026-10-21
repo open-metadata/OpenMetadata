@@ -186,7 +186,7 @@ const RolesListPage = () => {
                   </AriaButton>
                   <Popover
                     arrow
-                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
                     placement="bottom">
                     <Box
                       inline

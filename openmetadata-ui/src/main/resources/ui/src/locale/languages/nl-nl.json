@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Nog geen assets gekoppeld",
     "no-audit-logs-yet": "Nog geen auditlogboeken",
     "no-authentication": "Geen authenticatie",
+    "no-bots-yet": "Nog geen bots",
+    "no-bots-yet-description": "Maak een bot om ingestion en automatiseringen uit te voeren met een eigen identiteit en toegangstoken.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "Nog geen gesloten taken",

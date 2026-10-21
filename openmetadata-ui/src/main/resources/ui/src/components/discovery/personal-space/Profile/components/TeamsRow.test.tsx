@@ -38,9 +38,18 @@ jest.mock('./ChipBadgeList', () => ({
 
 jest.mock('./InlineEditCard', () => ({
   __esModule: true,
-  default: ({ view, canEdit }: { view?: ReactNode; canEdit?: boolean }) => (
+  default: ({
+    view,
+    canEdit,
+    isSaveDisabled,
+  }: {
+    view?: ReactNode;
+    canEdit?: boolean;
+    isSaveDisabled?: boolean;
+  }) => (
     <div>
       <span data-testid="can-edit">{String(canEdit)}</span>
+      <span data-testid="save-disabled">{String(isSaveDisabled)}</span>
       {view}
     </div>
   ),
@@ -73,5 +82,6 @@ describe('TeamsRow', () => {
 
     expect(screen.getByTestId('chip-list')).toHaveTextContent('1');
     expect(screen.getByTestId('can-edit')).toHaveTextContent('true');
+    expect(screen.getByTestId('save-disabled')).toHaveTextContent('true');
   });
 });

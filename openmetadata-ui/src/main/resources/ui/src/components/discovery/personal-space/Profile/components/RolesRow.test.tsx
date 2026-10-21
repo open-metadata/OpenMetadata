@@ -64,17 +64,23 @@ jest.mock('./InlineEditCard', () => ({
     renderEdit,
     canEdit,
     onSave,
+    isSaveDisabled,
   }: {
     view?: ReactNode;
     renderEdit?: () => ReactNode;
     canEdit?: boolean;
     onSave?: () => void;
+    isSaveDisabled?: boolean;
   }) => (
     <div>
       <span data-testid="can-edit">{String(canEdit)}</span>
       {view}
       {renderEdit?.()}
-      <button data-testid="save" type="button" onClick={onSave}>
+      <button
+        data-testid="save"
+        disabled={isSaveDisabled}
+        type="button"
+        onClick={onSave}>
         save
       </button>
     </div>
@@ -163,9 +169,14 @@ describe('RolesRow', () => {
       );
     });
 
+    expect(screen.getByTestId('save')).toBeDisabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-role'));
     });
+
+    expect(screen.getByTestId('save')).toBeEnabled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('save'));
     });

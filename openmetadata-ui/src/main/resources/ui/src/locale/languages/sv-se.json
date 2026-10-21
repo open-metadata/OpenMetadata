@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Inga tillgångar länkade ännu",
     "no-audit-logs-yet": "Inga granskningsloggar ännu",
     "no-authentication": "Ingen autentisering",
+    "no-bots-yet": "Inga bottar ännu",
+    "no-bots-yet-description": "Skapa en bot för att köra inmatning och automatiseringar med en egen identitet och åtkomsttoken.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

@@ -265,6 +265,34 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
   });
 
+  it('suppresses colour transitions only for the frame the theme flips in', () => {
+    setSystemTheme('light');
+    let flushFrame: FrameRequestCallback | undefined;
+    jest
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => {
+        flushFrame = callback;
+
+        return 0;
+      });
+    renderProvider();
+    const freezeStyles = () =>
+      Array.from(document.head.querySelectorAll('style')).filter((style) =>
+        style.textContent?.includes('transition:none')
+      );
+    // Earlier tests leave their freeze styles behind until jsdom's real frame.
+    freezeStyles().forEach((style) => style.remove());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(document.documentElement).toHaveClass('dark-mode');
+    expect(freezeStyles()).toHaveLength(1);
+
+    act(() => flushFrame?.(0));
+
+    expect(freezeStyles()).toHaveLength(0);
+  });
+
   it('does not rewrite a root class that already matches the stored theme', () => {
     localStorage.setItem('ui-theme', 'dark');
     document.documentElement.classList.add('dark-mode');

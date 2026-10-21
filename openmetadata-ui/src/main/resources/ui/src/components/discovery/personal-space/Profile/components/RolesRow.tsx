@@ -13,7 +13,7 @@
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce, uniqBy } from 'lodash';
+import { debounce, isEmpty, uniqBy, xor } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,6 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 interface RolesRowProps {
   userData: User;
@@ -128,6 +127,7 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
     <InlineEditCard
       canEdit={canEdit}
       description={t('message.role-granting-description')}
+      isSaveDisabled={isEmpty(xor(draftRoleIds, initialRoleIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete
@@ -139,14 +139,6 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
           placeholder={t('label.select-entity', {
             entity: t('label.role-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`roles-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
           selectedItems={selectedItems}
           onItemCleared={handleRoleCleared}
           onItemInserted={(key) =>

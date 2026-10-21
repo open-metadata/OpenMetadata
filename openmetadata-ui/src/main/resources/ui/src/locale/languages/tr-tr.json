@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Henüz bağlı varlık yok",
     "no-audit-logs-yet": "Henüz denetim günlüğü yok",
     "no-authentication": "Kimlik Doğrulama Yok",
+    "no-bots-yet": "Henüz bot yok",
+    "no-bots-yet-description": "Alım ve otomasyonları kendi kimliği ve erişim belirteciyle çalıştırmak için bir bot oluşturun.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

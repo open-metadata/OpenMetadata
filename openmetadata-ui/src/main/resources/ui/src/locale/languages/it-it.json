@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Ancora nessun asset collegato",
     "no-audit-logs-yet": "Ancora Nessun Log di Audit",
     "no-authentication": "Nessuna Autenticazione",
+    "no-bots-yet": "Ancora Nessun Bot",
+    "no-bots-yet-description": "Crea un bot per eseguire l'ingestione e le automazioni con la propria identità e il proprio token di accesso.",
     "no-bulk-edit-changes-yet": "Ancora nessuna modifica. Clicca su una cella qui sopra per iniziare a modificare.",
     "no-change": "Nessuna modifica",
     "no-closed-tasks-yet": "Ancora nessun task chiuso",

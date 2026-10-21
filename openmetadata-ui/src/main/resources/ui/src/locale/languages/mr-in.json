@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "अद्याप कोणतीही मालमत्ता जोडलेली नाही",
     "no-audit-logs-yet": "अद्याप कोणतेही ऑडिट लॉग नाहीत",
     "no-authentication": "प्रमाणीकरण नाही",
+    "no-bots-yet": "अद्याप कोणतेही बॉट नाहीत",
+    "no-bots-yet-description": "स्वतःच्या ओळखीसह आणि ॲक्सेस टोकनसह इंजेशन आणि ऑटोमेशन चालवण्यासाठी बॉट तयार करा.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

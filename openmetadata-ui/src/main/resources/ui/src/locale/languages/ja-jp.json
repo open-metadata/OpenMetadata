@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "まだアセットがリンクされていません",
     "no-audit-logs-yet": "監査ログはまだありません",
     "no-authentication": "認証なし",
+    "no-bots-yet": "ボットはまだありません",
+    "no-bots-yet-description": "独自の ID とアクセストークンでインジェストや自動化を実行するボットを作成しましょう。",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "完了したタスクはまだありません",

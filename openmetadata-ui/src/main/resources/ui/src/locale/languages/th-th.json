@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "ยังไม่มีการเชื่อมโยงสินทรัพย์",
     "no-audit-logs-yet": "ยังไม่มีบันทึกการตรวจสอบ",
     "no-authentication": "ไม่มีการยืนยันตัวตน",
+    "no-bots-yet": "ยังไม่มีบอท",
+    "no-bots-yet-description": "สร้างบอทเพื่อเรียกใช้การนำเข้าข้อมูลและระบบอัตโนมัติด้วยตัวตนและโทเค็นการเข้าถึงของตัวเอง",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "ยังไม่มีงานที่ปิดแล้ว",

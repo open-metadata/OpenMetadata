@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "لم يتم ربط أي أصول بعد",
     "no-audit-logs-yet": "لا توجد سجلات تدقيق حتى الآن",
     "no-authentication": "بدون مصادقة",
+    "no-bots-yet": "لا توجد روبوتات بعد",
+    "no-bots-yet-description": "أنشئ روبوتًا لتشغيل الاستيعاب والأتمتة بهويته ورمز الوصول الخاص به.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "아직 연결된 자산이 없습니다",
     "no-audit-logs-yet": "아직 감사 로그 없음",
     "no-authentication": "인증 없음",
+    "no-bots-yet": "아직 봇이 없습니다",
+    "no-bots-yet-description": "자체 ID와 액세스 토큰으로 수집 및 자동화를 실행할 봇을 만드세요.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

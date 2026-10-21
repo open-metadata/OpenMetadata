@@ -60,6 +60,7 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
     <InlineEditCard
       canEdit={canEdit}
       description={t('message.preferred-name-description')}
+      isSaveDisabled={!draft.trim() || draft.trim() === displayName}
       renderEdit={() => (
         <Input
           data-testid="preferred-name-input"

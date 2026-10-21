@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Aucun actif lié pour le moment",
     "no-audit-logs-yet": "Aucun journal d'audit pour le moment",
     "no-authentication": "Aucune authentification",
+    "no-bots-yet": "Aucun bot pour le moment",
+    "no-bots-yet-description": "Créez un bot pour exécuter l'ingestion et les automatisations avec sa propre identité et son propre jeton d'accès.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "Aucune tâche clôturée pour le moment",

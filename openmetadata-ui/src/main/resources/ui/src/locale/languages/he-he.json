@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "עדיין לא קושרו נכסים",
     "no-audit-logs-yet": "אין יומני ביקורת עדיין",
     "no-authentication": "ללא אימות",
+    "no-bots-yet": "עדיין אין בוטים",
+    "no-bots-yet-description": "צור בוט כדי להריץ קליטה ואוטומציות עם זהות ואסימון גישה משלו.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "אין עדיין משימות סגורות",

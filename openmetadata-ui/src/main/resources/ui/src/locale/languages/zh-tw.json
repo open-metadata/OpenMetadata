@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "尚未連結任何資產",
     "no-audit-logs-yet": "暫無稽核記錄",
     "no-authentication": "無驗證",
+    "no-bots-yet": "尚無機器人",
+    "no-bots-yet-description": "建立一個機器人，以其自身的身分與存取權杖執行擷取與自動化作業。",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "No closed tasks yet",

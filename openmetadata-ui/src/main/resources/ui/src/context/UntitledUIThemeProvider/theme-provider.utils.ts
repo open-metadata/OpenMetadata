@@ -69,7 +69,16 @@ export const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
   const shouldUseDarkMode = theme === 'dark';
 
   if (root.classList.contains(darkModeClass) !== shouldUseDarkMode) {
+    // Every token flips at once, but elements with `transition` would animate
+    // their colours from the old theme (light text briefly on a light
+    // background). Suppress transitions for the frame the class changes in.
+    const freeze = globalThis.document.createElement('style');
+    freeze.textContent = '*,*::before,*::after{transition:none!important}';
+    globalThis.document.head.appendChild(freeze);
     root.classList.toggle(darkModeClass, shouldUseDarkMode);
+    // Force a style recalc so the new colours apply while transitions are off.
+    void globalThis.getComputedStyle(root).color;
+    globalThis.requestAnimationFrame(() => freeze.remove());
   }
   if (root.style.colorScheme !== theme) {
     root.style.colorScheme = theme;

@@ -13,7 +13,7 @@
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { uniqBy } from 'lodash';
+import { isEmpty, uniqBy, xor } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../../generated/entity/teams/teamHierarchy';
@@ -25,7 +25,6 @@ import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 interface TeamOption {
   id: string;
@@ -123,6 +122,7 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
     <InlineEditCard
       canEdit={canEdit}
       description={t('message.team-member-description')}
+      isSaveDisabled={isEmpty(xor(draftTeamIds, initialTeamIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete
@@ -133,14 +133,6 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
           placeholder={t('label.select-entity', {
             entity: t('label.team-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`teams-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
           selectedItems={selectedItems}
           onItemCleared={handleItemCleared}
           onItemInserted={handleItemInserted}>

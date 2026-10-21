@@ -2210,6 +2210,8 @@
     "no-assets-linked-yet": "Ainda não existem ativos associados",
     "no-audit-logs-yet": "Ainda não há registos de auditoria",
     "no-authentication": "Sem autenticação",
+    "no-bots-yet": "Ainda não existem bots",
+    "no-bots-yet-description": "Crie um bot para executar a ingestão e as automatizações com a sua própria identidade e token de acesso.",
     "no-bulk-edit-changes-yet": "No changes yet. Click any cell above to start editing.",
     "no-change": "No change",
     "no-closed-tasks-yet": "Ainda não há tarefas fechadas",
