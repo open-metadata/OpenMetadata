@@ -44,9 +44,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Link;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
@@ -115,8 +118,7 @@ public class EventSubscriptionResource
   // RFC 9745: the per-source list is deprecated since 2026-10-20, in favour of /capabilities.
   // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
   private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
-  private static final String RESOURCES_SUCCESSOR_LINK =
-      "</api/v1/events/subscriptions/capabilities>; rel=\"alternate\"";
+  private static final String CAPABILITIES_PATH = "/capabilities";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
@@ -634,12 +636,23 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     response.setHeader("Deprecation", RESOURCES_DEPRECATED_SINCE);
-    response.setHeader("Link", RESOURCES_SUCCESSOR_LINK);
+    response.setHeader(HttpHeaders.LINK, successorLink(uriInfo));
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
     } else {
       return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
     }
+  }
+
+  // A path under the one the server is served at, so it holds behind a configured base path.
+  static String successorLink(UriInfo uriInfo) {
+    String capabilities =
+        UriBuilder.fromUri(uriInfo.getBaseUri())
+            .path(EventSubscriptionResource.class)
+            .path(CAPABILITIES_PATH)
+            .build()
+            .getRawPath();
+    return Link.fromPath(capabilities).rel("alternate").build().toString();
   }
 
   @GET
@@ -925,7 +938,7 @@ public class EventSubscriptionResource
   }
 
   @POST
-  @Path("/capabilities")
+  @Path(CAPABILITIES_PATH)
   @Operation(
       operationId = "getAlertCapabilities",
       summary = "Get what a selection of sources supports",

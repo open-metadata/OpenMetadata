@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-10-20 (initial)
 - **Deciders:** Adrià Manero
 - **Guard:** `EventSubscriptionResourceIT` (the `Deprecation` and `Link` headers on both
-  `/resources` lists); `watchPerSourceListRequests` in `AiAlertSeveralSources.spec.ts`,
+  `/resources` lists); `EventSubscriptionResourceTest` (the `Link` keeps a configured base
+  path); `watchPerSourceListRequests` in `AiAlertSeveralSources.spec.ts`,
   `AlertSeveralSources.spec.ts` and `ProfileNotificationTab.spec.ts` (no page asks for the
   per-source list)
 - **Related:** #20504, PR #35782, PR #33970
@@ -33,9 +34,10 @@ server already applies.
 - While what the sources support is unknown, the rules an alert already holds are shown by name,
   and no rule can be added.
 - `GET /{alertType}/resources` is deprecated. It still answers as before, adds
-  `Deprecation: @1792454400` (RFC 9745, 2026-10-20) and
-  `Link: </api/v1/events/subscriptions/capabilities>; rel="alternate"`, and is marked deprecated
-  in its OpenAPI description. A later release, named in its release notes, removes it.
+  `Deprecation: @1792454400` (RFC 9745, 2026-10-20) and a `Link` to `/capabilities` with
+  `rel="alternate"`, and is marked deprecated in its OpenAPI description. The link is a path under
+  the one the server is served at, `</api/v1/events/subscriptions/capabilities>` without a base
+  path. A later release, named in its release notes, removes it.
 
 ## Consequences
 One endpoint decides what the UI offers, so a catalog or rule change reaches every form at once and
