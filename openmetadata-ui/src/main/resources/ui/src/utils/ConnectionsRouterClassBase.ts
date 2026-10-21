@@ -12,8 +12,8 @@
  */
 
 import type { ServiceTypes } from 'Models';
-import { getCategoryListPath } from '../components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils';
 import { CONNECTIONS_ROUTES } from '../components/integration/connections.constants';
+import { getCategoryListPath } from '../components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils';
 import { ConnectionsServiceCategory } from '../components/integration/ConnectionsPage/ConnectionsPage.constants';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
@@ -26,11 +26,11 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { isAiShell } from './SettingsModalLinkUtils';
 import {
   getCountLabel,
   getServiceRouteFromServiceType,
 } from './ServicePureUtils';
+import { isAiShell } from './SettingsModalLinkUtils';
 
 class ConnectionsRouterClassBase {
   public setEmbeddedMode(_flag: boolean): void {

@@ -14,8 +14,8 @@
 import { viewToSubPath as appsViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
 import { viewToSubPath as governanceViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/governance/Governance.utils';
 import {
-  viewToSubPath as membersViewToSubPath,
   safeDecodeURIComponent as decode,
+  viewToSubPath as membersViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
 import { viewToSubPath as personasViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { AI_APP_MODE } from '../constants/appMode.constants';
@@ -236,11 +236,23 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
   ['billing', ([page]) => withSub('billing', page)],
 ]);
 
+// Keys come from a URL: only call a mapper the table itself defines.
+const dispatchMapper = (
+  mappers: Map<string, HashMapper>,
+  key: string,
+  rest: string[],
+  query: URLSearchParams
+): string | undefined => {
+  const mapper = mappers.has(key) ? mappers.get(key) : undefined;
+
+  return typeof mapper === 'function' ? mapper(rest, query) : undefined;
+};
+
 const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
   [
     'settings',
     ([category = '', ...rest], query) =>
-      SETTINGS_HASH_MAPPERS.get(category)?.(rest, query),
+      dispatchMapper(SETTINGS_HASH_MAPPERS, category, rest, query),
   ],
   ['bots', ([name]) => (name ? `bots/${decode(name)}` : 'bots')],
   ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
@@ -269,8 +281,12 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
 export const settingsPathToHash = (path: string): string | undefined => {
   const [pathname, search = ''] = path.split('#')[0].split('?', 2);
   const [root = '', ...rest] = pathname.split('/').filter(Boolean);
-
-  return ROOT_HASH_MAPPERS.get(root)?.(rest, new URLSearchParams(search));
+  return dispatchMapper(
+    ROOT_HASH_MAPPERS,
+    root,
+    rest,
+    new URLSearchParams(search)
+  );
 };
 
 /** Same condition `AppRouter` uses to render the AI shell. */
