@@ -157,5 +157,8 @@ test.describe('AI mode — notification alerts live in the settings modal', () =
     expect((await deleteResponse).status()).toBe(200);
     await expect(page).toHaveURL(/\/my-data#notification\/alerts$/);
     await expect(page.getByTestId('alerts-list-container')).toBeVisible();
+    await expect(
+      page.getByTestId(`alert-${deletableAlert.responseData.displayName}`)
+    ).not.toBeAttached();
   });
 });
