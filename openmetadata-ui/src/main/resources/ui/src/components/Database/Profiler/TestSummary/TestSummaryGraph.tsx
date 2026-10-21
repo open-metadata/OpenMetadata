@@ -91,6 +91,7 @@ const hasArea = ({ height, width }: TooltipSize) => height > 0 && width > 0;
 // Room past the newest and oldest runs, so their dots and the selection ring
 // are not cut at the plot edge.
 const X_AXIS_EDGE_GAP: [string, string] = ['2%', '2%'];
+const AXIS_RUN_TIME_FORMAT = 'MMM dd, yyyy\nhh:mm a';
 // Runs at a single instant have no span, and ECharts stretches the time axis
 // to two years around them; a day centred on them keeps the axis readable.
 const SINGLE_INSTANT_X_PADDING = 12 * 60 * 60 * 1000;
@@ -512,9 +513,12 @@ function TestSummaryGraph({
 
     return {
       type: 'time',
-      formatter: (value) => formatRunTime(Number(value)),
+      // Two horizontal lines: a 45° label at the first tick ran past the
+      // chart's left edge, which ECharts' outer-bounds layout does not reserve.
+      formatter: (value) =>
+        formatDateTimeLong(Number(value), AXIS_RUN_TIME_FORMAT),
       axisLabel: {
-        rotate: 45,
+        hideOverlap: true,
         customValues: tickValues,
       },
       // ECharts' own axis grey does not follow the theme.

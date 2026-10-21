@@ -131,11 +131,11 @@ const TestDefinitionList = () => {
                       className="m-b-0"
                       size="text-md"
                       weight="semibold">
-                      {t('label.data-quality-rule-plural')}
+                      {t('label.test-library')}
                     </Typography>
                     <LearningIcon
                       pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                      title={t('label.data-quality-rule-plural')}
+                      title={t('label.test-library')}
                     />
                   </div>
                   <Typography color="secondary">

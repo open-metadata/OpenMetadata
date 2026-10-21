@@ -203,7 +203,7 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="tw:w-[98%]"
+            ellipsis
             color="link-color"
             data-testid="redirect-task-button-link"
             onClick={handleTaskLinkClick}>
@@ -447,7 +447,7 @@ const TaskFeedCardFromTask = ({
         )}
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
-          <div className="tw:w-full">
+          <div className="tw:flex tw:w-full tw:min-w-0">
             <TaskStatusIcon
               className="tw:mr-1 tw:mt-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
