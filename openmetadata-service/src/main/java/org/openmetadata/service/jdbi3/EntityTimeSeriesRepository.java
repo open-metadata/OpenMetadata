@@ -16,9 +16,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -585,8 +587,34 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortType,
       SubjectContext subjectContext)
       throws IOException {
+    return listLatestWithCompleteness(
+            fields, contentFilter, groupBy, q, limit, offset, sortField, sortType, subjectContext)
+        .results();
+  }
+
+  /** The latest record of each group, and whether some groups had to be left out. */
+  public record LatestResults<T>(ResultList<T> results, boolean truncated) {}
+
+  /**
+   * Same listing as {@link #listLatestFromSearch(EntityUtil.Fields, SearchListFilter, String,
+   * String, Integer, Integer, String, String, SubjectContext)}, for callers that must know whether
+   * it is complete.
+   */
+  @SuppressWarnings("unchecked")
+  public LatestResults<T> listLatestWithCompleteness(
+      EntityUtil.Fields fields,
+      SearchListFilter contentFilter,
+      String groupBy,
+      String q,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
+      SubjectContext subjectContext)
+      throws IOException {
     List<T> entityList = new ArrayList<>();
-    SearchListFilter searchListFilter = new SearchListFilter();
+    SearchListFilter searchListFilter =
+        groupScopeFilter(contentFilter, getGroupInvariantParams(groupBy));
     setIncludeSearchFields(searchListFilter);
     setExcludeSearchFields(searchListFilter);
     String aggregationPath = "$.sterms#byTerms.buckets";
@@ -646,7 +674,47 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       }
     }
 
-    return new ResultList<>(entityList, offset, limit, totalCount);
+    boolean truncated = isTruncated(jsonObjResults);
+    if (truncated) {
+      LOG.warn(
+          "Latest {} listing grouped by {} exceeded {} groups; the result is incomplete",
+          entityType,
+          groupBy,
+          MAX_AGGREGATE_SIZE);
+    }
+    return new LatestResults<>(new ResultList<>(entityList, offset, limit, totalCount), truncated);
+  }
+
+  /**
+   * Query params whose value is the same for every record of a group when grouping by {@code
+   * groupBy}. Filtering on them before grouping only removes whole groups, so it cannot change
+   * which record is the latest of a group that stays; it just stops unrelated groups from taking
+   * up buckets. Params that can differ between records of a group (status, time range, suite
+   * membership) must stay out: they are applied to each group's latest record instead.
+   */
+  protected Set<String> getGroupInvariantParams(String groupBy) {
+    return Set.of();
+  }
+
+  static SearchListFilter groupScopeFilter(
+      SearchListFilter contentFilter, Set<String> invariantParams) {
+    SearchListFilter scope = new SearchListFilter();
+    for (String param : invariantParams) {
+      String value = contentFilter.getQueryParam(param);
+      if (value != null) {
+        scope.addQueryParam(param, value);
+      }
+    }
+    return scope;
+  }
+
+  /** Whether the group-by aggregation left groups out because it hit its bucket limit. */
+  static boolean isTruncated(JsonObject aggregations) {
+    return Stream.of("sterms#byTerms", "sterms#byTermsCount")
+        .map(aggregations::getJsonObject)
+        .filter(Objects::nonNull)
+        .map(terms -> terms.getJsonNumber("sum_other_doc_count"))
+        .anyMatch(otherDocs -> otherDocs != null && otherDocs.longValue() > 0);
   }
 
   private SearchAggregation buildComplexAggregation(
@@ -660,7 +728,14 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
 
     List<SearchAggregationNode> nodes =
         buildAggregationNodes(
-            groupBy, contentFilters, limit, offset, sortField, sortType, MAX_AGGREGATE_SIZE);
+            groupBy,
+            contentFilters,
+            limit,
+            offset,
+            sortField,
+            sortType,
+            MAX_AGGREGATE_SIZE,
+            getIncludeSearchFields());
     SearchAggregationNode root = new SearchAggregationNode("root", "root", null);
     nodes.forEach(root::addChild);
     return SearchAggregation.fromTree(root);
@@ -674,15 +749,31 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
       String sortField,
       String sortType,
       int maxAggSize) {
+    return buildAggregationNodes(
+        groupBy, contentFilters, limit, offset, sortField, sortType, maxAggSize, List.of());
+  }
+
+  static List<SearchAggregationNode> buildAggregationNodes(
+      String groupBy,
+      String contentFilters,
+      Integer limit,
+      Integer offset,
+      String sortField,
+      String sortType,
+      int maxAggSize,
+      List<String> sourceFields) {
     List<SearchAggregationNode> rootNodes = new ArrayList<>();
 
-    // When paginating, use MAX_AGGREGATE_SIZE so bucket_sort has enough upstream buckets to slice
-    // from. Without this, a default size of 100 would make offset>100 always return empty results.
-    int termsSize = (limit != null && limit > 0) ? maxAggSize : 100;
-    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, termsSize);
+    // Every group the filters can reach must get a bucket: the content filters are applied inside
+    // each bucket, so a group left out here is silently missing from the result, with or without
+    // pagination.
+    SearchAggregationNode termsAgg = SearchAggregation.terms("byTerms", groupBy, maxAggSize);
 
     // top_hits fetches the latest document per group — the actual entity we return to the caller.
-    termsAgg.addChild(SearchAggregation.topHits("latest", 1, "timestamp", "desc"));
+    termsAgg.addChild(
+        sourceFields.isEmpty()
+            ? SearchAggregation.topHits("latest", 1, "timestamp", "desc")
+            : SearchAggregation.topHits("latest", 1, "timestamp", "desc", sourceFields));
     // max_timestamp is the reference value for bucket_selector to compare against.
     termsAgg.addChild(SearchAggregation.max("max_timestamp", "timestamp"));
 

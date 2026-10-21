@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Code01 } from '@untitledui/icons';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -39,7 +39,7 @@ import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
-import { Agent } from '../AgentsPage.interface';
+import { Agent, RenderRunAction } from '../AgentsPage.interface';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { useAgentLogs } from '../hooks/useAgentLogs';
 import { useAgentPermissions } from '../hooks/useAgentPermissions';
@@ -62,6 +62,7 @@ interface MetadataAgentsViewProps {
   /** True while the agents list is being refetched, so the refresh control can show it. */
   isRefreshing?: boolean;
   onRefresh: () => void;
+  renderRunAction?: RenderRunAction;
 }
 
 const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
@@ -75,6 +76,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   serviceName,
   showAddAgent,
   onRefresh,
+  renderRunAction,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -281,6 +283,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           agent={liveRunsAgent}
           initialRunId={runsFor.runId}
           permissions={agentPermissions?.[liveRunsAgent.fqn]}
+          renderRunAction={renderRunAction}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
             setLogsFor(agent);

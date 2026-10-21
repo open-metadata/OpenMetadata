@@ -21,6 +21,7 @@ import {
   closeColumnDetailPanel,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { editGlossaryTermFromForm } from '../../../utils/glossaryForm';
 import {
   applyGlossaryPicker,
   openGlossaryPicker,
@@ -589,25 +590,11 @@ test.describe('Glossary Mutual Exclusivity Feature', () => {
         await page.click('[data-testid="expand-collapse-all-button"]');
         await expandResponse;
 
-        // Edit the parent term
-        const escapedFqn = parentTerm.responseData.fullyQualifiedName
-          .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"');
-        const termRow = page.locator(`[data-row-key="${escapedFqn}"]`);
-        await termRow.getByTestId('edit-button').click();
-
-        await page.waitForSelector('[role="dialog"].edit-glossary-modal');
-
-        // Toggle ME to true
-        await page.click('[data-testid="mutually-exclusive-button"]');
-        await expect(
-          page.locator('[data-testid="form-item-alert"]')
-        ).toBeVisible();
-
-        // Save
-        const updateResponse = page.waitForResponse('/api/v1/glossaryTerms/*');
-        await page.click('[data-testid="save-glossary-term"]');
-        await updateResponse;
+        await editGlossaryTermFromForm(
+          page,
+          parentTerm.responseData.fullyQualifiedName,
+          { mutuallyExclusive: true }
+        );
 
         // Now test in entity tagging
         const table = new TableClass();

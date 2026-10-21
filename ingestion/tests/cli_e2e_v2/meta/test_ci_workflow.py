@@ -12,12 +12,33 @@
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 import yaml
+
+_CONDITION_CLAUSE = re.compile(r"^matrix\.connector (==|!=) '([a-z]+)'$")
+_TEST_STEP_IDS = ("e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test")
+_SECRET_REFERENCE = re.compile(r"secrets\.([A-Za-z0-9_]+)")
+_E2E_WORKFLOWS = (".github/workflows/py-cli-e2e-tests-v2.yml", ".github/workflows/py-cli-e2e-tests.yml")
+_SNOWFLAKE_CONCURRENCY_GROUP = re.compile(
+    r"^\$\{\{ matrix\.(?P<key>[a-z0-9-]+) == 'snowflake' && '(?P<group>[a-z0-9-]+)' "
+    r"\|\| format\('\{0\}-\{1\}-\{2\}', github\.workflow, github\.run_id, matrix\.(?P=key)\) \}\}$"
+)
+
+
+def _condition_holds(condition, connector):
+    """Evaluate the `matrix.connector` comparisons, joined by `&&`, that the workflow's step conditions use."""
+    outcomes = []
+    for clause in condition.split(" && "):
+        match = _CONDITION_CLAUSE.match(clause.strip())
+        assert match, f"unsupported step condition: {condition}"
+        operator, name = match.groups()
+        outcomes.append((connector == name) == (operator == "=="))
+    return all(outcomes)
 
 
 def _run_workflow(tmp_path, connector, pytest_exit=0):
@@ -49,6 +70,9 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     for step in job["steps"]:
         if "run" not in step:
             continue
+        condition = step.get("if")
+        if condition is not None and not _condition_holds(condition, connector):
+            continue
         result = subprocess.run(
             ["bash", "--noprofile", "--norc", "-eo", "pipefail", "-c", render(step["run"])],
             cwd=tmp_path,
@@ -58,21 +82,76 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
             timeout=10,
             check=False,
         )
-        if result.returncode or step.get("id") == "e2e-v2-test":
+        if result.returncode or step.get("id") in _TEST_STEP_IDS:
             return result
     raise AssertionError("Workflow did not execute its E2E test step")
 
 
+@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery", "oracle", "snowflake"])
 @pytest.mark.parametrize("pytest_exit", [0, 1, 5])
-def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, pytest_exit):
-    result = _run_workflow(tmp_path, "mysql", pytest_exit)
+def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, connector, pytest_exit):
+    result = _run_workflow(tmp_path, connector, pytest_exit)
     assert result.returncode == pytest_exit, result.stderr
-    assert json.loads((tmp_path / "ingestion/pytest-args.json").read_text()) == [
+    expected_args = [
         "-v",
         "--e2e-contract-check",
-        "--junitxml=junit/test-results-v2-mysql.xml",
-        "tests/cli_e2e_v2/mysql",
     ]
+    workers = {"bigquery": "6", "snowflake": "4"}
+    if connector in workers:
+        expected_args.extend(["-n", workers[connector]])
+    expected_args.extend(
+        [
+            f"--junitxml=junit/test-results-v2-{connector}.xml",
+            f"tests/cli_e2e_v2/{connector}",
+        ]
+    )
+    assert json.loads((tmp_path / "ingestion/pytest-args.json").read_text()) == expected_args
+
+
+def test_ci_defaults_to_all_connectors_and_limits_each_connectors_secrets():
+    root = Path(__file__).resolve().parents[4]
+    workflow = yaml.safe_load((root / ".github/workflows/py-cli-e2e-tests-v2.yml").read_text())
+    job = workflow["jobs"]["py-cli-e2e-tests-v2"]
+    dispatch = workflow.get("on", workflow.get(True))["workflow_dispatch"]
+    default = dispatch["inputs"]["connectors"]["default"]
+    assert json.loads(default) == ["mysql", "postgres", "bigquery", "oracle", "snowflake"]
+    assert f"'{default}'" in job["strategy"]["matrix"]["connector"]
+
+    steps = {step.get("id"): step for step in job["steps"]}
+    regular_step, bigquery_step, snowflake_step = (steps[step_id] for step_id in _TEST_STEP_IDS)
+    assert regular_step["if"] == "matrix.connector != 'bigquery' && matrix.connector != 'snowflake'"
+    assert bigquery_step["if"] == "matrix.connector == 'bigquery'"
+    assert snowflake_step["if"] == "matrix.connector == 'snowflake'"
+    secrets_by_step = {
+        "e2e-v2-bigquery-test": {
+            "E2E_BQ_PROJECT_ID": "TEST_BQ_PROJECT_ID",
+            "E2E_BQ_PROJECT_ID2": "TEST_BQ_PROJECT_ID2",
+            "E2E_BQ_PRIVATE_KEY": "TEST_BQ_PRIVATE_KEY_E2E",
+            "E2E_BQ_PRIVATE_KEY_ID": "TEST_BQ_PRIVATE_KEY_ID",
+            "E2E_BQ_CLIENT_EMAIL": "TEST_BQ_CLIENT_EMAIL",
+        },
+        "e2e-v2-snowflake-test": {
+            "E2E_SNOWFLAKE_ACCOUNT": "TEST_SNOWFLAKE_ACCOUNT",
+            "E2E_SNOWFLAKE_USERNAME": "TEST_SNOWFLAKE_USERNAME",
+            "E2E_SNOWFLAKE_PRIVATE_KEY": "TEST_SNOWFLAKE_PASSWORD_YAML",
+            "E2E_SNOWFLAKE_PASSPHRASE": "TEST_SNOWFLAKE_PASSPHRASE",
+            "E2E_SNOWFLAKE_WAREHOUSE": "TEST_SNOWFLAKE_WAREHOUSE",
+            "E2E_SNOWFLAKE_DATABASE": "TEST_SNOWFLAKE_DATABASE_E2E",
+        },
+    }
+    for owner, secrets in secrets_by_step.items():
+        for key, secret in secrets.items():
+            assert key not in job["env"]
+            assert steps[owner]["env"][key] == f"${{{{ secrets.{secret} }}}}"
+    # Every field of the job and of every step is scanned, so no other step can read a connector's
+    # secrets under any variable name, input or script.
+    owners = {"TEST_BQ_": "e2e-v2-bigquery-test", "TEST_SNOWFLAKE_": "e2e-v2-snowflake-test"}
+    scopes = [("the job", {key: value for key, value in job.items() if key != "steps"})]
+    scopes += [(step.get("id", step["name"]), step) for step in job["steps"]]
+    for scope_name, scope in scopes:
+        for secret in _SECRET_REFERENCE.findall(yaml.safe_dump(scope)):
+            owner = next((step_id for prefix, step_id in owners.items() if secret.startswith(prefix)), scope_name)
+            assert owner == scope_name, f"secrets.{secret} reaches {scope_name}"
 
 
 @pytest.mark.parametrize(
@@ -94,3 +173,31 @@ def test_ci_rejects_unsupported_connectors_without_running_commands(tmp_path, co
     assert not list(tmp_path.rglob("injected"))
     assert result.returncode != 0
     assert not (tmp_path / "ingestion/pytest-args.json").exists()
+
+
+def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
+    """v1 drops and recreates the E2E database the v2 Snowflake job uses, so the two must never overlap."""
+    root = Path(__file__).resolve().parents[4]
+    groups = set()
+    for workflow_file, job_id, matrix_key in (
+        ("py-cli-e2e-tests-v2.yml", "py-cli-e2e-tests-v2", "connector"),
+        ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
+    ):
+        job = yaml.safe_load((root / ".github/workflows" / workflow_file).read_text())["jobs"][job_id]
+        assert "snowflake" in job["strategy"]["matrix"][matrix_key]
+        assert job["concurrency"]["cancel-in-progress"] is False
+        match = _SNOWFLAKE_CONCURRENCY_GROUP.match(job["concurrency"]["group"])
+        assert match, job["concurrency"]["group"]
+        assert match["key"] == matrix_key
+        groups.add(match["group"])
+    assert len(groups) == 1
+
+
+def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
+    """The shared Python workflow runs these tests only for changed paths in its filters."""
+    root = Path(__file__).resolve().parents[4]
+    shared = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
+    step = next(step for job in shared["jobs"].values() for step in job.get("steps", []) if step.get("id") == "filter")
+    filters = yaml.safe_load(step["with"]["filters"])
+    for name in ("python", "e2e"):
+        assert set(_E2E_WORKFLOWS) <= set(filters[name]), name

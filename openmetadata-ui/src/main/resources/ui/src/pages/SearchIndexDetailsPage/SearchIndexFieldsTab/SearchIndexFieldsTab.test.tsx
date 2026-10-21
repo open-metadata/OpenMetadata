@@ -27,6 +27,9 @@ jest.mock(
 
 jest.mock('../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 
@@ -49,7 +52,7 @@ jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(
-      '../../../components/Customization/GenericProvider/GenericProvider'
+      '../../../components/Customization/GenericProvider/GenericContext'
     ),
     useGenericContext: () => mockUseGenericContext(),
   })

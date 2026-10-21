@@ -21,7 +21,7 @@ import {
   CheckVerified01,
   XCircle,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ODCSImportReport } from '../../../generated/entity/datacontract/contractValidation';

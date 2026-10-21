@@ -135,7 +135,7 @@ describe('ExtractedMemoriesCard', () => {
     await waitFor(() =>
       expect(mockGetListContextMemories).toHaveBeenCalledWith({
         sourceEntityId: 'page-1',
-        fields: 'owners,sourceEntity',
+        fields: 'owners,sourceEntity,derivedEntities',
         limit: 50,
       })
     );

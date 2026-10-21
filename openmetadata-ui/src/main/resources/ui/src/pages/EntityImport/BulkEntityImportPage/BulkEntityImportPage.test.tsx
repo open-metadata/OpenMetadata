@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
@@ -150,6 +151,10 @@ jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils');
 jest.mock('../../../rest/csvAPI', () => ({
   cancelCsvAsyncJob: jest.fn(),
   getCsvAsyncJobs: jest.fn().mockResolvedValue([]),
+  // Mirror the real helper: return the inline result when present, else "fetch".
+  resolveCsvImportResult: jest.fn((_jobId, inlineResult) =>
+    Promise.resolve(inlineResult)
+  ),
   getCsvDocumentation: jest.fn().mockResolvedValue({
     headers: [
       {
@@ -438,7 +443,9 @@ describe('BulkEntityImportPage', () => {
         expect(screen.getByTestId('title-breadcrumb')).toBeInTheDocument();
       });
 
-      const breadcrumbItems = screen.getAllByTestId('breadcrumb-item');
+      const breadcrumbItems = within(
+        screen.getByTestId('title-breadcrumb')
+      ).getAllByRole('listitem');
 
       expect(breadcrumbItems).toHaveLength(3);
       expect(breadcrumbItems[0]).toHaveTextContent('label.governance');

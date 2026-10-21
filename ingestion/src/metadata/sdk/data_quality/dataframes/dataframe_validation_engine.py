@@ -17,7 +17,7 @@ from datetime import datetime
 
 from pandas import DataFrame
 
-from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator, elapsed_ms
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.type.basic import Timestamp
@@ -81,18 +81,24 @@ class DataFrameValidationEngine:
             execution_date=Timestamp(root=int(datetime.now().timestamp() * 1000)),
         )
 
+        # Timed around the whole call, as in TestSuiteInterface.run_test_case.
+        start = time.perf_counter()
         try:
             result = validator.run_validation()
-            return result  # noqa: RET504, TRY300
+            result.duration = elapsed_ms(start)
+            return result  # noqa: TRY300
         except Exception as err:
             message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
             logger.exception(message)
-            return validator.get_test_case_result_object(
+            result = validator.get_test_case_result_object(
                 validator.execution_date,
                 TestCaseStatus.Aborted,
                 message,
                 [],
+                exc=err,
             )
+            result.duration = elapsed_ms(start)
+            return result
 
     @staticmethod
     def _build_validation_result(

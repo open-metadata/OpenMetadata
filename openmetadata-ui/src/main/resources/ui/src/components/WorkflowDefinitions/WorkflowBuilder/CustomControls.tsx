@@ -18,10 +18,13 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  GitBranch01,
+  Maximize01,
+  Minus,
+  Plus,
   WorkflowRedo,
   WorkflowUndo,
 } from '@openmetadata/ui-core-components/icons';
-import { GitBranch01, Maximize01, Minus, Plus } from '@untitledui/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useReactFlow } from 'reactflow';
@@ -71,7 +74,7 @@ export const CustomControls: React.FC<CustomControlsProps> = ({
 
   return (
     <Card
-      className="tw:absolute tw:bottom-5 tw:right-5 tw:flex tw:items-center tw:gap-0.5 tw:z-10 tw:p-1"
+      className="tw:absolute tw:bottom-5 tw:right-5 tw:flex tw:items-center tw:gap-0.5 tw:z-10 tw:p-1 tw:bg-canvas"
       data-testid="workflow-controls">
       <Button
         color="tertiary"

@@ -33,6 +33,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.models.topology import TopologyContextManager
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.snowflake.metadata import MAP, SnowflakeSource
 from metadata.ingestion.source.database.snowflake.models import SnowflakeStoredProcedure
 from metadata.utils import fqn
@@ -224,6 +225,8 @@ def get_snowflake_sources():
                 config.workflowConfig.openMetadataServerConfig,
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
             )
+    for source in sources.values():
+        source.metadata = MagicMock(spec=OpenMetadata)
     return sources
 
 
@@ -849,14 +852,30 @@ class SnowflakeUnitTest(TestCase):
             source.engine = MagicMock()
             source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
             source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+            source.status.warnings.clear()
 
-            source.set_schema_tags_map("TEST_DATABASE")
-            # Only the tag with a value should be stored
-            self.assertEqual(len(source.schema_tags_map["TEST_SCHEMA"]), 1)
+            # Count logged warnings in the run status the way a running workflow step does
+            source._activate_handler()
+            try:
+                source.set_schema_tags_map("TEST_DATABASE")
+                mock_conn.execute.return_value = [
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="EMPTY_TAG", TAG_VALUE=""),
+                    Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="TEST_TAG", TAG_VALUE="123"),
+                ]
+                source.set_database_tags_map("TEST_DATABASE")
+            finally:
+                source._deactivate_handler()
+
+            # Only the tags with a value are stored, and each skipped one is one run warning
             self.assertEqual(
-                source.schema_tags_map["TEST_SCHEMA"][0],
-                {"tag_name": "TEST_TAG", "tag_value": "123"},
+                source.schema_tags_map["TEST_SCHEMA"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
             )
+            self.assertEqual(
+                source.database_tags_map["TEST_DATABASE"],
+                [{"tag_name": "TEST_TAG", "tag_value": "123"}],
+            )
+            self.assertEqual(len(source.status.warnings), 3)
 
     def test_describe_procedure_definition_reads_body_property(self):
         """DESC PROCEDURE/FUNCTION returns (property, value) rows; the definition is the `body` row's value.
@@ -903,61 +922,6 @@ class SnowflakeUnitTest(TestCase):
             )
             with patch(f"{SNOWFLAKE_METADATA}.SNOWFLAKE_DESC_STORED_PROCEDURE", desc_rows):
                 self.assertEqual(source.describe_procedure_definition(stored_procedure), "")
-
-    def test_table_tag_value_with_double_quote_is_a_warning_not_a_failure(self):
-        """A JSON tag value cannot be a tag FQN: skip it with a warning and keep the valid tags."""
-        json_value = '{"uc":"cdp","type":"dtable","team":"mktdata"}'
-        for source in self.sources.values():
-            self._setup_tag_context(source)
-            mock_conn = self._mock_source_connection(source)
-            mock_conn.execute.return_value = [
-                ("QUERY_TAG", json_value, "TEST_DATABASE", "TEST_SCHEMA", "TEST_TABLE", None),
-                ("ENV", "production", "TEST_DATABASE", "TEST_SCHEMA", "TEST_TABLE", None),
-            ]
-            source.status.warnings.clear()
-
-            with patch.object(source, "define_tag", return_value=None) as define_tag:
-                results = list(source.yield_tag("TEST_SCHEMA"))
-
-            self.assertEqual([either for either in results if either.left], [])
-            self.assertEqual(
-                [call.kwargs["tag_name"] for call in define_tag.call_args_list],
-                ["production"],
-            )
-            self.assertEqual(len(source.status.warnings), 1)
-            self.assertIn(f"QUERY_TAG.{json_value}", source.status.warnings[0])
-
-    def test_schema_and_database_tag_values_with_double_quote_are_skipped(self):
-        """Schema and database tag maps drop JSON tag values, recording a warning for each."""
-        json_value = '{"uc":"comcast","type":"dtable"}'
-        for source in self.sources.values():
-            mock_conn = MagicMock()
-            source.engine = MagicMock()
-            source.engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
-            source.engine.connect.return_value.__exit__ = MagicMock(return_value=False)
-            source.status.warnings.clear()
-
-            mock_conn.execute.return_value = [
-                Mock(SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="QUERY_TAG", TAG_VALUE=json_value),
-                Mock(SCHEMA_NAME="TEST_SCHEMA", TAG_NAME="ENV", TAG_VALUE="staging"),
-            ]
-            source.set_schema_tags_map("TEST_DATABASE")
-
-            mock_conn.execute.return_value = [
-                Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="QUERY_TAG", TAG_VALUE=json_value),
-                Mock(DATABASE_NAME="TEST_DATABASE", TAG_NAME="ENV", TAG_VALUE="dev"),
-            ]
-            source.set_database_tags_map("TEST_DATABASE")
-
-            self.assertEqual(
-                source.schema_tags_map["TEST_SCHEMA"],
-                [{"tag_name": "ENV", "tag_value": "staging"}],
-            )
-            self.assertEqual(
-                source.database_tags_map["TEST_DATABASE"],
-                [{"tag_name": "ENV", "tag_value": "dev"}],
-            )
-            self.assertEqual(len(source.status.warnings), 2)
 
 
 def test_schema_tag_query_quotes_account_usage_identifier():

@@ -88,7 +88,7 @@ test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rd
     browser,
   }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     // Mock RDF status so the export options are rendered.
     await page.route('**/api/v1/rdf/status**', (route) =>
@@ -109,7 +109,7 @@ test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rd
     browser,
   }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -127,7 +127,7 @@ test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rd
 
   test('Turtle export triggers a .ttl file download', async ({ browser }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -161,7 +161,7 @@ test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rd
 
   test('RDF/XML export triggers a .rdf file download', async ({ browser }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     await page.route('**/api/v1/rdf/status**', (route) =>
       route.fulfill({ json: { enabled: true } })
@@ -196,7 +196,7 @@ test.describe('Ontology Studio — RDF exports (Turtle and RDF/XML) @ontology-rd
     browser,
   }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
 
     // RDF disabled — the options must not appear.
     await page.route('**/api/v1/rdf/status**', (route) =>
@@ -225,7 +225,7 @@ test.describe('Ontology Studio — relational graph data loading @ontology-rdf',
     browser,
   }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     let rdfGraphRequestCount = 0;
 
     await page.route('**/api/v1/rdf/status**', (route) =>
@@ -254,7 +254,7 @@ test.describe('Ontology Studio — relational graph data loading @ontology-rdf',
     browser,
   }) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     let rdfGraphRequestCount = 0;
 
     await page.route('**/api/v1/rdf/status**', (route) =>

@@ -70,8 +70,8 @@ export interface QueryBuilderConfigModes {
   useFriendlyOperatorLabels?: boolean;
 }
 
-// A long option in the narrow value column reads as ellipses, so let the option
-// text wrap, capped at three lines. The selector is the only reach core offers:
-// the label is core's own <Text slot="label"> and carries its `truncate`.
-export const QUERY_BUILDER_VALUE_POPOVER_CLASS =
+// A long option in the narrow field/value columns reads as ellipses, so let the
+// option text wrap, capped at three lines. The selector is the only reach core
+// offers: the label is core's own <Text slot="label"> and carries its `truncate`.
+export const QUERY_BUILDER_POPOVER_CLASS =
   'tw:[&_[slot=label]]:line-clamp-3 tw:[&_[slot=label]]:whitespace-normal';

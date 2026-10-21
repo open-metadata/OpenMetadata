@@ -26,19 +26,17 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowRight,
+  ChevronRight,
   NoFilterFunnel,
   NoSearch,
   PendingChanges,
+  Search,
+  Table as TableIcon,
   TotalOccurrences,
   TotalUniqueColumn,
-} from '@openmetadata/ui-core-components/icons';
-import {
-  ArrowRight,
-  ChevronRight,
-  SearchLg,
-  Table as TableIcon,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isUndefined, some } from 'lodash';
 import React, {
@@ -103,6 +101,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ColumnGridProps, ColumnGridRowData } from './ColumnGrid.interface';
 import ColumnGridRow from './components/ColumnGridRow';
 import {
+  MAX_EARLY_SOCKET_MESSAGES,
   RECENTLY_UPDATED_HIGHLIGHT_DURATION_MS,
   SCROLL_TO_ROW_MAX_RETRIES,
   SCROLL_TO_ROW_RETRY_DELAY_MS,
@@ -120,6 +119,32 @@ interface BulkAssetsSocketMessage {
   total?: number;
   result?: BulkOperationResult;
 }
+
+const TERMINAL_BULK_ASSETS_STATUSES = new Set([
+  'COMPLETED',
+  'SUCCESS',
+  'FAILED',
+  'FAILURE',
+]);
+
+const isTerminalBulkAssetsMessage = (message: string) => {
+  try {
+    const { status } = JSON.parse(message) as BulkAssetsSocketMessage;
+
+    return TERMINAL_BULK_ASSETS_STATUSES.has(status?.toUpperCase() ?? '');
+  } catch {
+    return false;
+  }
+};
+
+// Drops the oldest progress message so a terminal one is never lost; the
+// channel carries every job of the user, so another job can fill the buffer.
+const evictOldestEarlyMessage = (messages: string[]) => {
+  const progressIndex = messages.findIndex(
+    (message) => !isTerminalBulkAssetsMessage(message)
+  );
+  messages.splice(Math.max(progressIndex, 0), 1);
+};
 
 interface ColumnEditFormHandle {
   getDisplayName: () => string;
@@ -622,6 +647,11 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const editorRef = React.useRef<EditorContentRef>(null);
   const columnEditFormRef = useRef<ColumnEditFormHandle | null>(null);
   const activeJobIdRef = useRef<string | null>(null);
+  // The server starts the job before answering the POST, so a small job can
+  // finish over the socket before the jobId is known; hold those messages.
+  // ADR:2026-10-16-column-bulk-update-buffers-socket-messages-until-its-job-id-is-known
+  const earlySocketMessagesRef = useRef<string[] | null>(null);
+  const bulkAssetsNotificationRef = useRef<(message: string) => void>(() => {});
   const lastBulkUpdateCountRef = useRef<number>(0);
   const pendingHighlightRowIdsRef = useRef<Set<string>>(new Set());
   const closeDrawerRef = useRef<() => void>(() => {});
@@ -1746,6 +1776,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         total: cleanedUpdates.length,
       });
 
+      earlySocketMessagesRef.current = [];
       const response = await bulkUpdateColumnsAsync(request);
 
       // Store the jobId to listen for WebSocket notification when job completes
@@ -1773,7 +1804,14 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         }))
       );
       columnGridListing.clearEditedValues();
+
+      const earlyMessages = earlySocketMessagesRef.current ?? [];
+      earlySocketMessagesRef.current = null;
+      earlyMessages.forEach((message) =>
+        bulkAssetsNotificationRef.current(message)
+      );
     } catch (error) {
+      earlySocketMessagesRef.current = null;
       showErrorToast(t('server.entity-updating-error'));
       setIsUpdating(false);
       setBulkUpdateProgress(null);
@@ -1804,6 +1842,21 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     }
 
     return data;
+  };
+
+  // Returns true while the update POST is in flight, holding the message
+  // until the jobId it belongs to is known.
+  const bufferEarlySocketMessage = (message: string) => {
+    const earlyMessages = earlySocketMessagesRef.current;
+    if (!earlyMessages || activeJobIdRef.current) {
+      return false;
+    }
+    if (earlyMessages.length >= MAX_EARLY_SOCKET_MESSAGES) {
+      evictOldestEarlyMessage(earlyMessages);
+    }
+    earlyMessages.push(message);
+
+    return true;
   };
 
   const clearBulkUpdateJobState = () => {
@@ -1903,6 +1956,10 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
 
   const handleBulkAssetsNotification = useCallback(
     async (message: string) => {
+      if (bufferEarlySocketMessage(message)) {
+        return;
+      }
+
       const data = parseActiveBulkAssetsMessage(
         message,
         activeJobIdRef.current
@@ -2530,6 +2587,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
+  bulkAssetsNotificationRef.current = handleBulkAssetsNotification;
   openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared
@@ -2727,7 +2785,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               <div className="tw:shrink-0">
                 <Input
                   className="tw:max-w-86"
-                  icon={SearchLg}
+                  icon={Search}
                   placeholder={t('label.search-columns')}
                   value={searchInputValue}
                   onChange={(value) => {

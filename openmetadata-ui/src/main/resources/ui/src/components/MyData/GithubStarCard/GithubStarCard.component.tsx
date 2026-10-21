@@ -10,17 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Affix, Button, Card, Skeleton, Space, Typography } from 'antd';
-import ButtonGroup from 'antd/lib/button/button-group';
+import {
+  Box,
+  Button,
+  Card,
+  CloseButton,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
+import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { ReactComponent as StarGithubIcon } from '../../../assets/svg/ic-star-github.svg';
 import { ReactComponent as StarIcon } from '../../../assets/svg/ic-start-filled-github.svg';
 import {
-  BLACK_COLOR,
   STAR_OMD_USER,
   TWO_MINUTE_IN_MILLISECOND,
   VERSION,
@@ -118,59 +123,65 @@ const GithubStarCard = () => {
   }, [usernameExistsInCookie, updateGithubPopup]);
 
   return showGithubStarPopup && isHomePage ? (
-    <Affix
-      className={`github-star-popup-card 
-      ${
+    <Box
+      className={classNames(
+        'tw:fixed tw:right-7.5 tw:-bottom-full tw:z-1 tw:w-full tw:max-w-90 tw:border-none',
         isWhatNewAlertVisible
           ? 'github-star-popup-card-with-alert'
           : 'github-star-popup-card-without-alert'
-      }
-      `}>
+      )}>
       <Card data-testid="github-star-popup-card">
-        <Space align="center" className="d-flex justify-between">
-          <Space>
-            <StarIcon className="github-star-icon" />
+        <Card.Content>
+          <Box direction="col" gap={3}>
+            <Box align="center" gap={2} justify="between">
+              <Box inline align="center" gap={2}>
+                <StarIcon className="github-star-icon" />
 
-            <Typography.Text className="github-star-popup-header">
-              {t('label.star-us-on-github')}
-            </Typography.Text>
-          </Space>
-          <Button
-            className="flex-center m--t-xss"
-            data-testid="close-github-star-popup-card"
-            icon={<CloseIcon color={BLACK_COLOR} height={12} width={12} />}
-            type="text"
-            onClick={handleClosePopup}
-          />
-        </Space>
+                <Typography className="github-star-popup-header">
+                  {t('label.star-us-on-github')}
+                </Typography>
+              </Box>
+              <CloseButton
+                className="tw:-mt-1"
+                data-testid="close-github-star-popup-card"
+                size="sm"
+                onPress={handleClosePopup}
+              />
+            </Box>
 
-        <Typography.Paragraph className="github-star-popup-description">
-          {t('message.star-on-github-description')}
-        </Typography.Paragraph>
+            <Typography as="p" size="text-xs">
+              {t('message.star-on-github-description')}
+            </Typography>
 
-        <ButtonGroup className="github-action-button-group">
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button
-              className="github-star-button github-modal-action-button"
-              icon={<Icon component={StarGithubIcon} size={12} />}>
-              {t('label.star')}
-            </Button>
-          </Typography.Link>
-
-          <Typography.Link href={OMD_REPOSITORY_LINK} target="_blank">
-            <Button className="github-modal-action-button">
-              {isLoading ? (
-                <div data-testid="skeleton-loader">
-                  <Skeleton.Button active size="small" />
-                </div>
-              ) : (
-                starredCount
-              )}
-            </Button>
-          </Typography.Link>
-        </ButtonGroup>
+            <Box gap={2}>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                iconLeading={
+                  <StarGithubIcon className="tw:size-3 tw:shrink-0" />
+                }
+                rel="noopener noreferrer"
+                target="_blank">
+                {t('label.star')}
+              </Button>
+              <Button
+                color="secondary"
+                href={OMD_REPOSITORY_LINK}
+                rel="noopener noreferrer"
+                target="_blank">
+                {isLoading ? (
+                  <div data-testid="skeleton-loader">
+                    <Skeleton height={36} variant="rounded" width={72} />
+                  </div>
+                ) : (
+                  starredCount
+                )}
+              </Button>
+            </Box>
+          </Box>
+        </Card.Content>
       </Card>
-    </Affix>
+    </Box>
   ) : null;
 };
 

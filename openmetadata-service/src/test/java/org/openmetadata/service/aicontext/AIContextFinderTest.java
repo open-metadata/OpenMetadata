@@ -16,11 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Unit tests for {@link AIContextFinder}'s pure hit-mapping helpers and the Mode-B markdown that
@@ -107,6 +110,18 @@ class AIContextFinderTest {
                     "entityStatus", "Draft"))
             .getType(),
         "the Approved filter applies to glossary terms only");
+  }
+
+  @Test
+  void tagSearchRequest_matchesTheExactTagInTheFilterRatherThanTheQueryText() {
+    String quotedFqn = "Business.\"Order.Line\"";
+
+    SearchRequest request = AIContextFinder.tagSearchRequest(quotedFqn, "all", 10, List.of());
+
+    assertEquals("*", request.getQuery());
+    JsonNode bool = JsonUtils.readTree(request.getQueryFilter()).at("/query/bool");
+    assertEquals(quotedFqn, bool.at("/filter/term/tags.tagFQN").asText());
+    assertTrue(bool.path("must_not").isMissingNode(), "no entity types are excluded");
   }
 
   @Test

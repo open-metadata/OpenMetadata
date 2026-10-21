@@ -65,7 +65,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.DocumentRepository;
-import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.ontology.OntologyAiAvailability;
 import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfEntityDiffService;
 import org.openmetadata.service.rdf.RdfEntityTypeValidator;
@@ -84,8 +84,6 @@ import org.openmetadata.service.rdf.agent.AgentSparqlService;
 import org.openmetadata.service.rdf.extension.CustomOntologyRepository;
 import org.openmetadata.service.rdf.extension.CustomOntologyValidator;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
-import org.openmetadata.service.rdf.inference.InferenceMaterializer;
-import org.openmetadata.service.rdf.inference.InferenceRuleRepository;
 import org.openmetadata.service.rdf.inference.InferenceRuleService;
 import org.openmetadata.service.rdf.inference.InferenceRuleValidator;
 import org.openmetadata.service.rdf.insights.RdfInsightsService;
@@ -119,7 +117,7 @@ public class RdfResource {
   private volatile RdfEntityDiffService entityDiffService;
   private volatile SemanticSearchEngine semanticSearchEngine;
   private volatile SparqlFederationGuard federationGuard;
-  private volatile boolean askCollateEnabled;
+  private volatile boolean aiEnabled;
   private volatile String configuredBaseUri = DEFAULT_RDF_BASE_URI;
 
   public static final String RDF_XML = "application/rdf+xml";
@@ -131,6 +129,8 @@ public class RdfResource {
   public static final String SPARQL_CSV = "text/csv";
   public static final String SPARQL_TSV = "text/tab-separated-values";
   public static final String INFERENCE_WARNING_HEADER = "X-OpenMetadata-Inference-Warning";
+  private static final String NO_INFERENCE_LEVEL = "NONE";
+  private static final String CUSTOM_INFERENCE_LEVEL = "CUSTOM";
 
   public RdfResource(Authorizer authorizer) {
     this(
@@ -138,7 +138,7 @@ public class RdfResource {
         RdfRepository::getInstanceOrNull,
         null,
         null,
-        RdfResource::configuredProjectionState);
+        RdfProjectionStateResolver::resolveConfigured);
   }
 
   RdfResource(Authorizer authorizer, Supplier<RdfRepository> repositorySupplier) {
@@ -192,14 +192,7 @@ public class RdfResource {
     this.inferenceRuleService = inferenceRuleService;
     this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
     this.agentSparqlService =
-        new AgentSparqlService(
-            this::sparqlService, projectionStateSupplier, SPARQL_EXECUTION_GUARD);
-  }
-
-  private static RdfProjectionState configuredProjectionState() {
-    final RdfProjectionStateResolver resolver =
-        new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao());
-    return resolver.resolve();
+        AgentSparqlService.forRepository(this::requireRdfRepository, projectionStateSupplier);
   }
 
   private RdfRepository getRdfRepository() {
@@ -254,13 +247,8 @@ public class RdfResource {
   }
 
   private InferenceRuleService createInferenceRuleService() {
-    final RdfRepository repository = requireRdfRepository();
-    final Clock clock = Clock.systemUTC();
-    final InferenceRuleRepository ruleRepository =
-        new InferenceRuleRepository(
-            Entity.getCollectionDAO().rdfInferenceRuleDAO(), clock, repository.getBaseUri());
-    return new InferenceRuleService(
-        ruleRepository, new InferenceMaterializer(repository, ruleRepository, clock));
+    return InferenceRuleService.forRepository(
+        requireRdfRepository(), Entity.getCollectionDAO(), Clock.systemUTC());
   }
 
   private CustomOntologyRepository customOntologyRepository() {
@@ -302,10 +290,7 @@ public class RdfResource {
     this.federationGuard = new SparqlFederationGuard(config.getRdfConfiguration());
     this.configuredBaseUri = rdfBaseUri(config);
     this.entityDiffService = new RdfEntityDiffService(configuredBaseUri);
-    this.askCollateEnabled =
-        config.getRdfConfiguration() != null
-            && Boolean.TRUE.equals(config.getRdfConfiguration().getAskCollateEnabled())
-            && LLMClientHolder.isEnabled();
+    this.aiEnabled = OntologyAiAvailability.isEnabled(config.getRdfConfiguration());
   }
 
   private static String rdfBaseUri(final OpenMetadataApplicationConfig config) {
@@ -358,7 +343,7 @@ public class RdfResource {
         .withStorageType(storageType)
         .withInference(inferenceStatus)
         .withProjectionState(projectionState)
-        .withAskCollateEnabled(askCollateEnabled);
+        .withAiEnabled(aiEnabled);
   }
 
   private RdfProjectionState projectionState(final boolean enabled) {
@@ -367,10 +352,15 @@ public class RdfResource {
 
   private static RdfInferenceStatus inferenceStatus(
       final RdfRepository repository, final boolean enabled) {
+    final boolean materialized =
+        enabled && RdfRepository.supportsMaterializedInference(repository.getConfig());
     return new RdfInferenceStatus()
-        .withEnabled(enabled && repository.isInferenceEnabledByDefault())
-        .withDefaultLevel(enabled ? repository.getDefaultInferenceLevel() : "NONE")
-        .withAvailableLevels(Set.of("NONE", "RDFS", "OWL_LITE", "OWL_DL", "CUSTOM"));
+        .withEnabled(materialized)
+        .withDefaultLevel(NO_INFERENCE_LEVEL)
+        .withAvailableLevels(
+            materialized
+                ? Set.of(NO_INFERENCE_LEVEL, CUSTOM_INFERENCE_LEVEL)
+                : Set.of(NO_INFERENCE_LEVEL));
   }
 
   @POST
@@ -468,10 +458,15 @@ public class RdfResource {
   @Operation(
       operationId = "deleteInferenceRule",
       summary = "Delete a custom inference rule and its materialized graph",
+      description =
+          "Marks the remaining rules dirty, since they may have read the deleted rule's "
+              + "conclusions. When a materialization run is in progress, the next run removes "
+              + "the deleted rule's graph.",
       responses = {
         @ApiResponse(responseCode = "204", description = "Rule deleted"),
         @ApiResponse(responseCode = "400", description = "System rules cannot be deleted"),
-        @ApiResponse(responseCode = "403", description = "Forbidden")
+        @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response deleteInferenceRule(
       @Context final SecurityContext securityContext, @PathParam("name") final String name) {
@@ -485,16 +480,33 @@ public class RdfResource {
   @Produces(MediaType.APPLICATION_JSON)
   @Operation(
       operationId = "materializeInferenceRules",
-      summary = "Materialize dirty inference rules inside Fuseki",
+      summary = "Materialize inference rules to a fixed point inside Fuseki",
+      description =
+          "Recomputes every rule from the stored graph when any rule is dirty, or when forced. "
+              + "Rules read each other's conclusions, so the whole bundle always runs together.",
       responses = {
         @ApiResponse(responseCode = "200", description = "Materialization completed"),
         @ApiResponse(responseCode = "403", description = "Forbidden"),
+        @ApiResponse(responseCode = "404", description = "The requested rule does not exist"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Another run is in progress or took this run over, or writes kept changing the"
+                    + " rules' inputs until the run ran out of passes; the rules stay dirty"),
         @ApiResponse(responseCode = "503", description = "Materialized inference is disabled")
       })
   public Response materializeInferenceRules(
       @Context final SecurityContext securityContext,
-      @QueryParam("force") @DefaultValue("false") final boolean force,
-      @QueryParam("ruleName") final String ruleName) {
+      @Parameter(description = "Recompute even when no rule is dirty")
+          @QueryParam("force")
+          @DefaultValue("false")
+          final boolean force,
+      @Parameter(
+              description =
+                  "Rule that must exist. The run still computes every rule, because rules read "
+                      + "each other's conclusions.")
+          @QueryParam("ruleName")
+          final String ruleName) {
     authorizer.authorizeAdmin(securityContext);
     final InferenceMaterializationResult result =
         inferenceRuleService().materialize(force, ruleName);

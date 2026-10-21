@@ -35,7 +35,7 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
    * the filter type-aware.
    */
   @Override
-  public boolean appliesTo(final EntityInterface entity) {
+  public boolean appliesTo(final EntityInterface<?> entity) {
     boolean serializesExtension;
     try {
       serializesExtension =
@@ -52,7 +52,7 @@ public final class CustomPropertiesBreadthMutation implements ShapeMutation {
   }
 
   @Override
-  public EntityInterface apply(final EntityInterface entity, final Rung rung) {
+  public EntityInterface<?> apply(final EntityInterface<?> entity, final Rung rung) {
     final Map<String, Object> props = new LinkedHashMap<>();
     for (int i = 0; i < rung.magnitude(); i++) {
       props.put("prop_" + i, "value_" + i);

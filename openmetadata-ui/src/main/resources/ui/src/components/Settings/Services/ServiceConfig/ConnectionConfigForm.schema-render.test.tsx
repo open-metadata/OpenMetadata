@@ -311,26 +311,6 @@ describe('ConnectionConfigForm schema rendering', () => {
     }
   );
 
-  it('keeps DeltaLake configuration source as a full-width schema choice', async () => {
-    const { container } = await renderConnectionSchema('DeltaLake');
-    const field = getRequiredElement(
-      container,
-      '[data-field-name="configSource"]'
-    );
-
-    expect(field).toHaveClass('connection-section-wide-property');
-    expect(
-      field.querySelector(
-        ':scope > .core-one-of-field .core-one-of-field-select'
-      )
-    ).toBeInTheDocument();
-    expect(
-      field.querySelector(
-        ':scope > .core-one-of-field > .core-one-of-field-tabs'
-      )
-    ).not.toBeInTheDocument();
-  });
-
   it('organizes BigQuery GCP credentials without dumping default plumbing fields', async () => {
     const { container } = await renderConnectionSchema('BigQuery');
     const connectionSection = getRequiredElement(
@@ -439,14 +419,29 @@ describe('ConnectionConfigForm schema rendering', () => {
       )
     ).not.toBeInTheDocument();
 
+    expect(
+      gcpConfigField.querySelector(
+        '.core-object-field-template-property-universeDomain'
+      )
+    ).not.toBeInTheDocument();
+
     const advancedCredentialButton = within(gcpConfigField).getByRole(
       'button',
       {
-        name: 'Show advanced credential settings (5)',
+        name: 'Show advanced credential settings (6)',
       }
     );
 
     fireEvent.click(advancedCredentialButton);
+
+    expect(
+      within(
+        getRequiredElement(
+          gcpConfigField,
+          '.core-object-field-template-property-universeDomain'
+        )
+      ).getByRole('textbox')
+    ).toHaveValue('googleapis.com');
 
     expect(
       getRequiredElement(
@@ -468,7 +463,7 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toHaveClass('core-object-field-template-property-full-width');
     expect(
       within(gcpConfigField).getByRole('button', {
-        name: 'Hide advanced credential settings (5)',
+        name: 'Hide advanced credential settings (6)',
       })
     ).toBeInTheDocument();
     expect(
@@ -599,6 +594,45 @@ describe('ConnectionConfigForm schema rendering', () => {
     ).toBeInTheDocument();
     expect(
       field.querySelector('.core-one-of-field-tabs')
+    ).not.toBeInTheDocument();
+  });
+
+  it('switches Microsoft Fabric between client secret and certificate credentials', async () => {
+    const { container } = await renderConnectionSchema('MicrosoftFabric');
+
+    expect(screen.getByTestId('auth-select-field')).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector('[data-field-name="certificate"]')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('auth-method-1'));
+
+    expect(
+      container.querySelector('[data-field-name="clientSecret"]')
+    ).not.toBeInTheDocument();
+
+    ['certificate', 'privateKey'].forEach((fieldName) => {
+      const field = getRequiredElement(
+        container,
+        `[data-field-name="${fieldName}"]`
+      );
+
+      expect(
+        within(field).getByTestId('credential-file-dropzone')
+      ).toBeInTheDocument();
+      expect(within(field).getByRole('textbox')).toBeInTheDocument();
+    });
+
+    const passphrase = getRequiredElement(
+      container,
+      '[data-field-name="privateKeyPassphrase"]'
+    );
+
+    expect(
+      within(passphrase).queryByTestId('credential-file-dropzone')
     ).not.toBeInTheDocument();
   });
 });

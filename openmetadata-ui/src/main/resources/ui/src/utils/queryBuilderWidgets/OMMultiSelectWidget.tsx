@@ -17,7 +17,7 @@ import type {
 } from '@react-awesome-query-builder/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
-import { QUERY_BUILDER_VALUE_POPOVER_CLASS } from '../queryBuilder/types';
+import { QUERY_BUILDER_POPOVER_CLASS } from '../queryBuilder/types';
 
 const toSelectItems = (
   listValues: MultiSelectWidgetProps['listValues']
@@ -141,6 +141,11 @@ const OMMultiSelectWidget = ({
 
   const handleItemInserted = useCallback(
     (key: Key) => {
+      // react-aria commits the focused option again when focus leaves an input
+      // whose list is still open, which would chip the same value twice.
+      if (valueArray.includes(String(key))) {
+        return;
+      }
       setValue([...valueArray, String(key)]);
       // Picking clears the input without reporting a search, so restore the
       // unfiltered catalogue — otherwise a second value means typing again.
@@ -170,7 +175,7 @@ const OMMultiSelectWidget = ({
         isDisabled={readonly}
         items={allItems}
         placeholder={placeholder ?? 'Select'}
-        popoverClassName={QUERY_BUILDER_VALUE_POPOVER_CLASS}
+        popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
         selectedItems={selectedItems}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}

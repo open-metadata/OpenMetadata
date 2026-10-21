@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Skeleton, useTabItemState } from '@openmetadata/ui-core-components';
-import { Badge } from 'antd';
+import {
+  Badge,
+  Skeleton,
+  Tooltip,
+  useTabItemState,
+} from '@openmetadata/ui-core-components';
+
 import { isNil } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { getCountBadge } from '../../../utils/EntityDisplayPureUtils';
@@ -26,6 +31,7 @@ const TabsLabel = ({
   description,
   isBeta,
   isLoading,
+  proposedCount,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
   const tabState = useTabItemState();
@@ -51,7 +57,26 @@ const TabsLabel = ({
           )
         )}
         {isBeta && (
-          <Badge className="service-beta-tag" count={t('label.beta')} />
+          <Badge className="service-beta-tag" color="brand" size="sm">
+            {t('label.beta')}
+          </Badge>
+        )}
+        {Boolean(proposedCount) && (
+          <span data-testid="proposed-count">
+            {/* Inside a tab: a focusable trigger would nest one control in another. */}
+            <Tooltip
+              excludeTriggerFromTabOrder
+              title={t('label.count-proposed', { count: proposedCount })}>
+              <span aria-hidden="true">
+                <Badge className="m-x-xss" color="purple" size="sm">
+                  {proposedCount}
+                </Badge>
+              </span>
+            </Tooltip>
+            <span className="tw:sr-only">
+              {t('label.count-proposed', { count: proposedCount })}
+            </span>
+          </span>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

@@ -94,11 +94,11 @@ describe('NextPreviousWithOffset', () => {
     const pageSizeButton = screen.getByTestId('page-size-change-button');
 
     await act(async () => {
-      fireEvent.mouseEnter(pageSizeButton);
+      fireEvent.click(pageSizeButton);
     });
 
-    const pageOption25 = await screen.findByText('25 / label.page', {
-      selector: '.ant-dropdown-menu-title-content',
+    const pageOption25 = await screen.findByRole('menuitem', {
+      name: '25 / label.page',
     });
 
     await act(async () => {
@@ -108,11 +108,11 @@ describe('NextPreviousWithOffset', () => {
     expect(mockOnShowSizeChange).toHaveBeenCalledWith(25);
 
     await act(async () => {
-      fireEvent.mouseEnter(pageSizeButton);
+      fireEvent.click(pageSizeButton);
     });
 
-    const pageOption50 = await screen.findByText('50 / label.page', {
-      selector: '.ant-dropdown-menu-title-content',
+    const pageOption50 = await screen.findByRole('menuitem', {
+      name: '50 / label.page',
     });
 
     await act(async () => {

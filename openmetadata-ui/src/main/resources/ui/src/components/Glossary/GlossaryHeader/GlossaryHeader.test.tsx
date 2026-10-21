@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { refreshGlossaryProposals } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   mockedGlossaryTerms,
@@ -48,6 +55,44 @@ jest.mock('react-router-dom', () => ({
     action: 'action',
   }),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
+  Link: ({
+    children,
+    to,
+    ...rest
+  }: {
+    children: ReactNode;
+    to: string;
+    'data-testid'?: string;
+  }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+
+const mockProposalCounts = { all: 0, ai: 0, person: 0 };
+const mockDerivation = {
+  entity: { id: 'term-id', type: 'glossaryTerm' },
+  memory: {
+    id: 'memory-id',
+    type: 'contextMemory',
+    name: 'churn',
+    displayName: 'Churn memory',
+  },
+  evidence: {
+    agent: 'Glossary Agent',
+    confidence: 0.92,
+    reasons: ['Defines a recurring customer metric'],
+  },
+};
+
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  refreshGlossaryProposals: jest.fn(),
+  useGlossaryProposalCounts: jest.fn(() => ({
+    counts: mockProposalCounts,
+    isLoading: false,
+  })),
+  useTermDerivation: jest.fn(() => mockDerivation),
 }));
 
 jest.mock(
@@ -127,6 +172,12 @@ jest.mock('../../../utils/EntityVoteUtils', () => ({
 jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getEntityDeleteMessage: jest.fn(),
 }));
+const mockIsAiMode = jest.fn().mockReturnValue(false);
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode(),
+}));
+
 jest.mock('../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue('glossary.test1'),
 }));
@@ -161,7 +212,7 @@ const mockOnDelete = jest.fn();
 const mockOnUpdateVote = jest.fn();
 
 const mockContext = {
-  data: { displayName: 'glossaryTest' } as Glossary,
+  data: { displayName: 'glossaryTest' } as Glossary | GlossaryTerm,
   onUpdate: jest.fn(),
   isVersionView: false,
   type: EntityType.GLOSSARY,
@@ -185,30 +236,68 @@ describe('GlossaryHeader component', () => {
     expect(screen.getByText('EntityHeader')).toBeInTheDocument();
   });
 
-  it('should render the core breadcrumb ending with the current entity', () => {
-    const originalData = mockContext.data;
-    mockContext.data = {
-      ...originalData,
-      name: 'glossaryTest',
-      fullyQualifiedName: 'glossaryTest',
-    };
+  it.each([
+    [false, false],
+    [true, true],
+  ])(
+    'should render the breadcrumb ending with the current entity, inside the header card only in AI mode (AI mode: %s)',
+    (isAiMode, isInsideHeader) => {
+      const originalData = mockContext.data;
+      mockContext.data = {
+        ...originalData,
+        name: 'glossaryTest',
+        fullyQualifiedName: 'glossaryTest',
+      };
+      mockIsAiMode.mockReturnValue(isAiMode);
 
-    render(
-      <GlossaryHeader
-        updateVote={mockOnUpdateVote}
-        onAddGlossaryTerm={mockOnDelete}
-        onDelete={mockOnDelete}
-      />
-    );
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
 
-    const breadcrumb = screen.getByTestId('breadcrumb');
+      const breadcrumb = screen.getByTestId('breadcrumb');
 
-    expect(breadcrumb).toHaveTextContent('label.glossary-plural');
-    expect(breadcrumb).toHaveTextContent('glossaryTest');
-    expect(screen.getByTestId('glossary-header')).toContainElement(breadcrumb);
+      expect(breadcrumb).toHaveTextContent('glossaryTest');
+      expect(screen.getByTestId('glossary-header').contains(breadcrumb)).toBe(
+        isInsideHeader
+      );
+      expect(screen.queryByRole('link', { name: 'label.home' }) !== null).toBe(
+        !isAiMode
+      );
 
-    mockContext.data = originalData;
-  });
+      mockContext.data = originalData;
+      mockIsAiMode.mockReturnValue(false);
+    }
+  );
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should render the gradient header background only in AI mode (AI mode: %s)',
+    (isAiMode, hasGradient) => {
+      mockIsAiMode.mockReturnValue(isAiMode);
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen
+          .getByTestId('glossary-header')
+          .className.includes('linear-gradient')
+      ).toBe(hasGradient);
+
+      mockIsAiMode.mockReturnValue(false);
+    }
+  );
 
   it('should render import and export dropdown menu items only for glossary', async () => {
     render(
@@ -491,6 +580,120 @@ describe('GlossaryHeader component', () => {
       });
 
       expect(screen.getByText('label.rename')).toBeInTheDocument();
+    });
+  });
+
+  describe('AI-generated drafts', () => {
+    const aiDraft = {
+      id: 'term-id',
+      name: 'churn',
+      displayName: 'Churn',
+      description: 'Customers who cancel every subscription.',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      updatedAt: Date.now(),
+    } as GlossaryTerm;
+
+    beforeEach(() => {
+      Object.assign(mockProposalCounts, { all: 0, ai: 0, person: 0 });
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
+      mockContext.onUpdate = jest.fn().mockResolvedValue(undefined);
+    });
+
+    it('approves an AI draft from its card', async () => {
+      mockContext.data = aiDraft;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(screen.getByTestId('ai-generated-term-card')).toBeInTheDocument();
+      expect(screen.getByText('92%')).toBeInTheDocument();
+      expect(
+        screen.getByText('Defines a recurring customer metric')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('proposal-source-memory')).toHaveAttribute(
+        'href',
+        expect.stringContaining('memory=churn')
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('approve-proposal'));
+      });
+
+      expect(mockContext.onUpdate).toHaveBeenCalledWith({
+        ...aiDraft,
+        entityStatus: EntityStatus.Approved,
+      });
+      expect(refreshGlossaryProposals).toHaveBeenCalled();
+    });
+
+    it('shows no card once the term is approved, in review or a person-made draft', () => {
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
+      const { rerender } = render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
+
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.InReview };
+      rerender(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
+
+      mockContext.data = { ...aiDraft, provider: ProviderType.User };
+      rerender(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('counts the proposals under the page that await review', () => {
+      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
+      mockProposalCounts.all = 3;
+      mockProposalCounts.ai = 2;
+      mockProposalCounts.person = 1;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      const summary = screen.getByTestId('pending-review-summary');
+
+      expect(summary).toHaveTextContent('label.count-from-ai');
+      expect(summary).toHaveTextContent('label.count-from-people');
+      expect(summary).toHaveTextContent('message.awaiting-review');
     });
   });
 });

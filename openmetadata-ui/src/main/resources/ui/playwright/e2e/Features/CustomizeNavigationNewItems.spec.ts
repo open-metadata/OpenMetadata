@@ -38,13 +38,13 @@ const test = base.extend<{
 }>({
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await use(page);
     await page.close();
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -176,8 +176,7 @@ test.describe(
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Ontology Studio')
-            .first()
+            .getByRole('row', { name: 'Ontology Studio', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
@@ -185,8 +184,7 @@ test.describe(
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
-            .first()
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
@@ -194,8 +192,7 @@ test.describe(
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Glossary')
-            .first()
+            .getByRole('row', { name: 'Glossary', exact: true })
             .getByRole('switch')
         ).toBeChecked();
       });
@@ -251,8 +248,8 @@ test.describe(
         await expect(
           userPage
             .locator(`[data-testid="app-bar-item-${SidebarItem.GLOSSARY}"]`)
-            .first()
-        ).toBeVisible();
+            .filter({ visible: true })
+        ).not.toHaveCount(0);
 
         // Tags is in saved nav with isHidden: true — must not be visible
         await expect(
@@ -303,9 +300,8 @@ test.describe(
       // Toggle Glossary to create an unsaved change (enables the blocker)
       await adminPage
         .getByTestId('page-layout-v1')
-        .getByText('Glossary')
-        .first()
-        .getByRole('switch')
+        .getByRole('row', { name: 'Glossary', exact: true })
+        .locator('[data-testid^="navigation-switch-"]')
         .click();
 
       await expect(adminPage.getByTestId('save-button')).toBeEnabled();

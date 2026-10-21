@@ -100,6 +100,7 @@ public class AppScheduler {
   public static final String APP_INFO_KEY = "applicationInfoKey";
   public static final String APP_NAME = "appName";
   public static String APP_CONFIG_KEY = "configOverride";
+  public static final String TRIGGERED_BY_KEY = "triggeredBy";
 
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
@@ -310,6 +311,16 @@ public class AppScheduler {
   }
 
   public void triggerOnDemandApplication(App application, Map<String, Object> config) {
+    triggerOnDemandApplication(application, config, null);
+  }
+
+  /**
+   * @param triggeredBy principal that requested this run, or {@code null} if unknown. It is carried
+   *     on the job data map so {@code OmAppJobListener} can stamp it on the {@link AppRunRecord} it
+   *     creates on the worker thread.
+   */
+  public void triggerOnDemandApplication(
+      App application, Map<String, Object> config, String triggeredBy) {
     if (application.getFullyQualifiedName() == null) {
       throw new IllegalArgumentException("Application's fullyQualifiedName is null.");
     }
@@ -350,8 +361,7 @@ public class AppScheduler {
                   && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
               || (jobDetailOnDemand != null
                   && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
-            throw new UnhandledServerException(
-                "Job is already running, please wait for it to complete.");
+            throw new AppAlreadyRunningException();
           }
         }
       }
@@ -367,6 +377,9 @@ public class AppScheduler {
       // Use the application name for lookup consistency in OmAppJobListener
       newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
+      if (triggeredBy != null) {
+        newJobDetail.getJobDataMap().put(TRIGGERED_BY_KEY, triggeredBy);
+      }
 
       Trigger trigger =
           TriggerBuilder.newTrigger()
@@ -375,7 +388,7 @@ public class AppScheduler {
               .build();
       scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
-      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
+      throw new AppAlreadyRunningException(ex);
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
       throw new UnhandledServerException(

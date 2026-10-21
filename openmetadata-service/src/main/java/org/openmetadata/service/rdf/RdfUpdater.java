@@ -21,14 +21,17 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Slf4j
 public final class RdfUpdater {
   private static volatile Consumer<RdfLiveWrite> writeQueue;
+  private static volatile RdfLiveWriteStore liveWriteStore;
   private static RdfLiveWriter writer;
 
   private RdfUpdater() {}
@@ -56,6 +59,7 @@ public final class RdfUpdater {
               command -> command.apply(repository),
               AsyncService.getInstance().getExecutorService());
       writeQueue = writer::enqueue;
+      liveWriteStore = store;
       writer.start();
       LOG.info("RDF updater initialized with durable, ordered live writes");
     }
@@ -65,6 +69,16 @@ public final class RdfUpdater {
     return writeQueue != null;
   }
 
+  public static void enqueueOntologyGraph(final CollectionDAO dao, final UUID ontologyId) {
+    final RdfLiveWriteStore store = liveWriteStore;
+    if (store != null) {
+      dao.useHandle(
+          handle ->
+              store.enqueue(
+                  handle, JsonUtils.pojoToJson(new RdfLiveWrite.OntologyGraph(ontologyId))));
+    }
+  }
+
   public static synchronized void disable() {
     stop();
     RdfRepository.reset();
@@ -72,13 +86,14 @@ public final class RdfUpdater {
 
   public static synchronized void stop() {
     writeQueue = null;
+    liveWriteStore = null;
     if (writer != null) {
       writer.close();
       writer = null;
     }
   }
 
-  public static void updateEntity(final EntityInterface entity) {
+  public static void updateEntity(final EntityInterface<?> entity) {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(Entity.getEntityTypeFromObject(entity))) {
       submit(RdfLiveWrite.EntityUpdate.capture(entity));
     }
@@ -124,6 +139,22 @@ public final class RdfUpdater {
   public static void removeGlossaryTermRelation(
       final UUID fromId, final UUID toId, final String relationType) {
     submit(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, relationType, true));
+  }
+
+  /**
+   * Records a write to the serving graph that bypassed the live-write queue, so reasoning results
+   * computed before it stop passing for current. A write that cannot be recorded marks the
+   * projection degraded instead, which makes their freshness unknown rather than wrongly current.
+   */
+  public static void recordUntrackedWrite() {
+    final RdfLiveWriteStore store = liveWriteStore;
+    if (store != null) {
+      try {
+        store.recordUntrackedWrite();
+      } catch (RuntimeException exception) {
+        RdfProjectionHealth.markDegraded(exception);
+      }
+    }
   }
 
   private static void submit(final RdfLiveWrite command) {

@@ -41,7 +41,7 @@
 }
 
 .manage-button {
-  .ant-space-item:first-child {
+  :is(.ant-space-item, .layout-space-item):first-child {
     width: 40px;
     align-self: baseline;
   }
@@ -99,12 +99,14 @@
     margin-bottom: 0;
   }
 
-  .left-panel-content > .ant-col:last-child > .ant-row {
+  .left-panel-content
+    > :is(.ant-col, .layout-column):last-child
+    > :is(.ant-row, .layout-row) {
     flex: 1 1 auto;
     min-height: 0;
     flex-flow: column nowrap;
 
-    > .ant-col {
+    > :is(.ant-col, .layout-column) {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
@@ -149,12 +151,12 @@
   }
 }
 
-.glossary-page-tabs .left-panel-content.ant-row {
+.glossary-page-tabs .left-panel-content:is(.ant-row, .layout-row) {
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: stretch;
 
-  > .ant-col {
+  > :is(.ant-col, .layout-column) {
     flex: 0 0 auto;
     max-width: 100%;
 
@@ -215,6 +217,53 @@
 
   tbody > tr.glossary-nested-row:hover > td {
     background-color: @grey-100;
+  }
+
+  // Cell backgrounds, like the antd hover, paint over a row's, so an AI draft
+  // tints its cells to stay purple when hovered or nested. Clamped descriptions
+  // fade into the same tint.
+  tbody > tr.glossary-ai-draft-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-purple-50);
+
+    > td {
+      background-color: var(--tw-color-utility-purple-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-purple-100);
+
+      > td {
+        background-color: var(--tw-color-utility-purple-100);
+      }
+    }
+  }
+
+  // A person's proposal awaiting review, tinted the same way in its own colour.
+  tbody > tr.glossary-person-proposal-row {
+    --markdown-clamp-fade-color: var(--tw-color-utility-warning-50);
+
+    > td {
+      background-color: var(--tw-color-utility-warning-50);
+    }
+
+    &:hover {
+      --markdown-clamp-fade-color: var(--tw-color-utility-warning-100);
+
+      > td {
+        background-color: var(--tw-color-utility-warning-100);
+      }
+    }
+  }
+
+  // The proposal open in the review panel.
+  tbody > tr.glossary-proposal-row-selected > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-purple-500);
+  }
+
+  tbody
+    > tr.glossary-person-proposal-row.glossary-proposal-row-selected
+    > td:first-child {
+    box-shadow: inset 3px 0 0 var(--tw-color-utility-warning-500);
   }
 
   table {

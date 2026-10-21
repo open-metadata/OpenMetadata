@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
-import { ChevronDown, Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -120,11 +120,13 @@ const TestSuites = () => {
           popoverProps={{ placement: 'bottomLeft' }}
           onUpdate={handleOwnerSelect}>
           <button
-            className={chipTriggerClassName}
+            className={chipTriggerClassName(Boolean(ownerFilterValue))}
             data-testid="owner-select-filter"
             type="button">
             {ownerFilterValue?.label ?? t('label.owner')}
-            <ChevronDown className={chipChevronClassName} />
+            <ChevronDown
+              className={chipChevronClassName(Boolean(ownerFilterValue))}
+            />
           </button>
         </UserTeamSelectableList>
       </Box>

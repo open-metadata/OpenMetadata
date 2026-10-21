@@ -244,7 +244,7 @@ $$section
 - **Minimum:** 1 second
 - **Example:** 3600 (1 hour)
 - **Why it matters:** Controls the lifetime of the token used for OpenMetadata API requests.
-- **Note:** This value is not inherited from the Okta token lifetime.
+- **Note:** This value is not inherited from the Okta token lifetime, but while **End Session With Identity Provider** is on it is an upper bound: OpenMetadata tokens never outlive Okta's access token, so each refresh can renew the Okta tokens in time.
 $$
 
 $$section
@@ -275,7 +275,9 @@ $$section
 - **Definition:** Maximum authentication age (in seconds) before re-authentication is required.
 - **Example:** 3600
 - **Why it matters:** Controls how often users must re-authenticate.
-- **Note:** Leave empty for no specific max age requirement
+- **Note:**
+  - Leave empty (recommended) so users who are still signed in at Okta get straight back in.
+  - `0` is treated as empty: it would make Okta ask for credentials on every sign-in, including the silent re-authentication OpenMetadata performs when its own session ends. To force a fresh login every time, set **OIDC Prompt** to `login` instead.
 $$
 
 $$section
@@ -286,6 +288,7 @@ $$section
 - **Example:** login
 - **Why it matters:** Affects user experience during authentication.
 - **Note:**
+  - Leave empty (recommended): OpenMetadata sends `none` by itself when it re-authenticates a user in the background, so a value set here only changes interactive sign-ins.
   - `login`: Always prompt for credentials
   - `consent`: Prompt for permissions
   - `none`: Don't show prompts (SSO only)
@@ -299,6 +302,18 @@ $$section
 - **Example:** 604800
 - **Why it matters:** Controls how often users need to re-authenticate.
 - **Note:** Only applies to confidential clients
+$$
+
+$$section
+### End Session With Identity Provider $(id="endSessionWithProvider")
+
+- **Definition:** Ends the OpenMetadata session when Okta stops renewing the user's tokens.
+- **Default:** Off
+- **Why it matters:** When on, OpenMetadata renews the Okta tokens on Okta's schedule while the user is active, and signs the user out once Okta rejects its refresh token, for example after the token expires or is revoked, or the user is disabled. When off, a session lasts the configured session expiry whatever happens at Okta.
+- **Note:**
+  - Only applies to confidential clients
+  - Needs an Okta refresh token: add `offline_access` to OIDC Request Scopes and allow the Refresh Token grant for the app.
+  - While on, OpenMetadata access tokens never outlive Okta's access tokens, so browsers refresh them more often.
 
 ## Authorizer Configuration
 $$

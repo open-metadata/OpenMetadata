@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from './common/layout.utils';
+
 import { get, isEmpty } from 'lodash';
 import { lazy, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
@@ -21,7 +22,7 @@ import { ReactComponent as IconExternalLink } from '../assets/svg/external-links
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GenericProvider } from '../components/Customization/GenericProvider/GenericProvider';
 import type { BasicEntityInfo } from '../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
-import { ICON_DIMENSION, NO_DATA_PLACEHOLDER } from '../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { CustomizeEntityType } from '../constants/Customize.constants';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { CSMode } from '../enums/codemirror.enum';
@@ -64,6 +65,7 @@ import {
 import entityUtilClassBase from './EntityUtilClassBase';
 import { t } from './i18next/LocalUtil';
 import searchClassBase from './SearchClassBase';
+import { getSafeHttpUrl } from './StringUtils';
 
 const APIEndpointSummary = withSuspenseFallback(
   lazy(
@@ -139,8 +141,6 @@ const RelatedMetrics = withSuspenseFallback(
   lazy(() => import('../components/Metric/RelatedMetrics/RelatedMetrics'))
 );
 
-const { Text } = Typography;
-
 /*
  * @param {
  *   listItem: SummaryItem,
@@ -156,7 +156,7 @@ export const getTitle = (
   const title = highlightedTitle
     ? renderHighlightedText(highlightedTitle)
     : getEntityName(listItem) || NO_DATA_PLACEHOLDER;
-  const sourceUrl = (listItem as Chart | Task).sourceUrl;
+  const sourceUrl = getSafeHttpUrl((listItem as Chart | Task).sourceUrl);
 
   if ((listItem as EntityReference).type === SummaryEntityType.DASHBOARD) {
     return (
@@ -165,35 +165,35 @@ export const getTitle = (
           EntityType.DASHBOARD,
           listItem.fullyQualifiedName ?? ''
         )}>
-        <Text
+        <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
-        </Text>
+        </Typography>
       </Link>
     );
   }
 
   return sourceUrl ? (
-    <Link target="_blank" to={sourceUrl}>
+    <Link rel="noopener noreferrer" target="_blank" to={sourceUrl}>
       <div className="d-flex items-center">
-        <Text
+        <Typography
           className="entity-title text-link-color font-medium m-r-xss"
           data-testid="entity-title"
           ellipsis={{ tooltip: true }}>
           {title}
-        </Text>
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        </Typography>
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
       </div>
     </Link>
   ) : (
-    <Text
+    <Typography
       className="entity-title"
       data-testid="entity-title"
       ellipsis={{ tooltip: true }}>
       {title}
-    </Text>
+    </Typography>
   );
 };
 
@@ -319,11 +319,11 @@ const getChildComponentDetails = (
       childComponent: isEmpty(
         (entityInfo as Topic).messageSchema?.schemaFields
       ) ? (
-        <Typography.Text data-testid="no-data-message">
-          <Typography.Text className="no-data-chip-placeholder">
+        <Typography data-testid="no-data-message">
+          <Typography className="no-data-chip-placeholder">
             {t('message.no-data-available')}
-          </Typography.Text>
-        </Typography.Text>
+          </Typography>
+        </Typography>
       ) : (
         <SummaryList
           formattedEntityData={getFormattedEntityData(
@@ -491,38 +491,38 @@ const getDashboardSummary = (
 
   return (
     <>
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid="charts-header">
             {t('label.chart-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList
             formattedEntityData={formattedChartsData}
             loading={loading}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid="data-model-header">
             {t('label.data-model-plural')}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
           <SummaryList formattedEntityData={formattedDataModelData} />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </>
   );
 };
@@ -603,18 +603,20 @@ export const getEntityChildDetails = (
 
   if (childDetails) {
     return (
-      <Row
-        className="p-md border-radius-card summary-panel-card"
-        gutter={[0, 8]}>
-        <Col span={24}>
-          <Typography.Text
+      <Grid
+        className="layout-row layout-grid p-md border-radius-card summary-panel-card"
+        style={getLayoutGutter(0, 8)}>
+        <Grid.Item className="layout-column" span={24}>
+          <Typography
             className="summary-panel-section-title"
             data-testid={childDetails.headingTestId}>
             {childDetails.heading}
-          </Typography.Text>
-        </Col>
-        <Col span={24}>{childDetails.childComponent}</Col>
-      </Row>
+          </Typography>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          {childDetails.childComponent}
+        </Grid.Item>
+      </Grid>
     );
   }
 

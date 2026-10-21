@@ -56,7 +56,7 @@ export const GLOSSARY_TERMS_WIDGET: CommonWidgetType = {
 export const CUSTOM_PROPERTIES_WIDGET: CommonWidgetType = {
   fullyQualifiedName: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
   name: i18n.t('label.custom-property-plural'),
-  data: { gridSizes: ['small'] },
+  data: { gridSizes: ['small', 'large'] },
 };
 
 export const DOMAIN_WIDGET: CommonWidgetType = {
@@ -86,6 +86,12 @@ export const REFERENCES_WIDGET: CommonWidgetType = {
 export const REVIEWER_WIDGET: CommonWidgetType = {
   fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.REVIEWER,
   name: i18n.t('label.reviewer-plural'),
+  data: { gridSizes: ['small'] },
+};
+
+export const PENDING_REVIEW_WIDGET: CommonWidgetType = {
+  fullyQualifiedName: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
+  name: i18n.t('label.pending-review'),
   data: { gridSizes: ['small'] },
 };
 
@@ -156,30 +162,5 @@ export const DUMMY_OWNER_LIST = [
     name: 'Engineering',
     type: EntityType.TEAM,
     id: '123',
-  },
-];
-
-export const WIDGET_CUSTOM_PROPERTIES = [
-  {
-    name: 'name',
-    value: 'OpenMetadata',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Name',
-    displayName: 'Name',
-  },
-  {
-    name: 'email',
-    value: 'customproperty@OpenMetadata.com',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Email',
-    displayName: 'Email',
   },
 ];

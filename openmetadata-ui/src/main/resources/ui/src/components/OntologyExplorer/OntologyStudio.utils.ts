@@ -19,7 +19,11 @@ import {
   OntologyGraphData,
   OntologyNode,
 } from './OntologyExplorer.interface';
-import { isTermNode } from './utils/graphBuilders';
+import {
+  isTermNode,
+  METRIC_NODE_TYPE,
+  METRIC_RELATION_TYPE,
+} from './utils/graphBuilders';
 import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
 
 export interface OntologyHealthSummary {
@@ -45,6 +49,15 @@ export interface OntologyTreeRow {
   relationCount: number;
 }
 
+export interface OntologyTreeItem extends OntologyTreeRow {
+  children: OntologyTreeItem[];
+}
+
+export interface OntologyTreeMetric {
+  measures: OntologyNode[];
+  node: OntologyNode;
+}
+
 export interface OntologyTreeGroup {
   glossaryId: string;
   glossaryName: string;
@@ -66,6 +79,17 @@ SELECT ?conceptFqn WHERE {
   ?concept a om:GlossaryTerm ;
            om:fullyQualifiedName ?conceptFqn .
 }
+LIMIT 100`;
+
+// A native ontology's endpoint reads only its active release, which holds OWL classes, not glossary terms.
+export const NEW_NATIVE_ONTOLOGY_QUERY = `PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?concept ?label WHERE {
+  ?concept a owl:Class .
+  OPTIONAL { ?concept rdfs:label ?label }
+}
+ORDER BY ?concept
 LIMIT 100`;
 
 const ONTOLOGY_NAMESPACE = 'https://open-metadata.org/ontology/';
@@ -363,9 +387,6 @@ function resolvePrimaryParent(
     })[0];
 }
 
-// The tree never indents past this, however deep the hierarchy.
-const MAX_TREE_DEPTH = 16;
-
 type UnplacedTreeRow = Omit<OntologyTreeRow, 'depth'>;
 
 const compareByLabel = (left: UnplacedTreeRow, right: UnplacedTreeRow) =>
@@ -402,7 +423,7 @@ function orderAsTree(
       return;
     }
     visited.add(row.node.id);
-    ordered.push({ ...row, depth: Math.min(MAX_TREE_DEPTH, depth) });
+    ordered.push({ ...row, depth });
     childrenOf
       .get(row.node.id)
       ?.sort(compareByLabel)
@@ -471,4 +492,40 @@ export function buildOntologyTreeGroups(
       ),
     }))
     .sort((left, right) => left.glossaryName.localeCompare(right.glossaryName));
+}
+
+// Turns depth-ordered rows (each followed by its subtree) back into a nested tree.
+export function nestTreeRows(rows: OntologyTreeRow[]): OntologyTreeItem[] {
+  const roots: OntologyTreeItem[] = [];
+  const path: OntologyTreeItem[] = [];
+  rows.forEach((row) => {
+    const item: OntologyTreeItem = { ...row, children: [] };
+    path.length = Math.min(path.length, row.depth);
+    const parent = path[path.length - 1];
+    (parent ? parent.children : roots).push(item);
+    path.push(item);
+  });
+
+  return roots;
+}
+
+export function buildOntologyTreeMetrics(
+  graphData: OntologyGraphData | null,
+  filters: GraphFilters
+): OntologyTreeMetric[] {
+  const termById = new Map(
+    scopedTerms(graphData, filters).map((term) => [term.id, term])
+  );
+  const measuresOf = new Map<string, OntologyNode[]>();
+  graphData?.edges.forEach((edge) => {
+    const term = termById.get(edge.to);
+    if (edge.relationType === METRIC_RELATION_TYPE && term) {
+      measuresOf.set(edge.from, [...(measuresOf.get(edge.from) ?? []), term]);
+    }
+  });
+
+  return (graphData?.nodes ?? [])
+    .filter((node) => node.type === METRIC_NODE_TYPE && measuresOf.has(node.id))
+    .map((node) => ({ measures: measuresOf.get(node.id) ?? [], node }))
+    .sort((left, right) => left.node.label.localeCompare(right.node.label));
 }

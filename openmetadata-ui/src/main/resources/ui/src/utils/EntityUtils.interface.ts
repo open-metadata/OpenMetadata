@@ -63,6 +63,7 @@ export enum FormattedPipelineServiceType {
   Wherescape = 'Wherescape',
   MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
   Data360Pipeline = 'Salesforce Data 360 Pipeline',
+  TableauPipeline = 'Tableau Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',
@@ -80,10 +81,10 @@ export enum FormattedDatabaseServiceType {
   Couchbase = 'Couchbase',
   CustomDatabase = 'Custom Database',
   Databricks = 'Databricks',
+  Databend = 'Databend',
   Datalake = 'Datalake',
   Db2 = 'Db2',
   Dbt = 'dbt',
-  DeltaLake = 'DeltaLake',
   DomoDatabase = 'Domo Database',
   Doris = 'Doris',
   StarRocks = 'StarRocks',

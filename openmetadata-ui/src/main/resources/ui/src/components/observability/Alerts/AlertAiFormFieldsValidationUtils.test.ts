@@ -40,7 +40,7 @@ describe('AlertAiFormFieldsValidationUtils', () => {
     });
   });
 
-  describe('name follows the classic NAME_FIELD_RULES', () => {
+  describe('name follows NAME_FIELD_REGISTER_RULES', () => {
     const validate = (displayName: string) =>
       validateAlertAiForm(
         {

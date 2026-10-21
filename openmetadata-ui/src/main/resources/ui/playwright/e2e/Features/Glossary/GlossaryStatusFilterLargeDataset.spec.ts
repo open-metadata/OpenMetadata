@@ -18,6 +18,10 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 
 test.use({
@@ -65,18 +69,23 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     term: GlossaryTerm,
     status: string
   ) => {
-    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/entityStatus',
-          value: status,
+    const response = await apiContext.patch(
+      `/api/v1/glossaryTerms/${term.responseData.id}`,
+      {
+        data: [
+          {
+            op: 'replace',
+            path: '/entityStatus',
+            value: status,
+          },
+        ],
+        headers: {
+          'Content-Type': 'application/json-patch+json',
         },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
+      }
+    );
+
+    expect(response.ok(), await response.text()).toBe(true);
   };
 
   // Reusable helper to apply status filter
@@ -109,12 +118,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     ]);
 
     // Wait for table loader to disappear
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 })
-      .catch(() => {});
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   };
 
   // Reusable helper to verify row statuses
@@ -123,18 +129,31 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     allowedStatuses: string[],
     maxRows?: number
   ) => {
-    const rows = page.locator('tbody > tr:not([aria-hidden="true"])');
-    const rowCount = await rows.count();
-    const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
+    const allRows = await page
+      .locator('tbody > tr:not([aria-hidden="true"])')
+      .all();
+    const rowCount = allRows.length;
+    const rowsToCheck = maxRows ? allRows.slice(0, maxRows) : allRows;
 
-    for (let i = 0; i < checkCount; i++) {
-      const statusCell = rows.nth(i).locator('td:nth-child(3)');
-      const statusText = await statusCell.textContent();
-      if (statusText?.trim()) {
-        const hasValidStatus = allowedStatuses.some((s) =>
-          statusText.includes(s)
+    for (const row of rowsToCheck) {
+      const fqn = await row.getAttribute('data-row-key');
+      if (!fqn) {
+        continue;
+      }
+      const seeded = createdTerms.find(
+        ({ term }) => term.responseData.fullyQualifiedName === fqn
+      );
+      if (!seeded) {
+        throw new Error(`Unexpected glossary term in filtered results: ${fqn}`);
+      }
+      expect(allowedStatuses).toContain(seeded.status);
+
+      if (['Draft', 'In Review'].includes(seeded.status)) {
+        await expect(row.getByTestId('proposal-status-badge')).toContainText(
+          'Proposed by'
         );
-        expect(hasValidStatus).toBe(true);
+      } else {
+        await expect(row.locator('.status-badge')).toHaveText(seeded.status);
       }
     }
 
@@ -167,14 +186,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     });
 
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 10000 })
-      .catch(() => {
-        // Ignore timeout
-      });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
     // eslint-disable-next-line playwright/no-wait-for-timeout -- filter results need time to render
     await page.waitForTimeout(500);
   };
@@ -205,6 +219,8 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
+    // GlossaryTermApprovalWorkflow owns term stages; exclude this glossary while seeding them.
+    await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create 2 terms per status (10 terms total)
     for (const status of STATUSES_TO_TEST) {
@@ -222,11 +238,13 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       }
     }
 
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await afterAction();
   });
 
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
 
     await glossary.delete(apiContext);
     console.log('Deleted test glossary');
@@ -238,11 +256,9 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     await disableEtagConditionalReads(page);
     await glossary.visitEntityPage(page);
     await page.getByTestId('glossary-terms-table').waitFor();
-    await page
-      .locator(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="loader"]'
-      )
-      .waitFor({ state: 'detached', timeout: 30000 });
+    await waitForAllLoadersToDisappear(
+      page.locator('[data-testid="glossary-terms-scroll-container"]')
+    );
   });
 
   // ==================== STATUS FILTER TESTS ====================

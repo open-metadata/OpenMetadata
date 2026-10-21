@@ -59,11 +59,6 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightPureUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getDisabledDates: jest.fn().mockReturnValue(true),
-}));
-
-jest.mock('../../constants/DataInsight.constants', () => ({
-  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
 const mockProps = {
@@ -137,5 +132,20 @@ describe('Add KPI page', () => {
       validationMessages[validationMessages.length - 1];
 
     expect(lastValidationMessage).toBeInTheDocument();
+  });
+
+  it('rejects a percentage target above 100', async () => {
+    render(<AddKPIPage {...mockProps} />, { wrapper: MemoryRouter });
+
+    fireEvent.change(await screen.findByRole('spinbutton'), {
+      target: { value: '150' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-btn'));
+    });
+
+    expect(
+      await screen.findByText('message.entity-size-in-between')
+    ).toBeInTheDocument();
   });
 });
