@@ -40,7 +40,10 @@ import { isAppModeSessionActive } from './appModeSession';
  * pin all three against the panels' parsers.
  * ADR:2026-10-21-settings-pages-are-classic-only
  */
-type HashMapper = (rest: string[]) => string | undefined;
+type HashMapper = (
+  rest: string[],
+  query: URLSearchParams
+) => string | undefined;
 
 const withSub = (tab: string, subPath?: string) =>
   subPath ? `${tab}/${subPath}` : tab;
@@ -91,19 +94,24 @@ const GOVERNANCE_PAGES: Record<string, string | undefined> = {
   }),
 };
 
-const mapMembers: HashMapper = ([option, fqn]) => {
+// A team page's `?activeTab=<key>` becomes the hash param the team detail reads.
+const withActiveTab = (hash: string, activeTab: string | null) =>
+  activeTab ? `${hash}?activeTab=${encodeURIComponent(activeTab)}` : hash;
+
+const mapMembers: HashMapper = ([option, fqn], query) => {
   if (!option) {
     return 'members';
   }
   if (option === TEAMS) {
     const name = fqn && decode(fqn);
-
-    return withSub(
+    const hash = withSub(
       'members',
       membersViewToSubPath(
         name ? { type: 'team-detail', fqn: name, name } : { type: 'teams' }
       )
     );
+
+    return name ? withActiveTab(hash, query.get('activeTab')) : hash;
   }
 
   return MEMBER_LISTS.includes(option) ? `members/${option}` : undefined;
@@ -234,7 +242,8 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
 const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
   [
     'settings',
-    ([category = '', ...rest]) => SETTINGS_HASH_MAPPERS.get(category)?.(rest),
+    ([category = '', ...rest], query) =>
+      SETTINGS_HASH_MAPPERS.get(category)?.(rest, query),
   ],
   ['bots', ([name]) => (name ? `bots/${decode(name)}` : 'bots')],
   ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
@@ -261,10 +270,10 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
  * forms, Collate's billing plans…).
  */
 export const settingsPathToHash = (path: string): string | undefined => {
-  const [pathname] = path.split(/[?#]/);
+  const [pathname, search = ''] = path.split('#')[0].split('?', 2);
   const [root = '', ...rest] = pathname.split('/').filter(Boolean);
 
-  return ROOT_HASH_MAPPERS.get(root)?.(rest);
+  return ROOT_HASH_MAPPERS.get(root)?.(rest, new URLSearchParams(search));
 };
 
 /** Same condition `AppRouter` uses to render the AI shell. */

@@ -283,7 +283,15 @@ export const getSettingCategoryPath = (category: string) => {
   return path.replace(ROUTES.SETTINGS, '');
 };
 
-export const getTeamsWithFqnPath = (fqn: string) => {
+/**
+ * A team's page, optionally opened on one of its tabs (built-in or contributed,
+ * e.g. Collate's `sql-studio`). Classic: `/settings/members/teams/<fqn>?activeTab=<key>`.
+ * AI: `#members/teams/<fqn>?activeTab=<key>` over the current page.
+ */
+export const getTeamsWithFqnPath = (
+  fqn: string,
+  options?: { activeTab?: string }
+) => {
   let path = ROUTES.SETTINGS_WITH_TAB_FQN;
 
   path = path
@@ -291,7 +299,11 @@ export const getTeamsWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return getSettingsLink(path);
+  const query = options?.activeTab
+    ? `?activeTab=${encodeURIComponent(options.activeTab)}`
+    : '';
+
+  return getSettingsLink(`${path}${query}`);
 };
 
 export const getRoleWithFqnPath = (fqn: string) => {

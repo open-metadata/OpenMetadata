@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
@@ -288,5 +288,51 @@ describe('MembersTeamDetail', () => {
 
     expect(await screen.findByTestId('plugin-tab-label')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'sql-studio' })).toBeNull();
+  });
+
+  describe('opened with an activeTab hash param', () => {
+    afterEach(() => {
+      // Reset the shared settings-hash store while the hook is still mounted.
+      act(() => {
+        globalThis.location.hash = '';
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+    });
+
+    it('opens on the contributed tab the hash names', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      globalThis.location.hash =
+        '#members/teams/engineering?activeTab=sql-studio';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      expect(await screen.findByTestId('plugin-tab')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    it('stays on the default tab when the hash names no such tab', async () => {
+      globalThis.location.hash = '#members/teams/engineering?activeTab=nope';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      await screen.findByTestId('team-detail');
+
+      expect(
+        screen.getByRole('tab', { name: /label.team-plural/ })
+      ).toHaveAttribute('aria-selected', 'true');
+    });
   });
 });

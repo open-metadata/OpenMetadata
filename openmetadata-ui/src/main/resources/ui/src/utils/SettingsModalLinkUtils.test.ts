@@ -207,6 +207,23 @@ describe('getSettingsLink', () => {
     );
   });
 
+  // Collate's SQL Studio link opens a team on its contributed tab.
+  it('opens a team on a given tab in both modes', () => {
+    expect(getTeamsWithFqnPath('Data', { activeTab: 'sql-studio' })).toBe(
+      '/settings/members/teams/Data?activeTab=sql-studio'
+    );
+
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+
+    expect(getTeamsWithFqnPath('Data', { activeTab: 'sql-studio' })).toBe(
+      '#members/teams/Data?activeTab=sql-studio'
+    );
+    // Only a team page carries the tab; the team list has none to open.
+    expect(getSettingsLink('/settings/members/teams?activeTab=x')).toBe(
+      '#members/teams'
+    );
+  });
+
   it('follows an active app-mode session like AppRouter does', () => {
     registerAppModeSessionPredicate(() => true);
 
