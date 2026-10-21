@@ -86,7 +86,11 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
-            mockStatic(DeltaLakeRetirementMigration.class)) {
+            mockStatic(DeltaLakeRetirementMigration.class);
+        // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
+        MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
+            v206MigrationUtil =
+                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -101,6 +105,11 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
+      v206MigrationUtil.verify(
+          () ->
+              org.openmetadata.service.migration.utils.v206.MigrationUtil
+                  .addContractAndStatusToActivityFeedAlert(handle));
     }
   }
 
