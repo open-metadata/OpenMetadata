@@ -70,7 +70,7 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // lookup, picking the bulk-import entity type by its option role removes
     // one more, and editor-scoped bulk tag selection removes another
     // positional fallback.
-    'om-playwright/no-positional-locator': 542,
+    'om-playwright/no-positional-locator': 541,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,
