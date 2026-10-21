@@ -145,6 +145,14 @@ const subscribeStoreHash = (onStoreChange: () => void): (() => void) => {
 
 const getStoreHash = (): string => storeHash;
 
+// History entries a settings link pushed for the open modal: 1 when a link
+// opened it over the page, +1 per link followed inside it. Closing pops them so
+// the page's own entry is current again instead of a duplicate of it; 0 (deep
+// link, refresh, Back/Forward) closes by replacing as before. Every mounted
+// hook sees the same push, so it is counted once per history entry key.
+let pushedEntries = 0;
+let countedPushKey: string | undefined;
+
 /**
  * Hook that syncs settings modal navigation with `location.hash`.
  *
@@ -186,7 +194,10 @@ export const useSettingsHash = () => {
   // flip it to the previous tab/sub-path (infinite oscillation). `replace`
   // navigations do not emit `popstate`, so they never echo back.
   useEffect(() => {
-    const onPopState = () => setStoreHash(globalThis.location.hash);
+    const onPopState = () => {
+      pushedEntries = 0;
+      setStoreHash(globalThis.location.hash);
+    };
     globalThis.addEventListener('popstate', onPopState);
 
     // Initial sync (not a real popstate event). A deep link opened in a new tab
@@ -224,9 +235,24 @@ export const useSettingsHash = () => {
   // mode-aware settings link, `getSettingsLink`) pushes a new entry on the same
   // pathname, which neither effect above sees. Adopt the live hash on every
   // push; `setHash`/`clearHash` replace, so in-modal navigation never echoes.
+  // Skip the mount run: the push that brought the page here is not a settings
+  // link, and its (often empty) hash would wipe the deep link the mount sync kept.
+  const didMountPushRef = useRef(false);
   useEffect(() => {
-    if (navigationType === NavigationType.Push) {
-      setStoreHash(globalThis.location.hash);
+    if (!didMountPushRef.current) {
+      didMountPushRef.current = true;
+
+      return;
+    }
+    if (
+      navigationType === NavigationType.Push &&
+      location.key !== countedPushKey
+    ) {
+      countedPushKey = location.key;
+      const liveHash = globalThis.location.hash;
+      pushedEntries =
+        liveHash && (!storeHash || pushedEntries) ? pushedEntries + 1 : 0;
+      setStoreHash(liveHash);
     }
   }, [location.key, navigationType]);
 
@@ -256,7 +282,12 @@ export const useSettingsHash = () => {
   );
 
   const clearHash = useCallback(() => {
-    if (storeHash) {
+    if (storeHash && pushedEntries) {
+      const entries = pushedEntries;
+      pushedEntries = 0;
+      setStoreHash('');
+      void navigateRef.current(-entries);
+    } else if (storeHash) {
       setStoreHash('');
       void navigateRef.current(
         {

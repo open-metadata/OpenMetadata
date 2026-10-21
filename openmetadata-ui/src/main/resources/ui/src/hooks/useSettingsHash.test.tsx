@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
+import {
+  MemoryRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { getSettingsLink } from '../utils/SettingsModalLinkUtils';
+import { useAppModeStore } from './useAppMode';
 import { useSettingsHash } from './useSettingsHash';
 
 // Real MemoryRouter (no react-router mock): the hook drives navigation through
@@ -221,5 +231,99 @@ describe('useSettingsHash', () => {
     expect(second.result.current.state.subPath).toBe('roles-detail/Admin');
 
     act(() => second.result.current.clearHash());
+  });
+
+  // The push that brought the page here (e.g. the post-login landing) must not
+  // wipe a captured deep link: only pushes after mount are settings links.
+  it('keeps a captured deep-link hash when it mounts on a PUSH navigation', () => {
+    globalThis.location.hash = '#access-control/roles';
+    renderHook(() => useSettingsHash(), { wrapper }).unmount();
+    globalThis.location.hash = '';
+
+    const Probe = () => (
+      <span data-testid="tab">{useSettingsHash().state.tab ?? 'none'}</span>
+    );
+
+    // `<Navigate>` pushes; the probe mounts on the landing route it pushed to.
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<Navigate to="/landing" />} path="/" />
+          <Route element={<Probe />} path="/landing" />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('tab')).toHaveTextContent('access-control');
+  });
+
+  describe('a settings link followed in AI mode', () => {
+    const renderOnPage = (entry: string) =>
+      renderHook(
+        () => ({
+          location: useLocation(),
+          navigate: useNavigate(),
+          settings: useSettingsHash(),
+        }),
+        { wrapper: makeWrapper(entry) }
+      );
+
+    const follow = (
+      result: ReturnType<typeof renderOnPage>['result'],
+      classicPath: string
+    ) => {
+      const link = getSettingsLink(classicPath);
+      act(() => {
+        globalThis.location.hash = link.slice(link.indexOf('#'));
+        result.current.navigate(link);
+      });
+
+      return link;
+    };
+
+    beforeEach(() => {
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      globalThis.history.replaceState(null, '', '/x?a=1');
+    });
+
+    afterEach(() => {
+      useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+      globalThis.history.replaceState(null, '', '/');
+    });
+
+    it('keeps the page query string, and closing keeps it too', () => {
+      const { result } = renderOnPage('/x?a=1');
+
+      expect(follow(result, '/settings/members/teams/Org')).toBe(
+        '?a=1#members/teams/Org'
+      );
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '#members/teams/Org',
+      });
+      expect(result.current.settings.state.tab).toBe('members');
+
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '',
+      });
+    });
+
+    it('closes by going back to the page entry, not by adding a duplicate', () => {
+      const { result } = renderOnPage('/x?a=1');
+      const pageKey = result.current.location.key;
+
+      follow(result, '/settings/members/teams');
+      // A link followed inside the modal pushes one more entry.
+      follow(result, '/settings/members/teams/Org');
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location.key).toBe(pageKey);
+      expect(result.current.settings.state.tab).toBeNull();
+    });
   });
 });

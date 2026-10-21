@@ -275,13 +275,15 @@ export const isAiShell = (): boolean =>
 /**
  * Mode-aware link to a classic settings, marketplace or bots page — usable as a
  * react-router `to`, a `navigate()` target or an `href`. Classic: the path,
- * unchanged. AI: `#<tab>/<subPath>`, a fragment-only link that keeps the current
+ * unchanged. AI: `<current search>#<tab>/<subPath>`, which keeps the current
  * page and opens the settings modal on it (`useSettingsHash` adopts pushed
- * hashes). A path with no modal equivalent is returned unchanged and lands on
- * the AI not-found page. Route builders call this, so callers stay unchanged.
+ * hashes). The search is spelled out because react-router resolves a bare
+ * `#hash` target with an empty search, dropping the page's query string. A
+ * path with no modal equivalent is returned unchanged and lands on the AI
+ * not-found page. Route builders call this, so callers stay unchanged.
  */
 export const getSettingsLink = (path: string): string => {
   const hash = isAiShell() ? settingsPathToHash(path) : undefined;
 
-  return hash === undefined ? path : `#${hash}`;
+  return hash === undefined ? path : `${globalThis.location.search}#${hash}`;
 };
