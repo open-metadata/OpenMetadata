@@ -53,8 +53,8 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
-  getTaskById: mockGetTaskById,
-  resolveTask: mockResolveTask,
+  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
   editTaskComment: (...a: unknown[]) => mockEditComment(...a),
   deleteTaskComment: (...a: unknown[]) => mockDeleteComment(...a),
@@ -115,7 +115,7 @@ jest.mock('components/common/DeleteModal/DeleteModal', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 // Tag the fallback so tests assert the permission-aware message reaches the toast.
