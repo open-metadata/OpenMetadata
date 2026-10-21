@@ -17,6 +17,7 @@ To be used by OpenMetadata class
 import functools
 import json
 import traceback
+from collections.abc import Collection, Sequence
 from typing import (  # noqa: UP035
     Generic,
     Iterable,
@@ -47,6 +48,17 @@ from metadata.utils.logger import ometa_logger
 logger = ometa_logger()
 
 T = TypeVar("T", bound=BaseModel)
+
+# Search requests are GETs that carry every term in the URL; 100 checksums or ids
+# keep the request line well under the server's default 8 KiB header limit
+SEARCH_TERMS_BATCH_SIZE = 100
+
+SERVICE_NAME_FIELD = "service.name.keyword"
+
+
+def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
+    for start in range(0, len(values), size):
+        yield list(values[start : start + size])
 
 
 class TotalModel(BaseModel):
@@ -322,7 +334,7 @@ class ESMixin(Generic[T]):
                 "bool": {
                     "must": [
                         {"term": {"processedLineage": True}},
-                        {"term": {"service.name.keyword": service_name}},
+                        {"term": {SERVICE_NAME_FIELD: service_name}},
                     ]
                 }
             }
@@ -349,6 +361,63 @@ class ESMixin(Generic[T]):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unknown error extracting results from ES query [{err}]")
             return None
+
+    def es_get_lineage_processed_queries(self, service_name: str, checksums: Collection[str]) -> dict[str, set[str]]:
+        """
+        Map the checksum of each given query that the service already processed for
+        lineage to the ids of the entities the query is used in (`queryUsedIn`).
+
+        A query missing from the result was not processed, or could not be looked up.
+        """
+        processed: dict[str, set[str]] = {}
+        for batch in _batched(sorted(checksums), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"term": {"processedLineage": True}},
+                            {"term": {SERVICE_NAME_FIELD: service_name}},
+                            {"terms": {"checksum.keyword": batch}},
+                        ]
+                    }
+                }
+            }
+            for hit in self._search_page(
+                ES_INDEX_MAP[Query.__name__], query_filter, size=len(batch), fields=["checksum", "queryUsedIn"]
+            ):
+                processed[hit.source["checksum"]] = {ref["id"] for ref in hit.source.get("queryUsedIn") or []}
+        return processed
+
+    def es_get_upstream_entity_ids(self, entity: type[T], entity_ids: Collection[str]) -> dict[str, set[str]]:
+        """
+        Map each given id that belongs to an indexed entity of the given type, soft-deleted
+        entities included, to the ids of the entities its upstream lineage edges come from.
+        An id missing from the result has no entity, or could not be looked up.
+        """
+        upstreams: dict[str, set[str]] = {}
+        index = ES_INDEX_MAP[entity.__name__]
+        for batch in _batched(sorted(entity_ids), SEARCH_TERMS_BATCH_SIZE):
+            query_filter = {"query": {"ids": {"values": batch}}}
+            for hit in self._search_page(
+                index, query_filter, size=len(batch), fields=["id", "upstreamLineage.fromEntity.id"]
+            ):
+                upstreams[hit.id] = {
+                    edge["fromEntity"]["id"]
+                    for edge in hit.source.get("upstreamLineage") or []
+                    if (edge.get("fromEntity") or {}).get("id")
+                }
+        return upstreams
+
+    def _search_page(self, index: str, query_filter: dict, size: int, fields: list[str]) -> list[HitsModel]:
+        """
+        Hits of a single search request. Leaving `deleted` unset matches soft-deleted
+        entities too; a failed search is logged and returns no hits.
+        """
+        response = self._get_es_response(
+            f"/search/query?q=&index={index}&size={size}"
+            f"{self._get_include_fields_query(fields)}&query_filter={quote_plus(json.dumps(query_filter))}"
+        )
+        return response.hits.hits if response else []
 
     def _get_include_fields_query(self, fields: Optional[List[str]]) -> str:  # noqa: UP006, UP045
         """Get the include fields query"""
@@ -503,7 +572,7 @@ class ESMixin(Generic[T]):
             "query": {
                 "bool": {
                     "must": [
-                        {"bool": {"should": [{"term": {"service.name.keyword": service_name}}]}},
+                        {"bool": {"should": [{"term": {SERVICE_NAME_FIELD: service_name}}]}},
                         {
                             "bool": {
                                 "must": [

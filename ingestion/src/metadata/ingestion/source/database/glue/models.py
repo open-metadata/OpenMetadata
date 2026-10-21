@@ -39,6 +39,16 @@ class Column(BaseModel):
     Type: str
     Name: str
     Comment: Optional[str] = None  # noqa: UP045
+    # GetTables returns these, so the Iceberg flag below needs no extra API call.
+    Parameters: Optional[dict[str, str]] = None  # noqa: UP045
+
+    def is_current_iceberg_field(self) -> bool:
+        """Iceberg keeps a dropped field in the schema flagged current=false.
+
+        Only that explicit "false" retires a column: a field Iceberg never annotated,
+        and every column of a non-Iceberg table, is current.
+        """
+        return (self.Parameters or {}).get("iceberg.field.current") != "false"
 
 
 class SerializationDetails(BaseModel):
@@ -59,6 +69,8 @@ class GlueTable(BaseModel):
     Description: Optional[str] = None  # noqa: UP045
     StorageDescriptor: Optional[StorageDetails] = StorageDetails()  # noqa: UP045
     PartitionKeys: Optional[List[Column]] = []  # noqa: UP006, UP045
+    ViewOriginalText: Optional[str] = None  # noqa: UP045
+    ViewExpandedText: Optional[str] = None  # noqa: UP045
 
 
 class TablePage(BaseModel):

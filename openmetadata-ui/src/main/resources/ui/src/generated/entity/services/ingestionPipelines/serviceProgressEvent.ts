@@ -1452,9 +1452,11 @@ export interface Pipeline {
      */
     enableAutoClassification?: boolean;
     /**
-     * No. of messages to fetch during sample data ingestion.
+     * No. of messages to fetch during sample data ingestion. Values above 1000 are capped at
+     * 1000.
      *
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled. Values above 1000
+     * are capped at 1000.
      */
     sampleDataCount?: number;
     /**
@@ -1698,6 +1700,14 @@ export interface Pipeline {
      * `CA Certificates`.
      */
     verifyCerts?: boolean;
+    /**
+     * Optional map from a database name in the dbt manifest to the database it is ingested
+     * under in OpenMetadata, for when the engine dbt runs on names it differently. For example,
+     * dbt-trino writes the Trino catalog name (bq_catalog) for tables that the BigQuery
+     * connector ingests under the GCP project id (my-gcp-project). Mapped tables are looked up
+     * in every database service.
+     */
+    catalogMapping?: { [key: string]: string };
     /**
      * Custom OpenMetadata Classification name for dbt tags.
      */

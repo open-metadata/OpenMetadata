@@ -456,6 +456,13 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.DATA_CONTRACT:
+        return getEntityDetailsPath(
+          EntityType.DATA_CONTRACT,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.BOT:
         return getBotsPath(fullyQualifiedName);

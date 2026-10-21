@@ -79,6 +79,7 @@ import {
   CsvDocumentation,
   getCsvAsyncJobs,
   getCsvDocumentation,
+  resolveCsvImportResult,
 } from '../../../rest/csvAPI';
 import {
   getCsvHeaderKey,
@@ -1004,6 +1005,91 @@ const BulkEntityImportPage = () => {
     ]
   );
 
+  // Handles the `COMPLETED` branch; extracted to keep handleImportWebsocketResponse simple.
+  const handleCompletedWebsocketJob = useCallback(
+    async (
+      activeImportJob: CSVImportJobType,
+      websocketResponse: CSVImportAsyncWebsocketResponse
+    ) => {
+      appendActiveImportLogLine(t('message.import-csv-job-completed'));
+      // The completion frame is thin; fetch the persisted result by job id so a large
+      // result never travels through the websocket relay (inline result used as-is).
+      let importResults = websocketResponse.result;
+      try {
+        importResults = await resolveCsvImportResult(
+          websocketResponse.jobId,
+          websocketResponse.result
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+
+      if (!importResults) {
+        // The result could not be fetched; the error toast above already informed the user.
+        // Unblock the UI instead of feeding an empty result downstream (the same hang this
+        // PR fixes) — the validate/import buttons gate on isValidating.
+        setIsValidating(false);
+        handleResetImportJob();
+
+        return;
+      }
+
+      setValidationData(importResults);
+      fetchCsvJobs();
+
+      // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
+      // reset to upload step. If rows were processed but all failed, fall through to
+      // show the validation grid so the user can inspect and fix errors.
+      if (
+        ['aborted'].includes(importResults?.status ?? '') ||
+        (importResults?.status === 'failure' &&
+          (importResults?.numberOfRowsProcessed ?? 0) === 0)
+      ) {
+        setValidationData(importResults);
+
+        handleActiveStepChange(VALIDATION_STEP.UPLOAD);
+
+        handleResetImportJob();
+
+        return;
+      }
+
+      // If the job is complete and the status is success and job was for initial load then
+      // check if the initial result is available and then read the initial result.
+      if (
+        activeImportJob.type === 'initialLoad' &&
+        activeImportJob.initialResult
+      ) {
+        readString(activeImportJob.initialResult, {
+          worker: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            onCSVReadComplete(results as { data: string[][] });
+            setIsValidating(false);
+          },
+        });
+
+        handleResetImportJob();
+
+        return;
+      }
+
+      handleImportWebsocketResponseWithActiveStep(
+        importResults as CSVImportResult
+      );
+    },
+    [
+      appendActiveImportLogLine,
+      t,
+      fetchCsvJobs,
+      handleActiveStepChange,
+      handleResetImportJob,
+      readString,
+      onCSVReadComplete,
+      handleImportWebsocketResponseWithActiveStep,
+    ]
+  );
+
   const handleImportWebsocketResponse = useCallback(
     (websocketResponse: CSVImportAsyncWebsocketResponse) => {
       if (!websocketResponse.jobId) {
@@ -1036,52 +1122,7 @@ const BulkEntityImportPage = () => {
         });
 
         if (websocketResponse.status === 'COMPLETED') {
-          appendActiveImportLogLine(t('message.import-csv-job-completed'));
-          const importResults = websocketResponse.result;
-          setValidationData(importResults);
-          fetchCsvJobs();
-
-          // If the job is aborted, or failed before processing any rows (e.g. malformed CSV),
-          // reset to upload step. If rows were processed but all failed, fall through to
-          // show the validation grid so the user can inspect and fix errors.
-          if (
-            ['aborted'].includes(importResults?.status ?? '') ||
-            (importResults?.status === 'failure' &&
-              (importResults?.numberOfRowsProcessed ?? 0) === 0)
-          ) {
-            setValidationData(importResults);
-
-            handleActiveStepChange(VALIDATION_STEP.UPLOAD);
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          // If the job is complete and the status is success
-          // and job was for initial load then check if the initial result is available
-          // and then read the initial result
-          if (
-            activeImportJob.type === 'initialLoad' &&
-            activeImportJob.initialResult
-          ) {
-            readString(activeImportJob.initialResult, {
-              worker: true,
-              skipEmptyLines: true,
-              complete: (results) => {
-                onCSVReadComplete(results as { data: string[][] });
-                setIsValidating(false);
-              },
-            });
-
-            handleResetImportJob();
-
-            return;
-          }
-
-          handleImportWebsocketResponseWithActiveStep(
-            importResults as CSVImportResult
-          );
+          void handleCompletedWebsocketJob(activeImportJob, websocketResponse);
         }
 
         if (websocketResponse.status === 'FAILED') {
@@ -1096,13 +1137,10 @@ const BulkEntityImportPage = () => {
     [
       isBulkActionProcessingRef,
       activeAsyncImportJobRef,
-      onCSVReadComplete,
       setActiveAsyncImportJob,
-      handleResetImportJob,
-      fetchCsvJobs,
-      handleActiveStepChange,
-      handleImportWebsocketResponseWithActiveStep,
+      handleCompletedWebsocketJob,
       appendActiveImportLogLine,
+      fetchCsvJobs,
       t,
     ]
   );

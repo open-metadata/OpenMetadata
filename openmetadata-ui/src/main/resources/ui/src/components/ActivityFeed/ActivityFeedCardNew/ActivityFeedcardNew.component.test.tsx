@@ -102,3 +102,38 @@ describe('ActivityFeedCardNew — activities are read-only', () => {
     expect(screen.getByTestId('activity-footer')).toBeInTheDocument();
   });
 });
+
+describe('ActivityFeedCardNew — field path', () => {
+  const columnDescriptionLink =
+    '<#E::table::db.s.t::columns::category::description>';
+
+  it('names the field a conversation was started on after the entity', () => {
+    renderCard({ feed: { ...feed, about: columnDescriptionLink } });
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('t');
+    expect(screen.getByTestId('feed-field-path-column')).toHaveAttribute(
+      'href',
+      '/table/db.s.t.category'
+    );
+    expect(screen.getByTestId('feed-field-path-field')).toHaveTextContent(
+      'label.description'
+    );
+  });
+
+  it('names the column, not the field again, for a column-level activity event', () => {
+    renderCard({ activity: { ...activity, about: columnDescriptionLink } });
+
+    expect(screen.getByTestId('feed-field-path-column')).toHaveTextContent(
+      'category'
+    );
+    expect(
+      screen.queryByTestId('feed-field-path-field')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    renderCard({ feed });
+
+    expect(screen.queryByTestId('feed-field-path')).not.toBeInTheDocument();
+  });
+});

@@ -192,15 +192,8 @@ public class ActivityResource {
 
     long afterTimestamp = Instant.now().minus(days, ChronoUnit.DAYS).toEpochMilli();
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
-    if (limit == 0) {
-      int total =
-          activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
-      return new ResultList<>(List.of(), null, null, total);
-    }
-    List<ActivityEvent> events =
-        activityStreamRepository.listByEntity(
-            entityType, entityId, domainIds, afterTimestamp, limit);
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getEntityActivity(
+        entityType, entityId, domainIds, afterTimestamp, limit);
   }
 
   @GET
@@ -250,15 +243,8 @@ public class ActivityResource {
     UUID entityId = entity.getId();
     List<UUID> domainIds = getEffectiveDomainsByFqn(securityContext, domain);
 
-    if (limit == 0) {
-      int total =
-          activityStreamRepository.countByEntity(entityType, entityId, domainIds, afterTimestamp);
-      return new ResultList<>(List.of(), null, null, total);
-    }
-    List<ActivityEvent> events =
-        activityStreamRepository.listByEntity(
-            entityType, entityId, domainIds, afterTimestamp, limit);
-    return new ResultList<>(events, null, null, events.size());
+    return activityStreamRepository.getEntityActivity(
+        entityType, entityId, domainIds, afterTimestamp, limit);
   }
 
   @GET

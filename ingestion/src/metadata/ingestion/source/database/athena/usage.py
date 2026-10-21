@@ -15,10 +15,7 @@ Athena usage module
 from typing import Iterable  # noqa: UP035
 
 from metadata.generated.schema.type.tableQuery import TableQueries, TableQuery
-from metadata.ingestion.source.database.athena.query_parser import (
-    QUERY_SUCCESS_STATUS,
-    AthenaQueryParserSource,
-)
+from metadata.ingestion.source.database.athena.query_parser import AthenaQueryParserSource
 from metadata.ingestion.source.database.usage_source import UsageSource
 from metadata.utils.logger import ingestion_logger
 
@@ -38,7 +35,9 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
         """
         Method to yield TableQueries
         """
-        for query_list in self.get_queries() or []:
+        query_count = 0
+        for query_list in self.get_queries():
+            query_count += len(query_list)
             queries = [
                 TableQuery(
                     dialect=self.dialect.value,
@@ -52,11 +51,7 @@ class AthenaUsageSource(AthenaQueryParserSource, UsageSource):
                     duration=query.Statistics.TotalExecutionTimeInMillis if query.Statistics else None,
                     aborted=query.Status.State.upper() == QUERY_ABORTED_STATE,
                 )
-                for query in query_list.QueryExecutions
-                if query.Status
-                and query.Query
-                and query.Status.State.upper() == QUERY_SUCCESS_STATUS
-                and query.Status.SubmissionDateTime.date() >= self.start.date()
-                and self.is_not_dbt_or_om_query(query.Query)
+                for query in query_list
             ]
             yield TableQueries(queries=queries)
+        self.warn_if_query_log_truncated(query_count, "usage")
