@@ -269,7 +269,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
+      await expect(page.getByTestId('pagination')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -353,33 +353,23 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByLabel('Pagination Navigation');
-      await expect(pagination).toBeVisible();
-      await expect(
-        pagination.getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
+      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByTestId('page-indicator')).toContainText('Page 1');
+      await expect(page.getByTestId('previous')).toBeDisabled();
     });
 
     await test.step('Navigate to page 2', async () => {
-      await page.getByLabel('Next Page').click();
+      await page.getByTestId('next').click();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 2', { exact: true })
-      ).toBeVisible();
+      await expect(page.getByTestId('page-indicator')).toContainText('Page 2');
     });
 
     await test.step('Navigate back to page 1', async () => {
-      await page.getByLabel('Previous Page').click();
+      await page.getByTestId('previous').click();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
+      await expect(page.getByTestId('page-indicator')).toContainText('Page 1');
     });
 
     await test.step('Cleanup test data products', async () => {
