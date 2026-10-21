@@ -509,7 +509,8 @@ class EntityUtilClassBase {
       | DatabaseSchema
       | APICollection,
     navigate: NavigateFunction,
-    showModal: (data: ExportData) => void
+    showModal: (data: ExportData) => void,
+    _tab?: string
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {

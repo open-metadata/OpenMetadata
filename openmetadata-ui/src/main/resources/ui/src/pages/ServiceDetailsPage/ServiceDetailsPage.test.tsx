@@ -62,6 +62,7 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
@@ -745,6 +746,24 @@ describe('ServiceDetailsPage', () => {
 
       expect(screen.getByTestId('data-assets-header')).toBeInTheDocument();
       expect(screen.getByTestId('tabs')).toBeInTheDocument();
+    });
+
+    it('should pass the active tab to getManageExtraOptions', async () => {
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      });
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+      });
+
+      const lastCallArgs = (
+        entityUtilClassBase.getManageExtraOptions as jest.Mock
+      ).mock.calls.at(-1);
+
+      expect(lastCallArgs?.at(-1)).toBe(EntityTabs.CONNECTION);
     });
 
     it('should render error placeholder when service is not found', async () => {
