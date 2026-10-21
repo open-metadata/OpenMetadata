@@ -25,7 +25,11 @@ test('the suppressions baseline matches its recorded state exactly', () => {
   const suppressions = JSON.parse(fs.readFileSync(SUPPRESSIONS, 'utf8'));
 
   const actual = {};
-  for (const file of Object.values(suppressions)) {
+  // src/ entries belong to the antd ratchet in eslint-rules/openmetadata-antd.test.mjs.
+  const playwrightFiles = Object.entries(suppressions)
+    .filter(([path]) => path.startsWith('playwright/'))
+    .map(([, file]) => file);
+  for (const file of playwrightFiles) {
     for (const [ruleId, entry] of Object.entries(file)) {
       actual[ruleId] = (actual[ruleId] ?? 0) + entry.count;
     }
@@ -51,8 +55,22 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // language switch targets the core language selector by test id, and the
     // core assignee/schema-field selectors in the task and incident specs
     // remove three more. Scoping the Policies rule description to its rule
-    // card removes one more.
-    'om-playwright/no-positional-locator': 594,
+    // card removes one more, and scoping the Context Center draft editor to
+    // `.om-block-editor` instead of `.ProseMirror...first()` removes four. The
+    // landing page's FeedWidget, Data Assets and My Tasks suites went with the
+    // widgets they drove, taking six more with them, and the Data Contract
+    // core-components migration removes three more. The Classic Observability
+    // migration's core-component selectors in the Data Quality, Profiler and
+    // Profiler Configuration specs remove five more. The antd Form / Select /
+    // Input migration (standalone controls, settings forms) removes five more.
+    // Targeting the core TreeSelect popovers and team picker by test id in the
+    // UserDetails and team-editor specs removes more, pinning
+    // customize-navigation switches to their tree rows removes four more, the
+    // Data Marketplace announcements carousel spec dropped its `.first()` item
+    // lookup, picking the bulk-import entity type by its option role removes
+    // one more, and editor-scoped bulk tag selection removes another
+    // positional fallback.
+    'om-playwright/no-positional-locator': 541,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

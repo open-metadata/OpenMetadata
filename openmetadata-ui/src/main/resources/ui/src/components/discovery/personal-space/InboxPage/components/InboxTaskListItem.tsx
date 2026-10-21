@@ -65,10 +65,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
         </Box>
       )}
       {assetName && (
-        <Badge
-          className="tw:max-w-40 tw:text-tertiary tw:font-medium"
-          size="sm"
-          type="modern">
+        <Badge className="tw:max-w-40" size="sm" type="modern">
           <span className="tw:truncate">{assetName}</span>
         </Badge>
       )}
@@ -78,7 +75,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
           className="tw:ml-auto tw:shrink-0 tw:gap-1"
           data-testid="inbox-task-comment-count">
           <MessageDotsCircle
-            className="tw:text-fg-quaternary"
+            className="tw:text-quaternary"
             height={14}
             width={14}
           />
@@ -111,9 +108,11 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
       align="start"
       className={classNames(
         'tw:cursor-pointer tw:rounded-xl tw:border tw:p-3 tw:transition',
+        // Hover on primary_hover, not bg-secondary: in dark mode the list
+        // itself sits on bg-secondary, so that hover never showed.
         isActive
-          ? 'tw:border-utility-brand-300 tw:bg-primary tw:shadow-xs'
-          : 'tw:border-transparent tw:hover:bg-secondary'
+          ? 'tw:border-utility-blue-light-100 tw:bg-utility-blue-light-50'
+          : 'tw:border-transparent tw:hover:bg-primary_hover'
       )}
       data-testid={`inbox-task-${task.id}`}
       gap={3}

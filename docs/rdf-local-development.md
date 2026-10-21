@@ -224,23 +224,19 @@ rdf:
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
-| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
-| `RDF_DEFAULT_INFERENCE_LEVEL` | Default inference selection | `NONE` |
-| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Legacy in-process safety limit | `100000` |
+| `RDF_INFERENCE_ENABLED` | Deprecated and ignored; OpenMetadata no longer runs reasoners in-process | `false` |
+| `RDF_DEFAULT_INFERENCE_LEVEL` | Deprecated and ignored | `NONE` |
+| `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` | Deprecated and ignored | `100000` |
 | `RDF_MATERIALIZED_INFERENCE_ENABLED` | Enable durable per-rule inference graphs | `false` |
 | `RDF_SHACL_VALIDATION_MODE` | Import validation policy | `REPORT` |
 | `RDF_DEREFERENCEABLE_IRIS` | Enable authenticated LOD redirects | `false` |
 | `RDF_STRICT_OWL_PROFILE` | Enforce supported OWL profile rules | `true` |
 | `RDF_AI_ENABLED` | Enable Ontology Studio AI | `false` |
-| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | Allow memory-derived ontology draft jobs when RDF AI and LLM completion are enabled | `false` |
 
-Memory-derived glossary drafts require `RDF_AI_ENABLED=true`, `LLM_ENABLED=true`, and
-`LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED=true`. With all three on, creating or publishing an Entity or
-Public memory queues a derivation job automatically; memories extracted from the same file or page
-share one job, which starts about 30 seconds after the first of them. A proposal can also be
-requested through `POST /api/v1/ontology/ai/memories/jobs`; Private and Shared memories need their
-owner to request it. `RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of
-`RDF_AI_ENABLED`.
+`RDF_ASK_COLLATE_ENABLED` is still read as a deprecated alias of `RDF_AI_ENABLED`. Deriving
+glossary terms from Context Center memories is not an Ontology AI feature: it runs only when the
+configured `llmConfiguration.aiProviderClass` supplies a glossary-term deriver, which Collate's
+does and the built-in provider does not.
 
 ### Docker Compose Configuration
 

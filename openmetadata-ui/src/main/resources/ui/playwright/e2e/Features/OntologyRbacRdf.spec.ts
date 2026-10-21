@@ -141,8 +141,8 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
       await expect(
         page.getByTestId('ontology-authoring-inspector')
       ).toBeVisible();
-      await expect(page.getByTestId('add-attribute')).toBeVisible();
-      await expect(page.getByTestId('add-realization')).toBeVisible();
+      await expect(page.getByTestId('add-attribute')).toHaveCount(0);
+      await expect(page.getByTestId('add-realization')).toHaveCount(0);
 
       await releaseOntologyEditLease(page, fixture.glossary.responseData.id);
     } finally {

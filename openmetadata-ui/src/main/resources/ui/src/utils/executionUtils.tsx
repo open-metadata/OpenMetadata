@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box } from '@openmetadata/ui-core-components';
-import { Tooltip } from 'antd';
-import { DataNode } from 'antd/lib/tree';
+import { Box, Tooltip } from '@openmetadata/ui-core-components';
 import { groupBy, isUndefined, map, toLower } from 'lodash';
 import React from 'react';
 import { MenuOptions } from '../constants/execution.constants';
@@ -24,6 +21,7 @@ import {
   Task,
   TaskStatus,
 } from '../generated/entity/data/pipeline';
+import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
 import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
@@ -44,30 +42,46 @@ export interface ViewDataInterface {
   duration?: string;
 }
 
-export const StatusIndicator = ({ status }: StatusIndicatorInterface) => (
-  <Box
-    inline
-    align="center"
-    className="layout-space layout-space-horizontal"
-    gap={2}
-    itemClassName="layout-space-item">
-    <Icon
-      alt="result"
-      className="align-middle"
-      component={getStatusBadgeIcon(status)}
-      // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-      style={{ fontSize: '16px', color: 'transparent' }}
+const StatusBadge = ({ status }: { status?: StatusType }) => {
+  const Badge = getStatusBadgeIcon(status);
+
+  return (
+    <Badge
+      aria-label="result"
+      // the badge supplies its own colours; stop currentColor tinting it
+      className="tw:align-middle tw:size-6 tw:shrink-0 tw:text-transparent"
+      role="img"
     />
-    <p>
-      {status === StatusType.Successful
-        ? MenuOptions[StatusType.Successful]
-        : ''}
-      {status === StatusType.Failed ? MenuOptions[StatusType.Failed] : ''}
-      {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
-      {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
-    </p>
-  </Box>
-);
+  );
+};
+
+export const StatusIndicator = ({ status }: StatusIndicatorInterface) => {
+  const StatusBadgeIcon = getStatusBadgeIcon(status);
+
+  return (
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal"
+      gap={2}
+      itemClassName="layout-space-item">
+      <StatusBadgeIcon
+        aria-label="result"
+        // the badge supplies its own colours; stop currentColor tinting it
+        className="tw:align-middle tw:size-4 tw:shrink-0 tw:text-transparent"
+        role="img"
+      />
+      <p>
+        {status === StatusType.Successful
+          ? MenuOptions[StatusType.Successful]
+          : ''}
+        {status === StatusType.Failed ? MenuOptions[StatusType.Failed] : ''}
+        {status === StatusType.Pending ? MenuOptions[StatusType.Pending] : ''}
+        {status === StatusType.Skipped ? MenuOptions[StatusType.Skipped] : ''}
+      </p>
+    </Box>
+  );
+};
 
 /**
  * It takes in an array of PipelineStatus objects and a string, and returns an array of
@@ -151,7 +165,7 @@ export const buildCompleteTree = (
   key: string,
   parentKey: string
 ) => {
-  let node: DataNode;
+  let node: TreeNode;
 
   const nodeKey: string = parentKey + '-' + key;
 
@@ -198,8 +212,8 @@ export const getTreeData = (
   viewData: Record<string, ViewDataInterface[]>
 ) => {
   const icon = <div className="tree-view-dot" />;
-  const treeDataList: DataNode[] = [];
-  const treeLabelList: DataNode[] = [];
+  const treeDataList: TreeNode[] = [];
+  const treeLabelList: TreeNode[] = [];
 
   // map execution element to task name
   const viewElements = map(
@@ -216,6 +230,8 @@ export const getTreeData = (
             <div className="execution-node-container">
               {value.map((status: ViewDataInterface) => (
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   key={`${status.timestamp}-${status.executionStatus}`}
                   placement="top"
                   title={
@@ -246,14 +262,9 @@ export const getTreeData = (
                         </div>
                       )}
                     </Box>
-                  }>
-                  <Icon
-                    alt="result"
-                    className="align-middle"
-                    component={getStatusBadgeIcon(status.executionStatus)}
-                    // by default, color is set to inherit for Icon in ANTD, so we need to set it to transparent
-                    style={{ fontSize: '24px', color: 'transparent' }}
-                  />
+                  }
+                  triggerClassName="tw:inline-flex">
+                  <StatusBadge status={status.executionStatus} />
                 </Tooltip>
               ))}
             </div>

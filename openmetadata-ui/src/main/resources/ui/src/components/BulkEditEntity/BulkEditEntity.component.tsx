@@ -42,12 +42,13 @@ import type {
 } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
+import { getTestCaseExportFiltersFromSearch } from '../../utils/DataQuality/DataQualityPureUtils';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
@@ -162,8 +163,16 @@ const BulkEditEntity = ({
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const testCaseExportFilters = useMemo(
+    () =>
+      entityType === EntityType.TEST_CASE
+        ? getTestCaseExportFiltersFromSearch(search)
+        : undefined,
+    [entityType, search]
+  );
   const {
     triggerExportForBulkEdit,
     csvExportData,
@@ -261,10 +270,13 @@ const BulkEditEntity = ({
     triggeredExportKeyRef.current = `${entityType}:${fqn}`;
     triggerExportForBulkEdit({
       name: fqn,
-      onExport: getBulkEditCSVExportEntityApi(entityType),
+      onExport: getBulkEditCSVExportEntityApi(
+        entityType,
+        testCaseExportFilters
+      ),
       exportTypes: [ExportTypes.CSV],
     });
-  }, [entityType, fqn, triggerExportForBulkEdit]);
+  }, [entityType, fqn, testCaseExportFilters, triggerExportForBulkEdit]);
 
   useEffect(() => {
     if (!isExportHydrationRequired) {
@@ -346,8 +358,11 @@ const BulkEditEntity = ({
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
-  const editDataGrid = useMemo(() => {
-    const dataSourceWithOperations: Record<string, string>[] =
+  // react-data-grid closes an open cell editor, discarding its draft, as soon as
+  // the row object it is editing is replaced. Keep these identities stable
+  // across re-renders that do not change the data (columns, handlers, ...).
+  const dataSourceWithOperations = useMemo<Record<string, string>[]>(
+    () =>
       filteredDataSource.map((row, index) => {
         const rowId = row.id ?? `${index}`;
         const originalRow = initialRowById.get(row.id);
@@ -363,7 +378,11 @@ const BulkEditEntity = ({
           [BULK_EDIT_OPERATION_KEY]: operation,
           [BULK_EDIT_ORIGINAL_NAME_KEY]: getBulkEditRowName(originalRow),
         };
-      });
+      }),
+    [filteredDataSource, initialRowById, changedCellKeysByRowId, workflowMode]
+  );
+
+  const editDataGrid = useMemo(() => {
     const operationColumn: Column<Record<string, string>> = {
       key: BULK_EDIT_OPERATION_KEY,
       name: t('label.operation'),
@@ -507,18 +526,16 @@ const BulkEditEntity = ({
   }, [
     changedCellKeysByRowId,
     columns,
-    filteredDataSource,
+    dataSourceWithOperations,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
     handleRemoveRow,
     highlightedRowId,
-    initialRowById,
     isImportWorkflow,
     bulkEditConfig,
     setGridRef,
     t,
-    workflowMode,
   ]);
 
   const operationSummary = useMemo(() => {

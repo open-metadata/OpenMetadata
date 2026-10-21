@@ -1,0 +1,26 @@
+{
+  "requestId": "5f1e2d3c-4b5a-4968-8776-655443322110",
+  "operation": "CHECK",
+  "sourceRevision": {
+    "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+    "liveWriteWatermark": 18460
+  },
+  "ontologySelection": "CANDIDATE",
+  "ontologyIri": "https://example.org/finance",
+  "check": {
+    "kind": "SUBSUMPTION",
+    "classExpression": {
+      "kind": "ONE_OF",
+      "individualIris": ["https://example.org/finance#quarterlyRevenue"]
+    },
+    "superClassExpression": {
+      "kind": "RESTRICTION",
+      "restrictionKind": "SOME",
+      "propertyIri": "https://example.org/finance#reportedIn",
+      "filler": {
+        "kind": "NAMED_CLASS",
+        "classIri": "https://example.org/finance#Currency"
+      }
+    }
+  }
+}

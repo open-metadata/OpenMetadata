@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@openmetadata/ui-core-components';
+import {
+  Card,
+  Grid,
+  SkeletonParagraph,
+} from '@openmetadata/ui-core-components';
 import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Card } from 'antd';
+
 import { AxiosError } from 'axios';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -112,19 +116,24 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
 
   if (isLoading || data.length === 0) {
     return (
-      <Card
-        className="data-insight-card"
-        data-testid="entity-page-views-card"
-        loading={isLoading}
-        title={
-          <PageHeader
-            data={{
-              header: t('label.page-views-by-data-asset-plural'),
-              subHeader: t('message.data-insight-page-views'),
-            }}
-          />
-        }>
-        <EmptyGraphPlaceholder />
+      <Card className="data-insight-card" data-testid="entity-page-views-card">
+        <Card.Header
+          title={
+            <PageHeader
+              data={{
+                header: t('label.page-views-by-data-asset-plural'),
+                subHeader: t('message.data-insight-page-views'),
+              }}
+            />
+          }
+        />
+        <Card.Content>
+          {isLoading ? (
+            <SkeletonParagraph rows={4} />
+          ) : (
+            <EmptyGraphPlaceholder />
+          )}
+        </Card.Content>
       </Card>
     );
   }
@@ -133,45 +142,51 @@ const PageViewsByEntitiesChart: FC<Props> = ({ chartFilter, selectedDays }) => {
     <Card
       className="data-insight-card data-insight-card-chart"
       data-testid="entity-page-views-card"
-      id={DataInsightChartType.PageViewsByEntities}
-      loading={isLoading}>
-      <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
-        <Grid.Item
-          className="layout-column"
-          span={DI_STRUCTURE.leftContainerSpan}>
-          <PageHeader
-            data={{
-              header: t('label.page-views-by-data-asset-plural'),
-              subHeader: t('message.data-insight-page-views'),
-            }}
-          />
-          <LineChart<PageViewsRow>
-            ariaLabel={t('label.page-views-by-data-asset-plural')}
-            data={data}
-            height={GRAPH_HEIGHT}
-            legend={HIDDEN_CHART_LEGEND}
-            series={series}
-            tooltip={tooltip}
-            xKey="timestamp"
-          />
-        </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          span={DI_STRUCTURE.rightContainerSpan}>
-          <TotalEntityInsightSummary
-            allowFilter
-            activeKeys={activeKeys}
-            entities={sortedEntitiesByValue}
-            gutter={DI_STRUCTURE.rightRowGutter}
-            latestData={latestData}
-            relativePercentage={relativePercentage}
-            selectedDays={selectedDays}
-            total={total}
-            onActiveKeyMouseHover={(entity) => setActiveMouseHoverKey(entity)}
-            onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
-          />
-        </Grid.Item>
-      </Grid>
+      id={DataInsightChartType.PageViewsByEntities}>
+      <Card.Content>
+        {isLoading ? (
+          <SkeletonParagraph rows={4} />
+        ) : (
+          <Grid className="layout-row layout-grid" style={getLayoutGutter(32)}>
+            <Grid.Item
+              className="layout-column"
+              span={DI_STRUCTURE.leftContainerSpan}>
+              <PageHeader
+                data={{
+                  header: t('label.page-views-by-data-asset-plural'),
+                  subHeader: t('message.data-insight-page-views'),
+                }}
+              />
+              <LineChart<PageViewsRow>
+                ariaLabel={t('label.page-views-by-data-asset-plural')}
+                data={data}
+                height={GRAPH_HEIGHT}
+                legend={HIDDEN_CHART_LEGEND}
+                series={series}
+                tooltip={tooltip}
+                xKey="timestamp"
+              />
+            </Grid.Item>
+            <Grid.Item
+              className="layout-column"
+              span={DI_STRUCTURE.rightContainerSpan}>
+              <TotalEntityInsightSummary
+                allowFilter
+                activeKeys={activeKeys}
+                entities={sortedEntitiesByValue}
+                latestData={latestData}
+                relativePercentage={relativePercentage}
+                selectedDays={selectedDays}
+                total={total}
+                onActiveKeyMouseHover={(entity) =>
+                  setActiveMouseHoverKey(entity)
+                }
+                onActiveKeysUpdate={(entities) => setActiveKeys(entities)}
+              />
+            </Grid.Item>
+          </Grid>
+        )}
+      </Card.Content>
     </Card>
   );
 };

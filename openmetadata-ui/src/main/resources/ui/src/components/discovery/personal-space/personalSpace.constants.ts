@@ -26,3 +26,10 @@ export const PERSONAL_SPACE_ROUTES = {
   INBOX_TASKS: '/inbox/tasks',
   MY_DATA: ROUTES.MY_DATA,
 } as const;
+
+/**
+ * Query parameter that opens the inbox's Tasks tab on one task:
+ * `/inbox/tasks?taskId=<id>`. Links from outside the inbox (the landing page's
+ * My Tasks card) use it, since the inbox has no per-task route.
+ */
+export const INBOX_TASK_ID_PARAM = 'taskId';

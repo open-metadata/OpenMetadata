@@ -176,6 +176,10 @@ CREATE TABLE IF NOT EXISTS rdf_inference_rule (
 CREATE INDEX IF NOT EXISTS rdf_inference_rule_dirty_index
   ON rdf_inference_rule (dirty, deleted);
 
+-- A materialization run clears a rule's dirty flag only if dirtyVersion still holds the value the
+-- run read, so rule edits and graph writes that land during the run stay pending.
+ALTER TABLE rdf_inference_rule ADD COLUMN IF NOT EXISTS dirtyVersion BIGINT NOT NULL DEFAULT 0;
+
 ALTER TABLE entity_relationship
   ADD COLUMN IF NOT EXISTS relationshipId VARCHAR(36),
   ADD COLUMN IF NOT EXISTS relationshipTypeId VARCHAR(36);
@@ -378,6 +382,98 @@ ALTER TABLE announcement_entity
   GENERATED ALWAYS AS (COALESCE(json ->> 'type', 'Notice')) STORED;
 CREATE INDEX IF NOT EXISTS idx_announcement_type ON announcement_entity (type);
 
+-- Approval-gated change requests: request aggregate, immutable revisions, reviewer decisions and
+-- the publications of each request. activeInterceptKey is non-null only while an intercepted
+-- request is Pending, so the unique index allows at most one active request per (entity, requester).
+CREATE TABLE IF NOT EXISTS change_request (
+  id VARCHAR(36) NOT NULL,
+  entityType VARCHAR(256) NOT NULL,
+  entityId VARCHAR(36) NOT NULL,
+  requestedBy VARCHAR(256) NOT NULL,
+  workflowDefinitionId VARCHAR(36) NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  activeInterceptKey VARCHAR(300) DEFAULT NULL,
+  taskId VARCHAR(36) DEFAULT NULL,
+  deliveryStatus VARCHAR(32) NOT NULL,
+  deliveryAttempts INTEGER NOT NULL DEFAULT 0,
+  nextDeliveryAt BIGINT NOT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
+  leaseUntil BIGINT DEFAULT NULL,
+  updatedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_request_active_intercept_key ON change_request (activeInterceptKey);
+CREATE INDEX IF NOT EXISTS change_request_entity_status_index ON change_request (entityId, status);
+CREATE INDEX IF NOT EXISTS change_request_requester_status_index ON change_request (requestedBy, status);
+CREATE INDEX IF NOT EXISTS change_request_workflow_status_index ON change_request (workflowDefinitionId, status);
+CREATE INDEX IF NOT EXISTS change_request_delivery_index ON change_request (deliveryStatus, nextDeliveryAt);
+CREATE INDEX IF NOT EXISTS change_request_task_index ON change_request (taskId);
+
+CREATE TABLE IF NOT EXISTS change_revision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionNumber INTEGER NOT NULL,
+  status VARCHAR(32) NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_revision_request_number_key ON change_revision (changeRequestId, revisionNumber);
+
+CREATE TABLE IF NOT EXISTS approval_decision (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  decidedBy VARCHAR(256) NOT NULL,
+  decision VARCHAR(32) NOT NULL,
+  decidedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS approval_decision_revision_index ON approval_decision (revisionId, decidedBy);
+CREATE INDEX IF NOT EXISTS approval_decision_request_index ON approval_decision (changeRequestId);
+
+CREATE TABLE IF NOT EXISTS change_application (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  revisionId VARCHAR(36) NOT NULL,
+  appliedAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS change_application_request_index ON change_application (changeRequestId);
+CREATE INDEX IF NOT EXISTS change_application_revision_index ON change_application (revisionId);
+
+-- Ordered history of every change request step (submitted, revised, approved, applied, ended).
+CREATE TABLE IF NOT EXISTS change_lifecycle_event (
+  id VARCHAR(36) NOT NULL,
+  changeRequestId VARCHAR(36) NOT NULL,
+  eventSequence INTEGER NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  eventAt BIGINT NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS change_lifecycle_event_request_sequence_key ON change_lifecycle_event (changeRequestId, eventSequence);
+
+-- Single source of truth for entityReference / entityReferenceList custom-property values, one row
+-- per referenced entity. columnKey is '' for entity-level values, else the column's FQN hash. A hard
+-- delete removes the rows pointing at the deleted entity through the targetId index.
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSONB NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId)
+);
+CREATE INDEX IF NOT EXISTS custom_property_reference_target ON custom_property_reference (targetId);
+CREATE INDEX IF NOT EXISTS custom_property_reference_property
+  ON custom_property_reference (holderType, propertyName);
+
 -- Allow Data Consumer to run agent SPARQL queries by default (#34231). Seed data never updates a policy
 -- that already exists, so existing installs get the rule here. The rule is only added while an allow
 -- rule of the policy still lists ViewAll, since the grant is acceptable only where Data Consumers can
@@ -398,6 +494,59 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('ViewAll')));
 
+-- Name the MCP knowledge-graph tools in the description of the DataConsumerPolicy-ExecuteSparqlQuery-Rule that the statement
+-- above adds (#34270). That INSERT must stay exactly as it was first shipped, because the runner
+-- tracks statements by a hash of their text: an edited INSERT would run again where 2.1.0 is already
+-- recorded, and its only guard is "the rule does not exist", so it would add back a rule an
+-- administrator deleted on purpose. This is a separate, appended statement that changes only the
+-- description, and only where it still reads exactly as the old shipped text: a deleted rule, a
+-- customised description and a fresh install (seeded with the new text) are left alone.
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN existing.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+                     AND existing.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+                THEN jsonb_set(existing.rule, '{description}', to_jsonb('Allow authenticated users and bots to run read-only SPARQL queries through the agent SPARQL endpoint and the MCP knowledge-graph tools (sparql_query, entity_neighborhood, find_by_tag, and ontology_describe with a resource). Results are not filtered by asset or domain policies, so remove this rule if viewing is restricted through custom policies.'::text))
+                ELSE existing.rule
+            END
+            ORDER BY existing.position
+        )
+        FROM jsonb_array_elements(json->'rules') WITH ORDINALITY AS existing(rule, position)
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(json->'rules') AS current_rule(rule)
+        WHERE current_rule.rule->>'name' = 'DataConsumerPolicy-ExecuteSparqlQuery-Rule'
+          AND current_rule.rule->>'description' = 'Allow authenticated users to run read-only SPARQL queries through the agent SPARQL endpoint. The endpoint does not filter results by asset, so remove this rule if viewing is restricted through custom policies.'
+      );
+
+-- Allow Data Consumer to create context memories by default (ai-platform#1580). Seed data never
+-- updates a policy that already exists, so existing installs get the rule here. A memory is knowledge
+-- about an asset, the same kind of contribution as its description, so the rule is only added while an
+-- allow rule of the policy still lists EditDescription: an install that took that away keeps its Data
+-- Consumers read-only. ADR:2026-10-09-data-consumers-create-context-memories
+UPDATE policy_entity
+SET json = jsonb_set(
+    json::jsonb,
+    '{rules}',
+    (json->'rules') || jsonb_build_object(
+        'name', 'DataConsumerPolicy-CreateContextMemory-Rule',
+        'description', 'Allow authenticated users to create context memories, including the ones the AI agent saves from their conversations. The creator owns a new memory and can edit or delete it. An Entity memory is shown to everyone who can view its asset, or to everyone when it has no asset, so remove this rule if only admins should create memories.',
+        'resources', jsonb_build_array('contextMemory'),
+        'operations', jsonb_build_array('Create'),
+        'effect', 'allow'
+    )
+)
+WHERE json->>'name' = 'DataConsumerPolicy'
+  AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
+  AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -416,6 +565,12 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
     ON sso_test_login_session (admin_principal, credentials_submitted_at);
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
+
+-- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
+-- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
+-- reconciled with. Comparing against that snapshot is how a server start tells a value changed in
+-- the deployment from a value changed in the UI (#31786). NULL until the server first reconciles.
+ALTER TABLE openmetadata_settings ADD COLUMN IF NOT EXISTS deployment_snapshot JSONB;
 
 -- #33980 shipped this column while the type enum still read Information/Warning/Issue. The enum
 -- has since been renamed so the stored value matches what the UI shows (Notice/Critical). A
@@ -507,3 +662,202 @@ ALTER TABLE announcement_entity DROP COLUMN IF EXISTS status;
 UPDATE announcement_entity
 SET json = json - 'status'
 WHERE json ->> 'status' IS NOT NULL;
+
+-- Alert jobs are stored with the runtime's own job class, whatever consumer the alert names, so a
+-- stored job never names a consumer class. A job a previous release stored under a consumer's
+-- class is moved to it here; the alert reconciler would otherwise do it, one round at a time.
+UPDATE QRTZ_JOB_DETAILS
+SET JOB_CLASS_NAME = 'org.openmetadata.service.events.consumer.ConsumerJob'
+WHERE SCHED_NAME = 'OMEventSubScheduler' AND JOB_GROUP = 'OMAlertJobGroup';
+
+-- Reasoning results record the serving dataset they read. Every promotion assigns a new generation,
+-- even when it reuses a physical dataset name, so a result computed before it never passes for
+-- current. Servers assign one on startup to a pointer row created before this column existed.
+ALTER TABLE rdf_active_dataset ADD COLUMN IF NOT EXISTS generation VARCHAR(36);
+
+-- Highest live-write queue ID handed out, kept because processed rows are deleted. Writes to the
+-- serving graph made outside the queue take an ID too, so a reasoning result records how far the
+-- projection had got and is current only while no write has been given a higher ID since.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS enqueuedWatermark BIGINT NOT NULL DEFAULT 0;
+
+-- A search that pins a memory anchor looks up the edges from the pinned ids into context memories
+-- (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). The existing fromId/relation index
+-- does not cover toEntity, so a pinned domain or team reads all its HAS edges before filtering.
+-- This partial index holds memory edges only. MySQL serves the lookup from idx_entity_rel_cascade.
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_memory_anchor
+    ON entity_relationship (fromId, relation)
+    WHERE toEntity = 'contextMemory';
+
+-- aboutEntity task lists match `aboutfqnhash LIKE 'hash.%'`, which a plain btree can't serve under a
+-- non-C collation (seq scan); text_pattern_ops as for the 1.13.0 *_fqnhash_pattern indexes.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
+  ON task_entity (aboutfqnhash text_pattern_ops);
+
+-- Independent ontology definitions and releases.
+CREATE TABLE IF NOT EXISTS ontology_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  iriHash CHAR(32) GENERATED ALWAYS AS (md5(json ->> 'iri')) STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_fqn_hash_unique UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ontology_name_index ON ontology_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_deleted_index ON ontology_entity (deleted);
+CREATE INDEX IF NOT EXISTS ontology_iri_index ON ontology_entity (iriHash);
+
+CREATE TABLE IF NOT EXISTS ontology_concept_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  iriHash CHAR(32) GENERATED ALWAYS AS (md5(json ->> 'iri')) STORED NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json -> 'ontology' ->> 'id') STORED NOT NULL,
+  conceptType VARCHAR(32) GENERATED ALWAYS AS (json ->> 'conceptType') STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_concept_fqn_hash_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_concept_iri_unique UNIQUE (ontologyId, iriHash)
+);
+CREATE INDEX IF NOT EXISTS ontology_concept_name_index ON ontology_concept_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_concept_deleted_index ON ontology_concept_entity (deleted);
+CREATE INDEX IF NOT EXISTS ontology_concept_ontology_kind_index ON ontology_concept_entity (ontologyId, conceptType);
+
+CREATE TABLE IF NOT EXISTS ontology_property_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  iriHash CHAR(32) GENERATED ALWAYS AS (md5(json ->> 'iri')) STORED NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json -> 'ontology' ->> 'id') STORED NOT NULL,
+  kind VARCHAR(32) GENERATED ALWAYS AS (json ->> 'kind') STORED NOT NULL,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_property_fqn_hash_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_property_iri_unique UNIQUE (ontologyId, iriHash)
+);
+CREATE INDEX IF NOT EXISTS ontology_property_name_index ON ontology_property_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_property_deleted_index ON ontology_property_entity (deleted);
+CREATE INDEX IF NOT EXISTS ontology_property_ontology_kind_index ON ontology_property_entity (ontologyId, kind);
+
+CREATE TABLE IF NOT EXISTS ontology_state (
+  ontologyId VARCHAR(36) NOT NULL,
+  workingRevision BIGINT NOT NULL DEFAULT 0 CHECK (workingRevision >= 0),
+  lastReleaseRevision BIGINT NOT NULL DEFAULT 0 CHECK (lastReleaseRevision >= 0),
+  activeReleaseId VARCHAR(36),
+  activationRevision BIGINT NOT NULL DEFAULT 0 CHECK (activationRevision >= 0),
+  PRIMARY KEY (ontologyId)
+);
+
+CREATE TABLE IF NOT EXISTS ontology_release_entity (
+  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+  name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+  fqnHash VARCHAR(768) NOT NULL,
+  json JSONB NOT NULL,
+  ontologyId VARCHAR(36) GENERATED ALWAYS AS (json -> 'ontology' ->> 'id') STORED NOT NULL,
+  releaseRevision BIGINT GENERATED ALWAYS AS ((json ->> 'releaseRevision')::bigint) STORED NOT NULL,
+  entityStatus VARCHAR(32) GENERATED ALWAYS AS (json ->> 'entityStatus') STORED NOT NULL,
+  sealedAt BIGINT GENERATED ALWAYS AS ((json ->> 'sealedAt')::bigint) STORED,
+  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+  updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+  deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+  PRIMARY KEY (id),
+  CONSTRAINT ontology_release_fqn_unique UNIQUE (fqnHash),
+  CONSTRAINT ontology_release_revision_unique UNIQUE (ontologyId, releaseRevision)
+);
+CREATE INDEX IF NOT EXISTS ontology_release_name_index ON ontology_release_entity (name);
+CREATE INDEX IF NOT EXISTS ontology_release_status_index ON ontology_release_entity (ontologyId, entityStatus);
+
+CREATE TABLE IF NOT EXISTS ontology_release_member (
+  releaseId VARCHAR(36) NOT NULL,
+  memberKind VARCHAR(32) NOT NULL,
+  memberId VARCHAR(36) NOT NULL,
+  sourceVersion DOUBLE PRECISION,
+  payload TEXT NOT NULL,
+  payloadDigest CHAR(64) NOT NULL,
+  payloadBytes BIGINT NOT NULL CHECK (payloadBytes > 0),
+  PRIMARY KEY (releaseId, memberKind, memberId)
+);
+
+
+CREATE TABLE IF NOT EXISTS ontology_release_event (
+  id VARCHAR(36) NOT NULL,
+  ontologyId VARCHAR(36) NOT NULL,
+  releaseId VARCHAR(36) NOT NULL,
+  eventType VARCHAR(32) NOT NULL,
+  createdAt BIGINT NOT NULL,
+  createdBy VARCHAR(256) NOT NULL,
+  json JSONB NOT NULL,
+  PRIMARY KEY (id)
+);
+CREATE INDEX IF NOT EXISTS ontology_release_event_release_index ON ontology_release_event (releaseId, createdAt, id);
+CREATE INDEX IF NOT EXISTS ontology_release_event_ontology_index ON ontology_release_event (ontologyId, createdAt, id);
+
+-- Studio axioms are unreleased; discard glossary-owned definitions without changing glossaries.
+DELETE FROM entity_relationship WHERE
+  (fromEntity = 'ontologyAxiom' AND fromId IN (SELECT id FROM ontology_axiom_entity WHERE json -> 'ontology' ->> 'id' IS NULL)) OR
+  (toEntity = 'ontologyAxiom' AND toId IN (SELECT id FROM ontology_axiom_entity WHERE json -> 'ontology' ->> 'id' IS NULL));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_axiom_entity WHERE json -> 'ontology' ->> 'id' IS NULL);
+DELETE FROM ontology_axiom_entity WHERE json -> 'ontology' ->> 'id' IS NULL;
+
+DROP INDEX IF EXISTS ontology_axiom_glossary_type_index;
+ALTER TABLE ontology_axiom_entity DROP COLUMN IF EXISTS glossaryId;
+ALTER TABLE ontology_axiom_entity ADD COLUMN IF NOT EXISTS ontologyId VARCHAR(36)
+  GENERATED ALWAYS AS (json -> 'ontology' ->> 'id') STORED NOT NULL;
+CREATE INDEX IF NOT EXISTS ontology_axiom_ontology_type_index ON ontology_axiom_entity (ontologyId, axiomType);
+
+CREATE TABLE IF NOT EXISTS ontology_reference (
+  ontologyId VARCHAR(36) NOT NULL,
+  sourceType VARCHAR(64) COLLATE "C" NOT NULL,
+  sourceId VARCHAR(36) NOT NULL,
+  role VARCHAR(32) COLLATE "C" NOT NULL,
+  iri TEXT COLLATE "C" NOT NULL,
+  iriHash CHAR(64) COLLATE "C" NOT NULL,
+  PRIMARY KEY (sourceType, sourceId, role, iriHash)
+);
+
+CREATE INDEX IF NOT EXISTS ontology_reference_target_index
+  ON ontology_reference (ontologyId, iriHash, sourceType, sourceId, role);
+
+CREATE INDEX IF NOT EXISTS ontology_concept_listing_index ON ontology_concept_entity (ontologyId, deleted, name, id);
+
+CREATE INDEX IF NOT EXISTS ontology_property_listing_index ON ontology_property_entity (ontologyId, deleted, name, id);
+
+CREATE INDEX IF NOT EXISTS ontology_axiom_listing_index ON ontology_axiom_entity (ontologyId, deleted, name, id);
+
+-- Approval state belongs only to immutable ontology releases.
+ALTER TABLE ontology_entity DROP COLUMN IF EXISTS entityStatus;
+ALTER TABLE ontology_concept_entity DROP COLUMN IF EXISTS entityStatus;
+ALTER TABLE ontology_property_entity DROP COLUMN IF EXISTS entityStatus;
+ALTER TABLE ontology_axiom_entity DROP COLUMN IF EXISTS entityStatus;
+
+-- Unreleased glossary axiom drafts cannot be applied to the independent ontology model.
+DELETE FROM entity_relationship WHERE
+  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb))) OR
+  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb)));
+DELETE FROM entity_extension WHERE id IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb));
+DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND (json->'operations' @> '[{"operationType":"UPSERT_AXIOM"}]'::jsonb OR json->'operations' @> '[{"operationType":"DELETE_AXIOM"}]'::jsonb);
+
+-- Retire unreleased glossary ontology fields without changing released term relations or identity.
+UPDATE glossary_entity SET json = json - 'ontologyConfiguration' WHERE jsonb_exists(json, 'ontologyConfiguration');
+UPDATE glossary_term_entity SET json = json - ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds'] WHERE jsonb_exists_any(json, ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']);
+UPDATE entity_extension SET json = json - 'ontologyConfiguration' WHERE jsonSchema = 'glossary' AND jsonb_exists(json, 'ontologyConfiguration');
+UPDATE entity_extension SET json = json - ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds'] WHERE jsonSchema = 'glossaryTerm' AND jsonb_exists_any(json, ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']);
+DELETE FROM entity_relationship WHERE fromEntity = 'glossaryTerm'
+  AND (relation = 26 OR (relation = 27 AND toEntity = 'contextMemory'));
+
+-- Reset incompatible, unreleased glossary authoring drafts and their history. Native drafts remain.
+DELETE FROM entity_relationship WHERE
+  (fromEntity = 'ontologyChangeSet' AND fromId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')))) OR
+  (toEntity = 'ontologyChangeSet' AND toId IN (SELECT id FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'))));
+DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration')));
+DELETE FROM ontology_change_set_entity WHERE json->'ontology'->>'id' IS NULL AND EXISTS (SELECT 1 FROM jsonb_array_elements(COALESCE(json->'operations', '[]'::jsonb)) operation WHERE operation->>'operationType' IN ('UPSERT_ATTRIBUTE', 'DELETE_ATTRIBUTE') OR jsonb_exists_any(operation->'term', ARRAY['attributes', 'effectiveAttributes', 'realizedIn', 'conceptType', 'ontologySource', 'sourceMemoryIds']) OR jsonb_exists(operation->'glossary', 'ontologyConfiguration'));

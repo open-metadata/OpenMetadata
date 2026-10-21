@@ -4,6 +4,7 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,6 +18,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface SearchClient
     extends IndexManagementClient,
@@ -141,6 +143,56 @@ public interface SearchClient
 
   String REMOVE_TAGS_CHILDREN_SCRIPT =
       "ctx._source.tags.removeIf(tag -> tag.tagFQN == params.fqn);" + TAG_RESEPARATION_SCRIPT;
+
+  /**
+   * Drops references to {@code params.ids} (lowercase UUIDs) from custom-property values: {@code
+   * extension} entries (a single reference or a list), {@code customPropertiesTyped}, and the same
+   * fields on every column and nested child column. A property left without references is removed.
+   * Ids are compared in lower case, since documents written before 2.1 may hold them as sent. The
+   * ids are held in a set, so each element of a reference list costs one hash lookup.
+   */
+  String REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT =
+      """
+      boolean isDead(def id, Set dead) {
+        return id != null && dead.contains(id.toString().toLowerCase());
+      }
+      boolean dropRefs(Map holder, Set dead) {
+        boolean changed = false;
+        def ext = holder.get('extension');
+        if (ext instanceof Map) {
+          List emptied = new ArrayList();
+          for (def key : ext.keySet()) {
+            def value = ext.get(key);
+            if (value instanceof List) {
+              if (value.removeIf(r -> r instanceof Map && isDead(r.get('id'), dead))) {
+                changed = true;
+                if (value.isEmpty()) { emptied.add(key); }
+              }
+            } else if (value instanceof Map && isDead(value.get('id'), dead)) {
+              emptied.add(key);
+              changed = true;
+            }
+          }
+          for (def key : emptied) { ext.remove(key); }
+        }
+        def typed = holder.get('customPropertiesTyped');
+        if (typed instanceof List
+            && typed.removeIf(e -> e instanceof Map && isDead(e.get('refId'), dead))) {
+          changed = true;
+        }
+        for (def nestedKey : ['columns', 'children']) {
+          def nested = holder.get(nestedKey);
+          if (nested instanceof List) {
+            for (def child : nested) {
+              if (child instanceof Map && dropRefs(child, dead)) { changed = true; }
+            }
+          }
+        }
+        return changed;
+      }
+      Set dead = new HashSet(params.ids);
+      if (!dropRefs(ctx._source, dead)) { ctx.op = 'noop'; }
+      """;
 
   String REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT =
       "ctx._source.dataProducts.removeIf(product -> product.fullyQualifiedName == params.fqn)";
@@ -794,6 +846,12 @@ public interface SearchClient
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException;
 
+  /**
+   * The entity search lineage roots a graph on for {@code fqn}: the indexed document with that FQN,
+   * found the way {@link #searchLineage} finds it. Empty when nothing is indexed under the FQN.
+   */
+  Optional<EntityReference> getLineageRoot(String fqn) throws IOException;
+
   default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,
@@ -841,6 +899,31 @@ public interface SearchClient
       String activeFqn, String pageType, SearchSortFilter sortFilter, int offset, int limit) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /** As {@link #listPageHierarchy}, leaving out pages {@code caller}'s access policies deny. */
+  default ResultList listPageHierarchy(
+      String parent,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchy(parent, pageType, sortFilter, offset, limit);
+  }
+
+  /**
+   * As {@link #listPageHierarchyForActivePage}, leaving out pages {@code caller}'s access policies
+   * deny.
+   */
+  default ResultList listPageHierarchyForActivePage(
+      String activeFqn,
+      String pageType,
+      SearchSortFilter sortFilter,
+      int offset,
+      int limit,
+      SubjectContext caller) {
+    return listPageHierarchyForActivePage(activeFqn, pageType, sortFilter, offset, limit);
   }
 
   @SuppressWarnings("unused")

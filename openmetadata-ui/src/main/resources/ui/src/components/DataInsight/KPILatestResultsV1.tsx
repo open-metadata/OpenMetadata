@@ -11,14 +11,23 @@
  *  limitations under the License.
  */
 
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Grid,
+  ProgressBar,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   chartColor,
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress, Tooltip } from 'antd';
+
+import {
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -93,7 +102,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
-                      <CheckCircleOutlined style={{ fontSize: '20px' }} />
+                      <CheckCircle className="tw:shrink-0" size={20} />
                     </Typography>
                   </>
                 ) : (
@@ -121,22 +130,28 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                   </Typography>
                   {daysLeft <= 0 || isTargetMet ? (
                     <Tooltip
+                      arrow
+                      excludeTriggerFromTabOrder
                       placement="bottom"
                       title={getKpiResultFeedback(
                         daysLeft,
                         Boolean(isTargetMet)
                       )}
-                      trigger="hover">
-                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                      triggerClassName="tw:inline-flex">
+                      <InfoCircle className="tw:shrink-0" size={14} />
                     </Tooltip>
                   ) : null}
                 </Box>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">

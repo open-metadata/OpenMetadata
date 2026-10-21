@@ -80,6 +80,9 @@ export interface ActivityChange {
   after: string[];
   // Descriptions are prose, not a set of chips.
   isText: boolean;
+  // Values on both sides that the change keeps, e.g. a tag task's current
+  // tags. An activity event records only the change, so it has none.
+  unchanged?: string[];
 }
 
 const CHANGE_LABEL_KEY: Partial<Record<ActivityEventType, string>> = {
@@ -222,6 +225,42 @@ const getTagChange = (before: string[], after: string[]): TagChange => {
 const isTierChange = (tags: string[]) =>
   tags.length > 0 && tags.every((tag) => tag.startsWith(TIER_TAG_PREFIX));
 
+const TAG_EVENTS = new Set([
+  ActivityEventType.TagsUpdated,
+  ActivityEventType.ColumnTagsUpdated,
+]);
+
+const getTagEventType = (activity: ActivityEvent): ActivityEventType => {
+  const { before = [], after = [] } = getActivityChange(activity) ?? {};
+  if (isTierChange([...before, ...after])) {
+    return ActivityEventType.TierUpdated;
+  }
+
+  return getChangeTarget(activity) === 'column'
+    ? ActivityEventType.ColumnTagsUpdated
+    : ActivityEventType.TagsUpdated;
+};
+
+/**
+ * The kind of change a card shows, as its sentence reads it: a tier arrives
+ * as a tags change, and a column's change can arrive as its asset's.
+ */
+export const getActivityKindType = (
+  activity: ActivityEvent
+): ActivityEventType => {
+  const { eventType } = activity;
+  if (TAG_EVENTS.has(eventType)) {
+    return getTagEventType(activity);
+  }
+  if (DESCRIPTION_EVENTS.has(eventType)) {
+    return getChangeTarget(activity) === 'column'
+      ? ActivityEventType.ColumnDescriptionUpdated
+      : ActivityEventType.DescriptionUpdated;
+  }
+
+  return eventType;
+};
+
 const getTagsLabel = (activity: ActivityEvent, t: TFunction): string => {
   const { before = [], after = [] } = getActivityChange(activity) ?? {};
   if (isTierChange([...before, ...after])) {
@@ -243,10 +282,7 @@ export const getActivityEventLabel = (
   t: TFunction
 ): string => {
   const { eventType, fieldName } = activity;
-  if (
-    eventType === ActivityEventType.TagsUpdated ||
-    eventType === ActivityEventType.ColumnTagsUpdated
-  ) {
+  if (TAG_EVENTS.has(eventType)) {
     return getTagsLabel(activity, t);
   }
   if (DESCRIPTION_EVENTS.has(eventType)) {
@@ -311,6 +347,23 @@ export enum ActivityGrouping {
   Asset = 'asset',
   User = 'user',
 }
+
+// The recessed surface a card's message and a change's Before sit on: the
+// design's gray-blue in light; in dark the page's own well, as AI Analytics
+// sets its chart previews into their cards.
+export const INBOX_RECESSED_SURFACE_CLASS =
+  'tw:bg-utility-gray-blue-50 tw:dark:bg-primary';
+
+// A message's links and @mentions read as the card's asset link does: brand
+// blue that follows dark mode, not the editor's fixed primary color. `!`: the
+// editor's own link rule is more specific.
+export const INBOX_MESSAGE_CLASS =
+  'inbox-feed-message tw:[&_a]:text-brand-secondary!';
+
+// An asset's 16px icon beside text: the design system's 1.3 stroke, not the
+// heavier 1.5 the shared entity icons draw with, so it matches the type.
+export const INBOX_ENTITY_ICON_CLASS =
+  'tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4 tw:[&_svg]:[stroke-width:1.3]';
 
 // The Type filter's options: the change panel's field labels, plus Other for
 // everything without one (lifecycle events, conversations).
@@ -407,6 +460,10 @@ export const formatInboxCount = ({ total, isCapped }: InboxCount): string => {
 
   return isCapped ? `${total}+` : String(total);
 };
+
+// A tab's `badge`: the formatted count, or none when there is nothing to count.
+export const getInboxTabBadge = (count?: InboxCount): string | undefined =>
+  count?.total ? formatInboxCount(count) : undefined;
 
 /**
  * Whether a millis timestamp falls inside the selected Inbox date window.

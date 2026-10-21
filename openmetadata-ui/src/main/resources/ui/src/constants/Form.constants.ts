@@ -11,41 +11,42 @@
  *  limitations under the License.
  */
 
-import { Rule } from 'antd/lib/form';
-
+import type { EntityNameValidationRule } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import i18n from '../utils/i18next/LocalUtil';
 import { ENTITY_NAME_REGEX } from './regex.constants';
 
-export const NAME_FIELD_RULES: Rule[] = [
-  {
-    required: true,
-    message: i18n.t('label.field-required', {
-      field: i18n.t('label.name'),
-    }),
-  },
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.name'),
+const ENTITY_NAME_MAX_LENGTH = 128;
+
+const sizeMessage = (labelKey: string) =>
+  String(
+    i18n.t('message.entity-size-in-between', {
+      entity: i18n.t(labelKey),
       min: 1,
-      max: 128,
-    }),
-  },
-  {
-    pattern: ENTITY_NAME_REGEX,
-    message: i18n.t('message.entity-name-validation'),
-  },
+      max: ENTITY_NAME_MAX_LENGTH,
+    })
+  );
+
+const NAME_REQUIRED_MESSAGE = String(
+  i18n.t('label.field-required', { field: i18n.t('label.name') })
+);
+const NAME_SIZE_MESSAGE = sizeMessage('label.name');
+const NAME_PATTERN_MESSAGE = String(i18n.t('message.entity-name-validation'));
+const DISPLAY_NAME_SIZE_MESSAGE = sizeMessage('label.display-name');
+
+export const DISPLAY_NAME_FIELD_RULES: EntityNameValidationRule[] = [
+  { min: 1, max: ENTITY_NAME_MAX_LENGTH, message: DISPLAY_NAME_SIZE_MESSAGE },
 ];
 
-export const DISPLAY_NAME_FIELD_RULES: Rule[] = [
-  {
-    min: 1,
-    max: 128,
-    message: i18n.t('message.entity-size-in-between', {
-      entity: i18n.t('label.display-name'),
-      min: 1,
-      max: 128,
-    }),
+export const NAME_FIELD_REGISTER_RULES = {
+  required: NAME_REQUIRED_MESSAGE,
+  maxLength: { value: ENTITY_NAME_MAX_LENGTH, message: NAME_SIZE_MESSAGE },
+  pattern: { value: ENTITY_NAME_REGEX, message: NAME_PATTERN_MESSAGE },
+};
+
+/** react-hook-form counterpart of DISPLAY_NAME_FIELD_RULES. */
+export const DISPLAY_NAME_FIELD_REGISTER_RULES = {
+  maxLength: {
+    value: ENTITY_NAME_MAX_LENGTH,
+    message: DISPLAY_NAME_SIZE_MESSAGE,
   },
-];
+};

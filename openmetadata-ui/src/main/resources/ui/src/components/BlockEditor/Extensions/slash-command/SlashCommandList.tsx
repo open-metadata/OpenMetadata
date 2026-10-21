@@ -12,7 +12,6 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import { Image } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
@@ -116,41 +115,29 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
     return (
       <Box
         inline
-        align="stretch"
-        className="layout-space slash-menu-wrapper"
+        className="slash-menu-wrapper"
         direction="col"
         gap={2}
-        id="editor-commands-viewport"
-        itemClassName="layout-space-item">
+        id="editor-commands-viewport">
         {filteredItems.map((item, index) => (
           <Box
             inline
             align="center"
-            className={`layout-space layout-space-horizontal ${classNames(
-              'w-full cursor-pointer slash-command-item',
-              {
-                'bg-grey-2': index === selectedIndex,
-              }
-            )}`}
+            className={classNames('w-full cursor-pointer slash-command-item', {
+              'bg-grey-2': index === selectedIndex,
+            })}
             gap={2}
             id={`editor-command-${item.title}`}
-            itemClassName="layout-space-item"
             key={item.title}
             onClick={() => selectItem(index)}>
-            <Image
+            <img
+              alt=""
               className={classNames('slash-command-image', {
                 'svg-image': item.isSvg,
               })}
-              preview={false}
               src={item.imgSrc}
             />
-            <Box
-              inline
-              align="stretch"
-              className="layout-space"
-              direction="col"
-              gap={0}
-              itemClassName="layout-space-item">
+            <Box inline direction="col">
               <Typography as="article" className="font-bold">
                 {item.title}
               </Typography>

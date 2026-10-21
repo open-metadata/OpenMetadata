@@ -38,11 +38,11 @@
         "Clickhouse",
         "Clickzetta",
         "Databricks",
+        "Databend",
         "AzureSQL",
         "DynamoDB",
         "SingleStore",
         "SQLite",
-        "DeltaLake",
         "Salesforce",
         "PinotDB",
         "Datalake",
@@ -75,7 +75,8 @@
         "Iomete",
         "QuestDB",
         "Data360",
-        "SapBw4Hana"
+        "SapBw4Hana",
+        "Neo4j"
       ],
       "javaEnums": [
         {
@@ -145,6 +146,9 @@
           "name": "Databricks"
         },
         {
+          "name": "Databend"
+        },
+        {
           "name": "AzureSQL"
         },
         {
@@ -155,9 +159,6 @@
         },
         {
           "name": "SQLite"
-        },
-        {
-          "name": "DeltaLake"
         },
         {
           "name": "Salesforce"
@@ -257,6 +258,9 @@
         },
         {
           "name": "SapBw4Hana"
+        },
+        {
+          "name": "Neo4j"
         }
       ]
     },
@@ -292,10 +296,10 @@
               "$ref": "./connections/database/databricksConnection.json"
             },
             {
-              "$ref": "./connections/database/db2Connection.json"
+              "$ref": "./connections/database/databendConnection.json"
             },
             {
-              "$ref": "./connections/database/deltaLakeConnection.json"
+              "$ref": "./connections/database/db2Connection.json"
             },
             {
               "$ref": "./connections/database/druidConnection.json"
@@ -446,6 +450,9 @@
             },
             {
               "$ref": "./connections/database/sapBw4HanaConnection.json"
+            },
+            {
+              "$ref": "./connections/database/neo4jConnection.json"
             }
           ]
         }

@@ -19,9 +19,8 @@ import {
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { expect, test as base } from '../../support/fixtures/base';
+import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { AdminClass } from '../../support/user/AdminClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -29,7 +28,6 @@ import {
   getApiContext,
   redirectToHomePage,
   toastNotification,
-  waitForAntdModalToSettle,
 } from '../../utils/common';
 import {
   getCustomizeDetailsDefaultTabs,
@@ -55,7 +53,6 @@ const navigationPersona = new PersonaClass();
 // layout, so the tab-order test gets its own persona and user; otherwise it
 // inherits that layout whenever both tests run in the same worker.
 const glossaryTermPersona = new PersonaClass();
-const adminUser = new AdminClass();
 const user = new UserClass();
 const glossaryTermUser = new UserClass();
 
@@ -64,11 +61,13 @@ const test = base.extend<{
   userPage: Page;
   glossaryTermUserPage: Page;
 }>({
-  adminPage: async ({ browser }, use) => {
-    const adminPage = await browser.newPage();
-    await adminUser.signIn(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+  // The admin needs no persona of its own, so the worker's isolated admin
+  // (signed in once by the fixture) stands in for a per-file account.
+  adminPage: async ({ isolatedUserPage }, use) => {
+    // The fixture page starts blank; land on the app as signIn() used to, so
+    // helpers that read the session from the page find the token.
+    await redirectToHomePage(isolatedUserPage);
+    await use(isolatedUserPage);
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -84,11 +83,11 @@ const test = base.extend<{
   },
 });
 
+test.use({ isolatedUserOptions: { isAdmin: true } });
+
 test.beforeAll('Setup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
-  await adminUser.create(apiContext);
-  await adminUser.setAdminRole(apiContext);
   await user.create(apiContext);
   await user.setAdminRole(apiContext);
   await glossaryTermUser.create(apiContext);
@@ -162,7 +161,6 @@ test.beforeAll('Setup Customize tests', async ({ browser }) => {
 
 test.afterAll('Cleanup Customize tests', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
   await user.delete(apiContext);
   await glossaryTermUser.delete(apiContext);
   await persona.delete(apiContext);
@@ -204,7 +202,11 @@ test.describe(
       await adminPage.getByText('Data Assets').click();
 
       for (const type of Object.values(ECustomizedDataAssets)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -214,7 +216,11 @@ test.describe(
       await adminPage.getByText('Governance').click();
 
       for (const type of Object.values(ECustomizedGovernance)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -244,28 +250,28 @@ test.describe(
         // Hide Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
@@ -306,49 +312,49 @@ test.describe(
         // Show Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Show Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Hide Glossary
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Glossary')
+          .getByRole('row', { name: 'Glossary', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Glossary')
+            .getByRole('row', { name: 'Glossary', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Incident Manager
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Incident Manager')
+          .getByRole('row', { name: 'Incident Manager', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
         await adminPage.getByTestId('save-button').click();
@@ -422,7 +428,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Data Assets').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
@@ -481,9 +490,6 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' });
 
-        // Wait for dialog animation to complete and button to be stable
-        await adminPage.locator('.ant-modal').waitFor({ state: 'visible' });
-        await waitForAntdModalToSettle(adminPage);
         await expect(addButton).toBeEnabled();
         await addButton.click();
 
@@ -581,7 +587,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Governance').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
@@ -798,7 +807,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Data Assets').click();
-      await adminPage.getByText('Table', { exact: true }).click();
+      await adminPage.getByTestId('Table').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 
@@ -907,7 +916,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Governance').click();
-      await adminPage.getByText('Domain', { exact: true }).click();
+      await adminPage.getByTestId('Domain').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 

@@ -12,7 +12,7 @@
  */
 
 import type { TFunction } from 'i18next';
-import type { FC } from 'react';
+import type { ComponentType, FC } from 'react';
 import type { AuthProvider } from '../../../../../../generated/settings/settings';
 
 export type PlatformSettingsPageId =
@@ -27,20 +27,25 @@ export type PlatformSettingsPageId =
   | 'data-asset-rules'
   | 'learning-resources'
   | 'search'
-  | 'app-mode';
+  | 'table-schema'
+  | 'app-mode'
+  | 'glossary'
+  | 'time-format';
 
 export type PlatformSettingsView =
   | { type: 'landing' }
   | {
       type: 'page';
-      page: PlatformSettingsPageId;
+      /** A built-in `PlatformSettingsPageId`, or a contributed page's id. */
+      page: string;
       isEditing: boolean;
       /** List pages: the item being edited; absent on `edit` means "add". */
       itemId?: string;
     };
 
 export interface PlatformSettingsPage {
-  id: PlatformSettingsPageId;
+  /** A built-in `PlatformSettingsPageId`, or a contributed page's id. */
+  id: string;
   icon: FC<{ className?: string }>;
   titleKey: string;
   descriptionKey: string;
@@ -57,13 +62,32 @@ export interface PlatformSettingsPage {
   getItemTitle?: (t: TFunction, itemId: string) => string;
   /** Overrides the default "Edit {title}" header, e.g. "Add Dimension" on a list page. */
   getEditTitle?: (t: TFunction, itemId?: string) => string;
+  /** Read-only view of a contributed page; built-in pages are mapped in the panel. */
+  component?: ComponentType<PlatformSettingsPageProps>;
 }
+
+/**
+ * A page a downstream build adds through `PLATFORM_SETTINGS_PAGES`. View-only:
+ * edit and item routes resolve through the built-in maps, so they are not part
+ * of the contract (ADR:2026-10-12-platform-settings-pages-extension-point).
+ */
+export type PlatformSettingsPageContribution = Pick<
+  PlatformSettingsPage,
+  'id' | 'icon' | 'titleKey' | 'descriptionKey' | 'isBeta' | 'isVisible'
+> &
+  Required<Pick<PlatformSettingsPage, 'component'>>;
 
 /** Shared by every platform-settings page: report back to the panel. */
 export interface PlatformSettingsPageProps {
   itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
   onSetHeaderActions: (actions: React.ReactNode) => void;
+  /**
+   * State the page saved before it unmounted (e.g. a list's search and page
+   * while one of its items is open), kept by the panel until it closes.
+   */
+  savedState?: unknown;
+  onSaveState?: (state: unknown) => void;
 }
 
 export interface PlatformSettingsFormProps {

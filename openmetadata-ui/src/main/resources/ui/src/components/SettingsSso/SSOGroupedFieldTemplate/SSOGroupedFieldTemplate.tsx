@@ -11,18 +11,28 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
-import { Box } from '@openmetadata/ui-core-components';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+  Button,
+} from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
   ObjectFieldTemplatePropertyType,
   ObjectFieldTemplateProps,
 } from '@rjsf/utils';
-import { Button, Collapse } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { createElement, Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ADVANCED_PROPERTIES } from '../../../constants/Services.constant';
+import {
+  SSO_AUTHENTICATION_FIELD_GROUPS,
+  SSO_AUTHORIZER_FIELD_GROUPS,
+} from '../../../constants/SSO.constant';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import './sso-grouped-field-template.less';
 import { FieldGroup, PropertyMap } from './SSOGroupedFieldTemplate.interface';
@@ -77,7 +87,7 @@ const buildAuthConfigRootGroups = (
 
   // Root authentication configuration grouping
   const basicConfigFields = visibleProperties.filter((prop) =>
-    ['provider', 'providerName'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.basic.includes(prop.name)
   );
   if (basicConfigFields.length > 0) {
     groups.push({
@@ -88,9 +98,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const clientFields = visibleProperties.filter((prop) =>
-    ['clientType', 'enableSelfSignup', 'clientId', 'callbackUrl'].includes(
-      prop.name
-    )
+    SSO_AUTHENTICATION_FIELD_GROUPS.client.includes(prop.name)
   );
   if (clientFields.length > 0) {
     groups.push({
@@ -101,7 +109,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const authorityFields = visibleProperties.filter((prop) =>
-    ['authority', 'domain'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.authority.includes(prop.name)
   );
   if (authorityFields.length > 0) {
     groups.push({
@@ -112,7 +120,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const securityFields = visibleProperties.filter((prop) =>
-    ['publicKeyUrls', 'tokenValidationAlgorithm'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.security.includes(prop.name)
   );
   if (securityFields.length > 0) {
     groups.push({
@@ -123,7 +131,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const credentialsFields = visibleProperties.filter((prop) =>
-    ['secret', 'clientSecret'].includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.credentials.includes(prop.name)
   );
   if (credentialsFields.length > 0) {
     groups.push({
@@ -134,9 +142,7 @@ const buildAuthConfigRootGroups = (
   }
 
   const configObjectFields = visibleProperties.filter((prop) =>
-    ['oidcConfiguration', 'ldapConfiguration', 'samlConfiguration'].includes(
-      prop.name
-    )
+    SSO_AUTHENTICATION_FIELD_GROUPS.providerConfigs.includes(prop.name)
   );
   configObjectFields.forEach((field) => {
     groups.push({
@@ -145,19 +151,8 @@ const buildAuthConfigRootGroups = (
     });
   });
 
-  const identityFieldNames = [
-    // Every provider honours these: LDAP maps them onto directory attributes (falling back to
-    // mailAttributeName/displayName) and SAML reads them as assertion attribute names, so the
-    // fields stay configurable for all of them.
-    'emailClaim',
-    'displayNameClaim',
-    'jwtPrincipalClaims',
-    'jwtPrincipalClaimsMapping',
-    'jwtTeamClaimMapping',
-  ];
-
   const identityFields = visibleProperties.filter((prop) =>
-    identityFieldNames.includes(prop.name)
+    SSO_AUTHENTICATION_FIELD_GROUPS.identity.includes(prop.name)
   );
   if (identityFields.length > 0) {
     groups.push({
@@ -198,7 +193,7 @@ const buildAuthorizerConfigGroups = (
 
   // Authorizer configuration grouping — new fields first, deprecated in separate group
   const adminFields = visibleProperties.filter((prop) =>
-    ['adminEmails'].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.admin.includes(prop.name)
   );
   if (adminFields.length > 0) {
     groups.push({
@@ -209,7 +204,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const domainFields = visibleProperties.filter((prop) =>
-    ['allowedEmailDomains', 'botDomain'].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.domain.includes(prop.name)
   );
   if (domainFields.length > 0) {
     groups.push({
@@ -220,12 +215,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const connectionFields = visibleProperties.filter((prop) =>
-    [
-      'enableSecureSocketConnection',
-      'className',
-      'containerRequestFilter',
-      'useRolesFromProvider',
-    ].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.connection.includes(prop.name)
   );
   if (connectionFields.length > 0) {
     groups.push({
@@ -236,13 +226,7 @@ const buildAuthorizerConfigGroups = (
   }
 
   const deprecatedFields = visibleProperties.filter((prop) =>
-    [
-      'adminPrincipals',
-      'principalDomain',
-      'enforcePrincipalDomain',
-      'allowedDomains',
-      'botPrincipals',
-    ].includes(prop.name)
+    SSO_AUTHORIZER_FIELD_GROUPS.deprecated.includes(prop.name)
   );
   if (deprecatedFields.length > 0) {
     groups.push({
@@ -329,8 +313,15 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
   ObjectFieldTemplateProps
 > = (props: ObjectFieldTemplateProps) => {
   const { t } = useTranslation();
-  const { formContext, idSchema, title, onAddClick, schema, properties } =
-    props;
+  const {
+    disabled,
+    formContext,
+    idSchema,
+    title,
+    onAddClick,
+    schema,
+    properties,
+  } = props;
 
   const { advancedProperties, normalProperties } = properties.reduce(
     (propertyMap, currentProperty) => {
@@ -406,13 +397,13 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
 
           {schema.additionalProperties && (
             <Button
+              aria-label={t('label.add')}
+              color="primary"
               data-testid={`add-item-${title}`}
-              icon={
-                <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-              }
+              iconLeading={Plus}
               id={`${idSchema.$id}`}
-              size="small"
-              type="primary"
+              isDisabled={disabled}
+              size="xs"
               onClick={() => {
                 onAddClick(schema)();
               }}
@@ -472,36 +463,36 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
       })}
 
       {!isEmpty(advancedProperties) && (
-        <Collapse
+        <Accordion
+          allowsMultipleExpanded
           className={classNames('sso-advanced-properties-collapse', {
             'm-t-sm': shouldApplyGrouping,
-          })}
-          expandIconPosition="end">
+          })}>
           {/* Advanced fields must stay mounted: transformErrors discards any error whose
               field is absent from the DOM, so destroying the collapsed panel silently
               swallowed both client and server validation errors for fields like
               tokenValidity instead of surfacing them. */}
-          <Collapse.Panel
-            forceRender
-            header={t('label.advanced-config')}
-            key="1">
-            <div
-              className={classNames({
-                'sso-field-group-box': shouldApplyGrouping,
-                'default-object-field': !shouldApplyGrouping,
-              })}>
-              {advancedProperties.map((element) => (
-                <div
-                  className={classNames('property-wrapper', {
-                    'additional-fields': schema.additionalProperties,
-                  })}
-                  key={element.content.key}>
-                  {element.content}
-                </div>
-              ))}
-            </div>
-          </Collapse.Panel>
-        </Collapse>
+          <AccordionItem id="1" key="1">
+            <AccordionHeader>{t('label.advanced-config')}</AccordionHeader>
+            <AccordionPanel>
+              <div
+                className={classNames({
+                  'sso-field-group-box': shouldApplyGrouping,
+                  'default-object-field': !shouldApplyGrouping,
+                })}>
+                {advancedProperties.map((element) => (
+                  <div
+                    className={classNames('property-wrapper', {
+                      'additional-fields': schema.additionalProperties,
+                    })}
+                    key={element.content.key}>
+                    {element.content}
+                  </div>
+                ))}
+              </div>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
     </Fragment>
   );

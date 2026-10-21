@@ -52,8 +52,7 @@ and Docker infrastructure.
   The last line installs the `pre-commit` hooks (`.pre-commit-config.yaml`): on `git commit` they run
   Java format (spotless), Python format (ruff), UI format (prettier), design-token, and Apache-2.0
   license checks on your changed files, matching CI. Do not skip them with `--no-verify`.
-- **Java**: Java 21; use `mvn`. **Frontend**: use `yarn` (never `npm`); frontend root is
-  `openmetadata-ui/src/main/resources/ui/`.
+- **Java**: Java 21; use `mvn`. **Frontend**: use `yarn` (never `npm`); frontend root is `openmetadata-ui/src/main/resources/ui/`.
 - **Docker dev services**: `docker compose -f docker/development/docker-compose.yml up -d`.
 
 ## Repository layout
@@ -73,8 +72,7 @@ Maven modules (reactor order is computed from the graph, not this list):
 - `openmetadata-dist/` — packaging/distribution
 - `openmetadata-clients/` — client artifacts
 
-Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` (DB migrations),
-`conf/` (configuration), `docker/` (local + prod deployment).
+Other key trees: `ingestion/` (Python framework + connectors), `bootstrap/sql/` (DB migrations), `conf/` (configuration), `docker/` (local + prod deployment).
 
 ## Hard cross-cutting constraints (apply to every session, all languages)
 
@@ -119,7 +117,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 **No wrappers around core-ui components.** If a wrapper component exists that wraps a core-ui component, skip it — use the `openmetadata-ui-core-components` component directly at the call site. Only create a wrapper if it adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
 
-**Icons and assets: always go through the design-system layer.** Import icons from `@openmetadata/ui-core-components/icons`, never directly from `@untitledui/icons` — the core-components package re-exports the full icon set and bypassing it can diverge on version upgrades. For the same reason, do not import SVG icons directly from `assets/` paths; use the designated abstraction instead.
+**Icons and assets: always go through the design-system layer.** Import icons from `@openmetadata/ui-core-components/icons`, never directly from `@untitledui/icons` — the barrel ships only the design team's own curated SVG set, so add a missing glyph there via `yarn icons:generate` (see the core-components `ICONS.md`) rather than reaching for `@untitledui/icons`. For the same reason, do not import SVG icons directly from `assets/` paths; use the designated abstraction instead.
 
 ## Pointer index — when to reach for what
 
@@ -127,7 +125,7 @@ on functionality over education. Do not add unnecessary blank lines between pros
 
 | Rule file | Reach for it when you are editing… |
 |---|---|
-| `java.md` | any `**/*.java` — style, spotless, no-wildcard, Kafka-grade method/class rules, ITs |
+| `java.md` / `java-impact-map.md` | any `**/*.java` — style, spotless, no-wildcard, Kafka-grade method/class rules, ITs; own new code and ITs in `.github/java-tests/impact-map.json` before the PR |
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |
@@ -151,6 +149,8 @@ on functionality over education. Do not add unnecessary blank lines between pros
   top-level (`components/`, `pages/`, `rest/`, `utils/`, `hooks/`) and are grouped inside by
   `domain/feature/`; new files use one stem with a role suffix (`GlossaryList.tsx`, `.types.ts`,
   `.utils.ts`, `.test.tsx`). Legacy `.component.tsx`/`.interface.ts` files stay as they are.
+- `REVIEW.md` — **the review bar every PR is held to**: the logic defects, test gaps and flaky-test
+  shapes reviewers keep finding here. Read it before writing code; `pr-checklist` self-reviews against it.
 - `docs/decisions/` — dated records of the choices that shape the code. **When a choice looks
   arbitrary, find its record before re-deciding it; a PR that makes a durable decision adds the
   record in the same PR.** Cite as `ADR:<date>-<slug>`; format and triggers in its `README.md`.
@@ -166,14 +166,14 @@ on functionality over education. Do not add unnecessary blank lines between pros
 | `test-enforcement` | before a PR — 90% changed-class coverage, ITs for new endpoints, Playwright for UI |
 | `java-affected-tests` | before a PR touching Java/schemas/migrations — runs the impacted unit tests + ITs (PR CI runs no ITs) |
 | `verification` | before claiming "done" — run real commands, show evidence |
-| `code-review` | reviewing a diff/PR — spec compliance then code quality |
+| `code-review` | reviewing a local diff before it is a PR — `REVIEW.md` as the bar, spec compliance then code quality |
 | `java-checkstyle` | after touching `.java` — runs `mvn spotless:apply` and verifies |
 | `ui-checkstyle` | after touching UI `*.{ts,tsx,js,jsx,json}` — the exact CI ESLint+Prettier+organize-imports pass |
 | `ui-core-components` | building UI layout/color before reaching for raw `<div>` + Tailwind |
 | `test-locally` | spinning up the full local Docker stack to test a change/connector |
 | `connector-standards` / `connector-building` / `connector-review` | building or reviewing an ingestion connector |
 | `playwright` / `writing-playwright-tests` / `playwright-validation` | authoring or validating Playwright E2E tests |
-| `pr-checklist` | opening/finalizing a PR (fills the repo PR template) |
+| `pr-checklist` / `ui-pr-recording` | opening any PR — self-review against `REVIEW.md`, test evidence, the body; a UI feature PR also runs the build in Docker with sample data and uploads its screen recording |
 | `openmetadata-pr-review` | reviewing a real GitHub PR (number/URL/batch) — maintainer merge verdict: live diff, CI, meaningful-test rubric |
 
 > `openmetadata-workflow` is a meta-skill that routes tasks to the skills above; it is auto-loaded at

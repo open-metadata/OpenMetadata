@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { AxiosError, AxiosResponse } from 'axios';
+import { CSVImportResult } from '../generated/type/csvImportResult';
 import APIClient from './axiosClient';
 
 export interface CsvHeaderDocumentation {
@@ -132,6 +133,33 @@ export const getCsvAsyncJobResult = async (
   );
 
   return response.data;
+};
+
+// The import completion notification carries only the job id and status; the full
+// result is fetched here so a large result never travels through the websocket relay.
+export const getCsvAsyncImportResult = async (
+  jobId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<CSVImportResult>(
+    `/csvAsyncJobs/${jobId}/import-result`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+// Returns the inline result when the completion frame still carries one (e.g. an aborted
+// import); otherwise fetches the persisted result by job id. Callers handle fetch errors.
+export const resolveCsvImportResult = async (
+  jobId?: string,
+  inlineResult?: CSVImportResult
+): Promise<CSVImportResult | undefined> => {
+  if (inlineResult || !jobId) {
+    return inlineResult;
+  }
+
+  return getCsvAsyncImportResult(jobId);
 };
 
 export const cancelCsvAsyncJob = async (jobId: string) => {

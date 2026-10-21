@@ -262,12 +262,29 @@ test.describe('Explore Assets Discovery', () => {
 
     await redirectToHomePage(page);
 
+    const suggestionsRes = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/search/query') &&
+        response.url().includes('exclude_source_fields=dataModel')
+    );
+
     await page.getByTestId('searchBox').click();
     await page.getByTestId('searchBox').fill(table1.entityResponseData.name);
+    await suggestionsRes;
 
+    // The navbar search is the only search box on the home page now; its
+    // popover is there even with no suggestions, which is the case here.
+    const suggestionsPopover = page.getByTestId('global-search-popover');
+
+    await expect(suggestionsPopover).toBeVisible();
+    // Each suggestion is a `data-name` link labelled with the entity's FQN;
+    // the popover's "Press Enter to find …" hint also echoes the typed name,
+    // so assert on the suggestion links, not the popover text.
     await expect(
-      page.locator('.customise-search-overlay, .global-search-overlay')
-    ).not.toContainText(table1.entityResponseData.name);
+      suggestionsPopover
+        .getByTestId('data-name')
+        .filter({ hasText: table1.entityResponseData.fullyQualifiedName })
+    ).toHaveCount(0);
   });
 
   test('Should not display domain and owner of deleted asset in suggestions when showDeleted is off', async ({

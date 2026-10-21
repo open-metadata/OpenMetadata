@@ -26,7 +26,12 @@ import {
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { lazy, useEffect, useRef } from 'react';
-import { RegisterOptions, useFieldArray, UseFormReturn } from 'react-hook-form';
+import {
+  RegisterOptions,
+  useFieldArray,
+  UseFormReturn,
+  useWatch,
+} from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/profiler.constant';
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
@@ -43,6 +48,8 @@ import {
   DIMENSION_FAILURE_POLICY_PARAM,
   getParamOptionLabelKey,
   getThresholdUnitLabelParts,
+  isMinRowsPerDimensionApplicable,
+  MIN_ROWS_PER_DIMENSION_PARAM,
   THRESHOLD_PARAM,
   THRESHOLD_UNIT_PARAM,
 } from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
@@ -64,8 +71,7 @@ const CodeEditor = withSuspenseFallback(
 interface ParamArrayFieldProps {
   form: UseFormReturn<FormValues>;
   data: TestCaseParameterDefinition;
-  // The selected test definition's doc, shown in the Form Hint popover on
-  // focus so the AI modal matches the classic drawer's documentation panel.
+  // The selected test definition's doc, shown in the Form Hint on focus.
   testDefinitionDoc?: string;
 }
 
@@ -124,8 +130,7 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
               // must not repeat it. Validation is still enforced via `rules`.
               required: false,
               rules: rowRequired ? { required: rowRequired } : undefined,
-              // Surface the selected test definition's doc in the Form Hint
-              // popover on focus, matching the classic drawer's doc panel.
+              // Show the selected test definition's doc in the Form Hint.
               doc: testDefinitionDoc ?? data.description,
               placeholder: t('message.enter-a-field', { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
@@ -228,8 +233,7 @@ export interface ParameterFieldsProps {
   definition: TestDefinition;
   table?: Table;
   // Doc for the selected test definition (from TestCaseForm.md), shown in the
-  // Form Hint popover when any parameter field is focused so the AI modal
-  // matches the classic drawer's documentation panel.
+  // Form Hint when any parameter field is focused.
   testDefinitionDoc?: string;
   // `dimensionFailurePolicy` rolls dimension group verdicts up into the test
   // case status, so it only means something on a dimension-level test.
@@ -249,6 +253,28 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   onlyParams,
 }) => {
   const { t } = useTranslation();
+  const [policyValue, unitValue] = useWatch({
+    control: form.control,
+    name: [
+      `params.${DIMENSION_FAILURE_POLICY_PARAM}`,
+      `params.${THRESHOLD_UNIT_PARAM}`,
+    ] as never,
+  }) as unknown[];
+
+  const isHiddenRollUpParam = (name?: string): boolean => {
+    if (name === DIMENSION_FAILURE_POLICY_PARAM) {
+      return !isDimensionalTest;
+    }
+    if (name === MIN_ROWS_PER_DIMENSION_PARAM) {
+      return !isMinRowsPerDimensionApplicable(
+        isDimensionalTest,
+        policyValue,
+        unitValue
+      );
+    }
+
+    return false;
+  };
 
   const buildRules = (
     data: TestCaseParameterDefinition,
@@ -391,8 +417,8 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
           ? t('message.dimension-failure-policy-helper')
           : data.description,
       helperTextType: HelperTextType.TOOLTIP,
-      // Form Hint popover shows the selected test definition's doc (matching
-      // the classic drawer's doc panel); the tooltip keeps the per-param text.
+      // The Form Hint shows the selected test definition's doc; the tooltip
+      // keeps the per-param text.
       doc: testDefinitionDoc ?? data.description,
       // Legacy antd form-item id kept as the stable E2E selector.
       id: `testCaseFormV1_params_${data.name}`,
@@ -488,10 +514,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   return (
     <>
       {params?.map((data) => {
-        if (
-          data.name === DIMENSION_FAILURE_POLICY_PARAM &&
-          !isDimensionalTest
-        ) {
+        if (isHiddenRollUpParam(data.name)) {
           return null;
         }
 

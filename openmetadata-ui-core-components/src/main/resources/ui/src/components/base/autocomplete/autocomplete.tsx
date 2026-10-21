@@ -10,8 +10,10 @@ import {
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
 import { useResizeObserver } from '@/hooks/use-resize-observer';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { forgetFocusedOptionOnTab } from '@/components/base/select/forget-focused-option';
 import { Search } from '../../../icons';
 import type {
   FocusEventHandler,
@@ -107,6 +109,12 @@ export interface AutocompleteProps
   popoverClassName?: string;
   /** Fires when the dropdown list scrolls — use it to page in more async results. */
   onPopoverScroll?: UIEventHandler<HTMLElement>;
+  /** Pinned above the dropdown list (e.g. a result count); the list scrolls beneath it. */
+  popoverHeader?: ReactNode;
+  /** Pinned below the dropdown list (e.g. keyboard hints). */
+  popoverFooter?: ReactNode;
+  /** Shown when the list is empty, in place of the default "no data" state (e.g. while loading). */
+  emptyState?: ReactNode;
   selectedItems: SelectItemType[] | ListData<SelectItemType>;
   icon?: IconComponentType | null;
   children: AriaListBoxProps<SelectItemType>['children'];
@@ -149,6 +157,7 @@ const InnerAutocomplete = ({
   isDisabled?: boolean;
   placeholder?: string;
 }) => {
+  const { t } = useCoreTranslation();
   const focusManager = useFocusManager();
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
@@ -251,18 +260,22 @@ const InnerAutocomplete = ({
       : allSelected.length - visibleSelected.length;
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
+    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         visibleSelected.map((item) =>
           context.renderTag ? (
             context.renderTag(item, () => context.onRemove(new Set([item.id])))
           ) : (
             <BadgeWithButton
+              // Capped at the field width so a long label ends in an ellipsis.
+              buttonLabel={t('label.remove-entity', { entity: item.label })}
+              className="tw:max-w-full"
               color="gray"
               data-testid="autocomplete-selected-item"
               isDisabled={isDisabled}
               key={item.id}
               size="lg"
+              title={item.label}
               type="modern"
               onButtonClick={() => context.onRemove(new Set([item.id]))}
               onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
@@ -287,7 +300,12 @@ const InnerAutocomplete = ({
           'tw:relative tw:flex tw:min-w-[20%] tw:flex-1 tw:flex-row tw:items-center',
           !isSelectionEmpty && 'tw:ml-0.5',
           !multiple && !isSelectionEmpty && 'tw:hidden'
-        )}>
+        )}
+        onKeyDownCapture={
+          multiple
+            ? (event) => forgetFocusedOptionOnTab(comboBoxStateContext, event)
+            : undefined
+        }>
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
@@ -379,6 +397,9 @@ export const AutocompleteBase = ({
   placeholder = 'Search',
   popoverClassName,
   onPopoverScroll,
+  popoverHeader,
+  popoverFooter,
+  emptyState,
   renderTag,
   filterOption,
   onFocus,
@@ -467,30 +488,8 @@ export const AutocompleteBase = ({
     [onItemCleared]
   );
 
-  // react-aria commits the focused option on blur/Tab, and the listbox focuses
-  // whatever the pointer last passed over — so leaving the field inserted an
-  // option the user never picked. Only a press or Enter adds a value.
-  const isLeavingRef = useRef(false);
-  const suppressCommit = useCallback(() => {
-    isLeavingRef.current = true;
-    queueMicrotask(() => {
-      isLeavingRef.current = false;
-    });
-  }, []);
-  const onKeyDownCapture = useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === 'Tab') {
-        suppressCommit();
-      }
-    },
-    [suppressCommit]
-  );
-
   const onSelectionChange = (id: Key | null) => {
     if (!id) {
-      return;
-    }
-    if (multiple && isLeavingRef.current) {
       return;
     }
     if (!multiple && internalSelected.length >= 1) {
@@ -572,12 +571,21 @@ export const AutocompleteBase = ({
         isVirtualized && 'tw:max-h-80 tw:overflow-y-auto tw:py-1'
       )}
       ref={listBoxRef}
-      renderEmptyState={() => <SelectEmptyState />}
+      renderEmptyState={() => emptyState ?? <SelectEmptyState />}
       selectionMode="multiple"
       onScroll={isVirtualized ? handleScroll : undefined}>
       {visibleChildren}
     </AriaListBox>
   );
+
+  const dropdownList = isVirtualized ? (
+    <Virtualizer layout={ListLayout} layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
+      {listBox}
+    </Virtualizer>
+  ) : (
+    listBox
+  );
+  const hasPopoverChrome = Boolean(popoverHeader || popoverFooter);
 
   // Match the popover width to the trigger. The base Popover relies on
   // `--trigger-width`, but react-aria only sets that on a trigger's own context
@@ -644,10 +652,7 @@ export const AutocompleteBase = ({
           onSelectionChange={onSelectionChange}
           {...props}>
           {(state) => (
-            <div
-              className="tw:flex tw:flex-col tw:gap-1.5"
-              onBlurCapture={suppressCommit}
-              onKeyDownCapture={onKeyDownCapture}>
+            <div className="tw:flex tw:flex-col tw:gap-1.5">
               {label && (
                 <Label isRequired={state.isRequired} tooltip={tooltip}>
                   {label}
@@ -673,20 +678,32 @@ export const AutocompleteBase = ({
                   className={cx(
                     // A virtualized listbox is its own bounded scroller.
                     isVirtualized && 'tw:overflow-hidden tw:py-0',
+                    // Header/footer stay put; the list gets its own scroller.
+                    hasPopoverChrome &&
+                      'tw:flex tw:flex-col tw:overflow-hidden tw:py-0',
                     popoverClassName
                   )}
                   size="md"
                   style={{ width: popoverWidth }}
                   triggerRef={triggerRef}
-                  onScroll={isVirtualized ? undefined : handleScroll}>
-                  {isVirtualized ? (
-                    <Virtualizer
-                      layout={ListLayout}
-                      layoutOptions={VIRTUALIZED_LAYOUT_OPTIONS}>
-                      {listBox}
-                    </Virtualizer>
+                  onScroll={
+                    isVirtualized || hasPopoverChrome ? undefined : handleScroll
+                  }>
+                  {hasPopoverChrome ? (
+                    <>
+                      {popoverHeader}
+                      <div
+                        className={cx(
+                          'tw:min-h-0 tw:flex-1',
+                          !isVirtualized && 'tw:overflow-y-auto tw:py-1'
+                        )}
+                        onScroll={isVirtualized ? undefined : handleScroll}>
+                        {dropdownList}
+                      </div>
+                      {popoverFooter}
+                    </>
                   ) : (
-                    listBox
+                    dropdownList
                   )}
                 </Popover>
               )}

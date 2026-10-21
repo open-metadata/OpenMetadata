@@ -25,17 +25,55 @@ import {
 
 export const DialogTrigger = AriaDialogTrigger;
 
-export const ModalOverlay = (props: AriaModalOverlayProps) => {
+type ModalPresentation = 'dialog' | 'fullscreen';
+const ModalPresentationContext = createContext<ModalPresentation>('dialog');
+
+export const ModalOverlay = ({
+  presentation = 'dialog',
+  ...props
+}: AriaModalOverlayProps & { presentation?: ModalPresentation }) => {
   return (
-    <AriaModalOverlay
+    <ModalPresentationContext.Provider value={presentation}>
+      <AriaModalOverlay
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:justify-center tw:outline-hidden',
+            presentation === 'fullscreen'
+              ? 'tw:items-stretch tw:overflow-hidden'
+              : 'tw:items-end tw:overflow-y-auto tw:bg-overlay/70 tw:dark:bg-overlay/60 tw:px-4 tw:pt-4 tw:pb-[clamp(16px,8vh,64px)] tw:backdrop-blur-[6px] tw:sm:items-center tw:sm:justify-center tw:sm:p-8',
+            presentation !== 'fullscreen' &&
+              state.isEntering &&
+              'tw:duration-300 tw:ease-out tw:animate-in tw:fade-in',
+            presentation !== 'fullscreen' &&
+              state.isExiting &&
+              'tw:duration-200 tw:ease-in tw:animate-out tw:fade-out',
+            typeof props.className === 'function'
+              ? props.className(state)
+              : props.className
+          )
+        }
+      />
+    </ModalPresentationContext.Provider>
+  );
+};
+
+export const Modal = (props: AriaModalOverlayProps) => {
+  const fullscreen = useContext(ModalPresentationContext) === 'fullscreen';
+
+  return (
+    <AriaModal
       {...props}
       className={(state) =>
         cx(
-          'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-end tw:justify-center tw:overflow-y-auto tw:bg-overlay/70 tw:dark:bg-overlay/60 tw:px-4 tw:pt-4 tw:pb-[clamp(16px,8vh,64px)] tw:outline-hidden tw:backdrop-blur-[6px] tw:sm:items-center tw:sm:justify-center tw:sm:p-8',
+          'tw:max-h-full tw:w-full tw:align-middle tw:outline-hidden',
+          fullscreen
+            ? 'tw:h-dvh'
+            : 'tw:max-sm:overflow-y-auto tw:max-sm:rounded-xl',
           state.isEntering &&
-            'tw:duration-300 tw:ease-out tw:animate-in tw:fade-in',
+            'tw:duration-300 tw:ease-out tw:animate-in tw:zoom-in-95',
           state.isExiting &&
-            'tw:duration-200 tw:ease-in tw:animate-out tw:fade-out',
+            'tw:duration-200 tw:ease-in tw:animate-out tw:zoom-out-95',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
@@ -44,24 +82,6 @@ export const ModalOverlay = (props: AriaModalOverlayProps) => {
     />
   );
 };
-
-export const Modal = (props: AriaModalOverlayProps) => (
-  <AriaModal
-    {...props}
-    className={(state) =>
-      cx(
-        'tw:max-h-full tw:w-full tw:align-middle tw:outline-hidden tw:max-sm:overflow-y-auto tw:max-sm:rounded-xl',
-        state.isEntering &&
-          'tw:duration-300 tw:ease-out tw:animate-in tw:zoom-in-95',
-        state.isExiting &&
-          'tw:duration-200 tw:ease-in tw:animate-out tw:zoom-out-95',
-        typeof props.className === 'function'
-          ? props.className(state)
-          : props.className
-      )
-    }
-  />
-);
 
 /**
  * - `always`: a divider under the title and above the footer.
@@ -90,18 +110,29 @@ interface DialogHeaderProps {
   className?: string;
 }
 
-const DialogHeader = ({ title, children, className }: DialogHeaderProps) => (
-  <div className={cx('tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6', className)}>
-    {title && (
-      <Heading
-        className="tw:text-md tw:font-semibold tw:text-primary"
-        slot="title">
-        {title}
-      </Heading>
-    )}
-    {children}
-  </div>
-);
+const DialogHeader = ({ title, children, className }: DialogHeaderProps) => {
+  const fullscreen = useContext(ModalPresentationContext) === 'fullscreen';
+
+  return (
+    <div
+      className={cx(
+        fullscreen
+          ? 'tw:min-h-16 tw:shrink-0 tw:px-4 tw:py-3 tw:sm:px-6'
+          : 'tw:px-4 tw:pt-5 tw:sm:px-6 tw:sm:pt-6',
+        className
+      )}>
+      {title && (
+        <Heading
+          className="tw:text-md tw:font-semibold tw:text-primary"
+          data-testid="dialog-title"
+          slot="title">
+          {title}
+        </Heading>
+      )}
+      {children}
+    </div>
+  );
+};
 
 interface DialogContentProps {
   children?: ReactNode;
@@ -115,6 +146,7 @@ interface DialogContentProps {
 // in openmetadata-ui/collate-ui that worked around this by hand; a consumer
 // can still override via className for a case that genuinely needs more.
 const DialogContent = ({ children, className }: DialogContentProps) => {
+  const fullscreen = useContext(ModalPresentationContext) === 'fullscreen';
   const ref = useRef<HTMLDivElement>(null);
   const { dividers, setContentScrollable } = useContext(DialogDividerContext);
   const measure = useCallback(() => {
@@ -132,7 +164,10 @@ const DialogContent = ({ children, className }: DialogContentProps) => {
   return (
     <div
       className={cx(
-        'tw:flex tw:max-h-[60vh] tw:flex-col tw:justify-start tw:gap-4 tw:overflow-y-auto tw:px-4 tw:pt-5 tw:sm:px-6',
+        'tw:flex tw:flex-col tw:justify-start tw:gap-4 tw:overflow-y-auto tw:px-4 tw:sm:px-6',
+        fullscreen
+          ? 'tw:min-h-0 tw:flex-1 tw:bg-canvas tw:py-6'
+          : 'tw:max-h-[60vh] tw:pt-5',
         className
       )}
       ref={ref}>
@@ -200,6 +235,7 @@ const DialogBase = ({
   dividers = 'always',
   ...props
 }: DialogProps) => {
+  const fullscreen = useContext(ModalPresentationContext) === 'fullscreen';
   const [isContentScrollable, setContentScrollable] = useState(false);
   const dividerContext = useMemo(
     () => ({ dividers, isContentScrollable, setContentScrollable }),
@@ -212,16 +248,22 @@ const DialogBase = ({
         {...props}
         className={cx(
           'tw:flex tw:w-full tw:items-center tw:justify-center tw:outline-hidden',
+          fullscreen && 'tw:h-full',
           props.className as string | undefined
         )}>
         {({ close }) => (
           <div
             className={cx(
-              'tw:relative tw:w-full tw:rounded-2xl tw:bg-overlay-surface tw:shadow-overlay',
+              'tw:relative tw:w-full tw:bg-overlay-surface',
+              fullscreen ? 'tw:h-full' : 'tw:rounded-2xl tw:shadow-overlay',
               panelClassName
             )}
-            style={{ maxWidth: width }}>
-            <div className="tw:overflow-hidden tw:rounded-2xl">
+            style={fullscreen ? undefined : { maxWidth: width }}>
+            <div
+              className={cx(
+                'tw:overflow-hidden',
+                fullscreen ? 'tw:flex tw:h-full tw:flex-col' : 'tw:rounded-2xl'
+              )}>
               {title && (
                 <>
                   <DialogHeader

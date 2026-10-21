@@ -33,17 +33,25 @@ import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
+from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 IMPACT_MAP = ".github/java-tests/impact-map.json"
 RESULTS_DIR = "target/java-tests"
+# The summary goes in the PR description. Everything a reviewer reads only on demand (each
+# class run, why it was chosen, the commands) goes in the details, posted as a PR comment.
 RESULTS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results.md"
+DETAILS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results-details.md"
 BLOCK_START = "<!-- local-java-test-results:start -->"
 BLOCK_END = "<!-- local-java-test-results:end -->"
+# Marks the details comment, so a re-run edits it rather than adding another.
+DETAILS_MARKER = "<!-- local-java-test-results:details -->"
 DEFAULT_PR_HEADING = "#### Backend integration tests"
 # The summary each surefire/failsafe execution prints when it finishes. Per-class lines end in
 # "Time elapsed: … -- in <class>", so only the summaries match in full.
@@ -94,11 +102,15 @@ SKIP_UNIT_TESTS = [
 # step tests never need.
 SKIP_REPACKAGE = "-Dspring-boot.repackage.skip=true"
 INLINE_CLASS_LIMIT = 30
-# GitHub rejects a PR description over 65,536 characters, and the template, the author's text
-# and the Playwright block share that with this block. A <details> block only hides text, so
-# class lists past CLASS_LIST_BUDGET are reduced to counts instead.
+# GitHub rejects a PR description or comment over 65,536 characters. The class lists go in the
+# details comment, next to the selection reasons and the commands. A <details> block only hides
+# text, so class lists past CLASS_LIST_BUDGET are reduced to counts instead.
 GITHUB_BODY_LIMIT = 65_536
 CLASS_LIST_BUDGET = 20_000
+# Names of failed, report-less or all-skipped classes given in the summary; the details give
+# up to DETAILS_NAME_LIMIT. A run that fails outright fails every test.
+SUMMARY_NAME_LIMIT = 10
+DETAILS_NAME_LIMIT = 100
 
 
 @dataclass
@@ -205,6 +217,17 @@ def class_fqn(path: str) -> str | None:
     return None
 
 
+def class_header(text: str, name: str) -> str | None:
+    """The annotations and declaration of class `name` in a Java source, without comments."""
+    declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
+    if not declaration:
+        return None
+    start = 0
+    for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
+        start = statement.end()
+    return COMMENT.sub(" ", text[start : declaration.end()])
+
+
 def is_pattern(test: str) -> bool:
     """A glob or a path; a bare class name is one test, which the map must not list."""
     return any(char in test for char in "*?[/")
@@ -246,6 +269,67 @@ def plural(count: int, noun: str) -> str:
         if noun.endswith("s")
         else f"{count} {noun}s"
     )
+
+
+def committed_files(repo_root: Path, ref: str) -> list[str]:
+    """The files of commit `ref` (blobs only: a submodule is not a file of the checkout)."""
+    files = []
+    for line in git(repo_root, "ls-tree", "-r", ref).splitlines():
+        meta, _, path = line.partition("\t")
+        if meta.split()[1:2] == ["blob"]:
+            files.append(path)
+    return files
+
+
+def read_blobs(repo_root: Path, ref: str, paths: list[str]) -> dict[str, str]:
+    """The contents of `paths` at `ref`, read in one `git cat-file --batch`; a path the
+    commit lacks is left out."""
+    if not paths:
+        return {}
+    out = subprocess.run(
+        ["git", "cat-file", "--batch"],
+        cwd=repo_root,
+        input="".join(f"{ref}:{path}\n" for path in paths).encode(),
+        capture_output=True,
+        check=True,
+    ).stdout
+    blobs: dict[str, str] = {}
+    offset = 0
+    for path in paths:
+        end = out.index(b"\n", offset)
+        header = out[offset:end].split()
+        offset = end + 1
+        if header[-1:] == [b"missing"] or len(header) != 3:
+            continue
+        size = int(header[2])
+        blobs[path] = out[offset : offset + size].decode("utf-8", errors="replace")
+        offset += size + 1
+    return blobs
+
+
+def branch_changes(
+    repo_root: Path, merge_base: str, head: str | None
+) -> tuple[list[str], list[str]]:
+    """(changed, deleted) files since `merge_base`: in commit `head` when given, which is
+    what a push sends; else in the working tree, untracked files included."""
+    target = [head] if head else []
+    changed = git(
+        repo_root, "diff", "--name-only", "--no-renames", merge_base, *target
+    ).splitlines()
+    if not head:
+        changed += git(
+            repo_root, "ls-files", "--others", "--exclude-standard"
+        ).splitlines()
+    deleted = git(
+        repo_root,
+        "diff",
+        "--name-only",
+        "--no-renames",
+        "--diff-filter=D",
+        merge_base,
+        *target,
+    ).splitlines()
+    return sorted({path for path in changed if path}), [p for p in deleted if p]
 
 
 def collect_changed_files(repo_root: Path, base: str) -> list[str]:
@@ -330,39 +414,59 @@ def has_uncommitted_changes(repo_root: Path, ignore: list[str]) -> bool:
 
 
 class Repo:
-    """Read-only view of the checkout the planner selects from."""
+    """Read-only view of the checkout the planner selects from: the working tree, or with
+    `ref` the tree of that commit (what a push sends, whatever the working tree holds)."""
 
-    def __init__(self, root: Path, impact_map: dict[str, Any]):
+    def __init__(self, root: Path, impact_map: dict[str, Any], ref: str | None = None):
         self.root = root
+        self.ref = ref
         self.maven = impact_map["maven"]
         self.it_root = self.maven["integrationTestSourceRoot"]
         self.owned_roots = impact_map.get("ownedRoots", [])
         self.shared_infrastructure = impact_map.get("sharedInfrastructure", [])
         self._imports: dict[str, dict[str, str]] = {}
-        files = git(
-            root, "ls-files", "--cached", "--others", "--exclude-standard"
-        ).splitlines()
-        self.files = [path for path in files if (root / path).is_file()]
-        self.pom = (root / self.maven["integrationTestModule"] / "pom.xml").read_text(
-            encoding="utf-8"
-        )
+        if ref:
+            self.files = committed_files(root, ref)
+        else:
+            files = git(
+                root, "ls-files", "--cached", "--others", "--exclude-standard"
+            ).splitlines()
+            self.files = [path for path in files if (root / path).is_file()]
+        self.file_set = set(self.files)
+        self.pom = self._read(f"{self.maven['integrationTestModule']}/pom.xml")
         self.it_classes = self._integration_test_classes()
         self.unit_test_classes = self._unit_test_classes()
         self.lanes = self._lane_membership()
 
     def _read(self, path: str) -> str:
+        if self.ref:
+            return read_blobs(self.root, self.ref, [path]).get(path, "")
         return (self.root / path).read_text(encoding="utf-8", errors="replace")
+
+    def _read_all(self, paths: list[str]) -> dict[str, str]:
+        if self.ref:
+            return read_blobs(self.root, self.ref, paths)
+        return {path: self._read(path) for path in paths}
+
+    def exists(self, path: str) -> bool:
+        """Whether `path` is a file or a directory of the checkout."""
+        if not self.ref:
+            return (self.root / path).exists()
+        directory = path.rstrip("/") + "/"
+        return path in self.file_set or any(f.startswith(directory) for f in self.files)
 
     @cached_property
     def it_sources(self) -> dict[str, str]:
         """The Java the ITs are made of: the IT tree, and the client code they call the
         server through (`testSideSources`, the SDK)."""
         roots = (self.it_root + "/", *self.maven.get("testSideSources", []))
-        return {
-            path: self._read(path)
-            for path in self.files
-            if path.startswith(roots) and path.endswith(".java")
-        }
+        return self._read_all(
+            [
+                path
+                for path in self.files
+                if path.startswith(roots) and path.endswith(".java")
+            ]
+        )
 
     @cached_property
     def it_words(self) -> dict[str, set[str]]:
@@ -370,17 +474,28 @@ class Repo:
 
     @cached_property
     def production_sources(self) -> dict[str, str]:
-        return {
-            path: self._read(path)
-            for path in self.files
-            if path.endswith(".java")
-            and "/src/main/java/" in path
-            and matches(path, self.owned_roots)
-        }
+        return self._read_all(
+            [
+                path
+                for path in self.files
+                if path.endswith(".java")
+                and "/src/main/java/" in path
+                and matches(path, self.owned_roots)
+            ]
+        )
 
     @cached_property
     def production_words(self) -> dict[str, set[str]]:
         return word_index(self.production_sources)
+
+    @cached_property
+    def production_classes(self) -> dict[str, str]:
+        """Fully qualified class name -> the production source file that declares it."""
+        return {
+            fqn: path
+            for path in self.files
+            if "/src/main/java/" in path and (fqn := class_fqn(path))
+        }
 
     @cached_property
     def universal_helpers(self) -> set[str]:
@@ -425,14 +540,9 @@ class Repo:
         prefix = self.it_root + "/"
         headers = {}
         for relative, name in self.it_classes.items():
-            text = self.it_sources.get(prefix + relative, "")
-            declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
-            if not declaration:
-                continue
-            start = 0
-            for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
-                start = statement.end()
-            headers[relative] = COMMENT.sub(" ", text[start : declaration.end()])
+            header = class_header(self.it_sources.get(prefix + relative, ""), name)
+            if header is not None:
+                headers[relative] = header
         return headers
 
     @cached_property
@@ -497,6 +607,26 @@ class Repo:
                 and UNIT_TEST_CLASS.match(simple_name(path))
             }
         return modules
+
+    def is_abstract_unit_test(self, module: str, name: str) -> bool:
+        path = self.unit_test_classes.get(module, {}).get(name)
+        header = class_header(self._read(path), name) if path else None
+        return bool(header and re.search(r"\babstract\b", header))
+
+    def unit_test_subclasses(self, module: str, base: str) -> list[str]:
+        """The unit test classes of `module` that extend `base` directly."""
+        classes = self.unit_test_classes.get(module, {})
+        subclasses = []
+        for path in self.referencing_files(base, [f"{module}/src/test/java"]):
+            name = simple_name(path)
+            extends = (
+                rf"\bclass\s+{re.escape(name)}\b[^{{]*\bextends\s+{re.escape(base)}\b"
+            )
+            if classes.get(name) == path and re.search(
+                extends, COMMENT.sub(" ", self._read(path))
+            ):
+                subclasses.append(name)
+        return sorted(subclasses)
 
     def _lane_membership(self) -> dict[str, list[str]]:
         """Class-name patterns per lane, read from the IT pom so they cannot drift from CI.
@@ -1026,7 +1156,15 @@ class Planner:
         )
 
     def _add_unit(self, plan: Plan, module: str, name: str, reason: str) -> None:
-        plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
+        if self.repo.is_abstract_unit_test(module, name):
+            # Surefire runs an abstract class's tests only inside the classes extending it, and
+            # reports them under those names; selected by its own name, it never reports.
+            for subclass in self.repo.unit_test_subclasses(module, name):
+                self._add_unit(
+                    plan, module, subclass, f"extends {name}, which {reason}"
+                )
+        else:
+            plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
 
     def _add_unit_tests_for_class(self, plan: Plan, name: str, path: str) -> bool:
         found = False
@@ -1255,15 +1393,11 @@ class Planner:
         return commands
 
 
-def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
-    """Where the map leaves code or tests without an owner, or lists tests one by one.
-
-    Empty when every IT and every production file under `ownedRoots` has an owner. An
-    unowned production file runs the full suite, so a gap costs time, never a missed test.
-    """
+def map_rule_problems(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
+    """Rules the map breaks by itself: engines and profiles the IT pom lacks, missing
+    generated-source paths, single test names, and rule patterns that match nothing."""
     maven = impact_map["maven"]
     module = maven["integrationTestModule"]
-    planner = Planner(repo, impact_map)
     areas = impact_map["areas"]
     problems: list[str] = []
 
@@ -1291,7 +1425,7 @@ def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
         f"generatedSources '{source['module']}': '{path}' does not exist"
         for source in maven.get("generatedSources", [])
         for path in (source["module"], *source["inputs"])
-        if not (repo.root / path).exists()
+        if not repo.exists(path)
     ]
 
     def check_tests(owner: str, patterns: list[str]) -> None:
@@ -1306,11 +1440,10 @@ def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
                 )
 
     for area in areas:
-        check_tests(f"area '{area['name']}'", area["tests"])
         problems += [
-            f"area '{area['name']}': source '{pattern}' matches no file"
-            for pattern in area["sources"]
-            if not any(fnmatch.fnmatchcase(path, pattern) for path in repo.files)
+            f"area '{area['name']}': '{pattern}' names a single test; match tests by pattern"
+            for pattern in area["tests"]
+            if not is_pattern(pattern)
         ]
     for rule in impact_map.get("testEngines", []):
         check_tests("testEngines", rule.get("tests", []))
@@ -1326,49 +1459,297 @@ def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
         for test in impact_map["smoke"]
         if not repo.it_paths_matching(test)
     ]
+    return problems
 
+
+def dead_area_patterns(
+    repo: Repo, impact_map: dict[str, Any]
+) -> list[tuple[str, str, str]]:
+    """(area, "tests" or "sources", pattern) for each area pattern that matches nothing."""
+    dead: list[tuple[str, str, str]] = []
+    for area in impact_map["areas"]:
+        dead += [
+            (area["name"], "tests", pattern)
+            for pattern in area["tests"]
+            if is_pattern(pattern) and not repo.it_paths_matching(pattern)
+        ]
+        dead += [
+            (area["name"], "sources", pattern)
+            for pattern in area["sources"]
+            if not any(fnmatch.fnmatchcase(path, pattern) for path in repo.files)
+        ]
+    return dead
+
+
+def dead_pattern_problem(area: str, kind: str, pattern: str) -> str:
+    if kind == "tests":
+        return f"area '{area}': test pattern '{pattern}' matches no test class"
+    return f"area '{area}': source '{pattern}' matches no file"
+
+
+def unowned_file(
+    path: str, impact_map: dict[str, Any], it_names: Iterable[str]
+) -> bool:
+    """Whether a production file needs an area and has none.
+
+    Files outside `ownedRoots`, ignored files and shared infrastructure need none. An
+    entity file whose name an IT carries (TableRepository.java, TableResourceIT) is owned
+    by that convention.
+    """
+    if (
+        not matches(path, impact_map.get("ownedRoots", []))
+        or matches(path, impact_map["ignore"])
+        or matches(path, impact_map["sharedInfrastructure"])
+        or any(matches(path, area["sources"]) for area in impact_map["areas"])
+    ):
+        return False
+    stem = convention_stem(path)
+    return not (stem and any(stem_matches(stem, name) for name in it_names))
+
+
+def unowned_its(repo: Repo, impact_map: dict[str, Any]) -> dict[str, str]:
+    """IT classes (path under the IT root -> name) that a lane runs and that no area,
+    entity name or notRunLocally rule claims."""
     stems = {convention_stem(path) for path in repo.files} - {None}
-    owned_tests = {
+    owned = {
         relative
-        for area in areas
+        for area in impact_map["areas"]
         for pattern in area["tests"]
         for relative in repo.it_paths_matching(pattern)
     }
-    excluded = [p for rule in maven["notRunLocally"] for p in rule["tests"]]
-    for relative, name in sorted(repo.it_classes.items(), key=lambda item: item[1]):
-        if (
-            relative in owned_tests
-            or relative in repo.never_run
-            or relative in repo.conditional
-            or any(stem_matches(stem, name) for stem in stems)
-            or any(planner._it_pattern_matches(relative, name, p) for p in excluded)
-        ):
-            continue
-        problems.append(
-            f"{name} ({repo.it_root}/{relative}): no area owns it; add a test pattern that "
-            "matches it to the area for the code it tests"
-        )
-
-    unowned: dict[str, list[str]] = {}
-    for path in repo.files:
-        if (
-            not matches(path, impact_map.get("ownedRoots", []))
-            or matches(path, impact_map["ignore"])
-            or matches(path, impact_map["sharedInfrastructure"])
-            or any(matches(path, area["sources"]) for area in areas)
-        ):
-            continue
-        stem = convention_stem(path)
-        if stem and any(stem_matches(stem, name) for name in repo.it_classes.values()):
-            continue
-        unowned.setdefault(path.rsplit("/", 1)[0], []).append(path.rsplit("/", 1)[-1])
-    problems += [
-        f"no area owns {plural(len(names), 'file')} in {directory}/ "
-        f"({', '.join(sorted(names)[:3])}{', ...' if len(names) > 3 else ''}); "
-        "a change there runs the full suite"
-        for directory, names in sorted(unowned.items())
+    elsewhere = [
+        pattern
+        for rule in impact_map["maven"]["notRunLocally"]
+        for pattern in rule["tests"]
     ]
+    return {
+        relative: name
+        for relative, name in sorted(repo.it_classes.items(), key=lambda item: item[1])
+        if relative not in owned
+        and relative not in repo.never_run
+        and relative not in repo.conditional
+        and not any(stem_matches(stem, name) for stem in stems)
+        and not any(Planner._it_pattern_matches(relative, name, p) for p in elsewhere)
+    }
+
+
+def suggest_area(repo: Repo, impact_map: dict[str, Any], path: str) -> str:
+    """Which area an unowned file most likely belongs to, and why; empty when nothing says.
+
+    An IT goes where the other ITs in its package are; any file goes where most of the
+    code it imports is.
+    """
+    areas = impact_map["areas"]
+    prefix = repo.it_root + "/"
+    votes: Counter[str] = Counter()
+    if path.startswith(prefix):
+        package = path[len(prefix) :].rsplit("/", 1)[0]
+        for relative, name in repo.it_classes.items():
+            if relative.rsplit("/", 1)[0] == package and prefix + relative != path:
+                votes.update(
+                    area["name"]
+                    for area in areas
+                    if any(
+                        Planner._it_pattern_matches(relative, name, pattern)
+                        for pattern in area["tests"]
+                    )
+                )
+        if votes:
+            return f"'{votes.most_common(1)[0][0]}' owns the other ITs in its package"
+    text = repo._read(path) if path in repo.file_set else ""
+    for fqn in repo.imports(path, text).values():
+        target = repo.production_classes.get(fqn)
+        if target and target != path:
+            votes.update(
+                area["name"] for area in areas if matches(target, area["sources"])
+            )
+    if votes:
+        ranked = ", ".join(
+            f"'{name}' ({count})" for name, count in votes.most_common(3)
+        )
+        return f"the code it imports belongs to {ranked}"
+    return ""
+
+
+def unowned_file_problems(
+    repo: Repo, impact_map: dict[str, Any], paths: list[str]
+) -> list[str]:
+    """One line per directory of unowned files: the glob to add and the likely area."""
+    by_directory: dict[str, list[str]] = {}
+    for path in paths:
+        by_directory.setdefault(path.rsplit("/", 1)[0], []).append(path)
+    problems = []
+    for directory, files in sorted(by_directory.items()):
+        names = sorted(path.rsplit("/", 1)[-1] for path in files)
+        hint = next(
+            (
+                hint
+                for hint in (suggest_area(repo, impact_map, p) for p in sorted(files))
+                if hint
+            ),
+            "",
+        )
+        problems.append(
+            f"no area owns {plural(len(names), 'file')} in {directory}/ "
+            f"({', '.join(names[:3])}{', ...' if len(names) > 3 else ''}); "
+            f'add "{directory}/**" to the sources of the area for that code'
+            + (f" ({hint})" if hint else "")
+            + "; until then a change there runs the full suite"
+        )
     return problems
+
+
+def unowned_it_problem(
+    repo: Repo, impact_map: dict[str, Any], relative: str, name: str
+) -> str:
+    hint = suggest_area(repo, impact_map, f"{repo.it_root}/{relative}")
+    return (
+        f"{name} ({repo.it_root}/{relative}): no area owns it; add a test pattern that "
+        "matches it to the area for the code it tests" + (f" ({hint})" if hint else "")
+    )
+
+
+def audit_impact_map(repo: Repo, impact_map: dict[str, Any]) -> list[str]:
+    """Where the map leaves code or tests without an owner, or lists tests one by one.
+
+    Empty when every IT and every production file under `ownedRoots` has an owner. An
+    unowned production file runs the full suite, so a gap costs time, never a missed test.
+    """
+    it_names = list(repo.it_classes.values())
+    return (
+        map_rule_problems(repo, impact_map)
+        + [dead_pattern_problem(*dead) for dead in dead_area_patterns(repo, impact_map)]
+        + [
+            unowned_it_problem(repo, impact_map, relative, name)
+            for relative, name in unowned_its(repo, impact_map).items()
+        ]
+        + unowned_file_problems(
+            repo,
+            impact_map,
+            [path for path in repo.files if unowned_file(path, impact_map, it_names)],
+        )
+    )
+
+
+def owner_problems(
+    repo: Repo, impact_map: dict[str, Any], paths: list[str]
+) -> list[str]:
+    """For files an agent just wrote: the ones no area owns, and where they likely belong."""
+    it_names = list(repo.it_classes.values())
+    problems = unowned_file_problems(
+        repo,
+        impact_map,
+        [path for path in paths if unowned_file(path, impact_map, it_names)],
+    )
+    prefix = repo.it_root + "/"
+    its = [
+        path[len(prefix) :]
+        for path in paths
+        if path.startswith(prefix) and path[len(prefix) :] in repo.it_classes
+    ]
+    if its:
+        unowned = unowned_its(repo, impact_map)
+        problems += [
+            unowned_it_problem(repo, impact_map, relative, unowned[relative])
+            for relative in its
+            if relative in unowned
+        ]
+    return problems
+
+
+def branch_map_problems(
+    repo: Repo,
+    impact_map: dict[str, Any],
+    base_map: dict[str, Any] | None,
+    changed: list[str],
+    deleted: list[str],
+) -> list[str]:
+    """What a branch leaves wrong in the map, to fix before its PR is raised.
+
+    The agent that adds code or tests owns them in the map, so these are the branch's
+    problems: code or ITs it adds or edits that no area owns, patterns it empties by
+    deleting what they matched or adds matching nothing, and rules its map edits break.
+    Problems the base branch already had are not the branch's to fix.
+    """
+    present = set(repo.files)
+    touched = [path for path in changed if path in present]
+    it_names = list(repo.it_classes.values())
+    problems = unowned_file_problems(
+        repo,
+        impact_map,
+        [path for path in touched if unowned_file(path, impact_map, it_names)],
+    )
+    prefix = repo.it_root + "/"
+    problems += [
+        unowned_it_problem(repo, impact_map, relative, name)
+        for relative, name in unowned_its(repo, impact_map).items()
+        if prefix + relative in touched
+    ]
+
+    before = {
+        (area["name"], kind, pattern)
+        for area in (base_map or {}).get("areas", [])
+        for kind in ("tests", "sources")
+        for pattern in area.get(kind, [])
+    }
+    removed_its = {
+        path[len(prefix) :]: simple_name(path)
+        for path in deleted
+        if path.startswith(prefix) and path.endswith(".java")
+    }
+    for area, kind, pattern in dead_area_patterns(repo, impact_map):
+        emptied = (
+            any(
+                Planner._it_pattern_matches(relative, name, pattern)
+                for relative, name in removed_its.items()
+            )
+            if kind == "tests"
+            else any(fnmatch.fnmatchcase(path, pattern) for path in deleted)
+        )
+        if emptied:
+            problems.append(
+                dead_pattern_problem(area, kind, pattern)
+                + "; this branch deleted what it matched, so remove it"
+            )
+        elif (area, kind, pattern) not in before:
+            problems.append(
+                dead_pattern_problem(area, kind, pattern)
+                + "; this branch added it, so fix or remove it"
+            )
+
+    if IMPACT_MAP in changed:
+        try:
+            old = set(map_rule_problems(repo, base_map)) if base_map else set()
+        except KeyError:
+            old = set()
+        problems += [p for p in map_rule_problems(repo, impact_map) if p not in old]
+    return problems
+
+
+def check_branch(
+    repo_root: Path,
+    repo: Repo,
+    impact_map: dict[str, Any],
+    base: str,
+    head: str | None = None,
+) -> list[str]:
+    """branch_map_problems against `base`: for commit `head` when given (a push sends that,
+    so `repo` and `impact_map` must be read at it), else for the working tree. None when
+    the base can't be resolved, so a missing fetch never blocks a push."""
+    try:
+        merge_base = git(repo_root, "merge-base", base, head or "HEAD")
+    except subprocess.CalledProcessError:
+        print(
+            f"No merge base with '{base}'; the impact-map check is skipped.",
+            file=sys.stderr,
+        )
+        return []
+    try:
+        base_map = json.loads(git(repo_root, "show", f"{merge_base}:{IMPACT_MAP}"))
+    except (subprocess.CalledProcessError, json.JSONDecodeError):
+        base_map = None
+    changed, deleted = branch_changes(repo_root, merge_base, head)
+    return branch_map_problems(repo, impact_map, base_map, changed, deleted)
 
 
 def print_plan(plan: Plan, planner: Planner) -> None:
@@ -1472,6 +1853,9 @@ class StepResult:
 
     @property
     def missing_classes(self) -> list[str]:
+        # A step a CI run stands in for ran nothing here, so it has no reports to miss.
+        if self.ci_url:
+            return []
         return sorted(set(self.command.expected_classes) - self.classes_run)
 
     @property
@@ -1813,9 +2197,7 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
             for directory, names in sorted(suites.items())
         ]
         if named and index in counted_only:
-            parts.append(
-                f"{count_classes(result, named)} (too many to list in the PR description)"
-            )
+            parts.append(f"{count_classes(result, named)} (too many to list)")
         elif len(named) > INLINE_CLASS_LIMIT:
             parts.append(f"{count_classes(result, named)} (listed below)")
             collapsed += [
@@ -1839,9 +2221,9 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
             "class when classes run concurrently, and keep only the last run of a nested class "
             "that several test classes inherit. "
             + (
-                "The step totals above are Maven's own counts._"
+                "The summary's step totals are Maven's own counts._"
                 if exact
-                else "The step totals above are Maven's own counts where it printed them, "
+                else "The summary's step totals are Maven's own counts where it printed them, "
                 "and the reports' sum where it did not._"
             ),
         ]
@@ -1871,14 +2253,61 @@ def commit_line(commit: str, base: str, dirty: bool) -> str:
     )
 
 
+def name_list(names: list[str], limit: int, more: str = "") -> str:
+    """The first `limit` names as code, then how many more there are."""
+    text = ", ".join(f"`{name}`" for name in names[:limit])
+    if len(names) > limit:
+        text += f" and {len(names) - limit} more{more}"
+    return text
+
+
+def attention_lines(results: list[StepResult], limit: int, more: str = "") -> list[str]:
+    """What a reviewer must not miss, naming up to `limit` of each: failed tests, selected
+    classes that left no report, and classes whose every test was skipped."""
+    lines: list[str] = []
+    failed = [name for r in results for name in r.failed_tests]
+    # Failures Maven counted in a report a later run of the same nested class overwrote.
+    unnamed = sum(
+        max(0, r.failures + r.errors - len(r.failed_tests))
+        for r in results
+        if r.exact_totals
+    )
+    if failed or unnamed:
+        parts = [name_list(failed, limit, more)] if failed else []
+        if unnamed:
+            parts.append(f"{unnamed} more the reports lost (see the Maven output)")
+        lines += ["", f"Failed: {', '.join(parts)}"]
+    missing = [
+        f"{name} ({r.command.label})" for r in results for name in r.missing_classes
+    ]
+    if missing:
+        lines += [
+            "",
+            f"Selected but produced no report: {name_list(missing, limit, more)}",
+        ]
+    skipped_only = [
+        f"{name} ({r.command.label})" for r in results for name in r.all_skipped_classes
+    ]
+    if skipped_only:
+        lines += [
+            "",
+            "Every test skipped, so these exercised nothing (check their assumptions — usually the engine): "
+            + name_list(skipped_only, limit, more),
+        ]
+    return lines
+
+
 def render_block(
     plan: Plan,
-    planner: Planner,
     results: list[StepResult],
     commit: str,
     base: str,
     dirty: bool,
+    details_url: str = "",
 ) -> str:
+    """The PR description's block: the verdict, a row per step, and what failed. The classes
+    each step ran, why the plan chose them and the commands are in the details
+    (render_details), which --update-pr posts as a PR comment and links from here."""
     status = overall_status(plan, results)
     run_minutes = round(sum(r.minutes for r in results), 1)
     lines = [
@@ -1887,6 +2316,12 @@ def render_block(
         "",
         commit_line(commit, base, dirty),
         f"- Finished: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · {run_minutes} min",
+    ]
+    if details_url:
+        lines.append(
+            f"- [Details]({details_url}): the classes each step ran, why these tests, the commands"
+        )
+    lines += [
         "",
         "| Step | Scope | Classes | Tests | Failed | Skipped | Min | Result |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -1911,35 +2346,41 @@ def render_block(
     for command in plan.commands[len(results) :]:
         lines.append(f"| {command.kind} | {command.label} | | | | | | not run |")
 
-    failed = [name for r in results for name in r.failed_tests]
-    # Failures Maven counted in a report a later run of the same nested class overwrote.
-    unnamed = sum(
-        max(0, r.failures + r.errors - len(r.failed_tests))
-        for r in results
-        if r.exact_totals
-    )
-    missing = [
-        f"{name} ({r.command.label})" for r in results for name in r.missing_classes
+    lines += attention_lines(results, SUMMARY_NAME_LIMIT, " in the details")
+    notes = []
+    if plan.not_run_locally:
+        notes.append(
+            f"- Impacted, not run locally: {plural(len(plan.not_run_locally), 'class')} "
+            "(listed in the details)"
+        )
+    if plan.unmapped_files:
+        notes.append(
+            f"- Impact-map gaps: {plural(len(plan.unmapped_files), 'file')} no area owns "
+            "(listed in the details)"
+        )
+    if notes:
+        lines += ["", *notes]
+    lines.append(BLOCK_END)
+    return "\n".join(lines) + "\n"
+
+
+def render_details(
+    plan: Plan,
+    results: list[StepResult],
+    commit: str,
+    base: str,
+    dirty: bool,
+) -> str:
+    """What the PR description's block leaves out: every class each step ran, why the plan
+    chose them, the impacted tests it doesn't run locally, and the commands that repeat it."""
+    lines = [
+        DETAILS_MARKER,
+        f"**Local Java test run: {overall_status(plan, results)} — details**",
+        "",
+        commit_line(commit, base, dirty),
+        "- The summary is in the PR description.",
     ]
-    if failed or unnamed:
-        named = [f"`{name}`" for name in failed[:30]]
-        if unnamed:
-            named.append(f"{unnamed} more the reports lost (see the Maven output)")
-        lines += ["", f"Failed: {', '.join(named)}"]
-    if missing:
-        lines += [
-            "",
-            f"Selected but produced no report: {', '.join(f'`{name}`' for name in missing)}",
-        ]
-    skipped_only = [
-        f"{name} ({r.command.label})" for r in results for name in r.all_skipped_classes
-    ]
-    if skipped_only:
-        lines += [
-            "",
-            "Every test skipped, so these exercised nothing (check their assumptions — usually the engine): "
-            + ", ".join(f"`{name}`" for name in skipped_only),
-        ]
+    lines += attention_lines(results, DETAILS_NAME_LIMIT)
     lines += render_tests_run(results)
 
     reasons = [
@@ -1976,7 +2417,7 @@ def render_block(
     if plan.unmapped_files:
         lines += [
             "",
-            f"<details><summary>Impact-map gaps ({len(plan.unmapped_files)}) — smoke ITs ran instead</summary>",
+            f"<details><summary>Impact-map gaps ({len(plan.unmapped_files)}): no area owns these</summary>",
             "",
             *[f"- `{path}`" for path in plan.unmapped_files],
             "",
@@ -1991,7 +2432,6 @@ def render_block(
         "```",
         "",
         "</details>",
-        BLOCK_END,
     ]
     return "\n".join(lines) + "\n"
 
@@ -2037,16 +2477,64 @@ def upsert_block(body: str, block: str, heading_text: str = DEFAULT_PR_HEADING) 
     return body[:insert_at] + "\n\n" + block + "\n" + body[insert_at:]
 
 
-def update_pr_body(repo_root: Path, block: str, heading_text: str) -> None:
-    pr = json.loads(
-        subprocess.run(
-            ["gh", "pr", "view", "--json", "number,body,url"],
-            cwd=repo_root,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout
+def gh(repo_root: Path, *args: str, stdin: str | None = None) -> str:
+    return subprocess.run(
+        ["gh", *args],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+        input=stdin,
+    ).stdout
+
+
+def current_pr(repo_root: Path) -> dict[str, Any]:
+    return json.loads(gh(repo_root, "pr", "view", "--json", "number,body,url"))
+
+
+def upsert_details_comment(repo_root: Path, pr: dict[str, Any], details: str) -> str:
+    """Post the details as a PR comment, or edit the one an earlier run of yours posted, and
+    return its URL. Empty when they don't fit in a comment."""
+    if len(details) > GITHUB_BODY_LIMIT:
+        print(
+            f"\nThe details are {len(details):,} characters, over GitHub's limit of "
+            f"{GITHUB_BODY_LIMIT:,} for a comment. Attach {DETAILS_MARKDOWN} to the PR instead.",
+            file=sys.stderr,
+        )
+        return ""
+    owner, name = urlparse(pr["url"]).path.strip("/").split("/")[:2]
+    comments = f"repos/{owner}/{name}/issues/{pr['number']}/comments"
+    login = gh(repo_root, "api", "user", "--jq", ".login").strip()
+    earlier = gh(
+        repo_root,
+        "api",
+        "--paginate",
+        comments,
+        "--jq",
+        f'.[] | select(.user.login == "{login}" and (.body | contains("{DETAILS_MARKER}"))) | .id',
+    ).split()
+    endpoint, method = (
+        (f"repos/{owner}/{name}/issues/comments/{earlier[0]}", "PATCH")
+        if earlier
+        else (comments, "POST")
     )
+    return gh(
+        repo_root,
+        "api",
+        "--method",
+        method,
+        endpoint,
+        "--input",
+        "-",
+        "--jq",
+        ".html_url",
+        stdin=json.dumps({"body": details}),
+    ).strip()
+
+
+def update_pr_body(
+    repo_root: Path, pr: dict[str, Any], block: str, heading_text: str
+) -> None:
     body = upsert_block(pr.get("body") or "", block, heading_text)
     if len(body) > GITHUB_BODY_LIMIT:
         raise SystemExit(
@@ -2091,6 +2579,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "patterns in the impact map, then exit",
     )
     parser.add_argument(
+        "--check-owner",
+        nargs="+",
+        metavar="PATH",
+        help="Report which of these files no area owns and where they likely belong, then "
+        "exit (the agent hook runs it on every file an agent writes)",
+    )
+    parser.add_argument(
+        "--check-branch",
+        action="store_true",
+        help="Report the map problems this branch introduces against --base, then exit "
+        "(the hooks run it before git push and gh pr create)",
+    )
+    parser.add_argument(
+        "--head",
+        metavar="REF",
+        help="With --check-branch, check commit REF, which is what a push sends: its files, "
+        "its map and its diff from --base, whatever the working tree holds",
+    )
+    parser.add_argument(
         "--add-it",
         default="",
         help="Comma-separated IT classes to run on top of the plan (recorded as added)",
@@ -2121,12 +2628,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--run",
         action="store_true",
-        help="Run the selected tests and write the results block",
+        help="Run the selected tests and write the results summary and details",
     )
     parser.add_argument(
         "--update-pr",
         action="store_true",
-        help="With --run, upsert the results block in the PR body",
+        help="With --run, upsert the summary in the PR body and the details in a PR comment",
     )
     parser.add_argument(
         "--keep-going",
@@ -2143,6 +2650,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--update-pr requires --run")
     if args.ci_run and not args.run:
         parser.error("--ci-run requires --run")
+    if args.head and not args.check_branch:
+        parser.error("--head requires --check-branch")
     return args
 
 
@@ -2156,6 +2665,49 @@ def main(argv: list[str] | None = None) -> int:
         print(
             "\n".join(problems)
             or f"{IMPACT_MAP}: every integration test and production file has an owner."
+        )
+        return 1 if problems else 0
+
+    if args.check_owner:
+        root = repo_root.resolve()
+        paths = []
+        for raw in args.check_owner:
+            candidate = Path(raw)
+            if not candidate.is_absolute():
+                candidate = Path.cwd() / candidate
+            try:
+                paths.append(candidate.resolve().relative_to(root).as_posix())
+            except ValueError:
+                continue
+        problems = owner_problems(Repo(repo_root, impact_map), impact_map, paths)
+        if problems:
+            print(
+                f"Own the new code in {IMPACT_MAP} now, in the same change:\n"
+                + "\n".join(f"- {problem}" for problem in problems)
+            )
+        return 1 if problems else 0
+
+    if args.check_branch:
+        if args.head:
+            try:
+                impact_map = json.loads(
+                    git(repo_root, "show", f"{args.head}:{IMPACT_MAP}")
+                )
+            except (subprocess.CalledProcessError, json.JSONDecodeError):
+                print(f"{args.head} has no readable {IMPACT_MAP}; nothing to check.")
+                return 0
+        problems = check_branch(
+            repo_root,
+            Repo(repo_root, impact_map, ref=args.head),
+            impact_map,
+            args.base,
+            args.head,
+        )
+        print(
+            f"Fix {IMPACT_MAP} in this branch before you raise the PR:\n"
+            + "\n".join(f"- {problem}" for problem in problems)
+            if problems
+            else f"{IMPACT_MAP}: this branch leaves the map complete."
         )
         return 1 if problems else 0
 
@@ -2195,6 +2747,15 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(plan.to_json(), indent=2))
         return 0
     print_plan(plan, planner)
+    if not args.changed_files:
+        map_problems = check_branch(repo_root, planner.repo, impact_map, args.base)
+        if map_problems:
+            print(
+                f"\nFix {IMPACT_MAP} in this branch before you raise the PR "
+                "(the pre-PR hook blocks on these):"
+            )
+            for problem in map_problems:
+                print(f"  - {problem}")
     stale = (
         stale_generated_modules(repo_root, planner.maven.get("generatedSources", []))
         if plan.commands
@@ -2214,10 +2775,9 @@ def main(argv: list[str] | None = None) -> int:
 
     commit = git(repo_root, "rev-parse", "HEAD")
     dirty = has_uncommitted_changes(repo_root, impact_map["ignore"])
-    if not plan.commands:
-        block = render_no_tests_block(plan, commit, args.base, dirty)
-        results: list[StepResult] = []
-    else:
+    results: list[StepResult] = []
+    details = ""
+    if plan.commands:
         ci = ci_evidence(
             repo_root, args.ci_run, commit, planner.maven.get("ciWorkflows", {})
         )
@@ -2249,18 +2809,40 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\n{shlex.join(clean)} failed.", file=sys.stderr)
                 return 1
         results = run_commands(repo_root, plan, args.keep_going, ci)
-        block = render_block(plan, planner, results, commit, args.base, dirty)
+        details = render_details(plan, results, commit, args.base, dirty)
 
-    markdown_path = repo_root / RESULTS_MARKDOWN
-    markdown_path.parent.mkdir(parents=True, exist_ok=True)
-    markdown_path.write_text(block, encoding="utf-8")
-    print(f"\nResults block written to {RESULTS_MARKDOWN}")
-    if args.update_pr:
+    details_path = repo_root / DETAILS_MARKDOWN
+    details_path.parent.mkdir(parents=True, exist_ok=True)
+    if details:
+        details_path.write_text(details, encoding="utf-8")
+    else:
+        details_path.unlink(missing_ok=True)
+    pr = current_pr(repo_root) if args.update_pr else None
+    details_url = (
+        upsert_details_comment(repo_root, pr, details) if pr and details else ""
+    )
+    block = (
+        render_block(plan, results, commit, args.base, dirty, details_url)
+        if plan.commands
+        else render_no_tests_block(plan, commit, args.base, dirty)
+    )
+    (repo_root / RESULTS_MARKDOWN).write_text(block, encoding="utf-8")
+    print(
+        f"\nSummary written to {RESULTS_MARKDOWN}"
+        + (f", details to {DETAILS_MARKDOWN}" if details else "")
+    )
+    if pr:
+        if details_url:
+            print(f"Posted the details: {details_url}")
         update_pr_body(
-            repo_root, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
+            repo_root, pr, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
         )
     else:
-        print("Paste it into the PR description, or re-run with --update-pr.")
+        print(
+            "Paste the summary into the PR description"
+            + (" and post the details as a PR comment" if details else "")
+            + ", or re-run with --update-pr."
+        )
     return 0 if not results or overall_status(plan, results) == "PASSED" else 1
 
 

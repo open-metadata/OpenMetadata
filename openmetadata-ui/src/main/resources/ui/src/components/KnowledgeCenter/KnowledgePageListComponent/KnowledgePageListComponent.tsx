@@ -241,7 +241,7 @@ const KnowledgePageEmptyState = ({
                     className="tw:text-brand-secondary tw:after:outline-brand"
                     color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    iconLeading={<Plus size={14} />}
+                    iconLeading={Plus}
                     size="sm">
                     {t('label.add')}
                   </CoreButton>
@@ -779,7 +779,9 @@ const KnowledgePageListComponent = forwardRef<
             </Grid.Item>
           ))}
         </Grid>
-        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
+        {isLoadingMore ? (
+          <Loader className="tw:shrink-0" dataTestId="knowledge-page-loader" />
+        ) : null}
         <div
           className="w-full"
           data-testid="observer-element"

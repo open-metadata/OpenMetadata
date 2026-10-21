@@ -429,6 +429,36 @@ migrationConfiguration:
   nativePath: "./bootstrap/sql/migrations/native"
   extensionPath: ""
 
+# Where settings that exist both in this file and in the database (Settings in the UI) take their
+# values from. The database copy is seeded from this file on first start.
+#   AUTO: a value you change here is applied on the next start, unless the same value was changed
+#         in the UI since; then the UI value is kept and the server logs a warning.
+#   ENV:  this file is authoritative. Fields it defines are rewritten on every start and are
+#         read-only in the UI and the API.
+#   DB:   the database is authoritative. This file only fills fields the database does not have.
+# Use ./bootstrap/openmetadata-ops.sh remove-security-config to reset the stored security settings
+# to this file.
+configSource:
+  security: ${SECURITY_CONFIG_SOURCE:-AUTO}
+  email: ${EMAIL_CONFIG_SOURCE:-AUTO}
+  serverUrl: ${SERVER_URL_CONFIG_SOURCE:-AUTO}
+  scim: ${SCIM_CONFIG_SOURCE:-AUTO}
+  mcp: ${MCP_CONFIG_SOURCE:-AUTO}
+  app: ${APP_CONFIG_SOURCE:-DB}
+  # The first start in ENV mode refuses to replace an identity provider configured in the UI with
+  # a different one from this file unless this is true.
+  confirmProviderChange: ${SECURITY_CONFIG_SOURCE_CONFIRM_PROVIDER_CHANGE:-false}
+  watchIntervalSeconds: ${CONFIG_SOURCE_WATCH_INTERVAL_SECONDS:-10}
+
+appConfiguration:
+  # Tenant default app mode ("ai" or "classic") for users who have not chosen one.
+  # Admins change it at runtime; user and persona app mode still win over it.
+  defaultAppMode: ${APP_DEFAULT_MODE:-null}
+
+scimConfiguration:
+  enabled: ${SCIM_ENABLED:-false}
+  identityProvider: ${SCIM_IDENTITY_PROVIDER:-"azure"}
+
 # Authorizer Configuration
 authorizerConfiguration:
   className: ${AUTHORIZER_CLASS_NAME:-org.openmetadata.service.security.DefaultAuthorizer}
@@ -519,12 +549,12 @@ authenticationConfiguration:
     clientAuthenticationMethod: ${OIDC_CLIENT_AUTH_METHOD:-"client_secret_post"}
     tenant: ${OIDC_TENANT:-""}
     maxClockSkew: ${OIDC_MAX_CLOCK_SKEW:-""}
-    tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # in seconds
+    tokenValidity: ${OIDC_OM_REFRESH_TOKEN_VALIDITY:-"3600"} # Deprecated and ignored: the browser holds the identity provider's ID token, whose lifetime the provider sets
     customParams: ${OIDC_CUSTOM_PARAMS:-}
     maxAge: ${OIDC_MAX_AGE:-""}
     prompt: ${OIDC_PROMPT_TYPE:-""}
     sessionExpiry: ${OIDC_SESSION_EXPIRY:-"604800"} # Deprecated fallback; use AUTHENTICATION_SESSION_EXPIRY
-    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # sign users out when the identity provider ends their session
+    endSessionWithProvider: ${OIDC_END_SESSION_WITH_PROVIDER:-false} # Deprecated and ignored: OIDC sessions always end with the identity provider's
   samlConfiguration:
     debugMode: ${SAML_DEBUG_MODE:-false}
     idp:
@@ -644,8 +674,8 @@ llmConfiguration:
   # `enabled` above, which also gates embeddings: LLM features can stay on for semantic search
   # with extraction off. Unmetered here, so opt-in.
   memoryExtractionEnabled: ${LLM_MEMORY_EXTRACTION_ENABLED:-false}
-  ontologyMemoryDerivationEnabled: ${LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED:-false}
-  # FQCN of an alternate AiProvider for Context Center memory extraction; empty = built-in LLM provider
+  # FQCN of an alternate AiProvider for memory extraction and glossary-term derivation from
+  # memories; empty = built-in LLM provider, which extracts memories but derives no terms
   aiProviderClass: ${LLM_AI_PROVIDER_CLASS:-""}
   maxConcurrentRequests: ${LLM_MAX_CONCURRENT_REQUESTS:-5}
   openai:
@@ -662,7 +692,7 @@ llmConfiguration:
       accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
       secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
       sessionToken: ${AWS_SESSION_TOKEN:-""}
-    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-5-5"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:
     apiKey: ${LLM_GOOGLE_API_KEY:-""}

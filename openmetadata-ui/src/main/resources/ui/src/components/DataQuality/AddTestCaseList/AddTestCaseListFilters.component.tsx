@@ -12,7 +12,6 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
@@ -58,12 +57,7 @@ const AddTestCaseListFilters = ({
   );
 
   return (
-    <Box
-      inline
-      align="center"
-      className="layout-space layout-space-horizontal"
-      gap={2}
-      itemClassName="layout-space-item">
+    <Box align="center" gap={2}>
       <Typography>{t('label.filter-plural')}:</Typography>
       {filtersToShow.map((filter) => (
         <FilterSelectDropdown

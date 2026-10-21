@@ -12,180 +12,61 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { PropsWithChildren, SVGProps } from 'react';
-import { MemoryRouter } from 'react-router-dom';
 import UserProfileCard from './UserProfileCard';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Avatar: ({ initials }: { initials?: string }) => (
-    <span data-testid="avatar">{initials}</span>
-  ),
-  Box: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  Dropdown: {
-    Root: ({ children }: PropsWithChildren) => <div>{children}</div>,
-    Popover: ({ children }: PropsWithChildren) => <div>{children}</div>,
-    Menu: ({ children }: PropsWithChildren) => <ul>{children}</ul>,
-    Item: ({ children }: PropsWithChildren) => <li>{children}</li>,
-    Separator: () => <li role="separator" />,
-  },
-  Popover: ({
-    children,
-    isOpen,
-  }: {
-    children: PropsWithChildren['children'];
-    isOpen: boolean;
-  }) =>
-    isOpen ? <div data-testid="mode-switcher-popover">{children}</div> : null,
-  Tooltip: ({ children }: PropsWithChildren) => <>{children}</>,
-  TooltipTrigger: ({ children }: PropsWithChildren) => <>{children}</>,
-  Typography: ({ children }: PropsWithChildren) => <span>{children}</span>,
-}));
-
-jest.mock('hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({
-    currentUser: {
-      displayName: 'Olivia Rhye',
-      email: 'olivia@untitledui.com',
-      name: 'olivia',
-    },
-  }),
-}));
-
-jest.mock('@openmetadata/ui-core-components/icons', () => {
-  const Icon = (props: SVGProps<SVGSVGElement>) => <svg {...props} />;
-
-  return new Proxy({}, { get: () => Icon });
-});
-
-// Boundary: the real switcher requires the UntitledUI ThemeProvider.
-jest.mock('components/ThemeModeSwitcher/ThemeModeSwitcher', () => ({
+jest.mock('../../../AppModeSwitcher/AppModeSwitcher', () => ({
   __esModule: true,
-  default: () => <div data-testid="theme-mode-switcher" />,
-}));
-
-jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
-  __esModule: true,
-  default: ({ displayName }: { displayName?: string }) => (
-    <span data-testid="profile-picture">{displayName}</span>
+  default: ({ compact }: { compact?: boolean }) => (
+    <button data-testid="app-mode-switcher" type="button">
+      {compact ? 'compact' : 'full'}
+    </button>
   ),
 }));
 
-jest.mock('hooks/useAppMode', () => ({
-  useAppMode: () => 'ai',
-  useIsAiMode: () => true,
-  RUNTIME_TO_PREFERENCE_WIRE: { ai: 'ai', default: 'classic' },
-  PREFERENCE_MODE_TO_RUNTIME: { ai: 'ai', classic: 'default' },
-  useAppModeStore: Object.assign(
-    (selector: (s: { currentMode: string }) => unknown) =>
-      selector({ currentMode: 'ai' }),
-    { getState: () => ({ currentMode: 'ai' }) }
-  ),
-  writeAppMode: jest.fn(),
-}));
-
-jest.mock('hooks/currentUserStore/useCurrentUserStore', () => ({
-  useCurrentUserPreferences: () => ({
-    preferences: { appMode: null },
-    setPreference: jest.fn(),
-  }),
-}));
-
-jest.mock('constants/appMode.constants', () => ({
-  AI_APP_MODE: 'ai',
-  DEFAULT_APP_MODE: 'default',
-}));
-
-jest.mock('utils/i18next/i18nextUtil', () => ({
-  languageSelectOptions: [],
-}));
-
-jest.mock('utils/i18next/LocalUtil', () => ({
+jest.mock('../../../discovery/personal-space/AIUserMenu/AIUserMenu', () => ({
   __esModule: true,
-  t: (k: string) => k,
-  default: {
-    language: 'en-US',
-    changeLanguage: jest.fn(),
-    t: (k: string) => k,
-  },
-}));
-
-jest.mock('utils/EntityNameUtils', () => ({
-  getEntityName: (entity: { displayName?: string; name?: string }) =>
-    entity?.displayName ?? entity?.name ?? '',
-}));
-
-jest.mock('utils/i18next/LocalUtilClassBase', () => ({
-  default: { loadLocales: jest.fn() },
+  default: ({ collapsed }: { collapsed?: boolean }) => (
+    <button data-testid="ai-user-menu" type="button">
+      {collapsed ? 'collapsed' : 'expanded'}
+    </button>
+  ),
 }));
 
 jest.mock(
   '../../../discovery/personal-space/InboxIconButton/InboxIconButton',
   () => ({
     __esModule: true,
-    default: () => null,
+    default: () => (
+      <button data-testid="ai-inbox-icon-btn" type="button">
+        inbox
+      </button>
+    ),
   })
 );
 
-jest.mock('hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: false }),
-}));
-
-jest.mock('components/Auth/AuthProviders/AuthProvider', () => ({
-  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
-}));
-
-jest.mock('utils/RouterUtils', () => ({
-  getUserPath: (name: string) => `/users/${name}`,
-}));
-
-jest.mock('../../../assets/svg/askcollate-icon.svg', () => ({
-  ReactComponent: (props: SVGProps<SVGSVGElement>) => (
-    <svg data-testid="askcollate-icon" {...props} />
-  ),
-}));
-
-jest.mock('../../../assets/svg/logo-monogram.svg', () => ({
-  ReactComponent: (props: SVGProps<SVGSVGElement>) => (
-    <svg data-testid="collate-icon" {...props} />
-  ),
-}));
-
-jest.mock('react-aria-components', () => ({
-  Button: ({
-    children,
-    ...props
-  }: import('react').PropsWithChildren<Record<string, unknown>>) => (
-    <button
-      {...(props as import('react').ButtonHTMLAttributes<HTMLButtonElement>)}>
-      {children}
-    </button>
-  ),
-  Menu: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  MenuItem: ({
-    children,
-    onAction,
-  }: PropsWithChildren<{ onAction?: () => void }>) => (
-    <button type="button" onClick={onAction}>
-      {children}
-    </button>
-  ),
-  Popover: ({ children }: PropsWithChildren) => <div>{children}</div>,
-  SubmenuTrigger: ({ children }: PropsWithChildren) => <div>{children}</div>,
-}));
-
 describe('UserProfileCard', () => {
-  it('wraps the AI user menu in a card container', () => {
-    const { container } = render(
-      <MemoryRouter>
-        <UserProfileCard />
-      </MemoryRouter>
-    );
+  it('shows the full user menu, the inbox and the mode switcher in one card', () => {
+    render(<UserProfileCard />);
 
-    expect(container.firstChild).toHaveClass('ask-user-card');
-    // Semantic surface role so the card stays distinct from the page in dark mode
-    // (bg-primary would collapse onto the page background).
-    expect(container.firstChild).toHaveClass('tw:bg-surface');
-    expect(screen.getByTestId('ask-ai-user-menu-trigger')).toBeInTheDocument();
-    expect(screen.getAllByText('Olivia Rhye').length).toBeGreaterThan(0);
+    const profileCard = screen.getByTestId('ask-user-card');
+
+    expect(profileCard).toHaveTextContent('expanded');
+    expect(profileCard).toContainElement(
+      screen.getByTestId('ai-inbox-icon-btn')
+    );
+    expect(profileCard).toContainElement(
+      screen.getByTestId('app-mode-switcher')
+    );
+    expect(screen.getByTestId('app-mode-switcher')).toHaveTextContent('full');
+  });
+
+  it('stacks the inbox, avatar-only user menu and compact switcher in the rail', () => {
+    render(<UserProfileCard compact />);
+
+    const [inbox, userMenu, switcher] = screen.getAllByRole('button');
+
+    expect(inbox).toHaveAttribute('data-testid', 'ai-inbox-icon-btn');
+    expect(userMenu).toHaveTextContent('collapsed');
+    expect(switcher).toHaveTextContent('compact');
   });
 });

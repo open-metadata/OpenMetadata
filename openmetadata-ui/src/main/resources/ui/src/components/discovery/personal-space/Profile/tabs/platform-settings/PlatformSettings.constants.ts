@@ -16,7 +16,9 @@ import {
   Customize,
   Dataflow02,
   DataQuality,
+  DefaultTime,
   FileCheck02,
+  GlossaryTerm,
   HeartRounded,
   Link01,
   Lock01,
@@ -24,15 +26,23 @@ import {
   RunProfiler,
   Search,
   SwitchHorizontal01,
+  Table,
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
+import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
 export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
+  {
+    id: 'glossary',
+    icon: GlossaryTerm,
+    titleKey: 'label.glossary',
+    descriptionKey: 'message.glossary-tag-propagation-description',
+  },
   {
     id: 'theme',
     icon: Customize,
@@ -117,6 +127,8 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.learning-resources-management-description',
     hasEditView: true,
     hasFieldHints: false,
+    hasItemViews: true,
+    getItemTitle: (t) => t('label.preview'),
     getEditTitle: (t, itemId) =>
       t(itemId ? 'label.edit-resource' : 'label.add-resource'),
   },
@@ -128,4 +140,30 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     hasEditView: true,
     hasFieldHints: false,
   },
+  {
+    id: 'table-schema',
+    icon: Table,
+    titleKey: 'label.table-and-schema',
+    descriptionKey: 'message.table-and-schema-settings-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+  {
+    id: 'time-format',
+    icon: DefaultTime,
+    titleKey: 'label.default-time-format',
+    descriptionKey: 'message.default-time-format-description',
+    hasEditView: true,
+    hasFieldHints: false,
+  },
+];
+
+/** The fields of each deployment-backed setting that its page shows. */
+export const BRAND_URL_FIELDS = ['openMetadataUrl'] as const;
+
+export const APP_MODE_FIELDS = ['defaultAppMode'] as const;
+
+export const TIME_FORMAT_OPTIONS = [
+  { value: DefaultTimeFormat.The12H, labelKey: 'label.12-hour-format' },
+  { value: DefaultTimeFormat.The24H, labelKey: 'label.24-hour-format' },
 ];

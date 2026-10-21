@@ -15,7 +15,8 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -79,6 +80,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -212,6 +214,10 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY = "ontology";
+  public static final String ONTOLOGY_CONCEPT = "ontologyConcept";
+  public static final String ONTOLOGY_PROPERTY = "ontologyProperty";
+  public static final String ONTOLOGY_RELEASE = "ontologyRelease";
   public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
   public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
@@ -451,6 +457,7 @@ public final class Entity {
     entityRelationshipRepository = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
+    EssentialSeeds.getInstance().reset();
     EntityIndexCapabilityRegistry.clear();
   }
 
@@ -997,21 +1004,60 @@ public final class Entity {
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
-    // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
+    // Fetch all tags belonging to the prefix. "%" rather than ".%" so the parent's own row arrives
+    // in the same query: fields inherit its glossary terms below. The DAO returns null for an
+    // entity type that does not support tags.
+    Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(fqnPrefix, "%");
+    Map<String, List<TagLabel>> allTags = prefixTags == null ? Map.of() : prefixTags;
+    String parentHash = FullyQualifiedName.buildHash(fqnPrefix);
+    List<TagLabel> inheritedTerms = inheritedParentTerms(allTags.get(parentHash));
+    // Prefetched once for the whole entity, so derived tags cost one query rather than one per
+    // field.
+    Map<String, List<TagLabel>> derivedTags =
+        batchFetchDerivedTagsGracefully(
+            allTags.entrySet().stream()
+                .filter(entry -> !entry.getKey().equals(parentHash))
+                .flatMap(entry -> entry.getValue().stream())
+                .collect(Collectors.toList()));
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        List<TagLabel> columnTag =
-            allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        if (columnTag == null) {
-          c.setTags(new ArrayList<>());
-        } else {
-          c.setTags(addDerivedTagsGracefully(columnTag));
-        }
+        setFieldTags(c, allTags, inheritedTerms, derivedTags);
       } else {
         c.setTags(c.getTags());
       }
     }
+  }
+
+  /**
+   * A glossary term applied to an entity (table, topic, API endpoint, data model, ...) also applies
+   * to every field beneath it. The terms are inherited on read instead of being stored per field in
+   * {@code tag_usage}, so fields ingested after the entity was tagged pick them up with no backfill
+   * and no per-field write amplification.
+   *
+   * <p>They are marked {@code DERIVED}, the way an entity inherits its parent's tags in {@code
+   * EntityRepository#inheritTags}: never persisted, ignored by mutual-exclusivity checks, and what
+   * the search cascade stamps on child documents. {@code PROPAGATED} means something else -- a label
+   * propagated along lineage and stored for the asset itself.
+   */
+  public static List<TagLabel> inheritedParentTerms(List<TagLabel> parentTags) {
+    return EntityRepository.inheritedTagLabels(
+        listOrEmpty(parentTags).stream()
+            .filter(tag -> TagLabel.TagSource.GLOSSARY.equals(tag.getSource()))
+            .filter(tag -> !TagLabel.LabelType.DERIVED.equals(tag.getLabelType()))
+            .toList());
+  }
+
+  /** A field's own labels and the tags its own terms imply, then the terms it inherits. */
+  private static <T extends FieldInterface> void setFieldTags(
+      T field,
+      Map<String, List<TagLabel>> allTags,
+      List<TagLabel> inheritedTerms,
+      Map<String, List<TagLabel>> derivedTags) {
+    List<TagLabel> ownTags =
+        listOrEmpty(allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName())));
+    field.setTags(
+        EntityRepository.mergeInheritedTags(
+            addDerivedTagsWithPreFetched(ownTags, derivedTags), inheritedTerms));
   }
 
   public static SearchIndex buildSearchIndex(String entityType, Object entity) {

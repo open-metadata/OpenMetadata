@@ -69,7 +69,6 @@ const NumberSettingRow = ({
       {draft === null ? (
         <Box align="center" direction="row" gap={2}>
           <Typography
-            className="tw:font-mono"
             data-testid={`global-setting-value-${name}`}
             size="text-sm"
             weight="semibold">

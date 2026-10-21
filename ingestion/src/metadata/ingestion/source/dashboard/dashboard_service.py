@@ -227,7 +227,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: DashboardConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DashboardServiceTopology()
-    context = TopologyContextManager(topology)
+    context: TopologyContextManager
     dashboard_source_state: set = set()  # noqa: RUF012
     datamodel_source_state: set = set()  # noqa: RUF012
     chart_source_state: set = set()  # noqa: RUF012
@@ -331,6 +331,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__()
+        self.context = TopologyContextManager(self.topology)
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config

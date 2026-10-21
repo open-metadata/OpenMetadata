@@ -11,7 +11,32 @@
  *  limitations under the License.
  */
 import { EntityType } from '../enums/entity.enum';
-import { Task, TaskEntityStatus } from '../rest/tasksAPI';
+import { ResolveTask } from '../generated/api/tasks/resolveTask';
+import {
+  Task,
+  TaskStatus as TaskEntityStatus,
+  TaskType,
+} from '../generated/entity/tasks/task';
+
+export const isOntologyReviewTask = (task: Task): boolean =>
+  task.type === TaskType.RequestApproval &&
+  task.about?.type === 'ontologyRelease';
+
+export const getTaskResolveBody = (
+  task: Task,
+  body: ResolveTask
+): ResolveTask => {
+  if (!isOntologyReviewTask(task)) {
+    return body;
+  }
+
+  // A native review votes on server-captured content; it cannot edit that content.
+  return {
+    transitionId: body.transitionId,
+    resolutionType: body.resolutionType,
+    comment: body.comment,
+  };
+};
 
 /**
  * Check if a task is closed (any terminal status)
@@ -50,7 +75,7 @@ export const getTaskDetailPath = (task: Task): string => {
   const entityType = getTaskEntityType(task);
   const entityFQN = getTaskEntityFQN(task);
 
-  if (!entityType || !entityFQN) {
+  if (!entityType || !entityFQN || isOntologyReviewTask(task)) {
     return `/tasks/${task.id}`;
   }
 

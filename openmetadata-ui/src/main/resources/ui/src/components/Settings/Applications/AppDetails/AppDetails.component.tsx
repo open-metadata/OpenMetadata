@@ -11,16 +11,20 @@
  *  limitations under the License.
  */
 import {
-  ClockCircleOutlined,
-  LeftOutlined,
-  StopOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+  Box,
+  Button,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronLeft,
+  Clock,
+  SlashCircle01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import { Button, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -30,7 +34,6 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ICON_DIMENSION } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -198,7 +201,7 @@ const AppDetails = () => {
     try {
       setLoadingState((prev) => ({ ...prev, isSaveLoading: true }));
       if (action === AppAction.ENABLE) {
-        handleRestore();
+        await handleRestore();
       } else {
         await uninstallApp(
           appData?.fullyQualifiedName ?? '',
@@ -262,7 +265,7 @@ const AppDetails = () => {
                   description={t('message.disable-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={StopOutlined as SvgComponent}
+                  icon={SlashCircle01 as SvgComponent}
                   id="disable-button"
                   name={t('label.disable')}
                 />
@@ -594,11 +597,15 @@ const AppDetails = () => {
     }
 
     return (
-      <Tooltip title={runtimeDisabledReason}>
+      <Tooltip
+        arrow
+        excludeTriggerFromTabOrder
+        title={runtimeDisabledReason}
+        triggerClassName="tw:inline-flex">
         <div
           className="deleted-badge-button text-xs flex-center app-runtime-disabled-badge"
           data-testid="runtime-disabled-badge">
-          <StopOutlined className="d-flex m-r-xss font-medium text-xs" />
+          <SlashCircle01 className="tw:flex tw:mr-1 tw:shrink-0" size={12} />
           {t('label.disabled')}
         </div>
       </Tooltip>
@@ -612,7 +619,7 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <Icon component={IconExternalLink} style={ICON_DIMENSION} />
+        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
         <Typography>
           <a
             className="text-xs"
@@ -672,10 +679,9 @@ const AppDetails = () => {
       <Box>
         <div className="d-flex tw:min-w-0 tw:flex-auto">
           <Button
-            className="p-0"
-            icon={<LeftOutlined />}
-            size="small"
-            type="text"
+            color="tertiary"
+            iconLeading={ChevronLeft}
+            size="xs"
             onClick={onBrowseAppsClick}>
             <Typography className="font-medium">
               {t('label.browse-app-plural')}
@@ -717,7 +723,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <ClockCircleOutlined />
+                  <Clock className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {`${t('label.installed')} ${getRelativeTime(
                       appData?.updatedAt
@@ -731,7 +737,7 @@ const AppDetails = () => {
                   className="layout-space layout-space-horizontal"
                   gap={2}
                   itemClassName="layout-space-item">
-                  <UserOutlined />
+                  <User01 className="tw:shrink-0" size={14} />
                   <Typography className="text-xs" color="secondary">
                     {t('label.developed-by-developer', {
                       developer: appData?.developer,

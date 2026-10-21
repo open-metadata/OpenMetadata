@@ -500,7 +500,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       UUID pipelineId = UUID.fromString(record.getToId());
       EntityReference serviceRef =
           Entity.getEntityReferenceById(
-              record.getFromEntity(), UUID.fromString(record.getFromId()), Include.NON_DELETED);
+              record.getFromEntity(), UUID.fromString(record.getFromId()), ALL);
       serviceMap.put(pipelineId, serviceRef);
     }
 
@@ -894,6 +894,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   @Override
   protected EntityReference getParentReference(IngestionPipeline entity) {
     return entity.getService();
+  }
+
+  @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      IngestionPipeline entity, Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
   }
 
   @Override

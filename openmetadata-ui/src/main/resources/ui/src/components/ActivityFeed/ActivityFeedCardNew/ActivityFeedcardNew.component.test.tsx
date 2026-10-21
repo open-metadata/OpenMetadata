@@ -234,15 +234,68 @@ describe('ActivityFeedCardNew', () => {
     );
 
     // The hover reveal in activity-feed-actions.less is written as
-    // `.activity-feed-card-new:hover > .ant-card-body > .feed-actions`. antd's
-    // Card puts its children inside .ant-card-body, so that middle step is
-    // load-bearing: drop it and the selector stops matching, leaving the
-    // reply/resolve/edit/delete bar hidden from mouse users.
+    // `.activity-feed-card-new:hover > .activity-feed-card-new-body >
+    // .feed-actions`, so that middle step is load-bearing: drop it and the
+    // selector stops matching, leaving the reply/resolve/edit/delete bar
+    // hidden from mouse users.
     const actions = screen.getByTestId('feed-actions');
     const body = actions.parentElement;
 
-    expect(body).toHaveClass('ant-card-body');
+    expect(body).toHaveClass('activity-feed-card-new-body');
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
+  });
+
+  it('names the field a conversation was started on after the entity', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('table');
+    expect(screen.getByTestId('feed-field-path-column')).toHaveAttribute(
+      'href',
+      '/table/service.table.category'
+    );
+    expect(screen.getByTestId('feed-field-path-field')).toHaveTextContent(
+      'label.description'
+    );
+  });
+
+  it('names the column, not the field again, for a column-level activity event', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('feed-field-path-column')).toHaveTextContent(
+      'category'
+    );
+    expect(
+      screen.queryByTestId('feed-field-path-field')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('feed-field-path')).not.toBeInTheDocument();
   });
 
   it('falls back to the activity entity when the event carries no about link', () => {

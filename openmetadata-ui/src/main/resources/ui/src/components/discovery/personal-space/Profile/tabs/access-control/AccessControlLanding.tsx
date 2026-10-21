@@ -21,6 +21,7 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import type { AccessControlView, LandingCard } from './AccessControl.types';
 
 const LANDING_CARDS: LandingCard[] = [
@@ -67,7 +68,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
       data-testid="access-control-landing">
-      {LANDING_CARDS.map((card) => {
+      {LANDING_CARDS.map((card, index) => {
         const Icon = card.icon;
 
         return (
@@ -77,6 +78,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
             role="button"
             size="md"
             tabIndex={0}
+            variant="muted"
             onClick={() => onNavigate(card.view)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
@@ -92,9 +94,11 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
                 gap={4}>
                 <Box
                   align="center"
-                  className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
-                  <Icon className="tw:size-6 tw:text-secondary" />
+                  <Icon className="tw:size-6" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Typography
