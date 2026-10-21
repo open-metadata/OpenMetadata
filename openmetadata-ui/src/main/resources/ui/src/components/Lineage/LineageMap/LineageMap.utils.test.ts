@@ -30,7 +30,9 @@ import {
   getDeleteKeyAction,
   getDrillBand,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
+  getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
   getSceneFocus,
@@ -415,6 +417,37 @@ describe('LineageMap utils', () => {
           levelKind,
         } as LineageSceneNode)
       ).toBe(LineageBand.Asset);
+    });
+  });
+
+  describe('getRailDrillFallbackNode', () => {
+    const service = (name: string, childrenCount: number): LineageSceneNode =>
+      ({
+        id: `service:${name}`,
+        label: name,
+        fullyQualifiedName: name,
+        entityType: EntityType.DATABASE_SERVICE,
+        band: LineageBand.Layer,
+        levelKind: LineageLevelKind.Service,
+        isExpandable: true,
+        childrenCount,
+      } as LineageSceneNode);
+
+    it('skips an empty service listed first for one that has assets', () => {
+      expect(
+        getRailDrillFallbackNode([service('empty', 0), service('full', 64)])
+          ?.fullyQualifiedName
+      ).toBe('full');
+    });
+
+    it('falls back to the first drillable node when none report children', () => {
+      expect(
+        getRailDrillFallbackNode([
+          { ...service('ghost', 5), isExpandable: false },
+          service('first', 0),
+          service('second', 0),
+        ])?.fullyQualifiedName
+      ).toBe('first');
     });
   });
 
@@ -995,5 +1028,52 @@ describe('scene landing viewport', () => {
         padding
       )
     ).toBeUndefined();
+  });
+});
+
+describe('getLineageMapEmptyState', () => {
+  const emptyScene = {
+    lens: LineageLens.Service,
+    band: LineageBand.Asset,
+    nodes: [],
+    edges: [],
+  } as unknown as LineageScene;
+
+  it('shows the skeleton while the first scene loads', () => {
+    expect(getLineageMapEmptyState({ loading: true, hasError: false })).toBe(
+      'loading'
+    );
+    expect(getLineageMapEmptyState({ loading: true, hasError: true })).toBe(
+      'loading'
+    );
+  });
+
+  it('shows the error state when the first scene failed', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: true })).toBe(
+      'error'
+    );
+  });
+
+  it('shows the empty state for a scene with no nodes, even on a failed refetch', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: false,
+        hasError: true,
+      })
+    ).toBe('empty');
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: true,
+        hasError: false,
+      })
+    ).toBe('empty');
+  });
+
+  it('falls back to the empty state with no scene, load or error', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
+      'empty'
+    );
   });
 });
