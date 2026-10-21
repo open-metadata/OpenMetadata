@@ -639,9 +639,22 @@ const TableDetailsPageV1: React.FC = () => {
     columnPart,
   ]);
 
+  // The tab actually shown. A hidden or unknown tab in the URL (for example
+  // knowledge_graph while RDF is off) falls back to the first tab, and the
+  // widget layout must follow that fallback rather than the raw route param.
+  const renderedActiveTab = useMemo(
+    () =>
+      getRenderedActiveTab(
+        tabs,
+        isTourDataset ? activeTabForTourDatasetPage : activeTab
+      ),
+    [tabs, isTourDataset, activeTabForTourDatasetPage, activeTab]
+  );
+
   const isExpandViewSupported = useMemo(
-    () => checkIfExpandViewSupported(tabs[0], activeTab, PageType.Table),
-    [tabs[0], activeTab]
+    () =>
+      checkIfExpandViewSupported(tabs[0], renderedActiveTab, PageType.Table),
+    [tabs[0], renderedActiveTab]
   );
 
   // {@code setTableDetails} is a closure over {@code tableCacheKey}, which itself depends on
@@ -992,10 +1005,7 @@ const TableDetailsPageV1: React.FC = () => {
     <Tabs
       className="tw:gap-3"
       data-testid="tabs"
-      selectedKey={getRenderedActiveTab(
-        tabs,
-        isTourDataset ? activeTabForTourDatasetPage : activeTab
-      )}
+      selectedKey={renderedActiveTab}
       onSelectionChange={(key) => handleTabChange(String(key))}>
       <Tabs.List
         actions={
@@ -1027,6 +1037,7 @@ const TableDetailsPageV1: React.FC = () => {
   return (
     <PageLayoutV1 pageTitle={entityName}>
       <GenericProvider<Table>
+        activeTab={renderedActiveTab}
         columnFqn={columnFqn}
         customizedPage={customizedPage}
         data={tableDetails}

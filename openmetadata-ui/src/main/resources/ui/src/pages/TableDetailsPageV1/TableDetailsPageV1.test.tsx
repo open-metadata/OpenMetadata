@@ -14,6 +14,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
+import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -335,6 +336,23 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
+// Real provider, wrapped so a test can read the activeTab the page hands it.
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => {
+    const actual = jest.requireActual(
+      '../../components/Customization/GenericProvider/GenericProvider'
+    );
+
+    return {
+      ...actual,
+      GenericProvider: jest
+        .fn()
+        .mockImplementation((props) => actual.GenericProvider(props)),
+    };
+  }
+);
+
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({
@@ -604,6 +622,43 @@ describe('TestDetailsPageV1 component', () => {
       // Navigation stays suppressed: no /table//<tab> transition off the demo.
       expect(mockNavigate).not.toHaveBeenCalled();
     });
+  });
+
+  // Regression for #35838 follow-up: a hidden tab in the URL (Knowledge Graph
+  // while RDF is off) selected Schema but left the widget layout on the hidden
+  // tab, so the panel rendered empty.
+  it('falls back to the first tab for both the tab bar and the layout when the URL tab is hidden', async () => {
+    setMockPermissions({ ViewBasic: true });
+    (useParams as jest.Mock).mockImplementation(() => ({
+      fqn: 'fqn',
+      tab: EntityTabs.KNOWLEDGE_GRAPH,
+    }));
+
+    try {
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TableDetailsPageV1 />
+          </MemoryRouter>
+        );
+      });
+
+      expect(
+        await screen.findByText('testDataAssetsHeader')
+      ).toBeInTheDocument();
+      expect(GenericProvider).toHaveBeenLastCalledWith(
+        expect.objectContaining({ activeTab: EntityTabs.SCHEMA }),
+        expect.anything()
+      );
+      expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(
+        'label.column-plural'
+      );
+    } finally {
+      (useParams as jest.Mock).mockImplementation(() => ({
+        fqn: 'fqn',
+        tab: 'schema',
+      }));
+    }
   });
 
   it('TableDetailsPageV1 should fetch table details with basic fields', async () => {
