@@ -106,6 +106,32 @@ class MigrationProcessImplTest {
         new DataMigration(file).getDataMigrationIdentity());
   }
 
+  @Test
+  void reportsDeferredWorkOnlyWhenRunDeferredDataMigrationIsOverridden() throws IOException {
+    MigrationFile file = createMigrationDir("1.12.3", "", "");
+
+    assertFalse(new DataMigration(file).hasDeferredDataMigration());
+    assertTrue(new DeferredDataMigration(file).hasDeferredDataMigration());
+  }
+
+  @Test
+  void deferredWorkAloneGivesTheMigrationAnIdentity() throws IOException {
+    MigrationFile file = createMigrationDir("1.12.3", "", "");
+
+    assertEquals(
+        MigrationCodeFingerprint.of(DeferredDataMigration.class),
+        new DeferredDataMigration(file).getDataMigrationIdentity());
+  }
+
+  static class DeferredDataMigration extends MigrationProcessImpl {
+    DeferredDataMigration(MigrationFile migrationFile) {
+      super(migrationFile);
+    }
+
+    @Override
+    public void runDeferredDataMigration() {}
+  }
+
   static class DataMigration extends MigrationProcessImpl {
     DataMigration(MigrationFile migrationFile) {
       super(migrationFile);

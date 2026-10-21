@@ -51,7 +51,10 @@ public class MigrationWorkflow {
   public static final String FAILED_MSG = "Failed due to : ";
   public static final String SKIPPED_MSG = "Skipped";
   public static final String CURRENT = "Current";
+  private static final String DEFERRED_MARKER_PREFIX = "deferred-data-migration:";
   private List<MigrationProcess> migrations;
+  // Versions whose deferred data migration is still owed, in run order.
+  private List<MigrationProcess> deferredMigrations = new ArrayList<>();
   private final String nativeSQLScriptRootPath;
   private final ConnectionType connectionType;
   private final String extensionSQLScriptRootPath;
@@ -103,11 +106,16 @@ public class MigrationWorkflow {
             flywayPath);
     // Filter Migrations to Be Run
     this.migrations = filterAndGetMigrationsToRun(availableMigrations);
+    this.deferredMigrations = findPendingDeferredMigrations(availableMigrations);
   }
 
   public void validateMigrationsForServer() {
-    if (!migrations.isEmpty()) {
-      List<String> pendingVersions = migrations.stream().map(MigrationProcess::getVersion).toList();
+    List<String> pendingVersions =
+        Stream.concat(migrations.stream(), deferredMigrations.stream())
+            .map(MigrationProcess::getVersion)
+            .distinct()
+            .toList();
+    if (!pendingVersions.isEmpty()) {
       throw new IllegalStateException(
           "There are pending migrations to be run on the database: "
               + pendingVersions
@@ -200,6 +208,46 @@ public class MigrationWorkflow {
     String clazzName = file.getMigrationProcessClassName();
     return (MigrationProcess)
         Class.forName(clazzName).getConstructor(MigrationFile.class).newInstance(file);
+  }
+
+  /** The versions an earlier migrate left with a deferred data migration still to run. */
+  // Package-private for testing
+  List<MigrationProcess> findPendingDeferredMigrations(List<MigrationFile> availableMigrations) {
+    Set<String> pendingVersions = new HashSet<>(listPendingDeferredVersions());
+    List<MigrationProcess> pending = new ArrayList<>();
+    if (!pendingVersions.isEmpty()) {
+      List<MigrationProcessExtensionProvider> extensionProviders = loadExtensionProviders();
+      for (MigrationFile file : availableMigrations) {
+        if (pendingVersions.contains(file.version)) {
+          pending.add(resolveDeferredMigrationProcess(file, extensionProviders));
+        }
+      }
+    }
+    return pending;
+  }
+
+  private List<String> listPendingDeferredVersions() {
+    try {
+      return migrationDAO.getVersionsWithChecksumLike(DEFERRED_MARKER_PREFIX + "%");
+    } catch (Exception e) {
+      // SERVER_MIGRATION_SQL_LOGS doesn't exist yet, so nothing is pending
+      return List.of();
+    }
+  }
+
+  private MigrationProcess resolveDeferredMigrationProcess(
+      MigrationFile file, List<MigrationProcessExtensionProvider> extensionProviders) {
+    try {
+      return resolveMigrationProcess(file, extensionProviders);
+    } catch (ReflectiveOperationException e) {
+      throw new IllegalStateException(
+          "Cannot load the migration of version " + file.version + " to finish its data migration",
+          e);
+    }
+  }
+
+  private static String deferredMarker(String version) {
+    return DEFERRED_MARKER_PREFIX + version;
   }
 
   private List<MigrationProcessExtensionProvider> loadExtensionProviders() {
@@ -449,6 +497,7 @@ public class MigrationWorkflow {
                   row,
                   () -> {
                     process.runDataMigration();
+                    markDeferredDataMigrationPending(process);
                     recordDataMigration(process);
                   });
             } else {
@@ -475,6 +524,7 @@ public class MigrationWorkflow {
                 "[MigrationWorkFlow] Migration Run finished for Version: {}", process.getVersion());
           }
         }
+        runDeferredDataMigrations(transactionHandler);
         printToAsciiTable(columns, allRows, "Status Unavailable");
       } catch (Exception e) {
         // Any Exception catch the error
@@ -526,6 +576,52 @@ public class MigrationWorkflow {
     if (identity != null) {
       migrationDAO.upsertServerMigrationSQL(
           process.getVersion(), "-- data migration " + process.getClass().getName(), identity);
+    }
+  }
+
+  /**
+   * Records that the version still owes its deferred data migration. The marker outlives a failed
+   * run, so the next migrate finishes the work even though the version itself is already applied.
+   */
+  private void markDeferredDataMigrationPending(MigrationProcess process) {
+    if (process.hasDeferredDataMigration()) {
+      migrationDAO.upsertServerMigrationSQL(
+          process.getVersion(),
+          "-- deferred data migration " + process.getClass().getName(),
+          deferredMarker(process.getVersion()));
+      deferredMigrations.add(process);
+    }
+  }
+
+  /**
+   * Runs every owed deferred data migration once all pending versions are applied, so it sees the
+   * schema the running release's code expects.
+   */
+  private void runDeferredDataMigrations(Handle transactionHandler) {
+    Set<String> ranVersions = new HashSet<>();
+    for (MigrationProcess process : deferredMigrations) {
+      if (ranVersions.add(process.getVersion())) {
+        runDeferredDataMigration(process, transactionHandler);
+      }
+    }
+  }
+
+  private void runDeferredDataMigration(MigrationProcess process, Handle transactionHandler) {
+    LOG.info(
+        "[MigrationWorkflow] Running deferred data migration for Version: {}",
+        process.getVersion());
+    try {
+      process.initialize(transactionHandler, jdbi);
+      process.runDeferredDataMigration();
+      migrationDAO.deleteServerMigrationSQL(deferredMarker(process.getVersion()));
+    } catch (Exception e) {
+      LOG.error(
+          "[MigrationWorkflow] Deferred data migration failed for Version: {}",
+          process.getVersion(),
+          e);
+      if (!forceMigrations) {
+        throw e;
+      }
     }
   }
 

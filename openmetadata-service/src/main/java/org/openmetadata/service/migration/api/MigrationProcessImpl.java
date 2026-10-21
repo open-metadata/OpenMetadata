@@ -154,14 +154,23 @@ public class MigrationProcessImpl implements MigrationProcess {
   public void runDataMigration() {}
 
   @Override
-  public String getDataMigrationIdentity() {
-    return overridesDataMigration() ? MigrationCodeFingerprint.of(getClass()) : null;
+  public boolean hasDeferredDataMigration() {
+    return overrides("runDeferredDataMigration");
   }
 
-  private boolean overridesDataMigration() {
+  @Override
+  public void runDeferredDataMigration() {}
+
+  @Override
+  public String getDataMigrationIdentity() {
+    return overrides("runDataMigration") || hasDeferredDataMigration()
+        ? MigrationCodeFingerprint.of(getClass())
+        : null;
+  }
+
+  private boolean overrides(String methodName) {
     try {
-      return getClass().getMethod("runDataMigration").getDeclaringClass()
-          != MigrationProcessImpl.class;
+      return getClass().getMethod(methodName).getDeclaringClass() != MigrationProcessImpl.class;
     } catch (NoSuchMethodException e) {
       return false;
     }

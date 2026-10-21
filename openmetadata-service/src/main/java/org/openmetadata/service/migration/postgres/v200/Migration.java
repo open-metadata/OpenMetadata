@@ -48,14 +48,21 @@ public class Migration extends MigrationProcessImpl {
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
     addTaskRuleToDataConsumerPolicy(collectionDAO);
     addCreateTaskOperationToApplicationBotPolicy(collectionDAO);
+    MigrationUtil.TaskWorkflow.addTaskResourceToMentionAlerts(handle);
+  }
 
+  /**
+   * The task workflow cutover drives the running release's repositories and Flowable, which read
+   * tables later versions create, so it runs once every pending version is applied.
+   */
+  @Override
+  public void runDeferredDataMigration() {
     // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues
-    // instead of aborting the rest of the v200 data migration. Matches v190/v171/v170/v1105.
+    // instead of failing the upgrade. Matches v190/v171/v170/v1105.
     try {
       initializeWorkflowHandler();
       MigrationUtil.TaskWorkflow taskWorkflow = new MigrationUtil.TaskWorkflow(handle);
       taskWorkflow.runTaskWorkflowCutoverMigration();
-      taskWorkflow.addTaskResourceToMentionAlerts();
       taskWorkflow.runRecognizerFeedbackTaskTypeMigration();
     } catch (Exception e) {
       LOG.error(

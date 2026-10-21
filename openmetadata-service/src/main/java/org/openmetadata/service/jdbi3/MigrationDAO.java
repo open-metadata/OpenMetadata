@@ -115,6 +115,22 @@ public interface MigrationDAO {
       connectionType = POSTGRES)
   String checkIfQueryPreviouslyRan(@Bind("checksum") String checksum);
 
+  @ConnectionAwareSqlQuery(
+      value = "SELECT version FROM SERVER_MIGRATION_SQL_LOGS where checksum LIKE :checksumPattern",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value = "SELECT version FROM SERVER_MIGRATION_SQL_LOGS where checksum LIKE :checksumPattern",
+      connectionType = POSTGRES)
+  List<String> getVersionsWithChecksumLike(@Bind("checksumPattern") String checksumPattern);
+
+  @ConnectionAwareSqlUpdate(
+      value = "DELETE FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value = "DELETE FROM SERVER_MIGRATION_SQL_LOGS where checksum = :checksum",
+      connectionType = POSTGRES)
+  void deleteServerMigrationSQL(@Bind("checksum") String checksum);
+
   @SqlQuery(
       value =
           "SELECT installed_rank, version, migrationFileName, checksum, installed_on, metrics FROM SERVER_CHANGE_LOG ORDER BY version ASC")

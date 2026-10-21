@@ -50,6 +50,8 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 
 class MigrationWorkflowTest {
 
+  private static final String DEFERRED_MARKER_2_0_0 = "deferred-data-migration:2.0.0";
+
   @TempDir Path tempDir;
 
   private Jdbi jdbi;
@@ -648,6 +650,103 @@ class MigrationWorkflowTest {
     verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
     verify(migrationDAO, never())
         .upsertServerMigration(anyString(), anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsRunsADeferredDataMigrationAfterEveryVersion() throws Exception {
+    MigrationProcess deferring = deferringJavaMigration("2.0.0");
+    MigrationProcess later = reprocessedJavaMigration("2.1.0");
+
+    runWorkflows(List.of(deferring, later), "2.1.0", false);
+
+    InOrder order = inOrder(deferring, later, migrationDAO);
+    order.verify(deferring).runDataMigration();
+    order
+        .verify(migrationDAO)
+        .upsertServerMigrationSQL(
+            eq("2.0.0"), startsWith("-- deferred data migration "), eq(DEFERRED_MARKER_2_0_0));
+    order.verify(later).runDataMigration();
+    order
+        .verify(migrationDAO)
+        .upsertServerMigration(eq("2.1.0"), eq("/tmp/2.1.0"), anyString(), anyString());
+    order.verify(deferring).runDeferredDataMigration();
+    order.verify(migrationDAO).deleteServerMigrationSQL(DEFERRED_MARKER_2_0_0);
+  }
+
+  @Test
+  void runMigrationWorkflowsKeepsTheDeferredMarkerWhenTheDeferredWorkFails() throws Exception {
+    MigrationProcess deferring = deferringJavaMigration("2.0.0");
+    doThrow(new IllegalStateException("deferred work failed"))
+        .when(deferring)
+        .runDeferredDataMigration();
+
+    assertThrows(
+        IllegalStateException.class, () -> runWorkflows(List.of(deferring), "1.13.6", false));
+
+    verify(migrationDAO)
+        .upsertServerMigrationSQL(eq("2.0.0"), anyString(), eq(DEFERRED_MARKER_2_0_0));
+    verify(migrationDAO, never()).deleteServerMigrationSQL(anyString());
+  }
+
+  @Test
+  void runMigrationWorkflowsWritesNoDeferredMarkerForAVersionWithoutDeferredWork()
+      throws Exception {
+    MigrationProcess process = reprocessedJavaMigration("1.13.0");
+
+    runWorkflows(process, "1.13.0", false);
+
+    verify(migrationDAO, never())
+        .upsertServerMigrationSQL(anyString(), anyString(), startsWith("deferred-data-migration:"));
+    verify(process, never()).runDeferredDataMigration();
+  }
+
+  @Test
+  void runMigrationWorkflowsFinishesADeferredDataMigrationAnEarlierRunLeftPending()
+      throws Exception {
+    MigrationProcess pending = deferringJavaMigration("2.0.0");
+    MigrationWorkflow workflow = postgresWorkflow(false);
+    setMigrations(workflow, List.of());
+    setDeferredMigrations(workflow, List.of(pending));
+    setCurrentMaxVersion(workflow, Optional.of("2.1.0"));
+
+    try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
+      workflow.runMigrationWorkflows(false);
+    }
+
+    verify(pending).initialize(handle, jdbi);
+    verify(pending).runDeferredDataMigration();
+    verify(migrationDAO).deleteServerMigrationSQL(DEFERRED_MARKER_2_0_0);
+  }
+
+  @Test
+  void findPendingDeferredMigrationsResolvesTheVersionsAnEarlierRunLeftPending() throws Exception {
+    MigrationFile pendingFile = createMigrationFile("1.2.0", false);
+    MigrationFile finishedFile = createMigrationFile("1.3.0", false);
+    when(migrationDAO.getVersionsWithChecksumLike("deferred-data-migration:%"))
+        .thenReturn(List.of("1.2.0"));
+
+    List<MigrationProcess> pending =
+        postgresWorkflow(false).findPendingDeferredMigrations(List.of(pendingFile, finishedFile));
+
+    assertEquals(List.of("1.2.0"), pending.stream().map(MigrationProcess::getVersion).toList());
+  }
+
+  @Test
+  void findPendingDeferredMigrationsTreatsAMissingSqlLogTableAsNothingPending() throws Exception {
+    MigrationFile file = createMigrationFile("1.2.0", false);
+    when(migrationDAO.getVersionsWithChecksumLike(anyString()))
+        .thenThrow(new IllegalStateException("SERVER_MIGRATION_SQL_LOGS is missing"));
+
+    assertEquals(List.of(), postgresWorkflow(false).findPendingDeferredMigrations(List.of(file)));
+  }
+
+  @Test
+  void validateMigrationsForServerRejectsAPendingDeferredDataMigration() throws Exception {
+    MigrationWorkflow workflow = postgresWorkflow(false);
+    setMigrations(workflow, List.of());
+    setDeferredMigrations(workflow, List.of(deferringJavaMigration("2.0.0")));
+
+    assertThrows(IllegalStateException.class, workflow::validateMigrationsForServer);
   }
 
   @Test
@@ -1308,22 +1407,49 @@ class MigrationWorkflowTest {
     return process;
   }
 
+  private MigrationProcess deferringJavaMigration(String version) {
+    MigrationProcess process = mock(MigrationProcess.class);
+    when(process.getVersion()).thenReturn(version);
+    when(process.getDatabaseConnectionType()).thenReturn("postgres");
+    when(process.getMigrationsPath()).thenReturn("/tmp/" + version);
+    when(process.getDataMigrationIdentity()).thenReturn("identity-" + version);
+    when(process.hasDeferredDataMigration()).thenReturn(true);
+    when(process.runSchemaChanges(anyBoolean())).thenReturn(Map.of());
+    when(process.runPostDDLScripts(anyBoolean())).thenReturn(Map.of());
+    return process;
+  }
+
   private void runWorkflows(MigrationProcess process, String currentMaxVersion, boolean force)
       throws Exception {
-    MigrationWorkflow workflow =
-        new MigrationWorkflow(
-            jdbi,
-            tempDir.resolve("native").toString(),
-            ConnectionType.POSTGRES,
-            null,
-            null,
-            config,
-            force);
-    setMigrations(workflow, List.of(process));
+    runWorkflows(List.of(process), currentMaxVersion, force);
+  }
+
+  private void runWorkflows(
+      List<MigrationProcess> processes, String currentMaxVersion, boolean force) throws Exception {
+    MigrationWorkflow workflow = postgresWorkflow(force);
+    setMigrations(workflow, processes);
     setCurrentMaxVersion(workflow, Optional.of(currentMaxVersion));
     try (var ignored = mockConstruction(MigrationWorkflowContext.class, this::mockContext)) {
       workflow.runMigrationWorkflows(false);
     }
+  }
+
+  private MigrationWorkflow postgresWorkflow(boolean force) {
+    return new MigrationWorkflow(
+        jdbi,
+        tempDir.resolve("native").toString(),
+        ConnectionType.POSTGRES,
+        null,
+        null,
+        config,
+        force);
+  }
+
+  private void setDeferredMigrations(
+      MigrationWorkflow workflow, List<MigrationProcess> deferredMigrations) throws Exception {
+    Field field = MigrationWorkflow.class.getDeclaredField("deferredMigrations");
+    field.setAccessible(true);
+    field.set(workflow, new ArrayList<>(deferredMigrations));
   }
 
   private void setMigrations(MigrationWorkflow workflow, List<MigrationProcess> migrations)

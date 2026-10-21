@@ -84,6 +84,19 @@ public interface MigrationProcess {
   // force mode and continuous reprocessing can invoke it multiple times for the same version.
   void runDataMigration();
 
+  /** Whether this version has work in {@link #runDeferredDataMigration()}. */
+  default boolean hasDeferredDataMigration() {
+    return false;
+  }
+
+  /**
+   * Data migration work that goes through the running release's repositories or workflow engine.
+   * That code may read tables only later versions create, so the workflow runs this once every
+   * pending version has been applied. A failure fails migrate, and the next run retries it. Must be
+   * idempotent.
+   */
+  default void runDeferredDataMigration() {}
+
   /**
    * Fingerprint of this version's Java data migration code, or {@code null} when the version ships
    * no Java work. The workflow records it once the migration succeeds, so the current release
