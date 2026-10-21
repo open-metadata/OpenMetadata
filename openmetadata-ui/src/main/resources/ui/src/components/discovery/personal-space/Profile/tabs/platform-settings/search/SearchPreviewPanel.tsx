@@ -150,6 +150,9 @@ const SearchPreviewPanel = ({
       }) => (
         <ExploreSearchCard
           showEntityIcon
+          // Match the settings-modal muted cards; the important flag outranks
+          // the background the shared explore-search-card LESS sets.
+          className="tw:bg-primary_alt!"
           data-testid="searched-data-card"
           highlight={highlight}
           id={_id}

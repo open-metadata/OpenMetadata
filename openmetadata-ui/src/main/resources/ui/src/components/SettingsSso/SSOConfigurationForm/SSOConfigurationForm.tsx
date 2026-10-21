@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
 import {
-  Check,
-  UploadCloud02,
-  X,
-} from '@openmetadata/ui-core-components/icons';
+  Button,
+  Card,
+  FileUploadDropZone,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import Form from '@rjsf/core';
-import { RegistryFieldsType } from '@rjsf/utils';
+import { RegistryFieldsType, WidgetProps } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
-import { Upload } from 'antd';
 import classNames from 'classnames';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,11 +32,12 @@ import {
   createFormKeyDownHandler,
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import LdapRoleMappingWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/LdapRoleMappingWidget/LdapRoleMappingWidget';
-import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
+import CoreSelectWidget from '../../common/FormBuilderV1/widgets/CoreSelectWidget';
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -45,6 +46,7 @@ import ProviderSelector from '../ProviderSelector/ProviderSelector';
 import SSODocPanel from '../SSODocPanel/SSODocPanel';
 import { SSOFieldTemplate } from '../SSOFieldTemplate/SSOFieldTemplate';
 import { SSOGroupedFieldTemplate } from '../SSOGroupedFieldTemplate/SSOGroupedFieldTemplate';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import SsoTestLoginModal from '../SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../useSsoConfiguration';
 import './sso-configuration-form.less';
@@ -73,14 +75,14 @@ const MetadataUploadStatusCard = ({
           className={classNames(
             'flex-shrink flex items-center justify-center rounded-full w-6 h-6',
             {
-              'metadata-upload-status-icon-success': isSuccess,
-              'metadata-upload-status-icon-error': !isSuccess,
+              'tw:bg-success-solid': isSuccess,
+              'tw:bg-error-solid': !isSuccess,
             }
           )}>
           {isSuccess ? (
-            <Check className="text-white" size={16} />
+            <Check className="tw:text-fg-white tw:shrink-0" size={16} />
           ) : (
-            <X className="text-white" size={16} />
+            <XClose className="tw:text-fg-white tw:shrink-0" size={16} />
           )}
         </div>
         <Typography className="text-grey-body text-sm font-medium">
@@ -103,8 +105,20 @@ const MetadataUploadStatusCard = ({
   );
 };
 
+// SSOFieldTemplate draws the label, description and errors around the widget,
+// so the select renders only its control.
+const SsoSelectWidget = (props: WidgetProps) => (
+  <CoreSelectWidget
+    {...props}
+    hideLabel
+    options={{ ...props.options, help: undefined }}
+    rawErrors={undefined}
+    schema={{ ...props.schema, description: undefined }}
+  />
+);
+
 const widgets = {
-  SelectWidget: SelectWidget,
+  SelectWidget: SsoSelectWidget,
   LdapRoleMappingWidget: LdapRoleMappingWidget,
 };
 
@@ -299,43 +313,17 @@ const SSOConfigurationFormRJSF = ({
     showSamlUpload ? (
       <div className="m-b-md">
         {metadataUploadStatus === null && (
-          <Upload.Dragger
+          <FileUploadDropZone
             accept=".xml,application/xml,text/xml"
-            beforeUpload={(file) => {
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(file);
-              handleMetadataFileUpload(dataTransfer.files);
-
-              return false;
-            }}
-            className="saml-metadata-upload-drop-zone"
+            allowsMultiple={false}
+            clickToUploadLabel={t('label.upload-lowercase')}
             data-testid="file-uploader"
-            multiple={false}
-            showUploadList={false}>
-            <div
-              className="flex flex-center flex-column gap-1"
-              data-testid="file-upload-drop-zone">
-              <div
-                className="flex flex-shrink items-center justify-center bg-white border border-radius-xs"
-                style={{ width: '40px', height: '40px' }}>
-                <UploadCloud02 className="text-grey-600" size={20} />
-              </div>
-              <div
-                className="flex align-center flex-wrap gap-4 justify-center"
-                style={{ maxWidth: '220px' }}>
-                <Typography className="font-medium">
-                  {t('label.click-to')}{' '}
-                  <Button color="link-color" size="xs">
-                    {t('label.upload-lowercase')}
-                  </Button>{' '}
-                  {t('label.or-drag-and-drop-an-xml-file-here')}
-                </Typography>
-              </div>
-              <Typography className="text-xs" color="secondary">
-                {t('message.upload-saml-metadata-xml-description')}
-              </Typography>
-            </div>
-          </Upload.Dragger>
+            hint={t('message.upload-saml-metadata-xml-description')}
+            input-data-testid="file-upload-input"
+            orDragAndDropLabel={t('label.or-drag-and-drop-an-xml-file-here')}
+            onDropFiles={handleMetadataFileUpload}
+            onDropUnacceptedFiles={handleMetadataFileUpload}
+          />
         )}
         {metadataUploadStatus !== null && (
           <MetadataUploadStatusCard
@@ -447,11 +435,10 @@ const SSOConfigurationFormRJSF = ({
         <div className="flex align-items-center gap-2 flex items-center">
           <div className="provider-icon-container">
             {getProviderIcon(currentProvider) && (
-              <img
+              <SsoProviderIcon
                 alt={getProviderDisplayName(currentProvider)}
-                height={22}
-                src={getProviderIcon(currentProvider) as string}
-                width={22}
+                icon={getProviderIcon(currentProvider) as ProviderIcon}
+                size={22}
               />
             )}
           </div>

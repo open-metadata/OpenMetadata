@@ -86,6 +86,12 @@ export const EXTENSION_POINTS = {
   // proprietary AI surfaces so OSS core never imports plugin code.
   CONNECTIONS_PAGE_FOOTER: 'connections.page.footer',
   SERVICE_DETAILS_FOOTER: 'service-details.footer',
+  // Action shown in the test connection result when the test did not fully
+  // pass (e.g. a plugin's "diagnose" button). Read only by the connection
+  // details page, so the action appears where the plugin's footer lives
+  // (ADR:2026-10-12-failed-test-connection-and-run-actions).
+  SERVICE_DETAILS_TEST_CONNECTION_ACTIONS:
+    'service-details.test-connection.actions',
   CONNECTIONS_LIST_ONBOARDING: 'connections.list.onboarding',
   CONNECTIONS_ROUTES: 'connections.routes',
 } as const;

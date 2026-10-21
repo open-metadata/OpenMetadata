@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
+import { Box, Select, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 
@@ -37,7 +36,7 @@ import {
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -132,11 +131,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
@@ -337,17 +332,20 @@ const SampleDataTable: FC<SampleDataProps> = ({
           itemClassName="layout-space-item">
           <Typography color="secondary">{t('label.row-limit')}:</Typography>
           <Select
-            className="w-28"
+            aria-label={t('label.row-limit')}
+            className="tw:w-28"
             data-testid="row-limit-select"
-            value={rowLimit}
-            onChange={setRowLimit}>
+            selectedKey={String(rowLimit)}
+            onSelectionChange={(key) =>
+              key !== null && setRowLimit(Number(key))
+            }>
             {ROW_LIMIT_OPTIONS.map((limit) => (
-              <Select.Option
+              <Select.Item
                 data-testid={`row-limit-option-${limit}`}
+                id={String(limit)}
                 key={limit}
-                value={limit}>
-                {limit}
-              </Select.Option>
+                label={String(limit)}
+              />
             ))}
           </Select>
         </Box>

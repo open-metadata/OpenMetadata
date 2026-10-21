@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   Dialog,
@@ -25,7 +26,6 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import {
@@ -35,6 +35,7 @@ import {
 import { Document } from '../../../../generated/entity/docStore/document';
 import { getAllKnowledgePanels } from '../../../../rest/DocStoreAPI';
 import customizeMyDataPageClassBase from '../../../../utils/CustomizeMyDataPageClassBase';
+import { isAvailableMyDataWidgetKey } from '../../../../utils/CustomizeMyDataPageWidgetUtils';
 import { handleKeyboardActivation } from '../../../../utils/KeyboardUtil';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
@@ -79,15 +80,21 @@ const CustomiseHomeModal = ({
       });
       const excludedWidgetFqns =
         customizeMyDataPageClassBase.getExcludedWidgetFqns();
+      const pickableWidgetKeys =
+        customizeMyDataPageClassBase.getPickableWidgetKeyPrefixes();
+      // An allowlist off the widget registry, not a denylist of known-bad FQNs.
+      // docStore holds every KnowledgePanel ever seeded — retired widgets, this
+      // edition's widgets on an install of the other one — and a denylist has to
+      // name each one as it appears. Anything it misses is offered to the user
+      // and then renders as a blank cell, because the renderer resolves an
+      // unknown key to a render-nothing component.
       setWidgets(
-        data.filter(
-          (widget) =>
-            ![
-              LandingPageWidgetKeys.RECENTLY_VIEWED,
-              LandingPageWidgetKeys.PIPELINE,
-              LandingPageWidgetKeys.ANNOUNCEMENTS,
-            ].includes(widget.fullyQualifiedName as LandingPageWidgetKeys) &&
-            !excludedWidgetFqns.includes(widget.fullyQualifiedName ?? '')
+        data.filter((widget) =>
+          isAvailableMyDataWidgetKey(
+            widget.fullyQualifiedName ?? '',
+            excludedWidgetFqns,
+            pickableWidgetKeys
+          )
         )
       );
     } catch (error) {
@@ -195,7 +202,16 @@ const CustomiseHomeModal = ({
       ...(!onHomePage
         ? widgets.map((widget) => ({
             key: widget.fullyQualifiedName,
-            label: widget.name,
+            // `displayName` is what the seed doc calls the widget today; `name`
+            // is its stable key and lags a rename. The widget on
+            // `KnowledgePanel.ActivityFeed` is "Team Activity" now, so reading
+            // `name` would label the new card after the one it replaced.
+            //
+            // Cased here rather than at the render site: `startCase` is what
+            // turns the key-ish `name` into words, but it would also split an
+            // already-written displayName on its capitals — "KPIs" renders as
+            // "KP Is".
+            label: widget.displayName ?? startCase(widget.name ?? ''),
             id: widget.id,
           }))
         : []),
@@ -227,20 +243,21 @@ const CustomiseHomeModal = ({
               (widget) => widget.startsWith(item.key) || widget === item.id
             );
 
+          let labelWeight: 'regular' | 'medium' | 'semibold' = 'medium';
+          if (selectedKey === item.key) {
+            labelWeight = 'semibold';
+          } else if (isWidgetItem) {
+            labelWeight = 'regular';
+          }
+
           return (
             <div
               className={classNames(
-                'sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center',
-                isWidgetItem
-                  ? 'sidebar-widget-item tw:hover:bg-primary_hover'
-                  : '',
+                'sidebar-option border-radius-xs cursor-pointer d-flex items-center tw:gap-1.5',
+                isWidgetItem && 'sidebar-widget-item tw:hover:bg-primary_hover',
                 selectedKey === item.key
                   ? 'active tw:bg-brand-primary tw:text-brand-primary'
-                  : '',
-                isWidgetItem && selectedKey !== item.key
-                  ? 'tw:text-tertiary'
-                  : '',
-                isSelectedWidget ? 'selected' : ''
+                  : 'tw:text-secondary'
               )}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
@@ -250,16 +267,21 @@ const CustomiseHomeModal = ({
               onKeyDown={handleKeyboardActivation(() =>
                 handleSidebarClick(item.key)
               )}>
-              <span>{startCase(item.label)}</span>
+              <Typography
+                color={
+                  isWidgetItem && !isSelectedWidget ? 'secondary' : undefined
+                }
+                size="text-md"
+                weight={labelWeight}>
+                {item.label}
+              </Typography>
               {isAllWidgetsTab && (
-                <span className="widget-count tw:bg-brand-primary tw:text-brand-primary text-xs border-radius-md m-l-sm">
+                <Badge color="brand" size="sm" type="pill-color">
                   {widgets.length}
-                </span>
+                </Badge>
               )}
               {isSelectedWidget && (
-                <span className="selected-widget-icon">
-                  <Check />
-                </span>
+                <Check className="selected-widget-icon tw:size-4 tw:shrink-0 tw:text-fg-brand-primary" />
               )}
             </div>
           );
@@ -322,21 +344,12 @@ const CustomiseHomeModal = ({
       <Modal>
         <Dialog
           showCloseButton
-          aria-label={title}
           data-testid="customise-home-modal"
           dividers="scroll"
           panelClassName="customise-home-modal"
+          title={title}
           width={1800}
           onClose={onClose}>
-          <Box
-            align="center"
-            className="customise-home-modal-header p-box"
-            gap={3}>
-            <AddIcon className="add-icon tw:size-8" />
-            <Typography className="text-white" size="text-xl" weight="semibold">
-              {title}
-            </Typography>
-          </Box>
           {/* Fixed height: the sidebar and content columns scroll on their own. */}
           <Dialog.Content className="customise-home-modal-body tw:h-[70vh] tw:max-h-none tw:flex-row tw:gap-1 tw:p-0 tw:sm:px-0">
             <div className="sidebar p-box tw:overflow-y-auto">

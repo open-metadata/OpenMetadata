@@ -13,8 +13,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../enums/entity.enum';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
-import * as useEditableSectionHook from '../../../hooks/useEditableSection';
-import * as EntityUpdateUtils from '../../../utils/EntityUpdateUtils';
+import { useEditableSection } from '../../../hooks/useEditableSection';
+import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import TierSection from './TierSection';
 
 const mockStartEditing = jest.fn();
@@ -24,14 +24,23 @@ const mockSetIsLoading = jest.fn();
 const mockSetPopoverOpen = jest.fn();
 const mockSetDisplayTier = jest.fn();
 
-const mockUseEditableSection = jest.spyOn(
-  useEditableSectionHook,
-  'useEditableSection'
-);
-const mockUpdateEntityField = jest.spyOn(
-  EntityUpdateUtils,
-  'updateEntityField'
-);
+jest.mock('../../../hooks/useEditableSection', () => {
+  const actual = jest.requireActual('../../../hooks/useEditableSection');
+
+  return {
+    ...actual,
+    useEditableSection: jest.fn(actual.useEditableSection),
+  };
+});
+
+jest.mock('../../../utils/EntityUpdateUtils', () => {
+  const actual = jest.requireActual('../../../utils/EntityUpdateUtils');
+
+  return { ...actual, updateEntityField: jest.fn(actual.updateEntityField) };
+});
+
+const mockUseEditableSection = jest.mocked(useEditableSection);
+const mockUpdateEntityField = jest.mocked(updateEntityField);
 
 jest.mock('../TierCard/TierCard', () => ({
   __esModule: true,

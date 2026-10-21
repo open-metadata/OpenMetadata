@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const MarkerPin01: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,16 +29,16 @@ export const MarkerPin01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6"
+      d="M10 10.833a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"
       stroke="currentColor"
       strokeWidth={1.3}
     />
     <path
-      d="M12 22c4-4 8-7.582 8-12a8 8 0 1 0-16 0c0 4.418 4 8 8 12"
+      d="M10 18.333c3.333-3.333 6.667-6.318 6.667-10a6.667 6.667 0 1 0-13.333 0c0 3.682 3.333 6.667 6.667 10Z"
       stroke="currentColor"
       strokeWidth={1.3}
     />

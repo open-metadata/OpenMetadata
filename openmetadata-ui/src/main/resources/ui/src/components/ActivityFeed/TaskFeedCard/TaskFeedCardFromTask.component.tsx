@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon, { CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -20,6 +19,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CheckCircleFilled,
+  CloseCircleFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
@@ -64,6 +67,10 @@ import {
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   CARD_CONTAINER_CLASS_NAME,
@@ -239,15 +246,18 @@ const TaskFeedCardFromTask = ({
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
 
-  const getTransitionId = (resolutionType: TaskResolutionType) =>
+  const getTransition = (resolutionType: TaskResolutionType) =>
     task.availableTransitions?.find(
       (transition) => transition.resolutionType === resolutionType
-    )?.id ??
+    ) ??
     task.availableTransitions?.find((transition) =>
       resolutionType === TaskResolutionType.Rejected
         ? transition.id === 'reject'
         : transition.id === 'approve'
-    )?.id;
+    );
+
+  const canQuickResolve = () =>
+    task.status === TaskEntityStatus.Open && !isOntologyReviewTask(task);
 
   const updateTaskData = async (
     newValue: string,
@@ -257,11 +267,14 @@ const TaskFeedCardFromTask = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId: getTransitionId(resolutionType),
-        resolutionType,
-        newValue,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId: getTransition(resolutionType)?.id,
+          resolutionType,
+          newValue,
+        })
+      );
       showSuccessToast(
         isTaskPendingFurtherApproval(updatedTask)
           ? 'Vote recorded.'
@@ -343,16 +356,10 @@ const TaskFeedCardFromTask = ({
       justify="between"
       wrap="wrap">
       <Box>
-        <Box align="center" justify="center">
-          <ReplyIcon
-            className="m-r-xs"
-            height={20}
-            width={20}
-            onClick={showReplies}
-          />
+        <Box align="center" gap={2} justify="center">
+          <ReplyIcon height={20} width={20} onClick={showReplies} />
           {commentsCount > 0 ? (
             <Button
-              className="tw:mr-1"
               color="link-gray"
               data-testid="replies-count"
               onPress={showReplies}>
@@ -379,21 +386,25 @@ const TaskFeedCardFromTask = ({
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
         <Box gap={2}>
-          {task.status === TaskEntityStatus.Open && (
+          {canQuickResolve() && (
             <Button
               color="tertiary"
               data-testid="approve-button"
-              iconLeading={<CheckCircleFilled />}
+              iconLeading={
+                <CheckCircleFilled className="tw:shrink-0" size={14} />
+              }
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
             </Button>
           )}
-          {task.status === TaskEntityStatus.Open && (
+          {canQuickResolve() && (
             <Button
               color="tertiary-destructive"
               data-testid="reject-button"
-              iconLeading={<CloseCircleFilled />}
+              iconLeading={
+                <CloseCircleFilled className="tw:shrink-0" size={14} />
+              }
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}
@@ -403,6 +414,8 @@ const TaskFeedCardFromTask = ({
       )}
     </Box>
   );
+
+  const TaskStatusIcon = getTaskStatusIcon(task.status);
 
   return (
     // The less `task-feed-card-v1-new` rules (unlayered) own the surface,
@@ -435,9 +448,8 @@ const TaskFeedCardFromTask = ({
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
           <div className="tw:w-full">
-            <Icon
-              className="m-r-xss m-t-xss text-md"
-              component={getTaskStatusIcon(task.status)}
+            <TaskStatusIcon
+              className="tw:mr-1 tw:mt-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
             {taskLinkTitleElement}

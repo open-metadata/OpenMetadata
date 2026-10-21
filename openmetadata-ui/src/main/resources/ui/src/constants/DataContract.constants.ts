@@ -121,17 +121,16 @@ export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
 export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
 export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
 
-// Latest-result button tints. `!` beats the secondary core Button's own
-// bg/text/hover utilities. Aborted's light hexes (legacy @orange-7/@orange-50)
-// have no upstream palette step, so they come from legacy tokens and flip to
-// the utility-orange pair in dark.
+// Latest-result button tints, taken from the core Badge palette (utility-*-50 fill,
+// -700 text, -200 border) so the label meets contrast in both themes. `!` beats the
+// secondary core Button's own bg/text/border utilities.
 export const CONTRACT_RESULT_BUTTON_CLASS: Partial<
   Record<ContractExecutionStatus, string>
 > = {
   [ContractExecutionStatus.Failed]:
-    'tw:text-utility-error-600! tw:bg-utility-error-50!',
+    'tw:bg-utility-error-50! tw:text-utility-error-700! tw:after:outline-utility-error-200!',
   [ContractExecutionStatus.Aborted]:
-    'tw:text-(--om-legacy-color-b93815)! tw:bg-(--om-legacy-color-fef6ee)! tw:dark:text-utility-orange-700! tw:dark:bg-utility-orange-50!',
+    'tw:bg-utility-orange-50! tw:text-utility-orange-700! tw:after:outline-utility-orange-200!',
   [ContractExecutionStatus.Running]:
-    'tw:text-utility-brand-700! tw:bg-utility-brand-50!',
+    'tw:bg-utility-brand-50! tw:text-utility-brand-700! tw:after:outline-utility-brand-200!',
 };

@@ -250,7 +250,7 @@
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "className": {
-      "description": "Java class for the Event Subscription.",
+      "description": "Id of the registered consumer that runs this Event Subscription, such as `alert`, the consumer that sends its notifications.",
       "type": "string"
     },
     "name": {

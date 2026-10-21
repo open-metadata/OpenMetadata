@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Form, Select } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import {
+  Box,
+  Select,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -41,6 +44,7 @@ import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
+import { getTestCaseExportFilters } from '../../../../../utils/DataQuality/DataQualityPureUtils';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
@@ -123,12 +127,24 @@ export const QualityTab = () => {
     [qualityTab]
   );
 
-  const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
-    useState<TestCaseStatus>('' as TestCaseStatus);
+  const [selectedTestCaseStatus, setSelectedTestCaseStatus] = useState<
+    TestCaseStatus | ''
+  >('');
   const [selectedTestType, setSelectedTestType] = useState(TestCaseType.all);
   const [searchValue, setSearchValue] = useState<string>();
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const testCaseParams = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      ...sortOptions,
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: searchValue,
+    }),
+    [sortOptions, selectedTestType, selectedTestCaseStatus, searchValue]
+  );
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
@@ -197,11 +213,7 @@ export const QualityTab = () => {
   }) => {
     if (currentPage) {
       fetchAllTests({
-        ...sortOptions,
-        testCaseType: selectedTestType,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
+        ...testCaseParams,
         offset: (currentPage - 1) * pageSize,
       });
     }
@@ -211,17 +223,18 @@ export const QualityTab = () => {
   const handleSearchTestCase = (value?: string) => {
     setSearchValue(value);
     fetchAllTests({
-      testCaseType: selectedTestType,
-      testCaseStatus: isEmpty(selectedTestCaseStatus)
-        ? undefined
-        : selectedTestCaseStatus,
+      ...testCaseParams,
       q: value,
     });
   };
 
   const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
     setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
-    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    await fetchAllTests({
+      ...testCaseParams,
+      ...(apiParams ?? DEFAULT_SORT_ORDER),
+      offset: 0,
+    });
     handlePageChange(INITIAL_PAGING_VALUE);
   };
 
@@ -246,17 +259,17 @@ export const QualityTab = () => {
       : undefined;
   }, [originBreadcrumb, table]);
 
-  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
+  const handleTestCaseStatusChange = (value: TestCaseStatus | '') => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
       fetchAllTests({
-        testCaseType: selectedTestType,
+        ...testCaseParams,
         testCaseStatus: isEmpty(value) ? undefined : value,
       });
     }
   };
 
-  const extraDropdownContent: ItemType[] = useMemo(() => {
+  const extraDropdownContent = useMemo(() => {
     const bulkImportExportTestCasePermission = {
       ViewAll:
         checkPermission(
@@ -279,19 +292,18 @@ export const QualityTab = () => {
           table?.deleted ?? false,
           navigate,
           showModal,
-          EntityType.TABLE
+          EntityType.TABLE,
+          getTestCaseExportFilters(testCaseParams)
         )
       : [];
-  }, [globalPermissions, table, navigate, showModal]);
+  }, [globalPermissions, table, navigate, showModal, testCaseParams]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
       fetchAllTests({
+        ...testCaseParams,
         testCaseType: value,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
       });
     }
   };
@@ -424,30 +436,75 @@ export const QualityTab = () => {
           </div>
 
           {isTestCaseTab && (
-            <Form
-              className="new-form-style tw:ml-auto tw:shrink-0"
-              data-testid="quality-tab-filter-controls"
-              layout="inline">
+            <Box
+              className="tw:ml-auto tw:shrink-0"
+              data-testid="quality-tab-filter-controls">
               <Box
                 inline
                 align="center"
                 className="layout-space layout-space-horizontal tw:w-full tw:justify-end"
                 gap={3}
                 itemClassName="layout-space-item">
-                <Form.Item className="tw:m-0 tw:w-44" label={t('label.type')}>
+                <Box
+                  align="center"
+                  className="tw:w-44"
+                  data-testid="classic-quality-type-filter"
+                  gap={2}>
+                  <Typography as="span" size="text-sm" weight="medium">
+                    {t('label.type')}:
+                  </Typography>
                   <Select
-                    options={TEST_CASE_TYPE_OPTION}
+                    aria-label={t('label.type')}
+                    className="tw:min-w-0 tw:flex-1"
+                    fontSize="sm"
+                    items={TEST_CASE_TYPE_OPTION.map(({ value, label }) => ({
+                      id: value,
+                      label,
+                    }))}
                     value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
-                  />
-                </Form.Item>
-                <Form.Item className="tw:m-0 tw:w-44" label={t('label.status')}>
+                    onChange={(key) => {
+                      const type = TEST_CASE_TYPE_OPTION.find(
+                        (option) => option.value === key
+                      )?.value;
+                      if (type) {
+                        handleTestCaseTypeChange(type);
+                      }
+                    }}>
+                    {(item) => (
+                      <Select.Item id={item.id}>{item.label}</Select.Item>
+                    )}
+                  </Select>
+                </Box>
+                <Box
+                  align="center"
+                  className="tw:w-44"
+                  data-testid="classic-quality-status-filter"
+                  gap={2}>
+                  <Typography as="span" size="text-sm" weight="medium">
+                    {t('label.status')}:
+                  </Typography>
                   <Select
-                    options={TEST_CASE_STATUS_OPTION}
+                    aria-label={t('label.status')}
+                    className="tw:min-w-0 tw:flex-1"
+                    fontSize="sm"
+                    items={TEST_CASE_STATUS_OPTION.map(({ value, label }) => ({
+                      id: value,
+                      label,
+                    }))}
                     value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
+                    onChange={(key) => {
+                      const status = Object.values(TestCaseStatus).find(
+                        (value) => value === key
+                      );
+                      if (key === '' || status) {
+                        handleTestCaseStatusChange(status ?? '');
+                      }
+                    }}>
+                    {(item) => (
+                      <Select.Item id={item.id}>{item.label}</Select.Item>
+                    )}
+                  </Select>
+                </Box>
                 <ManageButton
                   canDelete={false}
                   deleted={table?.deleted ?? false}
@@ -461,17 +518,16 @@ export const QualityTab = () => {
                   isRecursiveDelete={false}
                 />
               </Box>
-            </Form>
+            </Box>
           )}
         </div>
 
         {qualityTab === EntityTabs.TEST_CASES && (
           <DataQualityTab
             removeTableBorder
-            afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params);
-              params?.length &&
-                (await getResourceLimit('dataQuality', true, true));
+            afterDeleteAction={async () => {
+              await fetchAllTests(testCaseParams);
+              await getResourceLimit('dataQuality', true, true);
             }}
             breadcrumbData={tableBreadcrumb}
             entityPermissions={allTestCasesPermissions}

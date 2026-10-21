@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { CheckCircleFilled } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -55,6 +55,11 @@ const WidgetCard = ({
     }
   }, [currentPageType, widget]);
 
+  // `displayName` is what the widget is called today; `name` is the stable key
+  // and lags a rename. The preview's alt text has to name the same widget the
+  // caption below it does.
+  const widgetLabel = widget.displayName ?? startCase(widget.name);
+
   const handleClick = () => {
     onSelectWidget?.(widget.id ?? '');
   };
@@ -67,20 +72,27 @@ const WidgetCard = ({
       isSelected={isSelected}
       onClick={handleClick}>
       <Box className="widget-card-content tw:relative tw:min-h-0 tw:flex-1">
-        <img
-          alt={widget.name}
-          className="tw:h-full tw:w-full tw:object-cover"
-          data-testid="widget-image"
-          src={widgetImage}
-        />
+        {/* An empty src resolves against the page URL, so the browser paints a
+          broken-image icon rather than nothing. Widgets added without a preview
+          screenshot keep an empty tile instead. */}
+        {widgetImage ? (
+          <img
+            alt={widgetLabel}
+            className="tw:h-full tw:w-full tw:object-cover tw:filter-(--widget-preview-filter)"
+            data-testid="widget-image"
+            src={widgetImage}
+          />
+        ) : (
+          <div
+            className="tw:h-full tw:w-full"
+            data-testid="widget-image-placeholder"
+          />
+        )}
         {isSelected && (
-          <Box
-            align="center"
-            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-fg-brand-primary"
+          <CheckCircleFilled
+            className="tw:absolute tw:top-2 tw:right-2 tw:size-6 tw:text-fg-brand-primary"
             data-testid="widget-selected-check"
-            justify="center">
-            <CheckIcon className="tw:size-4" />
-          </Box>
+          />
         )}
       </Box>
       <Box
@@ -88,7 +100,7 @@ const WidgetCard = ({
         direction="col"
         gap={1}>
         <Typography className="tw:text-primary" size="text-sm" weight="medium">
-          {startCase(widget.name)}
+          {widgetLabel}
         </Typography>
         <Typography
           as="p"

@@ -11,23 +11,21 @@
  *  limitations under the License.
  */
 
-import { InfoCircleOutlined } from '@ant-design/icons';
 import {
+  ButtonUtility,
   Card,
   Grid,
   SkeletonParagraph,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { GRAYED_OUT_COLOR } from '../../../../constants/constants';
 import { EventSubscriptionDiagnosticInfo } from '../../../../generated/events/api/eventSubscriptionDiagnosticInfo';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getDiagnosticInfo } from '../../../../rest/observabilityAPI';
 import { getDiagnosticItems } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 function AlertDiagnosticInfoTab() {
@@ -72,8 +70,8 @@ function AlertDiagnosticInfoTab() {
           <SkeletonParagraph rows={3} />
         ) : (
           <Grid
-            className="layout-row layout-grid w-full"
-            style={{ ...getLayoutGutter(16, 16) }}>
+            className="layout-row layout-grid w-full tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+            rowGap="4">
             {diagnosticItems.map((item) => (
               <Grid.Item className="layout-column" key={item.key} span={12}>
                 <Grid className="layout-row layout-grid tw:items-center">
@@ -86,13 +84,13 @@ function AlertDiagnosticInfoTab() {
                       </Typography>
                       <Tooltip
                         arrow
-                        excludeTriggerFromTabOrder
                         placement="bottom"
-                        title={item.description}
-                        triggerClassName="tw:inline-flex">
-                        <InfoCircleOutlined
-                          className="info-icon"
-                          style={{ color: GRAYED_OUT_COLOR }}
+                        title={item.description}>
+                        <ButtonUtility
+                          aria-label={item.description}
+                          color="tertiary"
+                          icon={InfoCircle}
+                          size="xs"
                         />
                       </Tooltip>
                     </Typography>

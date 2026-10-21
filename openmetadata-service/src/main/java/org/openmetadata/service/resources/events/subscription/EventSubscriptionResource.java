@@ -27,6 +27,7 @@ import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -43,9 +44,12 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
+import jakarta.ws.rs.core.Link;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
@@ -59,6 +63,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.EventSubscriptionDestinationTestRequest;
 import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.api.events.EventsRecord;
+import org.openmetadata.schema.api.events.TypedEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -73,16 +78,18 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertFactory;
-import org.openmetadata.service.apps.bundles.changeEvent.Destination;
-import org.openmetadata.service.events.errors.EventPublisherException;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertCatalog;
-import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.events.subscription.DestinationValidation;
-import org.openmetadata.service.events.subscription.EventsSubscriptionRegistry;
-import org.openmetadata.service.events.subscription.SourceCapabilities;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
+import org.openmetadata.service.alerting.channel.DestinationValidation;
+import org.openmetadata.service.alerting.definition.AlertCatalog;
+import org.openmetadata.service.alerting.definition.EventsSubscriptionRegistry;
+import org.openmetadata.service.alerting.definition.SourceCapabilities;
+import org.openmetadata.service.alerting.delivery.AlertFactory;
+import org.openmetadata.service.events.consumer.Consumers;
+import org.openmetadata.service.events.consumer.EventPublisherException;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -108,6 +115,10 @@ public class EventSubscriptionResource
   public static final String FIELDS = "owners,filteringRules";
   private static final Pattern URL_QUERY_PATTERN = Pattern.compile("(https?://[^\\s?]*)\\?\\S*");
   private static final String REDACTED_QUERY_REPLACEMENT = "$1?***";
+  // RFC 9745: the per-source list is deprecated since 2026-10-20, in favour of /capabilities.
+  // ADR:2026-10-20-alert-forms-read-only-the-capabilities-answer
+  private static final String RESOURCES_DEPRECATED_SINCE = "@1792454400";
+  private static final String CAPABILITIES_PATH = "/capabilities";
   private final EventSubscriptionMapper mapper = new EventSubscriptionMapper();
 
   public EventSubscriptionResource(Authorizer authorizer, Limits limits) {
@@ -149,9 +160,11 @@ public class EventSubscriptionResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) {
-    // Outside the catch-all below on purpose: a server whose catalog does not load would start
-    // with no alert able to build, so it refuses to start and says which entry is at fault.
+    // Outside the catch-all below on purpose: when the catalog or the registered consumers do not
+    // load, nothing below runs, so alerting stays off and the log names the entry at fault, rather
+    // than every tick failing later.
     EventsSubscriptionRegistry.initialize(AlertCatalog.load());
+    LOG.info("Alert consumers registered: {}", Consumers.names());
     try {
       EventSubscriptionScheduler.initialize(config);
       repository.initSeedDataFromResourcesOnStartup();
@@ -568,8 +581,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("name"));
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(sub.getId(), destinationId);
+    return AlertDiagnostics.destinationStatus(sub.getId(), destinationId);
   }
 
   @GET
@@ -602,8 +614,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
 
-    return EventSubscriptionScheduler.getInstance()
-        .getStatusForEventSubscription(id, destinationId);
+    return AlertDiagnostics.destinationStatus(id, destinationId);
   }
 
   @GET
@@ -612,21 +623,36 @@ public class EventSubscriptionResource
       operationId = "listEventSubscriptionResources",
       summary = "Get list of Event Subscriptions Resources used in filtering Event Subscription",
       description =
-          "Get list of EventSubscription functions used in filtering conditions in Event Subscription")
+          "Deprecated: use POST /v1/events/subscriptions/capabilities, which answers for every chosen source together. Get list of EventSubscription functions used in filtering conditions in Event Subscription",
+      deprecated = true)
   public ResultList<FilterResourceDescriptor> listEventSubResources(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
+      @Context HttpServletResponse response,
       @Parameter(description = "AlertType", schema = @Schema(type = "string"))
           @PathParam("alertType")
           CreateEventSubscription.AlertType alertType) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
+    response.setHeader("Deprecation", RESOURCES_DEPRECATED_SINCE);
+    response.setHeader(HttpHeaders.LINK, successorLink(uriInfo));
     if (alertType.equals(NOTIFICATION)) {
       return new ResultList<>(EventsSubscriptionRegistry.listEntityNotificationDescriptors());
     } else {
       return new ResultList<>(EventsSubscriptionRegistry.listObservabilityDescriptors());
     }
+  }
+
+  // A path under the one the server is served at, so it holds behind a configured base path.
+  static String successorLink(UriInfo uriInfo) {
+    String capabilities =
+        UriBuilder.fromUri(uriInfo.getBaseUri())
+            .path(EventSubscriptionResource.class)
+            .path(CAPABILITIES_PATH)
+            .build()
+            .getRawPath();
+    return Link.fromPath(capabilities).rel("alternate").build().toString();
   }
 
   @GET
@@ -753,8 +779,7 @@ public class EventSubscriptionResource
             .build();
       }
 
-      EventsRecord eventsRecord =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(subscriptionId);
+      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscriptionId);
 
       return Response.ok().entity(eventsRecord).build();
     } catch (Exception e) {
@@ -806,9 +831,7 @@ public class EventSubscriptionResource
             .build();
       }
 
-      EventsRecord eventsRecord =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionEventsRecord(subscription.getId());
+      EventsRecord eventsRecord = AlertDiagnostics.eventsRecord(subscription.getId());
 
       return Response.ok().entity(eventsRecord).build();
     } catch (Exception e) {
@@ -872,9 +895,7 @@ public class EventSubscriptionResource
       }
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(
-                  subscriptionId, limit, paginationOffset, listCountOnly);
+          AlertDiagnostics.diagnosticInfo(subscriptionId, limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -917,7 +938,7 @@ public class EventSubscriptionResource
   }
 
   @POST
-  @Path("/capabilities")
+  @Path(CAPABILITIES_PATH)
   @Operation(
       operationId = "getAlertCapabilities",
       summary = "Get what a selection of sources supports",
@@ -998,9 +1019,8 @@ public class EventSubscriptionResource
       }
 
       EventSubscriptionDiagnosticInfo diagnosticInfo =
-          EventSubscriptionScheduler.getInstance()
-              .getEventSubscriptionDiagnosticInfo(
-                  subscription.getId(), limit, paginationOffset, listCountOnly);
+          AlertDiagnostics.diagnosticInfo(
+              subscription.getId(), limit, paginationOffset, listCountOnly);
 
       return Response.ok().entity(diagnosticInfo).build();
     } catch (Exception e) {
@@ -1350,7 +1370,7 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return EventSubscriptionScheduler.getInstance().listAlertDestinations(id);
+    return AlertDiagnostics.listDestinations(id);
   }
 
   @GET
@@ -1383,7 +1403,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
-    return EventSubscriptionScheduler.getInstance().listAlertDestinations(sub.getId());
+    return AlertDiagnostics.listDestinations(sub.getId());
   }
 
   @PUT
@@ -1466,7 +1486,7 @@ public class EventSubscriptionResource
     } catch (EventPublisherException e) {
       LOG.error("Failed to send test message to destination: {}", e.getMessage());
       destination.setStatusDetails(
-          AlertUtil.buildTestDestinationStatus(
+          DestinationStatuses.buildTestDestinationStatus(
               TestDestinationStatus.Status.FAILED,
               redactUrlQueryParams(e.getMessage()),
               System.currentTimeMillis()));
