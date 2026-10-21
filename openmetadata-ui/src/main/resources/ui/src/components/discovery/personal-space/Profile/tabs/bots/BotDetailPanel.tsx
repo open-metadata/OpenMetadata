@@ -377,7 +377,11 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
-                <Badge key={role.id} size="md" type="modern">
+                <Badge
+                  key={role.id}
+                  size="md"
+                  tooltip={getEntityName(role)}
+                  type="modern">
                   {getEntityName(role)}
                 </Badge>
               ))}
@@ -402,7 +406,12 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
               </Typography>
             ) : (
               botUserData.inheritedRoles?.map((role) => (
-                <Badge color="gray" key={role.id} size="sm" type="pill-color">
+                <Badge
+                  color="gray"
+                  key={role.id}
+                  size="sm"
+                  tooltip={getEntityName(role)}
+                  type="pill-color">
                   {getEntityName(role)}
                 </Badge>
               ))

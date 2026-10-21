@@ -858,6 +858,7 @@ export function ConnectionCapabilitySection(
                         bordered={false}
                         className="tw:font-medium tw:text-tertiary tw:border-0"
                         size="sm"
+                        tooltip={step.name}
                         type="color">
                         {step.name}
                       </Badge>

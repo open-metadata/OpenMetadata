@@ -637,7 +637,11 @@ const MetricListPage = () => {
     tags.length ? (
       <Box align="center" gap={1} wrap={wrap}>
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
-          <Badge color="blue" key={tag.tagFQN} size="sm">
+          <Badge
+            color="blue"
+            key={tag.tagFQN}
+            size="sm"
+            tooltip={tag.name ?? tag.tagFQN}>
             {tag.name ?? tag.tagFQN}
           </Badge>
         ))}
