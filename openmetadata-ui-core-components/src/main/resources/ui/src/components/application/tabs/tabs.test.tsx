@@ -149,6 +149,26 @@ describe('useTabItemState', () => {
       expect(maskImage).toMatch(/transparent\)$/);
     });
 
+    it('keeps the caller style alongside the fade', () => {
+      mockScrollBox(1000, 600);
+      render(
+        <Tabs defaultSelectedKey="one">
+          <Tabs.List
+            aria-label="Sections"
+            style={{ marginTop: 4 }}
+            type="underline"
+            variant="card">
+            <Tabs.Item id="one">One</Tabs.Item>
+            <Tabs.Item id="two">Two</Tabs.Item>
+          </Tabs.List>
+        </Tabs>
+      );
+      const tabList = screen.getByRole('tablist');
+
+      expect(tabList.style.marginTop).toBe('4px');
+      expect(tabList.style.maskImage).toContain('transparent');
+    });
+
     it('leaves the list unmasked when every tab fits', () => {
       mockScrollBox(600, 600);
       renderTabs('card');

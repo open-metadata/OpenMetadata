@@ -336,6 +336,10 @@ export const TabList = <K extends Orientation>({
 
   const isCard = variant === 'card';
   const overflow = useOverflowEdges(isCard && orientation === 'horizontal');
+  // The fade adds to the caller's style; it never replaces it.
+  const callerStyle = (
+    otherProps as Pick<AriaTabListProps<TabComponentProps>, 'style'>
+  ).style;
 
   const tabList = (
     <AriaTabList
@@ -364,7 +368,14 @@ export const TabList = <K extends Orientation>({
         )
       }
       ref={overflow.ref}
-      style={{ maskImage: overflow.maskImage }}>
+      style={(state) => {
+        const base =
+          typeof callerStyle === 'function' ? callerStyle(state) : callerStyle;
+
+        return overflow.maskImage
+          ? { ...base, maskImage: overflow.maskImage }
+          : base;
+      }}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
