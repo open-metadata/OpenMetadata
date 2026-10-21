@@ -82,9 +82,8 @@ const WidgetCard = ({
         {/* An empty src resolves against the page URL, so the browser paints a
           broken-image icon rather than nothing. Widgets added without a preview
           screenshot keep an empty tile instead. */}
-        {/* ponytail: the previews are light-theme screenshots; dark mode inverts
-          them (hue-rotate puts brand and status colors back). Swap in real
-          dark screenshots if the approximation stops being good enough. */}
+        {/* The previews are light-theme screenshots, so dark mode inverts them;
+          hue-rotate turns the brand and status colors back to their own hue. */}
         {widgetImage ? (
           <img
             alt={widgetLabel}
