@@ -41,7 +41,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { UpdateTermRelation } from '../../generated/api/data/updateTermRelation';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -53,7 +53,6 @@ import {
   updateTermRelationById,
 } from '../../rest/glossaryAPI';
 import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
-import { getGlossaryPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
@@ -141,7 +140,6 @@ function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
 
 function OntologyOnboardingEmptyState() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   return (
     <div
@@ -174,9 +172,9 @@ function OntologyOnboardingEmptyState() {
         footer={
           <Button
             color="primary"
-            data-testid="ontology-browse-glossary"
-            onPress={() => navigate(getGlossaryPath())}>
-            {t('label.browse-glossary')}
+            data-testid="ontology-view-all"
+            href={ROUTES.ONTOLOGY_EXPLORER}>
+            {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
           </Button>
         }
         title={t('message.ontology-empty-title')}

@@ -1586,6 +1586,7 @@ export function useGraphDataBuilder({
   graphSearchHighlight = null,
   isEditMode = false,
   relationTypes,
+  relationColors,
   studioMode = false,
 }: BuildGraphDataProps) {
   const { theme } = useTheme();
@@ -1613,7 +1614,7 @@ export function useGraphDataBuilder({
   );
 
   const customRelationColorMap = useMemo<Record<string, string>>(() => {
-    const map: Record<string, string> = {};
+    const map: Record<string, string> = { ...relationColors };
     relationTypes?.forEach((relationshipType) => {
       map[relationshipType.name] =
         RELATION_META[relationshipType.name]?.color ??
@@ -1621,7 +1622,7 @@ export function useGraphDataBuilder({
     });
 
     return map;
-  }, [relationTypes]);
+  }, [relationColors, relationTypes]);
 
   const cardinalityMap = useMemo<Map<string, RelationshipType>>(() => {
     const map = new Map<string, RelationshipType>();
