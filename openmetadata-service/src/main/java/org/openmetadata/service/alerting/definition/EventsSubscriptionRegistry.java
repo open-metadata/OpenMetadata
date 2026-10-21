@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.audience.RecipientResolver;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 
 public class EventsSubscriptionRegistry {
@@ -59,23 +60,25 @@ public class EventsSubscriptionRegistry {
   /**
    * Who alerts on the source can be sent to inside the platform, removed sources included, so an
    * alert saved with one still shows its recipients. Offered in the form, never enforced on save.
-   * An entity source offers owners and followers only when its entity type holds them.
+   * An entity source offers owners and followers only where delivery reaches them: on its own
+   * entity, or downstream of the entities it is about, as for the tables a test suite covers.
    */
   public static List<SubscriptionCategory> recipientCategoriesOf(
       AlertType alertType, String source) {
     List<SubscriptionCategory> listed =
         RECIPIENTS.getOrDefault(kindKey(alertType, source), DEFAULT_RECIPIENTS);
     return kindOf(alertType, source) == AlertSourceKind.ENTITY
-        ? listed.stream().filter(category -> entityHolds(source, category)).toList()
+        ? listed.stream().filter(category -> reachable(source, category)).toList()
         : Collections.unmodifiableList(listed);
   }
 
   // Asked per request: the catalog loads before every entity type has registered its repository.
-  private static boolean entityHolds(String entityType, SubscriptionCategory category) {
+  private static boolean reachable(String entityType, SubscriptionCategory category) {
     String field = ENTITY_FIELDS.get(category);
     return field == null
         || !Entity.hasEntityRepository(entityType)
-        || Entity.entityHasField(entityType, field);
+        || Entity.entityHasField(entityType, field)
+        || RecipientResolver.walksDownstreamFromOtherEntities(entityType);
   }
 
   public static List<SubscriptionCategory> defaultRecipientCategories() {

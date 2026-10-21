@@ -33,6 +33,7 @@ public class RecipientResolver {
           SubscriptionDestination.SubscriptionCategory, RecipientResolutionStrategy>
       STRATEGIES;
   private static final Map<String, EntityLineageResolver> LINEAGE_RESOLVERS;
+  private static final String ANY_TYPE = "*";
 
   static {
     // 1. Create user and team resolvers (needed by other strategies)
@@ -69,11 +70,19 @@ public class RecipientResolver {
             Map.entry(Entity.CONVERSATION, new ConversationLineageResolver()),
             Map.entry(Entity.TEST_SUITE, new TestSuiteLineageResolver()),
             Map.entry(Entity.DATA_CONTRACT, new DataContractLineageResolver()),
-            Map.entry("*", new DefaultLineageResolver())); // Catch-all
+            Map.entry(ANY_TYPE, new DefaultLineageResolver())); // Catch-all
   }
 
   public RecipientResolver() {
     // Empty constructor - uses static initialized strategies and lineage resolvers
+  }
+
+  /**
+   * Whether delivery downstream of an entity of this type starts from the entities it is about,
+   * such as the tables of a test suite's failed tests, whose owners and followers it then reaches.
+   */
+  public static boolean walksDownstreamFromOtherEntities(String entityType) {
+    return !ANY_TYPE.equals(entityType) && LINEAGE_RESOLVERS.containsKey(entityType);
   }
 
   /**

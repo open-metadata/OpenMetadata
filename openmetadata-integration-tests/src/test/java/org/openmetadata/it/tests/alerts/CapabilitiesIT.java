@@ -94,10 +94,18 @@ class CapabilitiesIT {
         List.of(
             SubscriptionCategory.USERS, SubscriptionCategory.TEAMS, SubscriptionCategory.ADMINS),
         ask(AlertType.NOTIFICATION, List.of("user")).getRecipientCategories());
-    assertFalse(
-        ask(AlertType.OBSERVABILITY, List.of("testSuite"))
-            .getRecipientCategories()
-            .contains(SubscriptionCategory.FOLLOWERS));
+  }
+
+  // Neither has followers, but delivery downstream of them reaches those of the assets they cover.
+  @Test
+  void entitySourceOffersTheFollowersDownstreamDeliveryReaches() {
+    for (String source : List.of("testSuite", "dataContract")) {
+      assertTrue(
+          ask(AlertType.OBSERVABILITY, List.of(source))
+              .getRecipientCategories()
+              .contains(SubscriptionCategory.FOLLOWERS),
+          source);
+    }
   }
 
   @Test

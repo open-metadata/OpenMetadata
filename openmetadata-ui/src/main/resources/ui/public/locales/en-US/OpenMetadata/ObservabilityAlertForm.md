@@ -123,6 +123,8 @@ Where notifications are delivered when the alert fires. Each destination is two 
 
 Routing to **Owners** or **Followers** keeps the alert accurate as ownership changes, without anyone editing it — a good default for alerts that follow a dataset rather than a team.
 
+A **Test Suite** or **Data Contract** has no followers of its own. Its **Followers** are those of the assets it covers and of everything downstream of them, reached with **Notify Downstream** on.
+
 **Examples:**
 
 - *Owners* → *Email* — tell whoever currently owns the failing asset

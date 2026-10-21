@@ -181,6 +181,23 @@ class SourceCapabilitiesTest {
     }
   }
 
+  // Downstream delivery starts from what they cover, so it reaches the followers of those assets.
+  @Test
+  void entitySourceOffersTheFollowersDownstreamDeliveryReaches() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      for (String type : List.of(Entity.TEST_SUITE, Entity.DATA_CONTRACT)) {
+        entity.when(() -> Entity.hasEntityRepository(type)).thenReturn(true);
+        entity.when(() -> Entity.entityHasField(type, Entity.FIELD_OWNERS)).thenReturn(true);
+        entity.when(() -> Entity.entityHasField(type, Entity.FIELD_FOLLOWERS)).thenReturn(false);
+
+        assertEquals(
+            EventsSubscriptionRegistry.defaultRecipientCategories(),
+            of(AlertType.OBSERVABILITY, List.of(type), null).getRecipientCategories(),
+            type);
+      }
+    }
+  }
+
   @Test
   void recipientsAreWhatTheSourcesOffer() {
     assertEquals(
