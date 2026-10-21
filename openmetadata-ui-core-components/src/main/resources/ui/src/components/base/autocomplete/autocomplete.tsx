@@ -73,6 +73,8 @@ interface AutocompleteContextValue {
   hideDropdown: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
+  wrapsSelectedItems: boolean;
+  isReadOnly: boolean;
   multiple: boolean;
   visibleItemCount: number;
   triggerRef: RefObject<HTMLDivElement | null>;
@@ -89,6 +91,8 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   allowsCreation: false,
   hideDropdown: false,
   maxVisibleItems: undefined,
+  wrapsSelectedItems: true,
+  isReadOnly: false,
   multiple: true,
   visibleItemCount: 0,
   triggerRef: { current: null },
@@ -130,7 +134,13 @@ export interface AutocompleteProps
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
+  /** Chips drawn before the rest collapse into a +N button that opens the list with them checked. */
   maxVisibleItems?: number;
+  /**
+   * Wrap the chips onto more lines. Defaults to true without `maxVisibleItems`;
+   * a capped field stays on one line, so set this when the cap is large.
+   */
+  wrapSelectedItems?: boolean;
   multiple?: boolean;
   allowsCreation?: boolean;
   hideDropdown?: boolean;
@@ -270,6 +280,16 @@ const InnerAutocomplete = ({
     }
   };
 
+  // +N sits between the chips and the input, so it passes the same
+  // Backspace/arrow walk along instead of ending it.
+  const handleOverflowKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
+      focusManager?.focusPrevious({ wrap: false, tabbable: false });
+    } else if (event.key === 'ArrowRight') {
+      focusManager?.focusNext({ wrap: false, tabbable: false });
+    }
+  };
+
   const isSelectionEmpty = context?.selectedItems?.length === 0;
   const { maxVisibleItems, multiple } = context;
   const allSelected = context?.selectedItems ?? [];
@@ -314,7 +334,7 @@ const InnerAutocomplete = ({
       className={cx(
         'tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:items-center tw:justify-start tw:gap-1.5',
         // A capped field stays one line: chips truncate, +N holds the rest.
-        maxVisibleItems === undefined ? 'tw:flex-wrap' : 'tw:flex-nowrap'
+        context.wrapsSelectedItems ? 'tw:flex-wrap' : 'tw:flex-nowrap'
       )}>
       {!isSelectionEmpty && visibleSelected.map((item) => renderChip(item))}
 
@@ -325,8 +345,11 @@ const InnerAutocomplete = ({
           aria-label={t('label.show-count-more', { count: overflowCount })}
           className="tw:shrink-0 tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
           data-testid="autocomplete-overflow-trigger"
+          // slot={null} also drops the ComboBox's disabled state, so pass it here.
+          isDisabled={isDisabled || context.isReadOnly}
           // Opt out of the ComboBox's ButtonContext so this is not the menu trigger.
           slot={null}
+          onKeyDown={handleOverflowKeyDown}
           onPress={() => {
             context.onShowSelection();
             inputRef.current?.focus();
@@ -445,6 +468,7 @@ export const AutocompleteBase = ({
   multiple = true,
   onSearchChange,
   maxVisibleItems,
+  wrapSelectedItems = maxVisibleItems === undefined,
   allowsCreation = false,
   hideDropdown = false,
   onOpenChange,
@@ -472,9 +496,16 @@ export const AutocompleteBase = ({
 
   // Opened from +N, the list switches to a checkbox view that keeps selected
   // values as checked rows; it reverts when the list closes.
+  // ADR:2026-10-21-capped-autocomplete-stays-on-one-line
+  // It keeps the selection it opened with, so an unchecked value that is not
+  // in the loaded items stays listed and can be checked again.
+  const [openedSelection, setOpenedSelection] = useState<SelectItemType[]>([]);
   const [isSelectionView, setIsSelectionView] = useState(false);
   const listsSelection = multiple && isSelectionView;
-  const onShowSelection = useCallback(() => setIsSelectionView(true), []);
+  const onShowSelection = useCallback(() => {
+    setOpenedSelection(internalSelected);
+    setIsSelectionView(true);
+  }, [internalSelected]);
   const handleOpenChange = (
     isOpen: boolean,
     trigger?: Parameters<NonNullable<typeof onOpenChange>>[1]
@@ -490,6 +521,15 @@ export const AutocompleteBase = ({
     [allItems]
   );
 
+  // Selections outside the loaded (e.g. async) items, listed first in the view.
+  const unloadedSelection = useMemo(
+    () =>
+      listsSelection && filterText === ''
+        ? openedSelection.filter((item) => !itemMap.has(item.id))
+        : [],
+    [listsSelection, filterText, openedSelection, itemMap]
+  );
+
   const visibleItems = useMemo(() => {
     const matches = allItems.filter((item) => {
       if (!listsSelection && selectedKeys.includes(item.id)) {
@@ -501,13 +541,8 @@ export const AutocompleteBase = ({
 
       return contains(item.label || item.supportingText || '', filterText);
     });
-    if (!listsSelection || filterText !== '') {
-      return matches;
-    }
-    // Selections outside the loaded (e.g. async) page still get a checked row.
-    const unloaded = internalSelected.filter((item) => !itemMap.has(item.id));
 
-    return [...unloaded, ...matches];
+    return [...unloadedSelection, ...matches];
   }, [
     allItems,
     filterText,
@@ -515,8 +550,7 @@ export const AutocompleteBase = ({
     filterOption,
     contains,
     listsSelection,
-    internalSelected,
-    itemMap,
+    unloadedSelection,
   ]);
 
   const checkedKeys = useMemo(
@@ -538,7 +572,7 @@ export const AutocompleteBase = ({
       return children;
     }
 
-    return Children.toArray(children).filter((child) => {
+    const filtered = Children.toArray(children).filter((child) => {
       if (!isValidElement(child)) {
         return true;
       }
@@ -549,7 +583,20 @@ export const AutocompleteBase = ({
 
       return visibleIds.has(String(childId));
     });
-  }, [children, visibleIds, itemMap]);
+    // Static children only cover the caller's items, so draw the rest here.
+    const unloadedRows = unloadedSelection.map((item) => (
+      <AutocompleteItem
+        avatarUrl={item.avatarUrl}
+        icon={item.icon}
+        id={String(item.id)}
+        key={item.id}
+        label={item.label}
+        supportingText={item.supportingText}
+      />
+    ));
+
+    return [...unloadedRows, ...filtered];
+  }, [children, visibleIds, itemMap, unloadedSelection]);
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -598,7 +645,9 @@ export const AutocompleteBase = ({
     if (!multiple && internalSelected.length >= 1) {
       return;
     }
-    const item = itemMap.get(id as string);
+    const item =
+      itemMap.get(id as string) ??
+      unloadedSelection.find((selected) => selected.id === id);
     if (!item) {
       return;
     }
@@ -722,6 +771,8 @@ export const AutocompleteBase = ({
       hideDropdown,
       renderTag,
       maxVisibleItems,
+      wrapsSelectedItems: wrapSelectedItems,
+      isReadOnly: Boolean(props.isReadOnly),
       multiple,
       visibleItemCount: visibleItems.length,
       triggerRef,
@@ -737,6 +788,8 @@ export const AutocompleteBase = ({
       hideDropdown,
       renderTag,
       maxVisibleItems,
+      wrapSelectedItems,
+      props.isReadOnly,
       multiple,
       visibleItems.length,
       triggerRef,

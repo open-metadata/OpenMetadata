@@ -404,3 +404,123 @@ describe('Autocomplete – overflow chips', () => {
     expect(onItemInserted).toHaveBeenCalledWith('d');
   });
 });
+
+describe('Autocomplete – +N checkbox view edge cases', () => {
+  const SELECTED: SelectItemType[] = ['a', 'b', 'c'].map((id) => ({
+    id,
+    label: `Tag ${id.toUpperCase()}`,
+  }));
+  const LOADED: SelectItemType[] = [
+    SELECTED[0],
+    SELECTED[1],
+    { id: 'd', label: 'Tag D' },
+  ];
+  const optionLabels = async () =>
+    within(await screen.findByRole('listbox'))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+  const isChecked = (name: string) =>
+    screen
+      .getByRole('option', { name })
+      .querySelector('[class*="bg-brand-solid"]') !== null;
+
+  it.each([['isDisabled'], ['isReadOnly']])(
+    'does not open the list from +N when %s',
+    async (flag) => {
+      const onItemCleared = vi.fn();
+      render(
+        <Autocomplete
+          items={LOADED}
+          maxVisibleItems={1}
+          selectedItems={SELECTED}
+          onItemCleared={onItemCleared}
+          {...{ [flag]: true }}>
+          {(item) => (
+            <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+          )}
+        </Autocomplete>
+      );
+
+      await userEvent.click(
+        screen.getByTestId('autocomplete-overflow-trigger')
+      );
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(onItemCleared).not.toHaveBeenCalled();
+    }
+  );
+
+  it('lists unloaded selections for static children too', async () => {
+    render(
+      <Autocomplete items={LOADED} maxVisibleItems={1} selectedItems={SELECTED}>
+        {LOADED.map((item) => (
+          <Autocomplete.Item id={String(item.id)} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        ))}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+
+    expect(await optionLabels()).toEqual(['Tag C', 'Tag A', 'Tag B', 'Tag D']);
+  });
+
+  it('marks selected rows checked and can re-check an unloaded value', async () => {
+    const onItemInserted = vi.fn();
+    const onItemCleared = vi.fn();
+    render(
+      <Autocomplete
+        items={LOADED}
+        maxVisibleItems={1}
+        selectedItems={SELECTED}
+        onItemCleared={onItemCleared}
+        onItemInserted={onItemInserted}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await screen.findByRole('listbox');
+
+    expect(isChecked('Tag C')).toBe(true);
+    expect(isChecked('Tag D')).toBe(false);
+
+    await userEvent.click(screen.getByRole('option', { name: 'Tag C' }));
+
+    expect(onItemCleared).toHaveBeenCalledWith('c');
+
+    // A value outside the loaded items stays listed, so the uncheck can be undone.
+    expect(isChecked('Tag C')).toBe(false);
+
+    await userEvent.click(screen.getByRole('option', { name: 'Tag C' }));
+
+    expect(onItemInserted).toHaveBeenCalledWith('c');
+  });
+
+  it('keeps the Backspace walk from the input to the last chip', async () => {
+    const onItemCleared = vi.fn();
+    render(
+      <Autocomplete
+        items={LOADED}
+        maxVisibleItems={1}
+        selectedItems={SELECTED}
+        onItemCleared={onItemCleared}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('{Backspace}');
+
+    expect(screen.getByTestId('autocomplete-overflow-trigger')).toHaveFocus();
+
+    await userEvent.keyboard('{Backspace}{Backspace}');
+
+    expect(onItemCleared).toHaveBeenCalledWith('a');
+  });
+});
