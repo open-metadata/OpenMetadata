@@ -556,3 +556,40 @@ describe('Autocomplete – +N view with created values', () => {
     expect(options.map((option) => option.textContent)).toContain('medium');
   });
 });
+
+describe('Autocomplete – searching the +N view', () => {
+  it('keeps an unloaded selection that matches the search', async () => {
+    const onItemCleared = vi.fn();
+    const selected: SelectItemType[] = [
+      { id: 'a', label: 'Tag A' },
+      { id: 'c', label: 'Tag C' },
+    ];
+    render(
+      // Async caller: only Tag A is loaded and the server does the filtering.
+      <Autocomplete
+        filterOption={() => true}
+        items={[selected[0]]}
+        maxVisibleItems={1}
+        selectedItems={selected}
+        onItemCleared={onItemCleared}>
+        {(item) => (
+          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
+        )}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+    await screen.findByRole('listbox');
+    await userEvent.keyboard('zzz');
+
+    expect(
+      screen.queryByRole('option', { name: 'Tag C' })
+    ).not.toBeInTheDocument();
+
+    await userEvent.clear(screen.getByRole('combobox'));
+    await userEvent.keyboard('Tag C');
+    await userEvent.click(await screen.findByRole('option', { name: 'Tag C' }));
+
+    expect(onItemCleared).toHaveBeenCalledWith('c');
+  });
+});

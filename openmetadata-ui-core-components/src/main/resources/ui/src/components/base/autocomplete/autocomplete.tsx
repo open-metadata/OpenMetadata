@@ -541,13 +541,22 @@ export const AutocompleteBase = ({
     [allItems]
   );
 
+  // The saved selection matching the search. Matched locally, not through
+  // `filterOption`: async callers pass one that accepts everything.
+  const matchingOpenedSelection = useMemo(
+    () =>
+      listsSelection
+        ? openedSelection.filter((item) =>
+            contains(item.label || item.supportingText || '', filterText)
+          )
+        : [],
+    [listsSelection, openedSelection, filterText, contains]
+  );
+
   // Selections outside the loaded (e.g. async) items, listed first in the view.
   const unloadedSelection = useMemo(
-    () =>
-      listsSelection && filterText === ''
-        ? openedSelection.filter((item) => !itemMap.has(item.id))
-        : [],
-    [listsSelection, filterText, openedSelection, itemMap]
+    () => matchingOpenedSelection.filter((item) => !itemMap.has(item.id)),
+    [matchingOpenedSelection, itemMap]
   );
 
   const visibleItems = useMemo(() => {
@@ -590,7 +599,7 @@ export const AutocompleteBase = ({
   // Static children render only the caller's items, so a selection they lack
   // (an async miss, or a value created in this session) needs its own row.
   const unrenderedSelection = useMemo(() => {
-    if (typeof children === 'function' || !listsSelection || filterText) {
+    if (typeof children === 'function') {
       return [];
     }
     const renderedIds = new Set(
@@ -599,8 +608,10 @@ export const AutocompleteBase = ({
         .map((child) => String((child.props as { id?: Key }).id))
     );
 
-    return openedSelection.filter((item) => !renderedIds.has(String(item.id)));
-  }, [children, listsSelection, filterText, openedSelection]);
+    return matchingOpenedSelection.filter(
+      (item) => !renderedIds.has(String(item.id))
+    );
+  }, [children, matchingOpenedSelection]);
 
   const visibleChildren = useMemo(() => {
     if (typeof children === 'function') {
