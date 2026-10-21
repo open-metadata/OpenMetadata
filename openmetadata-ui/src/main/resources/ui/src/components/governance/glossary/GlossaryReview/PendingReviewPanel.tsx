@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -27,14 +27,8 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../../generated/entity/data/glossaryTerm';
-import {
-  ProposalScope,
-  PROPOSALS_PAGE_SIZE,
-  useDecideProposal,
-  useGlossaryProposal,
-  useGlossaryProposalCounts,
-  useGlossaryProposalPage,
-} from '../../../../hooks/governance/glossary/useGlossaryProposals';
+import { useDecideProposal } from '../../../../hooks/governance/glossary/useGlossaryProposals';
+import { useGlossaryReviewQueue } from '../../../../hooks/governance/glossary/useGlossaryReviewQueue';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -48,8 +42,6 @@ import {
 } from '../../../../utils/GlossaryReview/GlossaryReview.types';
 import {
   canDecideProposal,
-  getActiveFilter,
-  getTotalPages,
   hasProposalsFromBothSources,
 } from '../../../../utils/GlossaryReview/GlossaryReview.utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -147,57 +139,6 @@ const PanelHeader = ({ counts, filter, onFilterChange }: PanelHeaderProps) => {
   );
 };
 
-/**
- * The page of the queue the panel shows. The server pages it; a proposal selected in the terms
- * table that lies on another page is shown first, so selecting a row always opens its proposal.
- */
-const useReviewQueue = (
-  scope: ProposalScope | undefined,
-  selectedProposalId?: string
-) => {
-  const [filter, setFilter] = useState<ProposalFilter>('all');
-  const [page, setPage] = useState(1);
-  const { counts, isLoading: isCounting } = useGlossaryProposalCounts(scope);
-  const activeFilter = getActiveFilter(counts, filter);
-  const totalPages = getTotalPages(counts, activeFilter, PROPOSALS_PAGE_SIZE);
-  const currentPage = Math.min(page, totalPages);
-  const { proposals, isLoading: isPageLoading } = useGlossaryProposalPage(
-    scope,
-    activeFilter,
-    currentPage,
-    counts
-  );
-  const isSelectedOnPage = proposals.some(
-    ({ term }) => term.id === selectedProposalId
-  );
-  const selected = useGlossaryProposal(
-    isSelectedOnPage ? undefined : selectedProposalId
-  );
-  const visible = useMemo(
-    () =>
-      scope?.fullyQualifiedName &&
-      selected?.term.fullyQualifiedName?.startsWith(
-        `${scope.fullyQualifiedName}.`
-      )
-        ? [selected, ...proposals]
-        : proposals,
-    [scope?.fullyQualifiedName, selected, proposals]
-  );
-
-  useEffect(() => setPage(1), [activeFilter, scope?.id]);
-
-  return {
-    activeFilter,
-    counts,
-    currentPage,
-    isLoading: isCounting || isPageLoading,
-    setFilter,
-    setPage,
-    totalPages,
-    visible,
-  };
-};
-
 /** The proposals awaiting review under a glossary or a term: AI agents' and people's. */
 const PendingReviewPanel = () => {
   const { t } = useTranslation();
@@ -230,7 +171,7 @@ const PendingReviewPanel = () => {
     setPage,
     totalPages,
     visible,
-  } = useReviewQueue(scope, selectedProposalId);
+  } = useGlossaryReviewQueue(scope, selectedProposalId);
   const decide = useDecideProposal();
   const proposalFqns = useMemo(
     () => visible.map(({ term }) => term.fullyQualifiedName ?? ''),
