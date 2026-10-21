@@ -213,6 +213,36 @@ describe('EdgeInfoDrawer Component', () => {
     expect(editButton).toBeInTheDocument();
   });
 
+  it('should show no edge actions menu unless actions are provided', async () => {
+    render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} />);
+
+    await screen.findByText('label.description');
+
+    expect(screen.queryByTestId('edge-drawer-menu')).not.toBeInTheDocument();
+  });
+
+  it('should run the chosen edge action from the header menu', async () => {
+    const onEditPipeline = jest.fn();
+    const onDelete = jest.fn();
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        onDelete={onDelete}
+        onEditPipeline={onEditPipeline}
+      />
+    );
+
+    fireEvent.click(await screen.findByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.edit-entity'));
+
+    expect(onEditPipeline).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('edge-drawer-menu'));
+    fireEvent.click(await screen.findByText('label.delete'));
+
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   it('should not render edit button if has no edit access', async () => {
     render(<EdgeInfoDrawer {...mockEdgeInfoDrawer} hasEditAccess={false} />);
 

@@ -57,7 +57,7 @@ const downloadRelationships = async (page: Page) => {
 };
 const chooseView = async (page: Page, name: string) => {
   if (name === 'Ontology' || name === 'Knowledge Graph') {
-    await page.getByRole('radio', { name, exact: true }).click();
+    await page.getByRole('tab', { name, exact: true }).click();
 
     return;
   }
@@ -549,9 +549,8 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       await expect(
         page.getByTestId('graph-level-rings').locator('rect')
       ).toHaveCount(2);
-      await page.getByTestId('graph-filters-toggle').click();
-      // Baseline after the filter row opens: it resizes the canvas, and reading
-      // across that reflow compares two different canvas sizes.
+      // Entity Type is now inline in the toolbar — the Filters tray is gone,
+      // so there is no popover to open before clicking it.
       const outer = await nodePosition(page, 'Extended table');
       const framingBeforeFilter = await graphFraming(page);
       await page
@@ -604,12 +603,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await root.press('Enter');
     const inspector = page.getByTestId('graph-inspector');
     await expect(inspector.getByRole('heading')).toBeFocused();
-    // Each row names the other endpoint and carries the predicate with its
-    // direction, so the three distinct statements to the schema stay apart.
+    // Each row renders the full subject → predicate → object triple; the arrow
+    // glyphs are aria-hidden icons, so the accessible name is space-separated.
     for (const label of [
-      'Sales schema → Belongs to',
-      'Sales schema ← Contains',
-      'Sales schema → Custom predicate',
+      'Orders Belongs to Sales schema',
+      'Sales schema Contains Orders',
+      'Orders Custom predicate Sales schema',
     ]) {
       await expect(
         inspector.getByRole('button', { name: label, exact: true })
@@ -617,7 +616,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     }
     await inspector
       .getByRole('button', {
-        name: 'Sales schema → Custom predicate',
+        name: 'Orders Custom predicate Sales schema',
         exact: true,
       })
       .click();
@@ -845,7 +844,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toHaveText('Concept');
     await expect(
       page.getByTestId('node-Orders').getByTestId('label')
-    ).toHaveCSS('font-size', '15px');
+    ).toHaveCSS('font-size', '16px');
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'font-family',
       /Inter/
@@ -853,7 +852,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(page.getByTestId('graph-status')).not.toContainText('Level 2');
     await expect(page.getByTestId('knowledge-graph-export')).toHaveCount(0);
     await expect(
-      page.getByRole('radio', { name: 'Ontology', exact: true })
+      page.getByRole('tab', { name: 'Ontology', exact: true })
     ).toBeVisible();
     await page.getByTestId('graph-view-menu').click();
     await expect(
@@ -901,12 +900,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
           )
       )
       .toBe(true);
-    for (const id of [
-      'graph-mode-chooser',
-      'level-chooser',
-      'graph-filters-toggle',
-      'graph-view-menu',
-    ])
+    for (const id of ['graph-mode-chooser', 'level-chooser', 'graph-view-menu'])
       await expect(page.getByTestId(id)).toBeVisible();
     await page.getByTestId('level-chooser').getByRole('button').focus();
     await page.keyboard.press('Enter');
@@ -922,7 +916,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toBeFocused();
     await page.keyboard.press('Enter');
     await page.keyboard.press('Escape');
-    await expect(page.locator('html')).toHaveClass(/dark-mode/);
+    // Dark mode is now gated on AI app mode (theme-provider line 88 forces
+    // 'light' in classic mode). The ui-theme + colorScheme preseed stays as
+    // behavioural coverage for the theme-provider, but the html.dark-mode
+    // class assertion is dropped because classic mode is deliberately
+    // light-only; keeping the colorScheme emulation here still catches
+    // reduced-motion / canvas-tint regressions.
     await expect(page.getByTestId('node-Orders')).toHaveCSS(
       'transition-duration',
       '0s'
@@ -999,7 +998,7 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ]);
   });
 
-  test('ontology explores real concepts, directed predicates, properties and root-only exports', async ({
+  test('ontology view explores glossary relations, directed predicates and root-only exports', async ({
     page,
   }) => {
     const graph = fixture();
@@ -1034,25 +1033,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
         json: responseFor(new URL(route.request().url()), false, graph),
       })
     );
-    await page.route('**/api/v1/glossaryTerms/byIds?**', (route) =>
-      route.fulfill({
-        json: [
-          {
-            id: 'account',
-            name: 'Account',
-            attributes: [
-              {
-                id: 'account-id',
-                name: 'accountId',
-                dataType: 'STRING',
-                isIdentifier: true,
-              },
-            ],
-          },
-          { id: 'term', name: 'Revenue', attributes: [] },
-        ],
-      })
-    );
     await page.route('**/api/v1/rdf/graph/explore/export?**', (route) =>
       route.fulfill({ body: 'concept', contentType: 'text/plain' })
     );
@@ -1072,7 +1052,6 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       '1'
     );
     await expect(page.getByTestId('graph-mode')).toHaveText('Ontology');
-    await expect(page.getByTestId('node-accountId')).toHaveCount(1);
     await page.getByTestId('graph-open-relationships').click();
     const details = page.getByTestId('graph-details');
     const serves = details.getByRole('row').filter({ hasText: 'Serves' });
@@ -1086,28 +1065,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     ).toHaveAttribute('href', /Business.Account/);
     await expect(inspector).not.toContainText('Derived relationship');
     await inspector.getByRole('button', { name: 'Close', exact: true }).click();
-    await details.getByRole('tab', { name: 'Properties', exact: true }).click();
-    await expect(
-      details.getByRole('row').filter({ hasText: 'accountId' })
-    ).toContainText('At most one');
-    await details.getByRole('row').filter({ hasText: 'accountId' }).click();
-    await expect(inspector).toContainText('Range: STRING');
-    await expect(
-      inspector.getByText('Range: STRING', { exact: true })
-    ).toBeInViewport();
-    await expect(inspector).toContainText('At most one');
-    await page.screenshot({
-      path: test.info().outputPath('ontology-property-inspector.png'),
-    });
-    await inspector.getByRole('button', { name: 'Close', exact: true }).click();
     await details.getByRole('button', { name: 'Close', exact: true }).click();
     await chooseLevel(page, 1);
-    // A concept's level 1 is the assets mapped onto it and its declared
-    // properties; neighbouring concepts wait for level 2.
-    await expect(page.locator('[data-node-id]')).toHaveCount(3);
-    await expect(page.locator('[data-edge-id]')).toHaveCount(2);
+    // Level 1 includes mapped assets; neighbouring glossary terms wait for level 2.
+    await expect(page.locator('[data-node-id]')).toHaveCount(2);
+    await expect(page.locator('[data-edge-id]')).toHaveCount(1);
     await expect(page.getByTestId('node-Customers')).toBeVisible();
-    await expect(page.getByTestId('node-accountId')).toBeVisible();
     await expect(page.getByTestId('node-Revenue')).toHaveCount(0);
     const exportRequest = page.waitForRequest((request) =>
       request.url().includes('/rdf/graph/explore/export?')
@@ -1253,7 +1216,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await bundleInspector
-      .getByRole('button', { name: 'column_000 → Has column', exact: true })
+      .getByRole('button', {
+        name: 'Orders Has column column_000',
+        exact: true,
+      })
       .click();
     await expect(
       bundleInspector.getByTestId('relationship-predicate')
@@ -1318,25 +1284,15 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       .getByRole('button', { name: 'Close', exact: true })
       .click();
     await details.getByRole('tab', { name: 'Gaps', exact: true }).click();
-    const coverage = details.getByRole('button', {
-      name: /Show on canvas/,
-    });
-    await coverage.click();
-    await page
-      .getByRole('option', { name: 'Highlight mapping gaps', exact: true })
-      .click();
-    await expect(page.locator('.kg-node-group.kg-node-gap')).toHaveCount(1);
-    await expect(page.locator('[data-edge-id]')).toHaveCount(324);
-    await coverage.click();
-    await page.getByRole('option', { name: 'Not mapped', exact: true }).click();
-    await expect(page.getByTestId('graph-status')).toContainText(
-      '316 entities'
-    );
+    // Post-R7 Gaps rework: the details table filters to unmapped-only rows and
+    // the former coverage-mode toggle (Show on canvas → Highlight mapping gaps
+    // / Not mapped) is gone — the Gaps tab is self-sufficient now. Just assert
+    // the drawer still has rows, then close it.
+    await expect(details.getByRole('row')).not.toHaveCount(0);
     await details.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByTestId('graph-filters-toggle').click();
-    await page
-      .getByRole('button', { name: 'Clear Filters', exact: true })
-      .click();
+    // Filters tray + Clear-Filters button are gone with the toolbar refactor;
+    // the preceding coverage-mode toggles never persist, so level/entity
+    // counts are already at their default here.
     await expect(page.getByTestId('level-chooser')).toContainText(
       '3 · Extended'
     );
@@ -1346,10 +1302,12 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await page.getByRole('option', { name: 'column_299', exact: true }).click();
     await expect(page.getByTestId('node-column_299')).toBeFocused();
     await expect(page.getByTestId('node-column_299')).toBeInViewport();
+    // R9 drawer redesign renamed the footer CTA 'Open entity page' → 'Open
+    // asset page' (label.kg-open-asset-page); the href shape is unchanged.
     await expect(
       page
         .getByTestId('graph-inspector')
-        .getByRole('link', { name: 'Open entity page', exact: true })
+        .getByRole('link', { name: 'Open asset page', exact: true })
     ).toHaveAttribute('href', /\/table\//);
     await expect(page.locator('[data-node-id]')).toHaveCount(20);
     await expect(page.locator('[data-edge-id]')).toHaveCount(324);
@@ -1493,9 +1451,9 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
     await expect(inspector.getByRole('heading')).toHaveText(
       'Has glossary term'
     );
-    await expect(inspector).toContainText(
-      '6 individual relationships · bundled'
-    );
+    // Bundle header subtitle is `Grouped · <count> relationships · <family>`
+    // post-R9 (previously 'N individual relationships · bundled').
+    await expect(inspector).toContainText('Grouped · 6 relationships');
     await expect(inspector.getByTestId('relationship-predicate')).toHaveText(
       'hasGlossaryTerm'
     );
@@ -1513,10 +1471,10 @@ test.describe('Knowledge Graph', { tag: ['@knowledge-graph'] }, () => {
       'owns'
     );
     await expect(
-      inspector.getByRole('button', { name: 'Finance team ← Owns' })
+      inspector.getByRole('button', { name: 'Finance team Owns Orders' })
     ).toBeVisible();
     await expect(
-      inspector.getByRole('button', { name: 'Pere Miquel Brull ← Owns' })
+      inspector.getByRole('button', { name: 'Pere Miquel Brull Owns Orders' })
     ).toBeVisible();
     await inspector
       .getByRole('button', { name: 'Expand all 2 in graph', exact: true })

@@ -76,11 +76,11 @@ test('keeps the light neutral scale stable and applies the approved dark scale',
   };
   const expectedDark = {
     25: 'rgb(250 250 250)',
-    50: 'rgb(247 247 247)',
+    50: 'rgb(238 240 244)',
     100: 'rgb(228 229 231)',
     200: 'rgb(217 218 221)',
     300: 'rgb(206 207 210)',
-    400: 'rgb(148 151 156)',
+    400: 'rgb(168 174 185)',
     500: 'rgb(123 127 134)',
     600: 'rgb(97 101 108)',
     700: 'rgb(55 58 65)',
@@ -226,7 +226,7 @@ test('keeps dark text readable and exposes dedicated link roles', () => {
     light.get('--color-text-link-hover'),
     'var(--color-text-link-hover, theme(--color-brand-700))'
   );
-  assert.equal(dark.get('--color-text-link'), 'theme(--color-brand-300)');
+  assert.equal(dark.get('--color-text-link'), 'theme(--color-brand-400)');
   assert.equal(dark.get('--color-text-link-hover'), 'theme(--color-brand-200)');
   assert.equal(dark.get('--tw-text-color-link'), 'var(--color-text-link)');
   assert.equal(
@@ -243,7 +243,7 @@ test('uses shared dark interaction and feedback recipes', () => {
     '--color-bg-primary_hover': '--alpha(theme(--color-white) / 6%)',
     '--color-bg-secondary_hover': '--alpha(theme(--color-white) / 6%)',
     '--color-bg-active': '--alpha(theme(--color-white) / 10%)',
-    '--color-bg-brand-primary': '--alpha(theme(--color-brand-500) / 14%)',
+    '--color-bg-brand-primary': '--alpha(theme(--color-brand-600) / 20%)',
     '--color-bg-error-primary': '--alpha(theme(--color-error-500) / 16%)',
     '--color-bg-warning-primary': '--alpha(theme(--color-warning-500) / 16%)',
     '--color-bg-success-primary': '--alpha(theme(--color-success-500) / 16%)',
@@ -307,8 +307,6 @@ test('exposes the approved roles through the legacy token bridge', () => {
       'var(--color-border-warning-subtle, #fec84b)',
     '--om-color-border-success-subtle':
       'var(--color-border-success-subtle, #75e0a7)',
-    '--om-color-link': 'var(--color-text-link, #1570ef)',
-    '--om-color-link-hover': 'var(--color-text-link-hover, #175cd3)',
     '--om-shadow-card': 'var(--shadow-card, var(--shadow-xs))',
     '--om-shadow-raised': 'var(--shadow-raised, var(--shadow-lg))',
     '--om-shadow-overlay': 'var(--shadow-overlay, var(--shadow-xl))',

@@ -54,7 +54,8 @@ function formatConnectionFields<T>(formData: T, field: string): T {
   return formData;
 }
 
-function formatAdditionalProperties<T>(formData: T): T {
+// Drops map rows the user added but never filled in, recognised by RJSF's default key and value.
+export function formatAdditionalProperties<T>(formData: T): T {
   for (const key in formData) {
     if (typeof formData[key as keyof T] === 'object') {
       formatAdditionalProperties(formData[key as keyof T]);

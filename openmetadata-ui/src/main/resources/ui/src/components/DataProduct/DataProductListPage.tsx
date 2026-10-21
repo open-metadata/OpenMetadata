@@ -17,7 +17,6 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
-  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -48,6 +47,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -71,6 +71,7 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
 import ViewToggle from '../common/ViewToggle/ViewToggle';
 import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
@@ -238,7 +239,14 @@ const DataProductListPage = ({
   const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
-  const extraColumns = dataProductClassBase.getListingExtraColumns();
+  const extraColumns = useMemo(
+    () =>
+      getVisibleStatusColumns(
+        dataProductClassBase.getListingExtraColumns(),
+        dataProductListing.entities
+      ),
+    [dataProductListing.entities]
+  );
 
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [
@@ -360,6 +368,22 @@ const DataProductListPage = ({
       );
     }
 
+    const pagination = dataProductListing.totalEntities > 0 && (
+      <Box
+        className="tw:border-t tw:border-secondary tw:p-3 tw:shrink-0"
+        justify="center">
+        <NextPrevious
+          isNumberBased
+          currentPage={dataProductListing.currentPage}
+          pageSize={dataProductListing.pageSize}
+          paging={{ total: dataProductListing.totalEntities }}
+          pagingHandler={({ currentPage }) =>
+            dataProductListing.handlePageChange(currentPage)
+          }
+        />
+      </Box>
+    );
+
     if (view === PageViewMode.Table) {
       return (
         <>
@@ -375,11 +399,7 @@ const DataProductListPage = ({
             onSelect={dataProductListing.handleSelect}
             onSelectAll={dataProductListing.handleSelectAll}
           />
-          <PaginationCardDefault
-            page={dataProductListing.currentPage}
-            total={dataProductListing.totalPages}
-            onPageChange={dataProductListing.handlePageChange}
-          />
+          {pagination}
         </>
       );
     }
@@ -393,11 +413,7 @@ const DataProductListPage = ({
           renderCard={renderDataProductCard}
           onEntityClick={dataProductListing.actionHandlers.onEntityClick}
         />
-        <PaginationCardDefault
-          page={dataProductListing.currentPage}
-          total={dataProductListing.totalPages}
-          onPageChange={dataProductListing.handlePageChange}
-        />
+        {pagination}
       </>
     );
   }, [
@@ -406,7 +422,8 @@ const DataProductListPage = ({
     dataProductListing.selectedEntities,
     dataProductListing.actionHandlers,
     dataProductListing.currentPage,
-    dataProductListing.totalPages,
+    dataProductListing.pageSize,
+    dataProductListing.totalEntities,
     dataProductListing.handlePageChange,
     dataProductListing.handleClearAll,
     isSearchOrFilterActive,

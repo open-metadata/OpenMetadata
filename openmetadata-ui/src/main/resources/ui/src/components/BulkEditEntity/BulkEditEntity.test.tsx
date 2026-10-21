@@ -16,6 +16,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { VALIDATION_STEP } from '../../constants/BulkImport.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { CSVImportResult, Status } from '../../generated/type/csvImportResult';
+import { exportTestCasesInCSV } from '../../rest/testAPI';
+import { getBulkEditCSVExportEntityApi } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import BulkEditEntity from './BulkEditEntity.component';
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 
@@ -127,6 +129,10 @@ jest.mock('../common/EntityImport/ImportStatus/ImportStatus.component', () => ({
 jest.mock('../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader">Loading...</div>);
 });
+
+jest.mock('../../rest/testAPI', () => ({
+  exportTestCasesInCSV: jest.fn(),
+}));
 
 jest.mock('../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditCSVExportEntityApi: jest.fn(() => jest.fn()),
@@ -633,6 +639,38 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
+    });
+
+    it('should load the test case grid with the filters the list was opened with', async () => {
+      mockEntityType = EntityType.TEST_CASE;
+      (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(
+        jest.requireActual('../../utils/EntityBulkEdit/EntityBulkEditUtils')
+          .getBulkEditCSVExportEntityApi
+      );
+
+      try {
+        render(
+          <MemoryRouter
+            initialEntries={[
+              '/bulk/edit/testCase/test.entity.fqn?sourceEntityType=table&testCaseStatus=Failed,Aborted&q=nulls&currentPage=2',
+            ]}>
+            <BulkEditEntity {...defaultProps} />
+          </MemoryRouter>
+        );
+        const { name, onExport } =
+          mockTriggerExportForBulkEdit.mock.calls[0][0];
+        await onExport(name, { recursive: false });
+
+        expect(exportTestCasesInCSV).toHaveBeenCalledWith('test.entity.fqn', {
+          recursive: false,
+          testCaseStatus: ['Failed', 'Aborted'],
+          q: 'nulls',
+        });
+      } finally {
+        (getBulkEditCSVExportEntityApi as jest.Mock).mockImplementation(() =>
+          jest.fn()
+        );
+      }
     });
   });
 

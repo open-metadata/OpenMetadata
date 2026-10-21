@@ -66,8 +66,11 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -361,10 +364,13 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     DaoListFilter filter = new DaoListFilter(Include.NON_DELETED);
     if (knowledgePageType != null) {
       filter.addQueryParam("pageType", knowledgePageType.value());
     }
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     return new ResultList<>(repository.listHierarchy(filter, limitParam));
   }
 
@@ -418,13 +424,16 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           String sortOrder) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
+    SubjectContext caller = DefaultAuthorizer.getSubjectContext(securityContext);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, sortFilter, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit, caller);
     } else {
       return repository.getHierarchyWithSearch(
-          parent, knowledgePageType, sortFilter, offset, limit);
+          parent, knowledgePageType, sortFilter, offset, limit, caller);
     }
   }
 
@@ -712,9 +721,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE

@@ -150,7 +150,9 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
     Folder folder = getInternal(uriInfo, securityContext, id, "parent,children", include);
     List<Folder> folders = repository.getChildFolderEntities(folder);
-    List<ContextFile> files = repository.getChildFileEntities(folder);
+    List<ContextFile> files =
+        ContextFileVisibility.filterVisible(
+            repository.getChildFileEntities(folder), securityContext);
 
     FolderContents response = new FolderContents();
     response.folder = folder;

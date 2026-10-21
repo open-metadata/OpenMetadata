@@ -27,14 +27,14 @@ import {
   fillAlertName,
   fillDestinationInput,
   fillEndpoint,
-  openAddAlertModal,
-  saveAlertModal,
+  openAddAlertDrawer,
+  saveAlertDrawer,
   selectAlertSource,
   selectDestinationCategory,
   selectInternalDestinationType,
   selectTeamOrUserReceiver,
   selectWebhookAuthType,
-} from '../../Utils/aiAlertModal';
+} from '../../Utils/aiAlertDrawer';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 test.use({
@@ -74,7 +74,7 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
     test.slow();
 
     const alertName = `pw-ai-observability-${uuid()}`;
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await fillAlertName(dialog, alertName);
     await selectAlertSource(page, 'Table');
@@ -91,7 +91,7 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
 
     const created =
       await test.step('create sends an observability POST', async () => {
-        const { request, response } = await saveAlertModal(page, dialog);
+        const { request, response } = await saveAlertDrawer(page, dialog);
         const body = await response?.json();
         createdAlertIds.push(body.id);
 
@@ -129,7 +129,7 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
         .getByRole('textbox')
         .fill(description);
 
-      const { request, response } = await saveAlertModal(page, editDialog);
+      const { request, response } = await saveAlertDrawer(page, editDialog);
 
       expect(request.method()).toBe('PATCH');
       expect(response?.status()).toBe(200);
@@ -148,7 +148,7 @@ test.describe('AI mode — observability alerts keep the classic create, edit, a
       );
     });
 
-    // Deleted from the details page: the modal-created alert gets a generated
+    // Deleted from the details page: the drawer-created alert gets a generated
     // name, so it is not guaranteed to be on page 1 of the name-sorted list.
     await test.step('delete from the details page returns to the list', async () => {
       await page.getByTestId('delete-button').click();
@@ -245,7 +245,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
 
   test('saves a searched entity filter and a trigger', async ({ page }) => {
     const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await fillAlertName(dialog, `pw-ai-trigger-${uuid()}`);
     await selectAlertSource(page, 'Table');
@@ -272,7 +272,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
     await addDestination(page, dialog, 'Slack', 0);
     await fillEndpoint(dialog, 0, 'http://localhost:1/slack');
 
-    const { request, response } = await saveAlertModal(page, dialog);
+    const { request, response } = await saveAlertDrawer(page, dialog);
     const created = await response?.json();
     createdAlertIds.push(created.id);
 
@@ -314,7 +314,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
     const teamFqn = team.responseData.fullyQualifiedName ?? '';
     const userFqn = receiverUser.responseData.fullyQualifiedName ?? '';
     const email = `pw-ai-${uuid()}@example.com`;
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await fillAlertName(dialog, `pw-ai-destinations-${uuid()}`);
     await selectAlertSource(page, 'Table');
@@ -378,7 +378,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
       await fillDestinationInput(dialog, 'scope-input-5', 'alerts');
     });
 
-    const { request, response } = await saveAlertModal(page, dialog);
+    const { request, response } = await saveAlertDrawer(page, dialog);
     const created = await response?.json();
     createdAlertIds.push(created.id);
 
@@ -431,7 +431,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
   });
 
   test('tests only the configured external destinations', async ({ page }) => {
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
     const testButton = dialog.getByTestId('test-destination-button');
 
     await selectAlertSource(page, 'Table');
@@ -479,7 +479,7 @@ test.describe('AI mode — observability alert form keeps every classic option',
   });
 
   test('lists data contracts in the data contract filter', async ({ page }) => {
-    const dialog = await openAddAlertModal(page);
+    const dialog = await openAddAlertDrawer(page);
 
     await selectAlertSource(page, 'Data Contract');
     await addFilter(page, dialog, 'Data Contract Name');

@@ -19,6 +19,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { DARK_SCHEME_QUERY, DEFAULT_THEME } from './theme-provider.constants';
 import {
   BrandColors,
@@ -79,15 +80,16 @@ export const ThemeProvider = ({
   const [themePreference, setThemePreference] = useState<ThemePreference>(
     () => getStoredTheme(storageKey) ?? DEFAULT_THEME
   );
-  const [theme, setThemeState] = useState<Theme>(() => {
-    const initialTheme = resolveTheme(themePreference);
+  const [resolvedTheme, setThemeState] = useState<Theme>(() =>
+    resolveTheme(themePreference)
+  );
+  // Classic mode is light-only. The stored preference is left untouched so AI
+  // mode still honours it.
+  const theme: Theme = useIsAiMode() ? resolvedTheme : 'light';
 
-    // This render-phase write is deliberate: canvas consumers resolve CSS tokens
-    // before effects run, and applyThemeToRoot skips DOM writes when already synced.
-    applyThemeToRoot(initialTheme, darkModeClass);
-
-    return initialTheme;
-  });
+  // This render-phase write is deliberate: canvas consumers resolve CSS tokens
+  // before effects run, and applyThemeToRoot skips DOM writes when already synced.
+  applyThemeToRoot(theme, darkModeClass);
 
   const setTheme = useCallback(
     (nextPreference: ThemePreference) => {
@@ -98,14 +100,10 @@ export const ThemeProvider = ({
       } catch {
         // Persistence failure must not block theme changes for the current session.
       }
-      const nextTheme = resolveTheme(nextPreference);
-      // Canvas consumers resolve CSS tokens during the context update, so the
-      // cascade must already represent the next theme when they render.
-      applyThemeToRoot(nextTheme, darkModeClass);
       setThemePreference(nextPreference);
-      setThemeState(nextTheme);
+      setThemeState(resolveTheme(nextPreference));
     },
-    [darkModeClass, storageKey]
+    [storageKey]
   );
 
   // Following the system: re-theme live when the OS colour scheme changes.
@@ -117,19 +115,11 @@ export const ThemeProvider = ({
       return undefined;
     }
     const query = globalThis.matchMedia(DARK_SCHEME_QUERY);
-    const onChange = () => {
-      const nextTheme = resolveTheme('system');
-      applyThemeToRoot(nextTheme, darkModeClass);
-      setThemeState(nextTheme);
-    };
+    const onChange = () => setThemeState(resolveTheme('system'));
     query.addEventListener?.('change', onChange);
 
     return () => query.removeEventListener?.('change', onChange);
-  }, [darkModeClass, themePreference]);
-
-  useEffect(() => {
-    applyThemeToRoot(theme, darkModeClass);
-  }, [theme, darkModeClass]);
+  }, [themePreference]);
 
   useEffect(() => {
     const root = globalThis.document.documentElement;

@@ -25,7 +25,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -325,7 +325,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     for (Field field : fields) {
       validateTags(field.getTags());
       field.setTags(addDerivedTags(field.getTags()));
-      checkMutuallyExclusive(field.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(field.getTags());
       if (field.getChildren() != null) {
         validateSchemaFieldTags(field.getChildren());
       }

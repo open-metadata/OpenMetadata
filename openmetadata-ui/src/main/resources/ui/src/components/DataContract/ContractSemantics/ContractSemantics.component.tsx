@@ -60,7 +60,10 @@ const ContractSemantics: React.FC<{
                 entity: t('label.semantic-plural'),
               })}
               triggerClassName="tw:inline-flex">
-              <InheritIcon className="inherit-icon cursor-pointer" width={14} />
+              <InheritIcon
+                className="inherit-icon tw:cursor-pointer"
+                width={14}
+              />
             </Tooltip>
           ) : null;
           const RuleIcon = getSemanticIconPerLastExecution(item);
@@ -68,12 +71,10 @@ const ContractSemantics: React.FC<{
           return (
             <div className="rule-item" key={item.rule}>
               <RuleIcon
-                className={classNames('rule-icon', {
+                className={classNames('rule-icon tw:size-3.5 tw:shrink-0', {
                   'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
                 fill="currentColor"
-                height="1em"
-                width="1em"
               />
               <div className="rule-item-content">
                 <div className="d-flex items-center gap-1">

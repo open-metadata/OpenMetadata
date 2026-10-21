@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.governance.CreateIntakeForm;
 import org.openmetadata.schema.entity.governance.IntakeForm;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
@@ -55,6 +56,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Slf4j
 @Path("/v1/governance/intakeForms")
@@ -197,6 +199,10 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
       throw new NotFoundException(
           "No enabled IntakeForm configured for entity type '" + entityType + "'");
     }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.INTAKE_FORM, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(form.getId()));
     return form;
   }
 

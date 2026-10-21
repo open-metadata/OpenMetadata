@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const RefreshCw04: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const RefreshCw04: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M17 5.125A8.5 8.5 0 0 1 12 20.5h-.5M7 18.875A8.5 8.5 0 0 1 12 3.5h.5m.5 18.9-2-2 2-2M11 5.6l2-2-2-2"
+      d="M14.167 4.271A7.083 7.083 0 0 1 10 17.083h-.417m-3.75-1.354A7.083 7.083 0 0 1 10 2.917h.417m.417 15.75L9.167 17l1.667-1.667M9.167 4.667 10.834 3 9.167 1.333"
       stroke="currentColor"
       strokeWidth={1.3}
     />

@@ -103,7 +103,33 @@ class RdfFusekiAuthorizationIT {
                     HttpRequest.BodyPublishers.ofString(
                         "<" + subject + "> <urn:review:predicate> <urn:review:object> .")));
     assertEquals(2, response.statusCode() / 100, response.body());
-    assertTrue(contains(dataset, subject));
+    assertTrue(contains(dataset, GRAPH, subject));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"openmetadata", "openmetadata_a", "openmetadata_b"})
+  void graphStorePutReplacesAtomicallyWithWriterCredentials(final String dataset) throws Exception {
+    final String graph = "urn:review:replacement:" + UUID.randomUUID();
+    final String first = "urn:review:" + UUID.randomUUID();
+    final String second = "urn:review:" + UUID.randomUUID();
+    assertEquals(
+        2, replace(dataset, graph, "<" + first + "> <urn:p> <urn:o> .").statusCode() / 100);
+    assertEquals(
+        2, replace(dataset, graph, "<" + second + "> <urn:p> <urn:o> .").statusCode() / 100);
+    assertFalse(contains(dataset, graph, first));
+    assertTrue(contains(dataset, graph, second));
+    final var invalid = replace(dataset, graph, "<urn:invalid> <urn:p> .");
+    assertTrue(invalid.statusCode() >= 400, invalid.body());
+    assertTrue(contains(dataset, graph, second));
+  }
+
+  private static HttpResponse<String> replace(
+      final String dataset, final String graph, final String turtle) throws Exception {
+    return send(
+        request("/" + dataset + "/data?graph=" + graph)
+            .header("Authorization", basic("openmetadata:test-writer"))
+            .header("Content-Type", "text/turtle")
+            .PUT(HttpRequest.BodyPublishers.ofString(turtle)));
   }
 
   @ParameterizedTest
@@ -111,7 +137,7 @@ class RdfFusekiAuthorizationIT {
   void anonymousUploadCannotMutateAnyDataset(final String dataset) throws Exception {
     final String subject = "urn:review:" + UUID.randomUUID();
     assertEquals(401, send(upload(dataset, subject)).statusCode());
-    assertFalse(contains(dataset, subject));
+    assertFalse(contains(dataset, GRAPH, subject));
   }
 
   private static HttpRequest.Builder upload(final String dataset, final String subject) {
@@ -138,7 +164,8 @@ class RdfFusekiAuthorizationIT {
         .POST(HttpRequest.BodyPublishers.ofString(body));
   }
 
-  private static boolean contains(final String dataset, final String subject) throws Exception {
+  private static boolean contains(final String dataset, final String graph, final String subject)
+      throws Exception {
     final var response =
         send(
             request("/" + dataset + "/query")
@@ -146,7 +173,7 @@ class RdfFusekiAuthorizationIT {
                 .header("Accept", "application/sparql-results+json")
                 .POST(
                     HttpRequest.BodyPublishers.ofString(
-                        "ASK { GRAPH <" + GRAPH + "> { <" + subject + "> ?p ?o } }")));
+                        "ASK { GRAPH <" + graph + "> { <" + subject + "> ?p ?o } }")));
     assertEquals(200, response.statusCode(), response.body());
     return JsonUtils.readTree(response.body()).path("boolean").asBoolean();
   }

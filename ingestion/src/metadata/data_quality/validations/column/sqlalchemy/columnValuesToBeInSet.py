@@ -13,8 +13,6 @@
 Validator for column value to be in set test case
 """
 
-from ast import literal_eval
-
 from sqlalchemy import Column, literal
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -125,11 +123,7 @@ class ColumnValuesToBeInSetValidator(
         return self._compute_row_count(self.runner, column)
 
     def filter(self):
-        items = self.get_test_case_param_value(
-            self.test_case.parameterValues,  # type: ignore
-            "allowedValues",
-            literal_eval,
-        )
+        items = self.get_set_param_value("allowedValues")
         return {
             "filters": [
                 (

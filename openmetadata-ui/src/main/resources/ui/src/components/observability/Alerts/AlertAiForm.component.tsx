@@ -115,7 +115,10 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
         </Box>
       }
       form={fieldDocForm}
-      formClassName="tw:px-7 tw:pt-6 tw:pb-7"
+      // `relative` makes the scrolling form the containing block of the
+      // visually hidden inputs react-aria renders for toggles and checkboxes.
+      // Without it they overflow into the drawer, which then scrolls as well.
+      formClassName="tw:relative tw:px-7 tw:pt-6 tw:pb-7"
       id={formId}
       renderFieldDoc={(markdown) => (
         // form-hint-doc carries the hint panel's typography (12.5px / 1.55 /

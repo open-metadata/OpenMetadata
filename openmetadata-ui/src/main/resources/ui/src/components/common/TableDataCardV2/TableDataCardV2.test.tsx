@@ -73,4 +73,23 @@ describe('Test TableDataCard Component', () => {
 
     expect(mockHandleSummaryPanelDisplay).toHaveBeenCalledTimes(1);
   });
+
+  it('should mark an errored card with a red border only', () => {
+    render(
+      <TableDataCardV2
+        errorMessage="Asset already belongs to another domain"
+        id="1"
+        source={{ id: '1', name: 'Name1', fullyQualifiedName: 'test' }}
+      />,
+      { wrapper: MemoryRouter }
+    );
+
+    const card = screen.getByTestId('table-data-card_test');
+
+    expect(card).toHaveClass('tw:border-error');
+    expect(card.className).not.toMatch(/tw:bg-utility-error/);
+    expect(screen.getByTestId('table-data-card-error')).toHaveTextContent(
+      'Asset already belongs to another domain'
+    );
+  });
 });

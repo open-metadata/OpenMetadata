@@ -38,6 +38,17 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     driver = "postgres"
     supports_statement_cache = False
 
+    # The metastore's Postgres DDL creates quoted upper-case identifiers: unquoted TBLS or
+    # TABLE_PARAMS would fold to lower case here and raise UndefinedTable.
+    table_providers_query = """
+        SELECT t."TBL_NAME", p."PARAM_VALUE"
+        FROM "TBLS" t
+        JOIN "DBS" d ON t."DB_ID" = d."DB_ID"
+        JOIN "TABLE_PARAMS" p ON p."TBL_ID" = t."TBL_ID"
+        WHERE d."NAME" = :schema_name
+          AND p."PARAM_KEY" = 'spark.sql.sources.provider'
+    """
+
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
         schema_names = [row[0] for row in connection.execute(text('select "NAME" from "DBS";'))]

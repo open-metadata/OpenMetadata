@@ -31,6 +31,7 @@ import { Spreadsheet } from '../../generated/entity/data/spreadsheet';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addDriveAssetFollower,
@@ -225,6 +226,25 @@ const SpreadsheetDetailsPage = () => {
       };
     });
   };
+
+  // Not on React Query, so the provider's cache invalidation can't reach this page.
+  useSub(
+    'updateDetails',
+    async () => {
+      try {
+        setSpreadsheetDetails(
+          await getDriveAssetByFqn<Spreadsheet>(
+            spreadsheetDetails.fullyQualifiedName ?? '',
+            EntityType.SPREADSHEET,
+            defaultFields
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [spreadsheetDetails.fullyQualifiedName]
+  );
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {

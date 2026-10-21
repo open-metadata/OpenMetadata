@@ -36,6 +36,52 @@ export const getConstrainedWidgetWidth = (width: number): number => {
   return Math.min(width, maxWidth);
 };
 
+/**
+ * Re-packs a saved layout that no longer fits the grid.
+ *
+ * A layout stored while the grid was wider keeps its `x` values, and nothing on
+ * the read path rewrites them — {@link getConstrainedWidgetWidth} bounds `w`
+ * alone. Once {@link LANDING_PAGE_MAX_GRID_SIZE} shrinks, widgets saved beyond
+ * the new last column sit outside it, and react-grid-layout pushes them onto
+ * rows of their own instead of filling the gap they left behind.
+ *
+ * Reading order (top-to-bottom, then left-to-right) is preserved; only the
+ * coordinates change. Layouts that already fit are returned untouched, so a
+ * persona whose layout is still valid keeps the exact arrangement it saved.
+ */
+export const reflowLayoutToGrid = (
+  widgets: WidgetConfig[],
+  cols: number = LANDING_PAGE_MAX_GRID_SIZE
+): WidgetConfig[] => {
+  const overflows = widgets.some((widget) => widget.x + widget.w > cols);
+
+  if (!overflows) {
+    return widgets;
+  }
+
+  const ordered = [...widgets].sort((a, b) => a.y - b.y || a.x - b.x);
+
+  let currentX = 0;
+  let currentY = 0;
+  let maxHeightInRow = 0;
+
+  return ordered.map((widget) => {
+    const w = Math.min(widget.w, cols);
+
+    if (currentX + w > cols) {
+      currentX = 0;
+      currentY += maxHeightInRow;
+      maxHeightInRow = 0;
+    }
+
+    const placed = { ...widget, w, x: currentX, y: currentY };
+    currentX += w;
+    maxHeightInRow = Math.max(maxHeightInRow, widget.h);
+
+    return placed;
+  });
+};
+
 const getWidgetHeight = (widgetName: string) => {
   const widgetHeightByName: Record<string, number> = {
     ActivityFeed: LANDING_PAGE_WIDGET_DEFAULT_HEIGHTS.activityFeed,
@@ -272,7 +318,7 @@ export const getLayoutUpdateHandler =
         ...(!widgetData ? {} : widgetData),
         ...widget,
         w: getConstrainedWidgetWidth(widget.w),
-        h: 3,
+        h: LANDING_PAGE_DEFAULT_WIDGET_HEIGHT,
         static: false,
       };
     });

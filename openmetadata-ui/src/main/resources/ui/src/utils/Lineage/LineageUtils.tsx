@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import {
   BreadcrumbItemType,
   Breadcrumbs,
 } from '@openmetadata/ui-core-components';
+import { ArrowLeft, ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
@@ -42,12 +42,12 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
     label: 'Direct',
     key: 'direct',
-    icon: <ArrowRightOutlined />,
+    icon: <ArrowRight className="tw:shrink-0" size={14} />,
   },
   {
     label: 'Indirect',
     key: 'indirect',
-    icon: <ArrowLeftOutlined />,
+    icon: <ArrowLeft className="tw:shrink-0" size={14} />,
   },
 ];
 

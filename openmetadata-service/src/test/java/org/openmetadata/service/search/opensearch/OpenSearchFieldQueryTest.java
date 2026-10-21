@@ -17,11 +17,20 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 
@@ -29,6 +38,7 @@ class OpenSearchFieldQueryTest {
   private final AtomicReference<SearchRequest> request = new AtomicReference<>();
   private MockedStatic<Entity> entity;
   private OpenSearchSearchManager manager;
+  private OpenSearchClient client;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -36,7 +46,7 @@ class OpenSearchFieldQueryTest {
     when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("table_search_index");
     entity = mockStatic(Entity.class);
     entity.when(Entity::getSearchRepository).thenReturn(repository);
-    OpenSearchClient client = mock(OpenSearchClient.class);
+    client = mock(OpenSearchClient.class);
     when(client.search(any(SearchRequest.class), eq(JsonData.class)))
         .thenAnswer(
             invocation -> {
@@ -58,7 +68,7 @@ class OpenSearchFieldQueryTest {
 
   @Test
   void legacyFieldQueriesKeepEngineDefaultsAndCaseSensitiveMatching() throws Exception {
-    manager.searchByField("name", "Orders*", Entity.TABLE, false, 10, 5).close();
+    manager.searchByField("name", "Orders*", Entity.TABLE, false, 10, 5, null).close();
 
     assertEquals(List.of("table_search_index"), request.get().index());
     assertEquals(10, request.get().from());
@@ -108,6 +118,33 @@ class OpenSearchFieldQueryTest {
             .orElseThrow();
     assertEquals(
         List.of("literal*", "literal?"), JsonUtils.convertValue(idTerms.path("id"), List.class));
+  }
+
+  /**
+   * The field query is built outside the request builder, so it has to add the caller's search
+   * access policies itself; without them a denied caller reads documents the listing hides.
+   */
+  @Test
+  void fieldQueriesCarryTheCallersAccessPolicies() throws Exception {
+    SubjectContext caller = mock(SubjectContext.class);
+    OpenSearchQueryBuilder policies = mock(OpenSearchQueryBuilder.class);
+    when(policies.buildV2())
+        .thenReturn(
+            Query.of(q -> q.term(t -> t.field("owners.id").value(FieldValue.of("caller-policy")))));
+    RBACConditionEvaluator evaluator = mock(RBACConditionEvaluator.class);
+    when(evaluator.evaluateConditions(caller)).thenReturn(policies);
+    OpenSearchSearchManager policyAware = new OpenSearchSearchManager(client, evaluator, "", null);
+
+    try (MockedStatic<SettingsCache> settings = mockStatic(SettingsCache.class)) {
+      settings
+          .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
+          .thenReturn(
+              new SearchSettings()
+                  .withGlobalSettings(new GlobalSettings().withEnableAccessControl(true)));
+      policyAware.searchByField("name", "Orders*", Entity.TABLE, false, 0, 5, caller).close();
+    }
+
+    assertTrue(requestJson().toString().contains("caller-policy"));
   }
 
   private JsonNode requestJson() throws Exception {

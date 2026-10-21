@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { PagingResponse, PagingWithoutTotal } from 'Models';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Directory } from '../../../generated/entity/data/directory';
 import { Include } from '../../../generated/type/include';
 import { ServicePageData } from '../../../interface/platform/service.interface';
 import { getApiCollections } from '../../../rest/apiCollectionsAPI';
-import { getDashboards } from '../../../rest/dashboardAPI';
+import { getDashboards, getDataModels } from '../../../rest/dashboardAPI';
 import { getDatabases } from '../../../rest/databaseAPI';
 import { getDriveAssets } from '../../../rest/driveAPI';
 import { getMlModels } from '../../../rest/mlModelAPI';
@@ -98,3 +98,87 @@ export const fetchServiceChildren = (
   // The category is read from the URL, so call only a fetcher the table actually holds.
   return typeof fetcher === 'function' ? fetcher(params) : undefined;
 };
+
+// `limit: 0` returns no rows, only the total.
+const COUNT_PAGING = { limit: 0 };
+
+/** How many top-level child assets a service has; `undefined` for a category that lists none. */
+export const countServiceChildren = async (
+  serviceCategory: ServiceCategory,
+  service: string,
+  include: Include
+): Promise<number | undefined> => {
+  const response = await fetchServiceChildren(serviceCategory, {
+    service,
+    fields: '',
+    paging: COUNT_PAGING,
+    include,
+  });
+
+  return response?.paging.total;
+};
+
+export interface SecondaryAssetTab {
+  key: EntityTabs;
+  labelKey: string;
+  countAssets: (service: string, include: Include) => Promise<number>;
+}
+
+const countDriveAssets = async (
+  entityType: EntityType.FILE | EntityType.SPREADSHEET,
+  service: string,
+  include: Include
+) => {
+  const response = await getDriveAssets(entityType, {
+    service,
+    root: true,
+    paging: COUNT_PAGING,
+    include,
+  });
+
+  return response.paging.total;
+};
+
+// The asset tabs classic shows beside the main one, for the categories that have them. They sit
+// between the data-assets tab and Connection, in this order. A Map for the same reason as the
+// fetchers above.
+const SECONDARY_ASSET_TABS = new Map<ServiceCategory, SecondaryAssetTab[]>([
+  [
+    ServiceCategory.DASHBOARD_SERVICES,
+    [
+      {
+        key: EntityTabs.DATA_Model,
+        labelKey: 'label.data-model',
+        countAssets: async (service, include) => {
+          const response = await getDataModels({ service, include, limit: 0 });
+
+          return response.paging.total;
+        },
+      },
+    ],
+  ],
+  [
+    ServiceCategory.DRIVE_SERVICES,
+    [
+      {
+        key: EntityTabs.FILES,
+        labelKey: 'label.file-plural',
+        countAssets: (service, include) =>
+          countDriveAssets(EntityType.FILE, service, include),
+      },
+      {
+        key: EntityTabs.SPREADSHEETS,
+        labelKey: 'label.spreadsheet-plural',
+        countAssets: (service, include) =>
+          countDriveAssets(EntityType.SPREADSHEET, service, include),
+      },
+    ],
+  ],
+]);
+
+const NO_SECONDARY_TABS: SecondaryAssetTab[] = [];
+
+export const getSecondaryAssetTabs = (
+  serviceCategory: ServiceCategory
+): SecondaryAssetTab[] =>
+  SECONDARY_ASSET_TABS.get(serviceCategory) ?? NO_SECONDARY_TABS;

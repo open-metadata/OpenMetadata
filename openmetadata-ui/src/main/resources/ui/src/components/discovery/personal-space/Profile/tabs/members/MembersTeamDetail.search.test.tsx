@@ -111,7 +111,7 @@ jest.mock(
 );
 
 jest.mock('../../../../../../rest/teamsAPI', () => ({
-  getTeamByName: jest.fn().mockResolvedValue(TEAM),
+  getTeamByName: jest.fn().mockImplementation(() => Promise.resolve(TEAM)),
   patchTeamDetail: jest.fn().mockResolvedValue({}),
   getTeams: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
   restoreTeam: jest.fn().mockResolvedValue({}),

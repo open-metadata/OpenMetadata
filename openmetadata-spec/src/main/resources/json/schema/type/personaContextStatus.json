@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/type/personaContextStatus.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PersonaContextStatus",
+  "description": "Cache-derived state of a persona's compiled AI context document, as listed by `GET /v1/personas/aiContext/status`. Read from the context cache without compiling — see ADR:2026-10-14-persona-ai-context-status-reads-the-cache-and-pages-like-the-persona-list.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.personaContext.PersonaContextStatus",
+  "properties": {
+    "personaId": {
+      "description": "Id of the persona this status belongs to.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "cacheState": {
+      "description": "State of the cached document. A persona with nothing cached reports `STALE`.",
+      "$ref": "personaContextDefinition.json#/definitions/cacheState"
+    },
+    "lastGeneratedAt": {
+      "description": "When the cached document was compiled. Absent when nothing is cached.",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "entitiesIncluded": {
+      "description": "Entities rendered into the cached document. Zero when nothing is cached.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "tokensEst": {
+      "description": "Estimated tokens in the cached document, `ceil(characters / 4)` as on the document endpoint. Zero when nothing is cached.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "lastError": {
+      "description": "Reason the latest compilation failed, when it did.",
+      "type": "string"
+    }
+  },
+  "required": ["personaId", "cacheState", "entitiesIncluded", "tokensEst"],
+  "additionalProperties": false
+}

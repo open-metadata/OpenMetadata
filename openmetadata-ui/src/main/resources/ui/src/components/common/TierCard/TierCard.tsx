@@ -124,7 +124,16 @@ const TierCard = ({
 
   const handleChange = async ([value]: string[]) => {
     isCommitRef.current = true;
-    await updateTier?.(tiers.find((tier) => tier.fullyQualifiedName === value));
+    try {
+      await updateTier?.(
+        tiers.find((tier) => tier.fullyQualifiedName === value)
+      );
+    } catch (err) {
+      showErrorToast(
+        err as AxiosError,
+        t('server.entity-updating-error', { entity: t('label.tier') })
+      );
+    }
   };
 
   return (

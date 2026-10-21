@@ -13,11 +13,24 @@
 import { Edge, Node } from 'reactflow';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { SourceType } from '../../../interface/source.interface';
+import { getLineageEdgeDetails } from '../../../rest/lineageAPI';
+import { addLineage } from '../../../rest/miscAPI';
+import { showErrorToast } from '../../ToastUtils';
 import {
   onAddPipelineClick,
   onColumnEdgeRemove,
   onEdgeClick,
+  saveLineageEdge,
 } from './edgeMutations';
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  getLineageEdgeDetails: jest.fn(),
+}));
+jest.mock('../../../rest/miscAPI', () => ({
+  ...jest.requireActual('../../../rest/miscAPI'),
+  addLineage: jest.fn(),
+}));
+jest.mock('../../ToastUtils', () => ({ showErrorToast: jest.fn() }));
 
 describe('onEdgeClick', () => {
   beforeEach(() => useLineageStore.getState().reset());
@@ -101,5 +114,50 @@ describe('onColumnEdgeRemove', () => {
     onColumnEdgeRemove();
 
     expect(useLineageStore.getState().showDeleteModal).toBe(true);
+  });
+});
+
+describe('saveLineageEdge', () => {
+  const orders = { id: 'orders', type: 'table' };
+  const customers = { id: 'customers', type: 'table' };
+  const notFound = { response: { status: 404 } };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('creates the edge from the first entity to the second', async () => {
+    (getLineageEdgeDetails as jest.Mock).mockRejectedValue(notFound);
+    (addLineage as jest.Mock).mockResolvedValue({});
+
+    await expect(saveLineageEdge(orders, customers)).resolves.toBe(true);
+
+    expect(addLineage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        edge: expect.objectContaining({
+          fromEntity: expect.objectContaining({ id: 'orders' }),
+          toEntity: expect.objectContaining({ id: 'customers' }),
+        }),
+      })
+    );
+  });
+
+  it('resolves false with a single toast when the save fails', async () => {
+    (getLineageEdgeDetails as jest.Mock).mockRejectedValue(notFound);
+    (addLineage as jest.Mock).mockRejectedValue(new Error('forbidden'));
+
+    await expect(saveLineageEdge(orders, customers)).resolves.toBe(false);
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects, without toasting, when the edge lookup fails', async () => {
+    const serverError = { response: { status: 500 } };
+    (getLineageEdgeDetails as jest.Mock).mockRejectedValue(serverError);
+
+    await expect(saveLineageEdge(orders, customers)).rejects.toBe(serverError);
+
+    expect(addLineage).not.toHaveBeenCalled();
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 });

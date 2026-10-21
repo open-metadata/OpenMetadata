@@ -119,7 +119,7 @@ const TestCaseStatusAreaChartWidget = ({
         </div>
 
         {showEmptyFooter ? (
-          <Tooltip title={t('label.no-data')}>
+          <Tooltip title={t('label.no-data')} triggerClassName="tw:w-full">
             <div className="test-case-status-widget-footer">
               {footerWhenEmpty}
             </div>

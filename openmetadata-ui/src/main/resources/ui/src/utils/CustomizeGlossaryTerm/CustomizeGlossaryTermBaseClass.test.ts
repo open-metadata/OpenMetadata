@@ -69,3 +69,18 @@ describe('CustomizeGlossaryTermBaseClass.getDefaultWidgetForTab', () => {
     expect(relatedTermsIndex).toBeGreaterThan(tagsIndex);
   });
 });
+
+describe('CustomizeGlossaryTermBaseClass.getCommonWidgetList', () => {
+  it.each([true, false])(
+    'lets a persona add the pending review panel back (glossary: %s)',
+    (isGlossary) => {
+      const widgetKeys = customizeGlossaryTermPageClassBase
+        .getCommonWidgetList(isGlossary)
+        .map((widget) => widget.fullyQualifiedName);
+
+      expect(widgetKeys).toContain(
+        GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW
+      );
+    }
+  );
+});

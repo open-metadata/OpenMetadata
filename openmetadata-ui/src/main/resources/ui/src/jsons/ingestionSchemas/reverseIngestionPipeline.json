@@ -385,6 +385,33 @@
     "ingestionRunner": {
       "description": "Optional value of the ingestion runner name responsible for running the workflow",
       "type": "string"
+    },
+    "updateDescriptions": {
+      "description": "Reverse Metadata Agent: propagate description changes to the source.",
+      "type": "boolean",
+      "default": false
+    },
+    "updateOwners": {
+      "description": "Reverse Metadata Agent: propagate owner changes to the source.",
+      "type": "boolean",
+      "default": false
+    },
+    "updateTags": {
+      "description": "Reverse Metadata Agent: propagate tag changes to the source.",
+      "type": "boolean",
+      "default": false
+    },
+    "filter": {
+      "description": "Reverse Metadata Agent: JSONLogic expression selecting the assets whose changes are propagated. Empty means all assets of the service.",
+      "type": "string"
+    },
+    "SQLTemplate": {
+      "description": "Reverse Metadata Agent: templated SQL command used instead of the default operations.",
+      "type": "string"
+    },
+    "sinkService": {
+      "description": "Reverse Metadata Agent: name of the security service (e.g. Ranger) the changes are applied to instead of this service.",
+      "type": "string"
     }
   },
   "additionalProperties": false,

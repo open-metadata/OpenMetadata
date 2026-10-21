@@ -127,6 +127,7 @@ gh api repos/$REPO/contents/<path/to/test_file>?ref=$HEAD --jq '.content' | base
 
 | PR touches | Read |
 |---|---|
+| anything | `REVIEW.md`: the review bar, with the recurring logic defects, test gaps and flaky-test shapes, plus what not to report |
 | `**/*.java` | `.claude/rules/java.md` |
 | UI `*.{ts,tsx}` | `.claude/rules/frontend-react.md`, `component-library.md`, `frontend-styling.md`, `frontend-a11y.md`, `frontend-performance.md`, `i18n.md` |
 | `openmetadata-ui/src/main/resources/ui/playwright/**` | `.claude/rules/frontend-playwright.md` |

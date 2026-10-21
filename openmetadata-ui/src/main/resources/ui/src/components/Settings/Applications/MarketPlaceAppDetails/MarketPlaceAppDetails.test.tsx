@@ -120,7 +120,7 @@ describe('MarketPlaceAppDetails component', () => {
 
     // actions check
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.MARKETPLACE);

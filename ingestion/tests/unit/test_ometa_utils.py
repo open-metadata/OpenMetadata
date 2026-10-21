@@ -30,6 +30,7 @@ from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.dataContract import DataContract
 from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -65,6 +66,7 @@ from metadata.ingestion.ometa.utils import (
     model_str,
 )
 from metadata.utils.constants import ENTITY_REFERENCE_CLASS_MAP
+from metadata.utils.elasticsearch import ES_INDEX_MAP
 
 MOCK_TABLE = Table(
     id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb",
@@ -106,6 +108,12 @@ class OMetaUtilsTest(TestCase):
 
         self.assertEqual(get_entity_type("hello"), "hello")
         self.assertEqual(get_entity_type(MlModel), "mlmodel")
+
+    def test_get_entity_type_data_contract(self):
+        self.assertEqual(get_entity_type(DataContract), "dataContract")
+
+    def test_es_index_map_data_contract(self):
+        self.assertEqual(ES_INDEX_MAP[DataContract.__name__], "data_contract_search_index")
 
     def test_get_entity_type_camel_case_consistency(self):
         """

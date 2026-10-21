@@ -70,7 +70,7 @@ interface PersonaAIContextProps {
 
 const VERSION_BADGE_CLASS = [
   'tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-lg',
-  'tw:border tw:border-primary tw:bg-primary tw:px-3 tw:py-2 tw:text-secondary',
+  'tw:border tw:border-primary tw:bg-surface tw:px-3 tw:py-2 tw:text-secondary',
   'tw:transition tw:hover:bg-primary_hover',
 ].join(' ');
 
@@ -368,7 +368,7 @@ const PersonaAIContextRulesSection = ({
     return (
       <Box
         align="center"
-        className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-primary tw:p-10 tw:text-center"
+        className="tw:rounded-[10px] tw:border tw:border-dashed tw:border-secondary tw:bg-surface tw:p-10 tw:text-center"
         direction="col">
         <FeaturedIcon
           className="tw:isolate tw:mb-4 tw:bg-brand-primary"

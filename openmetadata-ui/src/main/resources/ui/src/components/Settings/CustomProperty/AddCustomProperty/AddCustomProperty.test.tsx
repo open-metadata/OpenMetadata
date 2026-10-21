@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
 import { HelmetProvider } from 'react-helmet-async';
@@ -45,6 +51,8 @@ const tableType: Type = {
 };
 const invalidNameMessage = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;
 const i18n = createInstance();
+const getNameInput = () =>
+  within(screen.getByTestId('custom-property-name')).getByRole('textbox');
 
 const renderForm = (element = <AddCustomProperty open />) => {
   render(
@@ -137,7 +145,7 @@ describe('AddCustomProperty form validation', () => {
     renderForm();
     await fillRequiredFields(user);
 
-    fireEvent.change(screen.getByTestId('name'), { target: { value: name } });
+    fireEvent.change(getNameInput(), { target: { value: name } });
     fireEvent.submit(screen.getByTestId('custom-property-form'));
 
     expect(await screen.findByText(invalidNameMessage)).toBeVisible();
@@ -150,7 +158,7 @@ describe('AddCustomProperty form validation', () => {
     renderForm();
     await fillRequiredFields(user);
 
-    fireEvent.change(screen.getByTestId('name'), {
+    fireEvent.change(getNameInput(), {
       target: { value: 'a'.repeat(257) },
     });
     fireEvent.submit(screen.getByTestId('custom-property-form'));
@@ -187,7 +195,7 @@ describe('AddCustomProperty form validation', () => {
       renderForm();
       await fillRequiredFields(user);
 
-      const nameInput = screen.getByTestId('name');
+      const nameInput = getNameInput();
       fireEvent.change(nameInput, { target: { value: 'invalid:name' } });
       fireEvent.submit(screen.getByTestId('custom-property-form'));
 

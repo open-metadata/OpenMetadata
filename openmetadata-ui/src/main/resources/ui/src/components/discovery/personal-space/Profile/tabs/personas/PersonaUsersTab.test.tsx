@@ -186,6 +186,9 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Table,
     TableCard: {
       Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+      Header: ({ contentTrailing }: { contentTrailing?: React.ReactNode }) => (
+        <div>{contentTrailing}</div>
+      ),
     },
     Typography: ({
       children,

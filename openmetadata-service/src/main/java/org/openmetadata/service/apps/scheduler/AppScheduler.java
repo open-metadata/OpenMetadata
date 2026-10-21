@@ -361,8 +361,7 @@ public class AppScheduler {
                   && context.getJobDetail().getKey().equals(jobDetailScheduled.getKey()))
               || (jobDetailOnDemand != null
                   && context.getJobDetail().getKey().equals(jobDetailOnDemand.getKey()))) {
-            throw new UnhandledServerException(
-                "Job is already running, please wait for it to complete.");
+            throw new AppAlreadyRunningException();
           }
         }
       }
@@ -389,7 +388,7 @@ public class AppScheduler {
               .build();
       scheduleOnDemandJob(application, newJobDetail, trigger, triggerIdentity, concurrentJob);
     } catch (ObjectAlreadyExistsException ex) {
-      throw new UnhandledServerException("Job is already running, please wait for it to complete.");
+      throw new AppAlreadyRunningException(ex);
     } catch (SchedulerException | ClassNotFoundException ex) {
       LOG.error("Failed in running job", ex);
       throw new UnhandledServerException(

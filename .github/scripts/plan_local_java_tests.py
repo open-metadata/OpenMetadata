@@ -40,12 +40,18 @@ from datetime import datetime, timezone
 from functools import cached_property
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 IMPACT_MAP = ".github/java-tests/impact-map.json"
 RESULTS_DIR = "target/java-tests"
+# The summary goes in the PR description. Everything a reviewer reads only on demand (each
+# class run, why it was chosen, the commands) goes in the details, posted as a PR comment.
 RESULTS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results.md"
+DETAILS_MARKDOWN = f"{RESULTS_DIR}/local-pr-results-details.md"
 BLOCK_START = "<!-- local-java-test-results:start -->"
 BLOCK_END = "<!-- local-java-test-results:end -->"
+# Marks the details comment, so a re-run edits it rather than adding another.
+DETAILS_MARKER = "<!-- local-java-test-results:details -->"
 DEFAULT_PR_HEADING = "#### Backend integration tests"
 # The summary each surefire/failsafe execution prints when it finishes. Per-class lines end in
 # "Time elapsed: … -- in <class>", so only the summaries match in full.
@@ -96,11 +102,15 @@ SKIP_UNIT_TESTS = [
 # step tests never need.
 SKIP_REPACKAGE = "-Dspring-boot.repackage.skip=true"
 INLINE_CLASS_LIMIT = 30
-# GitHub rejects a PR description over 65,536 characters, and the template, the author's text
-# and the Playwright block share that with this block. A <details> block only hides text, so
-# class lists past CLASS_LIST_BUDGET are reduced to counts instead.
+# GitHub rejects a PR description or comment over 65,536 characters. The class lists go in the
+# details comment, next to the selection reasons and the commands. A <details> block only hides
+# text, so class lists past CLASS_LIST_BUDGET are reduced to counts instead.
 GITHUB_BODY_LIMIT = 65_536
 CLASS_LIST_BUDGET = 20_000
+# Names of failed, report-less or all-skipped classes given in the summary; the details give
+# up to DETAILS_NAME_LIMIT. A run that fails outright fails every test.
+SUMMARY_NAME_LIMIT = 10
+DETAILS_NAME_LIMIT = 100
 
 
 @dataclass
@@ -205,6 +215,17 @@ def class_fqn(path: str) -> str | None:
         if root in path and path.endswith(".java"):
             return path.split(root, 1)[1][: -len(".java")].replace("/", ".")
     return None
+
+
+def class_header(text: str, name: str) -> str | None:
+    """The annotations and declaration of class `name` in a Java source, without comments."""
+    declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
+    if not declaration:
+        return None
+    start = 0
+    for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
+        start = statement.end()
+    return COMMENT.sub(" ", text[start : declaration.end()])
 
 
 def is_pattern(test: str) -> bool:
@@ -519,14 +540,9 @@ class Repo:
         prefix = self.it_root + "/"
         headers = {}
         for relative, name in self.it_classes.items():
-            text = self.it_sources.get(prefix + relative, "")
-            declaration = re.search(rf"\bclass\s+{re.escape(name)}\b", text)
-            if not declaration:
-                continue
-            start = 0
-            for statement in IMPORT_OR_PACKAGE.finditer(text, 0, declaration.start()):
-                start = statement.end()
-            headers[relative] = COMMENT.sub(" ", text[start : declaration.end()])
+            header = class_header(self.it_sources.get(prefix + relative, ""), name)
+            if header is not None:
+                headers[relative] = header
         return headers
 
     @cached_property
@@ -591,6 +607,26 @@ class Repo:
                 and UNIT_TEST_CLASS.match(simple_name(path))
             }
         return modules
+
+    def is_abstract_unit_test(self, module: str, name: str) -> bool:
+        path = self.unit_test_classes.get(module, {}).get(name)
+        header = class_header(self._read(path), name) if path else None
+        return bool(header and re.search(r"\babstract\b", header))
+
+    def unit_test_subclasses(self, module: str, base: str) -> list[str]:
+        """The unit test classes of `module` that extend `base` directly."""
+        classes = self.unit_test_classes.get(module, {})
+        subclasses = []
+        for path in self.referencing_files(base, [f"{module}/src/test/java"]):
+            name = simple_name(path)
+            extends = (
+                rf"\bclass\s+{re.escape(name)}\b[^{{]*\bextends\s+{re.escape(base)}\b"
+            )
+            if classes.get(name) == path and re.search(
+                extends, COMMENT.sub(" ", self._read(path))
+            ):
+                subclasses.append(name)
+        return sorted(subclasses)
 
     def _lane_membership(self) -> dict[str, list[str]]:
         """Class-name patterns per lane, read from the IT pom so they cannot drift from CI.
@@ -1120,7 +1156,15 @@ class Planner:
         )
 
     def _add_unit(self, plan: Plan, module: str, name: str, reason: str) -> None:
-        plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
+        if self.repo.is_abstract_unit_test(module, name):
+            # Surefire runs an abstract class's tests only inside the classes extending it, and
+            # reports them under those names; selected by its own name, it never reports.
+            for subclass in self.repo.unit_test_subclasses(module, name):
+                self._add_unit(
+                    plan, module, subclass, f"extends {name}, which {reason}"
+                )
+        else:
+            plan.unit_tests.setdefault(module, {}).setdefault(name, set()).add(reason)
 
     def _add_unit_tests_for_class(self, plan: Plan, name: str, path: str) -> bool:
         found = False
@@ -1809,6 +1853,9 @@ class StepResult:
 
     @property
     def missing_classes(self) -> list[str]:
+        # A step a CI run stands in for ran nothing here, so it has no reports to miss.
+        if self.ci_url:
+            return []
         return sorted(set(self.command.expected_classes) - self.classes_run)
 
     @property
@@ -2150,9 +2197,7 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
             for directory, names in sorted(suites.items())
         ]
         if named and index in counted_only:
-            parts.append(
-                f"{count_classes(result, named)} (too many to list in the PR description)"
-            )
+            parts.append(f"{count_classes(result, named)} (too many to list)")
         elif len(named) > INLINE_CLASS_LIMIT:
             parts.append(f"{count_classes(result, named)} (listed below)")
             collapsed += [
@@ -2176,9 +2221,9 @@ def render_tests_run(results: list[StepResult]) -> list[str]:
             "class when classes run concurrently, and keep only the last run of a nested class "
             "that several test classes inherit. "
             + (
-                "The step totals above are Maven's own counts._"
+                "The summary's step totals are Maven's own counts._"
                 if exact
-                else "The step totals above are Maven's own counts where it printed them, "
+                else "The summary's step totals are Maven's own counts where it printed them, "
                 "and the reports' sum where it did not._"
             ),
         ]
@@ -2208,14 +2253,61 @@ def commit_line(commit: str, base: str, dirty: bool) -> str:
     )
 
 
+def name_list(names: list[str], limit: int, more: str = "") -> str:
+    """The first `limit` names as code, then how many more there are."""
+    text = ", ".join(f"`{name}`" for name in names[:limit])
+    if len(names) > limit:
+        text += f" and {len(names) - limit} more{more}"
+    return text
+
+
+def attention_lines(results: list[StepResult], limit: int, more: str = "") -> list[str]:
+    """What a reviewer must not miss, naming up to `limit` of each: failed tests, selected
+    classes that left no report, and classes whose every test was skipped."""
+    lines: list[str] = []
+    failed = [name for r in results for name in r.failed_tests]
+    # Failures Maven counted in a report a later run of the same nested class overwrote.
+    unnamed = sum(
+        max(0, r.failures + r.errors - len(r.failed_tests))
+        for r in results
+        if r.exact_totals
+    )
+    if failed or unnamed:
+        parts = [name_list(failed, limit, more)] if failed else []
+        if unnamed:
+            parts.append(f"{unnamed} more the reports lost (see the Maven output)")
+        lines += ["", f"Failed: {', '.join(parts)}"]
+    missing = [
+        f"{name} ({r.command.label})" for r in results for name in r.missing_classes
+    ]
+    if missing:
+        lines += [
+            "",
+            f"Selected but produced no report: {name_list(missing, limit, more)}",
+        ]
+    skipped_only = [
+        f"{name} ({r.command.label})" for r in results for name in r.all_skipped_classes
+    ]
+    if skipped_only:
+        lines += [
+            "",
+            "Every test skipped, so these exercised nothing (check their assumptions — usually the engine): "
+            + name_list(skipped_only, limit, more),
+        ]
+    return lines
+
+
 def render_block(
     plan: Plan,
-    planner: Planner,
     results: list[StepResult],
     commit: str,
     base: str,
     dirty: bool,
+    details_url: str = "",
 ) -> str:
+    """The PR description's block: the verdict, a row per step, and what failed. The classes
+    each step ran, why the plan chose them and the commands are in the details
+    (render_details), which --update-pr posts as a PR comment and links from here."""
     status = overall_status(plan, results)
     run_minutes = round(sum(r.minutes for r in results), 1)
     lines = [
@@ -2224,6 +2316,12 @@ def render_block(
         "",
         commit_line(commit, base, dirty),
         f"- Finished: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} · {run_minutes} min",
+    ]
+    if details_url:
+        lines.append(
+            f"- [Details]({details_url}): the classes each step ran, why these tests, the commands"
+        )
+    lines += [
         "",
         "| Step | Scope | Classes | Tests | Failed | Skipped | Min | Result |",
         "| --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
@@ -2248,35 +2346,41 @@ def render_block(
     for command in plan.commands[len(results) :]:
         lines.append(f"| {command.kind} | {command.label} | | | | | | not run |")
 
-    failed = [name for r in results for name in r.failed_tests]
-    # Failures Maven counted in a report a later run of the same nested class overwrote.
-    unnamed = sum(
-        max(0, r.failures + r.errors - len(r.failed_tests))
-        for r in results
-        if r.exact_totals
-    )
-    missing = [
-        f"{name} ({r.command.label})" for r in results for name in r.missing_classes
+    lines += attention_lines(results, SUMMARY_NAME_LIMIT, " in the details")
+    notes = []
+    if plan.not_run_locally:
+        notes.append(
+            f"- Impacted, not run locally: {plural(len(plan.not_run_locally), 'class')} "
+            "(listed in the details)"
+        )
+    if plan.unmapped_files:
+        notes.append(
+            f"- Impact-map gaps: {plural(len(plan.unmapped_files), 'file')} no area owns "
+            "(listed in the details)"
+        )
+    if notes:
+        lines += ["", *notes]
+    lines.append(BLOCK_END)
+    return "\n".join(lines) + "\n"
+
+
+def render_details(
+    plan: Plan,
+    results: list[StepResult],
+    commit: str,
+    base: str,
+    dirty: bool,
+) -> str:
+    """What the PR description's block leaves out: every class each step ran, why the plan
+    chose them, the impacted tests it doesn't run locally, and the commands that repeat it."""
+    lines = [
+        DETAILS_MARKER,
+        f"**Local Java test run: {overall_status(plan, results)} — details**",
+        "",
+        commit_line(commit, base, dirty),
+        "- The summary is in the PR description.",
     ]
-    if failed or unnamed:
-        named = [f"`{name}`" for name in failed[:30]]
-        if unnamed:
-            named.append(f"{unnamed} more the reports lost (see the Maven output)")
-        lines += ["", f"Failed: {', '.join(named)}"]
-    if missing:
-        lines += [
-            "",
-            f"Selected but produced no report: {', '.join(f'`{name}`' for name in missing)}",
-        ]
-    skipped_only = [
-        f"{name} ({r.command.label})" for r in results for name in r.all_skipped_classes
-    ]
-    if skipped_only:
-        lines += [
-            "",
-            "Every test skipped, so these exercised nothing (check their assumptions — usually the engine): "
-            + ", ".join(f"`{name}`" for name in skipped_only),
-        ]
+    lines += attention_lines(results, DETAILS_NAME_LIMIT)
     lines += render_tests_run(results)
 
     reasons = [
@@ -2313,7 +2417,7 @@ def render_block(
     if plan.unmapped_files:
         lines += [
             "",
-            f"<details><summary>Impact-map gaps ({len(plan.unmapped_files)}) — smoke ITs ran instead</summary>",
+            f"<details><summary>Impact-map gaps ({len(plan.unmapped_files)}): no area owns these</summary>",
             "",
             *[f"- `{path}`" for path in plan.unmapped_files],
             "",
@@ -2328,7 +2432,6 @@ def render_block(
         "```",
         "",
         "</details>",
-        BLOCK_END,
     ]
     return "\n".join(lines) + "\n"
 
@@ -2374,16 +2477,64 @@ def upsert_block(body: str, block: str, heading_text: str = DEFAULT_PR_HEADING) 
     return body[:insert_at] + "\n\n" + block + "\n" + body[insert_at:]
 
 
-def update_pr_body(repo_root: Path, block: str, heading_text: str) -> None:
-    pr = json.loads(
-        subprocess.run(
-            ["gh", "pr", "view", "--json", "number,body,url"],
-            cwd=repo_root,
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout
+def gh(repo_root: Path, *args: str, stdin: str | None = None) -> str:
+    return subprocess.run(
+        ["gh", *args],
+        cwd=repo_root,
+        check=True,
+        capture_output=True,
+        text=True,
+        input=stdin,
+    ).stdout
+
+
+def current_pr(repo_root: Path) -> dict[str, Any]:
+    return json.loads(gh(repo_root, "pr", "view", "--json", "number,body,url"))
+
+
+def upsert_details_comment(repo_root: Path, pr: dict[str, Any], details: str) -> str:
+    """Post the details as a PR comment, or edit the one an earlier run of yours posted, and
+    return its URL. Empty when they don't fit in a comment."""
+    if len(details) > GITHUB_BODY_LIMIT:
+        print(
+            f"\nThe details are {len(details):,} characters, over GitHub's limit of "
+            f"{GITHUB_BODY_LIMIT:,} for a comment. Attach {DETAILS_MARKDOWN} to the PR instead.",
+            file=sys.stderr,
+        )
+        return ""
+    owner, name = urlparse(pr["url"]).path.strip("/").split("/")[:2]
+    comments = f"repos/{owner}/{name}/issues/{pr['number']}/comments"
+    login = gh(repo_root, "api", "user", "--jq", ".login").strip()
+    earlier = gh(
+        repo_root,
+        "api",
+        "--paginate",
+        comments,
+        "--jq",
+        f'.[] | select(.user.login == "{login}" and (.body | contains("{DETAILS_MARKER}"))) | .id',
+    ).split()
+    endpoint, method = (
+        (f"repos/{owner}/{name}/issues/comments/{earlier[0]}", "PATCH")
+        if earlier
+        else (comments, "POST")
     )
+    return gh(
+        repo_root,
+        "api",
+        "--method",
+        method,
+        endpoint,
+        "--input",
+        "-",
+        "--jq",
+        ".html_url",
+        stdin=json.dumps({"body": details}),
+    ).strip()
+
+
+def update_pr_body(
+    repo_root: Path, pr: dict[str, Any], block: str, heading_text: str
+) -> None:
     body = upsert_block(pr.get("body") or "", block, heading_text)
     if len(body) > GITHUB_BODY_LIMIT:
         raise SystemExit(
@@ -2477,12 +2628,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--run",
         action="store_true",
-        help="Run the selected tests and write the results block",
+        help="Run the selected tests and write the results summary and details",
     )
     parser.add_argument(
         "--update-pr",
         action="store_true",
-        help="With --run, upsert the results block in the PR body",
+        help="With --run, upsert the summary in the PR body and the details in a PR comment",
     )
     parser.add_argument(
         "--keep-going",
@@ -2624,10 +2775,9 @@ def main(argv: list[str] | None = None) -> int:
 
     commit = git(repo_root, "rev-parse", "HEAD")
     dirty = has_uncommitted_changes(repo_root, impact_map["ignore"])
-    if not plan.commands:
-        block = render_no_tests_block(plan, commit, args.base, dirty)
-        results: list[StepResult] = []
-    else:
+    results: list[StepResult] = []
+    details = ""
+    if plan.commands:
         ci = ci_evidence(
             repo_root, args.ci_run, commit, planner.maven.get("ciWorkflows", {})
         )
@@ -2659,18 +2809,40 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"\n{shlex.join(clean)} failed.", file=sys.stderr)
                 return 1
         results = run_commands(repo_root, plan, args.keep_going, ci)
-        block = render_block(plan, planner, results, commit, args.base, dirty)
+        details = render_details(plan, results, commit, args.base, dirty)
 
-    markdown_path = repo_root / RESULTS_MARKDOWN
-    markdown_path.parent.mkdir(parents=True, exist_ok=True)
-    markdown_path.write_text(block, encoding="utf-8")
-    print(f"\nResults block written to {RESULTS_MARKDOWN}")
-    if args.update_pr:
+    details_path = repo_root / DETAILS_MARKDOWN
+    details_path.parent.mkdir(parents=True, exist_ok=True)
+    if details:
+        details_path.write_text(details, encoding="utf-8")
+    else:
+        details_path.unlink(missing_ok=True)
+    pr = current_pr(repo_root) if args.update_pr else None
+    details_url = (
+        upsert_details_comment(repo_root, pr, details) if pr and details else ""
+    )
+    block = (
+        render_block(plan, results, commit, args.base, dirty, details_url)
+        if plan.commands
+        else render_no_tests_block(plan, commit, args.base, dirty)
+    )
+    (repo_root / RESULTS_MARKDOWN).write_text(block, encoding="utf-8")
+    print(
+        f"\nSummary written to {RESULTS_MARKDOWN}"
+        + (f", details to {DETAILS_MARKDOWN}" if details else "")
+    )
+    if pr:
+        if details_url:
+            print(f"Posted the details: {details_url}")
         update_pr_body(
-            repo_root, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
+            repo_root, pr, block, impact_map.get("prHeading", DEFAULT_PR_HEADING)
         )
     else:
-        print("Paste it into the PR description, or re-run with --update-pr.")
+        print(
+            "Paste the summary into the PR description"
+            + (" and post the details as a PR comment" if details else "")
+            + ", or re-run with --update-pr."
+        )
     return 0 if not results or overall_status(plan, results) == "PASSED" else 1
 
 

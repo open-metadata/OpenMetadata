@@ -23,7 +23,7 @@ import { ReactNode } from 'react';
 const mockShowErrorToast = jest.fn();
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('../../../../../assets/svg/edit-square.svg', () => ({

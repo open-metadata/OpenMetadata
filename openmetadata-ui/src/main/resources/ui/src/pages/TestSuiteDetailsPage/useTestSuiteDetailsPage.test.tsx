@@ -16,6 +16,7 @@ import { ReactNode } from 'react';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { getIngestionPipelines } from '../../rest/ingestionPipelineAPI';
 import {
   addTestCasesToLogicalTestSuiteBulk,
@@ -236,6 +237,35 @@ describe('useTestSuiteDetailsPage', () => {
       expect.objectContaining({ signal: expect.anything() })
     );
     expect(getIngestionPipelines).not.toHaveBeenCalled();
+  });
+
+  it('should open Bulk Edit with the suite list filters', async () => {
+    const { ExtraTestCaseDropdownOptions } = jest.requireMock(
+      '../../utils/TestCaseUtils'
+    );
+    const { result } = renderTestSuiteDetailsHook();
+
+    await waitFor(() => {
+      expect(result.current.testSuite).toEqual(mockTestSuite);
+    });
+
+    await act(async () => {
+      await result.current.fetchTestCases({
+        testCaseStatus: TestCaseStatus.Failed,
+        offset: 20,
+      });
+      await result.current.handleTestCaseSearch(' tc_9 ');
+    });
+
+    expect(ExtraTestCaseDropdownOptions).toHaveBeenLastCalledWith(
+      mockTestSuite.fullyQualifiedName,
+      expect.anything(),
+      false,
+      expect.anything(),
+      expect.anything(),
+      'testSuite',
+      { testCaseStatus: TestCaseStatus.Failed, q: 'tc_9' }
+    );
   });
 
   it('should preserve search input whitespace while normalizing the request', async () => {

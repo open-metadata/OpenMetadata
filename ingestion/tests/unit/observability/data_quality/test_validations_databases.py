@@ -42,6 +42,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
     "tableCustomSQLQuery",
 }
 
+ABORTED_BEFORE_ROW_COUNT = {
+    "test_case_table_custom_sql_unsafe_query_aborted",
+    "test_case_column_value_in_set_missing_column",
+}
+
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
@@ -104,6 +109,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
+            "columnValueLengthsToBeBetween",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
+            None,
+        ),
+        (
+            "test_case_column_value_length_to_be_between_no_bounds",
             "columnValueLengthsToBeBetween",
             "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
@@ -291,6 +303,45 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_column_value_in_set_missing_column",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (TestCaseResult, None, None, TestCaseStatus.Aborted, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_column_values_not_in_set_boolean_strings",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "40",
+                None,
+                TestCaseStatus.Failed,
+                40.0,
+                40.0,
+                50.0,
+                50.0,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_values_not_in_set_boolean_json",
+            "columnValuesToBeNotInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30",
+                None,
+                TestCaseStatus.Failed,
+                50.0,
+                30.0,
+                62.5,
+                37.5,
+            ),
+            None,
+        ),
+        (
             "test_case_column_sum_to_be_between",
             "columnValuesSumToBeBetween",
             "COLUMN",
@@ -320,6 +371,13 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 100,
                 0,
             ),
+            None,
+        ),
+        (
+            "test_case_column_values_to_be_between_no_bounds",
+            "columnValuesToBeBetween",
+            "COLUMN",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, 80, 0, 100, 0),
             None,
         ),
         (
@@ -489,6 +547,20 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             None,
         ),
         (
+            "test_case_table_custom_sql_query_lowercase_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "30", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
+            "test_case_table_custom_sql_query_blank_strategy",
+            "tableCustomSQLQuery",
+            "TABLE",
+            (TestCaseResult, "60", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_unsafe_query_aborted",
             "tableCustomSQLQuery",
             "TABLE",
@@ -522,6 +594,22 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
         ),
         (
             "test_case_column_value_in_set_boolean",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "70",
+                None,
+                TestCaseStatus.Success,
+                70.0,
+                10.0,
+                87.5,
+                12.5,
+            ),
+            None,
+        ),
+        (
+            "test_case_column_value_in_set_boolean_strings",
             "columnValuesToBeInSet",
             "COLUMN",
             (
@@ -1114,10 +1202,7 @@ def test_suite_validation_database(  # noqa: C901
     if failed_percentage:
         assert round(res.failedRowsPercentage, 2) == failed_percentage
     assert res.testCaseStatus == status
-    if (
-        test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED
-        and test_case_name != "test_case_table_custom_sql_unsafe_query_aborted"
-    ):
+    if test_case_type in TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED and test_case_name not in ABORTED_BEFORE_ROW_COUNT:
         assert res.failedRows is not None
         assert res.failedRowsPercentage is not None
         assert res.passedRows is not None

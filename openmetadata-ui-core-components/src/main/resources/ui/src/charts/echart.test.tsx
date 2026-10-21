@@ -133,6 +133,12 @@ describe('EChart', () => {
     expect(lastHost().opts).toEqual({ renderer: 'svg' });
   });
 
+  it('applies updates in the same frame, so a hover never reads a half-swapped series', () => {
+    render(<EChart ariaLabel="Chart" option={{ series: [] }} />);
+
+    expect(lastHost().lazyUpdate).toBeFalsy();
+  });
+
   it('passes the modular echarts core and the event handlers through', () => {
     const onClick = vi.fn();
     render(

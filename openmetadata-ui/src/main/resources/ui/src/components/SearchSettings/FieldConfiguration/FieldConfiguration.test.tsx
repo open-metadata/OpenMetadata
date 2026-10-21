@@ -64,6 +64,18 @@ describe('FieldConfiguration', () => {
     );
   });
 
+  it('Should mount the field controls only while the panel is expanded', () => {
+    render(<FieldConfiguration {...mockProps} />);
+
+    expect(
+      screen.queryByTestId('highlight-field-switch')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('field-container-header'));
+
+    expect(screen.getByTestId('highlight-field-switch')).toBeInTheDocument();
+  });
+
   it('Should handle highlight fields toggle', () => {
     render(<FieldConfiguration {...mockProps} />);
 

@@ -75,8 +75,6 @@ import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
 import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableProfile;
@@ -137,7 +135,7 @@ class ConceptContextIT extends McpTestBase {
   }
 
   @Test
-  void termContextReturnsExactBindingTypeProfileAndOntologyAttributes() throws Exception {
+  void termContextReturnsExactBindingTypeAndProfileWithoutOntologyAttributes() throws Exception {
     JsonNode context = termContext(term);
     JsonNode binding = context.path("bindings").get(0);
     assertThat(context.path("definition").asText()).isEqualTo(DEFINITION);
@@ -148,7 +146,7 @@ class ConceptContextIT extends McpTestBase {
     assertThat(binding.path("rowCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.at("/profile/distinctCount").asDouble()).isEqualTo(3.0);
     assertThat(binding.path("sampleValues").size()).isEqualTo(3);
-    assertThat(context.at("/attributes/0/unit").asText()).isEqualTo("cents");
+    assertThat(context.has("attributes")).isFalse();
   }
 
   @Test
@@ -635,8 +633,6 @@ class ConceptContextIT extends McpTestBase {
         .contains(
             "Concept Definition",
             DEFINITION,
-            "Ontology Attributes",
-            "| amount | INTEGER | cents |",
             "Concept Bindings",
             "| "
                 + orders.getFullyQualifiedName()
@@ -649,7 +645,8 @@ class ConceptContextIT extends McpTestBase {
                 + orders.getFullyQualifiedName()
                 + "."
                 + COLUMN
-                + "`: 100, 200, 700");
+                + "`: 100, 200, 700")
+        .doesNotContain("Ontology Attributes");
   }
 
   @Test
@@ -679,15 +676,7 @@ class ConceptContextIT extends McpTestBase {
         new CreateGlossaryTerm()
             .withGlossary(glossary.getFullyQualifiedName())
             .withName(name)
-            .withDescription(DEFINITION)
-            .withAttributes(
-                List.of(
-                    new OntologyAttribute()
-                        .withId(UUID.randomUUID())
-                        .withName("amount")
-                        .withDataType(OntologyAttributeDataType.INTEGER)
-                        .withUnit("cents")
-                        .withIsIdentifier(false))),
+            .withDescription(DEFINITION),
         GlossaryTerm.class);
   }
 

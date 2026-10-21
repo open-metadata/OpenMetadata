@@ -36,7 +36,7 @@ import {
 } from '../../../rest/csvAPI';
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import { isBulkEditRoute } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   CSV_JOBS_REFRESH_EVENT,
@@ -306,7 +306,7 @@ export const EntityExportModalProvider = ({
       } else {
         const csvFileName =
           fileName ?? `${exportData?.name}_${getCurrentISODate()}`;
-        downloadFile(data, `${csvFileName}.csv`);
+        downloadCsv(data, `${csvFileName}.csv`);
       }
       handleCancel();
     },
@@ -668,7 +668,7 @@ export const EntityExportModalProvider = ({
         if (isBulkEdit) {
           setCSVExportData(data);
         } else {
-          downloadFile(data, `${fileName}.csv`);
+          downloadCsv(data, `${fileName}.csv`);
         }
         handleCancel();
         setDownloading(false);
@@ -726,7 +726,7 @@ export const EntityExportModalProvider = ({
         return;
       }
       if (isString(result)) {
-        downloadFile(result, `${data.name}_${getCurrentISODate()}.csv`);
+        downloadCsv(result, `${data.name}_${getCurrentISODate()}.csv`);
       } else {
         // Claim the just-started job so the tray always surfaces it, even if it
         // finishes before the tray's first fetch.

@@ -137,7 +137,7 @@ class TestLoginRoundTripTest {
       assertEquals(
           TestLoginResult.Status.PENDING, roundTrip.result(ADMIN, testSessionId).getStatus());
 
-      provider.issueIdToken(query.get("nonce"), "alice@example.com");
+      provider.issueIdTokenWithRefreshToken(query.get("nonce"), "alice@example.com");
       roundTrip.completeOidcCallback(testSessionId, callback("code-1", marker));
       TestLoginResult completed = roundTrip.result(ADMIN, testSessionId);
       assertEquals(TestLoginResult.Status.SUCCESS, completed.getStatus(), completed.toString());

@@ -37,6 +37,11 @@ describe('OntologyHealthPanel', () => {
       '2'
     );
     expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getByText('label.attention')).toBeInTheDocument();
+    expect(screen.queryByText('Account')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-health-review'));
+
     expect(screen.getByText('Account')).toBeInTheDocument();
     expect(screen.getByText('Customer')).toBeInTheDocument();
     expect(
@@ -78,9 +83,30 @@ describe('OntologyHealthPanel', () => {
     expect(screen.getByTestId('ontology-isolated-count')).toHaveTextContent(
       '0'
     );
+    expect(screen.getByText('label.healthy')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-health-review')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.expand' }));
+
     expect(
       screen.getByText('message.all-ontology-terms-connected')
     ).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('minimises to a compact summary and restores the card', () => {
+    render(<OntologyHealthPanel health={health} onConnect={jest.fn()} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.minimize' }));
+
+    const minimized = screen.getByTestId('ontology-health-panel');
+
+    expect(minimized).toHaveTextContent('60%');
+    expect(minimized).toHaveTextContent('2 label.isolated');
+
+    fireEvent.click(screen.getByTestId('ontology-health-restore'));
+
+    expect(screen.getByText('label.ontology-health')).toBeInTheDocument();
   });
 });

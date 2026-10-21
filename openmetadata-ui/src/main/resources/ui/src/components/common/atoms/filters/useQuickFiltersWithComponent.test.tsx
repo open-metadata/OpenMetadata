@@ -296,6 +296,22 @@ describe('useQuickFiltersWithComponent', () => {
     });
   });
 
+  it('scopes the quick filters to the listing scope', () => {
+    const defaultQueryFilter = { query: { bool: { must: [] } } };
+    const { result } = renderHook(() =>
+      useQuickFiltersWithComponent({
+        defaultFilters: mockDefaultFilters,
+        defaultQueryFilter,
+        searchIndex: SearchIndex.DOMAIN,
+        onFilterChange: mockOnFilterChange,
+      })
+    );
+
+    expect(result.current.quickFilters.props.defaultQueryFilter).toBe(
+      defaultQueryFilter
+    );
+  });
+
   describe('Return Values', () => {
     it('should return quickFilters and selectedFilters', () => {
       const { result } = renderHook(() =>

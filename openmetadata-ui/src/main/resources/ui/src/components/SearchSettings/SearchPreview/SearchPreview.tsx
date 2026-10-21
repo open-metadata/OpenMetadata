@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
+  Input,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Input } from 'antd';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { ENTITY_PATH_TO_SEARCH_INDEX } from '../../../constants/SearchSettings.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -248,16 +247,12 @@ const SearchPreview = ({
       </Box>
 
       <Input
-        allowClear
-        className="search-box"
-        data-testid="searchbar"
+        aria-label={t('message.search-for-data-assets-placeholder')}
+        icon={Search}
+        inputDataTestId="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}
-        suffix={
-          <Icon className="text-md font-bold m-r-xs" component={IconSearchV1} />
-        }
-        type="text"
         value={searchValue}
-        onChange={(e) => handleSearch(e.target.value)}
+        onChange={handleSearch}
       />
       <div className="search-results-container">{searchResults}</div>
     </div>

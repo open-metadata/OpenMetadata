@@ -29,13 +29,12 @@ const answer = (sources: string[]) => ({
   triggers: [],
 });
 
-const renderWith = (sources: string[], quiet = false) =>
+const renderWith = (sources: string[]) =>
   renderHook(
     (props: { sources: string[] }) =>
       useAlertCapabilities({
         alertType: AlertType.Notification,
         sources: props.sources,
-        quiet,
       }),
     { initialProps: { sources } }
   );
@@ -112,19 +111,84 @@ describe('useAlertCapabilities', () => {
     expect(result.current.selection?.sources[0].name).toBe('topic');
   });
 
-  it('shows the error when the server cannot answer', async () => {
+  // The source picker reports it, next to the sources, with Retry.
+  it('has no answer, and raises no toast, when the server cannot answer', async () => {
     mockGetAlertCapabilities.mockRejectedValue(new Error('boom'));
     const { result, waitFor } = renderWith(['table']);
-    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+    await waitFor(() => expect(result.current.settled).toBe(true));
 
+    expect(result.current.selection).toBeUndefined();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('starts out asking, and is settled by the first answer', async () => {
+    const { result, waitFor } = renderWith([]);
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.settled).toBe(false);
+
+    await waitFor(() => expect(result.current.settled).toBe(true));
+
+    expect(result.current.answeredFor).toEqual([]);
+  });
+
+  it('is settled by a failure too, and stays settled after later failures', async () => {
+    mockGetAlertCapabilities.mockRejectedValue(new Error('boom'));
+    const { result, rerender, waitFor } = renderWith(['table']);
+    await waitFor(() => expect(result.current.settled).toBe(true));
+
+    rerender({ sources: ['table', 'topic'] });
+
+    expect(result.current.loading).toBe(true);
+    expect(result.current.settled).toBe(true);
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.settled).toBe(true);
     expect(result.current.selection).toBeUndefined();
   });
 
-  it('says nothing when asked to be quiet', async () => {
-    mockGetAlertCapabilities.mockRejectedValue(new Error('boom'));
-    const { result, waitFor } = renderWith(['table'], true);
+  it('says which sources the answer on screen is for, a remembered one included', async () => {
+    const { result, rerender, waitFor } = renderWith(['table']);
+    await waitFor(() => expect(result.current.answeredFor).toEqual(['table']));
+
+    rerender({ sources: ['table', 'topic'] });
+
+    // While it asks, the answer on screen is still the one for table.
+    expect(result.current.answeredFor).toEqual(['table']);
+
+    await waitFor(() =>
+      expect(result.current.answeredFor).toEqual(['table', 'topic'])
+    );
+    rerender({ sources: ['table'] });
+
+    expect(result.current.answeredFor).toEqual(['table']);
+  });
+
+  it('asks again on retry after a failure', async () => {
+    mockGetAlertCapabilities.mockRejectedValueOnce(new Error('boom'));
+    const { result, waitFor } = renderWith(['table']);
+    await waitFor(() => expect(result.current.settled).toBe(true));
+
+    expect(result.current.selection).toBeUndefined();
+
+    act(() => result.current.retry());
+    await waitFor(() => expect(result.current.selection).toBeDefined());
+
+    expect(mockGetAlertCapabilities).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the sources it last listed when a later question fails', async () => {
+    const { result, rerender, waitFor } = renderWith(['table']);
+    await waitFor(() => expect(result.current.knownSources).toHaveLength(1));
+    mockGetAlertCapabilities.mockRejectedValueOnce(new Error('boom'));
+
+    rerender({ sources: ['topic'] });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(result.current.selection).toBeUndefined();
+    expect(result.current.knownSources).toEqual([
+      { name: 'table', kind: 'entity' },
+    ]);
   });
 });

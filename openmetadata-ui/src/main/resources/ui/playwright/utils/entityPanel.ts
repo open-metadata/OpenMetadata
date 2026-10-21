@@ -41,56 +41,18 @@ export const getEntityFqn = (
   ).entityResponseData?.fullyQualifiedName;
 };
 
-const findOptionByScrolling = async (page: Page, endpoint: string) => {
-  const maxTries = 12; // Bound the scan; the list is ~25 options over ~3 viewports.
-  const filterName = ENDPOINT_TO_FILTER_MAP[endpoint];
-  const dropdown = page
-    .getByTestId('global-search-select-dropdown')
-    .locator('.rc-virtual-list-holder');
-  const option = page.getByTestId(`global-search-select-option-${filterName}`);
+const selectSearchIndexOption = async (page: Page, endpoint: string) => {
+  const option = page.getByTestId(
+    `global-search-select-option-${ENDPOINT_TO_FILTER_MAP[endpoint]}`
+  );
 
-  // The filter list is virtualised, so only the ~11 rows around the current
-  // offset exist in the DOM: every option below "Container" — Stored Procedure,
-  // Data Product, API Endpoint, API Collection, Metric and the rest — is absent
-  // until scrolled into range.
-  //
-  // waitFor() rather than isVisible(): isVisible() resolves immediately and
-  // never retries, so probing it straight after scrollBy() races the re-render
-  // of the virtual window. That is why every entity type past the initial
-  // window was flaky under CI load while those inside it never were. When the
-  // option is already rendered this resolves instantly, so the timeout is only
-  // ever paid once per scroll step.
-  for (let tries = 0; tries < maxTries; tries++) {
-    const appeared = await option
-      .waitFor({ state: 'visible', timeout: 1_000 })
-      .then(() => true)
-      .catch(() => false);
-
-    if (appeared) {
-      await option.click();
-
-      return true;
-    }
-
-    // Advance a whole viewport so the scan covers the list in a few steps, and
-    // detect the end from the clamped scrollTop rather than a fixed try count.
-    const movedBy = await dropdown.evaluate((element) => {
-      const before = element.scrollTop;
-      element.scrollBy(0, element.clientHeight);
-
-      return element.scrollTop - before;
-    });
-
-    if (movedBy === 0) {
-      break; // Already at the bottom: the option is not in this list.
-    }
+  // The core Select renders every option, so a missing one is genuinely absent.
+  if ((await option.count()) === 0) {
+    return false;
   }
+  await option.click();
 
-  await dropdown.evaluate((element) => {
-    element.scrollTop = 0;
-  });
-
-  return false;
+  return true;
 };
 
 export const openEntitySummaryPanel = async ({
@@ -136,10 +98,8 @@ export const openEntitySummaryPanel = async ({
         state: 'visible',
       });
       await page.getByTestId('global-search-selector').click();
-      await page.getByTestId('global-search-select-dropdown').waitFor({
-        state: 'visible',
-      });
-      if (!(await findOptionByScrolling(page, endpoint))) {
+      await page.getByRole('listbox').waitFor({ state: 'visible' });
+      if (!(await selectSearchIndexOption(page, endpoint))) {
         return false;
       }
     }

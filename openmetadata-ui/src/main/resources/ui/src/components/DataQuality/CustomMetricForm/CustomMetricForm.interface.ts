@@ -10,15 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FormInstance } from 'antd';
+import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../generated/entity/data/table';
 import { CustomMetric } from '../../../generated/tests/customMetric';
 
 export interface CustomMetricFormProps {
   isColumnMetric: boolean;
-  initialValues?: CustomMetric;
+  initialValues?: Partial<CustomMetric>;
   onFinish: (values: CustomMetric) => void;
-  form?: FormInstance<CustomMetric>;
+  form?: UseFormReturn<CustomMetric>;
   table?: Table;
   isEditMode?: boolean;
 }

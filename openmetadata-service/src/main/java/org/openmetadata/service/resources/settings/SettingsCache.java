@@ -93,8 +93,8 @@ public class SettingsCache {
   /**
    * Counts invalidations. Guava ignores invalidate() for a key whose load is still running, so a
    * load that read a setting just before an update committed would cache the old value until it
-   * expires. Each cached value records the count its load started from, and a read reloads a value
-   * loaded before the latest invalidation.
+   * expires. Each cached value records the latest count its load is certain to have seen, and a
+   * read reloads a value that a reload on its thread would see past.
    */
   private static final AtomicLong INVALIDATIONS = new AtomicLong();
 
@@ -106,10 +106,18 @@ public class SettingsCache {
           .expireAfterWrite(3, TimeUnit.MINUTES)
           .build(new SettingsLoader());
 
-  /** A cached setting and the invalidation count its load started from. */
+  /**
+   * The invalidation count when this thread's open transaction started. Under MySQL's REPEATABLE
+   * READ the transaction reads from a snapshot taken no earlier than that, so a setting it loads can
+   * miss an invalidation that ran before the load started. Set by {@link
+   * SettingsSnapshotTransactionHandler} for every transaction on the server's Jdbi.
+   */
+  private static final ThreadLocal<Long> INVALIDATIONS_AT_TRANSACTION_START = new ThreadLocal<>();
+
+  /** A cached setting and the invalidation count its load is certain to have seen. */
   record LoadedSettings(Settings settings, long invalidationsAtLoad) {
-    boolean predatesTheLatestInvalidation() {
-      return invalidationsAtLoad < INVALIDATIONS.get();
+    boolean isOlderThanAReloadOnThisThread() {
+      return invalidationsAtLoad < invalidationsVisibleToALoad();
     }
   }
 
@@ -574,10 +582,49 @@ public class SettingsCache {
     return settings == null || !Boolean.FALSE.equals(settings.getEnableTagPropagation());
   }
 
+  /** A transaction body, which may throw what the transaction callback it runs throws. */
+  @FunctionalInterface
+  public interface TransactionBody<R, X extends Exception> {
+    R run() throws X;
+  }
+
+  /**
+   * Runs a transaction that starts now, so the settings it loads are stamped with the
+   * invalidations its snapshot is certain to include. A transaction opened inside another on a
+   * separate handle keeps the enclosing start: the loader's DAO reads through the handle bound to
+   * the thread, which is the enclosing one, so its older snapshot is what a load sees.
+   */
+  public static <R, X extends Exception> R inTransaction(TransactionBody<R, X> transaction)
+      throws X {
+    Long enclosingStart = INVALIDATIONS_AT_TRANSACTION_START.get();
+    long invalidations = INVALIDATIONS.get();
+    INVALIDATIONS_AT_TRANSACTION_START.set(
+        enclosingStart == null ? invalidations : Math.min(enclosingStart, invalidations));
+    try {
+      return transaction.run();
+    } finally {
+      restoreTransactionStart(enclosingStart);
+    }
+  }
+
+  private static void restoreTransactionStart(Long enclosingStart) {
+    if (enclosingStart == null) {
+      INVALIDATIONS_AT_TRANSACTION_START.remove();
+    } else {
+      INVALIDATIONS_AT_TRANSACTION_START.set(enclosingStart);
+    }
+  }
+
+  private static long invalidationsVisibleToALoad() {
+    long invalidations = INVALIDATIONS.get();
+    Long atTransactionStart = INVALIDATIONS_AT_TRANSACTION_START.get();
+    return atTransactionStart == null ? invalidations : Math.min(atTransactionStart, invalidations);
+  }
+
   private static Settings currentSettings(String settingsName) throws ExecutionException {
     LoadedSettings loaded = CACHE.get(settingsName);
     for (int reload = 0;
-        reload < MAX_STALE_RELOADS && loaded.predatesTheLatestInvalidation();
+        reload < MAX_STALE_RELOADS && loaded.isOlderThanAReloadOnThisThread();
         reload++) {
       CACHE.invalidate(settingsName);
       loaded = CACHE.get(settingsName);
@@ -708,7 +755,7 @@ public class SettingsCache {
     /** A null result reaches callers as InvalidCacheLoadException, meaning the setting is unset. */
     @Override
     public @NonNull LoadedSettings load(@CheckForNull String settingsName) {
-      long invalidationsAtLoad = INVALIDATIONS.get();
+      long invalidationsAtLoad = invalidationsVisibleToALoad();
       Settings fetchedSettings = fetch(settingsName);
       return fetchedSettings == null
           ? null

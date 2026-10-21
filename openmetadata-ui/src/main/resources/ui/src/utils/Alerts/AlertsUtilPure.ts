@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import type { RuleObject } from 'antd/lib/form';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import {
   isBoolean,
@@ -60,25 +59,6 @@ export const getFunctionDisplayName = (func: string): string => {
 
   return displayNameByFunction[func] ?? '';
 };
-
-/**
- *
- * @param name Field name used to identify which field has error
- * @param minLengthRequired how many item should be there in the list
- * @returns If validation failed throws an error else resolve
- */
-export const listLengthValidator =
-  <T>(name: string, minLengthRequired = 1) =>
-  async (_: RuleObject, list: T[]) => {
-    if (!list || list.length < minLengthRequired) {
-      throw new Error(
-        t('message.length-validator-error', {
-          length: minLengthRequired,
-          field: name,
-        })
-      );
-    }
-  };
 
 export const getAlertActionTypeDisplayName = (
   alertActionType: SubscriptionType

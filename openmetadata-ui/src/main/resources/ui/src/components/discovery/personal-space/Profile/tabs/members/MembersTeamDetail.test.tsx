@@ -14,6 +14,8 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { getTeams, getTeamsAssetCounts } from '../../../../../../rest/teamsAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 const renderWithRouter = (ui: ReactElement) =>
@@ -70,6 +72,7 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
   getTeamByName: (...args: unknown[]) => mockGetTeamByName(...args),
   patchTeamDetail: jest.fn().mockResolvedValue({}),
   getTeams: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getTeamsAssetCounts: jest.fn().mockResolvedValue({}),
   restoreTeam: jest.fn().mockResolvedValue({}),
   deleteUserFromTeam: jest.fn().mockResolvedValue({}),
   exportTeam: jest.fn().mockResolvedValue(''),
@@ -180,6 +183,26 @@ describe('MembersTeamDetail', () => {
         'engineering',
         expect.any(Object)
       );
+    });
+  });
+
+  it('lists sub-teams without their owned assets and reads asset counts from the counts endpoint', async () => {
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(getTeams).toHaveBeenCalledWith(
+        expect.objectContaining({ parentTeam: 'engineering' })
+      );
+    });
+
+    (getTeams as jest.Mock).mock.calls.forEach(([params]) =>
+      expect(params.fields).not.toContain(TabSpecificField.OWNS)
+    );
+
+    await waitFor(() => {
+      expect(getTeamsAssetCounts).toHaveBeenCalled();
     });
   });
 

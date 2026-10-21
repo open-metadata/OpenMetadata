@@ -166,7 +166,9 @@ const TierSection: React.FC<TierSectionProps> = ({
   return (
     <div className="tier-section">
       <div className="tier-header">
-        <Typography className="tier-title">{t('label.tier')}</Typography>
+        <Typography size="text-xs" weight="semibold">
+          {t('label.tier')}
+        </Typography>
         {canShowEditButton && (
           <TierCard
             currentTier={displayTier?.tagFQN}

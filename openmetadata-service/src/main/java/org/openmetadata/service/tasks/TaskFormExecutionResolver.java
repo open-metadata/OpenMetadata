@@ -227,6 +227,12 @@ public final class TaskFormExecutionResolver {
     }
 
     TaskExecutionBinding binding = defaultBinding(task);
+    if (binding.handlerType() == HandlerType.APPROVAL
+        && TaskWorkflowLifecycleResolver.writesItsOwnEntityStage(task.getWorkflowDefinitionId())) {
+      // The workflow's own nodes set the stage after an approval; the default write would race
+      // them. Approval-only workflows keep the default, as do noOp task workflows.
+      return new TaskExecutionPlan(List.of(), List.of());
+    }
 
     return switch (binding.handlerType()) {
       case DESCRIPTION_UPDATE -> new TaskExecutionPlan(

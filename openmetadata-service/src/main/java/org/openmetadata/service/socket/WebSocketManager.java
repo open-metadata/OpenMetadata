@@ -58,6 +58,10 @@ public class WebSocketManager {
   private final Map<String, String> socketSessionIds = new ConcurrentHashMap<>();
   private final Map<String, Long> socketSessionValidatedAt = new ConcurrentHashMap<>();
 
+  // Cross-pod delivery for sendToOne; a Redis or DB relay is injected at startup (no-op by
+  // default).
+  private volatile WebSocketRelay relay = new NoopWebSocketRelay();
+
   private WebSocketManager(EngineIoServerOptions eiOptions) {
     engineIoServer = new EngineIoServer(eiOptions);
     socketIoServer = new SocketIoServer(engineIoServer);
@@ -140,26 +144,62 @@ public class WebSocketManager {
     return instance;
   }
 
+  // Node-local; cross-pod broadcast is not wired through the relay (the relay supports SCOPE_ALL).
   public void broadCastMessageToAll(String event, String message) {
-    activityFeedEndpoints.forEach(
-        (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
+    broadCastMessageToAllLocal(event, message);
   }
 
   public void sendToOne(UUID receiver, String event, String message) {
-    if (activityFeedEndpoints.containsKey(receiver)) {
-      activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
-    }
+    // Deliver locally, then relay to peers so the pod holding the socket is reached (no-op
+    // single-pod).
+    sendToOneLocal(receiver, event, message);
+    relay.publishToUser(receiver, event, message);
   }
 
   public void sendToOne(String username, String event, String message) {
     try {
       UUID receiver = Entity.getEntityReferenceByName(USER, username, Include.NON_DELETED).getId();
-      if (activityFeedEndpoints.containsKey(receiver)) {
-        activityFeedEndpoints.get(receiver).forEach((key, value) -> value.send(event, message));
-      }
+      sendToOne(receiver, event, message);
     } catch (EntityNotFoundException ex) {
       LOG.error("User with {} not found", username);
     }
+  }
+
+  /** Deliver to this user's sockets on this pod only (no relay) — used by the relay on receive. */
+  public void sendToOneLocal(UUID receiver, String event, String message) {
+    Map<String, SocketIoSocket> connections = activityFeedEndpoints.get(receiver);
+    if (connections != null) {
+      connections.forEach((key, value) -> value.send(event, message));
+    }
+  }
+
+  /** Broadcast to this pod's sockets only (no relay) — the receive side of a SCOPE_ALL frame. */
+  public void broadCastMessageToAllLocal(String event, String message) {
+    activityFeedEndpoints.forEach(
+        (key, value) -> value.forEach((key1, value1) -> value1.send(event, message)));
+  }
+
+  /** Deliver a relayed frame to this pod's sockets by scope (local only — never re-published). */
+  public void deliverRelayedFrame(String scope, String target, String event, String message) {
+    if (WebSocketRelay.SCOPE_ALL.equals(scope)) {
+      broadCastMessageToAllLocal(event, message);
+      return;
+    }
+    if (WebSocketRelay.SCOPE_USER.equals(scope) && target != null) {
+      try {
+        sendToOneLocal(UUID.fromString(target), event, message);
+      } catch (IllegalArgumentException ex) {
+        LOG.debug("Relayed frame with non-UUID target {} ignored", target);
+      }
+    }
+  }
+
+  public void setRelay(WebSocketRelay relay) {
+    this.relay = relay == null ? new NoopWebSocketRelay() : relay;
+  }
+
+  public WebSocketRelay getRelay() {
+    return relay;
   }
 
   public void sendToManyWithUUID(Set<UUID> receivers, String event, String message) {

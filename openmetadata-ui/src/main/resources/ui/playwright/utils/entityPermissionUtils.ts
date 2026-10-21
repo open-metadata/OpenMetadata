@@ -454,9 +454,12 @@ export const testPipelineSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 
@@ -528,9 +531,12 @@ export const testDashboardDataModelSpecificOperations = async (
   await waitForAllLoadersToDisappear(testUserPage);
 
   if (effect === 'allow') {
-    await expect(testUserPage.getByTestId('edit-lineage')).toBeVisible();
+    await expect(testUserPage.getByTestId('lineage-node-menu')).not.toHaveCount(
+      0
+    );
   } else {
-    await expect(testUserPage.getByTestId('edit-lineage')).not.toBeVisible();
+    await expect(testUserPage.locator('.react-flow__node')).not.toHaveCount(0);
+    await expect(testUserPage.getByTestId('lineage-node-menu')).toHaveCount(0);
   }
 };
 

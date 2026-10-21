@@ -418,7 +418,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
                     self._user_query_cell(column, processor, cell)
                     for column, processor, cell in zip(row_columns, processors, row, strict=True)
                 ]
-                for row in rnd.fetchmany(100)
+                for row in rnd.fetchmany(self.sample_limit)
             ],
         )
 

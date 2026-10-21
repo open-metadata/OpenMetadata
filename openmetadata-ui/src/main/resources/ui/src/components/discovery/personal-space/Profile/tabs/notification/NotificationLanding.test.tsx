@@ -148,6 +148,36 @@ describe('NotificationLanding', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should show the native Announcements card only when its menu item is visible (visible=%s)',
+    (isProtected, shown) => {
+      mockGetGlobalSettingsMenu.mockReturnValue([
+        {
+          key: GlobalSettingsMenuCategory.NOTIFICATIONS,
+          items: [
+            {
+              key: `${GlobalSettingsMenuCategory.NOTIFICATIONS}.announcements`,
+              category: 'label.announcement-plural',
+              description: 'Announcements desc',
+              icon: () => <span />,
+              isProtected,
+            },
+          ],
+        },
+      ]);
+
+      render(<NotificationLanding onNavigate={mockOnNavigate} />);
+
+      // Native: no downstream build has to contribute it.
+      expect(
+        Boolean(screen.queryByTestId('notification-card-announcements'))
+      ).toBe(shown);
+    }
+  );
+
   it('should render contributed section cards from the settings menu', () => {
     mockGetContributions.mockReturnValue([
       { key: 'weekly-emails', component: () => <span /> },

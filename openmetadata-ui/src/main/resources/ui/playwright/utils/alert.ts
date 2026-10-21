@@ -31,6 +31,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getApiContext,
@@ -167,13 +168,11 @@ export const commonCleanup = async ({
  * not just hidden. This prevents race conditions where multiple dropdowns exist.
  */
 export const ensureNoDropdownVisible = async (page: Page) => {
-  const dropdownCount = await page
-    .locator('.ant-select-dropdown:visible')
-    .count();
+  const dropdownCount = await page.getByRole('listbox').count();
   if (dropdownCount > 0) {
     await clickOutside(page);
     // Wait for ALL visible dropdowns to be gone from DOM
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+    await expect(page.getByRole('listbox')).toHaveCount(0);
   }
 };
 
@@ -318,18 +317,18 @@ export const addOwnerFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible (fail fast if multiple)
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for dropdown option
   const ownerOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId(`${selectId}-filter-option`);
   await expect(ownerOption).toBeVisible();
   await expect(ownerOption).toBeEnabled();
   await ownerOption.click();
 
   // Verify filter dropdown closed before next interaction
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   // Ensure no dropdowns visible before opening owner selector
   await ensureNoDropdownVisible(page);
@@ -343,7 +342,7 @@ export const addOwnerFilter = async ({
   await ownerInput.click();
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');
   await ownerInput.fill(ownerName);
@@ -351,20 +350,20 @@ export const addOwnerFilter = async ({
 
   // Use :visible selector chain pattern for search results
   const searchResult = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${ownerName}"]`);
+    .getByRole('listbox')
+    .getByRole('option', { name: ownerName, exact: true });
   await expect(searchResult).toBeVisible();
   await searchResult.click();
 
   // Verify selection is displayed
   await expect(
-    page.getByTestId('owner-name-select').getByTitle(ownerName)
+    page.getByTestId('owner-name-select').getByText(ownerName, { exact: true })
   ).toBeVisible();
 
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
+    await expect(filterSwitch).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -389,18 +388,18 @@ export const addEntityFQNFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern
   const entityFilterOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId(`${selectId}-filter-option`);
   await expect(entityFilterOption).toBeVisible();
   await expect(entityFilterOption).toBeEnabled();
   await entityFilterOption.click();
 
   // Verify filter dropdown closed before next interaction
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   // Ensure no dropdowns visible before searching
   await ensureNoDropdownVisible(page);
@@ -419,23 +418,26 @@ export const addEntityFQNFilter = async ({
   await getSearchResult;
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for search result
   const searchResult = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${entityFQN}"]`);
+    .getByRole('listbox')
+    .getByRole('option', { name: entityFQN, exact: true });
   await expect(searchResult).toBeVisible();
   await searchResult.click();
 
   await expect(
-    page.getByTestId('fqn-list-select').getByTitle(entityFQN)
+    page
+      .getByTestId('fqn-list-select')
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: entityFQN })
   ).toBeAttached();
 
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
+    await expect(filterSwitch).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -458,18 +460,18 @@ export const addEventTypeFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for dropdown option
   const eventTypeOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId('Event Type-filter-option');
   await expect(eventTypeOption).toBeVisible();
   await expect(eventTypeOption).toBeEnabled();
   await eventTypeOption.click();
 
   // Verify filter dropdown closed before next interaction
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   for (const eventType of eventTypes) {
     // Ensure no dropdowns visible before opening event type selector
@@ -484,20 +486,22 @@ export const addEventTypeFilter = async ({
     await eventTypeInput.click();
 
     // CRITICAL: Verify EXACTLY one dropdown is visible
-    await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+    await expect(page.getByRole('listbox')).toHaveCount(1);
 
     await eventTypeInput.fill(eventType);
 
     // Use :visible selector chain pattern for search results
     const searchResult = page
-      .locator('.ant-select-dropdown:visible')
-      .locator(`[title="${startCase(eventType)}"]`);
+      .getByRole('listbox')
+      .getByRole('option', { name: startCase(eventType), exact: true });
     await expect(searchResult).toBeVisible();
     await searchResult.click();
 
     // Verify selection is displayed
     await expect(
-      page.getByTestId('event-type-select').getByTitle(startCase(eventType))
+      page
+        .getByTestId('event-type-select')
+        .getByText(startCase(eventType), { exact: true })
     ).toBeVisible();
   }
 
@@ -507,7 +511,7 @@ export const addEventTypeFilter = async ({
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
+    await expect(filterSwitch).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -532,18 +536,18 @@ export const addDomainFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Select Domain filter option - chain :visible selector inline
   const domainOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId('Domain-filter-option');
   await expect(domainOption).toBeVisible();
   await expect(domainOption).toBeEnabled();
   await domainOption.click();
 
   // Verify filter dropdown closed before next interaction
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   // Ensure no dropdowns visible before opening domain selector
   await ensureNoDropdownVisible(page);
@@ -557,7 +561,7 @@ export const addDomainFilter = async ({
   await domainInput.click();
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   const awaitResponse = page.waitForResponse(
     (response) =>
@@ -571,8 +575,8 @@ export const addDomainFilter = async ({
 
   // Select domain from search results - chain :visible selector inline
   const searchResult = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${domainDisplayName}"]`);
+    .getByRole('listbox')
+    .getByRole('option', { name: domainDisplayName, exact: true });
   await expect(searchResult).toBeVisible();
   await searchResult.click();
 
@@ -581,7 +585,9 @@ export const addDomainFilter = async ({
 
   // Verify domain is selected in UI
   await expect(
-    page.getByTestId('domain-select').getByTitle(domainDisplayName)
+    page
+      .getByTestId('domain-select')
+      .getByText(domainDisplayName, { exact: true })
   ).toBeVisible();
 
   if (exclude) {
@@ -608,23 +614,23 @@ export const addGMEFilter = async ({
   await page.click(`[data-testid="filter-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for dropdown option
   const gmeOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId('General Metadata Events-filter-option');
   await expect(gmeOption).toBeVisible();
   await expect(gmeOption).toBeEnabled();
   await gmeOption.click();
 
   // Verify filter dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
+    await expect(filterSwitch).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -750,23 +756,23 @@ export const addGetSchemaChangesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for dropdown option
   const schemaChangesOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId('Get Schema Changes-filter-option');
   await expect(schemaChangesOption).toBeVisible();
   await expect(schemaChangesOption).toBeEnabled();
   await schemaChangesOption.click();
 
   // Verify trigger dropdown closed
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   if (exclude) {
     const filterSwitch = page.getByTestId(`filter-switch-${filterNumber}`);
     await expect(filterSwitch).toBeVisible();
-    await expect(filterSwitch.getByRole('switch')).toBeEnabled();
+    await expect(filterSwitch).toBeEnabled();
     await filterSwitch.click();
   }
 };
@@ -789,18 +795,18 @@ export const addPipelineStatusUpdatesAction = async ({
   await page.click(`[data-testid="trigger-select-${filterNumber}"]`);
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   // Use :visible selector chain pattern for dropdown option
   const pipelineStatusOption = page
-    .locator('.ant-select-dropdown:visible')
+    .getByRole('listbox')
     .getByTestId('Get Pipeline Status Updates-filter-option');
   await expect(pipelineStatusOption).toBeVisible();
   await expect(pipelineStatusOption).toBeEnabled();
   await pipelineStatusOption.click();
 
   // Verify trigger dropdown closed before next interaction
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(0);
+  await expect(page.getByRole('listbox')).toHaveCount(0);
 
   // Ensure no dropdowns visible before opening status selector
   await ensureNoDropdownVisible(page);
@@ -814,21 +820,23 @@ export const addPipelineStatusUpdatesAction = async ({
   await pipelineStatusInput.click();
 
   // CRITICAL: Verify EXACTLY one dropdown is visible
-  await expect(page.locator('.ant-select-dropdown:visible')).toHaveCount(1);
+  await expect(page.getByRole('listbox')).toHaveCount(1);
 
   await pipelineStatusInput.fill(statusName);
 
   // Use :visible selector chain pattern for search results
   const searchResult = page
-    .locator('.ant-select-dropdown:visible')
-    .locator(`[title="${statusName}"]`);
+    .getByRole('listbox')
+    .getByRole('option', { name: statusName, exact: true });
   await expect(searchResult).toBeVisible();
   await searchResult.click();
 
   // Verify selection is displayed
-  await expect(page.getByTestId('pipeline-status-select')).toHaveText(
-    statusName
-  );
+  await expect(
+    page
+      .getByTestId('pipeline-status-select')
+      .getByText(statusName, { exact: true })
+  ).toBeVisible();
 
   // Ensure dropdown is closed before proceeding
   await ensureNoDropdownVisible(page);
@@ -956,29 +964,55 @@ export const inputBasicAlertInformation = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
-  const sourceOption = page
-    .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`);
+  // The source picker is open to several sources from the start; this alert gets one.
   const sourceSelect = page.getByTestId('source-select');
-  const sourceTrigger = page.getByTestId('add-source-button');
-  await sourceTrigger.click();
-  await expect(sourceOption).toBeVisible();
-  await sourceOption.click();
+  await chooseSelectOption(
+    sourceSelect,
+    page.getByRole('listbox').getByTestId(`${sourceName}-option`)
+  );
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('listbox')).toBeHidden();
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
-// Resolves once the server has answered about exactly these sources, in any order.
+// Resolves once the server has answered about exactly these sources, in any order, and fails
+// legibly if that answer is an error. Only a capabilities request has a body worth reading.
 export const waitForCapabilitiesOf = (page: Page, sources: string[]) =>
-  page.waitForResponse((response) => {
-    const asked = response.request().postDataJSON()?.sources ?? [];
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      if (
+        !response.url().includes('/api/v1/events/subscriptions/capabilities')
+      ) {
+        return false;
+      }
+      const asked: string[] = response.request().postDataJSON()?.sources ?? [];
 
-    return (
-      response.url().includes('/api/v1/events/subscriptions/capabilities') &&
-      asked.length === sources.length &&
-      sources.every((source) => asked.includes(source))
-    );
+      return (
+        asked.length === sources.length &&
+        sources.every((source) => asked.includes(source))
+      );
+    },
+    200
+  );
+
+const PER_SOURCE_LIST =
+  /\/api\/v1\/events\/subscriptions\/(observability|notification)\/resources/;
+
+// Alert forms and views read only what the server says about the chosen sources together. The
+// returned check fails if any page asked for the deprecated list of every source's own rules.
+export const watchPerSourceListRequests = (page: Page) => {
+  const asked: string[] = [];
+  page.context().on('request', (request) => {
+    if (PER_SOURCE_LIST.test(request.url())) {
+      asked.push(request.url());
+    }
   });
+
+  return () =>
+    expect(asked, 'No page asks for the per-source list').toEqual([]);
+};
 
 // Adds a source to the ones already chosen, and waits for what the server says about them all.
 export const addAlertSource = async (

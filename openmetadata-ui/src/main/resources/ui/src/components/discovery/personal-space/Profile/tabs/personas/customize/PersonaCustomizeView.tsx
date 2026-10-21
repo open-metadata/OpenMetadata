@@ -260,7 +260,7 @@ const PersonaCustomizeView = ({
         {content}
       </div>
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-8 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-8 tw:py-4"
         data-testid="persona-customize-footer"
         direction="row"
         gap={3}

@@ -85,10 +85,18 @@ class PipelineTaskKeyTest {
 
   @Test
   void policyAgentLogsUseTheKeyTheUiReads() {
-    // agentsDataMapper.ts maps PipelineType.PolicyAgent -> 'ingestion_task'.
+    // IngestionLogsUtils.ts maps PipelineType.PolicyAgent -> 'ingestion_task'.
     assertEquals(
         "ingestion_task",
         PipelineServiceClientInterface.taskKeyOf(PipelineType.POLICY_AGENT.toString()));
+  }
+
+  @Test
+  void reverseMetadataLogsUseTheKeyTheUiReads() {
+    // IngestionLogsUtils.ts maps PipelineType.ReverseMetadata -> 'ingestion_task'.
+    assertEquals(
+        "ingestion_task",
+        PipelineServiceClientInterface.taskKeyOf(PipelineType.REVERSE_METADATA.toString()));
   }
 
   /** The failure mode this class guards against, pinned so the regression is unmistakable. */

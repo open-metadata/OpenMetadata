@@ -17,7 +17,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Table } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -25,6 +24,7 @@ import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
 import Loader from '../components/common/Loader/Loader';
+import Table from '../components/common/Table/TableV2';
 import '../components/Explore/EntitySummaryPanel/entity-summary-panel.less';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import TagsViewer from '../components/Tag/TagsViewer/TagsViewer';

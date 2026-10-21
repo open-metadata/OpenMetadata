@@ -107,7 +107,7 @@ def test_service_spec_registers_metadata_profiler_and_sampler():
     assert ServiceSpec.sampler_class.endswith(".SQASampler")
     assert ServiceSpec.test_suite_class is not None
     assert ServiceSpec.test_suite_class.endswith(".SQATestSuiteInterface")
-    assert ServiceSpec.lineage_source_class is None
+    assert ServiceSpec.lineage_source_class.endswith(".DatabendLineageSource")
     assert ServiceSpec.usage_source_class is None
 
 

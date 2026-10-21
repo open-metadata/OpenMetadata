@@ -119,7 +119,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </header>
       ),
       Content: ({ children }: { children: React.ReactNode }) => (
-        <div>{children}</div>
+        <div data-testid="page-layout-content">{children}</div>
       ),
     }
   ),
@@ -399,6 +399,10 @@ describe('ConnectionsPage', () => {
       render(<ConnectionsPage />);
 
       expect(screen.getByTestId('connections-footer-slot')).toBeInTheDocument();
+      // Outside the padded Content, so it pins to the canvas edge like Home's.
+      expect(screen.getByTestId('page-layout-content')).not.toContainElement(
+        screen.getByTestId('connections-footer-slot')
+      );
     });
   });
 });

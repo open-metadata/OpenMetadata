@@ -1,0 +1,91 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseDiff.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseDiff",
+  "description": "A paginated comparison of asserted definitions in two immutable releases. An omitted base compares with an empty ontology. Operational changes are excluded; this is not a logical-equivalence result.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseDiff",
+  "definitions": {
+    "changeType": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.OntologyReleaseChangeType",
+      "enum": [
+        "ADDED",
+        "CHANGED",
+        "REMOVED"
+      ]
+    },
+    "memberChange": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReleaseMemberChange",
+      "properties": {
+        "entity": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "ontologyId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "memberKind": {
+          "type": "string",
+          "existingJavaType": "org.openmetadata.schema.type.OntologyReleaseMember.MemberKind",
+          "allOf": [
+            {
+              "$ref": "../../type/ontologyReleaseMember.json#/properties/memberKind"
+            }
+          ]
+        },
+        "changeType": {
+          "$ref": "#/definitions/changeType"
+        },
+        "beforeReleaseId": {
+          "description": "Release containing the previous member. Absent for additions.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "afterReleaseId": {
+          "description": "Release containing the proposed member. Absent for removals.",
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        }
+      },
+      "required": [
+        "entity",
+        "ontologyId",
+        "memberKind",
+        "changeType"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "releaseId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "contentDigest": {
+      "$ref": "../../entity/data/ontologyRelease.json#/properties/contentDigest"
+    },
+    "baseReleaseId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "baseContentDigest": {
+      "$ref": "../../entity/data/ontologyRelease.json#/properties/contentDigest"
+    },
+    "data": {
+      "description": "Changed members ordered by member kind and entity UUID. References identify the exact snapshots to inspect.",
+      "type": "array",
+      "maxItems": 1000,
+      "items": {
+        "$ref": "#/definitions/memberChange"
+      },
+      "default": []
+    },
+    "paging": {
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": [
+    "releaseId",
+    "contentDigest",
+    "data",
+    "paging"
+  ],
+  "additionalProperties": false
+}

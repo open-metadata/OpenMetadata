@@ -1303,6 +1303,273 @@ public class LineageResourceIT {
     admin.domains().delete(blockedDomain.getId().toString());
   }
 
+  /**
+   * The {@code getLineageEdge} (by-id) and {@code getLineageEdgeByName} (by-FQN) read endpoints
+   * must enforce {@code VIEW_BASIC} on both endpoints. A {@link
+   * org.openmetadata.schema.entity.teams.Role} that confines the holder to a domain hierarchy —
+   * the {@code DomainOnlyAccessRole} used here — must NOT be able to read the raw {@code
+   * LineageDetails} for an edge where either endpoint lies in a foreign domain, matching the
+   * pruning {@code get}/{@code getByName} apply via {@code pruneLineageByDomain}.
+   */
+  @Test
+  void testGetLineageEdgeEnforcesDomainIsolationForEdgeReads() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain allowedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("edge_allowed_domain"))
+                    .withDescription("Allowed domain for edge-read authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain blockedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("edge_blocked_domain"))
+                    .withDescription("Blocked domain for edge-read authorization testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    DatabaseService allowedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database allowedDatabase = createDatabase(admin, namespace, allowedService, "edge_allowed_db");
+    DatabaseSchema allowedSchema =
+        createSchema(admin, namespace, allowedDatabase, "edge_allowed_schema");
+    Table allowedSource =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "edge_allowed_source",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+    Table allowedTarget =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "edge_allowed_target",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+
+    DatabaseService blockedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database blockedDatabase = createDatabase(admin, namespace, blockedService, "edge_blocked_db");
+    DatabaseSchema blockedSchema =
+        createSchema(admin, namespace, blockedDatabase, "edge_blocked_schema");
+    Table blockedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            blockedSchema,
+            "edge_blocked_source",
+            columns("id"),
+            List.of(blockedDomain.getFullyQualifiedName()));
+
+    // Cross-domain edge: blockedTable (foreign) -> allowedTarget (own domain).
+    addLineage(admin, blockedTable, allowedTarget);
+    // Same-domain edge: allowedSource -> allowedTarget.
+    addLineage(admin, allowedSource, allowedTarget);
+
+    // Wait for the cross-domain upstream edge to be visible to admin via the graph read.
+    EntityLineage adminGraph =
+        getLineage(admin, "table", allowedTarget.getId().toString(), "1", "0");
+    assertTrue(
+        adminGraph.getUpstreamEdges().stream()
+            .anyMatch(
+                e ->
+                    e.getFromEntity().equals(blockedTable.getId())
+                        && e.getToEntity().equals(allowedTarget.getId())),
+        "admin graph should contain the cross-domain upstream edge");
+
+    org.openmetadata.schema.entity.teams.Role domainOnlyRole =
+        admin.roles().getByName("DomainOnlyAccessRole");
+    String userName = "edge-" + allowedDomain.getId();
+    String email = userName + "@test.openmetadata.org";
+    org.openmetadata.schema.entity.teams.User restrictedUser =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+                    .withRoles(List.of(domainOnlyRole.getId())));
+    OpenMetadataClient restrictedClient = SdkClients.createClient(email, email, new String[] {});
+
+    try {
+      // T4a — graph read prunes the foreign-domain node (positive control: the restricted client
+      // IS domain-confined, the convention the edge-read must follow).
+      EntityLineage restrictedGraph =
+          getLineage(restrictedClient, "table", allowedTarget.getId().toString(), "1", "0");
+      assertTrue(
+          restrictedGraph.getNodes().stream()
+              .noneMatch(n -> n.getId().equals(blockedTable.getId())),
+          "pruneLineageByDomain must remove the foreign-domain node from the restricted graph");
+
+      // T4b — by-FQN edge read across the foreign domain is denied (the fix).
+      assertThrows(
+          ForbiddenException.class,
+          () -> getLineageEdgeByName(restrictedClient, blockedTable, allowedTarget),
+          "by-FQN edge read for a foreign-domain edge must be denied");
+
+      // T4c — by-id edge read across the foreign domain is denied (the fix).
+      assertThrows(
+          ForbiddenException.class,
+          () -> getLineageEdgeById(restrictedClient, blockedTable, allowedTarget),
+          "by-id edge read for a foreign-domain edge must be denied");
+
+      // T4d — same-domain edge is still readable (no over-restriction).
+      JsonNode sameDomainEdge =
+          getLineageEdgeByName(restrictedClient, allowedSource, allowedTarget).get("edge");
+      assertNotNull(sameDomainEdge, "same-domain edge must be readable by the restricted client");
+      assertNotNull(getLineageEdgeById(restrictedClient, allowedSource, allowedTarget).get("edge"));
+
+      // T4e — admin can still read the cross-domain edge (no admin regression).
+      assertNotNull(getLineageEdgeByName(admin, blockedTable, allowedTarget).get("edge"));
+      assertNotNull(getLineageEdgeById(admin, blockedTable, allowedTarget).get("edge"));
+    } finally {
+      admin.users().delete(restrictedUser.getId().toString());
+      deleteLineage(admin, blockedTable.getEntityReference(), allowedTarget.getEntityReference());
+      deleteLineage(admin, allowedSource.getEntityReference(), allowedTarget.getEntityReference());
+      cleanupDatabaseService(admin, allowedService);
+      cleanupDatabaseService(admin, blockedService);
+      admin.domains().delete(allowedDomain.getId().toString());
+      admin.domains().delete(blockedDomain.getId().toString());
+    }
+  }
+
+  /**
+   * The {@code getLineageEdge} (by-id) and {@code getLineageEdgeByName} (by-FQN) read endpoints
+   * must enforce {@code VIEW_BASIC} via the policy evaluator even outside the
+   * {@code DomainOnlyAccessRole} path. A user holding a DENY rule on {@code VIEW_BASIC} for foreign
+   * tables must NOT read the raw {@code LineageDetails} for an edge touching a denied table.
+   */
+  @Test
+  void testGetLineageEdgeEnforcesViewBasicPolicyDenyForEdgeReads() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageResourceIT");
+    Domain allowedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("edge_policy_allowed_domain"))
+                    .withDescription("Allowed domain for edge-read policy testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+    Domain deniedDomain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(namespace.prefix("edge_policy_denied_domain"))
+                    .withDescription("Denied domain for edge-read policy testing")
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE));
+
+    DatabaseService deniedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database deniedDatabase =
+        createDatabase(admin, namespace, deniedService, "edge_policy_denied_db");
+    DatabaseSchema deniedSchema =
+        createSchema(admin, namespace, deniedDatabase, "edge_policy_denied_schema");
+    Table deniedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            deniedSchema,
+            "edge_policy_denied_table",
+            columns("id"),
+            List.of(deniedDomain.getFullyQualifiedName()));
+    DatabaseService allowedService = DatabaseServiceTestFactory.createSnowflake(namespace);
+    Database allowedDatabase =
+        createDatabase(admin, namespace, allowedService, "edge_policy_allowed_db");
+    DatabaseSchema allowedSchema =
+        createSchema(admin, namespace, allowedDatabase, "edge_policy_allowed_schema");
+    Table allowedTable =
+        createTableInSchema(
+            admin,
+            namespace,
+            allowedSchema,
+            "edge_policy_allowed_table",
+            columns("id"),
+            List.of(allowedDomain.getFullyQualifiedName()));
+
+    addLineage(admin, deniedTable, allowedTable);
+
+    // Wait for the edge to be visible to admin via the graph read.
+    EntityLineage adminGraph =
+        getLineage(admin, "table", allowedTable.getId().toString(), "1", "0");
+    assertTrue(
+        adminGraph.getUpstreamEdges().stream()
+            .anyMatch(
+                e ->
+                    e.getFromEntity().equals(deniedTable.getId())
+                        && e.getToEntity().equals(allowedTable.getId())),
+        "admin graph should contain the upstream edge from deniedTable");
+
+    // DENY VIEW_BASIC on tables not in the user's domain.
+    Rule denyForeignDomainView =
+        new Rule()
+            .withName(namespace.prefix("deny_edge_table_view"))
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("!hasDomain()");
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(namespace.prefix("deny_edge_table_view_policy"))
+                    .withRules(List.of(denyForeignDomainView)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(namespace.prefix("deny_edge_table_view_role"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = "edge-policy-" + allowedDomain.getId();
+    String email = userName + "@test.openmetadata.org";
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(email)
+                    .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+                    .withRoles(List.of(role.getId())));
+
+    try {
+      OpenMetadataClient restrictedClient = SdkClients.createClient(email, email, new String[] {});
+
+      // T5a — by-FQN edge read touching the denied table is forbidden (the fix).
+      assertThrows(
+          ForbiddenException.class,
+          () -> getLineageEdgeByName(restrictedClient, deniedTable, allowedTable),
+          "by-FQN edge read touching a policy-denied table must be denied");
+
+      // T5b — by-id edge read touching the denied table is forbidden (the fix).
+      assertThrows(
+          ForbiddenException.class,
+          () -> getLineageEdgeById(restrictedClient, deniedTable, allowedTable),
+          "by-id edge read touching a policy-denied table must be denied");
+
+      // T5c — admin can still read the same edge (positive control, no admin regression).
+      assertNotNull(getLineageEdgeByName(admin, deniedTable, allowedTable).get("edge"));
+      assertNotNull(getLineageEdgeById(admin, deniedTable, allowedTable).get("edge"));
+    } finally {
+      admin.users().delete(user.getId().toString());
+      admin.roles().delete(role.getId().toString());
+      admin.policies().delete(policy.getId().toString());
+      deleteLineage(admin, deniedTable.getEntityReference(), allowedTable.getEntityReference());
+      cleanupDatabaseService(admin, deniedService);
+      cleanupDatabaseService(admin, allowedService);
+      admin.domains().delete(allowedDomain.getId().toString());
+      admin.domains().delete(deniedDomain.getId().toString());
+    }
+  }
+
   @Test
   void testRootLineageSceneFiltersAssetsDeniedByPolicy() throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -1666,6 +1933,18 @@ public class LineageResourceIT {
             .executeForString(
                 HttpMethod.GET,
                 LINEAGE_PATH + "/getLineageEdge" + lineageEdgeByNamePath(from, to),
+                null);
+    return OBJECT_MAPPER.readTree(response);
+  }
+
+  private JsonNode getLineageEdgeById(OpenMetadataClient client, Table from, Table to)
+      throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                LINEAGE_PATH + "/getLineageEdge/" + from.getId() + "/" + to.getId(),
                 null);
     return OBJECT_MAPPER.readTree(response);
   }

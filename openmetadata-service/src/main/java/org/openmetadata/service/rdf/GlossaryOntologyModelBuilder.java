@@ -36,24 +36,16 @@ import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.AssetRealization;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyNamespace;
-import org.openmetadata.schema.type.OntologyPrefix;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.rdf.OwlEntityDeclarations.EntityKind;
-import org.openmetadata.service.rdf.translator.RdfRealizationMapper;
 
-/**
- * Builds one glossary's ontology projection: SKOS concepts, OWL classes, relationship types,
- * attributes, realizations and authored axioms. Every IRI it uses is declared with one kind, so the
- * output parses under the OWL 2 RDF mapping without guessing.
- */
+/** Builds a glossary vocabulary with its released hierarchy, mappings and term relations. */
 final class GlossaryOntologyModelBuilder {
   private static final String OM = "https://open-metadata.org/ontology/";
   static final String GLOSSARY_TERM_CLASS = OM + "GlossaryTerm";
   private static final String RELATED_TO_TYPE = "relatedTo";
-  private static final String MAPPED_TO_PREDICATE = "mappedTo";
   private static final Set<String> CLASS_AXIOM_PREDICATES =
       Set.of(RDFS.subClassOf.getURI(), OWL2.equivalentClass.getURI(), OWL2.disjointWith.getURI());
   private final URI publicBaseUri;
@@ -68,9 +60,6 @@ final class GlossaryOntologyModelBuilder {
     final GlossaryTermProjection terms = new GlossaryTermProjection(model, publicBaseUri);
     final Map<UUID, Resource> resources = terms.addTerms(scheme, source.terms());
     addTermSemantics(model, scheme, source, resources, includeRelations);
-    final OntologyExpressionRdfWriter expressionWriter =
-        new OntologyExpressionRdfWriter(terms.dataPropertyIris()::contains);
-    source.axioms().forEach(axiom -> expressionWriter.write(model, axiom));
     return model;
   }
 
@@ -91,11 +80,6 @@ final class GlossaryOntologyModelBuilder {
     for (final OntologyNamespace namespace : listOrEmpty(glossary.getNamespaces())) {
       model.setNsPrefix(namespace.getPrefix(), namespace.getNamespace().toString());
     }
-    if (glossary.getOntologyConfiguration() != null) {
-      for (final OntologyPrefix prefix : glossary.getOntologyConfiguration().getPrefixes()) {
-        model.setNsPrefix(prefix.getPrefix(), prefix.getNamespace().toString());
-      }
-    }
   }
 
   private Resource glossaryResource(final Model model, final Glossary glossary) {
@@ -110,15 +94,7 @@ final class GlossaryOntologyModelBuilder {
   }
 
   private String glossaryIri(final Glossary glossary) {
-    final URI configuredIri =
-        glossary.getOntologyConfiguration() == null
-            ? null
-            : glossary.getOntologyConfiguration().getBaseIri();
-    final String iri =
-        configuredIri == null
-            ? publicBaseUri.resolve("entity/glossary/" + glossary.getId()).toString()
-            : configuredIri.toString();
-    return iri;
+    return publicBaseUri.resolve("entity/glossary/" + glossary.getId()).toString();
   }
 
   private void addTermSemantics(
@@ -135,7 +111,6 @@ final class GlossaryOntologyModelBuilder {
       final Resource resource = resources.get(term.getId());
       addHierarchy(model, scheme, term, termsById, resources, includeRelations);
       addMappings(model, resource, term.getConceptMappings());
-      addRealizations(model, resource, term.getRealizedIn());
       if (includeRelations) {
         relations.addRelations(resource, term.getRelatedTerms(), usedTypes);
       }
@@ -143,12 +118,6 @@ final class GlossaryOntologyModelBuilder {
     addRelationshipTypes(model, usedTypes, source);
   }
 
-  /**
-   * Every parent link is SKOS hierarchy. It is also a subclass axiom only when both terms are OWL
-   * classes: a term whose concept type is {@code SKOS_CONCEPT} came from a thesaurus whose {@code
-   * skos:broader} does not assert subsumption. See
-   * ADR:2026-10-11-glossary-dates-are-xsd-datetime-and-skos-parents-are-not-superclasses.
-   */
   private static void addHierarchy(
       final Model model,
       final Resource scheme,
@@ -166,57 +135,16 @@ final class GlossaryOntologyModelBuilder {
       final Resource parent = resources.get(parentTerm.getId());
       addObjectProperty(model, resource, SKOS.broader, parent);
       addObjectProperty(model, parent, SKOS.narrower, resource);
-      if (GlossaryTermProjection.isOwlClass(term)
-          && GlossaryTermProjection.isOwlClass(parentTerm)) {
-        resource.addProperty(RDFS.subClassOf, parent);
-      }
     }
   }
 
   private static void addMappings(
       final Model model, final Resource term, final List<ConceptMapping> mappings) {
     for (final ConceptMapping mapping : listOrEmpty(mappings)) {
-      final Property property = mappingProperty(mapping.getMappingType());
+      final Property property = OntologyRdfVocabulary.mapping(mapping.getMappingType());
       addObjectProperty(
           model, term, property, model.createResource(mapping.getConceptIri().toString()));
     }
-  }
-
-  private static Property mappingProperty(final ConceptMapping.ConceptMappingType mappingType) {
-    final Property property =
-        switch (mappingType) {
-          case EXACT_MATCH -> SKOS.exactMatch;
-          case CLOSE_MATCH -> SKOS.closeMatch;
-          case BROAD_MATCH -> SKOS.broadMatch;
-          case NARROW_MATCH -> SKOS.narrowMatch;
-          case RELATED_MATCH -> SKOS.relatedMatch;
-          case SAME_AS -> OWL2.sameAs;
-        };
-    return property;
-  }
-
-  /**
-   * Link a concept to the data assets that store its instances. Every realization emits {@code
-   * om:mappedTo} so a consumer can answer "what realizes this concept" in one hop, plus a
-   * role-specific predicate so the primary store stays distinguishable from derived copies. Both
-   * are object properties, as the core ontology declares them; neither types the asset as an
-   * instance of the concept.
-   */
-  private void addRealizations(
-      final Model model, final Resource term, final List<AssetRealization> realizations) {
-    for (final AssetRealization realization : listOrEmpty(realizations)) {
-      final Resource asset = model.createResource(assetIri(realization.getAsset()));
-      addObjectProperty(model, term, model.createProperty(OM, MAPPED_TO_PREDICATE), asset);
-      addObjectProperty(
-          model,
-          term,
-          model.createProperty(RdfRealizationMapper.rolePredicate(realization.getRole())),
-          asset);
-    }
-  }
-
-  private String assetIri(final EntityReference asset) {
-    return publicBaseUri.resolve("entity/" + asset.getType() + "/" + asset.getId()).toString();
   }
 
   private static void addRelationshipTypes(

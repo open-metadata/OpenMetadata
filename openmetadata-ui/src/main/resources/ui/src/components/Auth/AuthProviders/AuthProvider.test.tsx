@@ -21,7 +21,10 @@ import {
   DEFAULT_APP_MODE,
 } from '../../../constants/appMode.constants';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
-import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthProvider as AuthProviderProps,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
 import { useAppModeStore } from '../../../hooks/useAppMode';
 import axiosClient from '../../../rest/axiosClient';
@@ -42,6 +45,7 @@ import { RefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQ
 import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -1476,6 +1480,49 @@ describe('Sign-in routing', () => {
       expect(mockSetAppPreferences).toHaveBeenCalledWith({
         defaultColumnOrder: 'sourceOrder',
       })
+    );
+  });
+
+  it('leaves the profile to the server after a confidential-client login', async () => {
+    const defaults = defaultStoreImplementation();
+    const confidentialStore = {
+      ...defaults,
+      jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
+      authConfig: {
+        ...defaults.authConfig,
+        provider: AuthProviderProps.Google,
+        clientType: ClientType.Confidential,
+      },
+    };
+    useApplicationStoreMock.mockImplementation(() => confidentialStore);
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(confidentialStore.setCurrentUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1', name: 'aaron' })
+      )
+    );
+
+    expect(checkIfUpdateRequired).not.toHaveBeenCalled();
+  });
+
+  it('reconciles the profile in the browser after a public-client login', async () => {
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(checkIfUpdateRequired).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        expect.anything()
+      )
     );
   });
 });

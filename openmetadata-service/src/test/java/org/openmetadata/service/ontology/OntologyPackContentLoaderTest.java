@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class OntologyPackContentLoaderTest {
@@ -40,5 +41,27 @@ class OntologyPackContentLoaderTest {
             IllegalStateException.class, () -> loader.load("rdf/ontology-packs/missing.ttl"));
 
     assertTrue(exception.getMessage().contains("rdf/ontology-packs/missing.ttl"));
+  }
+
+  @Test
+  void selectedContentIncludesItsVerifiedDependencies() {
+    final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
+    final var selected = loader.loadSelected(catalog, "fibo", List.of("business-entities"));
+    assertEquals("fibo", selected.manifest().getId());
+    assertEquals(
+        List.of("foundations", "business-entities"),
+        selected.modules().stream().map(module -> module.getId()).toList());
+    assertEquals("turtle", selected.format());
+    assertTrue(selected.body().contains("Financial Instrument"));
+    assertTrue(selected.body().contains("Legal Entity"));
+  }
+
+  @Test
+  void independentlyLicensedPacksCannotLoadABundledPayload() {
+    final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
+    catalog.require("fibo").setBundled(false);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> loader.loadSelected(catalog, "fibo", List.of("foundations")));
   }
 }

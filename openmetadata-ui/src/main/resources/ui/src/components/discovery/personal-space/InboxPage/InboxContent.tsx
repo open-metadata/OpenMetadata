@@ -123,8 +123,10 @@ const InboxContent: React.FC = () => {
   return (
     <InboxPage
       content={
+        // Framed like the header card above it, so the content reads as a card
+        // of its own rather than running into the page.
         <Box
-          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+          className="ai-inbox-content tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
           data-testid="inbox-content"
           direction="col">
           {content}

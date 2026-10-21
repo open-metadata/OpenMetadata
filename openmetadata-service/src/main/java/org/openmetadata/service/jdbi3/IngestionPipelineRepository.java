@@ -897,6 +897,18 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
+  protected String getInheritableFields() {
+    return "owners,domains";
+  }
+
+  @Override
+  protected void applyInheritance(
+      IngestionPipeline entity, Fields fields, EntityInterface<?> parent) {
+    inheritOwners(entity, fields, parent);
+    super.applyInheritance(entity, fields, parent);
+  }
+
+  @Override
   public EntityInterface<?> getParentEntity(IngestionPipeline entity, String fields) {
     if (entity.getService() == null) {
       // Try to load the service if it's not set

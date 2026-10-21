@@ -211,7 +211,6 @@ describe('UserProfileIcon', () => {
     personaLabels = screen.getAllByTestId('persona-label');
 
     expect(personaLabels).toHaveLength(3);
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
   });
 
   it('should handle persona selection', async () => {
@@ -262,7 +261,7 @@ describe('UserProfileIcon', () => {
     await openDropdown();
 
     expect(screen.queryByTestId('default-persona-tag')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('radio').length).toBeGreaterThan(0);
+    expect(screen.getAllByTestId('persona-label').length).toBeGreaterThan(0);
   });
 
   it('should update dropdown labels when language changes', async () => {
@@ -292,9 +291,7 @@ describe('UserProfileIcon', () => {
     expect(screen.getByText('Abmelden')).toBeInTheDocument();
   });
 
-  it('updates the theme from the profile dropdown', async () => {
-    localStorage.setItem('ui-theme', 'light');
-
+  it('has no dark-mode toggle because classic mode is light-only', async () => {
     render(
       <MockWrapper>
         <UserProfileIcon />
@@ -303,18 +300,9 @@ describe('UserProfileIcon', () => {
 
     await openDropdown();
 
-    const switcher = await screen.findByRole('switch', {
-      name: 'label.dark-mode',
-    });
-
+    expect(screen.getByText('label.logout')).toBeInTheDocument();
     expect(
-      screen.getByText('label.logout').closest('.user-profile-dropdown-overlay')
-    ).toContainElement(switcher);
-
-    await user.click(switcher);
-
-    expect(switcher).toBeChecked();
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(localStorage.getItem('ui-theme')).toBe('dark');
+      screen.queryByRole('switch', { name: 'label.dark-mode' })
+    ).not.toBeInTheDocument();
   });
 });

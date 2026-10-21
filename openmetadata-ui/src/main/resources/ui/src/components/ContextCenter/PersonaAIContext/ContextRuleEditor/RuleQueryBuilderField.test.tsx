@@ -12,7 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
-import * as metadataTypeAPI from '../../../../rest/metadataTypeAPI';
+import { getAllCustomProperties } from '../../../../rest/metadataTypeAPI';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
 // setupTests.js globally stubs `getQbConfigs` to `{}`. This suite renders a real
@@ -20,6 +20,11 @@ import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 jest.mock('../../../../utils/AdvancedSearchClassBase', () =>
   jest.requireActual('../../../../utils/AdvancedSearchClassBase')
 );
+
+jest.mock('../../../../rest/metadataTypeAPI', () => ({
+  ...jest.requireActual('../../../../rest/metadataTypeAPI'),
+  getAllCustomProperties: jest.fn(),
+}));
 
 jest.mock('../../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
 
@@ -54,7 +59,7 @@ const savedTreeWithCustomProperty = JSON.stringify({
 describe('RuleQueryBuilderField', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.spyOn(metadataTypeAPI, 'getAllCustomProperties').mockResolvedValue({});
+    (getAllCustomProperties as jest.Mock).mockResolvedValue({});
   });
 
   it('should serialise query tree changes', async () => {
@@ -91,7 +96,7 @@ describe('RuleQueryBuilderField', () => {
 
   it('should show a loader until the custom properties resolve', async () => {
     let resolveCustomProps: (value: unknown) => void = jest.fn();
-    jest.spyOn(metadataTypeAPI, 'getAllCustomProperties').mockImplementation(
+    (getAllCustomProperties as jest.Mock).mockImplementation(
       () =>
         new Promise((resolve) => {
           resolveCustomProps = resolve as typeof resolveCustomProps;
@@ -113,9 +118,9 @@ describe('RuleQueryBuilderField', () => {
   });
 
   it('should still mount when getAllCustomProperties rejects', async () => {
-    jest
-      .spyOn(metadataTypeAPI, 'getAllCustomProperties')
-      .mockRejectedValue(new Error('network error'));
+    (getAllCustomProperties as jest.Mock).mockRejectedValue(
+      new Error('network error')
+    );
 
     render(
       <RuleQueryBuilderField
@@ -130,7 +135,7 @@ describe('RuleQueryBuilderField', () => {
   // Issue #34445: mounting before the custom properties arrive let RAQB's sanitizer
   // field-null the saved extension rule, dropping the condition on the next change.
   it('should keep a custom-property condition across an edit', async () => {
-    jest.spyOn(metadataTypeAPI, 'getAllCustomProperties').mockResolvedValue({
+    (getAllCustomProperties as jest.Mock).mockResolvedValue({
       table: [{ name: 'business_domain', type: 'string' }],
     } as never);
     const onChange = jest.fn();

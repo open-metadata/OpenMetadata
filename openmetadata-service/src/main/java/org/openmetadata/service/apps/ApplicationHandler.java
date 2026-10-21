@@ -29,7 +29,7 @@ import org.openmetadata.service.apps.bundles.rdf.RdfIndexRunRecovery;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
-import org.openmetadata.service.events.scheduled.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;

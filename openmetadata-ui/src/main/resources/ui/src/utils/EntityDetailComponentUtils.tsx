@@ -84,6 +84,9 @@ const lazyComponentMap: Partial<
   [EntityType.WORKSHEET]: lazy(
     () => import('../pages/WorksheetDetailsPage/WorksheetDetailsPage')
   ),
+  [EntityType.DATA_CONTRACT]: lazy(
+    () => import('../pages/DataContractRedirectPage/DataContractRedirectPage')
+  ),
 };
 
 export function getEntityDetailComponent(entityType: string): FC | null {

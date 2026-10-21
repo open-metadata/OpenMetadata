@@ -106,13 +106,9 @@ public class TestCaseResolutionStatusLegacyTestSuitesIT {
                           List.of(
                               new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
 
-      String testDefFqn =
-          client
-              .testDefinitions()
-              .list(new ListParams().withLimit(1))
-              .getData()
-              .get(0)
-              .getFullyQualifiedName();
+      // A definition that supports the BIGINT `id` column: the server rejects a column type the
+      // definition does not list, and the first definition the listing returns need not list it.
+      String testDefFqn = "columnValuesToBeNotNull";
 
       TestCase testCase =
           client

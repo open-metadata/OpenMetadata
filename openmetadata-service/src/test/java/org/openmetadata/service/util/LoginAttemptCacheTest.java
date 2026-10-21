@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -43,5 +44,17 @@ public class LoginAttemptCacheTest {
     // Check Eviction
     Awaitility.await().pollDelay(Duration.ofSeconds(2L)).untilAsserted(() -> assertTrue(true));
     assertFalse(cache.isLoginBlocked(testKey));
+  }
+
+  @Test
+  void failuresCountTowardsOneKeyWhateverTheCaseTheyArriveIn() {
+    LoginAttemptCache cache = new LoginAttemptCache(3, 60);
+
+    cache.recordFailedLogin("Alice@Example.com");
+    cache.recordFailedLogin("ALICE@EXAMPLE.COM");
+    cache.recordFailedLogin("alice@example.com");
+
+    assertEquals(3, cache.getUserFailedLoginCount("alice@example.com"));
+    assertTrue(cache.isLoginBlocked("Alice@example.com"));
   }
 }

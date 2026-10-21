@@ -17,10 +17,8 @@
  * carries a data-testid the tests query directly; a real associated label would
  * add nothing to the mock.
  */
-/* eslint-disable jsx-a11y/control-has-associated-label */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { ReactNode } from 'react';
 import {
   AlertType,
   ProviderType,
@@ -92,93 +90,6 @@ jest.mock('./AlertAiForm.component', () => ({
   ),
 }));
 
-// AlertEditModal delegates its chrome to AiFormModal; its own job is to wire
-// props and render the form (or loader) as children. Mock AiFormModal to that
-// boundary — its rendering is covered by the Data Quality suites. The mock
-// exposes the pieces AlertEditModal passes: header actions (Show Hint toggle),
-// the body, footer actions, and the guarded close handler.
-jest.mock('../../../components/common/atoms/drawer/AiFormModal', () => ({
-  AiFormModal: ({
-    children,
-    footerActions,
-    headerActions,
-    hintOpen,
-    open,
-    subtitle,
-    title,
-    onClose,
-    onHintToggle,
-  }: {
-    children?: ReactNode;
-    footerActions?: ReactNode;
-    headerActions?: ReactNode;
-    hintOpen?: boolean;
-    open?: boolean;
-    subtitle?: ReactNode;
-    title?: ReactNode;
-    onClose?: () => void;
-    onHintToggle?: (next: boolean) => void;
-  }) =>
-    open ? (
-      <div data-testid="ai-form-modal">
-        <div data-testid="modal-title">{title}</div>
-        <div data-testid="modal-subtitle">{subtitle}</div>
-        <div data-testid="modal-header-actions">{headerActions}</div>
-        {/* The Show Hint control itself belongs to AiFormModal now, so this
-              stands in for it: the contract under test is that AlertEditModal
-              hands down hintOpen and reacts to onHintToggle. */}
-        <div data-testid="modal-hint-open">{String(hintOpen)}</div>
-        <button
-          data-testid="modal-hint-toggle"
-          onClick={() => onHintToggle?.(!hintOpen)}>
-          toggle hint
-        </button>
-        <button data-testid="modal-close" onClick={() => onClose?.()}>
-          close
-        </button>
-        <div data-testid="modal-body">{children}</div>
-        <div data-testid="modal-footer-actions">{footerActions}</div>
-      </div>
-    ) : null,
-}));
-
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({
-    children,
-    className,
-  }: {
-    children?: ReactNode;
-    className?: string;
-  }) => <div className={className}>{children}</div>,
-  Typography: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
-  Toggle: ({
-    'data-testid': testId,
-    isDisabled,
-    isSelected,
-    onChange,
-  }: {
-    'data-testid'?: string;
-    isDisabled?: boolean;
-    isSelected?: boolean;
-    onChange?: (isSelected: boolean) => void;
-  }) => (
-    <input
-      checked={Boolean(isSelected)}
-      data-testid={testId}
-      disabled={isDisabled}
-      type="checkbox"
-      onChange={(event) => onChange?.(event.target.checked)}
-    />
-  ),
-}));
-
-jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  AlertTriangle: () => null,
-  Lightbulb05: () => null,
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) =>
@@ -203,11 +114,10 @@ const alert: ModifiedEventSubscription = {
 const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
-  filterResources: [],
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
-  loadingState: { alerts: false, functions: false, templates: false },
+  loadingState: { alerts: false, templates: false },
   saving: false,
   shouldShowActionsSection: true,
   selection: { support: { supportedFilters: [], supportedTriggers: [] } },
@@ -223,7 +133,7 @@ describe('AlertEditModal', () => {
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
-  it('passes fqn, save callback, close callback and the chosen sources to the alert form hook', async () => {
+  it('passes fqn, save callback, close callback and the chosen sources and rules to the alert form hook', async () => {
     const onClose = jest.fn();
     const onSaved = jest.fn();
 
@@ -240,6 +150,7 @@ describe('AlertEditModal', () => {
       afterSaveAction: onSaved,
       alertType: AlertType.Observability,
       fqn: 'service.alert',
+      input: { actions: [], filters: [] },
       onCancel: onClose,
       sources: [],
     });
@@ -249,13 +160,14 @@ describe('AlertEditModal', () => {
         afterSaveAction: onSaved,
         alertType: AlertType.Observability,
         fqn: 'service.alert',
+        input: undefined,
         onCancel: onClose,
         sources: ['table'],
       })
     );
   });
 
-  it('passes the modal values, and no antd form, to extra form buttons', async () => {
+  it('passes the form values, and no antd form, to extra form buttons', async () => {
     const ExtraButton = jest.fn(
       ({ values }: { values?: ModifiedCreateEventSubscription }) => (
         <span data-testid="extra-button">{values?.resources?.[0]}</span>
@@ -394,21 +306,21 @@ describe('AlertEditModal', () => {
     );
   });
 
-  it('keeps the modal and the AI form on the same show hint state', async () => {
+  it('keeps the Show Hint toggle and the AI form on the same show hint state', async () => {
     render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const toggle = screen.getByRole('switch', { name: 'label.show-hint' });
 
     await waitFor(() =>
       expect(screen.getByTestId('form-show-hint')).toHaveTextContent('true')
     );
 
-    expect(screen.getByTestId('modal-hint-open')).toHaveTextContent('true');
+    expect(toggle).toBeChecked();
 
-    // AiFormModal renders the control; this component owns the boolean, because
-    // the form needs it too. Both sides have to move together.
-    fireEvent.click(screen.getByTestId('modal-hint-toggle'));
+    fireEvent.click(toggle);
 
     expect(screen.getByTestId('form-show-hint')).toHaveTextContent('false');
-    expect(screen.getByTestId('modal-hint-open')).toHaveTextContent('false');
+    expect(toggle).not.toBeChecked();
   });
 
   it('prevents dismissal while saving', () => {
@@ -418,9 +330,9 @@ describe('AlertEditModal', () => {
 
     render(<AlertEditModal isOpen onClose={onClose} onSaved={jest.fn()} />);
 
-    // The close handler passed to AiFormModal is guarded: while saving it must
-    // not propagate to the caller's onClose.
-    fireEvent.click(screen.getByTestId('modal-close'));
+    // The drawer's close handler is guarded: while saving it must not
+    // propagate to the caller's onClose.
+    fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onClose).not.toHaveBeenCalled();
   });
@@ -430,7 +342,7 @@ describe('AlertEditModal', () => {
 
     render(<AlertEditModal isOpen onClose={onClose} onSaved={jest.fn()} />);
 
-    fireEvent.click(screen.getByTestId('modal-close'));
+    fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -438,7 +350,7 @@ describe('AlertEditModal', () => {
   it('passes the template permission and loading state to the form', () => {
     mockUseAlertFormData.mockReturnValue(
       getHookState({
-        loadingState: { alerts: false, functions: false, templates: true },
+        loadingState: { alerts: false, templates: true },
         templateResourcePermission: { Create: true },
       })
     );

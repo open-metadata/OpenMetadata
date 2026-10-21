@@ -706,8 +706,6 @@ before awaiting a response. A `waitForResponse` whose predicate can never match 
 it hangs until the test timeout and then reports `Target page, context or browser has been
 closed`, which points nowhere near the real cause.
 
-`playwright/utils/widgetFilters.ts` (`selectWidgetSortOption`) is the reference implementation.
-
 ### Modal and Scrollable Container Patterns
 
 ```typescript
@@ -810,7 +808,10 @@ await expect(selectAll).not.toBeChecked();
 ```
 
 Use `check()` / `uncheck()` / `fill()` / `selectOption()` — they converge on a target state.
-`click()` flips whatever the state happens to be.
+`click()` flips whatever the state happens to be. Exception: the core `Checkbox`
+(`@openmetadata/ui-core-components`) puts `data-testid` on its react-aria `<label>`, not the
+`<input>`, so `.check()`/`.uncheck()` on `getByTestId('asset-checkbox')` rejects with "not a
+checkbox or radio button" — `.click()` the label instead.
 
 ### Ambiguous Page-Global Locators
 
@@ -974,8 +975,6 @@ When the budget expires, Playwright reports whichever action happened to be runn
    ```
    Join the two by test `id`. If the shard-wide median slowdown is **> 1.3x**, the runner was degraded
    and the failure is a budget cliff, not a code regression.
-3. Trace trap: the long red `Wait for selector #email` in login is the losing branch of the
-   `Promise.any` in `authenticateAdminPage` (`playwright/utils/admin.ts`) — not a login stall.
 
 ---
 
@@ -1149,6 +1148,7 @@ root-caused to the problem it solves. Paths are relative to `playwright/`.
 | `waitForOwnedAssetCount(apiContext, ownerId, count)` | `utils/polling.ts` | Before opening a page that reads an owner's asset count once on load |
 | `waitForAggregation(page, { field, value })` | `utils/searchAggregation.ts` | Filter dropdown aggregation for the typed value (lint-enforced) |
 | `triggerContractValidation` | `utils/dataContracts.ts` | Polls contract validation to a terminal status |
+| `reloadContractPage(page)` | `utils/dataContracts.ts` | Reloading a contract page after a validation; `domcontentloaded` + header + loaders, not `waitUntil: 'load'` |
 
 ### Fixtures and API
 

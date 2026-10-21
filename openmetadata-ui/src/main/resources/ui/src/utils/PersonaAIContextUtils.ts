@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
@@ -27,6 +28,10 @@ import {
   ContextRule,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+import {
+  CacheState,
+  PersonaContextStatus,
+} from '../generated/type/personaContextStatus';
 import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
@@ -253,6 +258,45 @@ export const getScopedRuleCount = (
   return (definition?.rules ?? []).filter(
     (rule) => isSearchScopedRule(rule) && rule.enabled !== false
   ).length;
+};
+
+export interface PersonaContextFreshness {
+  color: BadgeColors;
+  labelKey: string;
+  withTime: boolean;
+}
+
+// A persona with no rules has nothing to compile, so its cache state is meaningless; a STALE
+// snapshot with no generation time was never compiled rather than outdated.
+export const getPersonaContextFreshness = (
+  hasRules: boolean,
+  status?: PersonaContextStatus
+): PersonaContextFreshness | undefined => {
+  if (!hasRules) {
+    return {
+      color: 'error',
+      labelKey: 'message.not-configured',
+      withTime: false,
+    };
+  }
+  switch (status?.cacheState) {
+    case CacheState.Fresh:
+      return { color: 'success', labelKey: 'label.fresh', withTime: true };
+    case CacheState.Stale:
+      return status.lastGeneratedAt
+        ? { color: 'warning', labelKey: 'label.stale', withTime: true }
+        : { color: 'gray', labelKey: 'label.not-generated', withTime: false };
+    case CacheState.Generating:
+      return {
+        color: 'warning',
+        labelKey: 'label.generating',
+        withTime: false,
+      };
+    case CacheState.Failed:
+      return { color: 'error', labelKey: 'label.failed', withTime: false };
+    default:
+      return undefined;
+  }
 };
 
 export interface PersonaContextVersionChange {

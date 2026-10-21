@@ -382,7 +382,7 @@ export class UserClass {
   }
 
   async logout(page: Page) {
-    await page.getByRole('menuitem', { name: 'Logout' }).click();
+    await page.getByTestId('app-bar-item-logout').click();
 
     // Wait for logout confirmation modal specifically
     await page

@@ -13,6 +13,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
@@ -33,6 +35,9 @@ import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor;
 import org.openmetadata.mcp.server.auth.util.ClientCredentialsExtractor.InvalidClientCredentialsException;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -74,6 +79,8 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private volatile org.openmetadata.mcp.server.auth.handlers.BasicAuthLoginServlet
       basicAuthLoginServlet;
 
+  private volatile String contextPath;
+
   static final String BEARER_PREFIX = "Bearer ";
 
   // Headers a browser-based MCP client sends on its POST. Any header missing from this list makes
@@ -99,6 +106,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
   // response headers unless we expose them, so without this the client cannot start the OAuth flow.
   private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
+
+  // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
+  private static final String JWKS_PATH = "/api/v1/system/config/jwks";
 
   // In-memory rate limiters for registration and token endpoints.
   // These are per-JVM-instance; in clustered deployments the effective limit is N × limit per hour.
@@ -159,6 +169,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     metadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
     metadata.setRevocationEndpointAuthMethodsSupported(
         List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(metadata, baseUrl);
 
     // Create Protected Resource metadata (RFC 9728) - MCP requirement
     this.resourceMetadataUrl =
@@ -195,6 +206,34 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     this.basicAuthLoginServlet = servlet;
   }
 
+  /** The servlet context path (BASE_PATH), so a base URL set at runtime is checked against it. */
+  public void setContextPath(String contextPath) {
+    this.contextPath = contextPath;
+  }
+
+  /**
+   * Under a non-root BASE_PATH every URL the MCP OAuth flow advertises is built from baseUrl, so it
+   * has to carry that path. Only warns: behind a proxy that rewrites the path, a baseUrl without
+   * it is correct, and appending it here would break that setup.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
+   */
+  public static void warnIfBaseUrlMissesContextPath(String baseUrl, String contextPath) {
+    boolean subPathContext = contextPath != null && contextPath.length() > 1;
+    String baseUrlPath = Objects.toString(URI.create(baseUrl).getPath(), "");
+    // Whole segments only, so /om-other does not pass for /om
+    boolean carriesContextPath =
+        baseUrlPath.equals(contextPath) || baseUrlPath.startsWith(contextPath + "/");
+    if (subPathContext && !carriesContextPath) {
+      LOG.warn(
+          "MCP base URL {} does not include the server base path {}. MCP OAuth endpoints will not"
+              + " resolve unless a proxy adds it; set the MCP base URL to the external URL ending"
+              + " in {}.",
+          baseUrl,
+          contextPath,
+          contextPath);
+    }
+  }
+
   /**
    * ConfigurationChangeListener implementation.
    * Called when configuration is reloaded, updates CORS origins dynamically without restart.
@@ -213,13 +252,14 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             "Updated CORS origins from configuration reload: {}", mcpConfig.getAllowedOrigins());
       }
       if (mcpConfig.getBaseUrl() != null && !mcpConfig.getBaseUrl().isEmpty()) {
-        rebuildMetadata(mcpConfig.getBaseUrl());
+        rebuildMetadata(UriUtils.withoutTrailingSlash(mcpConfig.getBaseUrl()));
       }
     }
   }
 
   private void rebuildMetadata(String baseUrl) {
     LOG.info("Rebuilding OAuth metadata with new base URL: {}", baseUrl);
+    warnIfBaseUrlMissesContextPath(baseUrl, contextPath);
     List<String> supportedScopes = getSupportedScopesForProvider();
     String issuer = baseUrl + mcpEndpoint;
 
@@ -237,6 +277,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     newMetadata.setRevocationEndpoint(URI.create(baseUrl + mcpEndpoint + "/revoke"));
     newMetadata.setRevocationEndpointAuthMethodsSupported(
         List.of("client_secret_basic", "client_secret_post"));
+    addOpenIdDiscoveryFields(newMetadata, baseUrl);
     this.oauthMetadata = newMetadata;
 
     ProtectedResourceMetadata newResourceMetadata = new ProtectedResourceMetadata();
@@ -359,10 +400,13 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth GET request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth GET routes (exact path matching to prevent path confusion attacks)
-    if (path.equals("/mcp/.well-known/oauth-authorization-server")) {
+    // openid-configuration appended to the issuer is the one authorization server discovery URL
+    // the MCP spec lists that stays inside a non-root BASE_PATH; the others sit at the host root.
+    if (path.equals("/mcp/.well-known/oauth-authorization-server")
+        || path.equals("/mcp/.well-known/openid-configuration")) {
       handleMetadataRequest(request, response);
     } else if (path.equals("/mcp/.well-known/oauth-protected-resource")) {
       handleProtectedResourceMetadataRequest(request, response);
@@ -443,6 +487,23 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       LOG.warn("Could not determine auth provider for scopes, using default", e);
       return List.of("openid", "profile", "email");
     }
+  }
+
+  /**
+   * The fields OpenID Connect Discovery requires on top of RFC 8414, so one document answers both
+   * the oauth-authorization-server and the openid-configuration routes. The TypeScript MCP SDK
+   * rejects an openid-configuration response without them, and under a non-root BASE_PATH that is
+   * the only discovery URL it can reach.
+   * ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path
+   */
+  private static void addOpenIdDiscoveryFields(OAuthMetadata metadata, String baseUrl) {
+    TokenValidationAlgorithm signingAlgorithm =
+        Optional.ofNullable(SecurityConfigurationManager.getCurrentAuthConfig())
+            .map(AuthenticationConfiguration::getTokenValidationAlgorithm)
+            .orElse(TokenValidationAlgorithm.RS_256);
+    metadata.setJwksUri(URI.create(baseUrl + JWKS_PATH));
+    metadata.setSubjectTypesSupported(List.of("public"));
+    metadata.setIdTokenSigningAlgValuesSupported(List.of(signingAlgorithm.value()));
   }
 
   /**
@@ -554,7 +615,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       throws ServletException, IOException {
 
     LOG.debug("Handling OAuth POST request: {}", request.getRequestURI());
-    String path = request.getRequestURI();
+    String path = pathInContext(request);
 
     // Handle OAuth POST routes (exact path matching to prevent path confusion attacks)
     if (path.equals("/mcp/token")) {

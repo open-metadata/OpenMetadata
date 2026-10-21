@@ -309,7 +309,7 @@ class AppSchedulerTest {
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(mockExecContext));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(nonConcurrentApp, new HashMap<>()));
 
     verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
@@ -398,7 +398,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(activeRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -424,7 +424,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(erroredRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -451,7 +451,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("running"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
 
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
@@ -541,7 +541,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("duplicate job key"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
   }
 

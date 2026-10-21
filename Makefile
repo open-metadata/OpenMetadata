@@ -61,7 +61,7 @@ java_affected:  ## List the Java unit tests and integration tests this branch im
 	python3 .github/scripts/plan_local_java_tests.py $(ARGS)
 
 .PHONY: java_affected_run
-java_affected_run:  ## Run the impacted Java unit + integration tests and write the PR results block (ARGS="--update-pr")
+java_affected_run:  ## Run the impacted Java unit + integration tests and write the PR results summary + details (ARGS="--update-pr")
 	python3 .github/scripts/plan_local_java_tests.py --run $(ARGS)
 
 .PHONY: py_antlr

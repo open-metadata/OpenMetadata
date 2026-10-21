@@ -1,0 +1,65 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyConceptBindings.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyConceptBindings",
+  "description": "Operational catalog associations for a native concept, stored separately from semantic definitions and releases.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyConceptBindings",
+  "definitions": {
+    "assetType": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.OntologyBindingAssetType",
+      "enum": ["table", "dashboard", "chart", "pipeline", "topic", "container", "mlmodel", "searchIndex", "dashboardDataModel", "storedProcedure", "apiEndpoint", "metric"]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "existingJavaType": "java.lang.Long"
+    },
+    "columnPath": {
+      "description": "Exact nested column name segments, without FQN quoting or dot splitting.",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1, "maxLength": 256 },
+      "minItems": 1,
+      "maxItems": 32
+    },
+    "columnBinding": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyColumnBinding",
+      "properties": {
+        "propertyId": { "$ref": "basic.json#/definitions/uuid" },
+        "columnPath": { "$ref": "#/definitions/columnPath" }
+      },
+      "required": ["propertyId", "columnPath"],
+      "additionalProperties": false
+    },
+    "assetBinding": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyAssetBinding",
+      "properties": {
+        "assetType": { "$ref": "#/definitions/assetType" },
+        "assetId": { "$ref": "basic.json#/definitions/uuid" },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/columnBinding" },
+          "maxItems": 100,
+          "default": []
+        }
+      },
+      "required": ["assetType", "assetId"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "revision": { "$ref": "#/definitions/revision" },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/assetBinding" },
+      "maxItems": 100,
+      "default": []
+    }
+  },
+  "required": ["revision", "assets"],
+  "additionalProperties": false
+}

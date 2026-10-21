@@ -34,6 +34,7 @@ type ResponseDataType = {
   policies?: string[];
   owners?: EntityReference[];
   isJoinable?: boolean;
+  parents?: string[];
 };
 
 export class TeamClass {

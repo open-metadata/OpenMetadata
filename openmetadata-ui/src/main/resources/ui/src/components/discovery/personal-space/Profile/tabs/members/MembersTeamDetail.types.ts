@@ -118,6 +118,8 @@ export interface MembersInlineEntityTabProps {
   }>;
   entityLabel: string;
   entityPluralLabel: string;
+  /** Subtitle under the tab table's title, as on the Roles / Policies pages. */
+  entityDescription: string;
   tableTestId: string;
   addButtonTestId: string;
   addSelectTestId: string;

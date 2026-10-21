@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
@@ -93,6 +94,7 @@ import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
@@ -426,6 +428,8 @@ class SearchIndexFactoryTest {
             AiFrameworkControlIndex.class),
         Arguments.of(
             Entity.AUDIT_REPORT, (Supplier<Object>) AuditReport::new, AuditReportIndex.class),
+        Arguments.of(
+            Entity.DATA_CONTRACT, (Supplier<Object>) DataContract::new, DataContractIndex.class),
         Arguments.of(Entity.TAG, (Supplier<Object>) Tag::new, TagIndex.class),
         Arguments.of(
             Entity.CLASSIFICATION,

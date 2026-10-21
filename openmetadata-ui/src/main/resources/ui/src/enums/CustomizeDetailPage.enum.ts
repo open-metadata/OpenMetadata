@@ -81,4 +81,5 @@ export enum GlossaryTermDetailPageWidgetKeys {
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   TERMS_TABLE = 'KnowledgePanel.TermsTable',
   WORKFLOW_HISTORY = 'KnowledgePanel.WorkflowHistory',
+  PENDING_REVIEW = 'KnowledgePanel.PendingReview',
 }

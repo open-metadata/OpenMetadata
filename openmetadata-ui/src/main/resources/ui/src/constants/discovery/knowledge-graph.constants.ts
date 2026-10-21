@@ -125,7 +125,7 @@ export const RADIAL_PORT_LINE_WIDTH = 1.5;
 
 /** Colour tokens for the node card, resolved against the live theme. */
 export const NODE_NEUTRAL_COLOR = {
-  token: 'var(--om-color-gray-400)',
+  token: 'var(--color-utility-gray-400)',
   fallback: '#a4a7ae',
 };
 
@@ -166,15 +166,18 @@ const HUE_BG_FALLBACK: Record<string, string> = {
 /**
  * The accent takes the requested shade of a hue; the card background always
  * takes that hue's `-50`, which is what keeps chip and node visually paired.
+ * Tokens are L1 primitives from globals.css — brand accents stay the same in
+ * both light and dark, so a Table is always the same shade of blue regardless
+ * of theme.
  */
 const palette = (
   hue: keyof typeof HUE_BG_FALLBACK,
   shade: number,
   fallback: string
 ): EntityTypePalette => ({
-  token: `var(--om-color-${hue}-${shade})`,
+  token: `var(--color-${hue}-${shade})`,
   fallback,
-  bgToken: `var(--om-color-${hue}-50)`,
+  bgToken: `var(--color-${hue}-50)`,
   bgFallback: HUE_BG_FALLBACK[hue],
 });
 

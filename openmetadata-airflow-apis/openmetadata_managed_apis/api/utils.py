@@ -160,6 +160,25 @@ def get_dagbag():
     return dagbag
 
 
+def skip_import_timeout_off_main_thread():
+    """
+    Airflow enforces the DAG import timeout with SIGALRM, which only works on the main
+    thread, so off it the timeout never applied and only logged a traceback. Report 0
+    there so Airflow skips the signal; deciding per call means no lock around the import.
+    """
+    original = getattr(settings, "get_dagbag_import_timeout", None)
+    if original is None or getattr(original, "skips_off_main_thread", False):
+        return
+
+    def get_dagbag_import_timeout(dag_file_path):
+        if threading.current_thread() is threading.main_thread():
+            return original(dag_file_path)
+        return 0
+
+    get_dagbag_import_timeout.skips_off_main_thread = True
+    settings.get_dagbag_import_timeout = get_dagbag_import_timeout
+
+
 # Deployment requests can run while other threads own file locks or database connections.
 # A fresh interpreter keeps the scanner from inheriting that unsafe state through fork.
 class ScanDagsTask(get_context("spawn").Process):

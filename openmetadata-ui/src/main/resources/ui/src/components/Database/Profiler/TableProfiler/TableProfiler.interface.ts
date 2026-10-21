@@ -16,6 +16,7 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import {
   Column,
   ColumnProfilerConfig,
+  CustomMetric,
   PartitionProfilerConfig,
   ProfileSampleType,
   Table,
@@ -40,7 +41,8 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
   testCaseSummary?: Record<string, TestCaseCountByStatus>;
-  permissions: OperationPermission;
+  /** Unset in read-only previews (the custom metric drawer), which hides edit actions. */
+  permissions?: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;
   tableProfiler?: Table;
@@ -57,6 +59,10 @@ export interface TableProfilerContextInterface {
   table?: Table;
   isTestCaseDrawerOpen: boolean;
   onTestCaseDrawerOpen: (type: TestLevel) => void;
+  onCustomMetricDrawerOpen: (
+    isColumnMetric: boolean,
+    metric?: CustomMetric
+  ) => void;
 }
 
 export type TableTestsType = {

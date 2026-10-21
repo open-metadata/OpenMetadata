@@ -174,4 +174,18 @@ describe('Test appearance config page', () => {
       })
     );
   });
+
+  it('regenerates hover and selected colours from a new primary colour', async () => {
+    render(<AppearanceConfigSettingsPage />);
+
+    fireEvent.change(screen.getByTestId('primaryColor-color-input'), {
+      target: { value: '#6809dc' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('hoverColor-color-input')).not.toHaveValue('')
+    );
+
+    expect(screen.getByTestId('selectedColor-color-input')).not.toHaveValue('');
+  });
 });

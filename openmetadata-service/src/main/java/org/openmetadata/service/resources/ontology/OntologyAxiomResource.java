@@ -41,7 +41,6 @@ import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.EntityHistory;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
@@ -53,6 +52,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Path("/v1/ontologyAxioms")
 @Tag(name = "Ontology Axioms", description = "Governed OWL axioms authored in Ontology.")
@@ -75,21 +75,19 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @QueryParam("fields") final String fields,
-      @QueryParam("glossary") final String glossary,
+      @QueryParam("ontologyId") final UUID ontologyId,
       @QueryParam("limit") @DefaultValue("50") @Min(0) @Max(1000000) final int limit,
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
-    final ListFilter filter = ontologyFilter(include, glossary);
+    final ListFilter filter = ontologyFilter(include, ontologyId);
     return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
   }
 
-  private static ListFilter ontologyFilter(final Include include, final String glossary) {
+  private static ListFilter ontologyFilter(final Include include, final UUID ontologyId) {
     final ListFilter filter = new ListFilter(include);
-    if (glossary != null) {
-      final EntityReference reference =
-          Entity.getEntityReferenceByName(Entity.GLOSSARY, glossary, Include.NON_DELETED);
-      filter.addQueryParam("glossaryId", reference.getId().toString());
+    if (ontologyId != null) {
+      filter.addQueryParam("ontologyId", ontologyId.toString());
     }
     return filter;
   }
@@ -137,6 +135,10 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
         new OperationContext(entityType, MetadataOperation.CREATE);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
     final OntologyAxiom entity = mapper.createToEntity(request, user(securityContext));
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.VIEW_ALL),
+        new ResourceContext<>(Entity.ONTOLOGY, entity.getOntology().getId(), null));
     return repository.validate(entity);
   }
 

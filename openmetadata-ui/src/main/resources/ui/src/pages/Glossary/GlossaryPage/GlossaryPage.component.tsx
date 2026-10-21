@@ -40,6 +40,7 @@ import {
   ModifiedGlossary,
   useGlossaryStore,
 } from '../../../components/Glossary/useGlossary.store';
+import SuggestionsProvider from '../../../components/Suggestions/SuggestionsProvider/SuggestionsProvider';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import {
   PAGE_SIZE_LARGE,
@@ -411,7 +412,9 @@ const GlossaryPage = () => {
       return true;
     }
     if (isTermView) {
-      return glossaryTermFetching;
+      // Background refetches (e.g. after accepting a suggestion) keep the term
+      // mounted so its tab, scroll and suggestion state survive.
+      return glossaryTermFetching && !glossaryTermDetails;
     }
     if (isGlossaryView) {
       return glossaryFetching;
@@ -424,6 +427,7 @@ const GlossaryPage = () => {
     glossaries.length,
     isTermView,
     glossaryTermFetching,
+    glossaryTermDetails,
     isGlossaryView,
     glossaryFetching,
   ]);
@@ -682,7 +686,7 @@ const GlossaryPage = () => {
       );
     }
 
-    return (
+    const glossaryV1 = (
       <GlossaryV1
         isGlossaryActive={isGlossaryActive}
         isSummaryPanelOpen={Boolean(previewAsset)}
@@ -697,6 +701,14 @@ const GlossaryPage = () => {
         onGlossaryTermDelete={handleGlossaryTermDelete}
         onGlossaryTermUpdate={handleGlossaryTermUpdate}
       />
+    );
+
+    return isTermView ? (
+      <SuggestionsProvider entityType={EntityType.GLOSSARY_TERM}>
+        {glossaryV1}
+      </SuggestionsProvider>
+    ) : (
+      glossaryV1
     );
   };
 

@@ -69,6 +69,29 @@ logger = profiler_interface_registry_logger()
 ERROR_MSG = "Schema/Table name not found in table args. Falling back to default computation"
 
 
+def _qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Hive or Databricks.
+
+    Both delimit with backticks and unescape a doubled one; a backslash is a
+    literal, so doubling the backtick is enough. Impala is different -- see
+    ``_impala_qualified_identifier``.
+    """
+    return ".".join(f"`{name.replace('`', '``')}`" for name in names)
+
+
+def _impala_qualified_identifier(*names: str) -> str:
+    """Quote untrusted name parts for Impala.
+
+    Impala's lexer (``QuotedIdentifier = `(\\.|[^`])*` ``) treats a backslash as
+    an escape and cannot represent a literal backtick, so a name holding either
+    cannot be safely quoted and is rejected rather than quoted.
+    """
+    for name in names:
+        if "`" in name or "\\" in name:
+            raise ValueError(f"Unsupported Impala identifier: {name!r}")
+    return ".".join(f"`{name}`" for name in names)
+
+
 class AbstractTableMetricComputer(ABC):
     """Base table computer"""
 
@@ -1014,7 +1037,9 @@ class TrinoTableMetricComputer(_StatsBasedTableMetricComputer):
     def compute(self):
         """Extract row_count from SHOW STATS FOR. The summary row
         (where column_name IS NULL) contains the table-level row_count."""
-        query = sa_text(f'SHOW STATS FOR "{self.schema_name}"."{self.table_name}"')
+        # Schema and table names come from the source system, so they are untrusted.
+        quote = self.runner._session.get_bind().dialect.identifier_preparer.quote_identifier
+        query = sa_text(f"SHOW STATS FOR {quote(self.schema_name)}.{quote(self.table_name)}")
         rows = self.runner._session.execute(query)
         for row in rows:
             row_dict = row._asdict()
@@ -1032,7 +1057,7 @@ class HiveTableMetricComputer(_StatsBasedTableMetricComputer):
         """Parse numRows from DESCRIBE FORMATTED output.
         Hive returns 3-column rows: (col_name, data_type, comment).
         After ANALYZE, a row with data_type='numRows' contains the count in comment."""
-        query = sa_text(f"DESCRIBE FORMATTED `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE FORMATTED {_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         for row in rows:
             try:
@@ -1052,7 +1077,7 @@ class ImpalaTableMetricComputer(_StatsBasedTableMetricComputer):
 
     def compute(self):
         """Sum #Rows across partitions from SHOW TABLE STATS."""
-        query = sa_text(f"SHOW TABLE STATS `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"SHOW TABLE STATS {_impala_qualified_identifier(self.schema_name, self.table_name)}")
         rows = self.runner._session.execute(query).fetchall()
         total_rows = 0
         for row in rows:
@@ -1072,7 +1097,7 @@ class DatabricksTableMetricComputer(_StatsBasedTableMetricComputer):
         """Extract numRecords from DESCRIBE DETAIL."""
         if self._entity.tableType in (TableType.View, TableType.MaterializedView):
             return super().compute()
-        query = sa_text(f"DESCRIBE DETAIL `{self.schema_name}`.`{self.table_name}`")
+        query = sa_text(f"DESCRIBE DETAIL {_qualified_identifier(self.schema_name, self.table_name)}")
         result = self.runner._session.execute(query).first()
         if result:
             row_dict = result._asdict()

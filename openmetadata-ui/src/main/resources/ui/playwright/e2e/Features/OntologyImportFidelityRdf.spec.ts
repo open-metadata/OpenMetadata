@@ -42,10 +42,6 @@ ex:Child a owl:Class ;
 `;
 
 /**
- * A pure SKOS thesaurus must not gain owl:Class typing on the way back out, and a pure OWL ontology
- * must not gain skos:Concept typing.
- */
-/**
  * Three asserted parents, two via rdfs:subClassOf and one via skos:broader. AlphaP wins the
  * structural slot; the other two must each keep the predicate they were asserted with.
  */
@@ -99,7 +95,7 @@ const findTermByIri = async (
   apiContext: APIRequestContext,
   glossary: Glossary,
   localName: string,
-  fields: string
+  fields = ''
 ) => {
   const listResponse = await apiContext.get(
     `/api/v1/glossaryTerms?glossary=${glossary.responseData.id}&fields=${fields}&limit=100`
@@ -234,12 +230,7 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
     }
   });
 
-  /**
-   * A concept authored in OpenMetadata expresses no source vocabulary, so it must stay usable from
-   * either one. The stored `conceptType` is left unset in that case and the exporter treats the
-   * absence as BOTH, which is what this asserts rather than the stored value.
-   */
-  test('a concept created in OpenMetadata is exported for both vocabularies', async ({
+  test('a glossary term created in OpenMetadata is exported as a SKOS concept', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -267,21 +258,18 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
         .find((section) => section.includes(`Native${suffix}`));
 
       expect(block, 'the natively authored concept is exported').toBeDefined();
-      expect(block).toContain('owl:Class');
       expect(block).toContain('skos:Concept');
+      expect(block).not.toContain('owl:Class');
 
       const stored = await created.json();
 
-      expect(
-        stored.conceptType,
-        'the stored value matches the vocabulary it is exported with'
-      ).toBe('BOTH');
+      expect(stored).not.toHaveProperty('conceptType');
     } finally {
       await afterAction();
     }
   });
 
-  test('the vocabulary a concept was authored with survives the round trip', async ({
+  test('imported SKOS and OWL resources retain their IRIs without glossary class kinds', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -292,24 +280,30 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
       const pureConcept = await findTermByIri(
         apiContext,
         vocabularyGlossary,
-        'PureConcept',
-        'conceptType'
+        'PureConcept'
       );
       const pureClass = await findTermByIri(
         apiContext,
         vocabularyGlossary,
-        'PureClass',
-        'conceptType'
+        'PureClass'
       );
 
-      expect(pureConcept.conceptType).toBe('SKOS_CONCEPT');
-      expect(pureClass.conceptType).toBe('OWL_CLASS');
+      expect(pureConcept).toMatchObject({
+        iri: `${NS}PureConcept`,
+        displayName: 'Pure Concept',
+      });
+      expect(pureClass).toMatchObject({
+        iri: `${NS}PureClass`,
+        displayName: 'Pure Class',
+      });
+      expect(pureConcept).not.toHaveProperty('conceptType');
+      expect(pureClass).not.toHaveProperty('conceptType');
     } finally {
       await afterAction();
     }
   });
 
-  test('a SKOS-only concept is not exported as an owl:Class', async ({
+  test('imported glossary terms export as SKOS concepts and preserve their source OWL declarations', async ({
     browser,
   }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -321,17 +315,18 @@ test.describe('Ontology import fidelity', { tag: ['@ontology-rdf'] }, () => {
 
       expect(response.ok(), await response.text()).toBe(true);
 
-      const turtle = await response.text();
-      const conceptTypes = turtle
-        .split(/\n\s*\n/)
-        .find((block) => block.includes(`<${NS}PureConcept>`));
+      const blocks = (await response.text()).split(/\n\s*\n/);
+      const pureConcept = blocks.find((block) =>
+        block.startsWith(`<${NS}PureConcept>`)
+      );
+      const pureClass = blocks.find((block) =>
+        block.startsWith(`<${NS}PureClass>`)
+      );
 
-      expect(conceptTypes).toBeDefined();
-      expect(conceptTypes).toContain('skos:Concept');
-      expect(
-        conceptTypes,
-        'a SKOS-authored concept must not acquire OWL class typing'
-      ).not.toContain('owl:Class');
+      expect(pureConcept).toContain('skos:Concept');
+      expect(pureConcept).not.toContain('owl:Class');
+      expect(pureClass).toContain('skos:Concept');
+      expect(pureClass).toContain('owl:Class');
     } finally {
       await afterAction();
     }

@@ -12,17 +12,15 @@
  */
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { isEmpty } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import {
   App,
   EntityReference,
 } from '../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
@@ -59,18 +57,14 @@ const ApplicationConfiguration = ({
   };
 
   const formPanel = (
-    <FormBuilder
-      capitalizeOptionLabel
-      useSelectWidget
+    <FormBuilderV1
       cancelText={t('label.back')}
       formData={appData?.appConfiguration ?? {}}
       hideCancelButton={!onCancel}
       isLoading={isLoading}
       okText={t('label.save')}
       schema={jsonSchema}
-      serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
       uiSchema={UiSchema}
-      validator={validator}
       onCancel={onCancel}
       onFocus={handleFieldFocus}
       onSubmit={onConfigSave}

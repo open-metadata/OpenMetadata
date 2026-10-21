@@ -360,6 +360,43 @@ def test_an_unset_bound_excludes_nothing(pandas_runner, min_bound, max_bound, vi
     assert counted == violations
 
 
+@pytest.mark.parametrize(
+    "validator_cls, entity_link",
+    [
+        (SQAValuesValidator, ENTITY_LINK_VALUE),
+        (SQALengthsValidator, ENTITY_LINK_LABEL),
+    ],
+)
+def test_sqa_an_unbounded_window_fails_no_row(sqa_runner, validator_cls, entity_link):
+    """With neither bound set nothing is outside the window, so no row may be reported failed"""
+    validator = validator_cls(sqa_runner, _test_case(entity_link, [], None, None), EXECUTION_DATE.timestamp())
+
+    assert validator.compute_row_count(validator.get_column(), float("-inf"), float("inf")) == (EXPECTED_ROWS, 0)
+
+
+def test_sqa_one_open_side_counts_only_the_other(sqa_runner):
+    """Only the lower bound set: the rows below it fail, and no upper side is invented"""
+    validator = SQAValuesValidator(
+        sqa_runner, _test_case(ENTITY_LINK_VALUE, [], None, None), EXECUTION_DATE.timestamp()
+    )
+
+    assert validator.compute_row_count(validator.get_column(), MIN_BOUND, float("inf")) == (EXPECTED_ROWS, 1)
+
+
+@pytest.mark.parametrize(
+    "validator_cls, entity_link",
+    [
+        (SQAValuesValidator, ENTITY_LINK_VALUE),
+        (SQALengthsValidator, ENTITY_LINK_LABEL),
+    ],
+)
+def test_sqa_an_unbounded_window_samples_no_filter(sqa_runner, validator_cls, entity_link):
+    """The failed-row sample is drawn with the same window, so an open window filters nothing"""
+    validator = validator_cls(sqa_runner, _test_case(entity_link, [], None, None), EXECUTION_DATE.timestamp())
+
+    assert validator.filter()["filters"] == []
+
+
 def test_the_window_is_never_widened_by_the_threshold(sqa_runner):
     """The tolerance is spent on rows here, so spending it on the bounds too would double it"""
     validator = SQAValuesValidator(sqa_runner, values_test_case(threshold=5), EXECUTION_DATE.timestamp())

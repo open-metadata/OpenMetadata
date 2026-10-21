@@ -43,7 +43,7 @@ import { PortsLineageViewProps } from './PortsLineageView.types';
 
 const DATA_PRODUCT_CENTER_NODE_ID = 'data-product-center';
 
-const PORTS_EDGE_COLOR = 'var(--om-color-border-primary)';
+const PORTS_EDGE_COLOR = 'var(--tw-border-color-primary)';
 
 const getPortHandleId = (port: SourceType): string => {
   return port.fullyQualifiedName ?? port.id ?? '';
@@ -245,7 +245,7 @@ const PortsLineageView = ({
       className={`ports-lineage-view w-full bg-gray-50 ${
         isFullScreen
           ? 'tw:fixed tw:top-0 tw:left-0 tw:right-0 tw:bottom-0 tw:z-1300 tw:rounded-none tw:border-none'
-          : 'tw:relative tw:rounded-lg tw:border tw:border-gray-200'
+          : 'tw:relative tw:rounded-lg tw:border tw:border-secondary'
       }`}
       data-testid="ports-lineage-view"
       style={{ height: containerHeight }}>
@@ -264,13 +264,13 @@ const PortsLineageView = ({
                 iconLeading={
                   isFullScreen ? (
                     <Minimize01
-                      fill="var(--om-color-text-secondary)"
+                      fill="var(--tw-text-color-secondary)"
                       height={18}
                       width={18}
                     />
                   ) : (
                     <Maximize01
-                      fill="var(--om-color-text-secondary)"
+                      fill="var(--tw-text-color-secondary)"
                       height={18}
                       width={18}
                     />
@@ -294,7 +294,7 @@ const PortsLineageView = ({
         nodesDraggable={false}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}>
-        <Background color="var(--om-color-border-subtle)" gap={16} size={1} />
+        <Background color="var(--tw-border-color-subtle)" gap={16} size={1} />
         <Controls
           showFitView
           showZoom

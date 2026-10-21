@@ -13,7 +13,8 @@
 Regex-based parser for AWS Glue PySpark/GlueContext scripts to extract lineage.
 
 Parses GlueContext DynamicFrame APIs and Spark DataFrame APIs to identify
-source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
+source and target entities (S3 paths, Glue Catalog tables, JDBC tables,
+Snowflake tables).
 """
 
 import re
@@ -118,6 +119,46 @@ SPARK_WRITE_INSERTINTO_PATTERN = re.compile(
     r"\.write\.insertInto\s*\(\s*[\"']([^\"']+)[\"']\s*\)",
 )
 
+# --- Snowflake Patterns ---
+# The Snowflake Spark connector is used either through GlueContext
+# (connection_type="snowflake", handled in the from_options / write_options
+# blocks) or directly with the DataFrame API:
+#   spark.read.format("snowflake").options(**sf_options).option("dbtable", "T").load()
+#   df.write.format("snowflake").options(**sf_options).option("dbtable", "T").mode("...").save()
+# The database / schema usually live in a shared options dict (sfDatabase / sfSchema).
+
+SNOWFLAKE_FORMATS = {"snowflake", "net.snowflake.spark.snowflake"}
+
+# format() takes a literal or a name bound to one, as in the Snowflake docs.
+# Any format matches here and _is_snowflake_format filters, so a chain must
+# not run into the next read/write or a non-Snowflake one would swallow it.
+#   SNOWFLAKE_SOURCE_NAME = "net.snowflake.spark.snowflake"
+#   spark.read.format(SNOWFLAKE_SOURCE_NAME)...
+SPARK_FORMAT_ARG = r"\.format\s*\(\s*(?:[\"']([^\"']+)[\"']|([A-Za-z_]\w*))\s*\)"
+
+# Calls may sit on either side of format(): df.write.mode("append").format("snowflake")...save()
+# Group 1 = chain before format(), 2/3 = format argument, 4 = chain after format().
+_NOT_ANOTHER_STATEMENT = r"(?!\.read\s*\.|\.write\s*\.|\.load\s*\(|\.save\s*\()"
+
+SPARK_READ_SNOWFLAKE_PATTERN = re.compile(
+    rf"\.read\s*(?=\.)((?:{_NOT_ANOTHER_STATEMENT}.)*?){SPARK_FORMAT_ARG}((?:{_NOT_ANOTHER_STATEMENT}.)*?)\.load\s*\(",
+    re.DOTALL,
+)
+
+SPARK_WRITE_SNOWFLAKE_PATTERN = re.compile(
+    rf"\.write\s*(?=\.)((?:{_NOT_ANOTHER_STATEMENT}.)*?){SPARK_FORMAT_ARG}((?:{_NOT_ANOTHER_STATEMENT}.)*?)\.save\s*\(",
+    re.DOTALL,
+)
+
+SNOWFLAKE_DATABASE_PATTERN = re.compile(r"[\"']sfDatabase[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
+SNOWFLAKE_SCHEMA_PATTERN = re.compile(r"[\"']sfSchema[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
+
+# .options(**sf_options) / connection_options=sf_options: the name of the shared options dict
+SHARED_OPTIONS_NAME_PATTERN = re.compile(r"(?:\*\*\s*|connection_options\s*=\s*)([A-Za-z_]\w*)")
+
+# Snowflake identifiers: "ORDERS.V2" is one quoted name, FINANCE.CURATED.ORDERS are three
+QUALIFIED_NAME_PART_PATTERN = re.compile(r'"[^"]*"|[^.]+')
+
 # --- Helpers for extracting keyword arguments from function calls ---
 
 S3_PATH_PATTERN = re.compile(r"s3[an]?://[^\s\"',\]\}]+")
@@ -143,6 +184,27 @@ def _extract_s3_paths(block: str) -> list[str]:
     return list(set(S3_PATH_PATTERN.findall(block)))
 
 
+def _extract_option(block: str, key: str) -> str | None:
+    """
+    Value of `key` given as .option("key", "value"), as a dict entry or as a
+    keyword argument. The value may hold quotes of the other kind, as in
+    .option("dbtable", '"DB"."SCHEMA"."TABLE"').
+    """
+    for pattern in (
+        rf"option\s*\(\s*[\"']{key}[\"']\s*,\s*([\"'])(.+?)\1",
+        rf"[\"']?{key}[\"']?\s*:\s*([\"'])(.+?)\1",
+        rf"{key}\s*=\s*([\"'])(.+?)\1",
+    ):
+        match = re.search(pattern, block)
+        if match:
+            return match.group(2)
+    return None
+
+
+def _is_snowflake(connection_type: str | None) -> bool:
+    return bool(connection_type) and connection_type.lower() == "snowflake"
+
+
 @dataclass
 class CatalogRef:
     database: str
@@ -158,6 +220,13 @@ class JDBCRef:
 
 
 @dataclass
+class SnowflakeRef:
+    table: str
+    database: str | None = None
+    schema: str | None = None
+
+
+@dataclass
 class ScriptLineageResult:
     s3_sources: list[str] = field(default_factory=list)
     s3_targets: list[str] = field(default_factory=list)
@@ -165,6 +234,8 @@ class ScriptLineageResult:
     catalog_targets: list[CatalogRef] = field(default_factory=list)
     jdbc_sources: list[JDBCRef] = field(default_factory=list)
     jdbc_targets: list[JDBCRef] = field(default_factory=list)
+    snowflake_sources: list[SnowflakeRef] = field(default_factory=list)
+    snowflake_targets: list[SnowflakeRef] = field(default_factory=list)
 
     @property
     def has_lineage(self) -> bool:
@@ -175,6 +246,8 @@ class ScriptLineageResult:
             or self.catalog_targets
             or self.jdbc_sources
             or self.jdbc_targets
+            or self.snowflake_sources
+            or self.snowflake_targets
         )
 
 
@@ -187,14 +260,19 @@ def parse_glue_script(source_code: str) -> ScriptLineageResult:
     _parse_glue_context_targets(source_code, result)
     _parse_spark_read(source_code, result)
     _parse_spark_write(source_code, result)
+    _parse_spark_snowflake(source_code, result)
 
     logger.debug(
-        f"Script lineage result: "
-        f"s3_sources={result.s3_sources}, s3_targets={result.s3_targets}, "
-        f"catalog_sources={len(result.catalog_sources)}, "
-        f"catalog_targets={len(result.catalog_targets)}, "
-        f"jdbc_sources={len(result.jdbc_sources)}, "
-        f"jdbc_targets={len(result.jdbc_targets)}"
+        "Script lineage result: s3_sources=%s, s3_targets=%s, catalog_sources=%d, catalog_targets=%d, "
+        "jdbc_sources=%d, jdbc_targets=%d, snowflake_sources=%d, snowflake_targets=%d",
+        result.s3_sources,
+        result.s3_targets,
+        len(result.catalog_sources),
+        len(result.catalog_targets),
+        len(result.jdbc_sources),
+        len(result.jdbc_targets),
+        len(result.snowflake_sources),
+        len(result.snowflake_targets),
     )
 
     return result
@@ -221,6 +299,11 @@ def _parse_glue_context_sources(source_code: str, result: ScriptLineageResult):
                 result.s3_sources.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 source: {p}")
+            elif _is_snowflake(conn_type):
+                ref = _snowflake_ref(block, source_code)
+                if ref:
+                    result.snowflake_sources.append(ref)
+                    logger.debug("Found Snowflake source: %s", ref)
             elif conn_type and conn_type.lower() in (
                 "jdbc",
                 "mysql",
@@ -266,6 +349,11 @@ def _parse_glue_context_targets(source_code: str, result: ScriptLineageResult): 
                 result.s3_targets.extend(paths)
                 for p in paths:
                     logger.debug(f"Found S3 target: {p}")
+            elif _is_snowflake(conn_type):
+                ref = _snowflake_ref(block, source_code)
+                if ref:
+                    result.snowflake_targets.append(ref)
+                    logger.debug("Found Snowflake target: %s", ref)
             elif conn_type:
                 table = _extract_dict_value(block, "dbtable")
                 connection_name = _extract_kwarg(block, "catalog_connection")
@@ -364,3 +452,97 @@ def _parse_spark_write(source_code: str, result: ScriptLineageResult):
             else:
                 result.catalog_targets.append(CatalogRef(database="default", table=table_ref))
             logger.debug(f"Found Spark saveAsTable/insertInto target: {table_ref}")
+
+
+def _unique_script_option(pattern: re.Pattern, source_code: str) -> str | None:
+    """
+    Script-wide fallback for sfDatabase / sfSchema (the shared options dict).
+    Only trusted when the script defines exactly one distinct value: with
+    several candidates the first match could belong to another block, so the
+    value is left unset and the resolver falls back to a less specific lookup.
+    """
+    values = {match.group(1) for match in pattern.finditer(source_code)}
+    return values.pop() if len(values) == 1 else None
+
+
+def _shared_options_dict(block: str, source_code: str) -> str:
+    """
+    Body of the dict the block passes as .options(**name) / connection_options=name,
+    so keys kept there (dbtable, sfDatabase, sfSchema) are read from the right dict
+    instead of from the first one in the script. Empty when there is none, or when
+    the name is assigned more than once: the block cannot tell which dict applies,
+    and taking the first one could link a write to the table the script read.
+    """
+    match = SHARED_OPTIONS_NAME_PATTERN.search(block)
+    if not match:
+        return ""
+    literals = re.findall(rf"^\s*{match.group(1)}\s*=\s*\{{([^{{}}]*)\}}", source_code, re.MULTILINE | re.DOTALL)
+    return literals[0] if len(literals) == 1 else ""
+
+
+def _split_qualified_name(name: str) -> list[str]:
+    return [part.strip('"') for part in QUALIFIED_NAME_PART_PATTERN.findall(name)]
+
+
+def _snowflake_ref(block: str, source_code: str) -> SnowflakeRef | None:
+    """
+    `dbtable` may be qualified (DB.SCHEMA.TABLE or SCHEMA.TABLE); otherwise
+    sfDatabase / sfSchema are taken from the block, then from the shared options
+    dict the block passes, then from the script when it defines a single value.
+    """
+    shared = _shared_options_dict(block, source_code)
+    table = _extract_option(block, "dbtable") or _extract_option(shared, "dbtable")
+    if not table:
+        return None
+    database = (
+        _extract_option(block, "sfDatabase")
+        or _extract_option(shared, "sfDatabase")
+        or _unique_script_option(SNOWFLAKE_DATABASE_PATTERN, source_code)
+    )
+    schema = (
+        _extract_option(block, "sfSchema")
+        or _extract_option(shared, "sfSchema")
+        or _unique_script_option(SNOWFLAKE_SCHEMA_PATTERN, source_code)
+    )
+
+    parts = _split_qualified_name(table)
+    if len(parts) == 3:
+        database, schema, table = parts
+    elif len(parts) == 2:
+        schema, table = parts
+    else:
+        table = parts[0] if parts else table
+    return SnowflakeRef(table=table, database=database, schema=schema)
+
+
+def _resolve_spark_format(literal: str | None, name: str | None, source_code: str) -> str | None:
+    """The format string, looking up `name = "..."` in the script when format() was given a name."""
+    if literal:
+        return literal
+    match = re.search(rf"^\s*{name}\s*=\s*[\"']([^\"']+)[\"']", source_code, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _is_snowflake_format(match: re.Match, source_code: str) -> bool:
+    spark_format = _resolve_spark_format(match.group(2), match.group(3), source_code)
+    return bool(spark_format) and spark_format.lower() in SNOWFLAKE_FORMATS
+
+
+def _spark_snowflake_ref(match: re.Match, source_code: str) -> SnowflakeRef | None:
+    if not _is_snowflake_format(match, source_code):
+        return None
+    return _snowflake_ref(match.group(1) + match.group(4), source_code)
+
+
+def _parse_spark_snowflake(source_code: str, result: ScriptLineageResult):
+    for match in SPARK_READ_SNOWFLAKE_PATTERN.finditer(source_code):
+        ref = _spark_snowflake_ref(match, source_code)
+        if ref:
+            result.snowflake_sources.append(ref)
+            logger.debug("Found Spark read.format('snowflake') source: %s", ref)
+
+    for match in SPARK_WRITE_SNOWFLAKE_PATTERN.finditer(source_code):
+        ref = _spark_snowflake_ref(match, source_code)
+        if ref:
+            result.snowflake_targets.append(ref)
+            logger.debug("Found Spark write.format('snowflake') target: %s", ref)

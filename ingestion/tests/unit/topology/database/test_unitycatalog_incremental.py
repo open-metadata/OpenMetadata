@@ -161,7 +161,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", ""))
 
         assert result == [("tbl_a", TableType.Regular)]
         assert source.context.get().table_data is table
@@ -176,7 +176,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.v_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", ""))
 
         assert result == [("v_a", TableType.View)]
 
@@ -190,7 +190,7 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=True),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", ""))
 
         assert result == []
         source.status.filter.assert_called_once()
@@ -199,7 +199,7 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         table = SimpleNamespace(table_type=None)
 
-        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1", ""))
 
         assert result == []
         source.status.failed.assert_called_once()
@@ -212,8 +212,7 @@ class TestUnityCatalogIncrementalSource:
         processor.get_changed.return_value = {"chg"}
         source.incremental_table_processor = processor
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
-        changed_table = SimpleNamespace(name="chg", table_type=None)
-        source.client.tables.get.return_value = changed_table
+        source.client.api_client.do.return_value = {"name": "chg", "securable_kind": "TABLE_DELTA"}
         source._process_table.return_value = iter([("chg", TableType.Regular)])
 
         with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
@@ -222,8 +221,9 @@ class TestUnityCatalogIncrementalSource:
 
         assert result == [("chg", TableType.Regular)]
         assert source.context.get_global().deleted_tables == ["svc.cat.schema1.dropped"]
-        source.client.tables.get.assert_called_once_with("cat.schema1.chg")
-        source._process_table.assert_called_once_with(changed_table, "cat", "schema1")
+        source.client.api_client.do.assert_called_once_with("GET", "/api/2.1/unity-catalog/tables/cat.schema1.chg")
+        # securable_kind survives the hand-rolled get; TableInfo.from_dict would drop it.
+        assert source._process_table.call_args.args[1:] == ("cat", "schema1", "TABLE_DELTA")
 
     def test_yield_database_schema_removes_handoff_cache_entry(self):
         source = self._make_source()
@@ -287,7 +287,7 @@ class TestUnityCatalogIncrementalSource:
         processor.get_changed.return_value = {"recreated", "new_change"}
         source.incremental_table_processor = processor
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
-        source.client.tables.get.return_value = SimpleNamespace(name="x", table_type=None)
+        source.client.api_client.do.return_value = {"name": "x"}
         source._process_table.return_value = iter([])
 
         with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
@@ -295,8 +295,11 @@ class TestUnityCatalogIncrementalSource:
             list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
 
         assert source.context.get_global().deleted_tables == ["keep_deleted"]
-        fetched = {c.args[0] for c in source.client.tables.get.call_args_list}
-        assert fetched == {"cat.schema1.recreated", "cat.schema1.new_change"}
+        fetched = {c.args[1] for c in source.client.api_client.do.call_args_list}
+        assert fetched == {
+            "/api/2.1/unity-catalog/tables/cat.schema1.recreated",
+            "/api/2.1/unity-catalog/tables/cat.schema1.new_change",
+        }
 
     def test_get_incremental_tables_handles_get_failure(self):
         source = self._make_source()
@@ -305,7 +308,8 @@ class TestUnityCatalogIncrementalSource:
         processor.get_changed.return_value = {"chg"}
         source.incremental_table_processor = processor
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
-        source.client.tables.get.side_effect = Exception("boom")
+        # The hand-rolled GET is what can fail now; tables.get is no longer called.
+        source.client.api_client.do.side_effect = Exception("boom")
 
         result = list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
 
@@ -339,16 +343,17 @@ class TestUnityCatalogIncrementalSource:
         source.context.get.return_value = SimpleNamespace(database="cat", database_schema="schema1")
         source._get_tables_with_constraints.return_value = set()
         tables = [
-            SimpleNamespace(name="t1", catalog_name="cat", schema_name="schema1"),
-            SimpleNamespace(name="t2", catalog_name="cat", schema_name="schema1"),
+            (SimpleNamespace(name="t1", catalog_name="cat", schema_name="schema1"), "TABLE_DELTA"),
+            (SimpleNamespace(name="t2", catalog_name="cat", schema_name="schema1"), ""),
         ]
-        source.client.tables.list.return_value = tables
-        source._process_table.side_effect = lambda table, catalog, schema: iter([(table.name, TableType.Regular)])
+        source._list_tables.return_value = tables
+        source._process_table.side_effect = lambda table, catalog, schema, kind: iter([(table.name, TableType.Regular)])
 
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
-        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1", max_results=0)
+        # One listing for the whole schema, carrying both the TableInfo and its kind.
+        source._list_tables.assert_called_once_with("cat", "schema1")
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):

@@ -46,6 +46,7 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
+import { downloadCsv } from '../../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
 import {
@@ -65,8 +66,6 @@ const TERMINAL_STATUSES: CsvAsyncJobStatus[] = [
   'FAILED',
   'CANCELLED',
 ];
-
-const ACTIVE_JOBS_POLL_INTERVAL_MS = 5000;
 
 // Fetch well beyond the handful the tray renders so a just-finished job cannot
 // fall outside the fetched window (which would silently skip its auto-open).
@@ -187,8 +186,6 @@ export const CsvJobsTray = () => {
     [visibleJobs]
   );
 
-  const hasActiveJobs = !isEmpty(activeJobs);
-
   useEffect(() => {
     // Nothing left to show (e.g. right after Clear completed): collapse the tray
     // so it does not carry a stale open state into the next job. Otherwise a job
@@ -237,15 +234,7 @@ export const CsvJobsTray = () => {
       try {
         setDownloadingJobId(job.jobId);
         const csvData = await getCsvAsyncJobResult(job.jobId);
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${job.entityType}-${job.jobId}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        downloadCsv(csvData, `${job.entityType}-${job.jobId}.csv`);
         setDownloadedJobIds((current) => {
           const next = new Set(current);
           next.add(job.jobId);
@@ -334,39 +323,10 @@ export const CsvJobsTray = () => {
     };
   }, [fetchJobs]);
 
-  // The websocket only reaches sockets held by the server that ran the job, so in
-  // a multi-server deployment the completion event is often delivered to a peer.
-  // Polling while work is outstanding is what actually keeps the tray truthful;
-  // the socket subscription above is just the fast path.
-  useEffect(() => {
-    if (!hasActiveJobs) {
-      return;
-    }
-
-    // Self-scheduling rather than setInterval: the next poll is queued only once
-    // the previous one settles, so a slow response cannot stack up concurrent
-    // requests racing to set the same state.
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout>;
-
-    const scheduleNextPoll = () => {
-      timeoutId = setTimeout(async () => {
-        await fetchJobs();
-
-        if (!cancelled) {
-          scheduleNextPoll();
-        }
-      }, ACTIVE_JOBS_POLL_INTERVAL_MS);
-    };
-
-    scheduleNextPoll();
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timeoutId);
-    };
-  }, [hasActiveJobs, fetchJobs]);
-
+  // Progress and completion arrive over the CSV_IMPORT/EXPORT channels; the server-side
+  // WebSocketRelay (Redis pub/sub, or the DB-poll relay otherwise) delivers them to the pod
+  // holding this socket even when another pod ran the job, so the socket subscription above keeps
+  // the tray truthful on multi-pod without a fallback poll.
   const handleOpen = useCallback(() => {
     setOpen(true);
     fetchJobs();

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+} from '@openmetadata/ui-core-components';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
 import { ValidatorType } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
@@ -138,55 +143,64 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
   }, [entityId, entityType]);
 
   return (
-    <SimpleModal
-      data-testid="profiler-settings-modal"
-      footer={
-        <>
-          <Button color="secondary" onPress={() => onVisibilityChange(false)}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            form="profiler-setting-form"
-            isLoading={isUpdating}
-            type="submit">
-            {t('label.save')}
-          </Button>
-        </>
-      }
+    <ModalOverlay
       isDismissable={false}
       isOpen={visible}
-      title={t('label.profiler-setting-plural')}
-      width={630}
-      onCancel={() => onVisibilityChange(false)}>
-      {isLoading ? (
-        <Loader />
-      ) : (
-        <Form<ProfilerConfig>
-          focusOnFirstError
-          noHtml5Validate
-          className={classNames('rjsf no-header profiler-settings-form')}
-          fields={{
-            BooleanField: BooleanFieldTemplate,
-          }}
-          formData={profilerConfig ?? {}}
-          id="profiler-setting-form"
-          idSeparator="/"
-          schema={profilerSettingsSchema as FormProps['schema']}
-          showErrorList={false}
-          templates={{
-            DescriptionFieldTemplate: DescriptionFieldTemplate,
-            FieldErrorTemplate: FieldErrorTemplate,
-            ObjectFieldTemplate: ProfilerObjectFieldTemplate,
-          }}
-          transformErrors={transformErrors}
-          uiSchema={uiSchema}
-          validator={validator as ValidatorType<ProfilerConfig>}
-          widgets={{ RangeWidget: CustomRangeWidget }}
-          onChange={handleOnChange}
-          onSubmit={handleUpdate}
-        />
-      )}
-    </SimpleModal>
+      onOpenChange={(isOpen) => !isOpen && onVisibilityChange(false)}>
+      <Modal>
+        <Dialog
+          data-testid="profiler-settings-modal"
+          title={t('label.profiler-setting-plural')}
+          width={630}>
+          <Dialog.Content>
+            {isLoading ? (
+              <Loader />
+            ) : (
+              <Form<ProfilerConfig>
+                focusOnFirstError
+                noHtml5Validate
+                className={classNames('rjsf no-header profiler-settings-form')}
+                fields={{
+                  BooleanField: BooleanFieldTemplate,
+                }}
+                formData={profilerConfig ?? {}}
+                id="profiler-setting-form"
+                idSeparator="/"
+                schema={profilerSettingsSchema as FormProps['schema']}
+                showErrorList={false}
+                templates={{
+                  DescriptionFieldTemplate: DescriptionFieldTemplate,
+                  FieldErrorTemplate: FieldErrorTemplate,
+                  ObjectFieldTemplate: ProfilerObjectFieldTemplate,
+                }}
+                transformErrors={transformErrors}
+                uiSchema={uiSchema}
+                validator={validator as ValidatorType<ProfilerConfig>}
+                widgets={{ RangeWidget: CustomRangeWidget }}
+                onChange={handleOnChange}
+                onSubmit={handleUpdate}
+              />
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="link-color"
+              size="md"
+              onPress={() => onVisibilityChange(false)}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              form="profiler-setting-form"
+              isLoading={isUpdating}
+              size="md"
+              type="submit">
+              {t('label.save')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

@@ -28,6 +28,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
@@ -120,6 +121,7 @@ class EntityTypeNameTest {
             new AiFrameworkControlIndex(new AIFrameworkControl().withId(id())),
             Entity.AI_FRAMEWORK_CONTROL),
         Arguments.of(new AuditReportIndex(new AuditReport().withId(id())), Entity.AUDIT_REPORT),
+        Arguments.of(new DataContractIndex(new DataContract().withId(id())), Entity.DATA_CONTRACT),
         Arguments.of(new McpServerIndex(new McpServer().withId(id())), Entity.MCP_SERVER),
         Arguments.of(
             new PromptTemplateIndex(new PromptTemplate().withId(id())), Entity.PROMPT_TEMPLATE),

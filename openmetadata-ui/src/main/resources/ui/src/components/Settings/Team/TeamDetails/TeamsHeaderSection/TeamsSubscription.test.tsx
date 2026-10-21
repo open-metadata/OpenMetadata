@@ -56,7 +56,48 @@ describe('TeamsSubscription', () => {
       fireEvent.click(saveButton);
     });
 
-    expect(mockUpdateTeamSubscription).toHaveBeenCalled();
+    // "None" is the default webhook, which clears the subscription.
+    expect(mockUpdateTeamSubscription).toHaveBeenCalledWith(undefined);
+  });
+
+  it('should save the existing webhook and endpoint', async () => {
+    render(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{ slack: { endpoint: 'https://hooks.slack.com/x' } }}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-team-subscription'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.confirm'));
+    });
+
+    expect(mockUpdateTeamSubscription).toHaveBeenCalledWith({
+      webhook: 'slack',
+      endpoint: 'https://hooks.slack.com/x',
+    });
+  });
+
+  it('should reject an invalid endpoint', async () => {
+    render(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{ slack: { endpoint: 'not-a-url' } }}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-team-subscription'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.confirm'));
+    });
+
+    expect(mockUpdateTeamSubscription).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('message.endpoint-should-be-valid')
+    ).toBeInTheDocument();
   });
 
   it('should render no data when no subscription', async () => {

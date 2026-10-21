@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -383,13 +382,7 @@ const RolesDetailPage = () => {
                   className="w-max-full"
                   displayName={role.displayName}
                   icon={
-                    <Icon
-                      className="align-middle p-y-xss"
-                      component={RoleIcon}
-                      style={{
-                        fontSize: '50px',
-                      }}
-                    />
+                    <RoleIcon className="tw:align-middle tw:py-1 tw:size-[50px] tw:shrink-0" />
                   }
                   name={role?.name ?? ''}
                   serviceName="role"

@@ -185,7 +185,7 @@ const CustomPropertiesSection = ({
       />
       {filteredProperties.length > 0 ? (
         <ul
-          className="tw:m-0 tw:list-none tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-0"
+          className="tw:m-0 tw:list-none tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-0"
           data-testid="custom-properties-list">
           {filteredProperties.map((property: CustomProperty) => (
             <CustomPropertyListItem

@@ -12,6 +12,7 @@
  */
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 
+import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +30,7 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
+import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -195,6 +197,19 @@ const GlossaryTermsV1 = ({
     [permissions]
   );
 
+  const proposalScope = useMemo(
+    () =>
+      glossaryTerm?.id && !isVersionView
+        ? {
+            fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
+            id: glossaryTerm.id,
+            isGlossary: false,
+          }
+        : undefined,
+    [glossaryTerm?.id, glossaryTerm?.fullyQualifiedName, isVersionView]
+  );
+  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
+
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -216,6 +231,7 @@ const GlossaryTermsV1 = ({
       refreshActiveGlossaryTerm,
       setAssetModalVisible,
       setPreviewAsset,
+      proposedCount: proposalCounts.all,
     });
 
     return getDetailsTabWithNewLabel(
@@ -238,6 +254,7 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     previewAsset,
     handleAssetClick,
+    proposalCounts.all,
   ]);
 
   useEffect(() => {
@@ -280,6 +297,9 @@ const GlossaryTermsV1 = ({
     [tabItems[0], activeTab]
   );
 
+  const renderedActiveTab = getRenderedActiveTab(tabItems, activeTab);
+  const isRelationsGraphTab = renderedActiveTab === EntityTabs.RELATIONS_GRAPH;
+
   if (isLoading) {
     return <Loader />;
   }
@@ -293,7 +313,15 @@ const GlossaryTermsV1 = ({
       permissions={permissions}
       type={EntityType.GLOSSARY_TERM}
       onUpdate={onTermUpdate}>
-      <Box data-testid="glossary-term" direction="col" gap={3}>
+      <Box
+        // The graph pins its toolbar to its own bottom edge, so while it is
+        // open the page is held to the viewport instead of growing and scrolling.
+        className={classNames({
+          'content-height-with-resizable-panel': isRelationsGraphTab,
+        })}
+        data-testid="glossary-term"
+        direction="col"
+        gap={3}>
         <div>
           <GlossaryHeader
             updateVote={updateVote}
@@ -303,10 +331,15 @@ const GlossaryTermsV1 = ({
           />
         </div>
 
-        <div className="glossary-term-page-tabs">
+        <div
+          className={classNames('glossary-term-page-tabs', {
+            'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col': isRelationsGraphTab,
+          })}>
           <Tabs
-            className="tw:gap-3"
-            selectedKey={getRenderedActiveTab(tabItems, activeTab)}
+            className={classNames('tw:gap-3', {
+              'tw:min-h-0 tw:flex-1': isRelationsGraphTab,
+            })}
+            selectedKey={renderedActiveTab}
             onSelectionChange={(key) => activeTabHandler(String(key))}>
             <Tabs.List
               actions={
@@ -331,7 +364,11 @@ const GlossaryTermsV1 = ({
             </Tabs.List>
             {tabItems.map(({ key, children }) => (
               <Tabs.Panel
-                className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col"
+                className={
+                  key === EntityTabs.RELATIONS_GRAPH
+                    ? 'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden'
+                    : 'tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:overflow-y-auto tw:has-[.glossary-terms-empty-container]:flex tw:has-[.glossary-terms-empty-container]:flex-col'
+                }
                 id={key}
                 key={key}>
                 {children}

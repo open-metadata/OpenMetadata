@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const Zap: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const Zap: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M13 2 4.093 12.688c-.348.418-.523.628-.525.804a.5.5 0 0 0 .185.397c.138.111.41.111.955.111H12l-1 8 8.907-10.688c.348-.418.523-.628.525-.804a.5.5 0 0 0-.185-.397c-.138-.111-.41-.111-.955-.111H12z"
+      d="m10.833 1.667-7.422 8.906c-.29.348-.436.523-.438.67a.42.42 0 0 0 .154.331c.115.093.342.093.796.093H10l-.833 6.667 7.423-8.907c.29-.348.436-.523.438-.67a.42.42 0 0 0-.154-.331c-.115-.092-.342-.092-.796-.092H10z"
       stroke="currentColor"
       strokeWidth={1.3}
     />

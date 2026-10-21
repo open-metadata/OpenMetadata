@@ -76,6 +76,15 @@ public class OAuthMetadata {
   @JsonProperty("code_challenge_methods_supported")
   private List<String> codeChallengeMethodsSupported;
 
+  @JsonProperty("jwks_uri")
+  private URI jwksUri;
+
+  @JsonProperty("subject_types_supported")
+  private List<String> subjectTypesSupported;
+
+  @JsonProperty("id_token_signing_alg_values_supported")
+  private List<String> idTokenSigningAlgValuesSupported;
+
   public OAuthMetadata() {
     this.responseTypesSupported = Arrays.asList("code");
   }
@@ -254,5 +263,29 @@ public class OAuthMetadata {
 
   public void setCodeChallengeMethodsSupported(List<String> codeChallengeMethodsSupported) {
     this.codeChallengeMethodsSupported = codeChallengeMethodsSupported;
+  }
+
+  public URI getJwksUri() {
+    return jwksUri;
+  }
+
+  public void setJwksUri(URI jwksUri) {
+    this.jwksUri = jwksUri;
+  }
+
+  public List<String> getSubjectTypesSupported() {
+    return subjectTypesSupported;
+  }
+
+  public void setSubjectTypesSupported(List<String> subjectTypesSupported) {
+    this.subjectTypesSupported = subjectTypesSupported;
+  }
+
+  public List<String> getIdTokenSigningAlgValuesSupported() {
+    return idTokenSigningAlgValuesSupported;
+  }
+
+  public void setIdTokenSigningAlgValuesSupported(List<String> idTokenSigningAlgValuesSupported) {
+    this.idTokenSigningAlgValuesSupported = idTokenSigningAlgValuesSupported;
   }
 }

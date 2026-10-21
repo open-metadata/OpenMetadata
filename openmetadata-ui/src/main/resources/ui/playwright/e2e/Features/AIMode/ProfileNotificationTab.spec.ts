@@ -35,6 +35,7 @@ import {
   commonPrerequisites,
   generateAlertName,
   waitForRecentEventsToFinishExecution,
+  watchPerSourceListRequests,
 } from '../../../utils/alert';
 import { deleteFixtureEntity } from '../../../utils/apiResponse';
 import { getApiContext } from '../../../utils/common';
@@ -120,6 +121,14 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await dashboard.delete(apiContext);
   await afterAction();
 });
+
+let expectNoPerSourceList: () => void;
+
+test.beforeEach(({ page }) => {
+  expectNoPerSourceList = watchPerSourceListRequests(page);
+});
+
+test.afterEach(() => expectNoPerSourceList());
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -340,11 +349,12 @@ test('Task source alert', async ({ page }) => {
       sourceName: SOURCE_NAME_3,
     });
 
+    // A task has no owners, so its recipients are the people it is assigned to or mentions.
     await page.click('[data-testid="add-destination-button"]');
     await addInternalDestinationProfile({
       page,
       destinationNumber: 0,
-      category: 'Owners',
+      category: 'Mentions',
       type: 'Email',
     });
     await page.click('[data-testid="add-destination-button"]');

@@ -31,4 +31,7 @@ export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.RecognizerFeedbackApproval]:
     'message.recognizer-feedback-approval-message',
   [TaskEntityType.CustomTask]: 'message.custom-task-message',
+  [TaskEntityType.MemoryConflictReview]:
+    'message.memory-conflict-review-message',
+  [TaskEntityType.MetadataCompletion]: 'message.metadata-completion-message',
 };

@@ -61,7 +61,7 @@ class IndexAnalyzerMappingTest {
     // so such a query silently matches nothing - no error, just zero hits. Checked across every
     // language because each entity's mapping is authored by copying an existing one.
     final List<String> offenders = new ArrayList<>();
-    for (final String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+    for (final String language : List.of(ENGLISH, "ru", "jp", "ko", "zh")) {
       for (final IndexMapping index : IndexMappingLoader.getInstance().getIndexMapping().values()) {
         if (!index.getParentAliases(null).contains("dataAsset")) {
           continue;
@@ -137,7 +137,7 @@ class IndexAnalyzerMappingTest {
     // removed typo tolerance for every word kstem shortens. The inflation is handled by the
     // identity stages' zero tie breaker instead.
     List<String> offenders = new ArrayList<>();
-    for (String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+    for (String language : List.of(ENGLISH, "ru", "jp", "ko", "zh")) {
       forEachAnalysisBlock(
           language,
           (name, analysis) -> {
@@ -164,7 +164,7 @@ class IndexAnalyzerMappingTest {
     // and running it after a stemmer means the stemmer never saw the folded token. The keyword
     // normalizer is included because the exact-match ranking stage queries name.keyword.
     List<String> offenders = new ArrayList<>();
-    for (String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+    for (String language : List.of(ENGLISH, "ru", "jp", "ko", "zh")) {
       forEachAnalysisBlock(
           language,
           (name, analysis) ->
@@ -221,7 +221,7 @@ class IndexAnalyzerMappingTest {
             "kuromoji_stemmer",
             "smartcn_stop");
     List<String> offenders = new ArrayList<>();
-    for (String language : List.of(ENGLISH, "ru", "jp", "zh")) {
+    for (String language : List.of(ENGLISH, "ru", "jp", "ko", "zh")) {
       forEachAnalysisBlock(
           language,
           (name, analysis) -> {

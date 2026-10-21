@@ -117,7 +117,7 @@ describe('SsoPanel', () => {
     (getSettingsSource as jest.Mock).mockResolvedValue({ settings: [] });
   });
 
-  it('shows the provider grid when SSO is not set up, with Configure disabled until a pick', async () => {
+  it('shows the provider grid when SSO is not set up, with no header action', async () => {
     await renderPanel({
       authenticationConfiguration: { provider: 'basic' },
       authorizerConfiguration: {},
@@ -132,17 +132,13 @@ describe('SsoPanel', () => {
       ],
     });
 
-    renderHeaderActions();
-
-    expect(screen.getByTestId('sso-configure-provider')).toBeDisabled();
+    expect(lastHeader().actions).toBeUndefined();
   });
 
-  it('opens the setup form for the picked provider', async () => {
+  it('opens the setup form as soon as a provider card is clicked', async () => {
     await renderPanel(undefined);
 
     fireEvent.click(await screen.findByText('Google'));
-    renderHeaderActions();
-    fireEvent.click(screen.getByTestId('sso-configure-provider'));
 
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google');
   });

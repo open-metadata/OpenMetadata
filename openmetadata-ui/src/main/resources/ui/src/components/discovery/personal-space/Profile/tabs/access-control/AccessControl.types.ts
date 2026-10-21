@@ -21,6 +21,8 @@ export type AccessControlView =
   | { type: 'policies' }
   | { type: 'policies-add' }
   | { type: 'policies-detail'; fqn: string; name: string }
+  /** Add (no `ruleName`) or edit one rule of a policy, as its own page. */
+  | { type: 'policies-rule'; fqn: string; name: string; ruleName?: string }
   | { type: 'permission-debugger' }
   | { type: 'audit-logs' };
 

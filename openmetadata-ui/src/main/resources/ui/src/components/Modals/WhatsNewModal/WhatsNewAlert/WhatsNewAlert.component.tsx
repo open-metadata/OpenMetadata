@@ -10,14 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Affix } from 'antd';
 import classNames from 'classnames';
 import { CookieStorage } from 'cookie-storage';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -107,7 +105,7 @@ const WhatsNewAlert = () => {
   return (
     <>
       {showWhatsNew.alert && isHomePage && (
-        <Affix className="whats-new-alert-affix">
+        <Box className="tw:fixed tw:right-8 tw:bottom-8 tw:z-2000">
           <Card
             className="whats-new-alert-card"
             data-testid="whats-new-alert-card">
@@ -173,15 +171,14 @@ const WhatsNewAlert = () => {
                 </div>
               </Box>
               <Box className="layout-column tw:block tw:flex-[0_0_48px]">
-                <Icon
-                  className="whats-new-alert-close"
-                  component={CloseIcon}
+                <CloseIcon
+                  className="whats-new-alert-close tw:size-3.5 tw:shrink-0"
                   onClick={handleCancel}
                 />
               </Box>
             </Box>
           </Card>
-        </Affix>
+        </Box>
       )}
     </>
   );

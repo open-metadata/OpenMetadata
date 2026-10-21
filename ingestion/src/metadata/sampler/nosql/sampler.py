@@ -91,7 +91,7 @@ class NoSQLSampler(SamplerInterface):
         elif static and static.profileSampleType == ProfileSampleType.ROWS:
             limit = static.profileSample
         else:
-            limit = SAMPLE_DATA_DEFAULT_COUNT
+            limit = self.sample_limit
         return limit
 
     def _get_asset_row_count(self) -> int:

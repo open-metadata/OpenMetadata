@@ -18,7 +18,7 @@ import React from 'react';
 const mockShowErrorToast = jest.fn();
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 import {

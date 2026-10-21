@@ -207,12 +207,7 @@ const DataProductsContainer = ({
     );
 
     return (
-      <Box
-        inline
-        align="center"
-        className="layout-space layout-space-horizontal"
-        gap={4}
-        itemClassName="layout-space-item">
+      <Box align="center" gap={2}>
         {hasPermission &&
           (domainMissing
             ? isEmpty(dataProducts) && (

@@ -21,8 +21,10 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.config.AsyncOperationsConfiguration;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -65,6 +67,16 @@ public final class RdfUpdater {
 
   public static boolean isEnabled() {
     return writeQueue != null;
+  }
+
+  public static void enqueueOntologyGraph(final CollectionDAO dao, final UUID ontologyId) {
+    final RdfLiveWriteStore store = liveWriteStore;
+    if (store != null) {
+      dao.useHandle(
+          handle ->
+              store.enqueue(
+                  handle, JsonUtils.pojoToJson(new RdfLiveWrite.OntologyGraph(ontologyId))));
+    }
   }
 
   public static synchronized void disable() {

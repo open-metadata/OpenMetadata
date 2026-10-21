@@ -18,9 +18,6 @@ import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
-import * as StringUtils from '../../../../utils/StringUtils';
-import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
 
 const buildOperationPermission = (
@@ -159,16 +156,23 @@ const mockGetEncodedFqn = jest.fn((fqn) => fqn);
 const mockEscapeESReservedCharacters = jest.fn((fqn) => fqn);
 const mockGetTagAssetsQueryFilter = jest.fn();
 
-jest
-  .spyOn(SearchPureUtils, 'getTermQuery')
-  .mockImplementation(mockGetTermQuery);
-jest.spyOn(StringUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
-jest
-  .spyOn(StringUtils, 'escapeESReservedCharacters')
-  .mockImplementation(mockEscapeESReservedCharacters);
-jest
-  .spyOn(TagsPureUtils, 'getTagAssetsQueryFilter')
-  .mockImplementation(mockGetTagAssetsQueryFilter);
+jest.mock('../../../../utils/SearchPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/SearchPureUtils'),
+  getTermQuery: (...args: unknown[]) => mockGetTermQuery(...args),
+}));
+
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
+  getEncodedFqn: (...args: unknown[]) => mockGetEncodedFqn(...args),
+  escapeESReservedCharacters: (...args: unknown[]) =>
+    mockEscapeESReservedCharacters(...args),
+}));
+
+jest.mock('../../../../utils/TagsPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/TagsPureUtils'),
+  getTagAssetsQueryFilter: (...args: unknown[]) =>
+    mockGetTagAssetsQueryFilter(...args),
+}));
 
 const mockOnAddAsset = jest.fn();
 const mockOnAssetClick = jest.fn();

@@ -12,7 +12,7 @@
  */
 
 import { Badge, Button } from '@openmetadata/ui-core-components';
-import { X } from '@openmetadata/ui-core-components/icons';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
 interface RemovableChipProps {
@@ -40,7 +40,7 @@ const RemovableChip: React.FC<RemovableChipProps> = ({
       className="tw:ml-1"
       color="tertiary"
       data-testid={testId}
-      iconLeading={X}
+      iconLeading={XClose}
       isDisabled={isDisabled}
       size="xs"
       slot={null}

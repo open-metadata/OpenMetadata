@@ -58,6 +58,12 @@ class ContextCenterClassBase {
     return '';
   }
 
+  // Every Context Center page root paints the canvas; subclasses extend the
+  // root through getContainerClassName() without having to repeat it.
+  public getPageContainerClassName(): string {
+    return `tw:bg-canvas ${this.getContainerClassName()}`.trim();
+  }
+
   public getHomePath(): string {
     return ROUTES.HOME;
   }

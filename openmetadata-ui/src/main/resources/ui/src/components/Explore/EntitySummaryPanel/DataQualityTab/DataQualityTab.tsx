@@ -752,12 +752,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography className="stat-count new">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.new}
               </Typography>
-              <Typography className="stat-label new">
-                {t('label.new')}
-              </Typography>
+              <Typography size="text-xs">{t('label.new')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -770,12 +768,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography className="stat-count ack">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.ack}
               </Typography>
-              <Typography className="stat-label ack">
-                {t('label.acknowledged')}
-              </Typography>
+              <Typography size="text-xs">{t('label.acknowledged')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -788,12 +784,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography className="stat-count assigned">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.assigned}
               </Typography>
-              <Typography className="stat-label assigned">
-                {t('label.assigned')}
-              </Typography>
+              <Typography size="text-xs">{t('label.assigned')}</Typography>
             </button>
           </div>
           <div>

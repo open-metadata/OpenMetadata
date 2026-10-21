@@ -12,15 +12,14 @@
  */
 
 /**
- * Per-field documentation i18n keys for the Test Definition form's `modal`
- * variant "Form Hint" popover.
+ * Per-field documentation i18n keys for the Test Definition drawer's "Form Hint"
+ * column.
  *
- * The popover sources its copy from `TestDefinitionForm.md` at runtime (the same
- * markdown that backs the drawer's ServiceDocPanel) via `loadFormFieldDocs`, and
- * falls back to these keys when the markdown is unavailable — so every key must
- * resolve in the locales. `TestDefinitionFormBody` wires them into each field as
- * `doc: fieldDocs[x] ?? t(TEST_DEFINITION_FIELD_DOCS.x)`; the `drawer` variant
- * keeps the full ServiceDocPanel and ignores this map.
+ * The hint sources its copy from `TestDefinitionForm.md` at runtime via
+ * `loadFormFieldDocs`, and falls back to these keys when the markdown is
+ * unavailable — so every key must resolve in the locales.
+ * `TestDefinitionFormBody` wires them into each field as
+ * `doc: fieldDocs[x] ?? t(TEST_DEFINITION_FIELD_DOCS.x)`.
  */
 export const TEST_DEFINITION_FIELD_DOCS: Record<string, string> = {
   name: 'message.doc-field-test-definition-name',

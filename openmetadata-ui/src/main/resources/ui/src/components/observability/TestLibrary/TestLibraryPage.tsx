@@ -157,7 +157,6 @@ const TestLibraryPage = () => {
       <TestDefinitionForm
         initialValues={selectedDefinition}
         open={isFormVisible}
-        variant="modal"
         onCancel={handleFormCancel}
         onSuccess={handleFormSuccess}
       />

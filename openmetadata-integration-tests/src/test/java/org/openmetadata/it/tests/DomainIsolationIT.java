@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -319,6 +318,34 @@ public class DomainIsolationIT {
     }
   }
 
+  /**
+   * The asset-count map is keyed by domain FQN, so it must not name a domain the restricted user's
+   * own listing hides.
+   */
+  @Test
+  void test_domainAssetCounts_restrictedUserSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain d1 = createDomain(admin, p + "_d1", cleanup);
+      Domain d2 = createDomain(admin, p + "_d2", cleanup);
+      OpenMetadataClient restricted = createRestrictedUserClient(admin, p, d1, cleanup);
+
+      Set<String> restrictedKeys = countKeys(restricted, "/v1/domains/assets/counts");
+      assertTrue(restrictedKeys.contains(d1.getFullyQualifiedName()), "Own domain is counted");
+      assertFalse(restrictedKeys.contains(d2.getFullyQualifiedName()), "Foreign domain hidden");
+
+      Set<String> adminKeys = countKeys(admin, "/v1/domains/assets/counts");
+      assertTrue(
+          adminKeys.contains(d1.getFullyQualifiedName())
+              && adminKeys.contains(d2.getFullyQualifiedName()),
+          "Admin counts every domain");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
   @Test
   void test_domainSearch_restrictedUserSeesOnlyOwnDomains(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -552,13 +579,8 @@ public class DomainIsolationIT {
       Table ownTable = createTable(admin, p + "_own", schema, ownDomain, cleanup);
       Table foreignTable = createTable(admin, p + "_foreign", schema, foreignDomain, cleanup);
 
-      String testDefinitionFqn =
-          admin
-              .testDefinitions()
-              .list(new ListParams().withLimit(1))
-              .getData()
-              .get(0)
-              .getFullyQualifiedName();
+      // Lists INT among its supported types, so it fits the INT `id` column the incidents are on.
+      String testDefinitionFqn = "columnValuesToBeNotNull";
       String ownIncidentFqn = createIncident(admin, ownTable, p + "_own_tc", testDefinitionFqn);
       String foreignIncidentFqn =
           createIncident(admin, foreignTable, p + "_foreign_tc", testDefinitionFqn);
@@ -878,6 +900,16 @@ public class DomainIsolationIT {
       }
     }
     return names;
+  }
+
+  private Set<String> countKeys(OpenMetadataClient client, String path) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null, RequestOptions.builder().build());
+    Set<String> keys = new HashSet<>();
+    MAPPER.readTree(response).fieldNames().forEachRemaining(keys::add);
+    return keys;
   }
 
   private Set<String> hierarchyNames(OpenMetadataClient client) throws Exception {

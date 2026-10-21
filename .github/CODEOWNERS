@@ -1,13 +1,19 @@
 # Individual scopes
 
-# Review from UI owners for changes around UI code
-/openmetadata-ui/src/main/resources/ui/ @chirag-madlani @karanh37 @ShaileshParmar11
+# Review from UI owners for everything under the UI app and the component library
+/openmetadata-ui/                   @open-metadata/ui
+/openmetadata-ui-core-components/   @open-metadata/ui
+/tooling/antd-codemods/             @open-metadata/ui
 
-# Auto generated code has no ownership
+# No UI review needed: generated code/schemas, docs, and locale translations.
+# Unowned patterns must stay below the UI rules above — last match wins.
 /openmetadata-ui/src/main/resources/ui/src/generated/
-
-# Review from @chireg / @karan for changes around component library
-/openmetadata-ui-core-components/src/main/resources/ui/ @chirag-madlani @karanh37
+/openmetadata-ui/src/main/resources/ui/src/jsons/
+/openmetadata-ui/src/main/resources/ui/public/jsons/
+/openmetadata-ui/**/*.md
+/openmetadata-ui-core-components/**/*.md
+/openmetadata-ui/src/main/resources/ui/src/locale/languages/*.json
+/openmetadata-ui-core-components/src/main/resources/ui/src/locale/languages/*.json
 
 # Review from Backend owners for changes around Backend code
 /openmetadata-service/ @open-metadata/backend
@@ -26,9 +32,13 @@
 # Keep the wildcards specific to those two names so we do not accidentally
 # sweep in general-purpose CI scripts like classify_test_outcome.py that
 # unrelated workflows share.
-.github/workflows/*playwright*                @chirag-madlani @karanh37 @ShaileshParmar11
-.github/playwright/                           @chirag-madlani @karanh37 @ShaileshParmar11
-.github/scripts/*playwright*                  @chirag-madlani @karanh37 @ShaileshParmar11
-.github/scripts/tests/*playwright*            @chirag-madlani @karanh37 @ShaileshParmar11
-.github/scripts/*timing_baseline*             @chirag-madlani @karanh37 @ShaileshParmar11
-.github/scripts/tests/*timing_baseline*       @chirag-madlani @karanh37 @ShaileshParmar11
+.github/workflows/*playwright*                @open-metadata/ui
+.github/playwright/                           @open-metadata/ui
+.github/scripts/*playwright*                  @open-metadata/ui
+.github/scripts/tests/*playwright*            @open-metadata/ui
+.github/scripts/*timing_baseline*             @open-metadata/ui
+.github/scripts/tests/*timing_baseline*       @open-metadata/ui
+
+# UI-only CI workflows
+.github/workflows/ui-*                        @open-metadata/ui
+.github/workflows/storybook-*                 @open-metadata/ui

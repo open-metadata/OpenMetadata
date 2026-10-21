@@ -26,14 +26,17 @@ export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
 
   const drawerBody = useMemo(
     () => (
-      <SlideoutMenu.Content className={className}>
+      <>
+        {/* Outside Content (a positioned scroll box) so the overlay covers the whole drawer. */}
         {loading && (
           <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/80">
             <Loader />
           </div>
         )}
-        {children}
-      </SlideoutMenu.Content>
+        <SlideoutMenu.Content className={className}>
+          {children}
+        </SlideoutMenu.Content>
+      </>
     ),
     [children, loading, className]
   );

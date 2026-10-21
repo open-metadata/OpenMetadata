@@ -19,7 +19,7 @@ import LineageNodeLabelV1 from '../../../Entity/EntityLineage/LineageNodeLabelV1
 import { PortNodeProps } from './PortsLineageView.types';
 
 const PortNode = memo(({ data }: PortNodeProps) => {
-  const { port, isInputPort } = data;
+  const { port, isInputPort, handleId } = data;
   const { entityType: _, ...portWithoutEntityType } = port;
 
   return (
@@ -29,7 +29,7 @@ const PortNode = memo(({ data }: PortNodeProps) => {
       {isInputPort && (
         <Handle
           className="lineage-node-handle"
-          id={port.id}
+          id={handleId}
           position={Position.Right}
           type="source"
         />
@@ -37,7 +37,7 @@ const PortNode = memo(({ data }: PortNodeProps) => {
       {!isInputPort && (
         <Handle
           className="lineage-node-handle"
-          id={port.id}
+          id={handleId}
           position={Position.Left}
           type="target"
         />

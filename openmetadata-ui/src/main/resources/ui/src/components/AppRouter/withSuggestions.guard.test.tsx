@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactElement } from 'react';
+import { Children, isValidElement, ReactElement, ReactNode } from 'react';
 import ShallowRenderer from 'react-test-renderer/shallow';
+import {
+  PLACEHOLDER_ROUTE_ENTITY_TYPE,
+  ROUTES,
+} from '../../constants/constants';
+import { EntityType } from '../../enums/entity.enum';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
+import { useRequiredParams } from '../../utils/useRequiredParams';
+import EntityDetailPage from '../discovery/entity/EntityDetailPage';
 import SuggestionsProvider from '../Suggestions/SuggestionsProvider/SuggestionsProvider';
+import EntityRouter from './EntityRouter';
 
 /**
  * AI Automations create description suggestions on every data-asset type, not only tables.
@@ -21,69 +30,118 @@ import SuggestionsProvider from '../Suggestions/SuggestionsProvider/SuggestionsP
  * already consume the context on every entity page.
  *
  * So the ONLY thing that decides whether a suggestion is visible is whether the page is wrapped
- * in SuggestionsProvider. It was wrapped on TableDetailsPageV1 and nowhere else, which meant an
- * automation could create a perfectly valid suggestion on an ML model, topic, dashboard,
- * container, search index, API endpoint or pipeline and no user could ever see or accept it:
- * useSuggestionsContext returns `{}` with no provider, so the consumers silently render nothing
- * rather than failing.
+ * in SuggestionsProvider: useSuggestionsContext returns `{}` with no provider, so the consumers
+ * silently render nothing rather than failing. Pages are wrapped where they are mounted, by the
+ * classic EntityRouter and the AI-mode EntityDetailPage, so every type the entity-detail
+ * registry serves gets the provider without the page opting in.
  *
- * Shallow rendering is deliberate: it executes the HOC and nothing else, so this asserts the
- * provider really is the outermost element of each page without dragging in the routing,
- * permission and API mocks a full page render needs.
+ * Shallow rendering is deliberate: it executes the router and the HOC and nothing else, so no
+ * lazy page module is ever loaded and no routing, permission or API mocks are needed.
  */
-const renderShallow = (Component: React.ComponentType): ReactElement => {
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn(),
+}));
+
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: jest.fn(() =>
+    jest.requireMock('../../utils/useRequiredParams').useRequiredParams()
+  ),
+}));
+
+const shallowRender = (element: ReactElement): ReactElement => {
   const renderer = ShallowRenderer.createRenderer();
-  renderer.render(<Component />);
+  renderer.render(element);
 
   // The @types for react-test-renderer/shallow type render() as void and getRenderOutput() as
   // the element, so the output has to come from the second call.
   return renderer.getRenderOutput() as ReactElement;
 };
 
+const findRouteElement = (
+  node: ReactNode,
+  path: string
+): ReactElement | undefined => {
+  for (const child of Children.toArray(node)) {
+    if (
+      !isValidElement<{
+        path?: string;
+        element?: ReactElement;
+        children?: ReactNode;
+      }>(child)
+    ) {
+      continue;
+    }
+    if (child.props.path === path) {
+      return child.props.element;
+    }
+    const nested = findRouteElement(child.props.children, path);
+    if (nested) {
+      return nested;
+    }
+  }
+
+  return undefined;
+};
+
+const servedEntityTypes = Object.values(EntityType).filter((entityType) =>
+  Boolean(entityUtilClassBase.getEntityDetailComponent(entityType))
+);
+
 describe('entity pages are wrapped in SuggestionsProvider', () => {
-  // Every entity type the generalized AI Automations can run over, plus the page that owns it.
-  // Adding a type to the automations means adding it here, and the import will fail loudly if
-  // the page moves.
-  const pages: [string, () => Promise<{ default: React.ComponentType }>][] = [
-    [
-      'table',
-      () => import('../../pages/TableDetailsPageV1/TableDetailsPageV1'),
-    ],
-    ['mlmodel', () => import('../../pages/MlModelPage/MlModelPage.component')],
-    [
-      'topic',
-      () => import('../../pages/TopicDetails/TopicDetailsPage.component'),
-    ],
-    [
-      'dashboard',
-      () =>
-        import(
-          '../../pages/DashboardDetailsPage/DashboardDetailsPage.component'
-        ),
-    ],
-    ['container', () => import('../../pages/ContainerPage/ContainerPage')],
-    [
-      'searchIndex',
-      () => import('../../pages/SearchIndexDetailsPage/SearchIndexDetailsPage'),
-    ],
-    [
-      'apiEndpoint',
-      () => import('../../pages/APIEndpointPage/APIEndpointPage'),
-    ],
-    [
-      'pipeline',
-      () => import('../../pages/PipelineDetails/PipelineDetailsPage.component'),
-    ],
-  ];
+  it('the registry serves the entity types suggestions are generated for', () => {
+    expect(servedEntityTypes).toEqual(
+      expect.arrayContaining([
+        EntityType.TABLE,
+        EntityType.MLMODEL,
+        EntityType.TOPIC,
+        EntityType.DASHBOARD,
+        EntityType.CONTAINER,
+        EntityType.SEARCH_INDEX,
+        EntityType.API_ENDPOINT,
+        EntityType.PIPELINE,
+        EntityType.METRIC,
+        EntityType.CHART,
+        EntityType.DASHBOARD_DATA_MODEL,
+        EntityType.API_COLLECTION,
+        EntityType.DATABASE,
+        EntityType.DATABASE_SCHEMA,
+        EntityType.STORED_PROCEDURE,
+        EntityType.DATA_PRODUCT,
+        EntityType.DIRECTORY,
+        EntityType.FILE,
+        EntityType.SPREADSHEET,
+        EntityType.WORKSHEET,
+      ])
+    );
+  });
 
-  it.each(pages)(
-    'the %s page renders SuggestionsProvider as its outermost element',
-    async (_entityType, importPage) => {
-      const { default: Page } = await importPage();
+  it.each(servedEntityTypes)(
+    'EntityRouter renders the %s page inside SuggestionsProvider',
+    (entityType) => {
+      (useRequiredParams as jest.Mock).mockReturnValue({ entityType });
 
-      const output = renderShallow(Page);
+      const routes = shallowRender(<EntityRouter />);
+      const detailElement = findRouteElement(
+        routes,
+        ROUTES.ENTITY_DETAILS.replace(PLACEHOLDER_ROUTE_ENTITY_TYPE, '')
+      );
 
-      expect(output.type).toBe(SuggestionsProvider);
+      expect(detailElement).toBeDefined();
+      expect(shallowRender(detailElement as ReactElement).type).toBe(
+        SuggestionsProvider
+      );
+    }
+  );
+
+  it.each(servedEntityTypes)(
+    'the AI-mode EntityDetailPage renders the %s page inside SuggestionsProvider',
+    (entityType) => {
+      (useRequiredParams as jest.Mock).mockReturnValue({ entityType });
+
+      const page = shallowRender(<EntityDetailPage />);
+
+      expect(shallowRender(page).type).toBe(SuggestionsProvider);
     }
   );
 });

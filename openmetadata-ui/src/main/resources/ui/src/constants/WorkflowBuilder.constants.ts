@@ -89,6 +89,13 @@ export const NODE_TYPE_MAPPINGS = {
     label: 'Policy Enforcement',
     displayLabel: 'Policy Enforcement',
   },
+  // Compiled by lifecycle playbooks from their stages, so the palette does not offer it.
+  [NodeSubType.CollectMetadataTask]: {
+    type: NodeType.AutomatedTask,
+    category: 'lifecycle',
+    label: 'Request Missing Fields',
+    displayLabel: 'Missing Fields Task',
+  },
   [NodeSubType.SinkTask]: {
     type: NodeType.AutomatedTask,
     category: 'sink',

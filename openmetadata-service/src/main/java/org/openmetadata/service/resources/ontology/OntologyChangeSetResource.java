@@ -52,16 +52,18 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyChanges;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService;
+import org.openmetadata.service.ontology.OntologyChangeSetValidator;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy;
 import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
@@ -94,7 +96,6 @@ public class OntologyChangeSetResource
         new OntologyChangeApplicationService(
             repository,
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
-            (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
             clock);
     lockService =
         new OntologyEditLockService(Entity.getJdbi(), clock, new OntologyEditLeasePolicy());
@@ -147,7 +148,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyChangeSet request) {
     final OntologyChangeSet entity = mapper.createToEntity(request, user(securityContext));
-    authorizeGlossaries(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
     return create(uriInfo, securityContext, entity);
   }
 
@@ -202,7 +203,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final OntologyChangeSetCommand request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
     requireLease(id, request.getLease(), securityContext);
     return repository
         .transition(uriInfo, user(securityContext), id, OntologyChangeSetState.SUBMITTED, null)
@@ -218,7 +219,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final ApplyOntologyChangeSet request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     requireLease(id, request.getLease(), securityContext);
     final PutResponse<OntologyChangeSet> response =
         applicationService.apply(uriInfo, id, user(securityContext));
@@ -304,10 +305,15 @@ public class OntologyChangeSetResource
         getResourceContextById(changeSetId));
   }
 
-  private void authorizeGlossaries(
+  private void authorizeScope(
       final SecurityContext securityContext,
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
+    OntologyChangeSetValidator.normalizeAndValidate(changeSet);
+    if (changeSet.getOntology() != null) {
+      authorizeNativeScope(securityContext, changeSet);
+      return;
+    }
     for (final EntityReference glossary : changeSet.getGlossaries()) {
       final Glossary planned =
           listOrEmpty(changeSet.getOperations()).stream()
@@ -327,6 +333,41 @@ public class OntologyChangeSetResource
           securityContext,
           new OperationContext(Entity.GLOSSARY, operation),
           new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+    }
+  }
+
+  private void authorizeNativeScope(
+      final SecurityContext context, final OntologyChangeSet changeSet) {
+    authorizer.authorize(
+        context,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(Entity.ONTOLOGY, changeSet.getOntology().getId(), null));
+    for (final OntologyChangeOperation change :
+        changeSet.getOperations().subList(0, changeSet.getUndoCursor())) {
+      final String type = NativeOntologyChanges.entityType(change);
+      if (change.getTargetId() == null) {
+        authorizer.authorize(
+            context,
+            new OperationContext(type, MetadataOperation.CREATE),
+            new CreateResourceContext<>(type, NativeOntologyChanges.definition(change)));
+      } else {
+        final MetadataOperation operation =
+            NativeOntologyChanges.isDelete(change)
+                ? MetadataOperation.DELETE
+                : MetadataOperation.EDIT_ALL;
+        authorizer.authorize(
+            context,
+            new OperationContext(type, operation),
+            new ResourceContext<>(type, change.getTargetId(), null));
+      }
+      if (change.getSourceMemoryIds() != null) {
+        for (final UUID memoryId : change.getSourceMemoryIds()) {
+          authorizer.authorize(
+              context,
+              new OperationContext(Entity.CONTEXT_MEMORY, MetadataOperation.VIEW_ALL),
+              new ResourceContext<>(Entity.CONTEXT_MEMORY, memoryId, null));
+        }
+      }
     }
   }
 

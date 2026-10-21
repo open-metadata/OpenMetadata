@@ -12,6 +12,7 @@
  */
 
 import {
+  Autocomplete,
   Button,
   ButtonUtility,
   Divider,
@@ -19,17 +20,9 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
-import {
-  ComponentRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
@@ -43,21 +36,9 @@ import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
-import { TagRenderer } from '../../../../common/TagRenderer/TagRenderer';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
-
-const renderMaxTagPlaceholder = (
-  count: number,
-  t: ReturnType<typeof useTranslation>['t']
-) => (
-  <Typography className="max-tag-text">
-    {t('label.plus-count-more', {
-      count,
-    })}
-  </Typography>
-);
 
 const UserProfileRoles = ({
   userRoles,
@@ -72,30 +53,50 @@ const UserProfileRoles = ({
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isRolesLoading, setIsRolesLoading] = useState<boolean>(false);
-  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const selectedRolesRef = useRef<string[]>([]);
 
   const useRolesOption = useMemo(() => {
     const options = roles?.map((role) => ({
+      id: role.id,
       label: getEntityName(role),
-      value: role.id,
     }));
 
     if (!isUserAdmin) {
       options.push({
+        id: toLower(TERM_ADMIN),
         label: TERM_ADMIN,
-        value: toLower(TERM_ADMIN),
       });
     }
 
     return options;
   }, [roles, isUserAdmin, getEntityName]);
 
+  const selectedRoleItems = useMemo(
+    () =>
+      selectedRoles.map((roleId) => {
+        const role = roles.find((r) => r.id === roleId);
+
+        return {
+          id: roleId,
+          label: role ? getEntityName(role) : TERM_ADMIN,
+        };
+      }),
+    [selectedRoles, roles]
+  );
+
+  const handleRoleInserted = useCallback(
+    (key: Key) => setSelectedRoles((prev) => [...prev, String(key)]),
+    []
+  );
+
+  const handleRoleCleared = useCallback(
+    (key: Key) =>
+      setSelectedRoles((prev) => prev.filter((roleId) => roleId !== key)),
+    []
+  );
+
   const fetchRoles = useCallback(
     async (query = '') => {
-      setIsRolesLoading(true);
-
       try {
         const response = await searchRoles(query);
         setRoles((prevRoles) => {
@@ -112,8 +113,6 @@ const UserProfileRoles = ({
             entity: t('label.role-plural'),
           })
         );
-      } finally {
-        setIsRolesLoading(false);
       }
     },
     [t]
@@ -132,8 +131,6 @@ const UserProfileRoles = ({
 
     setSelectedRoles(defaultUserRoles);
   }, [userRoles, isUserAdmin]);
-
-  const dropdownRef = useRef<ComponentRef<typeof Select> | null>(null);
 
   const handleRolesSave = async () => {
     setIsLoading(true);
@@ -220,43 +217,6 @@ const UserProfileRoles = ({
     };
   }, [debouncedFetchRoles]);
 
-  useEffect(() => {
-    setIsDropdownOpen(isRolesEdit);
-  }, [isRolesEdit]);
-
-  const handleDropdownChange = (open: boolean) => {
-    setIsDropdownOpen(open);
-  };
-
-  const [popoverHeight, setPopoverHeight] = useState<number>(156);
-
-  useEffect(() => {
-    if (!isDropdownOpen) {
-      return;
-    }
-
-    const observer = new MutationObserver(() => {
-      const dropdown = document.querySelector(
-        '.roles-custom-dropdown-class'
-      ) as HTMLElement;
-
-      if (dropdown) {
-        setPopoverHeight(dropdown.scrollHeight + 156);
-      }
-    });
-
-    const dropdown = document.querySelector('.roles-custom-dropdown-class');
-    if (dropdown) {
-      observer.observe(dropdown, {
-        attributes: true,
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => observer.disconnect();
-  }, [isDropdownOpen]);
-
   return (
     <div
       className="d-flex flex-col m-b-0 w-full p-[20px] user-profile-card"
@@ -286,10 +246,7 @@ const UserProfileRoles = ({
                 placement="right">
                 <div
                   className="user-profile-edit-popover-card relative"
-                  data-testid="user-profile-edit-popover"
-                  style={{
-                    height: `${popoverHeight}px`,
-                  }}>
+                  data-testid="user-profile-edit-popover">
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
                       <RoleIcon height={16} />
@@ -299,38 +256,26 @@ const UserProfileRoles = ({
                     </Typography>
                   </div>
 
-                  <div
-                    className="border p-2 bg-gray-100 rounded-md"
-                    style={{
-                      borderRadius: '5px',
-                    }}>
-                    <Select
-                      allowClear
-                      showSearch
-                      aria-label="Roles"
-                      className="w-full"
+                  <div>
+                    <Autocomplete
+                      // eslint-disable-next-line jsx-a11y/no-autofocus -- the list opens with the popover, as before
+                      autoFocus
+                      aria-label={t('label.role-plural')}
                       data-testid="profile-edit-roles-select"
-                      dropdownMatchSelectWidth={false}
-                      filterOption={false}
-                      getPopupContainer={(trigger) =>
-                        trigger.parentElement ?? document.body
-                      }
-                      loading={isRolesLoading}
-                      maxTagCount={3}
-                      maxTagPlaceholder={(omittedValues) =>
-                        renderMaxTagPlaceholder(omittedValues.length, t)
-                      }
-                      mode="multiple"
-                      open={isDropdownOpen}
-                      options={useRolesOption}
-                      popupClassName="roles-custom-dropdown-class"
-                      ref={dropdownRef}
-                      tagRender={TagRenderer}
-                      value={selectedRoles}
-                      onChange={setSelectedRoles}
-                      onDropdownVisibleChange={handleDropdownChange}
-                      onSearch={debouncedFetchRoles}
-                    />
+                      filterOption={() => true}
+                      items={useRolesOption}
+                      maxVisibleItems={3}
+                      placeholder={t('label.select-entity', {
+                        entity: t('label.role-plural'),
+                      })}
+                      selectedItems={selectedRoleItems}
+                      onItemCleared={handleRoleCleared}
+                      onItemInserted={handleRoleInserted}
+                      onSearchChange={debouncedFetchRoles}>
+                      {(item) => (
+                        <Autocomplete.Item id={item.id} label={item.label} />
+                      )}
+                    </Autocomplete>
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4">
@@ -340,11 +285,6 @@ const UserProfileRoles = ({
                       data-testid="user-profile-edit-roles-cancel-button"
                       iconLeading={<ClosePopoverIcon height={24} />}
                       size="xs"
-                      style={{
-                        position: 'absolute',
-                        bottom: '0px',
-                        right: '38px',
-                      }}
                       onClick={handleCloseEditRole}
                     />
                     <Button
@@ -354,7 +294,6 @@ const UserProfileRoles = ({
                       iconLeading={<SavePopoverIcon height={24} />}
                       isLoading={isLoading}
                       size="xs"
-                      style={{ position: 'absolute', bottom: '0px' }}
                       onClick={handleRolesSave}
                     />
                   </div>

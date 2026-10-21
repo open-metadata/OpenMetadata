@@ -51,7 +51,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/reports")
 @Tag(
@@ -65,6 +64,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class ReportResource extends EntityResource<Report, ReportRepository> {
   public static final String COLLECTION_PATH = "/v1/reports/";
   static final String FIELDS = "owners,usageSummary";
+  // The endpoint has never paged; it keeps returning up to this many reports in one response.
+  private static final int MAX_REPORTS_LISTED = 10000;
 
   public ReportResource(Authorizer authorizer, Limits limits) {
     super(Entity.REPORT, authorizer, limits);
@@ -96,14 +97,14 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       })
   public ResultList<Report> list(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    Fields fields = getFields(fieldsParam);
-    ListFilter filter = new ListFilter();
-    return repository.listAfter(uriInfo, fields, filter, 10000, null);
+    return listInternal(
+        uriInfo, securityContext, fieldsParam, new ListFilter(), MAX_REPORTS_LISTED, null, null);
   }
 
   @GET
@@ -150,10 +151,9 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
     return getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations);
   }
 
-  @Override
   @POST
   @Operation(
-      operationId = "getReportByFQN",
+      operationId = "createReport",
       summary = "Create a report",
       description = "Create a new report.",
       responses = {
@@ -166,13 +166,12 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
                     schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response create(
+  public Response createReport(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
-    return super.create(uriInfo, securityContext, report);
+    return create(uriInfo, securityContext, report);
   }
 
-  @Override
   @PUT
   @Operation(
       operationId = "createOrUpdateReport",
@@ -188,10 +187,10 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
                     schema = @Schema(implementation = Report.class))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
-  public Response createOrUpdate(
+  public Response createOrUpdateReport(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid Report report) {
     addToReport(securityContext, report);
-    return super.createOrUpdate(uriInfo, securityContext, report);
+    return createOrUpdate(uriInfo, securityContext, report);
   }
 
   @PUT
@@ -216,9 +215,7 @@ public class ReportResource extends EntityResource<Report, ReportRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   private void addToReport(SecurityContext securityContext, Report report) {

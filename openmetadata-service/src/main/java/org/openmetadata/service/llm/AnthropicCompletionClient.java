@@ -91,7 +91,9 @@ public final class AnthropicCompletionClient extends LLMCompletionClient {
       ObjectNode payload = MAPPER.createObjectNode();
       payload.put("model", model);
       payload.put("max_tokens", maxTokens);
-      payload.put("temperature", temperature);
+      if (supportsTemperature(model)) {
+        payload.put("temperature", temperature);
+      }
       payload.put("system", systemPrompt);
       ArrayNode messages = payload.putArray("messages");
       messages.addObject().put("role", "user").put("content", userPrompt);

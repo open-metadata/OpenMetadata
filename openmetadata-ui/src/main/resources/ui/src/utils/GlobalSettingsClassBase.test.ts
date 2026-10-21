@@ -93,6 +93,23 @@ describe('GlobalSettingsClassBase', () => {
       }
     );
 
+    it.each([true, false])(
+      'shows the Announcements card under Notifications to admins only (admin=%s)',
+      (isAdmin) => {
+        (userPermissions.hasViewPermissions as jest.Mock).mockReturnValue(true);
+
+        const item = globalSettingsClassBase
+          .getGlobalSettingsMenuWithPermission(mockPermissions, isAdmin)
+          .find((entry) => entry.key === 'notifications')
+          ?.items?.find((entry) => entry.key === 'notifications.announcements');
+
+        expect(item?.category).toBe('label.announcement-plural');
+        // Even with every view permission: the server lets only admins write
+        // a system announcement, so the card follows the admin flag alone.
+        expect(item?.isProtected).toBe(isAdmin);
+      }
+    );
+
     it.each([
       { isAdmin: false, auditLogs: false, expected: false },
       { isAdmin: false, auditLogs: true, expected: true },

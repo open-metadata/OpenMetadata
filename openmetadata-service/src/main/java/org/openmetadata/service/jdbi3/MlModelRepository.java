@@ -23,7 +23,7 @@ import static org.openmetadata.service.Entity.getEntityReference;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
@@ -306,7 +306,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     populateService(mlModel);
     if (!nullOrEmpty(mlModel.getMlFeatures())) {
       validateReferences(mlModel.getMlFeatures());
-      mlModel.getMlFeatures().forEach(feature -> checkMutuallyExclusive(feature.getTags()));
+      mlModel
+          .getMlFeatures()
+          .forEach(feature -> checkMutuallyExclusiveForUserAppliedTags(feature.getTags()));
     }
 
     // Check that the dashboard exists
@@ -356,7 +358,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     for (MlFeature feature : listOrEmpty(entity.getMlFeatures())) {
       validateTags(feature.getTags());
       feature.setTags(addDerivedTags(feature.getTags()));
-      checkMutuallyExclusive(feature.getTags());
+      checkMutuallyExclusiveForUserAppliedTags(feature.getTags());
     }
   }
 

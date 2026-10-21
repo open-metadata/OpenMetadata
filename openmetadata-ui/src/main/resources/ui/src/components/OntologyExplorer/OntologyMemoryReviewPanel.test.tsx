@@ -32,6 +32,10 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import OntologyMemoryReviewPanel from './OntologyMemoryReviewPanel';
 
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: () => ({ canEditAll: true }),
+}));
+
 jest.mock('../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
   discardOntologyChangeSet: jest.fn(),
@@ -49,7 +53,7 @@ jest.mock('../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('./hooks/useOntologyEditLease', () => ({
+jest.mock('../../hooks/governance/ontology/useOntologyEditLease', () => ({
   useOntologyEditLease: () => ({
     isOwned: true,
     lock: { sessionId: 'session-1', version: 2 },
@@ -119,6 +123,54 @@ describe('OntologyMemoryReviewPanel', () => {
       name: 'inactive-customer',
       title: 'Inactive customer',
     } as Awaited<ReturnType<typeof getContextMemoryById>>);
+  });
+
+  it('reviews a native concept with its ontology scope and source memory', async () => {
+    const nativeDraft: OntologyChangeSet = {
+      ...draft,
+      id: 'native-draft',
+      glossaries: [],
+      ontology: { id: 'native-id', type: 'ontology', name: 'Sales model' },
+      baseWorkingRevision: 3,
+      operations: [
+        {
+          ...draft.operations[0],
+          term: undefined,
+          operationType: OperationType.UpsertConcept,
+          concept: {
+            id: 'customer',
+            name: 'Customer',
+            iri: 'urn:Customer',
+            ontology: { id: 'native-id', type: 'ontology' },
+          } as NonNullable<OntologyChangeSet['operations'][number]['concept']>,
+        },
+      ],
+    };
+    mockList.mockResolvedValue({
+      data: [draft, nativeDraft],
+      paging: { total: 2 },
+    });
+    renderPanel(
+      <OntologyMemoryReviewPanel
+        canApply
+        canDiscard
+        canSubmit
+        ontologyId="native-id"
+        onApplied={jest.fn()}
+      />
+    );
+
+    expect(
+      await screen.findByRole('heading', { name: 'Customer' })
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-memory-definition')).toHaveTextContent(
+      'urn:Customer'
+    );
+    expect(screen.getAllByText(/Sales model/).length).toBeGreaterThan(0);
+    expect(screen.queryByText('inactive_customer')).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole('link', { name: 'Inactive customer' })
+    ).toBeInTheDocument();
   });
 
   it('shows the persisted glossary, term, and a link to the source memory', async () => {

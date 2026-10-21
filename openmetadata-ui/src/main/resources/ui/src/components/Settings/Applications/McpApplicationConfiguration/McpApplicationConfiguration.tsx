@@ -13,13 +13,11 @@
 
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
-import validator from '@rjsf/validator-ajv8';
 import { AxiosError } from 'axios';
 import { isEmpty, pick } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientErrors } from '../../../../enums/Axios.enum';
-import { ServiceCategory } from '../../../../enums/service.enum';
 import { MCPConfiguration } from '../../../../generated/configuration/mcpConfiguration';
 import { SettingType } from '../../../../generated/settings/settings';
 import { useSettingsSource } from '../../../../hooks/platform/useSettingsSource';
@@ -32,7 +30,7 @@ import {
   toJsonPointer,
 } from '../../../../utils/platform/settingsSource.utils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
@@ -171,20 +169,17 @@ const McpApplicationConfiguration = ({
         onAdopted={fetchMcpConfig}
         onRefetch={refetchSources}
       />
-      <FormBuilder
-        capitalizeOptionLabel
+      <FormBuilderV1
         hideCancelButton
-        useSelectWidget
         cancelText={t('label.back')}
         disabled={isEveryFieldManaged}
         formData={formConfig}
+        hideFooter={isEveryFieldManaged}
         isLoading={isSaving}
         okText={t('label.save')}
         readonly={isEveryFieldManaged}
         schema={jsonSchema}
-        serviceCategory={ServiceCategory.DASHBOARD_SERVICES}
         uiSchema={formUiSchema}
-        validator={validator}
         onFocus={handleFieldFocus}
         onSubmit={handleSubmit}
       />

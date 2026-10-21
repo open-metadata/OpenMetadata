@@ -25,7 +25,10 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/bin && \
     ln -s /busybox/sh /shim/bin/sh && \
     printf '#!/busybox/sh\nexec /busybox/sh "$@"\n' > /shim/bin/bash && \
-    chmod 755 /shim/bin/bash
+    chmod 755 /shim/bin/bash && \
+    # bootstrap/openmetadata-ops.sh uses /usr/bin/env in its shebang.
+    mkdir -p /shim/usr/bin && \
+    ln -s /busybox/env /shim/usr/bin/env
 
 FROM eclipse-temurin:21-jdk AS jre-builder
 
@@ -51,6 +54,7 @@ COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
+COPY --from=dist /shim/usr/bin /usr/bin
 
 USER 65532:65532
 

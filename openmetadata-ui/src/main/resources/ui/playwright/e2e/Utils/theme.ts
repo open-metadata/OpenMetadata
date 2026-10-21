@@ -25,7 +25,7 @@ const THEME_REGISTERED = Symbol.for('pw.theme.seeded');
 /**
  * Seed the theme before the app boots, so the first paint already uses it.
  * Call before the first `page.goto`. Seeding only once per tab lets a test
- * still switch the theme at runtime (via `ThemeModeSwitcher`) without the
+ * still switch the theme at runtime (via the AI user menu or Preferences) without the
  * init script reverting it on the next navigation.
  */
 export const seedTheme = async (page: Page, theme: UiTheme): Promise<void> => {

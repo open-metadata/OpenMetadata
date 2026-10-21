@@ -33,6 +33,12 @@
       "description": "List views in a Databend database.",
       "errorMessage": "Failed to list Databend views.",
       "mandatory": false
+    },
+    {
+      "name": "GetLineage",
+      "description": "Read Databend lineage from system_history.lineage_history. Required only for lineage ingestion.",
+      "errorMessage": "Failed to read system_history.lineage_history. Lineage ingestion needs Databend v1.2.933 or later with `[log.history] on = true` and `[lineage] on = true`, an Enterprise license, and SELECT on system_history. Other ingestion workflows are not affected.",
+      "mandatory": false
     }
   ]
 }

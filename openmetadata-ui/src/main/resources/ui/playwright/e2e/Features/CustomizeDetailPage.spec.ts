@@ -202,7 +202,11 @@ test.describe(
       await adminPage.getByText('Data Assets').click();
 
       for (const type of Object.values(ECustomizedDataAssets)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -212,7 +216,11 @@ test.describe(
       await adminPage.getByText('Governance').click();
 
       for (const type of Object.values(ECustomizedGovernance)) {
-        await expect(adminPage.getByText(type, { exact: true })).toBeVisible();
+        await expect(
+          adminPage
+            .getByTestId('customize-ui-options')
+            .getByText(type, { exact: true })
+        ).toBeVisible();
       }
     });
 
@@ -242,28 +250,28 @@ test.describe(
         // Hide Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
@@ -304,49 +312,49 @@ test.describe(
         // Show Explore
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Explore', { exact: true })
+          .getByRole('row', { name: 'Explore', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Explore', { exact: true })
+            .getByRole('row', { name: 'Explore', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Show Metrics
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Metrics')
+          .getByRole('row', { name: 'Metrics', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Metrics')
+            .getByRole('row', { name: 'Metrics', exact: true })
             .getByRole('switch')
         ).toBeChecked();
 
         // Hide Glossary
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Glossary')
+          .getByRole('row', { name: 'Glossary', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
 
         await expect(
           adminPage
             .getByTestId('page-layout-v1')
-            .getByText('Glossary')
+            .getByRole('row', { name: 'Glossary', exact: true })
             .getByRole('switch')
         ).not.toBeChecked();
 
         // Hide Incident Manager
         await adminPage
           .getByTestId('page-layout-v1')
-          .getByText('Incident Manager')
+          .getByRole('row', { name: 'Incident Manager', exact: true })
           .locator('[data-testid^="navigation-switch-"]')
           .click();
         await adminPage.getByTestId('save-button').click();
@@ -420,7 +428,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Data Assets').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
@@ -576,7 +587,10 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         );
         await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
         await adminPage.getByText('Governance').click();
-        await adminPage.getByText(type, { exact: true }).click();
+        await adminPage
+          .getByTestId('customize-ui-options')
+          .getByText(type, { exact: true })
+          .click();
 
         await waitForAllLoadersToDisappear(adminPage);
 
@@ -793,7 +807,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.getByText('Data Assets').click();
-      await adminPage.getByText('Table', { exact: true }).click();
+      await adminPage.getByTestId('Table').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 
@@ -902,7 +916,7 @@ test.describe('Persona customization', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
 
       await adminPage.getByText('Governance').click();
-      await adminPage.getByText('Domain', { exact: true }).click();
+      await adminPage.getByTestId('Domain').click();
 
       await waitForAllLoadersToDisappear(adminPage);
 

@@ -12,11 +12,15 @@
  */
 
 import type { AxiosError } from 'axios';
-import { get, isEqual, uniqueId, uniqWith } from 'lodash';
+import { get, isEqual, uniqueId } from 'lodash';
 import type { EntityTags } from 'Models';
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ReactFlowInstance } from 'reactflow';
-import type { EdgeData } from '../components/Entity/EntityLineage/EntityLineage.interface';
+import type {
+  EdgeData,
+  LineageConfig,
+  LineageConfigFormValues,
+} from '../components/Entity/EntityLineage/EntityLineage.interface';
 import type {
   LineageEntityReference,
   LineageSourceType,
@@ -46,6 +50,21 @@ import { jsonToCSV } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const MAX_LINEAGE_LENGTH = 20;
+
+/** Lineage edges minus every removed from -> to pair, filtered in one pass. */
+export const withoutLineageEdges = (
+  edges: EdgeDetails[],
+  removed: { fromId: string; toId: string }[]
+): EdgeDetails[] => {
+  const removedKeys = new Set(
+    removed.map(({ fromId, toId }) => `${fromId}->${toId}`)
+  );
+
+  return edges.filter(
+    ({ fromEntity, toEntity }) =>
+      !removedKeys.has(`${fromEntity.id}->${toEntity.id}`)
+  );
+};
 
 export const onLoad = (reactFlowInstance: ReactFlowInstance) => {
   reactFlowInstance.fitView();
@@ -242,7 +261,7 @@ const createLoadMoreEdge = (
 
 const handleNodePagination = (
   node: LineageNodeType,
-  edges: Record<string, EdgeDetails>,
+  currentCount: number,
   isDownstream: boolean
 ): { newNode?: LineageNodeType; newEdge?: EdgeDetails } => {
   const { paging } = node;
@@ -253,10 +272,6 @@ const handleNodePagination = (
   if (!totalCount || totalCount <= 0) {
     return {};
   }
-
-  const currentCount = Object.values(edges).filter((edge) =>
-    isDownstream ? edge.fromEntity.id === node.id : edge.toEntity.id === node.id
-  ).length;
 
   if (currentCount >= totalCount) {
     return {};
@@ -301,6 +316,26 @@ const processNodeArray = (
   );
 };
 
+/**
+ * Drops deep-equal duplicates like `uniqWith(nodes, isEqual)`, but only
+ * deep-compares nodes that share an id: equal nodes always do, and comparing
+ * every pair is quadratic in the node count.
+ */
+const removeDuplicateNodes = (nodes: LineageNodeType[]) => {
+  const keptById = new Map<string, LineageNodeType[]>();
+
+  return nodes.filter((node) => {
+    const kept = keptById.get(node.id) ?? [];
+    if (kept.some((other) => isEqual(other, node))) {
+      return false;
+    }
+    kept.push(node);
+    keptById.set(node.id, kept);
+
+    return true;
+  });
+};
+
 const processPipelineEdge = (
   edge: EdgeDetails,
   pipelineNode: Pipeline
@@ -318,33 +353,48 @@ const processPipelineEdge = (
   ];
 };
 
+// A lineage response can carry tens of thousands of edges, so every pass
+// below stays linear: a quadratic one froze the tab for minutes (#34904).
 const processEdges = (
   edges: EdgeDetails[],
   nodesArray: LineageNodeType[]
 ): EdgeDetails[] => {
-  return edges.reduce<EdgeDetails[]>(
-    (acc: EdgeDetails[], edge: EdgeDetails) => {
-      if (!edge.pipeline) {
-        return [...acc, edge];
-      }
+  const nodesByFqn = new Map<string | undefined, LineageNodeType>();
+  nodesArray.forEach((node) => {
+    if (!nodesByFqn.has(node.fullyQualifiedName)) {
+      nodesByFqn.set(node.fullyQualifiedName, node);
+    }
+  });
 
-      const pipelineNode = nodesArray.find(
-        (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
+  const processedEdges: EdgeDetails[] = [];
+  edges.forEach((edge) => {
+    const pipelineNode = edge.pipeline
+      ? nodesByFqn.get(edge.pipeline.fullyQualifiedName)
+      : undefined;
+
+    if (pipelineNode) {
+      processedEdges.push(
+        ...processPipelineEdge(edge, pipelineNode as unknown as Pipeline)
       );
+    } else {
+      processedEdges.push(edge);
+    }
+  });
 
-      if (!pipelineNode) {
-        return [...acc, edge];
-      }
+  return processedEdges;
+};
 
-      const pipelineEdges = processPipelineEdge(
-        edge,
-        pipelineNode as unknown as Pipeline
-      );
+const countEdgesByEndpoint = (
+  edges: Record<string, EdgeDetails>,
+  endpoint: 'fromEntity' | 'toEntity'
+) => {
+  const counts = new Map<string, number>();
+  Object.values(edges).forEach((edge) => {
+    const id = edge[endpoint].id;
+    counts.set(id, (counts.get(id) ?? 0) + 1);
+  });
 
-      return [...acc, ...pipelineEdges];
-    },
-    []
-  );
+  return counts;
 };
 
 const processPagination = (
@@ -357,6 +407,8 @@ const processPagination = (
 } => {
   const newNodes: LineageNodeType[] = [];
   const newEdges: EdgeDetails[] = [];
+  const downstreamCounts = countEdgesByEndpoint(downstreamEdges, 'fromEntity');
+  const upstreamCounts = countEdgesByEndpoint(upstreamEdges, 'toEntity');
 
   const eligibleNodes = nodesArray.filter(
     (node) =>
@@ -366,13 +418,21 @@ const processPagination = (
   );
 
   eligibleNodes.forEach((node) => {
-    const downstream = handleNodePagination(node, downstreamEdges, true);
+    const downstream = handleNodePagination(
+      node,
+      downstreamCounts.get(node.id) ?? 0,
+      true
+    );
     if (downstream.newNode && downstream.newEdge) {
       newNodes.push(downstream.newNode);
       newEdges.push(downstream.newEdge);
     }
 
-    const upstream = handleNodePagination(node, upstreamEdges, false);
+    const upstream = handleNodePagination(
+      node,
+      upstreamCounts.get(node.id) ?? 0,
+      false
+    );
     if (upstream.newNode && upstream.newEdge) {
       newNodes.push(upstream.newNode);
       newEdges.push(upstream.newEdge);
@@ -473,7 +533,7 @@ export const parseLineageData = (
 } => {
   const { nodes, downstreamEdges, upstreamEdges } = data;
 
-  const nodesArray = uniqWith(processNodeArray(nodes, rootFqn), isEqual);
+  const nodesArray = removeDuplicateNodes(processNodeArray(nodes, rootFqn));
 
   const processedNodes: LineageNodeType[] = [...nodesArray];
 
@@ -517,3 +577,11 @@ export const parseLineageData = (
     entity,
   };
 };
+
+export const getLineageConfigFormValues = (
+  config: LineageConfig
+): LineageConfigFormValues => ({
+  upstreamDepth: String(config.upstreamDepth ?? ''),
+  downstreamDepth: String(config.downstreamDepth ?? ''),
+  nodesPerLayer: String(config.nodesPerLayer ?? ''),
+});

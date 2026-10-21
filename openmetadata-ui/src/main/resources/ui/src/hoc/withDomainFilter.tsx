@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { InternalAxiosRequestConfig } from 'axios';
-import { DEFAULT_DOMAIN_VALUE } from '../constants/constants';
+import {
+  DEFAULT_DOMAIN_VALUE,
+  SKIP_DOMAIN_FILTER_HEADER,
+} from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
@@ -53,6 +56,27 @@ const collectMustClauses = (
   return mustArray;
 };
 
+// Reference data searched by pickers (tags, owners, team members) is never narrowed to the
+// selected domain, or a pick would hide the people and tags an asset can be given.
+const UNSCOPED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.TAG,
+  SearchIndex.USER,
+  SearchIndex.TEAM,
+]);
+
+// A search may name several indexes, as a comma-joined string or an array (e.g. owner pickers
+// search "team,user"); it stays unscoped only when every index it names is unscoped.
+const isUnscopedSearch = (index?: string | string[]) => {
+  const indexes = (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .filter(Boolean);
+
+  return (
+    indexes.length > 0 &&
+    indexes.every((name) => UNSCOPED_SEARCH_INDEXES.has(name))
+  );
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -60,6 +84,12 @@ export const withDomainFilter = (
   const activeDomain = useDomainStore.getState().activeDomain;
   const hasActiveDomain = activeDomain !== DEFAULT_DOMAIN_VALUE;
   const currentPath = getPathNameFromWindowLocation();
+
+  if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
+    delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
+
+    return config;
+  }
 
   const shouldNotIntercept = [
     '/domain',
@@ -75,7 +105,7 @@ export const withDomainFilter = (
 
   if (isGetRequest && hasActiveDomain) {
     if (config.url?.includes('/search/query')) {
-      if (config.params?.index === SearchIndex.TAG) {
+      if (isUnscopedSearch(config.params?.index)) {
         return config;
       }
 

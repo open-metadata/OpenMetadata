@@ -35,7 +35,7 @@ import {
   getParameterValueDiffRows,
   getSummary,
 } from './EntityVersionUtils';
-import { getStringEntityDiff } from './EntityVersionUtilsPure';
+import { getStringEntityDiff, getSummaryText } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 // Mock data for testing
 const createMockTableColumn = (
@@ -92,6 +92,34 @@ const createMockEntityDiff = (
   added,
   deleted,
   updated,
+});
+
+describe('a lifecycle status change in the version history', () => {
+  const summary = (newValue: string) =>
+    getSummaryText({
+      isPrefix: false,
+      fieldsChanged: [
+        { name: 'entityStatus', oldValue: 'Draft', newValue },
+        { name: 'description', oldValue: 'a', newValue: 'b' },
+      ],
+      actionType: 'label.updated',
+      actionText: 'label.updated-lowercase',
+    });
+
+  it('names the status the asset moved to, not the field', () => {
+    const text = summary('Approved');
+
+    expect(t).toHaveBeenCalledWith('message.status-changed-to', {
+      status: 'label.approved',
+    });
+    expect(text).toContain('message.status-changed-to');
+    expect(text).toContain('description');
+    expect(text).not.toContain('entityStatus');
+  });
+
+  it('keeps the field name for a status it has no label for', () => {
+    expect(summary('Unknown')).toContain('entityStatus');
+  });
 });
 
 describe('EntityVersionUtils', () => {

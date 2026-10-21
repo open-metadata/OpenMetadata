@@ -54,6 +54,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -373,8 +374,7 @@ public class AppsResourceIT {
     Awaitility.await("Trigger " + appName)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               Apps.trigger(appName).run();
@@ -418,8 +418,7 @@ public class AppsResourceIT {
         .atMost(Duration.ofMinutes(2))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(
@@ -733,6 +732,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(false);
@@ -744,8 +744,12 @@ public class AppsResourceIT {
           httpClient.execute(
               HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
       assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+      assertEquals("No Impersonation App", retrievedApp.getBot().getDisplayName());
 
       String botUserName = appName + "Bot";
+      assertEquals(
+          "No Impersonation App",
+          SdkClients.adminClient().bots().getByName(botUserName).getDisplayName());
       User botUser =
           httpClient.execute(
               HttpMethod.GET,
@@ -754,6 +758,7 @@ public class AppsResourceIT {
               User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertEquals("No Impersonation App", botUser.getDisplayName());
       assertTrue(
           botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_ROLE)),
           "Bot without impersonation should have ApplicationBotRole");
@@ -806,6 +811,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(true);
@@ -817,8 +823,12 @@ public class AppsResourceIT {
           httpClient.execute(
               HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
       assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+      assertEquals("With Impersonation App", retrievedApp.getBot().getDisplayName());
 
       String botUserName = appName + "Bot";
+      assertEquals(
+          "With Impersonation App",
+          SdkClients.adminClient().bots().getByName(botUserName).getDisplayName());
       User botUser =
           httpClient.execute(
               HttpMethod.GET,
@@ -827,6 +837,7 @@ public class AppsResourceIT {
               User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertEquals("With Impersonation App", botUser.getDisplayName());
       assertTrue(
           botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
           "Bot with impersonation should have ApplicationBotImpersonationRole");

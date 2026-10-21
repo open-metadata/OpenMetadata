@@ -13,9 +13,10 @@
 # redis), via the cache-tests Maven profile. Catches cache-invalidation and stale-data bugs that
 # only surface when every test path goes through the cache layer.
 #
-# Runs in the merge queue (plus main pushes and manual dispatch), never on PRs: before review,
-# `make java_affected_run` runs the ITs a PR impacts on the author's machine. Not a required
-# check, so unlike the MySQL and OpenSearch workflows it needs no PR trigger to report.
+# Runs in the merge queue (plus main pushes and manual dispatch), not on PRs: before review,
+# `make java_affected_run` runs the ITs a PR impacts on the author's machine. Like the MySQL and
+# OpenSearch workflows it reports its check on PRs, so the check can be required
+# (ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue).
 name: Integration Tests - PostgreSQL + Elasticsearch + Redis
 
 on:
@@ -39,6 +40,12 @@ on:
       - "bootstrap/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-postgres-elasticsearch-redis.yml"
+  # PRs trigger this workflow only so that `integration-tests-postgres-elasticsearch-redis` can be
+  # a required check: every job is skipped by its `if:`, so no runner starts, and GitHub counts a
+  # skipped required check as passing. With no PR trigger the check would hang at "Expected —
+  # waiting for status".
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -46,7 +53,7 @@ permissions:
 
 concurrency:
   # Merge-queue, push and dispatch runs key on the run id, so they never cancel each other.
-  group: integration-tests-pg-es-redis-${{ github.run_id }}
+  group: integration-tests-pg-es-redis-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
@@ -56,6 +63,7 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: ${{ github.event_name != 'pull_request' }}
     # Merge queue runs check out the merge-queue commit so dorny can diff against
     # merge_group.base_sha and skip the heavy work when nothing backend-relevant
     # changed. Push and workflow_dispatch remain force-true — push is already
@@ -462,7 +470,8 @@ jobs:
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() }}
+    # Skipped on PRs (see the trigger comment): a skipped required check counts as passing.
+    if: ${{ always() && github.event_name != 'pull_request' }}
     steps:
       - name: Verify Maven Integration Test Lanes
         env:

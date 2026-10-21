@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
-import { Column, DataType, Table } from '../generated/entity/data/table';
+import {
+  Column,
+  ConstraintType,
+  DataType,
+  Table,
+} from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
@@ -48,6 +54,7 @@ import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
+import { getConstraintIcon, getDataTypeBadgeColor } from './TableUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {
@@ -2578,4 +2585,48 @@ describe('getNestedSectionTitle', () => {
       'label.nested-column-plural'
     );
   });
+});
+
+describe('getDataTypeBadgeColor', () => {
+  it.each([
+    ['VARCHAR', 'blue'],
+    ['varchar(50)', 'blue'],
+    ['INT', 'success'],
+    ['decimal(10,2)', 'success'],
+    ['TIMESTAMP', 'orange'],
+    ['BOOLEAN', 'purple'],
+    ['STRUCT', 'pink'],
+    ['BINARY', 'gray'],
+    ['INTERVAL', 'orange'],
+    ['LONGBLOB', 'gray'],
+    ['POINT', 'gray'],
+    ['BITMAP', 'gray'],
+    [undefined, 'gray'],
+  ])('colours %s as %s', (dataType, color) => {
+    expect(getDataTypeBadgeColor(dataType)).toBe(color);
+  });
+});
+
+describe('getConstraintIcon', () => {
+  it.each([
+    ['current', false],
+    ['removed', true],
+  ])(
+    'exposes the %s constraint icon to assistive tech as a labelled image',
+    (_, isConstraintDeleted) => {
+      render(
+        <>
+          {getConstraintIcon({
+            constraint: ConstraintType.PrimaryKey,
+            isConstraintDeleted,
+          })}
+        </>
+      );
+      const icon = screen.getByTestId('constraint-icon-primary-key');
+
+      expect(icon).not.toHaveAttribute('aria-hidden', 'true');
+      expect(icon).toHaveAttribute('role', 'img');
+      expect(icon).toHaveAccessibleName();
+    }
+  );
 });

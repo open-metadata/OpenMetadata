@@ -87,18 +87,17 @@ deliberately left unfiltered:
 
 ## Where the marker is honoured
 
-Both JSON-Schema form stacks map it to the same component:
+The JSON-Schema form stack maps it to one component:
 
 | Stack | Widget | Rendered on |
 |---|---|---|
-| `FormBuilderV1` | `CorePasswordWidget` | Add Service → Connection Details, Edit Connection, ingestion agent config |
-| legacy RJSF `FormBuilder` | `PasswordWidget` | Settings → Applications → *App* → Configuration |
+| `FormBuilderV1` | `CorePasswordWidget` | Add Service → Connection Details, Edit Connection, ingestion agent config, Settings → Applications → *App* → Configuration |
 
-Both go through `getCredentialFileLabels` / `getCredentialFileValidationMessages` in
-`src/utils/CredentialFileField.utils.ts`, so translations and behaviour stay identical.
+`CorePasswordWidget` uses `getCredentialFileLabels` / `getCredentialFileValidationMessages` in
+`src/utils/CredentialFileField.utils.ts` for its labels and validation messages.
 
 **Known inert case:** `SSOConfigurationForm` builds its own RJSF registry and does not register
-OpenMetadata's `PasswordWidget`, so `uiFieldType` has no effect on SSO configuration fields. Wire
+`CorePasswordWidget`, so `uiFieldType` has no effect on SSO configuration fields. Wire
 that form up before annotating anything under `security/client/`.
 
 ## Adding an annotation

@@ -23,7 +23,9 @@ import {
 import {
   buildCustomPropertyConfig,
   getBreadcrumbItems,
+  getCustomPropertyTypeFlags,
   getPageTitle,
+  toCustomPropertyPayload,
   toId,
 } from './CustomPropertiesPanel.utils';
 
@@ -296,6 +298,47 @@ describe('CustomPropertiesPanel utils', () => {
       );
 
       expect(result).toBe('My Property');
+    });
+  });
+});
+
+describe('toCustomPropertyPayload', () => {
+  const propertyTypes = [
+    { id: 'enum-id', name: 'enum' },
+    { id: 'date-id', name: 'date-cp' },
+  ] as Type[];
+
+  it('flags the config the selected type needs', () => {
+    expect(
+      getCustomPropertyTypeFlags(propertyTypes, { id: 'enum-id' })
+    ).toEqual(
+      expect.objectContaining({ hasEnumConfig: true, hasFormatConfig: false })
+    );
+    expect(
+      getCustomPropertyTypeFlags(propertyTypes, 'date-id').hasFormatConfig
+    ).toBe(true);
+  });
+
+  it('builds an enum property and drops an empty display name', () => {
+    expect(
+      toCustomPropertyPayload(
+        {
+          name: 'tier',
+          displayName: '',
+          description: 'Tier',
+          propertyType: { id: 'enum-id' },
+          enumConfig: [{ id: 'gold' }, { id: 'silver' }],
+          multiSelect: true,
+        },
+        propertyTypes
+      )
+    ).toEqual({
+      name: 'tier',
+      description: 'Tier',
+      propertyType: { id: 'enum-id', type: 'type' },
+      customPropertyConfig: {
+        config: { multiSelect: true, values: ['gold', 'silver'] },
+      },
     });
   });
 });

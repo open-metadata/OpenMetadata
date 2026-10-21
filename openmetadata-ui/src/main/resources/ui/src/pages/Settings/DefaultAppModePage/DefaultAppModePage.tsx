@@ -20,6 +20,10 @@ import {
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ClassicDeprecatedLabel,
+  ClassicDeprecationHint,
+} from '../../../components/AppModeSwitcher/ClassicDeprecationNotice';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import SettingsSourceBanner from '../../../components/platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { DefaultAppMode } from '../../../generated/api/configuration/appConfiguration';
@@ -136,8 +140,19 @@ const DefaultAppModePage: React.FC = () => {
         {OPTIONS.map((option) => (
           <RadioButton
             data-testid={`app-mode-option-${option.value}`}
+            hint={
+              option.value === DefaultAppMode.Classic ? (
+                <ClassicDeprecationHint />
+              ) : undefined
+            }
             key={option.value}
-            label={t(option.labelKey)}
+            label={
+              option.value === DefaultAppMode.Classic ? (
+                <ClassicDeprecatedLabel label={t(option.labelKey)} />
+              ) : (
+                t(option.labelKey)
+              )
+            }
             value={option.value}
           />
         ))}

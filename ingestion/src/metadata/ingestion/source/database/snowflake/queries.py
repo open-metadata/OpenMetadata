@@ -30,6 +30,10 @@ SNOWFLAKE_GET_TABLE_NAMES = """
     AND {include_views}
 """
 
+# Incremental names queries: rank every row of a name with the alive one first, so the
+# dropped twin left by CREATE OR REPLACE (whose LAST_DDL is later) never wins. Alive rows
+# bypass the window filter so a replace straddling the cutoff still finds its live row;
+# the window is applied to the name's latest DDL instead.
 SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
 select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
 from (
@@ -43,16 +47,18 @@ from (
             ELSE TABLE_TYPE
         END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and {include_transient_tables}
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
     and {include_views}
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
@@ -133,15 +139,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
       and TABLE_SCHEMA = '{schema}'
       and TABLE_TYPE = 'EXTERNAL TABLE'
-      and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+      and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
@@ -159,17 +167,19 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT != 'YES'
     AND IS_DYNAMIC != 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
@@ -184,15 +194,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_GET_MVIEW_NAMES = """
@@ -207,15 +219,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'MATERIALIZED VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_GET_STREAM_NAMES = """
@@ -294,16 +308,18 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT = 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
@@ -320,16 +336,18 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_DYNAMIC = 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(

@@ -259,7 +259,8 @@ class RdfLiveWriteTest {
             (fromId, toId) ->
                 lineageEdgeExists
                     ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
-                    : Optional.empty()));
+                    : Optional.empty(),
+            () -> new OntologyActiveGraph(Entity.getCollectionDAO())));
   }
 
   private static EntityRelationship lineage(final UUID fromId, final UUID toId) {

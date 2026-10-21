@@ -11,28 +11,28 @@
  *  limitations under the License.
  */
 import {
-  CheckOutlined,
-  CloseOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import {
   Box,
   Button,
   Divider,
+  FormField,
+  HookForm,
+  Input,
   Owner,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Form, Input } from 'antd';
+import {
+  Check,
+  InfoCircle,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, last } from 'lodash';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-} from '../../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
@@ -66,6 +66,9 @@ const TeamsInfo = ({
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
+  const emailForm = useForm<{ email: string }>({
+    defaultValues: { email: '' },
+  });
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -81,11 +84,14 @@ const TeamsInfo = ({
   // Task 8 rule 2). hasEditPermission (bare EditAll-only) and hasEditOwnerPermission (already
   // used the prioritized helper directly, just not through the shared derivation) are both
   // identical mappings onto canEditAll/canEditOwners.
-  const { canEditAll, canEditOwners } = useMemo(
+  const { canEditAll, canEditOwners, canEditDomains } = useMemo(
     () => getDerivedPermissionFlags(entityPermissions, isTeamDeleted),
     [entityPermissions, isTeamDeleted]
   );
   const hasEditPermission = canEditAll;
+  // Reassigning a team's domain is EditDomains on the server (EditAll still
+  // subsumes it), so gate the domain control on that, not bare EditAll.
+  const hasEditDomainPermission = canEditDomains;
   const hasEditOwnerPermission = canEditOwners;
 
   const isUserPartOfCurrentTeam = useMemo<boolean>(() => {
@@ -201,69 +207,68 @@ const TeamsInfo = ({
               onClick={(e) => {
                 // Used to stop click propagation event to parent TeamDetailV1 collapsible panel
                 e.stopPropagation();
+                emailForm.reset({ email: email ?? '' });
                 setIsEmailEdit(true);
               }}
             />
           )}
         </div>
         {isEmailEdit ? (
-          <Form
-            initialValues={{ email }}
-            //  Used onClick stop click propagation event anywhere in the form to parent
-            //  TeamsDetailV1 collapsible panel
-            onClick={(e) => e.stopPropagation()}
-            onFinish={onEmailSave}>
-            <Box
-              inline
-              align="baseline"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Form.Item
-                className="m-b-0"
-                name="email"
-                rules={[
-                  {
-                    pattern: EMAIL_REG_EX,
-                    type: 'email',
-                    message: t('message.field-text-is-invalid', {
-                      fieldText: t('label.email'),
-                    }),
-                  },
-                ]}>
-                <Input
-                  className="w-48"
-                  data-testid="email-input"
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.email-lowercase'),
-                  })}
-                />
-              </Form.Item>
-              <Box
-                inline
-                align="center"
-                className="layout-space layout-space-horizontal"
-                gap={1}
-                itemClassName="layout-space-item">
-                <Button
-                  color="primary"
-                  data-testid="cancel-edit-email"
-                  isDisabled={isLoading}
-                  size="xs"
-                  onClick={() => setIsEmailEdit(false)}>
-                  <CloseOutlined />
-                </Button>
-                <Button
-                  color="primary"
-                  data-testid="save-edit-email"
-                  isLoading={isLoading}
-                  size="xs"
-                  type="submit">
-                  <CheckOutlined />
-                </Button>
+          // Stops clicks reaching the parent TeamsDetailV1 collapsible panel.
+          <div role="presentation" onClick={(e) => e.stopPropagation()}>
+            <HookForm
+              form={emailForm}
+              onSubmit={emailForm.handleSubmit(onEmailSave)}>
+              <Box align="start" gap={2}>
+                <FormField
+                  control={emailForm.control}
+                  name="email"
+                  rules={{
+                    pattern: {
+                      value: EMAIL_REG_EX,
+                      message: t('message.field-text-is-invalid', {
+                        fieldText: t('label.email'),
+                      }),
+                    },
+                  }}>
+                  {({ field, fieldState }) => (
+                    <Input
+                      aria-label={t('label.email')}
+                      className="tw:w-48"
+                      hint={fieldState.error?.message}
+                      inputDataTestId="email-input"
+                      isInvalid={fieldState.invalid}
+                      placeholder={t('label.enter-entity', {
+                        entity: t('label.email-lowercase'),
+                      })}
+                      size="sm"
+                      value={field.value}
+                      onBlur={field.onBlur}
+                      onChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+                <Box align="center" gap={1}>
+                  <Button
+                    color="primary"
+                    data-testid="cancel-edit-email"
+                    isDisabled={isLoading}
+                    size="xs"
+                    onClick={() => setIsEmailEdit(false)}>
+                    <XClose size={14} />
+                  </Button>
+                  <Button
+                    color="primary"
+                    data-testid="save-edit-email"
+                    isLoading={isLoading}
+                    size="xs"
+                    type="submit">
+                    <Check size={14} />
+                  </Button>
+                </Box>
               </Box>
-            </Box>
-          </Form>
+            </HookForm>
+          </div>
         ) : (
           <Box
             inline
@@ -281,7 +286,15 @@ const TeamsInfo = ({
         )}
       </Box>
     ),
-    [email, isEmailEdit, hasEditPermission, isLoading]
+    [
+      email,
+      isEmailEdit,
+      hasEditPermission,
+      isLoading,
+      emailForm,
+      onEmailSave,
+      t,
+    ]
   );
 
   const teamTypeElement = useMemo(() => {
@@ -418,7 +431,7 @@ const TeamsInfo = ({
         entityFqn={fullyQualifiedName ?? ''}
         entityId={id ?? ''}
         entityType={EntityType.TEAM}
-        hasPermission={hasEditPermission}
+        hasPermission={hasEditDomainPermission}
       />
       <Divider className="vertical-divider tw:mx-2" orientation="vertical" />
       <Owner
@@ -466,10 +479,10 @@ const TeamsInfo = ({
             excludeTriggerFromTabOrder
             title={t('message.team-distinct-user-description')}
             triggerClassName="tw:inline-flex">
-            <InfoCircleOutlined
-              className="m-x-xss"
+            <InfoCircle
+              className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
               data-testid="helper-icon"
-              style={{ color: GRAYED_OUT_COLOR }}
+              size={14}
             />
           </Tooltip>
         </Typography>

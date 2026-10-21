@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/previewNativeOntologyImport.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PreviewNativeOntologyImport",
+  "description": "Preview a local RDF document as native ontology draft operations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.PreviewNativeOntologyImport",
+  "properties": {
+    "format": {
+      "type": "string",
+      "enum": ["turtle", "rdfxml", "ntriples", "jsonld"]
+    },
+    "data": {
+      "type": "string",
+      "maxLength": 10485760
+    }
+  },
+  "required": ["format", "data"],
+  "additionalProperties": false
+}

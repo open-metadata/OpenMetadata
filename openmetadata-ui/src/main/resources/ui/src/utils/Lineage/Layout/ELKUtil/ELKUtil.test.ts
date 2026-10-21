@@ -363,6 +363,35 @@ describe('ELKLayout', () => {
     );
   });
 
+  it('passes ELK one edge per source and target pair', async () => {
+    const nodes: ElkNode[] = ['a', 'b', 'c'].map((id) => ({
+      id,
+      width: 100,
+      height: 50,
+    }));
+    const columnEdge = (id: string, source: string, target: string) => ({
+      id,
+      sources: [source],
+      targets: [target],
+    });
+
+    mockElkLayout.mockResolvedValue({ id: 'root', children: nodes });
+
+    await ELKLayout.layoutGraph(nodes, [
+      columnEdge('a.c1->b.c1', 'a', 'b'),
+      columnEdge('a.c2->b.c2', 'a', 'b'),
+      columnEdge('b.c1->c.c1', 'b', 'c'),
+      columnEdge('a.c3->b.c3', 'a', 'b'),
+      columnEdge('b.c2->a.c4', 'b', 'a'),
+    ]);
+
+    expect(mockElkLayout.mock.calls[0][0].edges).toEqual([
+      columnEdge('a.c1->b.c1', 'a', 'b'),
+      columnEdge('b.c1->c.c1', 'b', 'c'),
+      columnEdge('b.c2->a.c4', 'b', 'a'),
+    ]);
+  });
+
   it('uses layered algorithm', () => {
     expect(ELKLayout.layoutOptions['elk.algorithm']).toBe('layered');
   });

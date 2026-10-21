@@ -35,12 +35,7 @@ export const useOntologyTermDetails = (
     }
 
     getGlossaryTermsById(termId, {
-      fields: [
-        'conceptMappings',
-        'attributes',
-        'effectiveAttributes',
-        'realizedIn',
-      ],
+      fields: ['conceptMappings'],
     })
       .then((term) => {
         if (active) {

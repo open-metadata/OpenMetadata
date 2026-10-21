@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/previewNativeOntologyPack.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PreviewNativeOntologyPack",
+  "description": "Preview selected verified library modules as native ontology draft operations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.PreviewNativeOntologyPack",
+  "properties": {
+    "moduleIds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackModule.json#/properties/id",
+        "maxLength": 128
+      },
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true
+    }
+  },
+  "required": ["moduleIds"],
+  "additionalProperties": false
+}

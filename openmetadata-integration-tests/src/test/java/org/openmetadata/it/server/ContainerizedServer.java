@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.openmetadata.it.bench.ApiLatencyRecorder;
 import org.openmetadata.it.server.sso.MockOidcServer;
 import org.openmetadata.it.server.sso.SsoProfile;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -174,7 +175,7 @@ public final class ContainerizedServer implements AutoCloseable {
     final URI base =
         URI.create("http://" + server.getHost() + ":" + server.getMappedPort(SERVER_PORT) + "/api");
     final OpenMetadataConfig config =
-        OpenMetadataConfig.builder()
+        ApiLatencyRecorder.instrument(OpenMetadataConfig.builder())
             .serverUrl(base.toString())
             .accessToken(adminJwt)
             .readTimeout(120000)

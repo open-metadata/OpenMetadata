@@ -12,13 +12,12 @@
  */
 
 import { SearchIndex } from '../../../enums/search.enum';
-import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getEntityNameLabel } from '../../../utils/EntityNameUtils';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
-  getAlertAiFqnSearchIndexes,
-  getAlertAiSourceItems,
-  searchAlertAiArgumentOptions,
-} from './AlertAiFormFieldsSearchUtils';
+  AlertSourceSearch,
+  getAlertSourceSearch,
+} from '../../../utils/Alerts/AlertSourceSearch';
+import { searchAlertAiArgumentOptions } from './AlertAiFormFieldsSearchUtils';
 
 const mockSearchContracts = jest.fn();
 
@@ -26,36 +25,57 @@ jest.mock('../../../rest/contractAPI', () => ({
   searchContracts: (...args: unknown[]) => mockSearchContracts(...args),
 }));
 
-describe('AlertAiFormFieldsSearchUtils', () => {
-  it('builds readable source options and preserves the selected source', () => {
-    const filterResources = [
-      { name: 'table' },
-      { name: 'pipeline' },
-    ] as ObservabilityFilterResourceDescriptor[];
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
+}));
 
-    expect(getAlertAiSourceItems(filterResources, 'dashboard')).toEqual([
-      expect.objectContaining({
-        id: 'table',
-        label: getEntityNameLabel('table'),
-      }),
-      expect.objectContaining({
-        id: 'pipeline',
-        label: getEntityNameLabel('pipeline'),
-      }),
-      expect.objectContaining({
-        id: 'dashboard',
-        label: getEntityNameLabel('dashboard'),
-      }),
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+const sourceSearchOf = (
+  found: Partial<AlertSourceSearch> = {}
+): AlertSourceSearch => ({
+  indexes: [],
+  containerEntities: [],
+  byName: jest.fn().mockResolvedValue([]),
+  byId: jest.fn().mockResolvedValue([]),
+  ...found,
+});
+
+describe('searchAlertAiArgumentOptions', () => {
+  it('finds names through the search of every chosen source', async () => {
+    const byName = jest.fn().mockResolvedValue([
+      { label: 'shop.orders', value: 'shop.orders' },
+      { label: 'sales.revenue', value: 'sales.revenue' },
     ]);
+
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'fqnList',
+        searchText: ' or ',
+        sourceSearch: sourceSearchOf({ byName }),
+      })
+    ).resolves.toEqual([
+      { id: 'shop.orders', label: 'shop.orders' },
+      { id: 'sales.revenue', label: 'sales.revenue' },
+    ]);
+    expect(byName).toHaveBeenCalledWith('or');
   });
 
-  it('builds FQN search indexes from source and container entities', () => {
-    expect(
-      getAlertAiFqnSearchIndexes('database', ['databaseSchema', 'table'])
-    ).toEqual([
-      SearchIndex.DATABASE,
-      SearchIndex.DATABASE_SCHEMA,
-      SearchIndex.TABLE,
+  it('finds ids through the search of every chosen source', async () => {
+    const byId = jest
+      .fn()
+      .mockResolvedValue([{ id: 'id-1', fullyQualifiedName: 'shop.orders' }]);
+
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'entityIdList',
+        searchText: 'id',
+        sourceSearch: sourceSearchOf({ byId }),
+      })
+    ).resolves.toEqual([
+      { id: 'id-1', label: 'id-1', supportingText: 'shop.orders' },
     ]);
   });
 
@@ -69,7 +89,7 @@ describe('AlertAiFormFieldsSearchUtils', () => {
       searchAlertAiArgumentOptions({
         argument: 'fqnList',
         searchText: ' orders ',
-        selectedSource: 'dataContract',
+        sourceSearch: getAlertSourceSearch(['dataContract']),
       })
     ).resolves.toEqual([
       {
@@ -79,5 +99,43 @@ describe('AlertAiFormFieldsSearchUtils', () => {
     ]);
 
     expect(mockSearchContracts).toHaveBeenCalledWith('orders', 50);
+  });
+
+  it('searches the index an argument always searches, whatever the sources', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [{ _source: { fullyQualifiedName: 'finance', name: 'finance' } }],
+      },
+    });
+
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'domainList',
+        searchText: 'fin',
+        sourceSearch: sourceSearchOf(),
+      })
+    ).resolves.toEqual([{ id: 'finance', label: 'finance' }]);
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'fin', searchIndex: SearchIndex.DOMAIN })
+    );
+  });
+
+  it('offers nothing for an argument it does not search, and nothing when a search fails', async () => {
+    const byName = jest.fn().mockRejectedValue(new Error('down'));
+
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'pipelineStateList',
+        searchText: '',
+        sourceSearch: sourceSearchOf(),
+      })
+    ).resolves.toEqual([]);
+    await expect(
+      searchAlertAiArgumentOptions({
+        argument: 'fqnList',
+        searchText: '',
+        sourceSearch: sourceSearchOf({ byName }),
+      })
+    ).resolves.toEqual([]);
   });
 });

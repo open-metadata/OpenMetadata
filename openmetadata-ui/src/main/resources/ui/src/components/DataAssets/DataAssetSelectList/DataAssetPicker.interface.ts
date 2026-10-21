@@ -66,6 +66,11 @@ export interface DataAssetSelectListProps
   onChange?: (option?: DataAssetOption | DataAssetOption[]) => void;
 }
 
+export interface DataAssetPickerCountBarProps {
+  count: number;
+  total: number;
+}
+
 export interface DataAssetPickerRowProps {
   option: DataAssetPickerOption;
   isFocused?: boolean;
@@ -73,7 +78,7 @@ export interface DataAssetPickerRowProps {
 
 export interface UseAsyncDataAssetOptionsParams {
   isOpen: boolean;
-  searchIndex: SearchIndex;
+  searchIndex: SearchIndex | SearchIndex[];
   queryFilter?: Record<string, unknown>;
   debounceTimeout: number;
 }

@@ -428,8 +428,8 @@ describe('TestDetailsPageV1 component', () => {
 
     it('does not show the permission-loading skeleton in tour mode, even while isLoading is true', () => {
       // mockImplementationOnce would only override the FIRST call to useTourProvider() —
-      // TableDetailsPageV1 is wrapped in withSuggestions(withActivityFeed(...)), and those
-      // wrappers (or providers they render) may call the hook before the inner component
+      // TableDetailsPageV1 is wrapped in withActivityFeed(...), and that
+      // wrapper (or providers it renders) may call the hook before the inner component
       // does, silently consuming the "once" override before it reaches this test's target.
       // A persistent mockImplementation, explicitly restored after, doesn't depend on call
       // order.
@@ -475,6 +475,26 @@ describe('TestDetailsPageV1 component', () => {
         'fqn',
         { enabled: false }
       );
+    });
+
+    it('does not request the query count for the tour mock table', async () => {
+      (getQueriesList as jest.Mock).mockClear();
+      (useTourProvider as jest.Mock).mockImplementation(() => ({
+        isTourOpen: true,
+        activeTabForTourDatasetPage: EntityTabs.TABLE_QUERIES,
+        isTourPage: true,
+        tourMockDatasetData: mockDatasetData,
+      }));
+      setMockPermissions({});
+
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+
+      expect(await screen.findByText('testTableQueries')).toBeInTheDocument();
+      expect(getQueriesList).not.toHaveBeenCalled();
     });
 
     it('uses tour permissions for Lineage edit access', async () => {

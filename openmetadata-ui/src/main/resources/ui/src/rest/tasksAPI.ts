@@ -73,6 +73,7 @@ export type TaskCountView =
 interface TaskScopedListParams {
   fields?: string;
   status?: TaskStatus;
+  type?: TaskType;
   statusGroup?: TaskStatusGroup;
   domain?: string;
   /** Free-text search across the task name, request reason and about-entity. */
@@ -97,6 +98,7 @@ export interface ListTasksParams {
   createdBy?: string;
   createdById?: string;
   aboutEntity?: string;
+  aboutEntityIds?: string;
   aboutService?: string;
   approver?: string;
   approverId?: string;

@@ -13,11 +13,9 @@
 
 package org.openmetadata.service.ontology;
 
-import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
 import org.openmetadata.schema.api.data.MeasuredKpiPatternInput;
@@ -27,8 +25,6 @@ import org.openmetadata.schema.api.data.ProductHierarchyPatternInput;
 import org.openmetadata.schema.api.data.RegulatoryControlPatternInput;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.RelationshipType;
-import org.openmetadata.schema.type.OntologyConfiguration;
-import org.openmetadata.schema.type.OntologyLayer;
 
 final class OntologyPatternTestFixtures {
   static final long NOW = 1_788_000_000_000L;
@@ -41,16 +37,7 @@ final class OntologyPatternTestFixtures {
         .withId(UUID.fromString("bdc30a0b-d151-496e-99ee-bf74f8269912"))
         .withName("Governance")
         .withFullyQualifiedName("Governance")
-        .withDescription("Governed concepts")
-        .withOntologyConfiguration(
-            new OntologyConfiguration()
-                .withBaseIri(URI.create("https://example.org/governance/"))
-                .withLayer(OntologyLayer.L_3)
-                .withImports(List.of())
-                .withPrefixes(List.of())
-                .withIriMintingPattern("concept/{term}/{uuid}")
-                .withReadOnly(false)
-                .withInstalledPacks(List.of()));
+        .withDescription("Governed concepts");
   }
 
   static InstantiateOntologyPattern regulatoryRequest() {
@@ -84,7 +71,6 @@ final class OntologyPatternTestFixtures {
     return new OntologyPatternDraftFactory(
         new OntologyPatternCatalog(),
         new OntologyPatternRequestValidator(),
-        new OntologyIriMinter(),
         OntologyPatternTestFixtures::relationshipType,
         CLOCK);
   }

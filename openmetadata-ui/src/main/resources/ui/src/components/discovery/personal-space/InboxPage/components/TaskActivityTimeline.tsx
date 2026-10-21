@@ -160,7 +160,7 @@ const TaskActivityTimeline: React.FC<TaskActivityTimelineProps> = ({
     <Box data-testid="task-activity-timeline" direction="col" gap={5}>
       <Box align="center" className="tw:justify-between" gap={3}>
         <Box align="center" gap={2}>
-          <Typography size="text-md" weight="semibold">
+          <Typography size="text-sm" weight="medium">
             {t('label.activity')}
           </Typography>
           <Badge color="gray" size="sm" type="pill-color">

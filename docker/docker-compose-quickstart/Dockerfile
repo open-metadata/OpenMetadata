@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 # Fetch and unpack the release. alpine only for busybox wget and tar; nothing
-# from this stage reaches the runtime image except the two symlinks below.
+# from this stage reaches the runtime image except the runtime shims below.
 FROM alpine:3 AS dist
 ARG RI_VERSION="2.0.0-SNAPSHOT"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
@@ -33,7 +33,10 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/bin && \
     ln -s /busybox/sh /shim/bin/sh && \
     printf '#!/busybox/sh\nexec /busybox/sh "$@"\n' > /shim/bin/bash && \
-    chmod 755 /shim/bin/bash
+    chmod 755 /shim/bin/bash && \
+    # bootstrap/openmetadata-ops.sh uses /usr/bin/env in its shebang.
+    mkdir -p /shim/usr/bin && \
+    ln -s /busybox/env /shim/usr/bin/env
 
 # Temurin rather than the runtime's own distro, even though that puts the
 # builder on a newer glibc (Ubuntu 26.04 / 2.43) than the runtime (debian 13 /
@@ -104,6 +107,7 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=dist /shim/bin /bin
+COPY --from=dist /shim/usr/bin /usr/bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
 

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
@@ -64,6 +65,7 @@ export interface CustomPropertiesDetailPageProps {
   entityType: Type;
   onAddProperty: () => void;
   onEditProperty: (property: CustomProperty) => void;
+  onSetHeaderActions: (actions: ReactNode) => void;
 }
 
 export interface CustomPropertiesLandingPageProps {

@@ -3,6 +3,7 @@ import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DotsVertical } from '../../../icons';
+import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -155,7 +156,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:py-1 tw:outline-hidden tw:select-none',
+          'tw:max-h-[min(24rem,40vh)] tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
@@ -204,30 +205,36 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = (
-  props: AriaButtonProps & RefAttributes<HTMLButtonElement>
-) => {
-  const { t } = useCoreTranslation();
+// forwardRef so callers can anchor popovers to the button; React 18 drops a
+// plain `ref` prop on function components.
+const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
+  (props, ref) => {
+    const { t } = useCoreTranslation();
 
-  return (
-    <AriaButton
-      {...props}
-      aria-label={t('label.open-menu', 'Open menu')}
-      className={(state) =>
-        cx(
-          'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-          (state.isPressed || state.isHovered) && 'tw:text-fg-quaternary_hover',
-          (state.isPressed || state.isFocusVisible) &&
-            'tw:outline-2 tw:outline-offset-2',
-          typeof props.className === 'function'
-            ? props.className(state)
-            : props.className
-        )
-      }>
-      <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-    </AriaButton>
-  );
-};
+    return (
+      <AriaButton
+        {...props}
+        aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
+        className={(state) =>
+          cx(
+            'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            (state.isPressed || state.isHovered) &&
+              'tw:text-fg-quaternary_hover',
+            (state.isPressed || state.isFocusVisible) &&
+              'tw:outline-2 tw:outline-offset-2',
+            typeof props.className === 'function'
+              ? props.className(state)
+              : props.className
+          )
+        }
+        ref={ref}>
+        <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
+      </AriaButton>
+    );
+  }
+);
+
+DropdownDotsButton.displayName = 'DropdownDotsButton';
 
 export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> &
   RefAttributes<HTMLElement>;

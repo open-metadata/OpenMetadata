@@ -61,7 +61,7 @@ Warnings remain non-blocking; ESLint errors and formatting changes still fail `u
 | Licence header | changed files | Apache-2.0 header missing/stale |
 | i18n key-sync | all locales | locale files out of sync with `en-us.json` |
 | `tw-audit` | changed files | hardcoded Tailwind value that maps to a design token |
-| `tw-guard` | **added lines** | new `antd` import or new `.less` file |
+| `tw-guard` | **added lines** | new `antd` import, new `assets/svg/` `.svg` file or import, or new `.less` file |
 | `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
 | SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
 | OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |

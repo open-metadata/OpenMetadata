@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 import { BadgeWithIcon } from '@openmetadata/ui-core-components';
-import { CheckCircle, XCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle,
+  Clock,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { CSVImportResult } from '../../../../generated/type/csvImportResult';
 interface ImportStatusProps {
@@ -53,6 +57,19 @@ export const ImportStatus = ({ csvImportResult }: ImportStatusProps) => {
         </span>
         {` ${t('label.failed')}`}
       </BadgeWithIcon>
+      {Boolean(csvImportResult.numberOfRowsPendingApproval) && (
+        <BadgeWithIcon
+          className="csv-import-status-chip"
+          color="warning"
+          iconLeading={Clock}
+          size="lg"
+          type="pill-color">
+          <span data-testid="pending-approval-row">
+            {csvImportResult.numberOfRowsPendingApproval}
+          </span>
+          {` ${t('label.pending-approval')}`}
+        </BadgeWithIcon>
+      )}
     </div>
   );
 };

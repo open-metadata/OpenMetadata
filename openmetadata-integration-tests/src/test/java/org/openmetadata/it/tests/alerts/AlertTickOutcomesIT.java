@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,8 +26,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.ledger.LedgerKeys;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.events.consumer.ConsumerJob;
+import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
+import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 
 /** What one tick records, for the cases today's code could not reach. */
 @Isolated
@@ -77,8 +80,7 @@ class AlertTickOutcomesIT {
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
       DirectTick.run(alert);
 
-      EventsRecord record =
-          EventSubscriptionScheduler.getInstance().getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(1, record.getSuccessfulEventsCount());
       assertEquals(1, record.getFailedEventsCount());
       assertEquals(1, record.getTotalEventsCount() - record.getPendingEventsCount());
@@ -107,7 +109,7 @@ class AlertTickOutcomesIT {
   void aTickWhoseCommitFailsIsNotInterrupted(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_fails", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_fails", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
 
@@ -123,7 +125,7 @@ class AlertTickOutcomesIT {
   void failedCommitsNeverSetAnEventAside(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.class.getName(), receiver);
+          webhookAlert(ns, "commit_recovers", FailingCommitConsumer.ID, receiver);
       QuietAlert.settle(alert);
       noteInterruptedTicks(alert, 5);
       FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 1));
@@ -138,8 +140,7 @@ class AlertTickOutcomesIT {
   @Test
   void interruptedTicksCommitAfterEveryEvent(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "commit_each", LatchedConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "commit_each", LatchedConsumer.ID, receiver);
       QuietAlert.settle(alert);
       long openedAt = positionOf(alert);
       noteInterruptedTicks(alert, 3);
@@ -179,7 +180,7 @@ class AlertTickOutcomesIT {
 
       JsonNode answer = JsonUtils.readTree(body);
       assertEquals("NORMAL", answer.get("triggerState").asText());
-      assertTrue(answer.get("jobClass").asText().endsWith("AlertPublisher"));
+      assertEquals(ConsumerJob.class.getName(), answer.get("jobClass").asText());
       assertTrue(answer.get("lag").asLong() >= 3);
     }
   }
@@ -189,25 +190,85 @@ class AlertTickOutcomesIT {
   @Test
   void selfDrivenAlertReportsWhatItDeliveredAndNoBacklog(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
-      EventSubscription alert =
-          webhookAlert(ns, "self_driven", ReportingConsumer.class.getName(), receiver);
+      EventSubscription alert = webhookAlert(ns, "self_driven", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
       ReportingConsumer.reportOnNextTick(alert.getId(), 2, 1);
       DirectTick.run(alert);
 
-      EventSubscriptionScheduler scheduler = EventSubscriptionScheduler.getInstance();
-      EventsRecord record = scheduler.getEventSubscriptionEventsRecord(alert.getId());
+      EventsRecord record = AlertDiagnostics.eventsRecord(alert.getId());
       assertEquals(List.of(3L, 2L, 1L, 0L), countsOf(record));
       EventSubscriptionDiagnosticInfo diagnostics =
-          scheduler.getEventSubscriptionDiagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
+          AlertDiagnostics.diagnosticInfo(alert.getId(), EVERY_ROW, 0, false);
       assertEquals(2L, diagnostics.getSuccessfulEventsCount());
       assertEquals(1L, diagnostics.getFailedEventsCount());
       assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
       assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
       assertTrue(diagnostics.getHasProcessedAllEvents());
       assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
-      assertTrue(scheduler.checkIfPublisherPublishedAllEvents(alert.getId()));
+      assertTrue(
+          EventSubscriptionScheduler.getInstance()
+              .checkIfPublisherPublishedAllEvents(alert.getId()));
+    }
+  }
+
+  // The count of relevant unprocessed events is the exact backlog, not the size of one
+  // limit-bounded page. The sibling EventsRecord counts the same way; see
+  // AlertDiagnostics.eventsRecord. Covers the AlertDiagnostics call and the public REST contract.
+  @Test
+  void diagnosticInfoCountsAllRelevantUnprocessedBeyondThePage(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = webhookAlert(ns, "diagnostic_count", null, receiver);
+      QuietAlert.settle(alert);
+      int limit = 1;
+      FixtureEvents.insert(FixtureEvents.tableEvents().subList(0, 2)); // two table events
+
+      EventSubscriptionDiagnosticInfo diagnostics =
+          AlertDiagnostics.diagnosticInfo(alert.getId(), limit, 0, false);
+
+      assertEquals(
+          2L,
+          diagnostics.getRelevantUnprocessedEventsCount(),
+          "relevantUnprocessedEventsCount is the exact backlog, not capped at the page limit");
+      assertEquals(2L, diagnostics.getTotalUnprocessedEventsCount());
+      assertEquals(limit, diagnostics.getRelevantUnprocessedEventsList().size());
+      assertFalse(diagnostics.getHasProcessedAllEvents());
+
+      // The public REST contract returns the same exact count, not a page-capped value.
+      String body =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events/subscriptions/id/" + alert.getId() + "/diagnosticInfo?limit=" + limit,
+                  null,
+                  RequestOptions.builder().build());
+      JsonNode answer = JsonUtils.readTree(body);
+      assertEquals(
+          2L,
+          answer.get("relevantUnprocessedEventsCount").asLong(),
+          "the REST endpoint reports the exact backlog, not the page limit");
+      assertEquals(limit, answer.path("relevantUnprocessedEventsList").size());
+
+      // listCountOnly=true returns the exact count with a null list, as the schema describes.
+      String countOnly =
+          SdkClients.adminClient()
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.GET,
+                  "/v1/events/subscriptions/id/"
+                      + alert.getId()
+                      + "/diagnosticInfo?limit="
+                      + limit
+                      + "&listCountOnly=true",
+                  null,
+                  RequestOptions.builder().build());
+      JsonNode countOnlyAnswer = JsonUtils.readTree(countOnly);
+      assertEquals(2L, countOnlyAnswer.get("relevantUnprocessedEventsCount").asLong());
+      JsonNode countOnlyList = countOnlyAnswer.path("relevantUnprocessedEventsList");
+      assertTrue(
+          countOnlyList.isMissingNode() || countOnlyList.isNull() || countOnlyList.isEmpty(),
+          "listCountOnly=true returns no list content, just the exact count");
     }
   }
 
@@ -215,7 +276,7 @@ class AlertTickOutcomesIT {
   void schedulingOfASelfDrivenAlertShowsNoLag(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
       EventSubscription alert =
-          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.class.getName(), receiver);
+          webhookAlert(ns, "self_driven_scheduling", ReportingConsumer.ID, receiver);
       QuietAlert.settle(alert);
       FixtureEvents.insert(FixtureEvents.tableEvents());
 

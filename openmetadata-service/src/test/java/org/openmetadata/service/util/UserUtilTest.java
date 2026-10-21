@@ -1,5 +1,6 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -19,18 +21,21 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.Entity.USER;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -47,7 +52,9 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
@@ -62,6 +69,8 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.email.EmailUtil;
 
 class UserUtilTest {
+
+  private static final AuthorizerConfiguration NO_CONFIGURED_ADMINS = new AuthorizerConfiguration();
 
   @Test
   void updateUserWithHashedPwdStoresBCryptPassword() {
@@ -538,7 +547,8 @@ class UserUtilTest {
           .thenReturn(dataConsumerRole);
 
       boolean changed =
-          UserUtil.reSyncUserRolesFromToken(uriInfo, user, Set.of(ADMIN_ROLE, "DataConsumer"));
+          UserUtil.reSyncUserRolesFromToken(
+              uriInfo, user, Set.of(ADMIN_ROLE, "DataConsumer"), NO_CONFIGURED_ADMINS);
 
       assertTrue(changed);
       assertTrue(user.getIsAdmin());
@@ -562,7 +572,9 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      boolean changed = UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer"));
+      boolean changed =
+          UserUtil.reSyncUserRolesFromToken(
+              null, user, Set.of("DataConsumer"), NO_CONFIGURED_ADMINS);
 
       assertFalse(changed);
       verifyNoInteractions(userRepository);
@@ -571,29 +583,31 @@ class UserUtilTest {
 
   @Test
   void getRolesFromAuthorizationTokenKeepsNullDistinctFromEmpty() {
-    // A token with no roles claim must stay null all the way to the sync, otherwise it is
-    // indistinguishable from a provider that revoked every role.
-    CatalogSecurityContext noRolesClaim =
+    // A context with nothing to sync from (the feature is off, or OpenMetadata minted the token)
+    // must stay null all the way to the sync, otherwise it is indistinguishable from a provider
+    // that revoked every role.
+    CatalogSecurityContext nothingToSyncFrom =
         new CatalogSecurityContext(
             () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, null);
-    CatalogSecurityContext emptyRolesClaim =
+    CatalogSecurityContext providerGrantsNoRoles =
         new CatalogSecurityContext(
             () -> "alice", "https", CatalogSecurityContext.OPENID_AUTH, Set.of());
 
-    assertNull(UserUtil.getRolesFromAuthorizationToken(noRolesClaim));
-    assertEquals(Set.of(), UserUtil.getRolesFromAuthorizationToken(emptyRolesClaim));
+    assertNull(UserUtil.getRolesFromAuthorizationToken(nothingToSyncFrom));
+    assertEquals(Set.of(), UserUtil.getRolesFromAuthorizationToken(providerGrantsNoRoles));
   }
 
   @Test
-  void reSyncUserRolesFromTokenLeavesRolesAloneWhenProviderSentNoRolesClaim() {
+  void reSyncUserRolesFromTokenLeavesTheUserAloneWhenThereIsNothingToSyncFrom() {
     UserRepository userRepository = mock(UserRepository.class);
-    User user = userWithRoles("alice", "DataSteward");
+    User user = userWithRoles("alice", "DataSteward").withIsAdmin(true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, null));
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, null, NO_CONFIGURED_ADMINS));
 
+      assertTrue(user.getIsAdmin());
       assertEquals(List.of("DataSteward"), roleNames(user));
       verifyNoInteractions(userRepository);
     }
@@ -608,7 +622,7 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
 
       assertEquals(List.of(), roleNames(user));
       verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
@@ -623,7 +637,7 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, Set.of()));
+      assertFalse(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
 
       verifyNoInteractions(userRepository);
     }
@@ -638,7 +652,8 @@ class UserUtilTest {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(ADMIN_ROLE)));
+      assertTrue(
+          UserUtil.reSyncUserRolesFromToken(null, user, Set.of(ADMIN_ROLE), NO_CONFIGURED_ADMINS));
 
       assertTrue(user.getIsAdmin());
       assertEquals(List.of(), roleNames(user));
@@ -647,29 +662,62 @@ class UserUtilTest {
   }
 
   @Test
-  void reSyncUserRolesFromTokenDoesNotDemoteAdminsWhenProviderOmitsTheAdminRole() {
-    // adminPrincipals grants admin outside the provider, so a missing admin role in the token is
-    // not enough to conclude the user should lose it.
+  void reSyncUserRolesFromTokenDemotesAnAdminTheProviderNoLongerGrantsAdmin() {
     UUID userId = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    User user = userWithRoles("alice", "DataSteward").withId(userId).withIsAdmin(true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of(), NO_CONFIGURED_ADMINS));
+
+      assertFalse(user.getIsAdmin());
+      assertEquals(List.of(), roleNames(user));
+      verify(userRepository).patch(eq(null), eq(userId), eq("alice"), any());
+    }
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenKeepsAdminForAnAdminEmailTheProviderDoesNotGrantAdmin() {
+    AuthorizerConfiguration adminByEmail =
+        new AuthorizerConfiguration().withAdminEmails(Set.of("alice@om.test"));
+    User user = syncConfiguredAdmin(adminByEmail);
+
+    assertTrue(user.getIsAdmin());
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  @Test
+  void reSyncUserRolesFromTokenKeepsAdminForAnAdminPrincipalTheProviderDoesNotGrantAdmin() {
+    AuthorizerConfiguration adminByName =
+        new AuthorizerConfiguration().withAdminPrincipals(Set.of("alice"));
+    User user = syncConfiguredAdmin(adminByName);
+
+    assertTrue(user.getIsAdmin());
+    assertEquals(List.of("DataConsumer"), roleNames(user));
+  }
+
+  private static User syncConfiguredAdmin(AuthorizerConfiguration authorizerConfiguration) {
     Role dataConsumerRole =
         new Role()
             .withId(UUID.randomUUID())
             .withName("DataConsumer")
             .withFullyQualifiedName("DataConsumer");
-    UserRepository userRepository = mock(UserRepository.class);
-    User user = userWithRoles("alice").withId(userId).withIsAdmin(true);
+    User user = userWithRoles("alice").withEmail("alice@om.test").withIsAdmin(true);
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
-      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity
+          .when(() -> Entity.getEntityRepository(Entity.USER))
+          .thenReturn(mock(UserRepository.class));
       mockedEntity
           .when(() -> Entity.getEntityByName(Entity.ROLE, "DataConsumer", "id", NON_DELETED, true))
           .thenReturn(dataConsumerRole);
 
-      assertTrue(UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer")));
-
-      assertTrue(user.getIsAdmin());
-      assertEquals(List.of("DataConsumer"), roleNames(user));
+      UserUtil.reSyncUserRolesFromToken(
+          null, user, Set.of("DataConsumer"), authorizerConfiguration);
     }
+    return user;
   }
 
   @Test
@@ -693,7 +741,8 @@ class UserUtilTest {
           .thenThrow(EntityNotFoundException.class);
 
       assertTrue(
-          UserUtil.reSyncUserRolesFromToken(null, user, Set.of("DataConsumer", "GhostRole")));
+          UserUtil.reSyncUserRolesFromToken(
+              null, user, Set.of("DataConsumer", "GhostRole"), NO_CONFIGURED_ADMINS));
 
       assertEquals(List.of("DataConsumer"), roleNames(user));
     }
@@ -1045,5 +1094,183 @@ class UserUtilTest {
   void testIsConfiguredAdmin_handlesNullConfigAndNullFields() {
     assertFalse(UserUtil.isConfiguredAdmin(null, "a@b.com", "a"));
     assertFalse(UserUtil.isConfiguredAdmin(new AuthorizerConfiguration(), "a@b.com", "a"));
+  }
+
+  @Test
+  void emailDomainRejectionRefusesEmailOutsideAllowedEmailDomains() {
+    // allowedEmailDomains restricts on its own: the deprecated enforcePrincipalDomain is not needed
+    Optional<String> rejection =
+        UserUtil.emailDomainRejection(
+            userWithEmail("alice@gmail.com"), ssoLogin(), allowedEmailDomains("getcollate.io"));
+
+    assertTrue(rejection.isPresent());
+    assertTrue(rejection.get().contains("gmail.com"));
+    assertTrue(rejection.get().contains("getcollate.io"));
+  }
+
+  @Test
+  void emailDomainRejectionAcceptsAllowedEmailDomainIgnoringCase() {
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+
+    assertTrue(isAllowed("alice@getcollate.io", config));
+    assertTrue(isAllowed("alice@GetCollate.IO", config));
+  }
+
+  @Test
+  void emailDomainRejectionPrefersAllowedEmailDomainsOverDeprecatedSettings() {
+    AuthorizerConfiguration config =
+        allowedEmailDomains("partner.io")
+            .withEnforcePrincipalDomain(true)
+            .withPrincipalDomain("getcollate.io");
+
+    assertTrue(isAllowed("bob@partner.io", config));
+    assertFalse(isAllowed("alice@getcollate.io", config));
+  }
+
+  @Test
+  void emailDomainRejectionAppliesDeprecatedEnforcePrincipalDomain() {
+    AuthorizerConfiguration principalOnly = enforcingPrincipalDomain("getcollate.io", Set.of());
+    assertTrue(isAllowed("alice@getcollate.io", principalOnly));
+    assertFalse(isAllowed("alice@gmail.com", principalOnly));
+
+    // allowedDomains replaces principalDomain rather than extending it, as it does at login
+    AuthorizerConfiguration withAllowedDomains =
+        enforcingPrincipalDomain("getcollate.io", Set.of("partner.io"));
+    assertTrue(isAllowed("bob@partner.io", withAllowedDomains));
+    assertFalse(isAllowed("alice@getcollate.io", withAllowedDomains));
+  }
+
+  @Test
+  void emailDomainRejectionFallsBackToDefaultPrincipalDomainWhenBlank() {
+    // Same as the login rule: under enforcement a blank principalDomain means openmetadata.org
+    AuthorizerConfiguration blank = enforcingPrincipalDomain("", Set.of());
+
+    assertTrue(isAllowed("admin@openmetadata.org", blank));
+    assertFalse(isAllowed("alice@gmail.com", blank));
+  }
+
+  @Test
+  void emailDomainRejectionAllowsEveryDomainWhenNothingRestricts() {
+    AuthorizerConfiguration unrestricted =
+        new AuthorizerConfiguration()
+            .withPrincipalDomain("getcollate.io")
+            .withEnforcePrincipalDomain(false);
+
+    assertTrue(isAllowed("alice@gmail.com", unrestricted));
+    assertTrue(
+        UserUtil.emailDomainRejection(userWithEmail("alice@gmail.com"), ssoLogin(), null)
+            .isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(
+                userWithEmail("alice@gmail.com"), null, allowedEmailDomains("getcollate.io"))
+            .isEmpty());
+  }
+
+  @Test
+  void emailDomainRejectionSkipsBots() {
+    // Every app bot is created as <name>@openmetadata.org whatever the configured domains are
+    User bot = userWithEmail("searchIndexingApplicationBot@openmetadata.org").withIsBot(true);
+
+    assertTrue(
+        UserUtil.emailDomainRejection(bot, ssoLogin(), allowedEmailDomains("getcollate.io"))
+            .isEmpty());
+  }
+
+  @Test
+  void emailDomainRejectionFollowsWhetherTheProviderChecksDomainsAtLogin() {
+    // Native-password sessions use OpenMetadata-issued tokens, which login never domain-checks;
+    // LDAP and SAML check the domain when the user signs in
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+    User outsider = userWithEmail("alice@gmail.com");
+
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.BASIC), config).isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.OPENMETADATA), config)
+            .isEmpty());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.LDAP), config).isPresent());
+    assertTrue(
+        UserUtil.emailDomainRejection(outsider, login(AuthProvider.SAML), config).isPresent());
+  }
+
+  @Test
+  void emailDomainRejectionRefusesMalformedEmailWhenRestricted() {
+    assertFalse(isAllowed("no-at-sign", allowedEmailDomains("getcollate.io")));
+  }
+
+  @Test
+  void validateEmailDomainThrowsBadRequestWithTheReason() {
+    AuthorizerConfiguration config = allowedEmailDomains("getcollate.io");
+
+    BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                UserUtil.validateEmailDomain(userWithEmail("alice@gmail.com"), ssoLogin(), config));
+    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), exception.getResponse().getStatus());
+    assertTrue(exception.getMessage().contains("gmail.com"));
+
+    assertDoesNotThrow(
+        () ->
+            UserUtil.validateEmailDomain(userWithEmail("alice@getcollate.io"), ssoLogin(), config));
+  }
+
+  private static boolean isAllowed(String email, AuthorizerConfiguration config) {
+    return UserUtil.emailDomainRejection(userWithEmail(email), ssoLogin(), config).isEmpty();
+  }
+
+  private static AuthenticationConfiguration ssoLogin() {
+    return login(AuthProvider.CUSTOM_OIDC);
+  }
+
+  private static AuthenticationConfiguration login(AuthProvider provider) {
+    return new AuthenticationConfiguration().withProvider(provider);
+  }
+
+  private static User userWithEmail(String email) {
+    return new User().withId(UUID.randomUUID()).withName(email.split("@")[0]).withEmail(email);
+  }
+
+  private static AuthorizerConfiguration allowedEmailDomains(String... domains) {
+    return new AuthorizerConfiguration().withAllowedEmailDomains(Set.of(domains));
+  }
+
+  private static AuthorizerConfiguration enforcingPrincipalDomain(
+      String principalDomain, Set<String> allowedDomains) {
+    return new AuthorizerConfiguration()
+        .withPrincipalDomain(principalDomain)
+        .withAllowedDomains(allowedDomains)
+        .withEnforcePrincipalDomain(true);
+  }
+
+  @Test
+  void getAdminEmailsAggregatesAcrossPages() {
+    UserRepository userRepository = mock(UserRepository.class);
+    ResultList<User> firstPage = mock(ResultList.class);
+    ResultList<User> secondPage = mock(ResultList.class);
+    Paging firstPaging = new Paging().withAfter("cursor-1");
+    Paging secondPaging = new Paging().withAfter(null);
+
+    when(firstPage.getData()).thenReturn(List.of(user("alice", "alice@example.com")));
+    when(firstPage.getPaging()).thenReturn(firstPaging);
+    when(secondPage.getData()).thenReturn(List.of(user("bob", "bob@example.com")));
+    when(secondPage.getPaging()).thenReturn(secondPaging);
+    when(userRepository.getFields("email")).thenReturn(new EntityUtil.Fields(Set.of("email")));
+    when(userRepository.listAfter(isNull(), any(), any(), eq(50), isNull())).thenReturn(firstPage);
+    when(userRepository.listAfter(isNull(), any(), any(), eq(50), eq("cursor-1")))
+        .thenReturn(secondPage);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(USER)).thenReturn(userRepository);
+
+      Set<String> admins = UserUtil.getAdminEmails();
+
+      assertEquals(Set.of("alice@example.com", "bob@example.com"), admins);
+    }
+  }
+
+  private User user(String name, String email) {
+    return new User().withId(UUID.randomUUID()).withName(name).withEmail(email);
   }
 }

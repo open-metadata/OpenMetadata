@@ -213,7 +213,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography className="domains-title">
+          <Typography size="text-xs" weight="semibold">
             {t('label.domain-plural')}
           </Typography>
         </div>
@@ -226,7 +226,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     return (
       <div className="domains-section">
         <div className="domains-header">
-          <Typography className="domains-title">
+          <Typography size="text-xs" weight="semibold">
             {t('label.domain-plural')}
           </Typography>
           {selectableList}
@@ -245,7 +245,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   return (
     <div className="domains-section">
       <div className="domains-header">
-        <Typography className="domains-title">
+        <Typography size="text-xs" weight="semibold">
           {t('label.domain-plural')}
         </Typography>
         {selectableList}

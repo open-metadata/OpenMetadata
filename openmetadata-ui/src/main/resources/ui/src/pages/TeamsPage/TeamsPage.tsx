@@ -186,7 +186,6 @@ const TeamsPage = () => {
           fields: [
             TabSpecificField.USER_COUNT,
             TabSpecificField.CHILDREN_COUNT,
-            TabSpecificField.OWNS,
             TabSpecificField.PARENTS,
             TabSpecificField.DEFAULT_PERSONA,
           ],

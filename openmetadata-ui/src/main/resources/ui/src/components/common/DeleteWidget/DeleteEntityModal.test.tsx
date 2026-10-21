@@ -101,6 +101,32 @@ describe('DeleteEntityModal', () => {
     expect(deleteEntity).toHaveBeenCalled();
   });
 
+  it.each([false, true])(
+    'deletes ontology properties through their collection endpoint (permanent: %s)',
+    async (permanent) => {
+      render(
+        <DeleteEntityModal
+          {...mockProps}
+          entityType={EntityType.ONTOLOGY_PROPERTY}
+        />
+      );
+
+      if (permanent) {
+        fireEvent.click(await screen.findByTestId('hard-delete'));
+      }
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-button'));
+      });
+
+      expect(deleteEntity).toHaveBeenCalledWith(
+        'ontologyProperties',
+        mockProps.entityId,
+        false,
+        permanent
+      );
+    }
+  );
+
   it('should call onCancel when discard is clicked', async () => {
     render(<DeleteEntityModal {...mockProps} />);
 

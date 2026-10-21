@@ -11,32 +11,22 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { Radio, RadioGroup } from 'react-aria-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import { PROVIDER_OPTIONS } from '../../../../../../utils/SSOUtils';
+import SsoProviderIcon from '../../../../../SettingsSso/SsoProviderIcon/SsoProviderIcon';
 
 interface SsoProviderGridProps {
-  selectedProvider?: AuthProvider;
   onSelect: (provider: AuthProvider) => void;
 }
 
-/** Single-choice provider cards; the Configure action lives in the page header. */
-const SsoProviderGrid = ({
-  selectedProvider,
-  onSelect,
-}: SsoProviderGridProps) => {
+/** Provider cards; picking one opens its setup form directly. */
+const SsoProviderGrid = ({ onSelect }: SsoProviderGridProps) => {
   const { t } = useTranslation();
 
   return (
-    <RadioGroup
-      aria-label={t('label.choose-provider')}
-      className="tw:flex tw:flex-col tw:gap-4"
-      data-testid="sso-provider-grid"
-      value={selectedProvider ?? null}
-      onChange={(value) => onSelect(value as AuthProvider)}>
+    <Box data-testid="sso-provider-grid" direction="col" gap={4}>
       <Typography
         className="tw:text-secondary"
         size="text-md"
@@ -45,30 +35,36 @@ const SsoProviderGrid = ({
       </Typography>
       <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:sm:grid-cols-2 tw:xl:grid-cols-4">
         {PROVIDER_OPTIONS.map((provider) => (
-          <Radio
-            className={({ isSelected, isFocusVisible }) =>
-              classNames(
-                'tw:flex tw:cursor-pointer tw:items-center tw:gap-4 tw:rounded-xl tw:border tw:bg-primary tw:p-4 tw:transition-colors tw:duration-100',
-                isSelected
-                  ? 'tw:border-brand tw:bg-brand-primary_alt'
-                  : 'tw:border-secondary tw:hover:bg-primary_hover',
-                isFocusVisible &&
-                  'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring'
-              )
-            }
+          <Card
+            isClickable
+            aria-label={provider.label}
             data-testid={`sso-provider-${provider.key}`}
             key={provider.key}
-            value={provider.key}>
-            <span className="tw:flex tw:size-12 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-primary">
-              <img alt="" height={24} src={provider.icon} width={24} />
-            </span>
-            <Typography size="text-md" weight="semibold">
-              {provider.label}
-            </Typography>
-          </Radio>
+            role="button"
+            tabIndex={0}
+            variant="muted"
+            onClick={() => onSelect(provider.key)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect(provider.key);
+              }
+            }}>
+            <Card.Content className="tw:flex tw:items-center tw:gap-4">
+              <Box
+                align="center"
+                className="tw:size-12 tw:shrink-0 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
+                justify="center">
+                <SsoProviderIcon icon={provider.icon} />
+              </Box>
+              <Typography size="text-md" weight="semibold">
+                {provider.label}
+              </Typography>
+            </Card.Content>
+          </Card>
         ))}
       </div>
-    </RadioGroup>
+    </Box>
   );
 };
 

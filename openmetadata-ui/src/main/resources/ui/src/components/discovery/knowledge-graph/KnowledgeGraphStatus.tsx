@@ -45,8 +45,8 @@ const KnowledgeGraphStatus = ({
             cy="5"
             fill={
               mode === 'ontology'
-                ? 'var(--om-color-purple-600)'
-                : 'var(--om-color-blue-dark-600)'
+                ? 'var(--tw-color-utility-purple-600)'
+                : 'var(--tw-color-utility-blue-dark-600)'
             }
             r="4"
           />

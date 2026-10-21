@@ -231,7 +231,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onClick={onPress}
       />
     ),
-    Card: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+    Card: Object.assign(
+      ({ children }: React.PropsWithChildren) => <div>{children}</div>,
+      {
+        Content: ({
+          children,
+          className,
+        }: {
+          children?: ReactNode;
+          className?: string;
+        }) => <div className={className}>{children}</div>,
+      }
+    ),
     Input: ReactActual.forwardRef(
       (
         {

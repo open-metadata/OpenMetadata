@@ -28,7 +28,7 @@
       }
     },
     "recipientCategories": {
-      "description": "Who inside the platform alerts can be sent to, for a source that does not say. Offered in the form, never enforced on save.",
+      "description": "Who inside the platform alerts can be sent to, for a source that does not say. An entity source offers owners and followers only when its entity type holds them. Offered in the form, never enforced on save.",
       "type": "array",
       "items": {
         "$ref": "./eventSubscription.json#/definitions/subscriptionCategory"

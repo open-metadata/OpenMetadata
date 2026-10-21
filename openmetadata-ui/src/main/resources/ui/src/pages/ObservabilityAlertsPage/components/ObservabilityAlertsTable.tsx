@@ -112,7 +112,7 @@ function ObservabilityAlertsTable({
             <Button
               color="link-color"
               data-testid="alert-name"
-              onClick={() => onViewAlert(record)}>
+              onPress={() => onViewAlert(record)}>
               {alertName}
             </Button>
           ) : (

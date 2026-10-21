@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const HeartRounded: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const HeartRounded: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M16.111 3C19.633 3 22 6.353 22 9.48 22 15.814 12.178 21 12 21S2 15.814 2 9.48C2 6.352 4.367 3 7.889 3 9.91 3 11.233 4.024 12 4.924 12.767 4.024 14.089 3 16.111 3"
+      d="M13.426 2.5c2.935 0 4.907 2.794 4.907 5.4 0 5.278-8.185 9.6-8.333 9.6s-8.333-4.322-8.333-9.6c0-2.607 1.972-5.4 4.907-5.4 1.684 0 2.787.853 3.426 1.603.639-.75 1.741-1.603 3.426-1.603"
       stroke="currentColor"
       strokeWidth={1.3}
     />

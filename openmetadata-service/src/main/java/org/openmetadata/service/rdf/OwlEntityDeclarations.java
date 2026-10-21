@@ -44,12 +44,24 @@ public final class OwlEntityDeclarations {
           OWL2.NS + "real",
           OWL2.NS + "rational");
   private static final Map<String, EntityKind> SKOS_KINDS = skosKinds();
+  private static final Set<String> BUILT_IN_ANNOTATIONS =
+      Set.of(
+          RDFS.label.getURI(),
+          RDFS.comment.getURI(),
+          RDFS.seeAlso.getURI(),
+          RDFS.isDefinedBy.getURI(),
+          OWL2.versionInfo.getURI(),
+          OWL2.priorVersion.getURI(),
+          OWL2.backwardCompatibleWith.getURI(),
+          OWL2.incompatibleWith.getURI(),
+          OWL2.deprecated.getURI());
 
   private OwlEntityDeclarations() {}
 
   /** The kinds of entity an OWL 2 declaration names. */
   public enum EntityKind {
     CLASS(OWL2.Class),
+    DATATYPE(RDFS.Datatype),
     OBJECT_PROPERTY(OWL2.ObjectProperty),
     DATA_PROPERTY(OWL2.DatatypeProperty),
     ANNOTATION_PROPERTY(OWL2.AnnotationProperty),
@@ -92,6 +104,20 @@ public final class OwlEntityDeclarations {
   /** Datatypes a restriction filler can name: XSD, {@code rdfs:Literal} and the OWL 2 extras. */
   public static boolean isDatatype(final String iri) {
     return iri != null && (iri.startsWith(XSD.NS) || NON_XSD_DATATYPES.contains(iri));
+  }
+
+  /** Fixed vocabulary kinds can be resolved without redefining or fetching remote terms. */
+  public static EntityKind vocabularyKind(final String iri) {
+    if (OWL2.topObjectProperty.getURI().equals(iri)
+        || OWL2.bottomObjectProperty.getURI().equals(iri)) {
+      return EntityKind.OBJECT_PROPERTY;
+    }
+    if (OWL2.topDataProperty.getURI().equals(iri) || OWL2.bottomDataProperty.getURI().equals(iri)) {
+      return EntityKind.DATA_PROPERTY;
+    }
+    return BUILT_IN_ANNOTATIONS.contains(iri)
+        ? EntityKind.ANNOTATION_PROPERTY
+        : SKOS_KINDS.get(iri);
   }
 
   private static boolean isSkos(final String iri) {

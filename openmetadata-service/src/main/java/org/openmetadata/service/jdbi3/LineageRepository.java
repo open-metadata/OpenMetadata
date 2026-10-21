@@ -1678,12 +1678,17 @@ public class LineageRepository {
     }
   }
 
-  public Response getLineageEdgeByFQN(
-      String fromEntity, String fromFQN, String toEntity, String toFQN) {
-    EntityReference from =
-        Entity.getEntityReferenceByName(fromEntity, fromFQN, Include.NON_DELETED);
-    EntityReference to = Entity.getEntityReferenceByName(toEntity, toFQN, Include.NON_DELETED);
-    return getLineageEdge(from.getId(), to.getId());
+  /** The typed ends of the upstream edge between two entities, so callers can authorize them. */
+  public List<EntityReference> getLineageEdgeEnds(UUID fromId, UUID toId) {
+    CollectionDAO.EntityRelationshipObject edge =
+        dao.relationshipDAO().getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
+    if (edge == null) {
+      throw new EntityNotFoundException(
+          "Lineage edge not found between " + fromId + " and " + " " + toId);
+    }
+    return List.of(
+        new EntityReference().withId(fromId).withType(edge.getFromEntity()),
+        new EntityReference().withId(toId).withType(edge.getToEntity()));
   }
 
   public Response patchLineageEdge(

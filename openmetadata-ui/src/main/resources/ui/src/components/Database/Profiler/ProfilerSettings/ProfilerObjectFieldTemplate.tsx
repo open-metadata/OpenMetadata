@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -33,25 +33,23 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         className="layout-space layout-space-horizontal w-full justify-between"
         gap={2}
         itemClassName="layout-space-item">
-        <Typography
+        <span
           className={classNames('control-label', {
             'font-medium text-base-color text-md': !schema.additionalProperties,
           })}
           id={`${idSchema.$id}__title`}>
           {title}
-        </Typography>
+        </span>
 
         {schema.additionalProperties && (
           <Button
-            aria-label={t('label.add')}
+            aria-label={t('label.add-entity', { entity: title })}
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={
-              <PlusOutlined style={{ color: 'white', fontSize: '12px' }} />
-            }
+            iconLeading={Plus}
             id={`${idSchema.$id}`}
             size="xs"
-            onClick={() => {
+            onPress={() => {
               onAddClick(schema)();
             }}
           />

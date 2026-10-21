@@ -30,6 +30,7 @@ import { File } from '../../generated/entity/data/file';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addDriveAssetFollower,
@@ -202,6 +203,25 @@ function FileDetailsPage() {
       };
     });
   };
+
+  // Not on React Query, so the provider's cache invalidation can't reach this page.
+  useSub(
+    'updateDetails',
+    async () => {
+      try {
+        setFileDetails(
+          await getDriveAssetByFqn<File>(
+            fileDetails.fullyQualifiedName ?? '',
+            EntityType.FILE,
+            fileDefaultFields
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [fileDetails.fullyQualifiedName]
+  );
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {

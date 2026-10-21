@@ -268,7 +268,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         <Button
           color="primary"
           data-testid="add-user"
-          size="sm"
+          size="xs"
           onPress={() =>
             onNavigate({ type: 'user-create', isAdmin: Boolean(isAdmin) })
           }>

@@ -185,7 +185,7 @@ const SearchSettingsView = ({
         data-testid="reset-search-settings-btn"
         iconLeading={RefreshCcw01}
         isDisabled={isUpdating}
-        size="sm"
+        size="xs"
         onPress={() => setConfirm('reset')}>
         {t('label.reset')}
       </Button>
@@ -308,23 +308,20 @@ const SearchSettingsView = ({
         </Box>
       </SearchSection>
 
-      <SearchSection
-        actions={
-          <Button
-            color="primary"
-            data-testid="add-field-value-boost-btn"
-            iconLeading={Plus}
-            isDisabled={isUpdating}
-            size="sm"
-            onPress={() => setEditingBoost({})}>
-            {t('label.add')}
-          </Button>
-        }
-        count={fieldValueBoosts.length}
-        testId="field-value-boosts"
-        title={t('label.field-value-boost')}>
+      <Box data-testid="field-value-boosts" direction="col">
         <FieldValueBoostTable
           boosts={fieldValueBoosts}
+          headerActions={
+            <Button
+              color="primary"
+              data-testid="add-field-value-boost-btn"
+              iconLeading={Plus}
+              isDisabled={isUpdating}
+              size="sm"
+              onPress={() => setEditingBoost({})}>
+              {t('label.add')}
+            </Button>
+          }
           testId="field-value-boost-table"
           onDelete={(field) =>
             updateGlobalSettings({
@@ -335,7 +332,7 @@ const SearchSettingsView = ({
           }
           onEdit={(boost) => setEditingBoost({ boost })}
         />
-      </SearchSection>
+      </Box>
 
       <SearchEntityCards onNavigate={onNavigate} />
 

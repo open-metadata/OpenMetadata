@@ -12,9 +12,8 @@
  */
 
 import { Card } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
-import { useLineageStore } from '../../hooks/useLineageStore';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
+import EntityLineageCanvas from './EntityLineageCanvas/EntityLineageCanvas';
 import type { LineageProps } from './Lineage.interface';
 import LineageMap from './LineageMap/LineageMap.component';
 
@@ -27,17 +26,9 @@ const Lineage = ({
   platformHeader,
   showControls = true,
 }: LineageProps) => {
-  const { isEditMode } = useLineageStore();
-
   const entityHeader = showControls ? (
-    <div
-      className={classNames('lineage-header', {
-        'lineage-header-edit-mode': isEditMode,
-      })}>
-      <CustomControlsComponent
-        deleted={Boolean(deleted)}
-        hasEditAccess={hasEditAccess}
-      />
+    <div className="lineage-header">
+      <CustomControlsComponent />
     </div>
   ) : null;
   const headerContent = isPlatformLineage ? platformHeader : entityHeader;
@@ -55,14 +46,23 @@ const Lineage = ({
         className="lineage-container tw:flex-1 tw:min-h-0 tw:overflow-hidden"
         data-testid="lineage-container"
         id="lineage-container">
-        <LineageMap
-          deleted={deleted}
-          entity={entity}
-          entityType={entityType}
-          hasEditAccess={hasEditAccess}
-          isPlatformLineage={isPlatformLineage}
-          platformHeader={platformHeader}
-        />
+        {isPlatformLineage ? (
+          <LineageMap
+            isPlatformLineage
+            deleted={deleted}
+            entity={entity}
+            entityType={entityType}
+            hasEditAccess={hasEditAccess}
+            platformHeader={platformHeader}
+          />
+        ) : (
+          <EntityLineageCanvas
+            deleted={deleted}
+            entity={entity}
+            entityType={entityType}
+            hasEditAccess={hasEditAccess}
+          />
+        )}
       </div>
     </Card>
   );

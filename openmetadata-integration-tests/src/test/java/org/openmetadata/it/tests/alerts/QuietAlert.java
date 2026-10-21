@@ -4,7 +4,7 @@ import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.scheduled.AlertJobs;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.quartz.JobExecutionContext;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;

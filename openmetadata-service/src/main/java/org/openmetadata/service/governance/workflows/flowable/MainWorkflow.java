@@ -20,6 +20,7 @@ import org.flowable.bpmn.model.SequenceFlow;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.Edge;
@@ -30,6 +31,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.End
 @Slf4j
 @Getter
 public class MainWorkflow {
+  public static final String ERROR_END_EVENT_ID = "Error";
   private final BpmnModel model;
   private final String workflowName;
   private final List<BoundaryEvent> runtimeExceptionBoundaryEvents = new ArrayList<>();
@@ -64,7 +66,8 @@ public class MainWorkflow {
               workflowDefinition.getConfig(),
               workflowDefinition.getFullyQualifiedName(),
               workflowDefinition.getEdges(),
-              batchPlan.modeFor(nodeDefinitionObj.getName()));
+              batchPlan.modeFor(nodeDefinitionObj.getName()),
+              GovernanceApprovalRegistry.holdsChanges(workflowDefinition));
       node.addToWorkflow(model, process);
 
       Optional.ofNullable(node.getRuntimeExceptionBoundaryEvent())
@@ -85,7 +88,7 @@ public class MainWorkflow {
   }
 
   private void configureRuntimeExceptionFlow(Process process) {
-    EndEvent errorEndEvent = new EndEvent("Error");
+    EndEvent errorEndEvent = new EndEvent(ERROR_END_EVENT_ID);
     process.addFlowElement(errorEndEvent.getEndEvent());
     for (BoundaryEvent event : runtimeExceptionBoundaryEvents) {
       process.addFlowElement(new SequenceFlow(event.getId(), errorEndEvent.getEndEvent().getId()));

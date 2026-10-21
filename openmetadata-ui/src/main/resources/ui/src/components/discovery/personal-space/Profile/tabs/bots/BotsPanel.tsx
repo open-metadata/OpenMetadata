@@ -144,7 +144,7 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
             <Button
               color="primary"
               data-testid="add-bot"
-              size="sm"
+              size="xs"
               onPress={() => onNavigate({ type: 'add' })}>
               {addBotLabel}
             </Button>

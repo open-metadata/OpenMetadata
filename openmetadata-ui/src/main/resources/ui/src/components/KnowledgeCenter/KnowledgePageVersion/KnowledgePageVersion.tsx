@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -186,7 +185,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Button
               color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              iconLeading={<Icon component={VersionIcon} />}
+              iconLeading={<VersionIcon className="tw:size-3.5 tw:shrink-0" />}
               onClick={handleVersionClick}>
               {toString(version)}
             </Button>

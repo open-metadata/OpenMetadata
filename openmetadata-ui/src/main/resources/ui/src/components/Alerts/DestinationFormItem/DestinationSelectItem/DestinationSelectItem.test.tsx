@@ -213,7 +213,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  X: () => <span>X</span>,
+  XClose: () => <span>XClose</span>,
 }));
 
 jest.mock('../../../../utils/ObservabilityUtils', () => ({
@@ -369,7 +369,13 @@ function renderDestinationRows(
 const offering = (recipientCategories: string[]): AlertSelection => ({
   sources: ['table'],
   support: { recipientCategories },
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   loading: false,
   search: {
     indexes: [],

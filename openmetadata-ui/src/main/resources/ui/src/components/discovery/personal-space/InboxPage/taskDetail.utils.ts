@@ -18,6 +18,7 @@ import {
   EntityReference,
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
@@ -30,6 +31,11 @@ import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseRe
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
+import {
+  getMetadataCompletionInstruction,
+  getMetadataCompletionPayload,
+  getRequiredFieldLabel,
+} from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
 import {
@@ -180,6 +186,16 @@ const TASK_TYPE_BADGE: Record<
     labelKey: 'label.pipeline-review',
     color: 'indigo',
     icon: 'approval',
+  },
+  [TaskType.MemoryConflictReview]: {
+    labelKey: 'label.memory-conflict',
+    color: 'orange',
+    icon: 'approval',
+  },
+  [TaskType.MetadataCompletion]: {
+    labelKey: 'label.missing-metadata',
+    color: 'warning',
+    icon: 'description',
   },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
@@ -582,6 +598,53 @@ const describeDomainUpdate = (
   };
 };
 
+// The fields still missing and whether the stage's conditions hold, which the server rewrites as
+// they change; the fixed instruction sits where other types put their requester's context.
+const describeMetadataCompletion = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getMetadataCompletionPayload(task);
+  // A closed task keeps the payload it had when it closed, which no longer describes the asset.
+  const isOpen = task.status === TaskStatus.Open;
+  const missingFields = isOpen ? payload.missingFields ?? [] : [];
+
+  return {
+    rows: [
+      ...(missingFields.length > 0
+        ? [
+            {
+              key: 'missingFields',
+              icon: 'columns' as const,
+              label: t('label.missing-field-plural'),
+              value: {
+                kind: 'list' as const,
+                items: missingFields.map((field) => ({
+                  label: getRequiredFieldLabel(field, t),
+                })),
+                title: t('label.missing-field-plural'),
+              },
+            },
+          ]
+        : []),
+      // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
+      ...textRow(
+        'conditions',
+        'shield',
+        t('label.condition-plural'),
+        isOpen && payload.conditionsMet === false
+          ? t('message.lifecycle-conditions-not-met')
+          : undefined
+      ),
+      ...getCommonRows(task, t),
+    ],
+    callout: {
+      label: t('label.context'),
+      text: getMetadataCompletionInstruction(payload, t),
+    },
+  };
+};
+
 type Describer = (task: Task, t: Translate) => Partial<TaskDetailDescriptor>;
 
 const DESCRIBERS: Record<string, Describer> = {
@@ -593,6 +656,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
+  [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };
 
 /**

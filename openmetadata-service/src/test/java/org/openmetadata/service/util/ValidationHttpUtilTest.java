@@ -105,4 +105,24 @@ public class ValidationHttpUtilTest {
   void testValidateUrl_NullUrl() {
     assertThrows(IllegalArgumentException.class, () -> ValidationHttpUtil.validateUrl(null));
   }
+
+  /**
+   * SSO validators follow token and authorization endpoints that a discovery document names, so
+   * every request is checked, not only the discovery fetch. Unchecked, these would be sent and
+   * fail with an IOException (or hang on the metadata address) instead.
+   */
+  @Test
+  void requestsToMetadataOrPrivateAddressLiteralsAreRefusedBeforeSending() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValidationHttpUtil.postForm("http://169.254.169.254/latest/meta-data/", "a=b"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValidationHttpUtil.getNoRedirect("http://10.0.0.1/authorize"));
+    assertThrows(
+        IllegalArgumentException.class, () -> ValidationHttpUtil.get("http://127.0.0.1:1/"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ValidationHttpUtil.postJson("http://[fd00:ec2::254]/token", "{}"));
+  }
 }

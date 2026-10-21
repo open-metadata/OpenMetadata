@@ -52,6 +52,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Slf4j
 @Path("/v1/kpi")
@@ -519,6 +520,7 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
           @DefaultValue("DESC")
           OrderBy orderBy)
       throws IOException {
+    authorizeKpiView(securityContext, name);
     return repository.getKpiResults(name, startTs, endTs, orderBy);
   }
 
@@ -542,6 +544,14 @@ public class KpiResource extends EntityResource<Kpi, KpiRepository> {
       @Parameter(description = "Name of the KPI", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    authorizeKpiView(securityContext, name);
     return repository.getKpiResult(name);
+  }
+
+  private void authorizeKpiView(SecurityContext securityContext, String name) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(name));
   }
 }

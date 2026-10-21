@@ -12,6 +12,7 @@
  */
 import {
   Box,
+  Card,
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -55,19 +56,14 @@ function TotalDataAssetsWidget({
   return (
     <Box
       className={classNames(
-        'widget-info-card total-data-assets-widget tw:h-full tw:rounded-xl tw:bg-surface',
+        'widget-info-card total-data-assets-widget tw:h-full',
         variant !== 'embedded' &&
-          'tw:gap-4 tw:border tw:border-secondary tw:p-6'
+          'tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-6'
       )}
       data-testid="total-data-assets-widget"
-      direction="col">
-      <Box
-        className={classNames(
-          'widget-header',
-          variant === 'embedded' && 'tw:py-3'
-        )}
-        direction="col"
-        gap={1}>
+      direction="col"
+      gap={4}>
+      <Box className="widget-header" direction="col" gap={1}>
         <Typography size="text-lg" weight="medium">
           {t('label.total-entity', { entity: t('label.data-asset-plural') })}
         </Typography>
@@ -83,29 +79,32 @@ function TotalDataAssetsWidget({
       )}
       {!isLoading && showPlaceholder && errorPlaceholder}
       {!isLoading && !showPlaceholder && (
-        <Box
-          className="assets-list-container tw:h-full tw:rounded-lg tw:bg-secondary tw:p-4"
-          direction="col"
-          gap={2}>
-          {totalAssetsCount?.map((entity) => (
-            <Box align="center" justify="between" key={entity.name}>
-              <Box align="center" gap={3}>
-                <Box
-                  align="center"
-                  className="icon-container tw:size-7 tw:rounded-full tw:bg-tertiary"
-                  justify="center">
-                  {entity.icon}
+        <Card className="assets-list-container tw:h-full">
+          <Card.Content>
+            <Box direction="col" gap={2}>
+              {totalAssetsCount?.map((entity) => (
+                <Box align="center" justify="between" key={entity.name}>
+                  <Box align="center" gap={3}>
+                    <Box
+                      align="center"
+                      className="icon-container tw:size-7 tw:rounded-full tw:bg-tertiary"
+                      justify="center">
+                      {entity.icon}
+                    </Box>
+
+                    <Typography>{entity.name}</Typography>
+                  </Box>
+
+                  <Typography
+                    data-testid={`${entity.name}-count`}
+                    weight="bold">
+                    {getReadableCountString(entity.value)}
+                  </Typography>
                 </Box>
-
-                <Typography>{entity.name}</Typography>
-              </Box>
-
-              <Typography data-testid={`${entity.name}-count`} weight="bold">
-                {getReadableCountString(entity.value)}
-              </Typography>
+              ))}
             </Box>
-          ))}
-        </Box>
+          </Card.Content>
+        </Card>
       )}
     </Box>
   );

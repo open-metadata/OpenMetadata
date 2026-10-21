@@ -33,9 +33,9 @@ const mockRole = {
 };
 
 jest.mock('../../../../../../rest/rolesAPIV1', () => ({
-  getRoleByName: jest.fn().mockResolvedValue(mockRole),
+  getRoleByName: jest.fn().mockImplementation(() => Promise.resolve(mockRole)),
   getPolicies: jest.fn().mockResolvedValue({ data: [], paging: {} }),
-  patchRole: jest.fn().mockResolvedValue(mockRole),
+  patchRole: jest.fn().mockImplementation(() => Promise.resolve(mockRole)),
 }));
 
 jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({

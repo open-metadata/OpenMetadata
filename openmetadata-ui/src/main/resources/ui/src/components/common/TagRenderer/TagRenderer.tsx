@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined } from '@ant-design/icons';
 import { Tooltip } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 
 export const TagRenderer = (props: CustomTagProps) => {
@@ -35,7 +35,7 @@ export const TagRenderer = (props: CustomTagProps) => {
       {labelNode}
       {closable && (
         <button className="selected-chip-tag-remove" onClick={onClose}>
-          <CloseOutlined />
+          <XClose className="tw:shrink-0" size={14} />
         </button>
       )}
     </span>

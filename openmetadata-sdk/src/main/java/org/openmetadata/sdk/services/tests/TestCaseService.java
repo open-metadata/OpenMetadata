@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.flipkart.zjsonpatch.JsonDiff;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -15,6 +14,7 @@ import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.utils.JsonDiff;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -216,7 +216,7 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
       reduceEntityReferences(originalNode);
       reduceEntityReferences(updatedNode);
 
-      JsonNode patch = JsonDiff.asJson(originalNode, updatedNode);
+      JsonNode patch = JsonDiff.of(originalNode, updatedNode);
 
       // Build request options with ETag if provided
       RequestOptions options = null;

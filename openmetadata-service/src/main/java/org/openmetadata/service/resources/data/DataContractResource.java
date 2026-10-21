@@ -407,7 +407,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        getResourceContextById(entityId));
+        new ResourceContext<>(entityType, entityId, null));
 
     // Only `dataProducts` is consulted by getEffectiveDataContract for inheritance;
     // the rest of the resolution path uses entity.getEntityReference() (id, name,
@@ -1050,7 +1050,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.EDIT_ALL),
-        getResourceContextById(entityId));
+        new ResourceContext<>(entityType, entityId, null));
 
     EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", Include.NON_DELETED);
     return repository
@@ -1387,6 +1387,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       CreateDataContract createRequest) {
+    authorizeContractTargetView(securityContext, createRequest.getEntity());
     DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
     ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
     return Response.ok(validation).build();
@@ -1417,6 +1418,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     try {
       CreateDataContract createRequest =
           YAML_MAPPER.readValue(yamlContent, CreateDataContract.class);
+      authorizeContractTargetView(securityContext, createRequest.getEntity());
       DataContract dataContract = DataContractMapper.createEntity(createRequest, "validation");
       ContractValidation validation = repository.validateContractWithoutThrowing(dataContract);
       return Response.ok(validation).build();
@@ -1475,6 +1477,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           boolean createTestCases,
       String yamlContent) {
     EntityReference entityRef = new EntityReference().withId(entityId).withType(entityType);
+    authorizeContractTargetView(securityContext, entityRef);
     ODCSTestCaseWriteGuard testCaseGuard =
         new ODCSTestCaseWriteGuard(authorizer, limits, securityContext);
     ODCSImportAnalyzer.QualityRuleOptions quality =
@@ -1492,6 +1495,30 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
                 objectName,
                 quality));
     return Response.ok(validation).build();
+  }
+
+  /**
+   * Validation compares a contract with the target entity's schema and reports which fields match,
+   * so the caller must be allowed to see that entity. A reference that names no resolvable entity
+   * still gets the structured "entity not found" result instead of an authorization error.
+   */
+  private void authorizeContractTargetView(
+      SecurityContext securityContext, EntityReference target) {
+    if (isResolvableReference(target)) {
+      UUID id = target.getId();
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(target.getType(), MetadataOperation.VIEW_BASIC),
+          new ResourceContext<>(
+              target.getType(), id, id == null ? target.getFullyQualifiedName() : null));
+    }
+  }
+
+  private static boolean isResolvableReference(EntityReference target) {
+    return target != null
+        && target.getType() != null
+        && Entity.hasEntityRepository(target.getType())
+        && (target.getId() != null || !nullOrEmpty(target.getFullyQualifiedName()));
   }
 
   @PUT

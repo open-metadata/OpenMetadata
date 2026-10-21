@@ -38,7 +38,7 @@ export const useGenericDomainLabel = <
 > => {
   const { data, type, permissions } = useGenericContext<T>();
 
-  const { canEditAll } = useMemo(
+  const { canEditDomains } = useMemo(
     () =>
       getDerivedPermissionFlags(
         permissions ?? DEFAULT_ENTITY_PERMISSION,
@@ -52,6 +52,6 @@ export const useGenericDomainLabel = <
     entityType: type as EntityType,
     entityFqn: data?.fullyQualifiedName ?? '',
     entityId: data?.id ?? '',
-    hasPermission: canEditAll,
+    hasPermission: canEditDomains,
   };
 };

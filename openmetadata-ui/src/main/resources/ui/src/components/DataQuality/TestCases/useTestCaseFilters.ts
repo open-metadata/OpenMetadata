@@ -58,6 +58,8 @@ const SEARCHABLE_FILTERS = new Set<string>([
   TEST_CASE_FILTERS.tags,
   TEST_CASE_FILTERS.service,
   TEST_CASE_FILTERS.dataProduct,
+  TEST_CASE_FILTERS.tier,
+  TEST_CASE_FILTERS.dimension,
 ]);
 
 // TEST_CASE_FILTERS_LABELS is keyed by filter name (e.g. "table"); descriptors

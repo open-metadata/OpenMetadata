@@ -31,6 +31,7 @@ import { Directory } from '../../generated/entity/data/directory';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addDriveAssetFollower,
@@ -223,6 +224,25 @@ const DirectoryDetailsPage = () => {
       };
     });
   };
+
+  // Not on React Query, so the provider's cache invalidation can't reach this page.
+  useSub(
+    'updateDetails',
+    async () => {
+      try {
+        setDirectoryDetails(
+          await getDriveAssetByFqn<Directory>(
+            directoryDetails.fullyQualifiedName ?? '',
+            EntityType.DIRECTORY,
+            defaultFields
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [directoryDetails.fullyQualifiedName]
+  );
 
   const updateVote = async (data: QueryVote, id: string) => {
     try {

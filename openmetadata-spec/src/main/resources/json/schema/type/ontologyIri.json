@@ -1,0 +1,9 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyIri.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyIri",
+  "description": "Absolute semantic IRI, preserved exactly without URL normalization, case folding, or percent encoding.",
+  "type": "string",
+  "format": "iri",
+  "existingJavaType": "java.net.URI"
+}

@@ -124,6 +124,10 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 DATASET_OBJ_CACHE_SIZE = 512
 TABLE_OBJ_CACHE_SIZE = 2048
 
+# google-cloud-bigquery has no ExternalSourceFormat member for this and the REST reference
+# for externalDataConfiguration.sourceFormat omits it, so it has to be a literal.
+_BIGQUERY_DELTA_LAKE_FORMAT = "DELTA_LAKE"
+
 _bigquery_table_types = {
     "BASE TABLE": TableType.Regular,
     "EXTERNAL": TableType.External,
@@ -405,6 +409,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         except Exception as exc:
             logger.error(f"Error listing tables for {dataset_ref}: {exc}")
             raise
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        """Narrow EXTERNAL tables to DeltaLake after the base tableFilterPattern has run,
+        so only kept tables pay the `tables.get` that reveals their format."""
+        for table_name, table_type in super().get_tables_name_and_type() or []:
+            if table_type == TableType.External:
+                yield table_name, self._external_table_type(table_name)
+            else:
+                yield table_name, table_type
 
     def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
@@ -801,6 +814,25 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
         self._table_obj_cache.put(cache_key, table_obj)
         return table_obj
+
+    def _external_table_type(self, table_name: str) -> TableType:
+        """Narrow an EXTERNAL table to DeltaLake, which only tables.get can tell us.
+
+        The broad except is deliberate: it swallows both a get_table failure (404/403/quota)
+        and the KeyError that ExternalConfig.source_format raises when sourceFormat is absent.
+        """
+        try:
+            external_config = self.get_table_obj(table_name).external_data_configuration
+            if external_config is not None and external_config.source_format == _BIGQUERY_DELTA_LAKE_FORMAT:
+                return TableType.DeltaLake
+        except Exception as exc:
+            logger.warning(
+                "Could not read the external format of table '%s', typing it as External: %s",
+                table_name,
+                exc,
+            )
+            logger.debug(traceback.format_exc())
+        return TableType.External
 
     def yield_table_tags(self, table_name_and_type: tuple[str, str]) -> Iterable[Either[OMetaTagAndClassification]]:
         table_name, _ = table_name_and_type

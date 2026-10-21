@@ -39,6 +39,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
@@ -48,6 +49,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class BundleWarmupBatcherTest {
@@ -71,11 +73,21 @@ class BundleWarmupBatcherTest {
     cache = mock(CacheProvider.class);
     keys = new CacheKeys("om:test");
     batcher = new BundleWarmupBatcher(dao, cache, keys, false);
+    registerRepository(Table.class, Entity.TABLE, true);
   }
 
   @AfterEach
   void tearDown() {
+    Entity.cleanup();
     Entity.setEntityRelationshipRepository(originalEntityRelationshipRepository);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends org.openmetadata.schema.EntityInterface<?>> void registerRepository(
+      Class<T> entityClass, String entityType, boolean supportsCertification) {
+    EntityRepository<T> repo = mock(EntityRepository.class);
+    when(repo.isSupportsCertification()).thenReturn(supportsCertification);
+    Entity.registerEntity(entityClass, entityType, repo);
   }
 
   @Test
@@ -314,5 +326,48 @@ class BundleWarmupBatcherTest {
     List<String> hashesPassed = new ArrayList<>(hashesCaptor.getValue());
     assertEquals(1, hashesPassed.size());
     assertEquals(FullyQualifiedName.buildHash(t1.getFullyQualifiedName()), hashesPassed.get(0));
+  }
+
+  @Test
+  void warmupKeepsCertTagForNonCertificationGlossaryTerm() {
+    registerRepository(GlossaryTerm.class, Entity.GLOSSARY_TERM, false);
+    GlossaryTerm term =
+        new GlossaryTerm()
+            .withId(UUID.randomUUID())
+            .withName("certifiedTerm")
+            .withFullyQualifiedName("glossary.certifiedTerm");
+    String hash = FullyQualifiedName.buildHash(term.getFullyQualifiedName());
+    TagLabel certTag = new TagLabel().withTagFQN("Certification.Gold");
+    TagLabel piiTag = new TagLabel().withTagFQN("PII.Sensitive");
+    Map<String, List<TagLabel>> tagMap = new HashMap<>();
+    tagMap.put(hash, List.of(certTag, piiTag));
+    when(tagUsageDAO.getTagsByTargetFQNHashes(any())).thenReturn(tagMap);
+
+    BundleWarmupBatcher.BatchResult result =
+        batcher.warmupBatch(Entity.GLOSSARY_TERM, List.of(term), Duration.ofSeconds(60));
+    assertEquals(1, result.success());
+    assertEquals(0, result.failed());
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, String>> captor = ArgumentCaptor.forClass(Map.class);
+    verify(cache).pipelineSet(captor.capture(), any(Duration.class));
+    Map<String, String> writes = captor.getValue();
+    CachedReadBundle.Dto dto =
+        JsonUtils.readValue(
+            writes.get(keys.bundle(Entity.GLOSSARY_TERM, term.getId())),
+            CachedReadBundle.Dto.class);
+    assertTrue(dto.tagsLoaded);
+    assertEquals(
+        2,
+        dto.tags.size(),
+        "Certification.* must be KEPT in warmed tags for non-certification entities: " + dto.tags);
+    assertContainsTagFqn(dto.tags, "Certification.Gold");
+    assertContainsTagFqn(dto.tags, "PII.Sensitive");
+  }
+
+  private static void assertContainsTagFqn(List<TagLabel> tags, String tagFqn) {
+    assertTrue(
+        tags.stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())),
+        "expected tag " + tagFqn + " in " + tags);
   }
 }

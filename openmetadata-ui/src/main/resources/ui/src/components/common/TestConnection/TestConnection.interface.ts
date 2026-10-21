@@ -13,6 +13,7 @@
 import { ServiceCategory } from '../../../enums/service.enum';
 import { StatusType } from '../../../generated/entity/automations/workflow';
 import { ConfigData } from '../../../interface/service.interface';
+import { RenderTestConnectionFailureAction } from './TestConnectionModal/TestConnectionModal.interface';
 
 export interface TestConnectionProps {
   isTestingDisabled: boolean;
@@ -28,6 +29,7 @@ export interface TestConnectionProps {
   onTestConnectionStatusChange?: (isSuccessful: boolean) => void;
   hostIp?: string;
   extraInfo?: string;
+  renderFailureAction?: RenderTestConnectionFailureAction;
 }
 
 export type TestStatus = Exclude<StatusType, 'Running'> | 'Warning' | undefined;

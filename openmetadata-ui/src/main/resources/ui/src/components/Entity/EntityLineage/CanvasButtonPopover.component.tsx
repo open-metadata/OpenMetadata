@@ -10,19 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, BadgeColors } from '@openmetadata/ui-core-components';
+import { Badge } from '@openmetadata/ui-core-components';
 import React, { MutableRefObject, useCallback } from 'react';
 import { Edge, Viewport } from 'reactflow';
+import { PIPELINE_STATUS_BADGE_COLOR } from '../../../constants/Lineage.constants';
 import { CanvasButton } from '../../../utils/CanvasButtonUtils';
 import { getPipelineStatusClass } from '../../../utils/PipelineStatusUtils';
 import { getAbsolutePosition } from '../../../utils/ViewportUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
-
-const PIPELINE_STATUS_BADGE_COLOR: Record<string, BadgeColors> = {
-  green: 'success',
-  red: 'error',
-  amber: 'warning',
-};
 
 export interface CanvasButtonPopoverProps {
   hoveredButton: CanvasButton;
@@ -57,6 +52,9 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
 
   const pipelineData = hoveredEdge.data?.edge?.pipeline;
   const pipelineStatus = pipelineData?.pipelineStatus;
+  const pipelineStatusClass = getPipelineStatusClass(
+    pipelineStatus?.executionStatus
+  );
 
   return (
     <button
@@ -79,14 +77,10 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
         extraInfo={
           pipelineStatus && (
             <Badge
-              className="tw:inline-flex"
-              color={
-                PIPELINE_STATUS_BADGE_COLOR[
-                  getPipelineStatusClass(pipelineStatus.executionStatus)
-                ] ?? 'gray'
-              }
+              color={PIPELINE_STATUS_BADGE_COLOR[pipelineStatusClass]}
+              data-testid="pipeline-status-badge"
               size="sm"
-              type="color">
+              type="pill-color">
               {pipelineStatus.executionStatus}
             </Badge>
           )

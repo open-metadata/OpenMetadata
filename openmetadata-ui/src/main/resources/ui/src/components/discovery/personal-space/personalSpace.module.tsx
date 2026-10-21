@@ -13,6 +13,7 @@
 
 import React from 'react';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import WelcomeScreenGate from '../../MyData/WelcomeScreen/WelcomeScreenGate';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 import { RoutePosition } from '../../Settings/Applications/plugins/AppPlugin';
 import { PERSONAL_SPACE_ROUTES } from './personalSpace.constants';
@@ -38,9 +39,13 @@ const gatedInbox = (
 // My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
 // route stays because `/` redirects here in AI mode, making it the landing
 // page; the user menu also opens it in the personal-space modal.
+// The welcome gate wraps the route element only: the modal's copy of My Data
+// must never show the first-login welcome screen.
 const gatedMyData = (
   <PersonalSpaceGate>
-    <MyData />
+    <WelcomeScreenGate>
+      <MyData />
+    </WelcomeScreenGate>
   </PersonalSpaceGate>
 );
 

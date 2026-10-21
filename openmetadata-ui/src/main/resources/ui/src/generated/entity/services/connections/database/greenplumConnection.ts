@@ -46,15 +46,16 @@ export interface GreenplumConnection {
     /**
      * SQLAlchemy driver scheme options.
      */
-    scheme?:                        GreenplumScheme;
-    sslConfig?:                     Config;
-    sslMode?:                       SSLMode;
-    supportsDatabase?:              boolean;
-    supportsDBTExtraction?:         boolean;
-    supportsMetadataExtraction?:    boolean;
-    supportsProfiler?:              boolean;
-    supportsQueryComment?:          boolean;
-    supportsViewLineageExtraction?: boolean;
+    scheme?:                         GreenplumScheme;
+    sslConfig?:                      Config;
+    sslMode?:                        SSLMode;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsViewLineageExtraction?:  boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

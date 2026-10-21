@@ -15,6 +15,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -38,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -90,7 +95,8 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database)) {
+    try (Handle handle = openHandle(database);
+        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
       final UserDAO dao = handle.attach(UserDAO.class);
       assertEquals(
           expectedNames.size(), dao.listCount(userFilter(domainIds, domainAccessControl, team)));
@@ -105,7 +111,8 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database)) {
+    try (Handle handle = openHandle(database);
+        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
       final UserDAO dao = handle.attach(UserDAO.class);
       final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
       final List<User> firstPage = users(dao.listAfter(filter, PAGE_SIZE, "", ""));
@@ -128,7 +135,8 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database)) {
+    try (Handle handle = openHandle(database);
+        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
       final UserDAO dao = handle.attach(UserDAO.class);
       final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
       final List<User> lastPage = users(dao.listBefore(filter, PAGE_SIZE, "zz", ""));
@@ -162,6 +170,7 @@ class UserDAOTest {
                         true,
                         null,
                         List.of("alice", "bob", "carol")),
+                    arguments(database, FIRST_DOMAIN, true, null, List.of("alice", "bob")),
                     arguments(database, FIRST_DOMAIN, true, TEAM, List.of("bob")),
                     arguments(
                         database, null, false, null, List.of("alice", "bob", "carol", "dave"))));
@@ -175,6 +184,15 @@ class UserDAOTest {
         .addQueryParam("isAdmin", false)
         .addQueryParam("isBot", false)
         .addQueryParam("team", team);
+  }
+
+  // ListFilter picks the SQL dialect from the server's datasource, which no test sets up
+  private static MockedStatic<DatasourceConfig> useSqlFor(ConnectionType database) {
+    final DatasourceConfig config = mock(DatasourceConfig.class);
+    when(config.isMySQL()).thenReturn(database == MYSQL);
+    final MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class);
+    datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+    return datasource;
   }
 
   private static Handle openHandle(ConnectionType database) {

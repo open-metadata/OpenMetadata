@@ -367,6 +367,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "owners": {
         "type": "nested",
         "properties": {

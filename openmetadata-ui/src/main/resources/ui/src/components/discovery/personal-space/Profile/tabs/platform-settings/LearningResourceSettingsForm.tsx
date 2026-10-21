@@ -11,18 +11,11 @@
  *  limitations under the License.
  */
 
-import type { FieldProp } from '@openmetadata/ui-core-components';
-import { Box, FieldTypes, getField } from '@openmetadata/ui-core-components';
+import { Box, getField } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import {
-  ResourceType,
-  RESOURCE_TYPE_LABEL_KEYS,
-  RESOURCE_TYPE_VALUES,
-  SOURCE_URL_PLACEHOLDERS,
-} from '../../../../../../constants/Learning.constants';
 import {
   createLearningResource,
   getLearningResourceById,
@@ -33,13 +26,8 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
-  CATEGORY_ITEMS,
-  CONTEXT_ITEMS,
-  DURATION_ITEMS,
   LearningResourceFormValues,
-  STATUS_ITEMS,
   toLearningResourceFormValues,
   toLearningResourcePayload,
 } from './LearningResourceSettings.utils';
@@ -48,7 +36,7 @@ import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import { isValidUrl } from './ThemeSettings.utils';
+import { useLearningResourceFields } from './useLearningResourceFields';
 import { useSettingsFetch } from './useSettingsFetch';
 
 /** Add (no `itemId`) or edit the learning resource with id `itemId`. */
@@ -90,108 +78,7 @@ const LearningResourceSettingsForm = ({
     }
   }, [isLoading, itemId, onNavigate, resource]);
 
-  const required = useCallback(
-    (labelKey: string) => ({
-      required: t('label.field-required', { field: t(labelKey) }),
-    }),
-    [t]
-  );
-
-  const fields: FieldProp[] = useMemo(
-    () => [
-      {
-        name: 'name',
-        label: t('label.name'),
-        type: FieldTypes.TEXT,
-        required: true,
-        placeholder: t('label.enter-entity', { entity: t('label.name') }),
-        // The name identifies the resource and cannot change once created.
-        props: { 'data-testid': 'name-input', isDisabled: Boolean(itemId) },
-        rules: required('label.name'),
-      },
-      {
-        name: 'description',
-        label: t('label.description'),
-        type: FieldTypes.TEXTAREA,
-        required: true,
-        props: { 'data-testid': 'description-input' },
-        rules: required('label.description'),
-      },
-      {
-        name: 'resourceType',
-        label: t('label.type'),
-        type: FieldTypes.SELECT,
-        required: true,
-        placeholder: t('label.select-field', { field: t('label.type') }),
-        props: {
-          'data-testid': 'resource-type-select',
-          items: RESOURCE_TYPE_VALUES.map((type) => ({
-            id: type,
-            label: t(RESOURCE_TYPE_LABEL_KEYS[type]),
-            icon: <ResourceTypeIcon aria-hidden resourceType={type} />,
-          })),
-        },
-        rules: required('label.type'),
-      },
-      {
-        name: 'categories',
-        label: t('label.category-plural'),
-        type: FieldTypes.MULTI_SELECT,
-        required: true,
-        placeholder: t('label.select-type'),
-        props: { 'data-testid': 'categories-select', items: CATEGORY_ITEMS },
-        // RHF treats an empty array as missing, so `required` covers multi-selects.
-        rules: required('label.category-plural'),
-      },
-      {
-        name: 'contexts',
-        label: t('label.context'),
-        type: FieldTypes.MULTI_SELECT,
-        required: true,
-        placeholder: t('label.select-field', { field: t('label.context') }),
-        props: { 'data-testid': 'contexts-select', items: CONTEXT_ITEMS },
-        rules: required('label.context'),
-      },
-      {
-        name: 'sourceUrl',
-        label: t('label.source-url'),
-        type: FieldTypes.TEXT,
-        required: true,
-        placeholder:
-          SOURCE_URL_PLACEHOLDERS[
-            (resourceType?.id as ResourceType) ?? ResourceType.Video
-          ],
-        props: { 'data-testid': 'source-url-input' },
-        rules: {
-          ...required('label.source-url'),
-          validate: (value: string) =>
-            isValidUrl(value) || t('label.invalid-url'),
-        },
-      },
-      {
-        name: 'sourceProvider',
-        label: t('label.source-provider'),
-        type: FieldTypes.TEXT,
-        placeholder: 'YouTube, Storylane, etc.',
-        props: { 'data-testid': 'source-provider-input' },
-      },
-      {
-        name: 'estimatedDuration',
-        label: t('label.duration'),
-        type: FieldTypes.SELECT,
-        placeholder: t('label.select-duration'),
-        props: { 'data-testid': 'duration-select', items: DURATION_ITEMS },
-      },
-      {
-        name: 'status',
-        label: t('label.status'),
-        type: FieldTypes.SELECT,
-        placeholder: t('label.select-status'),
-        props: { 'data-testid': 'status-select', items: STATUS_ITEMS },
-      },
-    ],
-    [itemId, required, resourceType, t]
-  );
+  const fields = useLearningResourceFields(Boolean(itemId), resourceType);
 
   const backToList = () =>
     onNavigate({ type: 'page', page: 'learning-resources', isEditing: false });

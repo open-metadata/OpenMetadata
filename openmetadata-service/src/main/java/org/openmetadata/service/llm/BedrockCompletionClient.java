@@ -98,13 +98,18 @@ public final class BedrockCompletionClient extends LLMCompletionClient implement
                 .role(ConversationRole.USER)
                 .content(ContentBlock.fromText(userPrompt))
                 .build())
-        .inferenceConfig(
-            InferenceConfiguration.builder()
-                .maxTokens(maxTokens)
-                .temperature((float) temperature)
-                .build())
+        .inferenceConfig(inferenceConfig(model, maxTokens, temperature))
         .overrideConfiguration(c -> c.apiCallTimeout(Duration.ofSeconds(timeoutSeconds)))
         .build();
+  }
+
+  private static InferenceConfiguration inferenceConfig(
+      String model, int maxTokens, double temperature) {
+    InferenceConfiguration.Builder builder = InferenceConfiguration.builder().maxTokens(maxTokens);
+    if (supportsTemperature(model)) {
+      builder.temperature((float) temperature);
+    }
+    return builder.build();
   }
 
   static CompletionResult toResult(ConverseResponse response) {

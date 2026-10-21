@@ -49,6 +49,7 @@ export const PasswordInput = forwardRef<
     inputClassName,
     wrapperClassName,
     tooltipClassName,
+    inputDataTestId,
     // Everything else (value, onChange, isRequired, isDisabled, isInvalid, id, etc.)
     // goes into ...props so they reach TextField/AriaTextField
     ...props
@@ -133,6 +134,7 @@ export const PasswordInput = forwardRef<
             groupRef={groupRef}
             iconClassName={iconClassName}
             inputClassName={cx('tw:pr-9', inputClassName)}
+            inputDataTestId={inputDataTestId}
             isDisabled={isDisabled}
             isInvalid={isInvalid}
             isRequired={isRequired}

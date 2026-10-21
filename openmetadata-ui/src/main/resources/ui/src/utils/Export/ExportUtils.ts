@@ -69,12 +69,11 @@ const computeSafePixelRatio = (
 //      included so a stray attribute doesn't silently drop content.
 //   2. `.sr-only` / `.visually-hidden` — screen-reader-only content.
 //
-// Deliberately NOT filtered: `.react-flow__handle`. React Flow always adds
-// that base class to every `<Handle>`, but OpenMetadata's lineage handles
-// (`<Handle className="lineage-node-handle" ... />` in CustomNodeV1) are
-// styled as visible 20x20 white bordered boxes with an SVG icon (see
-// `custom-node.less` `.react-flow .lineage-node-handle`), not the invisible
-// pips a blanket class match would assume. Tag any handles that really
+// Deliberately NOT filtered: `.react-flow__handle`. The lineage expand and
+// collapse buttons (CustomNode.utils) carry that class to reuse the handle
+// placement, and are styled as visible 20x20 bordered boxes with an SVG icon
+// (see `custom-node.less` `.react-flow .lineage-node-handle`), not the
+// invisible pips a blanket class match would assume. Tag any handles that really
 // shouldn't paint with `data-export-hide="true"` on a case-by-case basis.
 //
 // Must be O(1) per node — anything that walks the tree here defeats the
@@ -141,6 +140,18 @@ export const downloadFile = (
   document.body.removeChild(link);
 };
 
+const UTF8_BOM = '\uFEFF';
+
+/**
+ * Excel reads a CSV as UTF-8 only when it starts with a byte order mark; without
+ * one it falls back to the system code page and garbles Chinese, Cyrillic and
+ * other non-Latin text. Re-imports are unaffected: FileReader drops it.
+ * Every CSV download goes through this helper, and the BOM is not optional
+ * (ADR:2026-10-19-ui-csv-downloads-start-with-a-utf8-bom).
+ */
+export const downloadCsv = (content: string, fileName: string): void =>
+  downloadFile(UTF8_BOM + content, fileName, 'text/csv;charset=utf-8');
+
 export const downloadBlob = (
   blob: Blob,
   fileName: string,
@@ -157,7 +168,7 @@ export const downloadBlob = (
   document.body.removeChild(a);
 };
 
-export const exportPNGImageFromElement = async (exportData: ExportData) => {
+const capturePNGImageFromElement = async (exportData: ExportData) => {
   const {
     name,
     documentSelector = '',
@@ -293,5 +304,14 @@ export const exportPNGImageFromElement = async (exportData: ExportData) => {
         })
       );
     }
+  }
+};
+
+export const exportPNGImageFromElement = async (exportData: ExportData) => {
+  await exportData.beforeCapture?.();
+  try {
+    await capturePNGImageFromElement(exportData);
+  } finally {
+    exportData.afterCapture?.();
   }
 };

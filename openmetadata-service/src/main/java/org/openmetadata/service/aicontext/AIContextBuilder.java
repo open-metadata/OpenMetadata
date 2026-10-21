@@ -713,7 +713,7 @@ public class AIContextBuilder {
     result =
         switch (entityType) {
           case Entity.TABLE -> TABLE_FIELDS;
-          case Entity.GLOSSARY_TERM -> "tags,relatedTerms,attributes,synonyms";
+          case Entity.GLOSSARY_TERM -> "tags,relatedTerms,synonyms";
           case Entity.METRIC -> "tags,relatedMetrics";
           default -> supportsTags(entityType) ? DEFAULT_FIELDS : "";
         };

@@ -11,100 +11,86 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  BadgeWithIcon,
+  Box,
+  Button,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ArrowRight,
   ArrowUpRight,
   Check,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
-import { KeyboardEvent, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
+import { ToggleButton, ToggleButtonGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
-import { OntologyPackInstallation } from '../../generated/type/ontologyPackInstallation';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
+import { PACK_PRESENTATION } from './OntologyLibraryCatalogue.constants';
 
 interface OntologyLibraryCatalogueProps {
-  installations: OntologyPackInstallation[];
   packs: OntologyPackManifest[];
+  installedPackIds?: string[];
   onSelect: (pack: OntologyPackManifest) => void;
 }
 
-const DEFAULT_PACK_ICON_CLASS = 'tw:bg-utility-gray-blue-600';
-const INSTALLED_BADGE_CLASS =
-  'tw:inline-flex tw:shrink-0 tw:items-center tw:gap-1 tw:rounded-full tw:border ' +
-  'tw:border-utility-success-200 tw:bg-utility-success-50 tw:px-[7px] tw:py-0.5 ' +
-  'tw:font-body tw:text-[9px] tw:leading-normal tw:font-semibold tw:text-utility-success-700';
-const PACK_ICON_CLASSES: Record<string, string> = {
-  epcis: 'tw:bg-utility-indigo-600',
-  fhir: 'tw:bg-utility-green-600',
-  fibo: 'tw:bg-brand-solid',
-  gs1: 'tw:bg-utility-pink-600',
-  'hr-open': 'tw:bg-utility-purple-600',
-  'isa-95': 'tw:bg-utility-orange-600',
-};
+const ALL_FILTER_ID = 'all';
+const DEFAULT_PACK_ICON_CLASS =
+  'tw:bg-utility-gray-blue-700 tw:text-utility-gray-blue-50';
+
+export const OntologyPackIcon = ({ pack }: { pack: OntologyPackManifest }) => (
+  <span
+    className={`tw:inline-flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:text-center tw:text-xs tw:font-bold tw:whitespace-nowrap ${
+      PACK_PRESENTATION[pack.id]?.iconClass ?? DEFAULT_PACK_ICON_CLASS
+    }`}
+    data-testid={`ontology-pack-abbreviation-${pack.id}`}>
+    {PACK_PRESENTATION[pack.id]?.mark ?? pack.abbreviation}
+  </span>
+);
 
 interface OntologyPackCardProps {
   pack: OntologyPackManifest;
-  installation?: OntologyPackInstallation;
+  installed?: boolean;
   onSelect: (pack: OntologyPackManifest) => void;
 }
 
 const OntologyPackCard = ({
   pack,
-  installation,
+  installed,
   onSelect,
 }: OntologyPackCardProps) => {
   const { t } = useTranslation();
-  const isInstalledBundledPack = Boolean(installation && pack.bundled);
   const totals = selectedModuleTotals(
     pack,
     pack.modules.map((module) => module.id)
   );
+  const presentation = PACK_PRESENTATION[pack.id];
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault();
-      onSelect(pack);
-    }
-  };
-
-  const clickableCardProps = isInstalledBundledPack
-    ? {
-        role: 'button' as const,
-        tabIndex: 0,
-        onClick: () => onSelect(pack),
-        onKeyDown: handleKeyDown,
-      }
-    : {};
-
-  let actionButton: ReactNode = null;
-  if (!installation && pack.bundled) {
-    actionButton = (
+  let action: ReactNode = null;
+  if (pack.bundled) {
+    action = (
       <Button
-        className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
         color="link-color"
         data-testid={`ontology-pack-details-${pack.id}`}
-        iconTrailing={
-          <ArrowRight className="tw:size-3 tw:text-fg-brand-primary" />
-        }
-        size="xs"
+        iconTrailing={ArrowRight}
+        size="sm"
         onPress={() => onSelect(pack)}>
-        {t('label.install')}
+        {t(installed ? 'label.view' : 'label.install')}
       </Button>
     );
-  } else if (!installation) {
-    actionButton = (
+  } else {
+    action = (
       <Button
-        className="tw:gap-1! tw:text-[11px]! tw:font-semibold!"
         color="link-color"
         data-testid={`ontology-pack-source-${pack.id}`}
         href={pack.sourceUrl}
-        iconTrailing={
-          <ArrowUpRight className="tw:size-3 tw:text-fg-brand-primary" />
-        }
+        iconTrailing={ArrowUpRight}
         rel="noreferrer"
-        size="xs"
+        size="sm"
         target="_blank">
         {t('label.source')}
       </Button>
@@ -113,123 +99,127 @@ const OntologyPackCard = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-[11px] tw:p-4 tw:shadow-xs"
+      className="tw:h-full"
       data-testid={`ontology-pack-${pack.id}`}
-      isClickable={isInstalledBundledPack}
-      {...clickableCardProps}>
-      <div className="tw:flex tw:items-center tw:gap-[11px]">
-        <span
-          className={classNames(
-            'tw:grid tw:size-10 tw:shrink-0 tw:place-items-center tw:rounded-[10px] tw:px-1',
-            'tw:text-center tw:font-body tw:text-[11px] tw:leading-none tw:font-bold tw:tracking-[-0.02em] tw:text-white',
-            PACK_ICON_CLASSES[pack.id] ?? DEFAULT_PACK_ICON_CLASS
-          )}
-          data-testid={`ontology-pack-abbreviation-${pack.id}`}>
-          {pack.abbreviation}
-        </span>
-        <div className="tw:min-w-0 tw:flex-1">
-          <h2 className="tw:m-0 tw:truncate tw:font-body tw:text-sm tw:leading-normal tw:font-semibold tw:text-primary">
-            {pack.name}
-          </h2>
-          <p className="tw:m-0 tw:truncate tw:font-body tw:text-[11px] tw:leading-normal tw:font-normal tw:text-quaternary">
-            {pack.standard}
-          </p>
-        </div>
-        {installation ? (
-          <span className={INSTALLED_BADGE_CLASS}>
-            <Check aria-hidden="true" className="tw:size-2.5" />
-            {t('label.installed')}
-          </span>
-        ) : null}
-      </div>
+      size="md"
+      variant="elevated">
+      <Card.Content className="tw:h-full">
+        <Box className="tw:h-full" direction="col" gap={3}>
+          <Box align="center" gap={3}>
+            <OntologyPackIcon pack={pack} />
+            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <Box align="center" gap={2} justify="between" wrap="wrap">
+                <Typography
+                  aria-level={3}
+                  role="heading"
+                  size="text-md"
+                  weight="semibold">
+                  {presentation ? t(presentation.titleKey) : pack.name}
+                </Typography>
+                {installed && (
+                  <BadgeWithIcon
+                    color="success"
+                    iconLeading={Check}
+                    size="sm"
+                    type="pill-color">
+                    {t('label.installed')}
+                  </BadgeWithIcon>
+                )}
+              </Box>
+              <Typography ellipsis color="secondary" size="text-sm">
+                {pack.standard}
+              </Typography>
+            </Box>
+          </Box>
 
-      <p className="tw:m-0 tw:line-clamp-2 tw:min-h-9 tw:font-body tw:text-xs tw:leading-[18px] tw:font-normal tw:text-tertiary">
-        {pack.description}
-      </p>
+          <Typography color="secondary" size="text-sm">
+            {pack.description}
+          </Typography>
 
-      <div className="tw:mt-auto tw:flex tw:items-center tw:gap-2 tw:pt-0.5">
-        <span className="tw:font-body tw:text-[11px] tw:leading-normal tw:font-medium tw:text-quaternary">
-          {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()}{' '}
-          <span aria-hidden="true">·</span> {totals.relationships}{' '}
-          {t('label.relation-plural').toLocaleLowerCase()}
-        </span>
-        <span className="tw:flex-1" />
-        {actionButton}
-      </div>
+          <Box align="center" className="tw:mt-auto" gap={2} justify="between">
+            <Typography color="secondary" size="text-sm">
+              {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()}{' '}
+              · {totals.relationships}{' '}
+              {t('label.relation-plural').toLocaleLowerCase()}
+            </Typography>
+            {action}
+          </Box>
+        </Box>
+      </Card.Content>
     </Card>
   );
 };
 
 const OntologyLibraryCatalogue = ({
-  installations,
   packs,
+  installedPackIds = [],
   onSelect,
 }: OntologyLibraryCatalogueProps) => {
   const { t } = useTranslation();
-  const [selectedFilterId, setSelectedFilterId] = useState<string>();
-  const visiblePacks = selectedFilterId
-    ? packs.filter((pack) => pack.id === selectedFilterId)
-    : packs;
+  const [selectedFilterId, setSelectedFilterId] = useState(ALL_FILTER_ID);
+  const orderedPacks = [...packs].sort(
+    (a, b) =>
+      (PACK_PRESENTATION[a.id]?.order ?? Number.MAX_SAFE_INTEGER) -
+      (PACK_PRESENTATION[b.id]?.order ?? Number.MAX_SAFE_INTEGER)
+  );
+  const filters = [
+    { id: ALL_FILTER_ID, label: t('label.all') },
+    ...orderedPacks.map((pack) => {
+      const presentation = PACK_PRESENTATION[pack.id];
+
+      return {
+        id: pack.id,
+        label: presentation ? t(presentation.filterKey) : pack.name,
+      };
+    }),
+  ];
+  const visiblePacks =
+    selectedFilterId === ALL_FILTER_ID
+      ? orderedPacks
+      : orderedPacks.filter((pack) => pack.id === selectedFilterId);
 
   return (
-    <div data-testid="ontology-pack-catalogue">
-      <div className="tw:mb-[18px] tw:flex tw:flex-wrap tw:gap-[7px]">
-        <Button
-          noTextPadding
-          aria-pressed={!selectedFilterId}
-          className={classNames(
-            'tw:rounded-full tw:border tw:px-[13px] tw:py-1.5 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold',
-            'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
-            selectedFilterId
-              ? 'tw:border-secondary tw:bg-primary tw:text-secondary'
-              : 'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-brand-secondary'
-          )}
-          color="tertiary"
-          data-testid="ontology-library-filter-all"
-          onClick={() => setSelectedFilterId(undefined)}>
-          {t('label.all')}
-        </Button>
-        {packs.map((pack) => {
-          const isSelected = selectedFilterId === pack.id;
+    <Box data-testid="ontology-pack-catalogue" direction="col" gap={4}>
+      <ToggleButtonGroup
+        disallowEmptySelection
+        aria-label={t('label.filter')}
+        className="tw:flex tw:flex-wrap tw:gap-2"
+        selectedKeys={[selectedFilterId]}
+        selectionMode="single"
+        onSelectionChange={(keys) => {
+          const [key] = keys;
+          setSelectedFilterId(String(key));
+        }}>
+        {filters.map((filter) => (
+          <ToggleButton
+            className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
+            data-testid={`ontology-library-filter-${filter.id}`}
+            id={filter.id}
+            key={filter.id}>
+            <Badge
+              color={filter.id === selectedFilterId ? 'blue' : 'gray'}
+              size="lg"
+              type="pill-color">
+              {filter.label}
+            </Badge>
+          </ToggleButton>
+        ))}
+      </ToggleButtonGroup>
 
-          return (
-            <Button
-              noTextPadding
-              aria-pressed={isSelected}
-              className={classNames(
-                'tw:rounded-full tw:border tw:px-[13px] tw:py-1.5 tw:font-body tw:text-[11px] tw:leading-normal tw:font-semibold',
-                'tw:focus-visible:outline-2 tw:focus-visible:outline-offset-1 tw:focus-visible:outline-brand-600',
-                isSelected
-                  ? 'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-brand-secondary'
-                  : 'tw:border-secondary tw:bg-primary tw:text-secondary'
-              )}
-              color="tertiary"
-              data-testid={`ontology-library-filter-${pack.id}`}
-              key={pack.id}
-              onClick={() => setSelectedFilterId(pack.id)}>
-              {pack.name}
-            </Button>
-          );
-        })}
-      </div>
-
-      <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2 tw:lg:grid-cols-3">
-        {visiblePacks.map((pack) => {
-          const installation = installations.find(
-            (candidate) => candidate.packId === pack.id
-          );
-
-          return (
+      <Grid className="tw:md:gap-x-4" colGap="0" rowGap="4">
+        {visiblePacks.map((pack) => (
+          <Grid.Item
+            className="tw:md:col-span-12 tw:lg:col-span-8"
+            key={pack.id}>
             <OntologyPackCard
-              installation={installation}
-              key={pack.id}
+              installed={installedPackIds.includes(pack.id)}
               pack={pack}
               onSelect={onSelect}
             />
-          );
-        })}
-      </div>
-    </div>
+          </Grid.Item>
+        ))}
+      </Grid>
+    </Box>
   );
 };
 

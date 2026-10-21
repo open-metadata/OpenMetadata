@@ -207,11 +207,17 @@ public class RdfIndexApp extends AbstractNativeApplication {
       jobData.setRdfBuildDataset(null);
       jobData.setRdfRebuildId(null);
       rebuildLeaseFailure = null;
+      final Set<String> requested = jobData.getEntities();
+      final boolean includesOntologies =
+          requested == null
+              || requested.isEmpty()
+              || requested.contains(ALL)
+              || requested.contains(Entity.ONTOLOGY);
       jobData.setEntities(resolveEntityTypes(jobData.getEntities()));
       rebuildsEntireProjection =
           Boolean.TRUE.equals(jobData.getRecreateIndex())
               && jobData.getEntities().containsAll(getAll());
-      if (jobData.getEntities().isEmpty()) {
+      if (jobData.getEntities().isEmpty() && !includesOntologies) {
         throw new IllegalStateException(
             "No repository-backed entity types configured for RDF indexing");
       }
@@ -244,6 +250,8 @@ public class RdfIndexApp extends AbstractNativeApplication {
           LOG.info("Clearing existing RDF data");
           markIncompleteDuringInPlaceRebuild();
           clearRdfData();
+        } else if (includesOntologies) {
+          indexingRepository.rebuildOntologyGraphs();
         }
       }
 
@@ -553,6 +561,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     indexingRepository.clearAll();
     indexingRepository.compactStorage();
     indexingRepository.reloadOntologies();
+    indexingRepository.rebuildOntologyGraphs();
     LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
   }
 
@@ -679,6 +688,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
       // before indexing starts so SPARQL queries that depend on the ontology
       // (inference, federated, etc.) work after the wipe.
       rdf().reloadOntologies();
+      rdf().rebuildOntologyGraphs();
     } catch (Exception e) {
       LOG.error("Failed to clear RDF data", e);
       throw new RuntimeException("Failed to clear RDF data", e);

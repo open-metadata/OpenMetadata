@@ -12,8 +12,24 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { LearningResource } from '../../../rest/learningResourceAPI';
-import { ResourcePlayerModal } from './ResourcePlayerModal.component';
+import {
+  getLearningResourceById,
+  LearningResource,
+} from '../../../rest/learningResourceAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  ResourcePlayer,
+  ResourcePlayerModal,
+} from './ResourcePlayerModal.component';
+
+// The modal tests pass the list row, so a failed refetch falls back to it.
+jest.mock('../../../rest/learningResourceAPI', () => ({
+  getLearningResourceById: jest.fn().mockRejectedValue(new Error('offline')),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('./VideoPlayer.component', () => ({
   VideoPlayer: jest
@@ -224,5 +240,31 @@ describe('ResourcePlayerModal', () => {
     expect(
       screen.getByText('message.unsupported-resource-type')
     ).toBeInTheDocument();
+  });
+});
+
+describe('ResourcePlayer without a list row (settings sub-page)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shows the resource once fetched', async () => {
+    (getLearningResourceById as jest.Mock).mockResolvedValueOnce(
+      createMockResource('Video')
+    );
+    render(<ResourcePlayer resourceId="test-id" />);
+
+    expect(await screen.findByText('Test Resource')).toBeInTheDocument();
+    expect(screen.getByTestId('video-player')).toBeInTheDocument();
+  });
+
+  it('shows a not-found state and a toast instead of loading forever when the fetch fails', async () => {
+    (getLearningResourceById as jest.Mock).mockRejectedValueOnce(
+      new Error('404')
+    );
+    render(<ResourcePlayer resourceId="missing-id" />);
+
+    expect(await screen.findByTestId('resource-not-found')).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalled();
   });
 });

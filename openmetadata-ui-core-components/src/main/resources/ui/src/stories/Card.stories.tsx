@@ -24,7 +24,10 @@ const meta = {
     variant: {
       control: false,
       table: {
-        type: { summary: '"default" | "elevated" | "outlined" | "ghost"' },
+        type: {
+          summary:
+            '"default" | "elevated" | "outlined" | "ghost" | "muted" | "tile"',
+        },
       },
     },
     color: {
@@ -147,20 +150,70 @@ export const WithSubComponents: StoryObj = {
 export const Variants: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      {(['default', 'elevated', 'outlined', 'ghost'] as const).map(
-        (variant) => (
-          <div key={variant} style={{ width: 200 }}>
-            <Card variant={variant}>
-              <Card.Header subtitle="variant" title={variant} />
-              <Card.Content>
-                <p className="tw:text-sm tw:text-secondary">
-                  Card with variant="{variant}"
-                </p>
-              </Card.Content>
-            </Card>
-          </div>
-        )
-      )}
+      {(
+        ['default', 'elevated', 'outlined', 'ghost', 'muted', 'tile'] as const
+      ).map((variant) => (
+        <div key={variant} style={{ width: 200 }}>
+          <Card variant={variant}>
+            <Card.Header subtitle="variant" title={variant} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Card with variant="{variant}"
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+// The muted variant sits one step below the surface it is placed on in dark
+// mode; review it against the gray-800 overlay surface it is used on.
+export const MutedOnDarkSurface: StoryObj = {
+  render: () => (
+    <div
+      className="dark-mode tw:rounded-xl tw:bg-overlay-surface tw:p-6"
+      style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['default', 'muted'] as const).map((variant) => (
+        <div key={variant} style={{ width: 220 }}>
+          <Card isClickable variant={variant}>
+            <Card.Header subtitle="dark theme · clickable" title={variant} />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Hover to compare the interaction.
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
+    </div>
+  ),
+};
+
+// The tile variant is the clickable grid card: compare it on the light surface
+// and on the dark surface, and hover to see it lighten.
+export const TileOnSurface: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['tw:bg-surface', 'dark-mode tw:bg-surface'] as const).map((theme) => (
+        <div
+          className={`${theme} tw:rounded-xl tw:p-6`}
+          key={theme}
+          style={{ width: 260 }}>
+          <Card isClickable variant="tile">
+            <Card.Header
+              subtitle={theme.startsWith('dark') ? 'dark theme' : 'light theme'}
+              title="tile"
+            />
+            <Card.Content>
+              <p className="tw:text-sm tw:text-secondary">
+                Hover to see it lighten.
+              </p>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };

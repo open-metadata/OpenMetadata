@@ -79,6 +79,7 @@ public class JWTTokenGenerator {
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
   private List<String> principalClaims = List.of();
   private Map<String, String> principalClaimsMapping = Map.of();
+  private String emailClaim;
 
   private JWTTokenGenerator() {
     /* Private constructor for singleton */
@@ -117,6 +118,7 @@ public class JWTTokenGenerator {
     principalClaims = listOrEmpty(authenticationConfiguration.getJwtPrincipalClaims());
     principalClaimsMapping =
         buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
+    emailClaim = authenticationConfiguration.getEmailClaim();
     AuthenticationConfiguration.TokenValidationAlgorithm algorithm =
         authenticationConfiguration.getTokenValidationAlgorithm();
     try {
@@ -305,9 +307,9 @@ public class JWTTokenGenerator {
 
   /**
    * Identity claims shaped the way {@code SecurityUtil.findUserNameFromClaims}, {@code
-   * findEmailFromClaims} and {@code validateDomainEnforcement} read them under this deployment's
-   * principal-claim configuration, so a token we issue resolves to the user it was minted for - the
-   * same (name, email) the identity provider's token yields for that user.
+   * findEmailFromClaims}, {@code validateDomainEnforcement} and the email-first flow read them under
+   * this deployment's principal-claim configuration, so a token we issue resolves to the user it was
+   * minted for - the same (name, email) the identity provider's token yields for that user.
    *
    * <p>{@code preferred_username} carries the email because that is what identity providers put
    * there (Okta login, Azure UPN); a bare name there resolved to an empty domain under enforcement
@@ -325,6 +327,7 @@ public class JWTTokenGenerator {
     }
     claims.put(PREFERRED_USERNAME, principal);
     putConfiguredPrincipalClaims(claims, userName, principal);
+    putConfiguredEmailClaim(claims, email);
     return claims;
   }
 
@@ -349,6 +352,17 @@ public class JWTTokenGenerator {
       }
     } else if (!principalClaims.isEmpty()) {
       claims.put(principalClaims.getFirst(), principal);
+    }
+  }
+
+  /**
+   * The email-first flow reads the address from {@code emailClaim} alone, so a claim the provider
+   * sends but we do not otherwise mint ({@code upn}, a custom claim) has to be in our tokens too.
+   * That flow only runs without a principal-claims mapping, which otherwise owns these claim names.
+   */
+  private void putConfiguredEmailClaim(Map<String, String> claims, String email) {
+    if (principalClaimsMapping.isEmpty() && !nullOrEmpty(emailClaim) && !nullOrEmpty(email)) {
+      claims.put(emailClaim, email);
     }
   }
 

@@ -445,9 +445,7 @@ function handleDeleteOrBackspace(
   // Check if we're in a custom editor (like tag selector, dropdown, etc.)
   const isInCustomEditor = !!(
     target.closest('.async-select-list') ||
-    target.closest('.react-grid-select-dropdown') ||
-    target.closest('.ant-select') ||
-    target.closest('.ant-select-dropdown')
+    target.closest('.react-grid-select-dropdown')
   );
 
   if (!isInInput && !isInCustomEditor) {

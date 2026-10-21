@@ -24,6 +24,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -48,6 +49,12 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
 
   EntityNeighborhoodTool(Supplier<RdfRepository> repositorySupplier) {
     super(repositorySupplier);
+  }
+
+  EntityNeighborhoodTool(
+      Supplier<RdfRepository> repositorySupplier,
+      Supplier<RdfProjectionState> projectionStateSupplier) {
+    super(repositorySupplier, projectionStateSupplier);
   }
 
   /** A single directed edge to a neighbor; {@code neighborLabel} is omitted when absent. */
@@ -82,6 +89,7 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
     int depth = clamp(parameters.integer("depth", DEFAULT_DEPTH), MIN_DEPTH, MAX_DEPTH);
     int limit = clamp(parameters.integer("limit", DEFAULT_LIMIT), MIN_LIMIT, MAX_LIMIT);
     RdfRepository repository = repository();
+    requireReadyProjectionForNonAdmin(securityContext);
 
     return queryNeighborhood(
         securityContext, repository, entity.uri(repository.getBaseUri()), depth, limit);
@@ -94,19 +102,28 @@ public class EntityNeighborhoodTool extends RdfMcpTool<EntityNeighborhoodTool.Ne
       int depth,
       int limit) {
     // guardedRead sits outside the wrapping below: a capacity or timeout rejection carries its own
-    // 429/503 classification and must not be flattened into a generic "query failed".
-    String triples =
-        guardedRead(securityContext, () -> runConstruct(repository, entityUri, depth, limit));
-    RdfBody.Bounded bounded = RdfBody.bound(triples, RdfBody.maxBytes());
-    List<Edge> edges = fetchEdges(repository, entityUri, limit);
+    // 429/503 classification and must not be flattened into a generic "query failed". Both reads
+    // share one admission slot so a busy guard cannot reject the summary after the CONSTRUCT ran.
+    GraphRead read =
+        guardedRead(securityContext, () -> readGraph(repository, entityUri, depth, limit));
+    RdfBody.Bounded bounded = RdfBody.bound(read.triples(), RdfBody.maxBytes());
     return new Neighborhood(
         entityUri,
         depth,
         limit,
         bounded.value(),
-        fitEdges(edges, bounded.value().length()),
+        fitEdges(read.edges(), bounded.value().length()),
         bounded.truncated(),
         bounded.byteCount());
+  }
+
+  private record GraphRead(String triples, List<Edge> edges) {}
+
+  private static GraphRead readGraph(
+      RdfRepository repository, String entityUri, int depth, int limit) {
+    return new GraphRead(
+        runConstruct(repository, entityUri, depth, limit),
+        fetchEdges(repository, entityUri, limit));
   }
 
   private static String runConstruct(

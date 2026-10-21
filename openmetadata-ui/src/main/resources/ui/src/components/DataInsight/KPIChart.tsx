@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Box,
   Button,
@@ -25,6 +24,7 @@ import {
   LineChart,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, round } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -308,7 +308,7 @@ const KPIChart: FC<Props> = ({
                   button={
                     <Button
                       color="secondary-brand"
-                      iconLeading={<PlusOutlined />}
+                      iconLeading={Plus}
                       onClick={handleAddKpi}>
                       {t('label.add-entity', {
                         entity: t('label.kpi-uppercase'),

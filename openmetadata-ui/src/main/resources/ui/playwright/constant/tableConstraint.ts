@@ -10,51 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { selectOptionWithRetry } from '../utils/common';
 
-export const clickOnForeignKeySelector = async (page: Page) => {
-  await page
-    .getByTestId('constraint-type-select')
-    .getByText('Primary key')
-    .click();
-
-  const selectForeignConstraints = page.getByTitle('Foreign Key');
-  await selectForeignConstraints.hover();
-  await selectForeignConstraints.click();
+const selectConstraintType = async (page: Page, type: RegExp) => {
+  await selectOptionWithRetry(
+    page.getByTestId('constraint-type-select').getByRole('button'),
+    page.getByRole('option', { name: type })
+  );
 };
 
-export const clickOnUniqueKeySelector = async (page: Page) => {
-  await page
-    .getByTestId('constraint-type-select')
-    .getByTitle('Foreign key')
-    .click();
+export const clickOnForeignKeySelector = (page: Page) =>
+  selectConstraintType(page, /^foreign key$/i);
 
-  const selectUniqueConstraints = page.getByTitle('Unique');
-  await selectUniqueConstraints.hover();
-  await selectUniqueConstraints.click();
-};
+export const clickOnUniqueKeySelector = (page: Page) =>
+  selectConstraintType(page, /^unique$/i);
 
-export const clickOnDistKeySelector = async (
+export const clickOnDistKeySelector = (page: Page) =>
+  selectConstraintType(page, /^dist key$/i);
+
+export const clickOnSortKeySelector = (page: Page) =>
+  selectConstraintType(page, /^sort key$/i);
+
+/** Adds each column as a chip to a key-constraint multi-select. */
+export const addKeyColumns = async (
   page: Page,
-  isPrimary?: boolean
+  testId: string,
+  columns: string[]
 ) => {
-  await page
-    .getByTestId('constraint-type-select')
-    .getByTitle(isPrimary ? 'Primary key' : 'Unique')
-    .click();
+  const input = page.getByTestId(testId).getByRole('combobox');
+  for (const column of columns) {
+    await input.fill(column);
+    await page.getByRole('option', { name: column, exact: true }).click();
+  }
+  await page.keyboard.press('Escape');
 
-  const selectDistKeyConstraints = page.getByTitle('Dist key');
-  await selectDistKeyConstraints.hover();
-  await selectDistKeyConstraints.click();
+  for (const column of columns) {
+    await expect(page.getByTestId(testId)).toContainText(column);
+  }
 };
 
-export const clickOnSortKeySelector = async (page: Page) => {
-  await page
-    .getByTestId('constraint-type-select')
-    .getByTitle('Dist key')
-    .click();
-
-  const selectSortKeyConstraints = page.getByTitle('Sort key');
-  await selectSortKeyConstraints.hover();
-  await selectSortKeyConstraints.click();
+/** Removes each column's chip from a key-constraint multi-select. */
+export const removeKeyColumns = async (
+  page: Page,
+  testId: string,
+  columns: string[]
+) => {
+  for (const column of columns) {
+    await page
+      .getByTestId(testId)
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: column })
+      .getByRole('button')
+      .click();
+  }
 };

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ExclamationCircleFilled } from '@ant-design/icons';
 import {
   Badge,
   Button,
@@ -19,6 +18,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Copy01,
+  ExclamationCircleFilled,
   LinkExternal01,
   Star01,
 } from '@openmetadata/ui-core-components/icons';
@@ -129,7 +129,10 @@ const EntityHeaderTitle = ({
         {deleted && (
           <div className="text-xs tw:flex-[0_0_100px]">
             <span className="deleted-badge-button" data-testid="deleted-badge">
-              <ExclamationCircleFilled className="m-r-xss font-medium text-xs" />
+              <ExclamationCircleFilled
+                className="tw:mr-1 tw:shrink-0"
+                size={12}
+              />
               {t('label.deleted')}
             </span>
           </div>
@@ -196,7 +199,7 @@ const EntityHeaderTitle = ({
           color="tertiary"
           data-testid="entity-follow-button"
           iconLeading={
-            <Star01 className="tw:size-3.5 tw:text-utility-brand-600" />
+            <Star01 className="tw:text-utility-brand-600" size={14} />
           }
           isDisabled={deleted}
           isLoading={isFollowingLoading}

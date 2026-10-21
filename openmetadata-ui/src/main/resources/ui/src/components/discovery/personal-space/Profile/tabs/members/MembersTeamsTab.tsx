@@ -74,7 +74,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         <Table
           className={isTableHovered ? 'drop-over-table' : undefined}
           columns={childTeamColumns}
-          containerClassName="tw:rounded-xl"
+          containerClassName="tw:rounded-none tw:border-0"
           data-testid="sub-teams-table"
           dataSource={filteredChildTeams}
           dragAndDropHooks={dragAndDropHooks}
@@ -92,7 +92,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                 <Button
                   color="primary"
                   data-testid="add-team"
-                  size="sm"
+                  size="xs"
                   onPress={() =>
                     onNavigate({
                       type: 'teams-add',

@@ -111,6 +111,9 @@ export interface LineageNodeType
   fields?: SearchIndexField[];
   isTempTable?: boolean;
   lineageMapSubtitle?: string;
+  lineageMapCount?: { count: number; entity: string };
+  // The scene's Asset band ships no field list, only how many fields there are.
+  lineageMapChildrenCount?: number;
 }
 
 export interface EntityLineageResponse {

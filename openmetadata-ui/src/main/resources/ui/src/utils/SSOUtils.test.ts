@@ -2910,6 +2910,20 @@ describe('SSOUtils', () => {
         expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
       });
 
+      it('should NOT prevent default when Enter is pressed in a combobox', () => {
+        const input = document.createElement('input');
+        input.setAttribute('role', 'combobox');
+        Object.defineProperty(mockEvent, 'target', {
+          value: input,
+          writable: true,
+        });
+
+        handler(mockEvent as KeyboardEvent);
+
+        expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+        expect(mockEvent.stopPropagation).not.toHaveBeenCalled();
+      });
+
       it('should NOT prevent default for non-Enter keys', () => {
         const input = document.createElement('input');
         Object.defineProperty(mockEvent, 'target', {

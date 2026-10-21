@@ -136,13 +136,24 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const rowsToCheck = maxRows ? allRows.slice(0, maxRows) : allRows;
 
     for (const row of rowsToCheck) {
-      const statusCell = row.locator('td:nth-child(3)');
-      const statusText = await statusCell.textContent();
-      if (statusText?.trim()) {
-        const hasValidStatus = allowedStatuses.some((s) =>
-          statusText.includes(s)
+      const fqn = await row.getAttribute('data-row-key');
+      if (!fqn) {
+        continue;
+      }
+      const seeded = createdTerms.find(
+        ({ term }) => term.responseData.fullyQualifiedName === fqn
+      );
+      if (!seeded) {
+        throw new Error(`Unexpected glossary term in filtered results: ${fqn}`);
+      }
+      expect(allowedStatuses).toContain(seeded.status);
+
+      if (['Draft', 'In Review'].includes(seeded.status)) {
+        await expect(row.getByTestId('proposal-status-badge')).toContainText(
+          'Proposed by'
         );
-        expect(hasValidStatus).toBe(true);
+      } else {
+        await expect(row.locator('.status-badge')).toHaveText(seeded.status);
       }
     }
 

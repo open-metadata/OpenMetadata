@@ -51,6 +51,7 @@ import {
   removeCustomPropertyViaApi,
 } from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -334,10 +335,35 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, 'Updated description');
 
     const saves = recordCustomPropertySaves(page);
+    // The detail page renders its table (as a loading skeleton) before its
+    // refetch of the type lands, and under load that refetch outlasts the row
+    // assertion. Only a GET after the successful PATCH counts: the save itself
+    // reads the type first, and again after each rejected attempt.
+    let patched = false;
+    const detailRefetch = waitForResponseWithStatus(
+      page,
+      (res) => {
+        if (
+          res.request().method() === 'PATCH' &&
+          res.url().includes('/api/v1/metadata/types/')
+        ) {
+          patched = res.ok();
+
+          return false;
+        }
+
+        return (
+          patched &&
+          res.request().method() === 'GET' &&
+          res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`)
+        );
+      },
+      200
+    );
     await page.getByTestId('edit-custom-property-save').click();
+    await detailRefetch;
 
     // Back on detail page — updated display name is visible.
-    await page.getByTestId('custom-property-table').waitFor();
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();

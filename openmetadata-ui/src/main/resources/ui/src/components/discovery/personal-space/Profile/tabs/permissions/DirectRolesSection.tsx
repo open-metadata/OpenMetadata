@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { DirectRolePermission } from '../../../../../../rest/permissionAPI';
@@ -49,12 +49,13 @@ const DirectRolesSection: React.FC<DirectRolesSectionProps> = ({
   ) : (
     <Box direction="col" gap={4}>
       {roles.map((item) => (
-        <Box
-          className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
-          direction="col"
-          key={item.role.fullyQualifiedName ?? item.role.name}>
-          <RoleCard policies={item.policies} role={item.role} />
-        </Box>
+        <Card
+          key={item.role.fullyQualifiedName ?? item.role.name}
+          variant="muted">
+          <Card.Content className="tw:flex tw:flex-col">
+            <RoleCard policies={item.policies} role={item.role} />
+          </Card.Content>
+        </Card>
       ))}
     </Box>
   );

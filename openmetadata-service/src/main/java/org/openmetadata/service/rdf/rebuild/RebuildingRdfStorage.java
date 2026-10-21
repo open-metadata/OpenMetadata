@@ -124,6 +124,13 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
         () -> new RdfMutation.Turtle(body, graph));
   }
 
+  @Override
+  public void replaceGraph(final String graph, final Model model) {
+    mutate(
+        storage -> storage.replaceGraph(graph, model),
+        () -> RdfMutation.GraphReplace.capture(graph, model));
+  }
+
   private static byte[] readTurtle(final InputStream input) {
     try {
       final byte[] body = input.readNBytes(MAX_TURTLE_BYTES + 1);

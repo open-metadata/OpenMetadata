@@ -108,4 +108,18 @@ describe('BadgeWithButton tooltip', () => {
 
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
+
+  it('keeps its own text color when rendered as a link', () => {
+    render(
+      <Badge color="error" data-testid="linked-badge" href="/somewhere">
+        Failed
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('linked-badge');
+
+    expect(badge.tagName).toBe('A');
+    expect(badge).toHaveClass('tw:text-utility-error-700', 'tw:no-underline');
+    expect(badge).not.toHaveClass('tw:text-inherit');
+  });
 });

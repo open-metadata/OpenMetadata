@@ -330,6 +330,21 @@ export interface SlotContribution {
 }
 
 /**
+ * Props for a `SERVICE_DETAILS_TEST_CONNECTION_ACTIONS` contribution: the page
+ * context plus the test's raw log (the same text "Copy log" copies) and a
+ * callback that closes the test connection dialog.
+ */
+export type TestConnectionActionProps = PluginEntityDetailsContext & {
+  failure: string;
+  onClose: () => void;
+};
+
+export interface TestConnectionActionContribution {
+  key: string;
+  component: ComponentType<TestConnectionActionProps>;
+}
+
+/**
  * Props the connections list page passes to a `CONNECTIONS_LIST_ONBOARDING`
  * contribution. The page owns the estate query and the browse chrome; the
  * contribution owns the first-run decision (who is a first-run admin, what the

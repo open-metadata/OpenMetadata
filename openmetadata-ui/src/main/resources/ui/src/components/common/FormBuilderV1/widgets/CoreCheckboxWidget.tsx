@@ -13,7 +13,11 @@
 
 import { Checkbox } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CoreCheckboxWidget = ({
   value,
@@ -28,10 +32,11 @@ const CoreCheckboxWidget = ({
 }: WidgetProps) => {
   return (
     <Checkbox
+      {...getWidgetAriaProps({ label, schema })}
       hint={getWidgetHint({ rawErrors, schema, options })}
       isDisabled={disabled || readonly}
       isSelected={Boolean(value)}
-      label={getWidgetLabel({ hideLabel, label })}
+      label={getWidgetLabel({ hideLabel, label, schema })}
       onChange={onChange}
     />
   );

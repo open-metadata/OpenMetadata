@@ -92,6 +92,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("directory", MetadataOperation.VIEW_BASIC);
+    addViewOperation("columns", MetadataOperation.VIEW_BASIC);
     addViewOperation("usageSummary", MetadataOperation.VIEW_USAGE);
     addViewOperation("sampleData", MetadataOperation.VIEW_SAMPLE_DATA);
     return listOf(
@@ -695,9 +696,7 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @PUT

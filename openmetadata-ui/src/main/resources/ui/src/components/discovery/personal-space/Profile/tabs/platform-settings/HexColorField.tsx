@@ -50,7 +50,7 @@ const HexColorField = ({
     <Box align="center" direction="row" gap={2}>
       <input
         aria-label={label}
-        className="tw:size-10 tw:shrink-0 tw:cursor-pointer tw:rounded-lg tw:border tw:border-primary tw:bg-primary tw:p-1"
+        className="tw:size-10 tw:shrink-0 tw:cursor-pointer tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:p-1"
         data-testid={`${name}-color-picker`}
         type="color"
         value={swatchValue}

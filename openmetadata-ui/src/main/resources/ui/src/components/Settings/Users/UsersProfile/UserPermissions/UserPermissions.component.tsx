@@ -12,6 +12,10 @@
  */
 
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Badge,
   Box,
   Card,
@@ -19,7 +23,6 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Collapse, Spin } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, { useEffect, useState } from 'react';
@@ -46,9 +49,8 @@ import {
   getTeamsWithFqnPath,
 } from '../../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import Loader from '../../../../common/Loader/Loader';
 import './UserPermissions.style.less';
-
-const { Panel } = Collapse;
 
 interface UserPermissionsProps {
   username: string;
@@ -170,41 +172,52 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
       policy.effect === 'ALLOW' ? 'success' : nonAllowPolicyColor;
 
     return (
-      <Collapse ghost className="policy-collapse" key={index}>
-        <Panel
-          header={
-            <Box
-              inline
-              align="center"
-              className="layout-space layout-space-horizontal"
-              gap={2}
-              itemClassName="layout-space-item">
-              <Link
-                to={getEntityLink(
-                  'policy',
-                  policy.policy.fullyQualifiedName || ''
-                )}>
-                {getEntityName(policy.policy)}
-              </Link>
-              <Badge
-                className="tw:inline-flex tw:mr-2"
-                color={policyTagColor}
-                size="sm"
-                type="color">
-                {policy.effect}
-              </Badge>
-              <Typography color="secondary">
-                <span>{policy.rules.length}</span>
-                {t('label.rule-lowercase-plural')}
-              </Typography>
+      <Accordion allowsMultipleExpanded className="policy-collapse" key={index}>
+        <AccordionItem id={String(index)} key={index}>
+          <Box align="center" gap={2}>
+            <AccordionHeader
+              aria-label={t('label.entity-detail-plural', {
+                entity: getEntityName(policy.policy),
+              })}
+              className="tw:w-auto"
+            />
+            <Box className="tw:min-w-0 tw:flex-1">
+              <Box
+                inline
+                align="center"
+                className="layout-space layout-space-horizontal"
+                gap={2}
+                itemClassName="layout-space-item">
+                <Link
+                  to={getEntityLink(
+                    'policy',
+                    policy.policy.fullyQualifiedName || ''
+                  )}>
+                  {getEntityName(policy.policy)}
+                </Link>
+                <Badge
+                  className="tw:inline-flex tw:mr-2"
+                  color={policyTagColor}
+                  size="sm"
+                  type="color">
+                  {policy.effect}
+                </Badge>
+                <Typography color="secondary">
+                  <span>{policy.rules.length}</span>
+                  {t('label.rule-lowercase-plural')}
+                </Typography>
+              </Box>
             </Box>
-          }
-          key={index}>
-          <div className="rules-container">
-            {policy.rules.map((rule, ruleIndex) => renderRule(rule, ruleIndex))}
-          </div>
-        </Panel>
-      </Collapse>
+          </Box>
+          <AccordionPanel>
+            <div className="rules-container">
+              {policy.rules.map((rule, ruleIndex) =>
+                renderRule(rule, ruleIndex)
+              )}
+            </div>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
     );
   };
 
@@ -592,9 +605,9 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
 
   if (loading) {
     return (
-      <div className="user-permissions-loading">
-        <Spin size="large" />
-      </div>
+      <Box align="center" className="tw:min-h-100" justify="center">
+        <Loader />
+      </Box>
     );
   }
 

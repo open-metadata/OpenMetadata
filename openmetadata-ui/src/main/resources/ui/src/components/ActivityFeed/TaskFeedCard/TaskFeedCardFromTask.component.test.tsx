@@ -329,4 +329,83 @@ describe('TaskFeedCardFromTask', () => {
     expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
   });
+
+  const ontologyReview: Task = {
+    ...MOCK_TASK,
+    type: TaskEntityType.RequestApproval,
+    category: TaskCategory.Approval,
+    about: { id: 'release-id', type: 'ontologyRelease' },
+    assignees: [{ id: 'current-user-id', type: 'user', name: 'current-user' }],
+    payload: { proposedChanges: { description: 'Captured definition' } },
+  };
+
+  it.each([
+    { availableTransitions: [] },
+    {
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          targetStageId: 'approved',
+          targetTaskStatus: TaskEntityStatus.Approved,
+        },
+      ],
+    },
+    {
+      availableTransitions: [
+        {
+          id: 'reject',
+          label: 'Reject',
+          requiresComment: true,
+          targetStageId: 'rejected',
+          targetTaskStatus: TaskEntityStatus.Rejected,
+        },
+      ],
+    },
+  ])(
+    'requires opening a release review even when a quick transition is available',
+    async ({ availableTransitions }) => {
+      (isTagsTaskType as jest.Mock).mockReturnValue(false);
+      await act(async () => {
+        render(
+          <TaskFeedCardFromTask
+            task={{ ...ontologyReview, availableTransitions }}
+          />,
+          {
+            wrapper: MemoryRouter,
+          }
+        );
+      });
+
+      expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    }
+  );
+
+  it('preserves quick actions for non-ontology approval tasks', async () => {
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask
+          task={{
+            ...ontologyReview,
+            about: { id: 'glossary-id', type: 'glossary' },
+            payload: MOCK_TASK.payload,
+            availableTransitions: [
+              {
+                id: 'reject',
+                label: 'Reject',
+                requiresComment: true,
+                targetStageId: 'rejected',
+                targetTaskStatus: TaskEntityStatus.Rejected,
+              },
+            ],
+          }}
+        />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+  });
 });

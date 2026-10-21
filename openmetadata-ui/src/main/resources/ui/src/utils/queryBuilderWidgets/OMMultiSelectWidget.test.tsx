@@ -99,6 +99,28 @@ describe('OMMultiSelectWidget', () => {
 
     expect(screen.getByRole('combobox')).toBeDisabled();
   });
+
+  it('does not add a value that is already selected', () => {
+    const setValue = jest.fn();
+    render(
+      <OMMultiSelectWidget {...baseProps} setValue={setValue} value={['a']} />
+    );
+
+    fireEvent.click(screen.getByTestId('pick-first-option'));
+
+    expect(setValue).not.toHaveBeenCalled();
+  });
+
+  it('adds a value that is not selected yet', () => {
+    const setValue = jest.fn();
+    render(
+      <OMMultiSelectWidget {...baseProps} setValue={setValue} value={['b']} />
+    );
+
+    fireEvent.click(screen.getByTestId('pick-first-option'));
+
+    expect(setValue).toHaveBeenCalledWith(['b', 'a']);
+  });
 });
 
 // Every option ever fetched used to stay on offer, so a narrowed search still

@@ -23,6 +23,7 @@ import {
 import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { toString } from 'lodash';
 import { PagingWithoutTotal } from 'Models';
 import React, {
   FC,
@@ -43,7 +44,11 @@ import {
 import { ExportTypes } from '../../../constants/Export.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -71,9 +76,11 @@ import {
   PluginEntityDetailsContext,
   SlotContribution,
   TabContribution,
+  TestConnectionActionContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { getServiceVersionPath } from '../../../utils/RouterUtils';
 import {
   getCountLabel,
   getEntityTypeFromServiceCategory,
@@ -81,11 +88,14 @@ import {
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import Loader from '../../common/Loader/Loader';
 import TestConnection from '../../common/TestConnection/TestConnection';
+import DataModelTable from '../../Dashboard/DataModel/DataModels/DataModelsTable';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -95,12 +105,26 @@ import { useSlotInset } from '../hooks/useSlotInset';
 import {
   getConnectionsRootBreadcrumb,
   getServiceCategoryBreadcrumb,
+  getServiceListPath,
 } from './connectionsBreadcrumb.utils';
-import { fetchServiceChildren } from './connectionServiceChildren.utils';
+import {
+  fetchServiceChildren,
+  getSecondaryAssetTabs,
+} from './connectionServiceChildren.utils';
 import DataAssetHeaderDetailsRow from './DataAssetHeaderDetailsRow/DataAssetHeaderDetailsRow';
 import DataAssetsTab from './DataAssetsTab';
+import {
+  ServiceFilesTab,
+  ServiceSpreadsheetsTab,
+} from './ServiceDriveAssetTabs';
+import { ServiceFollowButton } from './ServiceFollowButton';
+import { useActiveAnnouncements } from './useActiveAnnouncements';
+import {
+  DATA_ASSETS_TAB_KEY,
+  useServiceAssetCounts,
+} from './useServiceAssetCounts';
 
-type StaticTabKey = 'dataAssets' | 'connection';
+type StaticTabKey = typeof DATA_ASSETS_TAB_KEY | 'connection';
 type TabKey = StaticTabKey | string;
 
 interface DetailsTab {
@@ -116,6 +140,15 @@ interface DetailsTab {
 // contribution land before or after these without either side knowing about the other.
 const DATA_ASSETS_TAB_ORDER = 40;
 const CONNECTION_TAB_ORDER = 50;
+
+// A long service name ends in an ellipsis, with the full name on hover only when it is cut off.
+const TITLE_ELLIPSIS = { tooltip: true } as const;
+
+// As classic: these services have no child assets to list, so they get no data-assets tab.
+const SERVICES_WITHOUT_DATA_ASSETS = new Set<ServiceCategory>([
+  ServiceCategory.METADATA_SERVICES,
+  ServiceCategory.SECURITY_SERVICES,
+]);
 
 const getActionButtonColor = (action: ActionContribution) => {
   if (action.danger) {
@@ -138,7 +171,7 @@ const getTabItemClassName = ({
     return `${base} tw:border-fg-brand-primary tw:text-fg-brand-primary`;
   }
 
-  const hover = isHovered ? 'tw:border-gray-300 tw:text-secondary' : '';
+  const hover = isHovered ? 'tw:border-utility-gray-300 tw:text-secondary' : '';
 
   return `${base} tw:border-transparent tw:text-tertiary ${hover}`;
 };
@@ -161,7 +194,9 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
 
-  const [activeTab, setActiveTab] = useState<TabKey>(() => tab ?? 'dataAssets');
+  const [activeTab, setActiveTab] = useState<TabKey>(
+    () => tab ?? DATA_ASSETS_TAB_KEY
+  );
 
   const handleTabChange = useCallback(
     (tabKey: TabKey) => {
@@ -195,10 +230,18 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   });
   const { showDeletedTables, schema: searchValue } = tableFilters;
 
+  // Only the latest request may write the service and its permission. The route can move to
+  // another service without a remount, and a slower answer for the previous one would otherwise
+  // land under the new URL, so edits would patch, and permissions gate, the wrong service.
+  const latestServiceRequestRef = useRef(0);
+  const latestPermissionRequestRef = useRef(0);
+
   const fetchServiceDetails = useCallback(async () => {
     if (!serviceCategory || !decodedFqn) {
       return;
     }
+    const requestId = ++latestServiceRequestRef.current;
+    const isLatest = () => requestId === latestServiceRequestRef.current;
     try {
       setIsLoading(true);
       const res = await getServiceByFQN(serviceCategory, decodedFqn, {
@@ -212,11 +255,17 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         // service details does the same.
         include: Include.All,
       });
-      setServiceDetails(res);
+      if (isLatest()) {
+        setServiceDetails(res);
+      }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (isLatest()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsLoading(false);
+      if (isLatest()) {
+        setIsLoading(false);
+      }
     }
   }, [serviceCategory, decodedFqn]);
 
@@ -224,15 +273,23 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     if (!serviceCategory || !decodedFqn) {
       return;
     }
+    const requestId = ++latestPermissionRequestRef.current;
+    const isLatest = () => requestId === latestPermissionRequestRef.current;
     try {
       setIsServicePermissionLoading(true);
       const resource = getResourceEntityFromServiceCategory(serviceCategory);
       const perm = await getEntityPermissionByFqn(resource, decodedFqn);
-      setServicePermission(perm);
+      if (isLatest()) {
+        setServicePermission(perm);
+      }
     } catch {
-      setServicePermission(DEFAULT_ENTITY_PERMISSION);
+      if (isLatest()) {
+        setServicePermission(DEFAULT_ENTITY_PERMISSION);
+      }
     } finally {
-      setIsServicePermissionLoading(false);
+      if (isLatest()) {
+        setIsServicePermissionLoading(false);
+      }
     }
   }, [serviceCategory, decodedFqn, getEntityPermissionByFqn]);
 
@@ -278,6 +335,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   // A soft-deleted service's children are soft-deleted with it, so asking for live ones would
   // return nothing and the tab would read as empty rather than as deleted.
   const showDeleted = showDeletedTables || isServiceDeleted;
+  const include = showDeleted ? Include.Deleted : Include.NonDeleted;
+  // Keyed on the loaded service, so the counts wait for the Deleted setting it decides.
+  const assetCounts = useServiceAssetCounts(
+    serviceCategory as ServiceCategory,
+    serviceDetails.fullyQualifiedName ?? '',
+    include
+  );
 
   const { handlePageChange } = pagingInfo;
   const handleShowDeletedChange = useCallback(
@@ -341,7 +405,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 ? databaseFields
                 : commonTableFields,
             paging: { ...paging, limit: pageSize },
-            include: showDeleted ? Include.Deleted : Include.NonDeleted,
+            include,
           }
         );
         if (isLatest()) {
@@ -364,7 +428,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       decodedFqn,
       pageSize,
       handlePagingChange,
-      showDeleted,
+      include,
       databaseFields,
     ]
   );
@@ -502,6 +566,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceCategory]
   );
 
+  const isDatabaseService =
+    serviceCategory === ServiceCategory.DATABASE_SERVICES;
+
+  const { announcements, refetch: refetchAnnouncements } =
+    useActiveAnnouncements(
+      serviceEntityType,
+      serviceDetails.fullyQualifiedName ?? ''
+    );
+
   const { showModal } = useEntityExportModalProvider();
 
   const supportsImportExport = useMemo(
@@ -512,6 +585,18 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const handleImportClick = useCallback(() => {
     navigate(getEntityImportPath(serviceEntityType, decodedFqn));
   }, [navigate, serviceEntityType, decodedFqn]);
+
+  // As Context Center articles: the service's version route shows that version beside the
+  // version history, and closing it returns here.
+  const handleVersionClick = useCallback(() => {
+    void navigate(
+      getServiceVersionPath(
+        serviceCategory ?? '',
+        decodedFqn,
+        toString(serviceDetails.version)
+      )
+    );
+  }, [navigate, serviceCategory, decodedFqn, serviceDetails.version]);
 
   const handleExportClick = useCallback(() => {
     showModal({
@@ -526,8 +611,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     []
   );
 
-  const handleCloseAnnouncementDrawer = useCallback(
-    () => setIsAnnouncementDrawerOpen(false),
+  const handleCloseAnnouncementDrawer = useCallback(() => {
+    setIsAnnouncementDrawerOpen(false);
+    // The drawer may have added, edited or removed one; the banner shows the active ones.
+    void refetchAnnouncements();
+  }, [refetchAnnouncements]);
+
+  const handleFollowersChange = useCallback(
+    (followers: EntityReference[]) =>
+      setServiceDetails((prev) => ({ ...prev, followers })),
     []
   );
 
@@ -541,27 +633,38 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [saveUpdatedServiceData, serviceDetails]
   );
 
+  // The service is gone (or, soft-deleted, out of the default list): land on the list it was in
+  // rather than on whatever page came before.
   const afterServiceDeleteAction = useCallback(() => {
-    navigate(-1);
-  }, [navigate]);
+    void navigate(getServiceListPath(serviceCategory));
+  }, [navigate, serviceCategory]);
 
+  // Both are keyed on the route's service, so moving to another service reloads it.
   useEffect(() => {
-    fetchServiceDetails();
-    fetchServicePermission();
-  }, []);
+    void fetchServiceDetails();
+    void fetchServicePermission();
+  }, [fetchServiceDetails, fetchServicePermission]);
 
   const { cursorType, cursorValue } = pagingInfo.pagingCursor;
 
   // Refetches on every input of the list — page cursor, page size, the deleted switch, a restore —
   // and yields to ServiceMainTabContent while a search is active, as classic service details does.
+  const hasDataAssetsTab = !SERVICES_WITHOUT_DATA_ASSETS.has(
+    serviceCategory as ServiceCategory
+  );
+
   useEffect(() => {
     const isListShown =
-      activeTab === 'dataAssets' && Boolean(serviceDetails.fullyQualifiedName);
+      hasDataAssetsTab &&
+      activeTab === DATA_ASSETS_TAB_KEY &&
+      Boolean(serviceDetails.fullyQualifiedName);
     if (searchValue) {
       // The search owns the table now; a list request still in flight must not land on it.
       latestListRequestRef.current += 1;
     } else if (isListShown) {
-      getOtherDetails(cursorType ? { [cursorType]: cursorValue } : undefined);
+      void getOtherDetails(
+        cursorType ? { [cursorType]: cursorValue } : undefined
+      );
     }
   }, [
     activeTab,
@@ -570,6 +673,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     cursorType,
     cursorValue,
     getOtherDetails,
+    hasDataAssetsTab,
   ]);
 
   const extensionContext: PluginEntityDetailsContext = useMemo(
@@ -632,21 +736,51 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
     );
 
+  const testConnectionActions =
+    extensionRegistry.getContributions<TestConnectionActionContribution>(
+      EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
+    );
+
+  const renderTestConnectionAction = (failure: string, onClose: () => void) =>
+    testConnectionActions.map(({ key, component: Action }) => (
+      <Action
+        key={key}
+        {...extensionContext}
+        failure={failure}
+        onClose={onClose}
+      />
+    ));
+
   // Contributed tabs (e.g. Collate's summary/insights/agents, ordered 10/20/30) sort ahead of the
   // OSS built-ins by design — `order` is the only coupling between this page and what a plugin adds,
   // so either side can change independently. A contribution with no `order` sorts after every built
   // in tab but keeps its registration order relative to other order-less contributions.
   const tabs: DetailsTab[] = useMemo(() => {
     const builtIns: DetailsTab[] = [
-      {
-        key: 'dataAssets',
-        label: serviceCategory
-          ? getCountLabel(
-              serviceCategory as unknown as Parameters<typeof getCountLabel>[0]
-            )
-          : t('label.data-asset-plural'),
-        order: DATA_ASSETS_TAB_ORDER,
-      },
+      ...(hasDataAssetsTab
+        ? [
+            {
+              key: DATA_ASSETS_TAB_KEY,
+              label: serviceCategory
+                ? getCountLabel(
+                    serviceCategory as unknown as Parameters<
+                      typeof getCountLabel
+                    >[0]
+                  )
+                : t('label.data-asset-plural'),
+              order: DATA_ASSETS_TAB_ORDER,
+              badge: assetCounts[DATA_ASSETS_TAB_KEY],
+            },
+          ]
+        : []),
+      ...getSecondaryAssetTabs(serviceCategory as ServiceCategory).map(
+        ({ key, labelKey }, index) => ({
+          key,
+          label: t(labelKey),
+          order: DATA_ASSETS_TAB_ORDER + index + 1,
+          badge: assetCounts[key],
+        })
+      ),
       // The connection config is for those who may edit it; classic hides the tab otherwise.
       ...(canEditAll
         ? [
@@ -669,13 +803,24 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     }));
 
     return [...builtIns, ...contributed].sort((a, b) => a.order - b.order);
-  }, [t, serviceCategory, pluginTabs, canEditAll]);
+  }, [
+    t,
+    serviceCategory,
+    pluginTabs,
+    canEditAll,
+    assetCounts,
+    hasDataAssetsTab,
+  ]);
 
   const allTabKeys = useMemo(
     () => tabs.map((detailsTab) => detailsTab.key),
     [tabs]
   );
-  const defaultTabKey = tabs[0]?.key ?? 'dataAssets';
+  const defaultTabKey = tabs[0]?.key ?? DATA_ASSETS_TAB_KEY;
+  // A deep link can name a tab this service category doesn't have; the effect below falls back
+  // from it, and until then its content must not mount (and fetch).
+  const isOfferedTab = (key: TabKey) =>
+    activeTab === key && allTabKeys.includes(key);
   // A plain-object extension registry (as returned by the real provider, and by a test double
   // that doesn't memoize its own return value) is a new reference on every render, which would
   // make `allTabKeys` — and this effect — re-run on every render and re-derive the active tab,
@@ -722,6 +867,21 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       <PageLayout.PageHeader
         actions={
           <>
+            {/* As classic: only database services take followers, and a deleted one none. */}
+            {isDatabaseService && !isServiceDeleted && serviceDetails.id ? (
+              <ServiceFollowButton
+                followers={serviceDetails.followers ?? []}
+                serviceId={serviceDetails.id}
+                serviceName={getEntityName(serviceDetails)}
+                onFollowersChange={handleFollowersChange}
+              />
+            ) : null}
+            {serviceDetails.version === undefined ? null : (
+              <HeaderVersionButton
+                version={toString(serviceDetails.version)}
+                onClick={handleVersionClick}
+              />
+            )}
             {pluginActions.map((action) =>
               action.component ? (
                 <action.component key={action.key} {...extensionContext} />
@@ -772,16 +932,8 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       onAction={handleExportClick}
                     />
                   )}
-                  {canDelete && !isServiceDeleted && (
-                    <Dropdown.Item
-                      id="delete"
-                      label={t('label.delete')}
-                      onAction={() => setIsDeleting(true)}
-                    />
-                  )}
                   {/* A soft delete is meant to be reversible, but without this the page offers
-                        no way back — matching classic, where restore replaces delete once the
-                        service is deleted. */}
+                        no way back. */}
                   {canEditAll && isServiceDeleted && (
                     <Dropdown.Item
                       id="restore"
@@ -789,10 +941,31 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                       onAction={handleRestoreService}
                     />
                   )}
+                  {canDelete && (
+                    <Dropdown.Item
+                      id="delete"
+                      label={t('label.delete')}
+                      onAction={() => setIsDeleting(true)}
+                    />
+                  )}
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
           </>
+        }
+        badge={
+          // Without this the page looks like any other service, which matters most here: the
+          // deleted switch is the only way in, so the state is easy to forget. Mirrors the
+          // classic service header, testid included.
+          isServiceDeleted ? (
+            <Badge
+              color="error"
+              data-testid="deleted-badge"
+              size="sm"
+              type="pill-color">
+              {t('label.deleted')}
+            </Badge>
+          ) : undefined
         }
         breadcrumb={
           <HeaderBreadcrumb
@@ -856,7 +1029,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         meta={
           <DataAssetHeaderDetailsRow
-            canEditDomains={headerEditFlags.canEditAll}
+            canEditDomains={headerEditFlags.canEditDomains}
             canEditOwners={headerEditFlags.canEditOwners}
             canEditTier={headerEditFlags.canEditTier}
             domains={
@@ -871,27 +1044,15 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           />
         }
         title={
-          <span className="tw:flex tw:items-center tw:gap-2">
-            <Typography
-              className="tw:text-primary"
-              data-testid="entity-header-display-name"
-              size="text-xl"
-              weight="semibold">
-              {serviceDetails.displayName || serviceDetails.name}
-            </Typography>
-            {/* Without this the page looks like any other service, which matters most here:
-                  the deleted switch is the only way in, so the state is easy to forget. Mirrors
-                  the classic service header, testid included. */}
-            {isServiceDeleted && (
-              <Badge
-                color="error"
-                data-testid="deleted-badge"
-                size="sm"
-                type="pill-color">
-                {t('label.deleted')}
-              </Badge>
-            )}
-          </span>
+          <Typography
+            as="h3"
+            className="tw:min-w-0 tw:text-primary"
+            data-testid="entity-header-display-name"
+            ellipsis={TITLE_ELLIPSIS}
+            size="text-xl"
+            weight="semibold">
+            {serviceDetails.displayName || serviceDetails.name}
+          </Typography>
         }
         variant="gradient"
       />
@@ -906,7 +1067,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
           // so an empty slot costs no dead space. Applies to every tab because they all render into
           // this container.
           style={{ paddingBottom: footerInset || undefined }}>
-          {activeTab === 'dataAssets' && (
+          <AnnouncementsWidgetV3Body
+            announcements={announcements}
+            className="tw:mb-4"
+            testId="entity-header-announcements"
+            onItemClick={handleOpenAnnouncementDrawer}
+          />
+          {isOfferedTab(DATA_ASSETS_TAB_KEY) && (
             <DataAssetsTab
               currentPage={currentPage}
               data={data}
@@ -922,6 +1089,29 @@ const ConnectionServiceDetailsPage: React.FC = () => {
               showDeleted={showDeleted}
               onDataProductUpdate={onDataProductUpdate}
               onDescriptionUpdate={onDescriptionUpdate}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.DATA_Model) && (
+            <DataModelTable
+              handleShowDeleted={handleShowDeletedChange}
+              showDeleted={showDeleted}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.FILES) && (
+            <ServiceFilesTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
+              onShowDeletedChange={handleShowDeletedChange}
+            />
+          )}
+
+          {isOfferedTab(EntityTabs.SPREADSHEETS) && (
+            <ServiceSpreadsheetsTab
+              serviceFqn={decodedFqn}
+              showDeleted={showDeleted}
               onShowDeletedChange={handleShowDeletedChange}
             />
           )}
@@ -948,6 +1138,11 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                         connectionType={serviceDetails?.serviceType ?? ''}
                         getData={() => connectionDetails}
                         isTestingDisabled={isTestingDisabled}
+                        renderFailureAction={
+                          testConnectionActions.length > 0
+                            ? renderTestConnectionAction
+                            : undefined
+                        }
                         serviceCategory={serviceCategory as ServiceCategory}
                         serviceName={serviceDetails?.name}
                         shouldValidateForm={false}
@@ -969,7 +1164,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                 />
               ) : (
                 <div className="tw:flex tw:h-48 tw:items-center tw:justify-center">
-                  <p className="tw:text-sm tw:text-gray-400">
+                  <p className="tw:text-sm tw:text-utility-gray-400">
                     {t('label.no-connection-details')}
                   </p>
                 </div>

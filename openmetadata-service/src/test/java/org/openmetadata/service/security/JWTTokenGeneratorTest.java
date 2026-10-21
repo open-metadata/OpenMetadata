@@ -73,12 +73,16 @@ class JWTTokenGeneratorTest {
   }
 
   private void initGenerator(List<String> principalClaims, List<String> principalClaimsMapping) {
-    jwtTokenGenerator.init(
+    initGenerator(
         new AuthenticationConfiguration()
-            .withTokenValidationAlgorithm(
-                AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
             .withJwtPrincipalClaims(principalClaims)
-            .withJwtPrincipalClaimsMapping(principalClaimsMapping),
+            .withJwtPrincipalClaimsMapping(principalClaimsMapping));
+  }
+
+  private void initGenerator(AuthenticationConfiguration authenticationConfiguration) {
+    jwtTokenGenerator.init(
+        authenticationConfiguration.withTokenValidationAlgorithm(
+            AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
         jwtTokenConfiguration);
   }
 
@@ -173,6 +177,53 @@ class JWTTokenGeneratorTest {
         "mohit@getcollate.io", findEmailFromClaims(Map.of(), order, claims, "openmetadata.org"));
     assertDoesNotThrow(
         () -> validateDomainEnforcement(Map.of(), order, claims, PRINCIPAL_DOMAIN, Set.of(), true));
+  }
+
+  /**
+   * #32000 through the email-first flow: an emailClaim naming a claim the provider sends but we did
+   * not mint resolved our own token from the legacy order instead, i.e. to the email's local part.
+   */
+  @Test
+  void mintedTokenResolvesThroughConfiguredEmailClaim() {
+    initGenerator(
+        new AuthenticationConfiguration()
+            .withEmailClaim("upn")
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER));
+    Map<String, Claim> claims = mint("jdoe", "john.doe@getcollate.io").getClaims();
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolveEmailFirst("upn", DEFAULT_CLAIM_ORDER, claims);
+    assertEquals("jdoe", identity.userName());
+    assertTrue(identity.emailFirstFlow());
+  }
+
+  /** Dropping the deprecated order, as the startup warning suggests, left no fallback at all. */
+  @Test
+  void mintedTokenResolvesThroughConfiguredEmailClaimWithoutLegacyOrder() {
+    initGenerator(new AuthenticationConfiguration().withEmailClaim("upn"));
+    Map<String, Claim> claims = mint("jdoe", "john.doe@getcollate.io").getClaims();
+
+    assertEquals("jdoe", resolveEmailFirst("upn", List.of(), claims).userName());
+  }
+
+  /** A mapping keeps identity resolution on the legacy flow, so the mapped claims stay as mapped. */
+  @Test
+  void configuredEmailClaimLeavesMappedClaimsAlone() {
+    initGenerator(
+        new AuthenticationConfiguration()
+            .withEmailClaim("upn")
+            .withJwtPrincipalClaims(DEFAULT_CLAIM_ORDER)
+            .withJwtPrincipalClaimsMapping(List.of("username:upn", "email:mail")));
+    Map<String, Claim> claims = mint("mohit", "mohit.yadav@getcollate.io").getClaims();
+
+    assertEquals("mohit", claims.get("upn").asString());
+    assertEquals("mohit.yadav@getcollate.io", claims.get("mail").asString());
+  }
+
+  private static JwtIdentityResolver.ResolvedIdentity resolveEmailFirst(
+      String emailClaim, List<String> order, Map<String, Claim> claims) {
+    return new JwtIdentityResolver(emailClaim, Map.of(), order, PRINCIPAL_DOMAIN, email -> "jdoe")
+        .resolve(claims, false);
   }
 
   /** Downstream still calls the algorithm-only overload; it must mint the same standard claims. */

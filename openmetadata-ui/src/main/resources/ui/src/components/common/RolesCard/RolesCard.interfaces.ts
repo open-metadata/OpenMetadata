@@ -21,5 +21,4 @@ export interface RolesComponentProps {
   selectedRoles: Array<string>;
   setSelectedRoles: (selectedRoles: string[]) => void;
   searchRolesOptions: (query?: string) => Promise<void>;
-  isRolesLoading: boolean;
 }

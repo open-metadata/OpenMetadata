@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -22,6 +23,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -29,12 +31,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.jdbi.v3.sqlobject.transaction.TransactionalCallback;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -49,7 +55,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 /**
  * A cascade write (the bulk restore, relationship rewrites) evicts its entities from Redis only
- * after its transaction commits. These tests pin what readers see across that commit.
+ * after its transaction ends. These tests pin what readers see across that commit or rollback.
  * RestoreHierarchyIT#asyncRestore_returns202AndRestoresFullHierarchy 404'd on a schema whose
  * restore had already committed: the parent database read fresh while the schema was still served
  * from its pre-restore copy.
@@ -69,7 +75,7 @@ class DeferredCacheInvalidationTest {
   @BeforeEach
   void setUp() {
     pipelineDAO = mock(CollectionDAO.PipelineDAO.class);
-    Entity.setCollectionDAO(mock(CollectionDAO.class));
+    Entity.setCollectionDAO(collectionDaoRunningTransactionsInline());
     repository = new StubPipelineRepository(pipelineDAO);
     cacheBundle = mockStatic(CacheBundle.class);
     cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(cachedEntityDao);
@@ -167,6 +173,72 @@ class DeferredCacheInvalidationTest {
     assertEquals(0, redisVariantsOf(pipeline));
   }
 
+  @Test
+  void aRolledBackTransactionEvictsTheRowAReaderCachedInsideIt() {
+    final Pipeline pipeline = pipeline("orders");
+    final AtomicReference<String> databaseRow = new AtomicReference<>(jsonOf(pipeline, true));
+    storeRow(pipeline, databaseRow);
+    final IllegalStateException refusal = new IllegalStateException("a later step refused");
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> restoreReadBackAndFail(pipeline, databaseRow, refusal)));
+
+    assertEquals(0, redisVariantsOf(pipeline), "Redis must not keep the restore that rolled back");
+    assertTrue(
+        isDeleted(readThroughL1(pipeline)),
+        "readers must see the soft-deleted row the rollback left in the database");
+  }
+
+  @Test
+  void aDeadlockReplayEvictsTheRowItsAbandonedAttemptCached() {
+    final Pipeline pipeline = pipeline("orders");
+    final AtomicReference<String> databaseRow = new AtomicReference<>(jsonOf(pipeline, true));
+    storeRow(pipeline, databaseRow);
+    final AtomicInteger attempts = new AtomicInteger();
+    final IllegalStateException deadlock =
+        new IllegalStateException(new SQLException("Deadlock", "40001", 1213));
+
+    repository.executeInTransaction(
+        () ->
+            attempts.incrementAndGet() == 1
+                ? restoreReadBackAndFail(pipeline, databaseRow, deadlock)
+                : null);
+
+    assertEquals(2, attempts.get(), "the deadlock must have been replayed");
+    assertEquals(0, redisVariantsOf(pipeline), "Redis must not keep the abandoned attempt's row");
+    assertTrue(isDeleted(readThroughL1(pipeline)));
+  }
+
+  /**
+   * One attempt of a unit of work: it restores the row, reads it back the way a later step does
+   * (which caches the uncommitted copy), then fails and the database rolls the restore back.
+   */
+  private Void restoreReadBackAndFail(
+      final Pipeline pipeline,
+      final AtomicReference<String> databaseRow,
+      final RuntimeException failure) {
+    databaseRow.set(jsonOf(pipeline, false));
+    repository.invalidate(pipeline);
+    readThroughL1(pipeline);
+    databaseRow.set(jsonOf(pipeline, true));
+    throw failure;
+  }
+
+  private static CollectionDAO collectionDaoRunningTransactionsInline() {
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.inTransaction(
+            ArgumentMatchers.<TransactionalCallback<Object, CollectionDAO, RuntimeException>>any()))
+        .thenAnswer(
+            invocation ->
+                invocation
+                    .<TransactionalCallback<Object, CollectionDAO, RuntimeException>>getArgument(0)
+                    .inTransaction(collectionDAO));
+    return collectionDAO;
+  }
+
   /** Stands in for a transaction that outlives the repair its own eviction armed. */
   private static void awaitRepairArmedInsideTheTransaction(final Pipeline pipeline) {
     EntityRepository.CACHE_WITH_ID.put(idKey(pipeline), jsonOf(pipeline, true));
@@ -178,6 +250,11 @@ class DeferredCacheInvalidationTest {
   private void storeCommittedRow(final Pipeline pipeline) {
     when(pipelineDAO.findById(any(), eq(pipeline.getId()), any()))
         .thenReturn(jsonOf(pipeline, false));
+  }
+
+  private void storeRow(final Pipeline pipeline, final AtomicReference<String> databaseRow) {
+    when(pipelineDAO.findById(any(), eq(pipeline.getId()), any()))
+        .thenAnswer(ignored -> databaseRow.get());
   }
 
   private void cacheInRedis(final Pipeline pipeline) {

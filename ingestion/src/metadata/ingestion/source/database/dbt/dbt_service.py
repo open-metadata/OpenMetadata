@@ -92,10 +92,8 @@ class DbtServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_dbt_tags",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DataModelLink,

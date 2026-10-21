@@ -13,6 +13,7 @@
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 
+import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
+import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -133,6 +135,19 @@ const GlossaryDetails = ({
     }
   };
 
+  const proposalScope = useMemo(
+    () =>
+      glossary?.id && !isVersionView
+        ? {
+            fullyQualifiedName: glossary.fullyQualifiedName ?? '',
+            id: glossary.id,
+            isGlossary: true,
+          }
+        : undefined,
+    [glossary?.id, glossary?.fullyQualifiedName, isVersionView]
+  );
+  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
+
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -144,10 +159,11 @@ const GlossaryDetails = ({
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
+            proposedCount={proposalCounts.all}
           />
         ),
         key: EntityTabs.TERMS,
-        children: <GenericTab type={PageType.Glossary} variant="flat" />,
+        children: <GenericTab type={PageType.Glossary} />,
       },
       ...(!isVersionView
         ? [
@@ -214,6 +230,7 @@ const GlossaryDetails = ({
     feedCount.totalTasksCount,
     activeTab,
     isVersionView,
+    proposalCounts.all,
   ]);
 
   useEffect(() => {
@@ -244,7 +261,7 @@ const GlossaryDetails = ({
       </div>
       <div className="glossary-page-tabs tw:min-h-0 tw:flex-auto">
         <Tabs
-          className="tw:gap-3"
+          className="tw:min-h-0 tw:flex-1 tw:gap-3"
           data-testid="tabs"
           selectedKey={getRenderedActiveTab(tabs, activeTab, EntityTabs.TERMS)}
           onSelectionChange={(key) => handleTabChange(String(key))}>
@@ -271,7 +288,15 @@ const GlossaryDetails = ({
           </Tabs.List>
           {tabs.map(({ key, children }) => (
             <Tabs.Panel
-              className="tw:h-[calc(100vh-176px-var(--ant-navbar-height))] tw:flex tw:flex-col tw:overflow-hidden"
+              className={classNames(
+                'tw:flex tw:flex-col tw:overflow-hidden',
+                // The graph pins its toolbar to its own bottom edge, so it must
+                // fill the space left under the header rather than a fixed
+                // viewport calc that ignores the header's actual height.
+                key === EntityTabs.RELATIONS_GRAPH
+                  ? 'tw:min-h-0 tw:flex-1'
+                  : 'tw:h-[calc(100vh-176px-var(--ant-navbar-height))]'
+              )}
               id={key}
               key={key}>
               {children}

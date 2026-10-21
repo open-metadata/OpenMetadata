@@ -45,9 +45,11 @@ public class NoopFilter implements ContainerRequestFilter {
             new HashSet<>(),
             false,
             null,
-            activePersona);
+            activePersona,
+            ActiveDomainContext.resolve(catalogPrincipal.getName(), false));
     LOG.debug("SecurityContext {}", catalogSecurityContext);
     containerRequestContext.setSecurityContext(catalogSecurityContext);
     ActivePersonaContext.setActivePersona(activePersona);
+    ActiveDomainContext.setActiveDomain(catalogSecurityContext.activeDomain());
   }
 }

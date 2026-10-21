@@ -14,10 +14,13 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { EntityStatus } from '../../../generated/entity/domains/domain';
 import { MOCK_DOMAIN } from '../../../mocks/Domains.mock';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import DomainDetails from './DomainDetails.component';
 
 // DomainDetails.component.tsx had ZERO existing test coverage before this conversion (Task 8
@@ -315,5 +318,41 @@ describe('DomainDetails permissions', () => {
         );
       });
     });
+  });
+});
+
+describe('DomainDetails lifecycle stage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions(ENTITY_PERMISSIONS);
+  });
+
+  it('reloads the domain once a task on it is decided', async () => {
+    const onRefresh = jest.fn();
+    const domainClassBase = jest.requireMock(
+      '../../../utils/Domain/DomainClassBase'
+    ).default;
+    renderComponent({ onRefresh });
+
+    await waitFor(() =>
+      expect(domainClassBase.getDomainDetailPageTabs).toHaveBeenCalledWith(
+        expect.objectContaining({ onUpdateEntityDetails: onRefresh })
+      )
+    );
+  });
+
+  it('shows the domain stage next to its name where stages are shown', async () => {
+    jest
+      .spyOn(entityUtilClassBase, 'shouldShowEntityStatus')
+      .mockReturnValue(true);
+    renderComponent({
+      domain: { ...MOCK_DOMAIN, entityStatus: EntityStatus.Draft },
+    });
+
+    await waitFor(() => expect(EntityHeader).toHaveBeenCalled());
+    const { suffix } = (EntityHeader as jest.Mock).mock.calls.at(-1)[0];
+    render(suffix);
+
+    expect(screen.getByText('Draft')).toBeInTheDocument();
   });
 });

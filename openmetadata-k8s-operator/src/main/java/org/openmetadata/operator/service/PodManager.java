@@ -13,6 +13,8 @@
 
 package org.openmetadata.operator.service;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import io.fabric8.kubernetes.api.model.CapabilitiesBuilder;
 import io.fabric8.kubernetes.api.model.Container;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
@@ -29,10 +31,12 @@ import io.fabric8.kubernetes.api.model.PodStatus;
 import io.fabric8.kubernetes.api.model.SecurityContext;
 import io.fabric8.kubernetes.api.model.SecurityContextBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 import org.openmetadata.operator.model.OMJobResource;
 import org.openmetadata.operator.model.OMJobSpec;
 import org.openmetadata.operator.model.OMJobStatus;
@@ -197,27 +201,8 @@ public class PodManager {
     if (pod.isPresent()) {
       return pod;
     }
-
-    // Fallback: try to find by pod name if it was recorded in status
     String recordedPodName = omJob.getStatus() != null ? omJob.getStatus().getMainPodName() : null;
-    if (recordedPodName != null && !recordedPodName.isEmpty()) {
-      try {
-        Pod namedPod =
-            client
-                .pods()
-                .inNamespace(omJob.getMetadata().getNamespace())
-                .withName(recordedPodName)
-                .get();
-        if (namedPod != null) {
-          LOG.info("Found main pod by name for OMJob: {}", omJob.getMetadata().getName());
-          return Optional.of(namedPod);
-        }
-      } catch (Exception e) {
-        LOG.debug("Could not find pod by name {}: {}", recordedPodName, e.getMessage());
-      }
-    }
-
-    return Optional.empty();
+    return findRecordedPod(omJob, recordedPodName, "main pod");
   }
 
   /**
@@ -228,28 +213,36 @@ public class PodManager {
     if (pod.isPresent()) {
       return pod;
     }
-
-    // Fallback: try to find by pod name if it was recorded in status
     String recordedPodName =
         omJob.getStatus() != null ? omJob.getStatus().getExitHandlerPodName() : null;
-    if (recordedPodName != null && !recordedPodName.isEmpty()) {
-      try {
-        Pod namedPod =
-            client
-                .pods()
-                .inNamespace(omJob.getMetadata().getNamespace())
-                .withName(recordedPodName)
-                .get();
-        if (namedPod != null) {
-          LOG.info("Found exit handler pod by name for OMJob: {}", omJob.getMetadata().getName());
-          return Optional.of(namedPod);
-        }
-      } catch (Exception e) {
-        LOG.debug("Could not find pod by name {}: {}", recordedPodName, e.getMessage());
-      }
-    }
+    return findRecordedPod(omJob, recordedPodName, "exit handler pod");
+  }
 
-    return Optional.empty();
+  /**
+   * Fallback for when the label lookup misses: the pod name recorded in the OMJob status.
+   */
+  private Optional<Pod> findRecordedPod(
+      OMJobResource omJob, String recordedPodName, String podDescription) {
+    if (nullOrEmpty(recordedPodName)) {
+      return Optional.empty();
+    }
+    try {
+      Optional<Pod> pod =
+          Optional.ofNullable(
+              client
+                  .pods()
+                  .inNamespace(omJob.getMetadata().getNamespace())
+                  .withName(recordedPodName)
+                  .get());
+      pod.ifPresent(
+          found ->
+              LOG.info(
+                  "Found {} by name for OMJob: {}", podDescription, omJob.getMetadata().getName()));
+      return pod;
+    } catch (KubernetesClientException e) {
+      LOG.debug("Could not find pod by name {}: {}", recordedPodName, e.getMessage());
+      return Optional.empty();
+    }
   }
 
   /**
@@ -291,25 +284,86 @@ public class PodManager {
   }
 
   /**
-   * Delete pods associated with an OMJob
+   * Delete the pods of an OMJob and return the names of the pods deleted. Pods are found by label,
+   * plus any pod recorded in the OMJob status that the label lookup missed.
    */
-  public void deletePods(OMJobResource omJob) {
+  public List<String> deletePods(OMJobResource omJob) {
     LOG.info("Deleting pods for OMJob: {}", omJob.getMetadata().getName());
-    String namespace = omJob.getMetadata().getNamespace();
-    Map<String, String> selector = LabelBuilder.buildPodSelector(omJob);
+    List<String> labelledPodNames = findPodNames(omJob, LabelBuilder.buildPodSelector(omJob));
+    List<String> deletedPodNames = new ArrayList<>(deletePodsByName(omJob, labelledPodNames));
+    deletedPodNames.addAll(deleteRecordedPodsMissedByLabels(omJob, labelledPodNames));
+    if (deletedPodNames.isEmpty()) {
+      LOG.debug("No pods left to delete for OMJob: {}", omJob.getMetadata().getName());
+    }
+    return List.copyOf(deletedPodNames);
+  }
 
+  /**
+   * Safety net for pods whose labels stopped matching the selector, which once left every
+   * finished pod behind. Deleting anything here means the labels have drifted again.
+   */
+  private List<String> deleteRecordedPodsMissedByLabels(
+      OMJobResource omJob, List<String> labelledPodNames) {
+    List<String> missedPodNames =
+        recordedPodNames(omJob).stream().filter(name -> !labelledPodNames.contains(name)).toList();
+    List<String> deletedPodNames = deletePodsByName(omJob, missedPodNames);
+    if (!deletedPodNames.isEmpty()) {
+      LOG.warn(
+          "Deleted pods {} of OMJob {} by their recorded names: their labels do not match {}",
+          deletedPodNames,
+          omJob.getMetadata().getName(),
+          LabelBuilder.buildPodSelector(omJob));
+    }
+    return deletedPodNames;
+  }
+
+  private List<String> recordedPodNames(OMJobResource omJob) {
+    OMJobStatus status = omJob.getStatus();
+    if (status == null) {
+      return List.of();
+    }
+    return Stream.of(status.getMainPodName(), status.getExitHandlerPodName())
+        .filter(podName -> !nullOrEmpty(podName))
+        .toList();
+  }
+
+  private List<String> findPodNames(OMJobResource omJob, Map<String, String> selector) {
     try {
-      List<Pod> pods = client.pods().inNamespace(namespace).withLabels(selector).list().getItems();
-      if (pods == null) {
-        pods = List.of();
-      }
-      for (Pod pod : pods) {
-        String podName = pod.getMetadata().getName();
-        client.pods().inNamespace(namespace).withName(podName).delete();
+      return client
+          .pods()
+          .inNamespace(omJob.getMetadata().getNamespace())
+          .withLabels(selector)
+          .list()
+          .getItems()
+          .stream()
+          .map(pod -> pod.getMetadata().getName())
+          .toList();
+    } catch (KubernetesClientException e) {
+      LOG.warn("Failed to list pods for OMJob: {}", omJob.getMetadata().getName(), e);
+      return List.of();
+    }
+  }
+
+  private List<String> deletePodsByName(OMJobResource omJob, List<String> podNames) {
+    return podNames.stream().filter(podName -> deletePod(omJob, podName)).toList();
+  }
+
+  private boolean deletePod(OMJobResource omJob, String podName) {
+    try {
+      boolean deleted =
+          !client
+              .pods()
+              .inNamespace(omJob.getMetadata().getNamespace())
+              .withName(podName)
+              .delete()
+              .isEmpty();
+      if (deleted) {
         LOG.info("Deleted pod: {}", podName);
       }
-    } catch (Exception e) {
-      LOG.warn("Failed to delete pods for OMJob: {}", omJob.getMetadata().getName(), e);
+      return deleted;
+    } catch (KubernetesClientException e) {
+      LOG.warn("Failed to delete pod {} of OMJob {}", podName, omJob.getMetadata().getName(), e);
+      return false;
     }
   }
 

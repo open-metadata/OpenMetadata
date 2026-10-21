@@ -112,7 +112,9 @@ const TableProfilerChart = ({
     return isProfilingEnabled ? (
       t('message.profiler-is-enabled-but-no-data-available')
     ) : (
-      <Tooltip title={t('label.documentation')}>
+      // tw:w-auto overrides the trigger's w-max so the sentence wraps in
+      // narrow containers such as the custom metric drawer preview.
+      <Tooltip title={t('label.documentation')} triggerClassName="tw:w-auto">
         <span>
           <Transi18next
             i18nKey="message.no-profiler-card-message-with-link"

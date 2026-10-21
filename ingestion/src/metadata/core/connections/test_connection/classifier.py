@@ -77,6 +77,11 @@ class Matchers:
         return lambda error: any(matcher(error) for matcher in matchers)
 
     @staticmethod
+    def all_of(*matchers: Matcher) -> Matcher:
+        """Match when every matcher matches."""
+        return lambda error: all(matcher(error) for matcher in matchers)
+
+    @staticmethod
     def exception(*types: type[BaseException]) -> Matcher:
         """Match when the error, or anything in its cause chain, is one of ``types``."""
         return lambda error: any(isinstance(current, types) for current in exception_chain(error))

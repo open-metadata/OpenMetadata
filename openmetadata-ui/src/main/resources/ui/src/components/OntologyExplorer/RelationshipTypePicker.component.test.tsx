@@ -123,6 +123,90 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers the given groups without loading glossary relationship types', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        groups={[
+          {
+            id: 'core',
+            title: 'Core',
+            options: [
+              {
+                id: 'subClassOf',
+                label: 'is a',
+                inverseLabel: 'has subtype',
+                paletteKey: PaletteKey.Blue,
+              },
+            ],
+          },
+          {
+            id: 'object-properties',
+            title: 'Object properties',
+            options: [
+              {
+                id: 'property:placedBy',
+                label: 'placed by',
+                paletteKey: PaletteKey.Purple,
+              },
+            ],
+          },
+        ]}
+        sourceLabel="Order"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    expect(mockListRelationshipTypes).not.toHaveBeenCalled();
+    expect(screen.getByTestId('group-core')).toHaveTextContent(
+      'Coreis alabel.inverse: has subtype'
+    );
+
+    fireEvent.click(screen.getByTestId('relation-type-property:placedBy'));
+
+    expect(onSelect).toHaveBeenCalledWith('property:placedBy');
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers unmatched search text as a new relationship type', () => {
+    const onSelect = jest.fn();
+    render(
+      <RelationshipTypePicker
+        canCreateType
+        groups={[
+          {
+            id: 'core',
+            title: 'Core',
+            options: [
+              { id: 'subClassOf', label: 'is a', paletteKey: PaletteKey.Blue },
+            ],
+          },
+        ]}
+        sourceLabel="Order"
+        targetLabel="Customer"
+        onSelect={onSelect}
+      />
+    );
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: 'is a' },
+    });
+
+    expect(
+      screen.queryByTestId('relation-type-create')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('relation-type-search'), {
+      target: { value: ' ships to ' },
+    });
+    fireEvent.click(screen.getByTestId('relation-type-create'));
+
+    expect(onSelect).toHaveBeenCalledWith('new:ships to');
+  });
+
   it('invokes onCancel when the cancel button is clicked', async () => {
     const onCancel = jest.fn();
     renderPicker({ onCancel });

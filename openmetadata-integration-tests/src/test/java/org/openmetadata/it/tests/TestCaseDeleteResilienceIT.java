@@ -53,7 +53,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
-import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -294,20 +293,15 @@ public class TestCaseDeleteResilienceIT {
 
   private TestCase createSystemTestCase(Table table, String name) {
     OpenMetadataClient client = SdkClients.adminClient();
-    String testDefFqn =
-        client
-            .testDefinitions()
-            .list(new ListParams().withLimit(1))
-            .getData()
-            .get(0)
-            .getFullyQualifiedName();
+    // A definition that supports the BIGINT `id` column: the server rejects a column type the
+    // definition does not list, and the first definition the listing returns need not list it.
     return client
         .testCases()
         .create(
             new CreateTestCase()
                 .withName(name)
                 .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>")
-                .withTestDefinition(testDefFqn));
+                .withTestDefinition("columnValuesToBeNotNull"));
   }
 
   private TestCase createCustomTestCase(Table table, String name, String testDefinitionFqn) {

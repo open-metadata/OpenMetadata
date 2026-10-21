@@ -42,12 +42,13 @@ import type {
 } from 'react-data-grid';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
 import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
+import { getTestCaseExportFiltersFromSearch } from '../../utils/DataQuality/DataQualityPureUtils';
 import {
   getBulkEditCSVExportEntityApi,
   getBulkEntityNavigationPath,
@@ -162,8 +163,16 @@ const BulkEditEntity = ({
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { search } = useLocation();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const testCaseExportFilters = useMemo(
+    () =>
+      entityType === EntityType.TEST_CASE
+        ? getTestCaseExportFiltersFromSearch(search)
+        : undefined,
+    [entityType, search]
+  );
   const {
     triggerExportForBulkEdit,
     csvExportData,
@@ -261,10 +270,13 @@ const BulkEditEntity = ({
     triggeredExportKeyRef.current = `${entityType}:${fqn}`;
     triggerExportForBulkEdit({
       name: fqn,
-      onExport: getBulkEditCSVExportEntityApi(entityType),
+      onExport: getBulkEditCSVExportEntityApi(
+        entityType,
+        testCaseExportFilters
+      ),
       exportTypes: [ExportTypes.CSV],
     });
-  }, [entityType, fqn, triggerExportForBulkEdit]);
+  }, [entityType, fqn, testCaseExportFilters, triggerExportForBulkEdit]);
 
   useEffect(() => {
     if (!isExportHydrationRequired) {

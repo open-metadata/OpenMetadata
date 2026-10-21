@@ -39,6 +39,24 @@ describe('SettingItemCard', () => {
     expect(screen.getByText('Test Icon')).toBeInTheDocument();
   });
 
+  it('should draw a plain glyph on a tinted tile when iconColor is set', () => {
+    render(
+      <SettingItemCard
+        data={{
+          ...mockData,
+          icon: ({ className }) => <svg className={className}>Glyph</svg>,
+          iconColor: 'blue',
+        }}
+        onClick={mockOnClick}
+      />
+    );
+
+    const glyph = screen.getByText('Glyph');
+
+    expect(glyph).toHaveClass('tw:size-8');
+    expect(glyph.parentElement).toHaveClass('tw:bg-utility-blue-50');
+  });
+
   it('should render label in case no category', () => {
     render(
       <SettingItemCard

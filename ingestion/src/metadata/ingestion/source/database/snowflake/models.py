@@ -215,5 +215,5 @@ class SnowflakeDynamicTableRefreshEntry(BaseModel):
             )
         )
         return TypeAdapter(list[SnowflakeDynamicTableRefreshEntry]).validate_python(
-            [ExtendedDict(r).lower_case_keys() for r in rows]
+            [ExtendedDict(r._asdict()).lower_case_keys() for r in rows]
         )

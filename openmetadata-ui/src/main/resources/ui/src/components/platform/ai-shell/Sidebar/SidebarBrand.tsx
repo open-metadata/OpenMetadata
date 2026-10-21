@@ -51,7 +51,9 @@ const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
       })}
       data-testid="ask-logo-btn"
       type="button"
-      onClick={() => navigate(ROUTES.MY_DATA)}>
+      // Home is `/`, the landing page. `/my-data` is the personal-space My Data
+      // page in app mode, which the user menu opens.
+      onClick={() => navigate(ROUTES.HOME)}>
       {variant === 'rail' ? (
         // Collapsed rail: the compact monogram, kept to its 53x64 aspect so it
         // doesn't squish into an oval.

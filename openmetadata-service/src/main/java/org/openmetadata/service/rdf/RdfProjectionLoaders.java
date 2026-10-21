@@ -15,6 +15,7 @@ package org.openmetadata.service.rdf;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
@@ -29,7 +30,8 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
  */
 record RdfProjectionLoaders(
     BiFunction<String, UUID, EntityInterface<?>> entityLoader,
-    LineageDetailsLoader lineageDetailsLoader) {
+    LineageDetailsLoader lineageDetailsLoader,
+    Supplier<OntologyActiveGraph> ontologyGraphs) {
 
   @FunctionalInterface
   interface LineageDetailsLoader {
@@ -42,7 +44,9 @@ record RdfProjectionLoaders(
 
   static RdfProjectionLoaders defaults() {
     return new RdfProjectionLoaders(
-        RdfProjectionLoaders::loadEntity, RdfProjectionLoaders::loadLineageDetails);
+        RdfProjectionLoaders::loadEntity,
+        RdfProjectionLoaders::loadLineageDetails,
+        () -> new OntologyActiveGraph(Entity.getCollectionDAO()));
   }
 
   private static EntityInterface<?> loadEntity(final String entityType, final UUID entityId) {

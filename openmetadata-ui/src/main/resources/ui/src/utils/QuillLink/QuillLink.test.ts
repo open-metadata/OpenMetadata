@@ -10,26 +10,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-// Mock MentionBlot as a class
-class MentionBlot {
-  static create(data: { value: string; link: string; id: string }) {
-    const element = document.createElement('a');
-    element.innerText = data.value;
-    element.href = data.link;
-    element.id = data.id;
+// Mock the Quill.import function. QuillLink extends the imported blot at module
+// load, and imports run before top-level statements, so MentionBlot is defined
+// inside the factory.
+jest.mock('react-quill-new', () => {
+  // Mock MentionBlot as a class
+  class MentionBlot {
+    static create(data: { value: string; link: string; id: string }) {
+      const element = document.createElement('a');
+      element.innerText = data.value;
+      element.href = data.link;
+      element.id = data.id;
 
-    return element;
+      return element;
+    }
   }
-}
 
-// Mock the Quill.import function
-jest.mock('react-quill-new', () => ({
-  Quill: {
-    import: jest.fn().mockImplementation(() => {
-      return MentionBlot;
-    }),
-  },
-}));
+  return {
+    Quill: {
+      import: jest.fn().mockImplementation(() => {
+        return MentionBlot;
+      }),
+    },
+  };
+});
 
 import { LinkBlot } from './QuillLink';
 

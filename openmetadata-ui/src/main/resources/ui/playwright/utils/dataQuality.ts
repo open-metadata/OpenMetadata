@@ -139,71 +139,87 @@ export async function clickPieChartSegmentByIndex(
   await expect(slice).toBeVisible();
   await slice.scrollIntoViewIfNeeded();
 
-  let previousGeometry: string | undefined;
-  let stableSamples = 0;
-  // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
-  await expect
-    .poll(
-      async () => {
-        const geometry = await slice.evaluate((el) => {
-          const path = el as SVGPathElement;
+  const dashboardUrl = page.url();
 
-          return JSON.stringify({
-            path: path.getAttribute('d'),
-            matrix: path.getScreenCTM(),
-          });
-        });
-        stableSamples = geometry === previousGeometry ? stableSamples + 1 : 0;
-        previousGeometry = geometry;
+  // Every slice navigates. A click that lands while the chart re-renders (a
+  // late data refresh redraws the arcs) hits nothing and leaves the page on
+  // the dashboard, so re-measure and click again until it navigates.
+  await expect(async () => {
+    let previousGeometry: string | undefined;
+    let stableSamples = 0;
+    // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
+    await expect
+      .poll(
+        async () => {
+          const geometry = await slice.evaluate(
+            (el) => {
+              const path = el as SVGPathElement;
 
-        return stableSamples;
-      },
-      {
-        message: 'Pie slice is still animating',
-        timeout: 10_000,
-        intervals: [100],
-      }
-    )
-    .toBeGreaterThanOrEqual(2);
-
-  const point = await slice.evaluate((el) => {
-    const path = el as SVGPathElement;
-    const svg = path.ownerSVGElement as SVGSVGElement;
-    const box = path.getBBox();
-    const matrix = path.getScreenCTM() as DOMMatrix;
-    const probe = svg.createSVGPoint();
-    const length = path.getTotalLength();
-    const boundary = Array.from({ length: 64 }, (_, index) =>
-      path.getPointAtLength((length * index) / 64)
-    );
-    const steps = 24;
-    let bestPoint: { x: number; y: number } | null = null;
-    let bestClearance = -1;
-    for (let i = 1; i < steps; i++) {
-      for (let j = 1; j < steps; j++) {
-        probe.x = box.x + (box.width * i) / steps;
-        probe.y = box.y + (box.height * j) / steps;
-        if (path.isPointInFill(probe)) {
-          const clearance = Math.min(
-            ...boundary.map(
-              (edge) => (probe.x - edge.x) ** 2 + (probe.y - edge.y) ** 2
-            )
+              return JSON.stringify({
+                path: path.getAttribute('d'),
+                matrix: path.getScreenCTM(),
+              });
+            },
+            undefined,
+            { timeout: 5_000 }
           );
-          if (clearance > bestClearance) {
-            const screen = probe.matrixTransform(matrix);
-            bestPoint = { x: screen.x, y: screen.y };
-            bestClearance = clearance;
+          stableSamples = geometry === previousGeometry ? stableSamples + 1 : 0;
+          previousGeometry = geometry;
+
+          return stableSamples;
+        },
+        {
+          message: 'Pie slice is still animating',
+          timeout: 10_000,
+          intervals: [100],
+        }
+      )
+      .toBeGreaterThanOrEqual(2);
+
+    const point = await slice.evaluate(
+      (el) => {
+        const path = el as SVGPathElement;
+        const svg = path.ownerSVGElement as SVGSVGElement;
+        const box = path.getBBox();
+        const matrix = path.getScreenCTM() as DOMMatrix;
+        const probe = svg.createSVGPoint();
+        const length = path.getTotalLength();
+        const boundary = Array.from({ length: 64 }, (_, index) =>
+          path.getPointAtLength((length * index) / 64)
+        );
+        const steps = 24;
+        let bestPoint: { x: number; y: number } | null = null;
+        let bestClearance = -1;
+        for (let i = 1; i < steps; i++) {
+          for (let j = 1; j < steps; j++) {
+            probe.x = box.x + (box.width * i) / steps;
+            probe.y = box.y + (box.height * j) / steps;
+            if (path.isPointInFill(probe)) {
+              const clearance = Math.min(
+                ...boundary.map(
+                  (edge) => (probe.x - edge.x) ** 2 + (probe.y - edge.y) ** 2
+                )
+              );
+              if (clearance > bestClearance) {
+                const screen = probe.matrixTransform(matrix);
+                bestPoint = { x: screen.x, y: screen.y };
+                bestClearance = clearance;
+              }
+            }
           }
         }
-      }
-    }
 
-    return bestPoint;
-  });
-  if (!point) {
-    throw new Error(`No clickable point in pie slice ${segmentIndex}`);
-  }
-  await page.mouse.click(point.x, point.y);
+        return bestPoint;
+      },
+      undefined,
+      { timeout: 5_000 }
+    );
+    if (!point) {
+      throw new Error(`No clickable point in pie slice ${segmentIndex}`);
+    }
+    await page.mouse.click(point.x, point.y);
+    await expect(page).not.toHaveURL(dashboardUrl, { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
 }
 
 export enum ObservabilityFeature {

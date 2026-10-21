@@ -39,14 +39,12 @@ describe('UploadFile Component', () => {
 
     expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
 
-    const uploadIcon = screen.getByRole('button').querySelector('svg');
-
-    expect(uploadIcon).toHaveClass('tw:text-fg-quaternary');
-    expect(uploadIcon).toHaveAttribute('stroke', 'currentColor');
-    expect(uploadIcon).toHaveAttribute('width', '86');
-    expect(uploadIcon).toHaveAttribute('height', '86');
+    expect(screen.getByTestId('upload-file-input')).toHaveAttribute(
+      'accept',
+      '.csv'
+    );
     expect(
-      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
+      screen.getByRole('button', { name: 'label.click-to-browse' })
     ).toBeInTheDocument();
   });
 
@@ -55,23 +53,23 @@ describe('UploadFile Component', () => {
 
     const uploadWidget = screen.getByTestId('upload-file-widget');
 
-    expect(uploadWidget).toHaveAttribute('disabled');
+    expect(uploadWidget).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByTestId('upload-file-input')).toBeDisabled();
   });
 
   it('should not render with disabled state', () => {
     render(<UploadFile {...defaultProps} />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
-
-    expect(uploadWidget).not.toHaveAttribute('disabled');
+    expect(screen.getByTestId('upload-file-input')).not.toBeDisabled();
   });
 
   it('should render with custom file type', () => {
     render(<UploadFile {...defaultProps} fileType=".json,.xml" />);
 
-    const uploadWidget = screen.getByTestId('upload-file-widget');
-
-    expect(uploadWidget).toHaveAttribute('accept', '.json,.xml');
+    expect(screen.getByTestId('upload-file-input')).toHaveAttribute(
+      'accept',
+      '.json,.xml'
+    );
   });
 
   it('should call onCSVUploaded when file is uploaded successfully', async () => {
@@ -207,12 +205,12 @@ describe('UploadFile Component', () => {
     render(<UploadFile {...defaultProps} />);
 
     expect(
-      await screen.findByText(/message.drag-and-drop-or-browse-csv-files-here/)
+      await screen.findByText(/label.click-to-browse/)
     ).toBeInTheDocument();
   });
 
   it('should render compact upload variant', async () => {
-    const { container } = render(
+    render(
       <UploadFile
         {...defaultProps}
         acceptedFileDescription="Accepts .csv up to 10 MB"
@@ -220,11 +218,9 @@ describe('UploadFile Component', () => {
       />
     );
 
+    expect(screen.getByTestId('upload-file-widget')).toBeInTheDocument();
     expect(
-      container.querySelector('.file-dragger-wrapper-compact')
-    ).toBeInTheDocument();
-    expect(
-      await screen.findByText(/message.drop-csv-or-browse/)
+      await screen.findByText(/label.click-to-browse/)
     ).toBeInTheDocument();
     expect(screen.getByText('Accepts .csv up to 10 MB')).toBeInTheDocument();
   });

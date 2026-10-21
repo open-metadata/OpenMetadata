@@ -245,6 +245,59 @@ describe('ActivityFeedCardNew', () => {
     expect(body?.parentElement).toHaveClass('activity-feed-card-new');
   });
 
+  it('names the field a conversation was started on after the entity', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('entity-link')).toHaveTextContent('table');
+    expect(screen.getByTestId('feed-field-path-column')).toHaveAttribute(
+      'href',
+      '/table/service.table.category'
+    );
+    expect(screen.getByTestId('feed-field-path-field')).toHaveTextContent(
+      'label.description'
+    );
+  });
+
+  it('names the column, not the field again, for a column-level activity event', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::columns::category::description>',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('feed-field-path-column')).toHaveTextContent(
+      'category'
+    );
+    expect(
+      screen.queryByTestId('feed-field-path-field')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows no field path for a conversation on the entity itself', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew showThread feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('feed-field-path')).not.toBeInTheDocument();
+  });
+
   it('falls back to the activity entity when the event carries no about link', () => {
     // `about` is optional on an activity event, and the EntityLink accessors
     // answer '' for a missing link rather than undefined. Reading them with

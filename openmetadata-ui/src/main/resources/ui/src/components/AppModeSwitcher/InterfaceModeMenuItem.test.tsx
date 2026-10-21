@@ -54,6 +54,17 @@ describe('InterfaceModeMenuItem', () => {
     expect(screen.getByText('label.ai')).toBeInTheDocument();
   });
 
+  it('marks Classic as deprecated', () => {
+    render(<InterfaceModeMenuItem />);
+
+    expect(
+      screen.getByTestId('interface-mode-option-classic')
+    ).toHaveTextContent('label.deprecated');
+    expect(
+      screen.getByTestId('interface-mode-option-ai')
+    ).not.toHaveTextContent('label.deprecated');
+  });
+
   it('marks Classic active when the current mode is not AI', () => {
     isAiMode = false;
 

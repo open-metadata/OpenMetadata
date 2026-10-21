@@ -31,6 +31,8 @@ import {
   INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_GROUP_SEPARATOR,
+  INCIDENT_TABLE_CARD_CLASS,
+  INCIDENT_TABLE_PAGER_CLASS,
 } from './IncidentGroups.constants';
 import { IncidentGroupDetailProps } from './IncidentGroups.types';
 import {
@@ -169,7 +171,7 @@ const IncidentGroupDetail = ({
           </Box>
         )}
       </Box>
-      <TableCard.Root>
+      <TableCard.Root className={INCIDENT_TABLE_CARD_CLASS}>
         {isError ? (
           <IncidentGroupsLoadError
             data-testid="incident-group-incidents-error"
@@ -186,7 +188,7 @@ const IncidentGroupDetail = ({
           />
         )}
         <PaginationCardWithControls
-          className="tw:border-0"
+          className={INCIDENT_TABLE_PAGER_CLASS}
           page={currentPage}
           pageSize={pageSize}
           pageSizeOptions={INCIDENT_GROUPS_PAGE_SIZE_OPTIONS}

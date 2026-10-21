@@ -138,7 +138,7 @@ public class RdfResource {
         RdfRepository::getInstanceOrNull,
         null,
         null,
-        RdfResource::configuredProjectionState);
+        RdfProjectionStateResolver::resolveConfigured);
   }
 
   RdfResource(Authorizer authorizer, Supplier<RdfRepository> repositorySupplier) {
@@ -192,14 +192,7 @@ public class RdfResource {
     this.inferenceRuleService = inferenceRuleService;
     this.projectionStateSupplier = Objects.requireNonNull(projectionStateSupplier);
     this.agentSparqlService =
-        new AgentSparqlService(
-            this::sparqlService, projectionStateSupplier, SPARQL_EXECUTION_GUARD);
-  }
-
-  private static RdfProjectionState configuredProjectionState() {
-    final RdfProjectionStateResolver resolver =
-        new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao());
-    return resolver.resolve();
+        AgentSparqlService.forRepository(this::requireRdfRepository, projectionStateSupplier);
   }
 
   private RdfRepository getRdfRepository() {

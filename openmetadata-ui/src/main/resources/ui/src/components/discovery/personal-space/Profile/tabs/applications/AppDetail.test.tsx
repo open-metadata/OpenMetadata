@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactElement } from 'react';
+import { ReactElement, useCallback, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   App,
@@ -129,16 +129,34 @@ const baseApp = {
 const onNavigate = jest.fn();
 const onHeaderChange = jest.fn();
 
+// The tab strip lives in the modal header, so render it next to the panel.
+const DetailWithHeaderTabs = ({ fqn }: { fqn: string }) => {
+  const [header, setHeader] = useState<ApplicationsHeader>();
+  const handleHeaderChange = useCallback((next: ApplicationsHeader) => {
+    onHeaderChange(next);
+    setHeader(next);
+  }, []);
+
+  return (
+    <>
+      {header?.tabs}
+      <AppDetail
+        fqn={fqn}
+        onHeaderChange={handleHeaderChange}
+        onNavigate={onNavigate}
+      />
+    </>
+  );
+};
+
 const renderDetail = async (app: Partial<App> = {}) => {
   (getApplicationByName as jest.Mock).mockResolvedValue({
     ...baseApp,
     ...app,
   });
   const result = render(
-    <AppDetail
+    <DetailWithHeaderTabs
       fqn={app.fullyQualifiedName ?? baseApp.fullyQualifiedName ?? ''}
-      onHeaderChange={onHeaderChange}
-      onNavigate={onNavigate}
     />
   );
   await act(async () => undefined);

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DefaultOptionType } from 'antd/lib/select';
 import { EntityReference } from '../../../generated/entity/type';
 
 export interface DomainSelectableTreeProps {
@@ -24,5 +23,3 @@ export interface DomainSelectableTreeProps {
   restrictedDomains?: EntityReference[];
   isClearable?: boolean;
 }
-
-export type TreeListItem = Omit<DefaultOptionType, 'label'>;

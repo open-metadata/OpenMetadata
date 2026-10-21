@@ -57,8 +57,8 @@ const StatCard: React.FC<StatCardProps> = ({
       gap={2}>
       <Box align="center" gap={2}>
         <FeaturedIcon
-          // FeaturedIcon's gray/light theme switches to a solid gray tile in dark;
-          // keep the gray-blue tint, whose utility scale flips per theme.
+          // Gray-blue tint instead of the gray theme's; the dark: pair outranks the
+          // theme's own dark: classes. The utility scale flips per theme.
           className="tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-600 tw:dark:bg-utility-gray-blue-50 tw:dark:text-utility-gray-blue-600 tw:[&_svg]:stroke-[2px]"
           color="gray"
           shape="square"

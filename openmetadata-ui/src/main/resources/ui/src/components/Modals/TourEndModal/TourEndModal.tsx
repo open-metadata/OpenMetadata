@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
   Grid,
@@ -26,7 +25,7 @@ import { TourEndModalProps } from './TourEndModal.interface';
 const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
   const { t } = useTranslation();
 
-  const { svg } = brandClassBase.getMonogram();
+  const { svg: BrandLogo } = brandClassBase.getMonogram();
 
   return (
     <SimpleModal
@@ -47,12 +46,11 @@ const TourEndModal = ({ onSave, visible }: TourEndModalProps) => {
         className="layout-row layout-grid text-center"
         style={getLayoutGutter(16, 16)}>
         <Grid.Item className="layout-column mt-4" span={24}>
-          <Icon
-            alt={t('label.brand-name-logo')}
-            className="align-middle"
-            component={svg}
+          <BrandLogo
+            aria-label={t('label.brand-name-logo')}
+            className="tw:align-middle tw:size-[70px] tw:shrink-0"
             data-testid="omd-logo"
-            style={{ fontSize: '70px' }}
+            role="img"
           />
         </Grid.Item>
         <Grid.Item className="layout-column" span={24}>

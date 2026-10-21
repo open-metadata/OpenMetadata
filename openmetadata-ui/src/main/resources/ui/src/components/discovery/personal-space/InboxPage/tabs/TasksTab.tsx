@@ -35,13 +35,18 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
   listTasks,
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../inbox.constants';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import InboxTaskListToolbar, {
@@ -66,6 +71,7 @@ import {
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
+import { useLinkedTaskId } from '../useLinkedTaskId';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
@@ -75,14 +81,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
-// React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
-const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
@@ -337,8 +336,10 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
   });
 
+  // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
+  // long unbreakable title would widen the list and push the detail off-screen.
   return (
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
@@ -386,7 +387,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedTaskId, setSelectedTaskId] = useState<string>();
+  // A link from outside the inbox opens on its task. The task may sit past the
+  // loaded page, so the selection keeps it rather than falling back to the
+  // top row; the detail panel fetches it by id.
+  const linkedTaskId = useLinkedTaskId();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
+    linkedTaskId
+  );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -587,18 +594,23 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
+      prev &&
+      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+        ? prev
+        : firstTaskId
     );
-  }, [visibleTasks, firstTaskId]);
+  }, [visibleTasks, firstTaskId, linkedTaskId]);
 
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the
   // sidebar never unmounts, so it would not refetch until a navigation or a tab
-  // refocus.
-  const syncInboxCountBadge = useCallback(() => {
+  // refocus. The home page's My Tasks card caches the same open tasks, so a
+  // return home within its TTL would still offer actions on a resolved one.
+  const syncOpenTaskReaders = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -622,7 +634,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
       refreshStatusCounts();
-      syncInboxCountBadge();
+      syncOpenTaskReaders();
     },
     [
       status,
@@ -630,7 +642,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       setTotal,
       invalidateTaskLists,
       refreshStatusCounts,
-      syncInboxCountBadge,
+      syncOpenTaskReaders,
     ]
   );
 
@@ -640,8 +652,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
     refreshStatusCounts();
-    syncInboxCountBadge();
-  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
+    syncOpenTaskReaders();
+  }, [invalidateTaskLists, refreshStatusCounts, syncOpenTaskReaders]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.

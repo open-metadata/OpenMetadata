@@ -122,6 +122,9 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onScrollNearEdge,
       nodePositions,
       relationTypes,
+      relationColors,
+      relationTypeGroups,
+      canCreateRelationType,
       studioMode,
       isAuthoringMode,
       isEditMode,
@@ -179,6 +182,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       layoutType,
       nodePositions,
       relationTypes,
+      relationColors,
       studioMode,
     });
 
@@ -283,6 +287,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           a.click();
           URL.revokeObjectURL(url);
         },
+        clearEdgeSelection: () => setClickedEdgeId(null),
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
@@ -319,9 +324,11 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           ref={containerRef}
         />
         <PortOverlay
+          canCreateRelationType={canCreateRelationType}
           containerRef={containerRef}
           isEditMode={Boolean(isEditMode)}
           nodeLabels={nodeLabels}
+          relationTypeGroups={relationTypeGroups}
           onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
         />
       </div>

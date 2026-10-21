@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
@@ -209,8 +210,7 @@ public class RdfSourceRevisionIT {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               client.execute(

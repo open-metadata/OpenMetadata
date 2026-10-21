@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import {
   Box,
   Grid,
+  ProgressBar,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -23,7 +23,11 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
-import { Progress } from 'antd';
+
+import {
+  CheckCircle,
+  InfoCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { toNumber } from 'lodash';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -98,7 +102,7 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                     <Typography
                       className="days-remaining"
                       data-testid="kpi-success">
-                      <CheckCircleOutlined style={{ fontSize: '20px' }} />
+                      <CheckCircle className="tw:shrink-0" size={20} />
                     </Typography>
                   </>
                 ) : (
@@ -134,16 +138,20 @@ const KPILatestResultsV1: FC<Props> = ({ kpiLatestResultsRecord }) => {
                         Boolean(isTargetMet)
                       )}
                       triggerClassName="tw:inline-flex">
-                      <InfoCircleOutlined style={{ fontSize: '14px' }} />
+                      <InfoCircle className="tw:shrink-0" size={14} />
                     </Tooltip>
                   ) : null}
                 </Box>
-                <Progress
-                  percent={Number(currentProgress)}
-                  showInfo={false}
-                  size="small"
-                  strokeColor={seriesColor}
-                />
+                <div>
+                  <ProgressBar
+                    className="tw:h-1.5"
+                    color={seriesColor}
+                    value={Math.min(
+                      100,
+                      Math.max(0, Number(currentProgress) || 0)
+                    )}
+                  />
+                </div>
                 <div className="d-flex justify-space-between">
                   <div className="flex-1">
                     <Typography className="text-xs">

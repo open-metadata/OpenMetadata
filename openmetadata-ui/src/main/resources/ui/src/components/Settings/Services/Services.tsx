@@ -71,6 +71,7 @@ import {
   ownerTableObject,
 } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { DomainFilterChip } from '../../common/DomainFilterChip/DomainFilterChip.component';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ListView } from '../../common/ListView/ListView.component';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -607,6 +608,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             </Tooltip>
           )}
         </Box>
+        <DomainFilterChip />
       </Grid.Item>
       <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>

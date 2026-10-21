@@ -30,6 +30,10 @@ import {
   getTaskResolutionNewValue,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../../utils/TaskUtils';
 import { isTaskOpen } from './inbox.utils';
 import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
@@ -204,7 +208,9 @@ export const getTaskResolveActions = (
     }));
   }
 
-  return getLegacyActions(task, labels, schema);
+  return isOntologyReviewTask(task)
+    ? []
+    : getLegacyActions(task, labels, schema);
 };
 
 /**
@@ -269,12 +275,12 @@ export const buildResolveBody = (
   const comment = extras?.comment ? { comment: extras.comment } : {};
 
   if (action.transition) {
-    return {
+    return getTaskResolveBody(task, {
       transitionId: action.transition.id,
       resolutionType: action.transition.resolutionType,
       ...comment,
       ...(extras?.payload ? { payload: extras.payload } : {}),
-    };
+    });
   }
 
   const legacy = buildLegacyResolution(

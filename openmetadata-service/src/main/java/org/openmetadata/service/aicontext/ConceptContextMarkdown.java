@@ -21,7 +21,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.openmetadata.schema.type.OntologyAttribute;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.ConceptBinding;
@@ -41,7 +40,6 @@ final class ConceptContextMarkdown {
       String metricExpression) {
     if (sections.contains(ContextSection.SCHEMA)) {
       appendDefinition(markdown, concept, prefix, metricExpression);
-      appendAttributes(markdown, concept, prefix);
       appendBindings(markdown, concept, prefix);
     }
     if (sections.contains(ContextSection.GLOSSARY_TERMS)) {
@@ -74,30 +72,6 @@ final class ConceptContextMarkdown {
           .append("\n**Synonyms:** ")
           .append(String.join(", ", concept.getSynonyms()))
           .append('\n');
-    }
-  }
-
-  private static void appendAttributes(
-      StringBuilder markdown, ConceptContext concept, String prefix) {
-    if (!nullOrEmpty(concept.getAttributes())) {
-      appendHeading(markdown, prefix, "Ontology Attributes");
-      markdown.append("\n| Attribute | Type | Unit | Allowed values |\n|---|---|---|---|\n");
-      for (OntologyAttribute attribute : concept.getAttributes()) {
-        markdown
-            .append("| ")
-            .append(cell(attribute.getName()))
-            .append(" | ")
-            .append(attribute.getDataType() == null ? "" : attribute.getDataType().value())
-            .append(" | ")
-            .append(cell(attribute.getUnit()))
-            .append(" | ")
-            .append(
-                cell(
-                    attribute.getEnumValues() == null
-                        ? ""
-                        : String.join(", ", attribute.getEnumValues())))
-            .append(" |\n");
-      }
     }
   }
 

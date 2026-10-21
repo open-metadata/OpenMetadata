@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyConceptBindingsResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyConceptBindingsResponse",
+  "description": "Current bindings filtered by canonical catalog visibility. Hidden and deleted assets contribute no associations, paths, or counts.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyConceptBindingsResponse",
+  "definitions": {
+    "column": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyBoundColumn",
+      "properties": {
+        "name": { "type": "string" },
+        "displayName": { "type": "string" },
+        "fullyQualifiedName": { "$ref": "basic.json#/definitions/fullyQualifiedEntityName" },
+        "description": { "$ref": "basic.json#/definitions/markdown" },
+        "dataType": { "$ref": "../entity/data/table.json#/definitions/dataType" },
+        "dataTypeDisplay": { "type": "string" }
+      },
+      "required": ["name", "dataType"],
+      "additionalProperties": false
+    },
+    "columnBinding": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyHydratedColumnBinding",
+      "properties": {
+        "propertyId": { "$ref": "basic.json#/definitions/uuid" },
+        "columnPath": { "$ref": "ontologyConceptBindings.json#/definitions/columnPath" },
+        "state": {
+          "description": "Unresolved when the exact column is missing or the property is unavailable or no longer applicable. No rename inference is performed.",
+          "type": "string",
+          "javaType": "org.openmetadata.schema.type.OntologyColumnBindingState",
+          "enum": ["resolved", "unresolved"]
+        },
+        "property": { "$ref": "entityReference.json" },
+        "column": { "$ref": "#/definitions/column" }
+      },
+      "required": ["propertyId", "columnPath", "state"],
+      "additionalProperties": false
+    },
+    "assetBinding": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyHydratedAssetBinding",
+      "properties": {
+        "assetType": { "$ref": "ontologyConceptBindings.json#/definitions/assetType" },
+        "assetId": { "$ref": "basic.json#/definitions/uuid" },
+        "asset": { "$ref": "entityReference.json" },
+        "columns": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/columnBinding" },
+          "maxItems": 100,
+          "default": []
+        }
+      },
+      "required": ["assetType", "assetId", "asset", "columns"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "revision": { "$ref": "ontologyConceptBindings.json#/definitions/revision" },
+    "assets": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/assetBinding" },
+      "maxItems": 100,
+      "default": []
+    }
+  },
+  "required": ["revision", "assets"],
+  "additionalProperties": false
+}

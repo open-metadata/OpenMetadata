@@ -57,7 +57,12 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     if (AgentSparqlTransport.isAgentSparqlRequest(uriInfo)) {
       return AgentSparqlTransport.errorResponse(ex);
     }
-    if (ex instanceof RuleValidationException) {
+    if (ex instanceof OntologyValidationException validation) {
+      return Response.status(BAD_REQUEST)
+          .type(APPLICATION_JSON_TYPE)
+          .entity(validation.getError())
+          .build();
+    } else if (ex instanceof RuleValidationException) {
       return getRuleViolationResponse(ex);
     } else if (ex instanceof BadRequestException || ex instanceof IllegalArgumentException) {
       return getResponse(BAD_REQUEST, ex.getMessage());

@@ -500,11 +500,6 @@
                     "type": "array",
                     "items": { "$ref": "termRelation.json" }
                 },
-                "attributes": {
-                    "description": "Declared ontology attributes, including their units and ENUM values.",
-                    "type": "array",
-                    "items": { "$ref": "ontologyAttribute.json" }
-                },
                 "bindings": {
                     "type": "array",
                     "maxItems": 250,

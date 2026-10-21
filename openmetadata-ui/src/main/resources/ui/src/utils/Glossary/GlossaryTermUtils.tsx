@@ -22,7 +22,6 @@ import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.inter
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
-import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import i18n from '../i18next/LocalUtil';
 import type { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
 
@@ -52,14 +51,6 @@ const AssetsTabs = withSuspenseFallback(
       import(
         '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component'
       )
-  )
-);
-
-const GlossaryTermRealizedAssets = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../components/Glossary/GlossaryTerms/tabs/GlossaryTermRealizedAssets.component'
-    ).then((module) => ({ default: module.GlossaryTermRealizedAssets }))
   )
 );
 
@@ -120,6 +111,7 @@ export const getGlossaryTermDetailPageTabs = (
     refreshActiveGlossaryTerm,
     setAssetModalVisible,
     setPreviewAsset,
+    proposedCount,
   } = props;
 
   // Pending terms can still reach Approved, while terminal states cannot. The disabled copy must
@@ -147,22 +139,21 @@ export const getGlossaryTermDetailPageTabs = (
       </div>
     ),
     key: EntityTabs.OVERVIEW,
-    children: <GenericTab type={PageType.GlossaryTerm} variant="flat" />,
+    children: <GenericTab type={PageType.GlossaryTerm} />,
   });
 
   const buildTermsTab = (): TabProps => ({
     label: (
-      <div data-testid="terms">
-        {tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
-          i18n.t('label.glossary-term-plural')}
-        <span className="p-l-xs ">
-          {getCountBadge(
-            glossaryTerm.childrenCount || 0,
-            '',
-            activeTab === EntityTabs.GLOSSARY_TERMS
-          )}
-        </span>
-      </div>
+      <TabsLabel
+        count={glossaryTerm.childrenCount || 0}
+        id="terms"
+        isActive={activeTab === EntityTabs.GLOSSARY_TERMS}
+        name={
+          tabLabelMap[EntityTabs.GLOSSARY_TERMS] ??
+          i18n.t('label.glossary-term-plural')
+        }
+        proposedCount={proposedCount}
+      />
     ),
     key: EntityTabs.GLOSSARY_TERMS,
     children: (
@@ -175,12 +166,12 @@ export const getGlossaryTermDetailPageTabs = (
 
   const buildAssetsTab = (): TabProps => ({
     label: (
-      <div data-testid="assets">
-        {tabLabelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
-        <span className="p-l-xs">
-          {getCountBadge(assetCount ?? 0, '', activeTab === EntityTabs.ASSETS)}
-        </span>
-      </div>
+      <TabsLabel
+        count={assetCount ?? 0}
+        id="assets"
+        isActive={activeTab === EntityTabs.ASSETS}
+        name={tabLabelMap[EntityTabs.ASSETS] ?? i18n.t('label.asset-plural')}
+      />
     ),
     key: EntityTabs.ASSETS,
     children: (
@@ -190,7 +181,6 @@ export const getGlossaryTermDetailPageTabs = (
           className: 'glossary-term-resizable-panel-container',
           children: (
             <>
-              <GlossaryTermRealizedAssets termId={glossaryTerm.id} />
               <AssetsTabs
                 addDisabledMessage={assetsAddDisabledMessage}
                 assetCount={assetCount}

@@ -104,6 +104,7 @@ import {
   getUrlPathnameExpiry,
   getUserManagerConfig,
   isRefreshableAuthError,
+  isServerDrivenLogin,
   prepareUserProfileFromClaims,
   validateAuthFieldsDetailed,
 } from '../../../utils/AuthProvider.util';
@@ -149,6 +150,7 @@ const userAPIQueryFields = [
   TabSpecificField.ROLES,
   TabSpecificField.PERSONAS,
   TabSpecificField.DEFAULT_PERSONA,
+  TabSpecificField.DEFAULT_DOMAIN,
   TabSpecificField.DOMAINS,
 ];
 
@@ -815,17 +817,25 @@ export const AuthProvider = ({
           ? userAPIQueryFields + ',' + isEmailVerifyField
           : userAPIQueryFields;
       try {
-        const newUser = prepareUserProfileFromClaims({
-          user,
-          jwtPrincipalClaims,
-          principalDomain: authorizerConfig?.principalDomain ?? '',
-          jwtPrincipalClaimsMapping,
-          clientType,
-        });
-
         const res = await getLoggedInUser({ fields });
         if (res) {
-          const userDetails = await checkIfUpdateRequired(res, newUser);
+          // A server-driven login has already synced the profile, and the name it handed the
+          // browser is the username, which must not become the display name.
+          const userDetails = isServerDrivenLogin(
+            clientType,
+            authConfig?.provider
+          )
+            ? res
+            : await checkIfUpdateRequired(
+                res,
+                prepareUserProfileFromClaims({
+                  user,
+                  jwtPrincipalClaims,
+                  principalDomain: authorizerConfig?.principalDomain ?? '',
+                  jwtPrincipalClaimsMapping,
+                  clientType,
+                })
+              );
           setCurrentUser(userDetails);
           await hydrateAndResolveAppMode(userDetails);
 
@@ -857,6 +867,7 @@ export const AuthProvider = ({
     },
     [
       authConfig?.enableSelfSignup,
+      authConfig?.provider,
       clientType,
       authorizerConfig?.principalDomain,
       jwtPrincipalClaims,
@@ -1174,10 +1185,7 @@ export const AuthProvider = ({
       );
 
     // Handling for SAML moved to GenericAuthenticator
-    if (
-      clientType === ClientType.Confidential ||
-      authConfig?.provider === AuthProviderEnum.Saml
-    ) {
+    if (isServerDrivenLogin(clientType, authConfig?.provider)) {
       return (
         <LazyGenericAuthenticator ref={authenticatorRef}>
           {childElement}

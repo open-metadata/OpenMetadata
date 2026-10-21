@@ -426,13 +426,14 @@ export const useTestCaseIncidentHeader = ({
     hasEditOwnerPermission,
     // testCasePermission is undefined until the store's fetch-owner populates it (out of
     // this file's scope); DEFAULT_ENTITY_PERMISSION (all-false) reproduces the old
-    // Boolean(testCasePermission?.EditAll) undefined/absent-is-false behavior.
+    // undefined/absent-is-false behavior. canEditDomains reads EditDomains, falling back
+    // to EditAll, to match how the server authorizes a domain change.
     hasEditDomainPermission:
       !isVersionPage &&
       getDerivedPermissionFlags(
         testCasePermission ?? DEFAULT_ENTITY_PERMISSION,
         isDeleted
-      ).canEditAll,
+      ).canEditDomains,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,
     handleSeverityUpdate,

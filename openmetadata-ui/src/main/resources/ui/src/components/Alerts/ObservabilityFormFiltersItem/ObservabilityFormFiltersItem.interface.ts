@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
-export interface ObservabilityFormFiltersItemProps {
+import { RuleSectionProps } from '../../observability/Alerts/AlertAiFormFields.interface';
+
+export interface ObservabilityFormFiltersItemProps
+  extends Pick<RuleSectionProps, 'value' | 'onChange' | 'validationErrors'> {
   isViewMode?: boolean;
 }

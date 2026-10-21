@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Dialog } from '@openmetadata/ui-core-components';
 import {
   fireEvent,
   render,
@@ -291,6 +292,53 @@ describe('AddTestCaseList', () => {
     } else {
       process.env.VIRT_ON = originalVirtOn;
     }
+  });
+
+  it('submits selected cases from actions outside the scrolling dialog content', async () => {
+    mockGetListTestCaseBySearch.mockResolvedValue({
+      data: [mockTestCases[0]],
+      paging: { total: 1 },
+    });
+    const onSubmit = jest.fn();
+    await act(async () =>
+      render(
+        <MemoryRouter>
+          <Dialog title="Add Test Cases">
+            <AddTestCaseList
+              {...mockProps}
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box data-testid="test-case-dialog-content" direction="col">
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onSubmit={onSubmit}
+            />
+          </Dialog>
+        </MemoryRouter>
+      )
+    );
+    const checkbox = await screen.findByTestId(
+      `checkbox-${mockTestCases[0].name}`
+    );
+    fireEvent.click(checkbox);
+
+    expect(
+      within(screen.getByTestId('test-case-dialog-content')).queryByTestId(
+        'submit'
+      )
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('submit'));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ includeIds: [mockTestCases[0].id] })
+      )
+    );
   });
 
   it('windows large lists and preserves selection when a row leaves the viewport', async () => {

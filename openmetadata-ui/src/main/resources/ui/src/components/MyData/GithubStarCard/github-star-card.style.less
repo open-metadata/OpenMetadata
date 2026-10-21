@@ -13,31 +13,16 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.github-star-popup-card {
-  border: none;
-  position: fixed;
-  right: 30px;
-  bottom: -100%;
-  z-index: var(--om-z-1);
+.github-star-icon {
+  width: 24px;
+  vertical-align: sub;
+  color: @yellow-2;
+}
 
-  .github-star-icon {
-    width: 24px;
-    vertical-align: sub;
-    color: @yellow-2;
-  }
-
-  .github-star-popup-header {
-    color: @primary-color;
-    font-size: var(--om-font-size-md);
-    font-weight: var(--om-font-weight-semibold);
-  }
-
-  .github-star-popup-description {
-    margin-top: var(--om-space-10);
-    color: @text-color;
-    font-size: var(--om-font-size-xs);
-    font-weight: var(--om-font-weight-regular);
-  }
+.github-star-popup-header {
+  color: @primary-color;
+  font-size: var(--om-font-size-md);
+  font-weight: var(--om-font-weight-semibold);
 }
 
 .github-star-popup-card-with-alert {

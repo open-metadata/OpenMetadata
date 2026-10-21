@@ -889,8 +889,13 @@ export const scrollHierarchyToNode = async (
     const countBefore = await nodes.count();
 
     // Hoist listener before the scroll so no response is missed
+    // Root pages only: `domains/hierarchy` (every navigation) and child
+    // expands (`parent=`) carry their own paging.total.
     const responsePromise = page.waitForResponse(
-      (res) => res.url().includes('/hierarchy'),
+      (res) =>
+        res.url().includes('/contextCenter/pages/search/hierarchy') &&
+        !res.url().includes('parent=') &&
+        res.request().method() === 'GET',
       { timeout: 15000 }
     );
 
@@ -966,7 +971,17 @@ export const waitForArticleSearchResponse = (page: Page, displayName: string) =>
     );
   });
 
-export const verifyArticleSearch = async (page: Page, displayName: string) => {
+/**
+ * The listing keeps its "Last updated" sort while searching, and the search is
+ * fuzzy, so a multi-word title also matches every newer article whose name
+ * shares a word — on a shared server that pushes the target off the first
+ * page. Pass the article's unique suffix as `searchTerm` to keep it there.
+ */
+export const verifyArticleSearch = async (
+  page: Page,
+  displayName: string,
+  searchTerm = displayName
+) => {
   const header = page.getByTestId('context-center-header');
   const searchInput = header
     .getByTestId('search-input')
@@ -991,8 +1006,8 @@ export const verifyArticleSearch = async (page: Page, displayName: string) => {
       await clearResPromise;
     }
 
-    const searchResPromise = waitForArticleSearchResponse(page, displayName);
-    await searchInput.fill(displayName);
+    const searchResPromise = waitForArticleSearchResponse(page, searchTerm);
+    await searchInput.fill(searchTerm);
     const searchRes = await searchResPromise;
     expect(searchRes.status()).toBe(200);
     await expect(card).toBeVisible({ timeout: 3000 });
@@ -1234,6 +1249,23 @@ export const patchMemory = async (
   const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
     data: patch,
     headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+/**
+ * Sets a memory's outcome counters through the admin-only outcome write, the only write that
+ * changes them: a PATCH keeps the stored counts.
+ */
+export const recordMemoryOutcomes = async (
+  apiContext: APIRequestContext,
+  id: string,
+  outcomes: { appliedCount: number; lastAppliedAt?: number }
+) => {
+  const res = await apiContext.put(`${MEMORIES_API}/${id}/outcomes`, {
+    data: { ...outcomes, countedAt: Date.now() },
   });
   expect(res.ok()).toBeTruthy();
 

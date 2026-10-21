@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { Select } from 'antd';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import {
   PersonalAccessToken,
   TokenType,
@@ -24,8 +23,6 @@ import {
 } from '../../../../generated/entity/teams/user';
 import { SettingType } from '../../../../generated/settings/settings';
 import AuthMechanismForm from './AuthMechanismForm';
-
-const { Option } = Select;
 
 const mockUpdateSettingsConfig = jest.fn();
 const mockPatchSettingsConfig = jest.fn();
@@ -56,11 +53,7 @@ jest.mock('../../../../utils/BotsUtils', () => ({
       ? options.filter((opt) => opt.value !== JWTTokenExpiry.Unlimited)
       : options;
 
-    return filteredOptions.map((opt) => (
-      <Option key={opt.value} value={opt.value}>
-        {opt.label}
-      </Option>
-    ));
+    return filteredOptions.map((opt) => ({ id: opt.value, label: opt.label }));
   }),
 }));
 
@@ -117,11 +110,9 @@ describe('AuthMechanismForm', () => {
     it('should disable auth mechanism select field', () => {
       render(<AuthMechanismForm {...defaultProps} />);
 
-      const authMechanismSelect = screen
-        .getByTestId('auth-mechanism')
-        .querySelector('input');
-
-      expect(authMechanismSelect).toBeDisabled();
+      expect(
+        within(screen.getByTestId('auth-mechanism')).getByRole('button')
+      ).toBeDisabled();
     });
 
     it('should show cancel button when authenticationMechanism is not empty', () => {

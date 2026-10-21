@@ -13,6 +13,14 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ComponentProps, ComponentType, ReactNode } from 'react';
+import APIClient from '../../../../../rest/axiosClient';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../../../test/unit/test-utils';
+
+jest.mock('../../../../../rest/axiosClient', () => ({ get: jest.fn() }));
+runQueryNotificationsSynchronously();
 
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
@@ -45,8 +53,8 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
-  getTaskById: mockGetTaskById,
-  resolveTask: mockResolveTask,
+  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
   editTaskComment: (...a: unknown[]) => mockEditComment(...a),
   deleteTaskComment: (...a: unknown[]) => mockDeleteComment(...a),
@@ -107,7 +115,7 @@ jest.mock('components/common/DeleteModal/DeleteModal', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 // Tag the fallback so tests assert the permission-aware message reaches the toast.
@@ -296,6 +304,7 @@ jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Alert: jest.requireActual('@openmetadata/ui-core-components').Alert,
   Dot: () => <span />,
   BadgeWithDot: ({
     children,
@@ -700,6 +709,54 @@ describe('TaskDetailPanel', () => {
     expect(onResolved).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'Rejected' })
     );
+  });
+
+  it('keeps an ontology review open when the workflow still needs another vote', async () => {
+    const onResolved = jest.fn();
+    const task = {
+      ...TASK,
+      type: 'RequestApproval',
+      category: 'Approval',
+      about: { id: 'release-id', type: 'ontologyRelease' },
+      ontologyReview: {
+        entityId: 'release-id',
+        entityVersion: 0.2,
+        ontologyId: 'ontology-id',
+        author: 'author',
+        contentDigest: 'a'.repeat(64),
+      },
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'Approve',
+          resolutionType: 'Approved',
+          targetTaskStatus: 'Approved',
+        },
+      ],
+    };
+    (APIClient.get as jest.Mock).mockImplementation(async (path: string) => ({
+      data: path.endsWith('/diff')
+        ? { data: [], paging: { total: 0 } }
+        : { id: 'release-id', version: 0.2, name: 'Release' },
+    }));
+    mockGetTaskById.mockResolvedValue({ data: task });
+    mockResolveTask.mockResolvedValue({ ...task, status: 'Open' });
+
+    await act(async () =>
+      renderWithQueryClient(
+        <TaskDetailPanel taskId="task-1" onResolved={onResolved} />
+      )
+    );
+    await act(async () => {
+      fireEvent.click(await screen.findByTestId('task-approve'));
+    });
+
+    expect(onResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Open' })
+    );
+    expect(
+      screen.queryByText('message.task-outcome-by-on')
+    ).not.toBeInTheDocument();
   });
 
   it('runs a non-approve/reject transition (e.g. Revoke) with its id and type', async () => {

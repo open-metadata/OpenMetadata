@@ -136,21 +136,30 @@ const TestSuiteAddTestCaseDialog = ({
         <Modal>
           <Dialog
             showCloseButton
+            dividers="scroll"
             title={t('label.add-entity', {
               entity: t('label.test-case-plural'),
             })}
             onClose={onClose}>
-            <Dialog.Content>
-              <AddTestCaseList
-                existingTest={existingTests ?? []}
-                getPopupContainer={(trigger) =>
-                  (trigger.closest('[role="dialog"]') as HTMLElement) ??
-                  document.body
-                }
-                onCancel={onClose}
-                onSubmit={onSubmit}
-              />
-            </Dialog.Content>
+            <AddTestCaseList
+              existingTest={existingTests ?? []}
+              getPopupContainer={(trigger) =>
+                (trigger.closest('[role="dialog"]') as HTMLElement) ??
+                document.body
+              }
+              renderLayout={(content, actions) => (
+                <>
+                  <Dialog.Content>
+                    <Box direction="col" gap={2}>
+                      {content}
+                    </Box>
+                  </Dialog.Content>
+                  <Dialog.Footer>{actions}</Dialog.Footer>
+                </>
+              )}
+              onCancel={onClose}
+              onSubmit={onSubmit}
+            />
           </Dialog>
         </Modal>
       </ModalOverlay>
@@ -428,7 +437,7 @@ const TestSuiteDetail = () => {
                 entityFqn={testSuite?.fullyQualifiedName ?? ''}
                 entityId={testSuite?.id ?? ''}
                 entityType={EntityType.TEST_SUITE}
-                hasPermission={flags.canEditAll}
+                hasPermission={flags.canEditDomains}
                 labelClassName="tw:text-secondary!"
                 multiple={canAddMultipleDomains}
                 textClassName="render-domain-lebel-style tw:text-secondary!"

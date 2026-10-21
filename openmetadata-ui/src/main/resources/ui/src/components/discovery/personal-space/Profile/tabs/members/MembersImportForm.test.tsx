@@ -53,11 +53,12 @@ jest.mock('./MembersImportResultTable', () => () => (
 
 import MembersImportForm from './MembersImportForm';
 
-const emitCsvImportChannel = (payload: Record<string, unknown>) => {
+const emitCsvImportChannel = async (payload: Record<string, unknown>) => {
   const call = mockSocket.on.mock.calls.find(
     ([channel]) => channel === SOCKET_EVENTS.CSV_IMPORT_CHANNEL
   );
-  act(() => {
+  // The handler fetches the result on completion (async), so flush microtasks.
+  await act(async () => {
     call?.[1](JSON.stringify(payload));
   });
 };
@@ -152,7 +153,11 @@ describe('MembersImportForm', () => {
 
     await selectFileAndStartPreview();
 
-    emitCsvImportChannel({ jobId: 'job-1', status: 'FAILED', error: 'Boom' });
+    await emitCsvImportChannel({
+      jobId: 'job-1',
+      status: 'FAILED',
+      error: 'Boom',
+    });
 
     expect(showErrorToast).toHaveBeenCalledWith('Boom');
     // Spinner gone, back on the upload step the user can retry from.
@@ -172,7 +177,7 @@ describe('MembersImportForm', () => {
     await selectFileAndStartPreview();
 
     // Preview passes → advances to the validate step.
-    emitCsvImportChannel({
+    await emitCsvImportChannel({
       jobId: 'job-1',
       status: 'COMPLETED',
       result: {
@@ -188,7 +193,7 @@ describe('MembersImportForm', () => {
     });
 
     // The real import comes back a Failure.
-    emitCsvImportChannel({
+    await emitCsvImportChannel({
       jobId: 'job-1',
       status: 'COMPLETED',
       result: {
@@ -220,7 +225,7 @@ describe('MembersImportForm', () => {
       true
     );
 
-    emitCsvImportChannel({
+    await emitCsvImportChannel({
       jobId: 'job-1',
       status: 'COMPLETED',
       result: {
@@ -272,7 +277,7 @@ describe('MembersImportForm', () => {
 
     await selectFileAndStartPreview();
 
-    emitCsvImportChannel({
+    await emitCsvImportChannel({
       jobId: 'some-other-job',
       status: 'COMPLETED',
       result: {
@@ -299,7 +304,7 @@ describe('MembersImportForm', () => {
 
     await selectFileAndStartPreview();
 
-    emitCsvImportChannel({
+    await emitCsvImportChannel({
       jobId: 'job-1',
       status: 'COMPLETED',
       result: {

@@ -29,7 +29,8 @@ export type PlatformSettingsPageId =
   | 'search'
   | 'table-schema'
   | 'app-mode'
-  | 'glossary';
+  | 'glossary'
+  | 'time-format';
 
 export type PlatformSettingsView =
   | { type: 'landing' }
@@ -81,6 +82,12 @@ export interface PlatformSettingsPageProps {
   itemId?: string;
   onNavigate: (view: PlatformSettingsView) => void;
   onSetHeaderActions: (actions: React.ReactNode) => void;
+  /**
+   * State the page saved before it unmounted (e.g. a list's search and page
+   * while one of its items is open), kept by the panel until it closes.
+   */
+  savedState?: unknown;
+  onSaveState?: (state: unknown) => void;
 }
 
 export interface PlatformSettingsFormProps {

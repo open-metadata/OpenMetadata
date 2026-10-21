@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { MOCK_SUGGESTIONS } from '../../../mocks/Suggestions.mock';
@@ -87,19 +88,21 @@ function NavigateButton({ to, label }: { to: string; label: string }) {
 
 const renderProviderAt = (url: string, extra?: React.ReactNode) =>
   render(
-    <MemoryRouter initialEntries={[url]}>
-      <Routes>
-        <Route
-          element={
-            <SuggestionsProvider>
-              <Probe />
-              {extra}
-            </SuggestionsProvider>
-          }
-          path="/:entityType/:fqn/:tab"
-        />
-      </Routes>
-    </MemoryRouter>
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route
+            element={
+              <SuggestionsProvider>
+                <Probe />
+                {extra}
+              </SuggestionsProvider>
+            }
+            path="/:entityType/:fqn/:tab"
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>
   );
 
 describe('SuggestionsProvider entity FQN trimming', () => {

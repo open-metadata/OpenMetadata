@@ -23,10 +23,17 @@ import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.type.OntologyProfileViolation;
+import org.openmetadata.schema.type.OntologyProfileViolationCode;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyReleaseStructureIssue;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.ImpersonationDeniedException;
 
@@ -35,6 +42,29 @@ import org.openmetadata.service.security.ImpersonationDeniedException;
  * failures raised by request filters; every other path keeps the existing error shape.
  */
 class CatalogGenericExceptionMapperTest {
+  @Test
+  void ontologyValidationRetainsTypedMemberDetailsInTheHttpResponse() {
+    final UUID member = UUID.randomUUID();
+    final var issue =
+        new OntologyReleaseStructureIssue()
+            .withMemberId(member)
+            .withMemberKind(MemberKind.AXIOM)
+            .withViolation(
+                new OntologyProfileViolation()
+                    .withCode(OntologyProfileViolationCode.UNDECLARED_CLASS)
+                    .withPath("/subjectIri")
+                    .withMessage("Declare the subject class"));
+    final var response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(new OntologyValidationException(1, List.of(issue)));
+    final var json = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(400, response.getStatus());
+    assertEquals(400, json.path("code").asInt());
+    assertEquals(1, json.path("violationCount").asInt());
+    assertEquals(member.toString(), json.at("/violations/0/memberId").asText());
+    assertEquals("/subjectIri", json.at("/violations/0/violation/path").asText());
+  }
+
   @Test
   void agentPathDelegatesToTheStableEnvelope() {
     CatalogGenericExceptionMapper mapper = mapperForAgentPath();

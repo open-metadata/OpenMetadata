@@ -146,7 +146,7 @@ export const useWorkflowMode = (
     const isViewMode = internalMode === 'view';
     const isEditMode = internalMode === 'edit';
     const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
-    const caps = workflowClassBase.getCapabilities();
+    const caps = workflowClassBase.getCapabilities(workflowDefinition);
     const structural = caps.allowStructuralGraphEdits;
 
     const editEnabled = isEditMode && !isNoOpTrigger;

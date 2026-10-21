@@ -87,7 +87,6 @@ class TestConnectionFallbackMechanism:
         "MariaDB",  # mariaDBConnection.py
         "MongoDB",  # mongoDBConnection.py
         "PinotDB",  # pinotDBConnection.py
-        "DeltaLake",  # deltaLakeConnection.py
         "SingleStore",  # singleStoreConnection.py
         "UnityCatalog",  # unityCatalogConnection.py
         "BigTable",  # bigTableConnection.py

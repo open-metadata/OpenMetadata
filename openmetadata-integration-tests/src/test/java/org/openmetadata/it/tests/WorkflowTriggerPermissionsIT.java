@@ -30,12 +30,14 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.ReverseIngestionPipeline;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.EntityReference;
@@ -51,8 +53,9 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *   <li>TEST_CONNECTION with {@code serviceName} set — authorized via ANY of EDIT_ALL on the
  *       service OR CREATE on INGESTION_PIPELINE.
  *   <li>TEST_CONNECTION with no {@code serviceName} — authorized via CREATE on INGESTION_PIPELINE.
- *   <li>Other workflow types — intentionally NOT gated by this authorizer (scope limited to
- *       TEST_CONNECTION per issue #26760); they retain their prior trigger behavior.
+ *   <li>REVERSE_INGESTION — authorized via EDIT_ALL on the service it writes back to.
+ *   <li>QUERY_RUNNER — only the requester the stored query runs as, or an admin or bot.
+ *   <li>TEST_SPARK_ENGINE_CONNECTION — authorized via CREATE on INGESTION_PIPELINE.
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -197,17 +200,89 @@ public class WorkflowTriggerPermissionsIT {
   }
 
   @Test
-  void test_triggerNonTestConnection_notGatedByTestConnectionAuth(TestNamespace ns)
-      throws Exception {
+  void test_triggerQueryRunner_nonRequester_returns403(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Workflow workflow = admin.workflows().create(queryRunnerRequest(ns.prefix("qr-dc")));
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(queryRunnerRequest(ns.prefix("qr-dc"), SharedEntities.get().USER2_REF));
 
     HttpResponse<String> response = triggerWorkflow(workflow.getId(), dataConsumerToken());
 
-    assertAuthPassed(
-        response,
-        "non-TEST_CONNECTION triggers are intentionally out of scope for the test-connection "
-            + "authorizer (issue #26760) and must not be blocked by it");
+    assertEquals(
+        403,
+        response.statusCode(),
+        "a stored query runs with its requester's credentials, so nobody else may replay it");
+  }
+
+  @Test
+  void test_triggerQueryRunner_requester_authPasses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(queryRunnerRequest(ns.prefix("qr-requester"), SharedEntities.get().USER2_REF));
+
+    String requesterToken = tokenFor("shared_user2@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), requesterToken);
+
+    assertAuthPassed(response, "the requester must pass auth on their own QUERY_RUNNER workflow");
+  }
+
+  @Test
+  void test_triggerReverseIngestion_serviceOwner_authPasses(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService ownedService =
+        createMysqlService(
+            admin, ns.prefix("ri-owned-svc"), List.of(SharedEntities.get().USER2_REF));
+    Workflow workflow =
+        admin.workflows().create(reverseIngestionRequest(ns.prefix("ri-owner"), ownedService));
+
+    String ownerToken = tokenFor("shared_user2@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), ownerToken);
+
+    assertAuthPassed(response, "the service owner must pass auth via EDIT_ALL on the service");
+  }
+
+  @Test
+  void test_triggerReverseIngestion_nonOwner_returns403(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService ownedService =
+        createMysqlService(
+            admin, ns.prefix("ri-user2-svc"), List.of(SharedEntities.get().USER2_REF));
+    Workflow workflow =
+        admin.workflows().create(reverseIngestionRequest(ns.prefix("ri-nonowner"), ownedService));
+
+    String nonOwnerToken = tokenFor("shared_user3@test.openmetadata.org", new String[] {});
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), nonOwnerToken);
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "reverse ingestion writes to the source system; a user who cannot edit the service "
+            + "must not trigger it");
+  }
+
+  @Test
+  void test_triggerSparkEngineConnection_dataConsumer_returns403(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Workflow workflow =
+        admin
+            .workflows()
+            .create(
+                new CreateWorkflow()
+                    .withName(ns.prefix("spark-dc"))
+                    .withDescription("spark engine connection test")
+                    .withWorkflowType(WorkflowType.TEST_SPARK_ENGINE_CONNECTION)
+                    .withRequest(new TestSparkEngineConnectionRequest()));
+
+    HttpResponse<String> response = triggerWorkflow(workflow.getId(), dataConsumerToken());
+
+    assertEquals(
+        403,
+        response.statusCode(),
+        "DataConsumer has no CREATE on ingestion pipelines and must be denied");
   }
 
   @Test
@@ -299,12 +374,32 @@ public class WorkflowTriggerPermissionsIT {
   }
 
   private CreateWorkflow queryRunnerRequest(String name) {
+    return queryRunnerRequest(name, null);
+  }
+
+  private CreateWorkflow queryRunnerRequest(String name, EntityReference requester) {
     QueryRunnerRequest request =
-        new QueryRunnerRequest().withConnectionType("Mysql").withQuery("SELECT 1");
+        new QueryRunnerRequest()
+            .withConnectionType("Mysql")
+            .withQuery("SELECT 1")
+            .withUserId(requester == null ? null : requester.getId());
     return new CreateWorkflow()
         .withName(name)
         .withDescription(name)
         .withWorkflowType(WorkflowType.QUERY_RUNNER)
+        .withRequest(request);
+  }
+
+  private CreateWorkflow reverseIngestionRequest(String name, DatabaseService service) {
+    ReverseIngestionPipeline request =
+        new ReverseIngestionPipeline()
+            .withType(ReverseIngestionPipeline.ReverseIngestionType.REVERSE_INGESTION)
+            .withService(service.getEntityReference())
+            .withOperations(List.of());
+    return new CreateWorkflow()
+        .withName(name)
+        .withDescription(name)
+        .withWorkflowType(WorkflowType.REVERSE_INGESTION)
         .withRequest(request);
   }
 

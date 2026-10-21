@@ -28,9 +28,12 @@ import {
   mockEntitySearchSettings,
   openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
+  selectSettingOption,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
+import { enableAiAppMode } from '../Utils/appMode';
+import { expectSurfaceTheme, expectTheme, seedTheme } from '../Utils/theme';
 
 let adminUser: AdminClass;
 
@@ -147,24 +150,21 @@ test.describe('Search Settings', () => {
       // Add and remove field value boost
       await page.getByTestId('add-field-value-boost-btn').click();
 
-      const modal = page.getByTestId('field-value-boost-modal');
+      const modal = page.getByTestId('field-value-boost-dialog');
 
       await modal.waitFor({ state: 'visible' });
 
-      await modal.locator('#field').click();
+      await selectSettingOption(
+        page,
+        modal.getByTestId('field-select'),
+        'totalVotes'
+      );
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('totalVotes')
-        .click();
+      await modal.getByRole('slider').fill('25.6');
 
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .waitFor({ state: 'hidden' });
+      await expect(modal.getByTestId('field-boost-value')).toHaveText('25.6');
 
-      await setSliderValue(page, 'field-boost-slider', 25.6);
-
-      await modal.getByRole('button', { name: 'Save' }).click();
+      await modal.getByTestId('save-field-value-boost').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
@@ -264,35 +264,23 @@ test.describe('Search Settings', () => {
 
       // Match Type
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Fuzzy Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Fuzzy Match');
 
       // Score Mode
       const scoreModeSelect = page.getByTestId('score-mode-select');
-      await scoreModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Max')
-        .click();
+      await selectSettingOption(page, scoreModeSelect, 'Max');
 
       // Boost Mode
       const boostModeSelect = page.getByTestId('boost-mode-select');
-      await boostModeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Replace')
-        .click();
+      await selectSettingOption(page, boostModeSelect, 'Replace');
 
       // Save
       await page.getByTestId('save-btn').click();
 
       await toastNotification(page, /Search Settings updated successfully/);
 
-      await expect(scoreModeSelect).toHaveText('Max');
-      await expect(boostModeSelect).toHaveText('Replace');
+      await expect(scoreModeSelect.getByRole('button')).toHaveText('Max');
+      await expect(boostModeSelect.getByRole('button')).toHaveText('Replace');
     });
 
     test('Highlight toggle is offered for analyzed fields', async ({
@@ -426,6 +414,34 @@ test.describe('Search Settings', () => {
       ).toHaveText('10000');
     });
   });
+
+  test.describe(
+    'Search Settings theme in AI mode',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      // Classic mode is light-only, so dark surfaces are only reachable in AI mode.
+      test.beforeEach(async ({ page }) => {
+        await enableAiAppMode(page);
+      });
+
+      for (const theme of ['light', 'dark'] as const) {
+        // Regression for #35821: ranking cards stayed white in dark mode.
+        test(`ranking cards follow the ${theme} theme`, async ({ page }) => {
+          await seedTheme(page, theme);
+          await page.goto(`/${mockEntitySearchSettings.url}`, {
+            waitUntil: 'domcontentloaded',
+          });
+          await waitForAllLoadersToDisappear(page);
+
+          const rankingSignals = page.getByTestId('ranking-signals');
+
+          await expect(rankingSignals).toBeVisible();
+          await expectTheme(page, theme);
+          await expectSurfaceTheme(rankingSignals, theme);
+        });
+      }
+    }
+  );
 
   test.describe('Search Preview test', () => {
     const table1 = new TableClass();
@@ -741,7 +757,7 @@ test.describe('Search Settings', () => {
         const ngramSliderHandle = page
           .getByTestId('field-configuration-panel-name.ngram')
           .getByTestId('field-weight-slider')
-          .locator('.ant-slider-handle');
+          .getByRole('slider');
 
         // Register before triggering so the delayed stale request and response
         // are both observed.
@@ -816,11 +832,7 @@ test.describe('Search Settings', () => {
       );
 
       const matchTypeSelect = page.getByTestId('match-type-select');
-      await matchTypeSelect.click();
-      await page
-        .locator('.ant-select-dropdown:visible')
-        .getByTitle('Exact Match')
-        .click();
+      await selectSettingOption(page, matchTypeSelect, 'Exact Match');
 
       const saveSettings = page.waitForResponse(
         (response) =>

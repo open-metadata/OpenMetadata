@@ -173,6 +173,8 @@ class BasicAuthLoginServletTest {
     verify(response).setStatus(HttpServletResponse.SC_OK);
     verify(response, never()).sendError(anyInt(), anyString());
     assertThat(responseBody.toString()).contains("Invalid username or password");
+    // Relative, so the form posts back to <BASE_PATH>mcp/login under a non-root BASE_PATH
+    assertThat(responseBody.toString()).contains("action=\"login\"");
     // The catch block records the failed attempt exactly once.
     verify(authenticator).recordFailedLoginAttempt(EMAIL, EMAIL);
   }

@@ -31,14 +31,16 @@ const mockInstances = Array.from({ length: 3 }, (_, i) => ({
   variables: {},
 }));
 
-const renderHistory = async () => {
+const renderHistory = async (workflowFqn?: string) => {
   (getWorkflowInstancesByFQN as jest.Mock).mockResolvedValue({
     data: mockInstances,
     paging: { total: mockInstances.length },
   });
 
   await act(async () => {
-    render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    render(<WorkflowExecutionHistory workflowFqn={workflowFqn} />, {
+      wrapper: MemoryRouter,
+    });
   });
 };
 
@@ -50,6 +52,22 @@ describe('WorkflowExecutionHistory', () => {
     await renderHistory();
 
     expect(document.querySelector('thead')?.className).toMatch(/sticky/);
+  });
+
+  it('lists the route workflow runs by default and the given one when set', async () => {
+    await renderHistory();
+
+    expect(getWorkflowInstancesByFQN).toHaveBeenLastCalledWith(
+      'workflow-fqn',
+      expect.anything()
+    );
+
+    await renderHistory('HostPageWorkflow');
+
+    expect(getWorkflowInstancesByFQN).toHaveBeenLastCalledWith(
+      'HostPageWorkflow',
+      expect.anything()
+    );
   });
 
   it('renders a row per workflow instance', async () => {

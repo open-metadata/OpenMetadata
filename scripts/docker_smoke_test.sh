@@ -159,17 +159,16 @@ for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
 done
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
-# Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart
-# do -- through the shell entrypoint -- so this covers the launch script, the
-# classpath it assembles from libs/, and every JDK module the app touches in one
-# shot. It
+# Run through `-c` so the script's shebang is resolved, matching the Kubernetes
+# init container rather than having BusyBox read the script directly. This also
+# covers the classpath it assembles and every JDK module it touches. It
 # cannot reach a database and is expected to fail on that; what matters is that
 # it does not fail on a missing module or an unresolvable class.
-ops="$(docker run --rm "$IMAGE" \
-  /opt/openmetadata/bootstrap/openmetadata-ops.sh --help 2>&1 || true)"
-if echo "$ops" | grep -qE 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
-  echo "$ops" | grep -E 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
-  fail "openmetadata-ops.sh hit a class-loading or module error -- the image is missing a class or a JDK module"
+ops="$(docker run --rm "$IMAGE" -c \
+  '/opt/openmetadata/bootstrap/openmetadata-ops.sh --help' 2>&1 || true)"
+if echo "$ops" | grep -qE 'openmetadata-ops\.sh: not found|NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
+  echo "$ops" | grep -E 'openmetadata-ops\.sh: not found|NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
+  fail "openmetadata-ops.sh could not start or resolve every class it needs"
 else
   pass "openmetadata-ops.sh runs through the shell and resolves every class it needs"
 fi
@@ -205,6 +204,40 @@ case "$pid1" in
   "") fail "could not read /proc/1 before the container exited" ;;
   *) fail "PID 1 is '${pid1%% *}', not the JVM -- docker stop will SIGKILL instead of shutting down" ;;
 esac
+docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+# The JVM echoes JAVA_TOOL_OPTIONS to stderr before any logging starts ("Picked up
+# JAVA_TOOL_OPTIONS: ..."), so a truststore password set there landed in the pod
+# log. bin/openmetadata-server-start.sh hands the options to the JVM in a
+# -XX:VMOptionsFile instead. The value, '#' included, must stay out of the log and
+# off the JVM's command line, which every local user can read, and the options
+# file must not be left behind. -XX:+PrintCommandLineFlags shows the options still
+# reach the JVM: it prints the flags once the arguments are parsed.
+docker run -d --name "$CONTAINER" \
+  -e JAVA_TOOL_OPTIONS="-XX:+PrintCommandLineFlags -Dsmoke.secret=not-for-the-log#1" \
+  "$IMAGE" >/dev/null
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  case "$(docker logs "$CONTAINER" 2>&1 || true)" in *PrintCommandLineFlags*) break ;; esac
+  sleep 1
+done
+sleep 1
+startup="$(docker logs "$CONTAINER" 2>&1 || true)"
+cmdline="$(docker exec "$CONTAINER" /bin/sh -c 'tr "\0" " " < /proc/1/cmdline' 2>/dev/null || true)"
+leftover="$(docker exec "$CONTAINER" /bin/sh -c 'ls /dev/shm /tmp 2>/dev/null' |
+  grep -c '^jvm-options\.' || true)"
+if echo "$startup" | grep -q "not-for-the-log"; then
+  fail "JAVA_TOOL_OPTIONS reached the container log: $(echo "$startup" | grep -m1 "not-for-the-log")"
+elif echo "$cmdline" | grep -q "not-for-the-log"; then
+  fail "JAVA_TOOL_OPTIONS is on the JVM's command line, where ps shows it: $cmdline"
+elif ! echo "$startup" | grep -q -- "-XX:+PrintCommandLineFlags"; then
+  fail "JAVA_TOOL_OPTIONS never reached the JVM: $(echo "$startup" | tail -3 | tr '\n' ' ')"
+elif [ -z "$cmdline" ]; then
+  fail "could not read /proc/1 to check the JVM's command line before the container exited"
+elif [ "${leftover:-0}" -ne 0 ]; then
+  fail "the JAVA_TOOL_OPTIONS file was left behind in /dev/shm or /tmp"
+else
+  pass "JAVA_TOOL_OPTIONS reaches the JVM without showing in its log or its command line"
+fi
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 echo

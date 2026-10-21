@@ -53,8 +53,6 @@ jest.mock('../../hooks/useDownloadProgressStore', () => ({
   },
 }));
 
-import * as utils from './LogsUtils';
-
 describe('LogsUtils', () => {
   describe('getLogsFromResponse', () => {
     it('should return the correct logs based on the pipeline type', () => {
@@ -115,12 +113,6 @@ describe('LogsUtils', () => {
   });
 
   describe('fetchLogsRecursively', () => {
-    let mockGetLogsFromResponse: jest.SpyInstance;
-
-    beforeAll(() => {
-      mockGetLogsFromResponse = jest.spyOn(utils, 'getLogsFromResponse');
-    });
-
     afterAll(() => {
       jest.clearAllMocks();
     });
@@ -151,7 +143,8 @@ describe('LogsUtils', () => {
         ingestionId,
         after
       );
-      expect(mockGetLogsFromResponse).toHaveBeenCalledWith(rest, pipelineType);
+      // The in-module getLogsFromResponse call can't be spied on; the
+      // concatenated per-page logs below prove it ran for each page.
       expect(logs).toBe('metadata_logs_1metadata_logs_1');
     });
 

@@ -172,6 +172,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+// LocalUtil and LocalUtilClassBase import each other; mocking the latter keeps
+// requireActual below from reading LocalUtil's exports mid-initialization.
+jest.mock('../../../../utils/i18next/LocalUtilClassBase');
+
 jest.mock('../../../../utils/i18next/LocalUtil', () => ({
   ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({
@@ -481,6 +485,34 @@ describe('IncidentGroupsView', () => {
       screen.getByTestId('incident-groups-recurring-count')
     ).toHaveTextContent('label.recurring-count:2');
     expect(screen.getByTestId('table-group-count')).toHaveTextContent('3');
+  });
+
+  it('should offer no clear-all while nothing is filtered', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should clear every filter from the stats line', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('filter-assignee'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('incident-groups-clear-filters'));
+    });
+
+    expect(screen.getByTestId('filters-state')).not.toHaveTextContent('aaron');
+    expect(
+      screen.queryByTestId('incident-groups-clear-filters')
+    ).not.toBeInTheDocument();
   });
 
   it('should refire the fetch with the ordering the table hands back', async () => {

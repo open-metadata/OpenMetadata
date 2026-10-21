@@ -1047,9 +1047,10 @@ export interface ConnectionClass {
      * my_schema.custom_pg_stat_statements) when direct access to pg_stat_statements is
      * restricted.
      */
-    queryStatementSource?: string;
-    sslMode?:              SSLMode;
-    supportsDatabase?:     boolean;
+    queryStatementSource?:           string;
+    sslMode?:                        SSLMode;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDatabase?:               boolean;
     /**
      * How to run the SQLite database. :memory: by default.
      */
@@ -1202,6 +1203,11 @@ export interface GCPCredentialsConfiguration {
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
     type?: string;
+    /**
+     * Google Cloud service domain, used to override the default `googleapis.com` domain for
+     * sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).
+     */
+    universeDomain?: string;
     /**
      * Path of the file containing the GCP credentials info
      */

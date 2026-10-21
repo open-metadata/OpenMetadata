@@ -19,6 +19,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -43,6 +45,7 @@ import org.openmetadata.service.security.Authorizer;
 @Produces(MediaType.APPLICATION_JSON)
 @Collection(name = "searchReindex")
 public class SearchReindexResource {
+  static final int MAX_PAGE_SIZE = 1000;
   private final CollectionDAO collectionDAO;
   private final Authorizer authorizer;
 
@@ -73,16 +76,21 @@ public class SearchReindexResource {
       @Parameter(description = "Offset for pagination", schema = @Schema(type = "integer"))
           @QueryParam("offset")
           @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
           int offset,
       @Parameter(
               description = "Limit the number of results returned",
               schema = @Schema(type = "integer"))
           @QueryParam("limit")
           @DefaultValue("50")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = MAX_PAGE_SIZE, message = "must be less than or equal to 1000")
           int limit,
       @Parameter(description = "Filter by entity type", schema = @Schema(type = "string"))
           @QueryParam("entityType")
           String entityType) {
+    // Failure records carry entity names, error messages and server stack traces.
+    authorizer.authorizeAdmin(securityContext);
 
     // Get total count
     int totalCount;

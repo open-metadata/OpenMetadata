@@ -53,13 +53,8 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const {
-    isEditMode,
-    columnsInCurrentPages,
-    isCanvasReady,
-    tracedNodes,
-    tracedColumns,
-  } = useLineageStore();
+  const { columnsInCurrentPages, isCanvasReady, tracedNodes, tracedColumns } =
+    useLineageStore();
   const providerEdges = useLineageStore((s) => s.edges);
   const providerNodes = useLineageStore((s) => s.nodes);
   const edges = edgesOverride ?? providerEdges;
@@ -225,7 +220,7 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
       pane.removeEventListener('mousemove', handleMouseMove);
       pane.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [isEditMode, handleClick, handleMouseMove, handleMouseLeave]);
+  }, [handleClick, handleMouseMove, handleMouseLeave]);
 
   return (
     <div
@@ -265,22 +260,20 @@ export const CanvasEdgeRenderer: React.FC<CanvasEdgeRendererProps> = ({
           />
         ) : null
       )}
-      {hoveredButton?.type === ECanvasButtonType.Pipeline &&
-        hoveredEdge &&
-        !isEditMode && (
-          <CanvasButtonPopover
-            hoverTimeoutRef={hoverTimeoutRef}
-            hoveredButton={hoveredButton}
-            hoveredEdge={hoveredEdge}
-            isOverPopoverRef={isOverPopoverRef}
-            viewport={viewport}
-            onMouseLeave={() => {
-              isOverPopoverRef.current = false;
-              setHoveredButton(null);
-              onEdgeHoverRef.current?.(null);
-            }}
-          />
-        )}
+      {hoveredButton?.type === ECanvasButtonType.Pipeline && hoveredEdge && (
+        <CanvasButtonPopover
+          hoverTimeoutRef={hoverTimeoutRef}
+          hoveredButton={hoveredButton}
+          hoveredEdge={hoveredEdge}
+          isOverPopoverRef={isOverPopoverRef}
+          viewport={viewport}
+          onMouseLeave={() => {
+            isOverPopoverRef.current = false;
+            setHoveredButton(null);
+            onEdgeHoverRef.current?.(null);
+          }}
+        />
+      )}
     </div>
   );
 };

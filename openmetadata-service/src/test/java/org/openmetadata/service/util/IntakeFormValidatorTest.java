@@ -31,6 +31,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.domains.CreateDataProduct.DataProductType;
 import org.openmetadata.schema.api.governance.CreateIntakeForm.TargetEntityType;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.governance.IntakeForm;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.entity.governance.IntakeFormField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField;
 import org.openmetadata.schema.entity.governance.IntakeFormRequiredField.FieldKind;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.IntakeFormRepository;
 
 class IntakeFormValidatorTest {
@@ -136,6 +138,25 @@ class IntakeFormValidatorTest {
             () -> IntakeFormValidator.validate(dp, Entity.DATA_PRODUCT));
     assertTrue(ex.getMessage().contains("intake form"));
     assertTrue(ex.getMessage().contains("Data Product Type"));
+  }
+
+  @Test
+  void validate_letsAWorkflowMoveAnAssetThatPredatesARequiredField() {
+    IntakeForm form = intakeFormRequiring("dataProductType", FieldKind.NATIVE);
+    when(mockRepo.findEnabledForEntityType(Entity.DATA_PRODUCT)).thenReturn(form);
+
+    DataProduct stageWrite = validDataProduct().withUpdatedBy(WorkflowEventConsumer.GOVERNANCE_BOT);
+    DataProduct impersonated =
+        validDataProduct()
+            .withUpdatedBy("alice")
+            .withImpersonatedBy(WorkflowEventConsumer.GOVERNANCE_BOT);
+    DataProduct userEdit = validDataProduct().withUpdatedBy("alice");
+
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(stageWrite, Entity.DATA_PRODUCT));
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(impersonated, Entity.DATA_PRODUCT));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> IntakeFormValidator.validate(userEdit, Entity.DATA_PRODUCT));
   }
 
   @Test
@@ -380,6 +401,34 @@ class IntakeFormValidatorTest {
         .withId(UUID.randomUUID())
         .withName("sales-analytics")
         .withDescription("Customer sales rollup");
+  }
+
+  @Test
+  void validate_metricNativeAndCustomIntakeRequirements() {
+    IntakeForm form =
+        intakeFormRequiring("displayName", FieldKind.NATIVE)
+            .withEntityType(TargetEntityType.METRIC);
+    when(mockRepo.findEnabledForEntityType(Entity.METRIC)).thenReturn(form);
+    Metric metric = new Metric().withName("revenue");
+    assertThrows(
+        IllegalArgumentException.class, () -> IntakeFormValidator.validate(metric, Entity.METRIC));
+    metric.setDisplayName("Revenue");
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(metric, Entity.METRIC));
+    when(mockRepo.findEnabledForEntityType(Entity.METRIC))
+        .thenReturn(
+            intakeFormRequiring("extension.cost", FieldKind.CUSTOM_PROPERTY)
+                .withEntityType(TargetEntityType.METRIC));
+    assertThrows(
+        IllegalArgumentException.class, () -> IntakeFormValidator.validate(metric, Entity.METRIC));
+    metric.setExtension(Map.of("cost", 0));
+    assertDoesNotThrow(() -> IntakeFormValidator.validate(metric, Entity.METRIC));
+  }
+
+  @Test
+  void validate_metricWithoutIntakeFormPreservesExistingBehavior() {
+    when(mockRepo.findEnabledForEntityType(Entity.METRIC)).thenReturn(null);
+    assertDoesNotThrow(
+        () -> IntakeFormValidator.validate(new Metric().withName("revenue"), Entity.METRIC));
   }
 
   private static IntakeForm intakeFormRequiring(

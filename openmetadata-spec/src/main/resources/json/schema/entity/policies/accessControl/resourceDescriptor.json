@@ -33,6 +33,7 @@
         "EditDataProfile",
         "EditDescription",
         "EditDisplayName",
+        "EditDomains",
         "EditLineage",
         "EditEntityRelationship",
         "EditPolicy",

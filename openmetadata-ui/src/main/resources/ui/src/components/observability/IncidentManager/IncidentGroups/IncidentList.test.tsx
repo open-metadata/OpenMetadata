@@ -256,6 +256,9 @@ describe('IncidentList', () => {
     expect(
       within(row).queryByTestId('incident-assignee')
     ).not.toBeInTheDocument();
+    expect(within(row).getByTestId('incident-no-assignee')).toHaveTextContent(
+      '--'
+    );
   });
 
   it('should show a loader while the first page loads', () => {

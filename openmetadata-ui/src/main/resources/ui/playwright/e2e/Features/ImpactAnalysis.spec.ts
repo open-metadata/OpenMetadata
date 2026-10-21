@@ -1038,7 +1038,8 @@ test.describe('Impact Analysis', () => {
     const tableLineageResponse = page.waitForResponse(
       `/api/v1/lineage/getLineageByEntityCount?**`
     );
-    await page.getByText('Asset level').click();
+    // Exact: the lineage Layers trigger reads "Data Asset Level" too.
+    await page.getByText('Asset Level', { exact: true }).click();
     await tableLineageResponse;
     await waitForAllLoadersToDisappear(page);
 

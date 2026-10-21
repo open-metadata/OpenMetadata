@@ -101,6 +101,7 @@ export const ContractSemanticFormTab: React.FC<{
     name: 'semantics',
   });
   const semantics = useWatch({ control: form.control, name: 'semantics' });
+  const { isDirty } = form.formState;
 
   const queryBuilderFields = useMemo(() => getSematicRuleFields(), []);
 
@@ -114,8 +115,12 @@ export const ContractSemanticFormTab: React.FC<{
   }, [initialValues]);
 
   useEffect(() => {
+    if (!isDirty) {
+      return;
+    }
+
     onChange({ semantics });
-  }, [semantics]);
+  }, [semantics, isDirty]);
 
   const handleAddSemantic = () => {
     append(NEW_SEMANTIC);

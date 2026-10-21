@@ -26,6 +26,18 @@ import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
 import ExploreTree, { getExploreTreeAggregationResponse } from './ExploreTree';
 
+// swc exports are non-configurable getters, so re-export the actual modules as
+// plain objects to keep jest.spyOn (and restoreAllMocks) working on them.
+jest.mock('../../../rest/miscAPI', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../rest/miscAPI'),
+}));
+
+jest.mock('../../../rest/searchAPI', () => ({
+  __esModule: true,
+  ...jest.requireActual('../../../rest/searchAPI'),
+}));
+
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({
     tab: 'tables',

@@ -47,33 +47,26 @@ export const openTeamEditorAndSelect = async (page: Page, teamName: string) => {
   await expect(teamSelect).toBeVisible();
   await teamSelect.click();
 
-  const teamDropdown = page.locator('.ant-tree-select-dropdown').last();
-  await expect(teamDropdown).toBeVisible({ timeout: ACTION_TIMEOUT });
+  await selectTeamInPicker(page, teamName);
+};
 
-  const directTeamOption = teamDropdown
-    .locator('.ant-select-tree-title')
-    .filter({ hasText: new RegExp(`^${teamName}$`) })
-    .first();
+/**
+ * Picks a team in the core TreeSelect team picker. The tree opens in its own
+ * overlay (`team-select-popover`), and searching first keeps nested teams
+ * reachable without expanding their parents. The multi-select overlay stays
+ * open after a pick and swallows the next outside click, so close it before
+ * the caller saves.
+ */
+export const selectTeamInPicker = async (page: Page, teamName: string) => {
+  const popover = page.getByTestId('team-select-popover');
+  await expect(popover).toBeVisible({ timeout: ACTION_TIMEOUT });
 
-  if (await directTeamOption.isVisible().catch(() => false)) {
-    // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-    await directTeamOption.click({ force: true });
+  await page.getByTestId('team-select').getByRole('combobox').fill(teamName);
 
-    return;
-  }
-
-  await teamSelect.locator('input:not([disabled])').first().click();
-  await page.keyboard.type(teamName);
-
-  await expect(teamDropdown).toContainText(teamName, {
-    timeout: ACTION_TIMEOUT,
-  });
-
-  const teamOption = teamDropdown.getByText(teamName, {
-    exact: true,
-  });
+  const teamOption = popover.getByText(teamName, { exact: true }).first();
 
   await expect(teamOption).toBeVisible({ timeout: ACTION_TIMEOUT });
-  // eslint-disable-next-line playwright/no-force-option -- element obscured by overlay
-  await teamOption.click({ force: true });
+  await teamOption.click();
+  await page.keyboard.press('Escape');
+  await expect(popover).toBeHidden();
 };

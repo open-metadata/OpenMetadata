@@ -13,8 +13,11 @@
 
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
+import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import NotificationAlertConfigView from './NotificationAlertConfigView';
+import NotificationFiltersEditor from './NotificationFiltersEditor';
+import NotificationSourceSelect from './NotificationSourceSelect';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
@@ -47,19 +50,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }) => <span>{children}</span>),
 }));
 
-jest.mock('../../../../../../rest/alertsAPI', () => ({
-  getResourceFunctions: jest.fn().mockResolvedValue({
-    data: [
-      {
-        name: 'table',
-        supportedFilters: [],
-        supportedActions: [],
-        containerEntities: [],
-      },
-    ],
-  }),
-}));
-
 jest.mock('../../../../../../rest/notificationtemplateAPI', () => ({
   getAllNotificationTemplates: jest.fn().mockResolvedValue({ data: [] }),
 }));
@@ -73,10 +63,17 @@ jest.mock(
   })
 );
 
+const mockCapabilities = {
+  knownSources: [],
+  loading: false,
+  settled: true,
+  retry: jest.fn(),
+};
+
 // Asking the server what the sources support is tested with the hook itself.
 jest.mock('../../../../../../hooks/useAlertSelection', () => ({
   AlertSelectionProvider: ({ children }: { children: unknown }) => children,
-  useAlertSelection: jest.fn().mockReturnValue({ support: {} }),
+  useAlertSelection: jest.fn(),
 }));
 
 jest.mock('../../../../../../utils/AlertsClassBase', () => ({
@@ -142,11 +139,81 @@ const mockAlertDetails = {
   input: { filters: [], actions: [] },
 } as unknown as EventSubscription;
 
+const SUPPORT = {
+  supportedFilters: [{ name: 'filterByOwnerName' }],
+  supportedTriggers: [
+    {
+      name: 'pipelineStatus',
+      displayName: 'Get Pipeline Status Updates (Pipeline)',
+    },
+  ],
+  containerEntities: ['table'],
+  supportedEventTypes: ['entityCreated'],
+};
+
+const selectionOf = (overrides = {}) => ({
+  support: {},
+  capabilities: mockCapabilities,
+  ready: true,
+  ...overrides,
+});
+
 describe('NotificationAlertConfigView', () => {
-  it('should show loader initially', () => {
+  beforeEach(() => {
+    (useAlertSelection as jest.Mock).mockImplementation(() => selectionOf());
+  });
+
+  it('shows the loader until the server has answered for the sources', () => {
+    (useAlertSelection as jest.Mock).mockImplementation(() =>
+      selectionOf({ ready: false })
+    );
+
     render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(screen.queryByTestId('source-select')).not.toBeInTheDocument();
+  });
+
+  it('shows the filters and triggers the server says every source supports', async () => {
+    (useAlertSelection as jest.Mock).mockImplementation(() =>
+      selectionOf({ support: SUPPORT })
+    );
+    (
+      alertsClassBase.getModifiedAlertDataForForm as jest.Mock
+    ).mockReturnValueOnce({
+      destinations: [],
+      filteringRules: { resources: ['pipeline', 'ingestionPipeline'] },
+      input: {
+        filters: [{ name: 'filterByOwnerName' }],
+        actions: [{ name: 'pipelineStatus' }],
+      },
+    });
+
+    await act(async () => {
+      render(<NotificationAlertConfigView alertDetails={mockAlertDetails} />);
+    });
+
+    expect(useAlertSelection).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['pipeline', 'ingestionPipeline'] })
+    );
+    expect(NotificationSourceSelect).toHaveBeenLastCalledWith(
+      {
+        capabilities: mockCapabilities,
+        value: ['pipeline', 'ingestionPipeline'],
+      },
+      expect.anything()
+    );
+    expect(NotificationFiltersEditor).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        containerEntities: SUPPORT.containerEntities,
+        supportedEventTypes: SUPPORT.supportedEventTypes,
+        supportedFilters: SUPPORT.supportedFilters,
+      }),
+      expect.anything()
+    );
+    expect(screen.getByTestId('triggers-list')).toHaveTextContent(
+      'Get Pipeline Status Updates (Pipeline)'
+    );
   });
 
   it('should render source select after loading', async () => {

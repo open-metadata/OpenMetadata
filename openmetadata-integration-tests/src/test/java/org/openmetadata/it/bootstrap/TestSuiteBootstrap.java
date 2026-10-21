@@ -33,6 +33,7 @@ import jakarta.validation.Validator;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.ServerSocket;
+import java.net.URI;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -77,6 +78,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
@@ -1458,24 +1460,32 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   }
 
   /**
-   * Returns the Fuseki SPARQL query endpoint URL.
+   * Returns the Fuseki SPARQL query endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiQueryEndpoint() {
-    return getFusekiEndpoint() + "/sparql";
+    return getServingFusekiEndpoint() + "/sparql";
   }
 
   /**
-   * Returns the Fuseki SPARQL update endpoint URL.
+   * Returns the Fuseki SPARQL update endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiUpdateEndpoint() {
-    return getFusekiEndpoint() + "/update";
+    return getServingFusekiEndpoint() + "/update";
   }
 
   /**
-   * Returns the Fuseki Graph Store Protocol endpoint URL.
+   * Returns the Fuseki Graph Store Protocol endpoint URL of the dataset the server is serving.
    */
   public static String getFusekiDataEndpoint() {
-    return getFusekiEndpoint() + "/data";
+    return getServingFusekiEndpoint() + "/data";
+  }
+
+  // A blue/green promotion moves serving off the configured dataset for the rest of the suite, so
+  // direct store access follows the durable serving pointer instead of the configured endpoint.
+  private static String getServingFusekiEndpoint() {
+    final RdfRepository repository = RdfRepository.getInstanceOrNull();
+    final String dataset = repository == null ? FUSEKI_DATASET : repository.activeDatasetName();
+    return URI.create(getFusekiEndpoint()).resolve(dataset).toString();
   }
 
   /**

@@ -1,10 +1,10 @@
 {
   "name": "Domains",
   "displayName": "Domains",
-  "description": "Displays all available domains to explore and access data grouped by specific data assets.",
+  "description": "Domain-by-domain overview of owner, description coverage, and failing tests, so a gap is visible without opening each one.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.Domains",
   "data": {
-    "gridSizes": ["small", "medium"]
+    "gridSizes": ["small", "medium", "large"]
   }
 }

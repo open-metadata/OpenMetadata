@@ -73,7 +73,6 @@ const createFlatItem = (column: Column, depth = 0) => ({
 describe('VirtualColumnList', () => {
   const defaultProps: VirtualColumnListProps = {
     flatItems: [],
-    isConnectable: true,
     isLoading: false,
     nodeId: 'test-node',
     showDataObservabilitySummary: false,

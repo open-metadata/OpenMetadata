@@ -40,5 +40,9 @@ export interface DomainDetailsProps {
    */
   onNavigate?: (path: string) => void;
   refreshDomains?: () => void;
+  /**
+   * Reloads the domain, e.g. after a task on it is decided from its Activity tab.
+   */
+  onRefresh?: () => void;
   isTreeView?: boolean;
 }

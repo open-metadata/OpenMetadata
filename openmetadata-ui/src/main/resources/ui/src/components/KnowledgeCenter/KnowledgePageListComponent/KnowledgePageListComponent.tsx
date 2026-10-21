@@ -241,7 +241,7 @@ const KnowledgePageEmptyState = ({
                     className="tw:text-brand-secondary tw:after:outline-brand"
                     color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    iconLeading={<Plus size={14} />}
+                    iconLeading={Plus}
                     size="sm">
                     {t('label.add')}
                   </CoreButton>

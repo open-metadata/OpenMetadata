@@ -43,6 +43,9 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioProposedEdgeStyle,
+  buildStudioProposedNodeStyle,
+  drawProposalSparkle,
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
@@ -334,5 +337,83 @@ describe('getCanvasColor', () => {
     expect(getCanvasColor('var(--tw-color-unresolvable)', '#fedcba')).toBe(
       '#fedcba'
     );
+  });
+});
+
+describe('buildStudioProposedNodeStyle', () => {
+  const fallbackColor = (_cssVar: string, fallback: string) => fallback;
+
+  it('draws a dashed purple border with no edit handle until selected', () => {
+    expect(buildStudioProposedNodeStyle(fallbackColor, false)).toEqual({
+      fill: '#F4F3FF',
+      lineDash: [4, 4],
+      stroke: '#9B8AFB',
+      studioAccentColor: 'var(--tw-color-utility-purple-500)',
+      studioEditMode: false,
+      studioDashFlow: true,
+      studioMutedColor: '#5925DC',
+      studioNodeKind: 'proposed',
+      studioTagText: 'LABEL.NEW',
+    });
+  });
+
+  it('turns the border solid and stronger when selected', () => {
+    expect(buildStudioProposedNodeStyle(fallbackColor, true)).toMatchObject({
+      studioDashFlow: false,
+      lineDash: [],
+      stroke: '#7A5AF8',
+    });
+  });
+});
+
+describe('buildStudioProposedEdgeStyle', () => {
+  const fallbackColor = (_cssVar: string, fallback: string) => fallback;
+
+  it('dashes the line and asks its relation as a question in a dashed pill', () => {
+    expect(
+      buildStudioProposedEdgeStyle(fallbackColor, 'related to')
+    ).toMatchObject({
+      endArrow: false,
+      labelBackgroundLineDash: [3, 3],
+      labelText: 'related to ?',
+      lineDash: [4, 4],
+      studioDashFlow: true,
+      stroke: '#9B8AFB',
+    });
+  });
+
+  it('keeps the dashed line but draws no pill when labels are off', () => {
+    expect(
+      buildStudioProposedEdgeStyle(fallbackColor, undefined)
+    ).not.toHaveProperty('labelText');
+  });
+});
+
+describe('drawProposalSparkle', () => {
+  const pill = {
+    getLocalBounds: () => ({ max: [60, 10], min: [0, -10] }),
+  } as never;
+
+  it('dims the sparkle with its proposed edge label', () => {
+    const upsert = jest.fn();
+
+    drawProposalSparkle(
+      { labelOpacity: 0.16, studioDashFlow: true },
+      pill,
+      upsert
+    );
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ opacity: 0.16, x: 7 })
+    );
+  });
+
+  it('draws nothing for a live edge or a hidden label', () => {
+    const upsert = jest.fn();
+
+    drawProposalSparkle({ studioDashFlow: false }, pill, upsert);
+    drawProposalSparkle({ label: false, studioDashFlow: true }, pill, upsert);
+
+    expect(upsert.mock.calls).toEqual([[false], [false]]);
   });
 });

@@ -12,7 +12,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.events.EventSubscription;
-import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
+import org.openmetadata.service.events.consumer.Consumers;
 import org.quartz.SimpleTrigger;
 import org.quartz.TriggerKey;
 
@@ -31,7 +31,7 @@ class AlertTimetableIT {
           AlertFixtures.tableAlert(
               ns,
               "timetable",
-              AlertPublisher.class.getName(),
+              Consumers.DEFAULT,
               List.of(AlertFixtures.external(WEBHOOK, receiver.url("/hook"))));
       QuietAlert.settle(alert);
       TriggerKey key = AlertFixtures.triggerKey(alert.getId());

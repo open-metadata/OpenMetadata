@@ -47,6 +47,7 @@ import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useA
 import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
 import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
@@ -58,7 +59,6 @@ import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
-import { invalidateQueriesWithoutInitialRace } from './queryCacheUtils';
 
 const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
 const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
@@ -151,7 +151,7 @@ const AlertDetailsPage = ({
     fqn,
     sources,
   });
-  const { support } = alertFormState.selection;
+  const { selection } = alertFormState;
 
   const handleConfirmDelete = useCallback(async () => {
     if (!alertDetails?.id) {
@@ -209,16 +209,18 @@ const AlertDetailsPage = ({
     }
 
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
+      // The configuration shows what the server says the sources support, so it waits for it.
+      if (!selection.ready) {
+        return <Loader />;
+      }
+
       return (
         <AlertAiForm
           shouldShowFiltersSection
           alert={alertConfigValue}
-          filterResources={alertFormState.filterResources}
           mode="view"
-          recipientCategories={support.recipientCategories}
+          selection={selection}
           shouldShowActionsSection={kind.hasTriggers}
-          supportedFilters={support.supportedFilters}
-          supportedTriggers={support.supportedTriggers}
           templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
           templatesLoading={alertFormState.loadingState.templates}
@@ -232,12 +234,11 @@ const AlertDetailsPage = ({
     alertConfigValue,
     alertDetails,
     fqn,
-    alertFormState.filterResources,
     alertFormState.loadingState.templates,
     alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
-    support,
+    selection,
     tab,
   ]);
 
