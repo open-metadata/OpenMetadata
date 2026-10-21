@@ -163,6 +163,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import lombok.Getter;
@@ -9663,29 +9664,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * Refuses imported rows that move their entities into domains the importer may not move them
    * into. A batched import replaces each row's domains, and only a row that sends some can move an
-   * entity into one. Those rows' entities are loaded in one query with the fields a PATCH authorizes
-   * on. A CSV dry run calls this too, so it refuses what the import would.
+   * entity into one. Every such row is checked, two rows for one entity included, because the batch
+   * stores the domains of both. Each entity is loaded once, with the fields a PATCH authorizes on. A
+   * CSV dry run calls this too, so it refuses what the import would.
    */
   public final void authorizeImportedDomains(
       final List<T> originals, final List<T> updates, final ChangeActor actor) {
-    final Map<UUID, T> rowsSendingDomains =
-        checksDomainsWrittenBy(actor) ? rowsSendingDomains(originals, updates) : Map.of();
-    if (!rowsSendingDomains.isEmpty()) {
-      for (final T stored : get(null, List.copyOf(rowsSendingDomains.keySet()), patchFields, ALL)) {
+    final List<Integer> rows =
+        checksDomainsWrittenBy(actor) ? rowsSendingDomains(updates) : List.of();
+    if (!rows.isEmpty()) {
+      final Map<UUID, T> stored = storedEntities(originals, rows);
+      for (final int row : rows) {
         authorizeDomainWrite(
-            stored, rowsSendingDomains.get(stored.getId()), actor, Edit.Kind.IMPORT_UPDATE);
+            storedEntity(stored, originals.get(row).getId()),
+            updates.get(row),
+            actor,
+            Edit.Kind.IMPORT_UPDATE);
       }
     }
   }
 
-  private Map<UUID, T> rowsSendingDomains(final List<T> originals, final List<T> updates) {
-    final Map<UUID, T> rows = new HashMap<>();
-    for (int i = 0; i < originals.size(); i++) {
-      if (!EntityUpdater.getEntityReferences(updates.get(i).getDomains()).isEmpty()) {
-        rows.put(originals.get(i).getId(), updates.get(i));
-      }
+  private List<Integer> rowsSendingDomains(final List<T> updates) {
+    return IntStream.range(0, updates.size())
+        .filter(row -> !EntityUpdater.getEntityReferences(updates.get(row).getDomains()).isEmpty())
+        .boxed()
+        .toList();
+  }
+
+  private Map<UUID, T> storedEntities(final List<T> originals, final List<Integer> rows) {
+    final List<UUID> ids = rows.stream().map(row -> originals.get(row).getId()).distinct().toList();
+    return get(null, ids, patchFields, ALL).stream()
+        .collect(Collectors.toMap(EntityInterface::getId, Function.identity()));
+  }
+
+  // An entity deleted while the import ran is refused, not let through unchecked.
+  private T storedEntity(final Map<UUID, T> stored, final UUID id) {
+    final T entity = stored.get(id);
+    if (entity == null) {
+      throw EntityNotFoundException.byMessage(
+          CatalogExceptionMessage.entityNotFound(entityType, id));
     }
-    return rows;
+    return entity;
   }
 
   @Transaction

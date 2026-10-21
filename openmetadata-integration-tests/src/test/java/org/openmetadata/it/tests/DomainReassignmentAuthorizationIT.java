@@ -380,6 +380,29 @@ public class DomainReassignmentAuthorizationIT {
     assertEquals(scoped.heldDomain().getId(), domainOf(unmovable));
   }
 
+  /** Two rows for one table in one import: every row's domains are checked, not only the last. */
+  @Test
+  void test_csvImportChecksEveryRowForTheSameTable(TestNamespace ns) throws Exception {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DatabaseSchema schema = createSchema(ns);
+    Table table = createTableIn(ns, schema, "twice", scoped.heldDomain());
+    String exported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String header = exported.split("\n")[0];
+    String held = rowOf(exported, table);
+    String moved =
+        rowOf(moveRow(exported, table, scoped.heldDomain(), scoped.otherDomain()), table);
+
+    String csv = String.join("\n", header, moved, held) + "\n";
+
+    CsvImportResult dryRun = importSchemaCsv(scoped, schema, csv, true);
+    CsvImportResult imported = importSchemaCsv(scoped, schema, csv, false);
+
+    assertEquals(1, imported.getNumberOfRowsFailed(), imported.getImportResultsCsv());
+    assertEquals(imported.getNumberOfRowsFailed(), dryRun.getNumberOfRowsFailed());
+    assertEquals(Set.of(scoped.heldDomain().getId()), domainIdsOf(table));
+  }
+
   /** The test case endpoint authorizes against the table and saves through the repository. */
   @Test
   void test_testCasePatchCannotMoveATestCaseIntoAnUnheldDomain(TestNamespace ns) throws Exception {
@@ -708,6 +731,14 @@ public class DomainReassignmentAuthorizationIT {
               : line);
     }
     return String.join("\n", lines) + "\n";
+  }
+
+  private static String rowOf(String csv, Table table) {
+    String row = null;
+    for (String line : csv.split("\n")) {
+      row = line.startsWith(table.getName() + ",") ? line : row;
+    }
+    return row;
   }
 
   private static String tokenFor(User user) {
