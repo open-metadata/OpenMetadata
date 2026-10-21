@@ -229,7 +229,7 @@ export const openUserEditView = async (
   await userCell.click();
   await userResponse;
 
-  await expect(page.getByTestId('members-user-edit')).toBeVisible();
+  await expect(page.getByTestId('edit-user-container')).toBeVisible();
   expect(new URL(page.url()).hash).toBe(
     `#members/user/${encodeURIComponent(userName)}`
   );

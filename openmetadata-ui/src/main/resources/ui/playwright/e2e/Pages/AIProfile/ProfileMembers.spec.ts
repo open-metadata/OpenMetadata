@@ -219,11 +219,13 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    // The panel renders the displayName via startCase (spaced/capitalised), so
-    // assert on the email, which is shown verbatim and is unique per run.
-    await expect(page.getByTestId('members-user-edit')).toContainText(
-      regularUser.responseData.email
-    );
+    // The email is unique per run and shown verbatim in the (locked) field.
+    await expect(
+      page
+        .getByTestId('edit-user-container')
+        .getByTestId('email')
+        .getByRole('textbox')
+    ).toHaveValue(regularUser.responseData.email);
     expect(new URL(page.url()).hash).toBe(
       `#members/user/${encodeURIComponent(regularUser.responseData.name)}`
     );

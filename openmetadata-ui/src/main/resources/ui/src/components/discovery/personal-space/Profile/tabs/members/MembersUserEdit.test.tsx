@@ -31,17 +31,10 @@ jest.mock('../../../../../common/Loader/Loader', () => () => (
 ));
 
 jest.mock(
-  '../../ProfileDetailsPanel',
+  './MembersCreateUserForm',
   () =>
-    ({ userData }: { userData: User }) =>
-      <div data-testid="details-panel">{userData.name}</div>
-);
-
-jest.mock(
-  '../permissions/MembershipSection',
-  () =>
-    ({ userData }: { userData: User }) =>
-      <div data-testid="membership">{userData.name}</div>
+    ({ user }: { user: User }) =>
+      <div data-testid="user-form">{user.email}</div>
 );
 
 describe('MembersUserEdit', () => {
@@ -49,21 +42,27 @@ describe('MembersUserEdit', () => {
     jest.clearAllMocks();
   });
 
-  it('loads the named user, not the logged-in one, and reports the display name', async () => {
+  it('opens the edit form for the named user and reports the display name', async () => {
     mockGetUserByName.mockResolvedValue({
       id: 'u2',
       name: 'jane',
       displayName: 'Jane Doe',
+      email: 'jane@acme.io',
     });
     const onResolveName = jest.fn();
 
     await act(async () => {
-      render(<MembersUserEdit name="jane" onResolveName={onResolveName} />);
+      render(
+        <MembersUserEdit
+          name="jane"
+          onNavigate={jest.fn()}
+          onResolveName={onResolveName}
+        />
+      );
     });
 
     expect(mockGetUserByName).toHaveBeenCalledWith('jane', expect.any(Object));
-    expect(screen.getByTestId('details-panel')).toHaveTextContent('jane');
-    expect(screen.getByTestId('membership')).toHaveTextContent('jane');
+    expect(screen.getByTestId('user-form')).toHaveTextContent('jane@acme.io');
     expect(onResolveName).toHaveBeenCalledWith('Jane Doe');
   });
 
@@ -71,10 +70,16 @@ describe('MembersUserEdit', () => {
     mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
 
     await act(async () => {
-      render(<MembersUserEdit name="ghost" onResolveName={jest.fn()} />);
+      render(
+        <MembersUserEdit
+          name="ghost"
+          onNavigate={jest.fn()}
+          onResolveName={jest.fn()}
+        />
+      );
     });
 
     expect(screen.getByTestId('user-not-found')).toBeInTheDocument();
-    expect(screen.queryByTestId('details-panel')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('user-form')).not.toBeInTheDocument();
   });
 });

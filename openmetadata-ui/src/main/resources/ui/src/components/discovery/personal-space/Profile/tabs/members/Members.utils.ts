@@ -23,6 +23,9 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
+import { compare, Operation } from 'fast-json-patch';
+import { isEmpty, xor } from 'lodash';
+import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import type {
@@ -42,6 +45,74 @@ export const toDomainArray = (
   }
 
   return next ? [next] : [];
+};
+
+export interface UserFormEdits {
+  displayName: string;
+  description: string;
+  isAdmin: boolean;
+  teams: string[];
+  roles: string[];
+  personas: string[];
+  domains: EntityReference[];
+}
+
+// An unchanged id set keeps the stored references, so the patch only carries
+// the fields the admin actually changed.
+const keepOrReplaceRefs = (
+  current: EntityReference[] | undefined,
+  ids: string[],
+  type: string
+): EntityReference[] | undefined =>
+  isEmpty(xor(ids, (current ?? []).map((ref) => ref.id)))
+    ? current
+    : ids.map((id) => ({ id, type }));
+
+const keepOrReplaceText = (current: string | undefined, next: string) =>
+  next === (current ?? '') ? current : next || undefined;
+
+// JSON patch from the edit-user form values to the stored user; empty when
+// nothing changed, which the form uses to keep Save disabled.
+export const buildUserEditPatch = (
+  user: User,
+  edits: UserFormEdits
+): Operation[] =>
+  compare(user, {
+    ...user,
+    displayName: keepOrReplaceText(user.displayName, edits.displayName.trim()),
+    description: keepOrReplaceText(user.description, edits.description),
+    isAdmin:
+      edits.isAdmin === Boolean(user.isAdmin) ? user.isAdmin : edits.isAdmin,
+    teams: keepOrReplaceRefs(user.teams, edits.teams, 'team'),
+    roles: keepOrReplaceRefs(user.roles, edits.roles, 'role'),
+    personas: keepOrReplaceRefs(user.personas, edits.personas, 'persona'),
+    domains: keepOrReplaceRefs(
+      user.domains,
+      edits.domains.map((domain) => domain.id),
+      'domain'
+    ),
+  });
+
+const refIds = (refs?: EntityReference[]) => (refs ?? []).map((ref) => ref.id);
+
+// Starting values for the user form: blank for create, the user's current
+// values for edit. `backView` is the list Cancel/Save return to.
+export const getUserFormInitialState = (user?: User, isAdmin?: boolean) => {
+  const isAdminUser = Boolean(user ? user.isAdmin : isAdmin);
+
+  return {
+    values: {
+      email: user?.email ?? '',
+      displayName: user?.displayName ?? '',
+      teams: refIds(user?.teams),
+      roles: refIds(user?.roles),
+      personas: refIds(user?.personas),
+    },
+    isAdmin: isAdminUser,
+    description: user?.description ?? '',
+    domains: user?.domains ?? [],
+    backView: isAdminUser ? ('admins' as const) : ('users' as const),
+  };
 };
 
 // Flatten the full team hierarchy (not just direct children) so nested teams —

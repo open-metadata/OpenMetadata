@@ -12,6 +12,7 @@
  */
 
 import {
+  buildUserEditPatch,
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
@@ -187,3 +188,49 @@ describe('contributed section hash routing', () => {
     });
   });
 });
+
+describe('buildUserEditPatch', () => {
+  const user = {
+    id: 'u1',
+    name: 'jane',
+    email: 'jane@acme.io',
+    displayName: 'Jane',
+    isAdmin: false,
+    teams: [{ id: 't1', type: 'team', name: 'Eng' }],
+    roles: [{ id: 'r1', type: 'role', name: 'DataSteward' }],
+    personas: [],
+    domains: [],
+  };
+  const unchanged = {
+    displayName: 'Jane',
+    description: '',
+    isAdmin: false,
+    teams: ['t1'],
+    roles: ['r1'],
+    personas: [],
+    domains: [],
+  };
+
+  it('is empty when nothing changed', () => {
+    expect(buildUserEditPatch(user, unchanged)).toEqual([]);
+  });
+
+  it('patches only the changed fields and keeps stored refs for the rest', () => {
+    const patch = buildUserEditPatch(user, {
+      ...unchanged,
+      displayName: 'Jane Doe',
+      isAdmin: true,
+      roles: ['r1', 'r2'],
+    });
+
+    expect(patch).toEqual(
+      expect.arrayContaining([
+        { op: 'replace', path: '/displayName', value: 'Jane Doe' },
+        { op: 'replace', path: '/isAdmin', value: true },
+        { op: 'add', path: '/roles/1', value: { id: 'r2', type: 'role' } },
+      ])
+    );
+    expect(patch.some((op) => op.path.startsWith('/teams'))).toBe(false);
+  });
+});
+

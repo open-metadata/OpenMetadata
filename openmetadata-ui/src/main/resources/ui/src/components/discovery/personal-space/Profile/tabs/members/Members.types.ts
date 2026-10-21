@@ -12,6 +12,7 @@
  */
 
 import { FC, ReactNode } from 'react';
+import type { User } from '../../../../../../generated/entity/teams/user';
 import { TeamType } from '../../../../../../generated/entity/teams/team';
 import { CSVImportResult } from '../../../../../../generated/type/csvImportResult';
 import type { ProfileHashTarget } from './profileHash.utils';
@@ -130,6 +131,8 @@ export interface MembersAddTeamFormProps {
 
 export interface MembersCreateUserFormProps {
   isAdmin?: boolean;
+  // Present = edit mode: fields start from this user and Save patches them.
+  user?: User;
   onNavigate: (view: MembersView) => void;
 }
 

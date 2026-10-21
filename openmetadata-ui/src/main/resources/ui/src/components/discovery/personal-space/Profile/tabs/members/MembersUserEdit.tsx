@@ -11,35 +11,35 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useEditableUser } from '../../../../../../hooks/user-profile/useEditableUser';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import Loader from '../../../../../common/Loader/Loader';
-import ProfileDetailsPanel from '../../ProfileDetailsPanel';
-import MembershipSection from '../permissions/MembershipSection';
+import type { MembersView } from './Members.types';
+import MembersCreateUserForm from './MembersCreateUserForm';
 
 interface MembersUserEditProps {
   name: string;
+  onNavigate: (view: MembersView) => void;
   // Reports the fetched display name so the header shows it instead of the
   // raw username from the hash.
   onResolveName: (displayName: string) => void;
 }
 
 /**
- * Edit view for any user, opened by clicking a user name in the Settings modal
- * (`#members/user/<name>`). Each row applies its own admin/self edit rules.
+ * Edit User view, opened by clicking a user name in the Settings modal
+ * (`#members/user/<name>`): the Create User form, pre-filled, saving one patch.
  */
-const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
+const MembersUserEdit: FC<MembersUserEditProps> = ({
+  name,
+  onNavigate,
+  onResolveName,
+}) => {
   const { t } = useTranslation();
-  const { userData, isLoading, isNotFound, updateUserDetails } =
-    useEditableUser(name);
+  const { userData, isLoading, isNotFound } = useEditableUser(name);
 
   useEffect(() => {
     if (userData) {
@@ -59,33 +59,20 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
     );
   }
 
-  if (!userData) {
+  if (isLoading || !userData) {
     return <Loader />;
   }
 
   return (
     <Box
-      className="tw:px-8 tw:pt-4 tw:pb-8"
+      className="tw:h-full tw:min-h-0 tw:pt-4"
       data-testid="members-user-edit"
-      direction="col"
-      gap={6}>
-      <ProfileDetailsPanel
-        isProfileLoading={isLoading}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
+      direction="col">
+      <MembersCreateUserForm
+        key={userData.id}
+        user={userData}
+        onNavigate={onNavigate}
       />
-      <Box direction="col" gap={3}>
-        <Typography
-          className="tw:px-1 tw:text-primary tw:uppercase"
-          size="text-xs"
-          weight="medium">
-          {t('label.membership')}
-        </Typography>
-        <MembershipSection
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-        />
-      </Box>
     </Box>
   );
 };

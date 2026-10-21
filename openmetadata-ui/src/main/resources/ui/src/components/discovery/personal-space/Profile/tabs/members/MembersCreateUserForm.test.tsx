@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { createUser } from '../../../../../../rest/userAPI';
+import {
+  createUser,
+  updateUserDetail,
+} from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import MembersCreateUserForm from './MembersCreateUserForm';
 
@@ -52,6 +55,7 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
 }));
 jest.mock('../../../../../../rest/userAPI', () => ({
   createUser: jest.fn().mockResolvedValue({}),
+  updateUserDetail: jest.fn().mockResolvedValue({}),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -162,5 +166,59 @@ describe('MembersCreateUserForm', () => {
     fireEvent.click(screen.getByTestId('save-user'));
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+  });
+
+  describe('edit mode', () => {
+    const user = {
+      id: 'u1',
+      name: 'jane',
+      email: 'jane@acme.io',
+      displayName: 'Jane',
+      isAdmin: false,
+      teams: [{ id: 't1', type: 'team', name: 'Eng' }],
+      roles: [],
+      personas: [],
+      domains: [],
+    };
+
+    it('pre-fills the user, locks the email, hides the password and keeps Save disabled until a change', async () => {
+      render(<MembersCreateUserForm user={user} onNavigate={jest.fn()} />);
+
+      expect(await screen.findByTestId('edit-user-container')).toBeVisible();
+
+      const email = screen.getByTestId('email').querySelector('input');
+
+      expect(email).toHaveValue('jane@acme.io');
+      expect(email).toBeDisabled();
+      expect(
+        screen.queryByTestId('password-auto-generate')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('save-user')).toBeDisabled();
+      expect(screen.getByTestId('save-user')).toHaveTextContent('label.save');
+    });
+
+    it('patches only the changed display name and returns to the users list', async () => {
+      const onNavigate = jest.fn();
+      render(<MembersCreateUserForm user={user} onNavigate={onNavigate} />);
+
+      const displayName = (
+        await screen.findByTestId('displayName')
+      ).querySelector('input') as HTMLInputElement;
+      fireEvent.change(displayName, { target: { value: 'Jane Doe' } });
+
+      await waitFor(() =>
+        expect(screen.getByTestId('save-user')).toBeEnabled()
+      );
+      fireEvent.click(screen.getByTestId('save-user'));
+
+      await waitFor(() =>
+        expect(updateUserDetail).toHaveBeenCalledWith('u1', [
+          { op: 'replace', path: '/displayName', value: 'Jane Doe' },
+        ])
+      );
+
+      expect(createUser).not.toHaveBeenCalled();
+      expect(onNavigate).toHaveBeenCalledWith({ type: 'users' });
+    });
   });
 });

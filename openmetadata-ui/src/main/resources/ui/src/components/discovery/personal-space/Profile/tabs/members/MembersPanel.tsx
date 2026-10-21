@@ -75,6 +75,14 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     [isAdminUser, permissions]
   );
 
+  const canEditUser = useMemo(
+    () =>
+      isAdminUser ||
+      (!isEmpty(permissions) &&
+        checkPermission(Operation.EditAll, ResourceEntity.USER, permissions)),
+    [isAdminUser, permissions]
+  );
+
   // Hash-synced navigation (same pattern as NotificationPanel / AccessControlPanel):
   // the view is derived from the hash sub-path and every navigation writes the hash,
   // so deep links, browser back, and shareable URLs all work.
@@ -115,9 +123,12 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     if (view.type === USER_CREATE) {
       return !canCreateUser;
     }
+    if (view.type === USER_EDIT) {
+      return !canEditUser;
+    }
 
     return false;
-  }, [view, canCreateTeam, canCreateUser]);
+  }, [view, canCreateTeam, canCreateUser, canEditUser]);
 
   // Stable no-op for the Organization view (its name isn't editable) so the
   // team-detail's fetch effect, which depends on onRename, can't re-fire.
@@ -303,6 +314,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
         <MembersUserEdit
           key={view.name}
           name={view.name}
+          onNavigate={onNavigate}
           onResolveName={setResolvedName}
         />
       );
