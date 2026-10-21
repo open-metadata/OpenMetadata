@@ -241,9 +241,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
       href={href as never}
       style={style}>
       {typeof children === 'string' ? (
-        <span className="tw:min-w-0 tw:truncate" title={children}>
-          {children}
-        </span>
+        <span className="tw:min-w-0 tw:truncate">{children}</span>
       ) : (
         children
       )}
