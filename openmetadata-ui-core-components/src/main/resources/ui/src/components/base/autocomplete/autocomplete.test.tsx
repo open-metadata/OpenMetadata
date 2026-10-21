@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SelectItemType } from '../select/select';
@@ -306,48 +300,5 @@ describe('Autocomplete – empty state', () => {
     await userEvent.click(screen.getByRole('combobox'));
 
     expect(await screen.findByText('Loading results')).toBeInTheDocument();
-  });
-});
-
-describe('Autocomplete – maxVisibleItems overflow', () => {
-  const SELECTED: SelectItemType[] = [
-    { id: 'a', label: 'Alpha' },
-    { id: 'b', label: 'Beta' },
-    { id: 'c', label: 'Gamma' },
-  ];
-
-  it('lists the hidden selections in a popover and lets them be removed', async () => {
-    const onItemCleared = vi.fn();
-    const onOpenChange = vi.fn();
-    render(
-      <Autocomplete
-        multiple
-        items={OPTIONS}
-        maxVisibleItems={1}
-        selectedItems={SELECTED}
-        onItemCleared={onItemCleared}
-        onOpenChange={onOpenChange}>
-        {(item) => (
-          <Autocomplete.Item id={item.id}>{item.label}</Autocomplete.Item>
-        )}
-      </Autocomplete>
-    );
-
-    expect(screen.getAllByTestId('autocomplete-selected-item')).toHaveLength(1);
-
-    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
-    const overflow = await screen.findByTestId('autocomplete-overflow-items');
-
-    // The badge must not double as the ComboBox's dropdown toggle.
-    expect(onOpenChange).not.toHaveBeenCalledWith(true, expect.anything());
-
-    expect(overflow).toHaveTextContent('Beta');
-    expect(overflow).toHaveTextContent('Gamma');
-
-    await userEvent.click(
-      within(overflow).getAllByRole('button', { name: /remove/i })[1]
-    );
-
-    expect(onItemCleared).toHaveBeenCalledWith('c');
   });
 });

@@ -1,7 +1,3 @@
-import {
-  Popover as OverflowPopover,
-  PopoverTrigger,
-} from '@/components/application/popover/popover';
 import type { IconComponentType } from '@/components/base/badges/badge-types';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
@@ -48,7 +44,6 @@ import type {
   Key,
 } from 'react-aria-components';
 import {
-  Button as AriaButton,
   ComboBox as AriaComboBox,
   Group as AriaGroup,
   Input as AriaInput,
@@ -263,69 +258,40 @@ const InnerAutocomplete = ({
       ? 0
       : allSelected.length - visibleSelected.length;
 
-  // The overflow popover reuses this without the roving-focus key handler,
-  // which only makes sense for chips inside the input's FocusScope.
-  const renderSelectedTag = (
-    item: SelectItemType,
-    onTagKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void
-  ) =>
-    context.renderTag ? (
-      context.renderTag(item, () => context.onRemove(new Set([item.id])))
-    ) : (
-      <BadgeWithButton
-        // Capped at the field width so a long label ends in an ellipsis.
-        buttonLabel={t('label.remove-entity', { entity: item.label })}
-        className="tw:max-w-full"
-        color="gray"
-        data-testid="autocomplete-selected-item"
-        isDisabled={isDisabled}
-        key={item.id}
-        size="lg"
-        title={item.label}
-        type="modern"
-        onButtonClick={() => context.onRemove(new Set([item.id]))}
-        onButtonKeyDown={onTagKeyDown}>
-        {renderChipIcon(item)}
-        <div className="tw:min-w-0 tw:max-w-40">
-          <Typography ellipsis as="p" weight="medium">
-            {item.label}
-          </Typography>
-        </div>
-      </BadgeWithButton>
-    );
-
   return (
     <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
       {!isSelectionEmpty &&
         visibleSelected.map((item) =>
-          renderSelectedTag(item, (e) => handleTagKeyDown(e, item.id))
+          context.renderTag ? (
+            context.renderTag(item, () => context.onRemove(new Set([item.id])))
+          ) : (
+            <BadgeWithButton
+              // Capped at the field width so a long label ends in an ellipsis.
+              buttonLabel={t('label.remove-entity', { entity: item.label })}
+              className="tw:max-w-full"
+              color="gray"
+              data-testid="autocomplete-selected-item"
+              isDisabled={isDisabled}
+              key={item.id}
+              size="lg"
+              title={item.label}
+              type="modern"
+              onButtonClick={() => context.onRemove(new Set([item.id]))}
+              onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
+              {renderChipIcon(item)}
+              <div className="tw:min-w-0 tw:max-w-40">
+                <Typography ellipsis as="p" weight="medium">
+                  {item.label}
+                </Typography>
+              </div>
+            </BadgeWithButton>
+          )
         )}
 
       {overflowCount > 0 && (
-        <PopoverTrigger>
-          <AriaButton
-            aria-label={t('label.show-count-more', { count: overflowCount })}
-            className="tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2"
-            data-testid="autocomplete-overflow-trigger"
-            // Opt out of the ComboBox's ButtonContext, which would otherwise make
-            // this the dropdown toggle and open the listbox on every press.
-            slot={null}>
-            <Badge color="gray" size="lg" type="modern">
-              +{overflowCount}
-            </Badge>
-          </AriaButton>
-          <OverflowPopover
-            className="tw:max-h-80 tw:max-w-80 tw:overflow-y-auto"
-            placement="bottom start">
-            <div
-              className="tw:flex tw:flex-wrap tw:gap-1.5 tw:p-3"
-              data-testid="autocomplete-overflow-items">
-              {allSelected
-                .slice(visibleSelected.length)
-                .map((item) => renderSelectedTag(item))}
-            </div>
-          </OverflowPopover>
-        </PopoverTrigger>
+        <Badge color="gray" size="lg" type="modern">
+          +{overflowCount}
+        </Badge>
       )}
 
       <div
