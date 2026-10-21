@@ -121,6 +121,8 @@ it('closes the inspector on Escape without letting the key reach the fullscreen 
   render(<Harness initial={() => ({ kind: 'node', id: root.id })} />);
 
   await userEvent.click(screen.getByRole('heading', { level: 3 }));
+  // Any key handled before Escape must not change how Escape propagates.
+  await userEvent.keyboard('{Tab}');
   await userEvent.keyboard('{Escape}');
 
   expect(screen.queryByTestId('graph-inspector')).not.toBeInTheDocument();

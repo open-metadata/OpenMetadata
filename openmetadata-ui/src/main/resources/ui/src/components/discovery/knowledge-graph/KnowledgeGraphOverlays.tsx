@@ -32,7 +32,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useKeyboard } from 'react-aria';
+import { useOverlay } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -529,17 +529,6 @@ const KnowledgeGraphOverlays = ({
       }
     });
   };
-  // useKeyboard stops propagation, so Escape closes only the panel and not the
-  // fullscreen overlay (useOverlay) that also dismisses on Escape.
-  const { keyboardProps: inspectorKeyboardProps } = useKeyboard({
-    onKeyDown: (event) => {
-      if (event.key === 'Escape') {
-        closeInspector();
-      } else {
-        event.continuePropagation();
-      }
-    },
-  });
 
   const nodeMap = useMemo(
     () => new Map(nodes.map((node) => [node.id, node])),
@@ -577,6 +566,13 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
+  // The inspector is the topmost overlay inside fullscreen, so Escape closes
+  // only the panel; useOverlay stops the key and skips non-topmost overlays.
+  const inspectorRef = useRef<HTMLDivElement>(null);
+  const { overlayProps: inspectorOverlayProps } = useOverlay(
+    { isOpen: inspectorOpen, onClose: closeInspector },
+    inspectorRef
+  );
   // Leaving the drilled-into relationship (canvas click, close, another row)
   // ends the trip, so a later direct selection of that edge offers no "back".
   useEffect(() => {
@@ -682,7 +678,8 @@ const KnowledgeGraphOverlays = ({
           className="kg-inspector tw:relative tw:z-10 tw:flex tw:h-full tw:min-h-0 tw:min-w-0 tw:flex-col tw:overflow-hidden tw:bg-surface"
           data-testid="graph-inspector"
           role="dialog"
-          {...inspectorKeyboardProps}>
+          {...inspectorOverlayProps}
+          ref={inspectorRef}>
           <InspectorHeader
             headingRef={headingRef}
             subtitle={getInspectorSubtitle(
