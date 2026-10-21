@@ -184,6 +184,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return Set.copyOf(replaced);
   }
 
+  /**
+   * Runs first in the delete's cleanup transaction. Locking the row before the relationship sweep
+   * makes the delete wait for a writer that has share-locked this data product to link an asset
+   * (see {@code EntityRepository#lockDataProducts}), so the sweep removes the writer's edge
+   * instead of running before it commits and leaving it behind.
+   */
+  @Override
+  protected void entitySpecificCleanup(DataProduct dataProduct) {
+    dao.findJsonByIdForUpdate(dataProduct.getId(), ALL);
+  }
+
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
