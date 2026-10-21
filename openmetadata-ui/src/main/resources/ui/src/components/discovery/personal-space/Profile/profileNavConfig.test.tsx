@@ -166,12 +166,17 @@ describe('profileNavConfig', () => {
     ['access-control', ResourceEntity.ROLE],
     ['access-control', ResourceEntity.POLICY],
     ['bots', ResourceEntity.BOT],
-  ])('hides %s from a non-admin even with %s view permission', (id, resource) => {
-    const item = getProfileNavItem(id as never);
-    const canView = { [resource]: { ViewAll: true } } as unknown as UIPermission;
+  ])(
+    'hides %s from a non-admin even with %s view permission',
+    (id, resource) => {
+      const item = getProfileNavItem(id as never);
+      const canView = {
+        [resource]: { ViewAll: true },
+      } as unknown as UIPermission;
 
-    expect(item.id).toBe(id);
-    expect(item.isVisible?.(canView, false)).toBe(false);
-    expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
-  });
+      expect(item.id).toBe(id);
+      expect(item.isVisible?.(canView, false)).toBe(false);
+      expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
+    }
+  );
 });
