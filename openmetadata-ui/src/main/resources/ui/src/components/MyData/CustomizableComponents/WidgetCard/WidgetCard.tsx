@@ -12,7 +12,6 @@
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { Check } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -68,13 +67,7 @@ const WidgetCard = ({
   return (
     <Card
       isClickable
-      className={classNames(
-        'widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden',
-        // On a dark surface a brand border plus a brand tint on every added
-        // card turns the whole grid blue; the check badge alone marks it.
-        isSelected && 'tw:dark:border-primary tw:dark:bg-surface'
-      )}
-      color={isSelected ? 'brand' : 'default'}
+      className="widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden"
       data-testid={widget.fullyQualifiedName}
       isSelected={isSelected}
       onClick={handleClick}>
@@ -82,12 +75,10 @@ const WidgetCard = ({
         {/* An empty src resolves against the page URL, so the browser paints a
           broken-image icon rather than nothing. Widgets added without a preview
           screenshot keep an empty tile instead. */}
-        {/* The previews are light-theme screenshots, so dark mode inverts them;
-          hue-rotate turns the brand and status colors back to their own hue. */}
         {widgetImage ? (
           <img
             alt={widgetLabel}
-            className="tw:h-full tw:w-full tw:object-cover tw:dark:invert tw:dark:hue-rotate-180"
+            className="tw:h-full tw:w-full tw:object-cover tw:filter-(--widget-preview-filter)"
             data-testid="widget-image"
             src={widgetImage}
           />

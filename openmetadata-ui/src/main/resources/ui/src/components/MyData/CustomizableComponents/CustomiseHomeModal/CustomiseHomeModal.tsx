@@ -269,8 +269,7 @@ const CustomiseHomeModal = ({
                 className={classNames({
                   'tw:text-brand-primary': selectedKey === item.key,
                   'tw:text-secondary':
-                    selectedKey !== item.key && !isWidgetItem,
-                  'tw:text-brand-secondary tw:dark:text-primary':
+                    (selectedKey !== item.key && !isWidgetItem) ||
                     isSelectedWidget,
                   'tw:text-tertiary': isWidgetItem && !isSelectedWidget,
                 })}
