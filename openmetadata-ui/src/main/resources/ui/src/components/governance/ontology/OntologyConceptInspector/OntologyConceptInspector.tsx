@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowLeft,
-  Edit05,
+  Edit01,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
@@ -564,7 +564,7 @@ const OntologyConceptInspector = ({
           <Button
             color="secondary"
             data-testid="ontology-concept-edit"
-            iconLeading={Edit05}
+            iconLeading={Edit01}
             size="xs"
             onPress={onEdit}>
             {t('label.edit')}

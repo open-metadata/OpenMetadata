@@ -125,7 +125,6 @@ export const CommentEditor: React.FC<CommentEditorProps> = ({
             className="tw:absolute tw:right-2 tw:bottom-1.5"
             gap={2}>
             <ButtonUtility
-              color="tertiary"
               data-testid="formatting-toggle"
               icon={Type01}
               isSelected={isFormatting}
