@@ -185,17 +185,17 @@ function CustomNode({
             </Typography>
           </Box>
           {members && (
-            <Typography
+            <span
               className="tw:shrink-0 tw:rounded-full tw:border tw:px-1.5"
-              size="text-xs"
               style={{
                 color,
                 backgroundColor: data.colorLight as string | undefined,
                 borderColor: color,
-              }}
-              weight="semibold">
-              {members.length}
-            </Typography>
+              }}>
+              <Typography size="text-xs" weight="semibold">
+                {members.length}
+              </Typography>
+            </span>
           )}
         </Box>
       </Button>

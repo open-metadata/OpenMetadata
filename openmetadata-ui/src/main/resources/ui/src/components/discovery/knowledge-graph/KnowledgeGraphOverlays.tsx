@@ -647,6 +647,9 @@ const KnowledgeGraphOverlays = ({
             key={tooltip.edgeId}
             offset={12}
             placement="bottom start"
+            // The core tooltip takes the pointer once it settles; here that would
+            // fire G6's edge:pointerleave and re-anchor the tooltip under the cursor.
+            style={{ pointerEvents: 'none' }}
             title={tooltip.labels.map((label) => (
               <span
                 className="tw:block"
