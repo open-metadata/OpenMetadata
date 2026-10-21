@@ -199,6 +199,7 @@ import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult;
 import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -3411,15 +3412,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return decodedCursor;
   }
 
-  /** Creates new FQNs and reports one outcome per input, skipping conflicts by default. */
-  public final BulkCreateResult createMany(UriInfo uriInfo, List<T> entities) {
-    return createMany(entities, Function.identity(), BulkCreateConflictPolicy.SKIP);
+  /** Returns newly created entities, skipping conflicts and rejecting validation errors. */
+  public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
+    final BulkCreateResult result =
+        new BulkEntityCreator<>(
+                this, this::createManyEntities, BulkCreateConflictPolicy.SKIP, false)
+            .create(entities, Function.identity());
+    return result.getResults().stream()
+        .filter(item -> item.getStatus() == BulkCreateItemResult.Status.CREATED)
+        .map(item -> entities.get(item.getIndex()))
+        .toList();
   }
 
   /** Applies the conflict policy per input; valid non-conflicting inputs continue. */
   public final <C> BulkCreateResult createMany(
       List<C> requests, Function<C, T> mapper, BulkCreateConflictPolicy onConflict) {
-    return new BulkEntityCreator<>(this, this::createManyEntities, onConflict)
+    return new BulkEntityCreator<>(this, this::createManyEntities, onConflict, true)
         .create(requests, mapper);
   }
 

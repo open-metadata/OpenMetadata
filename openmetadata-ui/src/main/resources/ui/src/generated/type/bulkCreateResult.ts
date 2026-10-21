@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 /**
- * Per-input outcomes of a bulk create. Validation failures and conflicts are isolated to
- * the affected inputs. Authentication, malformed requests and unexpected server failures
- * remain HTTP errors.
+ * Per-input outcomes of a bulk create requested with an explicit onConflict policy.
+ * Validation failures and conflicts are isolated to the affected inputs. Authentication,
+ * malformed requests and unexpected server failures remain HTTP errors.
  */
 export interface BulkCreateResult {
     createdCount: number;
@@ -28,7 +28,8 @@ export interface BulkCreateResult {
 
 /**
  * How to report existing FQNs and repeated FQNs in the request. Both policies continue
- * creating other valid inputs; neither updates existing entities.
+ * creating other valid inputs; neither updates existing entities. The first valid
+ * occurrence of a new FQN wins.
  */
 export enum ConflictPolicy {
     Fail = "fail",
@@ -42,8 +43,7 @@ export enum ConflictPolicy {
 export interface Item {
     fullyQualifiedName?: string;
     /**
-     * ID of the newly created entity or the existing entity responsible for a conflict. Absent
-     * when no stored entity was identified.
+     * ID of the newly created entity. Absent for skipped and failed inputs.
      */
     id?:   string;
     index: number;

@@ -2,13 +2,13 @@
   "$id": "https://open-metadata.org/schema/type/bulkCreateResult.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "BulkCreateResult",
-  "description": "Per-input outcomes of a bulk create. Validation failures and conflicts are isolated to the affected inputs. Authentication, malformed requests and unexpected server failures remain HTTP errors.",
+  "description": "Per-input outcomes of a bulk create requested with an explicit onConflict policy. Validation failures and conflicts are isolated to the affected inputs. Authentication, malformed requests and unexpected server failures remain HTTP errors.",
   "javaType": "org.openmetadata.schema.type.BulkCreateResult",
   "type": "object",
   "definitions": {
     "conflictPolicy": {
       "javaType": "org.openmetadata.schema.type.BulkCreateConflictPolicy",
-      "description": "How to report existing FQNs and repeated FQNs in the request. Both policies continue creating other valid inputs; neither updates existing entities.",
+      "description": "How to report existing FQNs and repeated FQNs in the request. Both policies continue creating other valid inputs; neither updates existing entities. The first valid occurrence of a new FQN wins.",
       "type": "string",
       "enum": ["skip", "fail"],
       "default": "skip"
@@ -26,7 +26,7 @@
           "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
         },
         "id": {
-          "description": "ID of the newly created entity or the existing entity responsible for a conflict. Absent when no stored entity was identified.",
+          "description": "ID of the newly created entity. Absent for skipped and failed inputs.",
           "$ref": "basic.json#/definitions/uuid"
         },
         "status": {

@@ -982,7 +982,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   void createMany_reportsCreatedSkippedAndFailedInputs(TestNamespace ns) {
     final Table table = createTable(ns);
     final CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_outcome"));
-    final TestCase existing = createEntity(existingRequest);
+    createEntity(existingRequest);
     final CreateTestCase fresh = rowCountRequest(table, ns.prefix("fresh_outcome"));
     final CreateTestCase invalid =
         rowCountRequest(table, ns.prefix("invalid_outcome")).withParameterValues(List.of());
@@ -994,7 +994,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 HttpMethod.POST,
                 "/v1/dataQuality/testCases/createMany",
                 List.of(fresh, existingRequest, fresh, invalid),
-                BulkCreateResult.class);
+                BulkCreateResult.class,
+                RequestOptions.builder().queryParam("onConflict", "skip").build());
 
     assertEquals(1, result.getCreatedCount());
     assertEquals(2, result.getSkippedCount());
@@ -1005,7 +1006,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(
         List.of(Status.CREATED, Status.SKIPPED, Status.SKIPPED, Status.FAILED),
         result.getResults().stream().map(BulkCreateItemResult::getStatus).toList());
-    assertEquals(existing.getId(), result.getResults().get(1).getId());
+    assertNull(result.getResults().get(1).getId());
     assertEquals(Reason.ALREADY_EXISTS, result.getResults().get(1).getReason());
     assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().get(2).getReason());
     assertEquals(Reason.VALIDATION_ERROR, result.getResults().get(3).getReason());
@@ -1015,10 +1016,33 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void createMany_firstValidOccurrenceWinsAfterPreparationFailure(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase valid = rowCountRequest(table, ns.prefix("first_valid"));
+    final CreateTestCase invalid =
+        rowCountRequest(table, valid.getName()).withParameterValues(List.of());
+    final BulkCreateResult result =
+        SdkClients.adminClient()
+            .testCases()
+            .createMany(List.of(invalid, valid, valid), BulkCreateConflictPolicy.SKIP);
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getSkippedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(
+        List.of(Status.FAILED, Status.CREATED, Status.SKIPPED),
+        result.getResults().stream().map(BulkCreateItemResult::getStatus).toList());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().getFirst().getReason());
+    assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().getLast().getReason());
+    assertEquals(
+        valid.getName(), getEntity(result.getResults().get(1).getId().toString()).getName());
+  }
+
+  @Test
   void createMany_failPolicyReportsConflictsAndCreatesOtherInputs(TestNamespace ns) {
     final Table table = createTable(ns);
     final CreateTestCase existingRequest = rowCountRequest(table, ns.prefix("existing_fail"));
-    final TestCase existing = createEntity(existingRequest);
+    createEntity(existingRequest);
     final CreateTestCase fresh = rowCountRequest(table, ns.prefix("fresh_fail"));
     final BulkCreateResult result =
         SdkClients.adminClient()
@@ -1028,7 +1052,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(1, result.getCreatedCount());
     assertEquals(0, result.getSkippedCount());
     assertEquals(2, result.getFailedCount());
-    assertEquals(existing.getId(), result.getResults().getFirst().getId());
+    assertNull(result.getResults().getFirst().getId());
     assertEquals(Reason.ALREADY_EXISTS, result.getResults().getFirst().getReason());
     assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().getLast().getReason());
     assertEquals(
@@ -1058,6 +1082,34 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void createMany_withoutPolicyPreservesArrayAndValidationErrors(TestNamespace ns) {
+    final Table table = createTable(ns);
+    final CreateTestCase existing = rowCountRequest(table, ns.prefix("legacy_existing"));
+    createEntity(existing);
+    final CreateTestCase fresh = rowCountRequest(table, ns.prefix("legacy_fresh"));
+    final CreateTestCase invalid =
+        rowCountRequest(table, ns.prefix("legacy_invalid")).withParameterValues(List.of());
+    final OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> SdkClients.adminClient().testCases().createMany(List.of(fresh, invalid)));
+    assertEquals(400, error.getStatusCode());
+
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/dataQuality/testCases/createMany",
+                List.of(fresh, existing, fresh),
+                String.class);
+    final List<TestCase> created = JsonUtils.readObjects(response, TestCase.class);
+    assertEquals(List.of(fresh.getName()), created.stream().map(TestCase::getName).toList());
+    assertEquals(
+        created.getFirst().getId(), getEntity(created.getFirst().getId().toString()).getId());
+  }
+
+  @Test
   void createMany_emptyRequestReportsNoOutcomes() {
     final BulkCreateResult result =
         SdkClients.adminClient()
@@ -1066,7 +1118,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 HttpMethod.POST,
                 "/v1/dataQuality/testCases/createMany",
                 List.of(),
-                BulkCreateResult.class);
+                BulkCreateResult.class,
+                RequestOptions.builder().queryParam("onConflict", "skip").build());
     assertEquals(0, result.getCreatedCount());
     assertEquals(0, result.getSkippedCount());
     assertEquals(0, result.getFailedCount());
@@ -1093,7 +1146,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             new TestCaseParameterValue().withName("strategy").withValue("SUM")));
 
     OpenMetadataClient client = SdkClients.adminClient();
-    final BulkCreateResult result = client.testCases().createMany(List.of(valid, invalid));
+    final BulkCreateResult result =
+        client.testCases().createMany(List.of(valid, invalid), BulkCreateConflictPolicy.SKIP);
     assertEquals(1, result.getCreatedCount());
     assertEquals(1, result.getFailedCount());
     assertEquals(Reason.VALIDATION_ERROR, result.getResults().getLast().getReason());
@@ -1113,7 +1167,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     List<TestCase> created =
         createdTests(
-            SdkClients.adminClient().testCases().createMany(List.of(request, duplicate, fresh)));
+            SdkClients.adminClient()
+                .testCases()
+                .createMany(List.of(request, duplicate, fresh), BulkCreateConflictPolicy.SKIP));
 
     assertEquals(
         List.of(request.getName(), fresh.getName()),
@@ -1149,7 +1205,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         createdTests(
             SdkClients.adminClient()
                 .testCases()
-                .createMany(List.of(freshRequest, existingRequest)));
+                .createMany(List.of(freshRequest, existingRequest), BulkCreateConflictPolicy.SKIP));
 
     assertEquals(List.of(freshRequest.getName()), created.stream().map(TestCase::getName).toList());
     assertEquals(
@@ -1160,11 +1216,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(existing.getDescription(), stored.getDescription());
     assertEquals(softDeleted, stored.getDeleted());
     final BulkCreateResult repeated =
-        SdkClients.adminClient().testCases().createMany(List.of(existingRequest));
+        SdkClients.adminClient()
+            .testCases()
+            .createMany(List.of(existingRequest), BulkCreateConflictPolicy.SKIP);
     assertEquals(0, repeated.getCreatedCount());
     assertEquals(1, repeated.getSkippedCount());
     assertEquals(Reason.ALREADY_EXISTS, repeated.getResults().getFirst().getReason());
-    assertEquals(existing.getId(), repeated.getResults().getFirst().getId());
+    assertNull(repeated.getResults().getFirst().getId());
   }
 
   @Test
@@ -1173,7 +1231,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     CreateTestCase second = rowCountRequest(createTable(ns), first.getName());
 
     List<TestCase> created =
-        createdTests(SdkClients.adminClient().testCases().createMany(List.of(first, second)));
+        createdTests(
+            SdkClients.adminClient()
+                .testCases()
+                .createMany(List.of(first, second), BulkCreateConflictPolicy.SKIP));
 
     assertEquals(2, created.size());
     assertNotEquals(
@@ -2826,16 +2887,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     }
 
     // Use the createMany API
-    List<BulkCreateItemResult> createdTestCases =
-        client.testCases().createMany(createRequests).getResults();
+    List<TestCase> createdTestCases = client.testCases().createMany(createRequests);
 
     // Verify all 10 were created
     assertEquals(10, createdTestCases.size());
 
     // Verify each test case exists and has correct entity link
     for (int i = 0; i < createdTestCases.size(); i++) {
-      BulkCreateItemResult testCase = createdTestCases.get(i);
-      assertEquals(Status.CREATED, testCase.getStatus());
+      TestCase testCase = createdTestCases.get(i);
       assertNotNull(testCase.getId());
       assertNotNull(testCase.getFullyQualifiedName());
 

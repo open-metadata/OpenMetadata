@@ -37,12 +37,6 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
     return httpClient.execute(HttpMethod.POST, basePath, request, GlossaryTerm.class);
   }
 
-  /** Creates glossary terms, skipping conflicts and reporting one outcome per input. */
-  public BulkCreateResult createMany(List<CreateGlossaryTerm> requests)
-      throws OpenMetadataException {
-    return createMany(requests, BulkCreateConflictPolicy.SKIP);
-  }
-
   /** Conflicts fail or skip only the affected inputs; callers must inspect the returned outcomes. */
   public BulkCreateResult createMany(
       List<CreateGlossaryTerm> requests, BulkCreateConflictPolicy onConflict)

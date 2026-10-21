@@ -33,6 +33,7 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
   private final EntityRepository<T> repository;
   private final Consumer<List<T>> createEntities;
   private final BulkCreateConflictPolicy onConflict;
+  private final boolean reportValidationFailures;
 
   <C> BulkCreateResult create(List<C> requests, Function<C, T> mapper) {
     final List<BulkCreateItemResult> results = new ArrayList<>(requests.size());
@@ -74,10 +75,11 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
     for (Candidate<T> candidate : candidates) {
       final UUID storedId = existing.get(candidate.hash());
       if (storedId != null) {
-        conflict(candidate, Reason.ALREADY_EXISTS, storedId);
-      } else if (!seen.add(candidate.hash())) {
-        conflict(candidate, Reason.DUPLICATE_IN_REQUEST, null);
+        conflict(candidate, Reason.ALREADY_EXISTS);
+      } else if (seen.contains(candidate.hash())) {
+        conflict(candidate, Reason.DUPLICATE_IN_REQUEST);
       } else if (prepare(candidate)) {
+        seen.add(candidate.hash());
         pending.add(candidate);
       }
     }
@@ -91,7 +93,7 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
     } catch (IllegalArgumentException | EntityNotFoundException exception) {
       final UUID storedId = existingIds(List.of(candidate)).get(candidate.hash());
       if (storedId != null && !storedId.equals(candidate.entity().getId())) {
-        conflict(candidate, Reason.ALREADY_EXISTS, storedId);
+        conflict(candidate, Reason.ALREADY_EXISTS);
       } else {
         validationFailure(candidate.result(), exception);
       }
@@ -125,7 +127,7 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
           final UUID storedId = existing.get(candidate.hash());
           // Our own committed IDs must not hide a failure in postCreate as a conflict.
           if (storedId != null && !storedId.equals(candidate.entity().getId())) {
-            conflict(candidate, Reason.ALREADY_EXISTS, storedId);
+            conflict(candidate, Reason.ALREADY_EXISTS);
             return true;
           }
           return false;
@@ -143,19 +145,21 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
     return existing;
   }
 
-  private void conflict(Candidate<T> candidate, Reason reason, UUID storedId) {
+  private void conflict(Candidate<T> candidate, Reason reason) {
     candidate
         .result()
         .withStatus(onConflict == BulkCreateConflictPolicy.SKIP ? Status.SKIPPED : Status.FAILED)
-        .withId(storedId)
         .withReason(reason)
         .withMessage(
             reason == Reason.ALREADY_EXISTS
                 ? "An entity with this fully qualified name already exists."
-                : "Repeated fully qualified name in this request; the first occurrence wins.");
+                : "Repeated fully qualified name in this request; the first valid occurrence wins.");
   }
 
-  private static void validationFailure(BulkCreateItemResult result, RuntimeException exception) {
+  private void validationFailure(BulkCreateItemResult result, RuntimeException exception) {
+    if (!reportValidationFailures) {
+      throw exception;
+    }
     result
         .withStatus(Status.FAILED)
         .withReason(Reason.VALIDATION_ERROR)

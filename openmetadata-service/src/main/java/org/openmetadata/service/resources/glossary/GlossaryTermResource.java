@@ -55,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
@@ -887,7 +888,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       summary = "Create multiple glossary terms at once",
       description =
           "Create glossary terms and return an ordered outcome for every input, with created,"
-              + " skipped, and failed counts. onConflict=skip (default) skips existing and repeated"
+              + " skipped, and failed counts when onConflict is specified. Without onConflict, the"
+              + " legacy created-entity array and validation errors are preserved. onConflict=skip"
+              + " skips existing and repeated"
               + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
               + " inputs and preserve existing and soft-deleted terms. Validation failures include"
               + " a reason and message. Unexpected server failures remain HTTP errors; earlier"
@@ -895,11 +898,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Per-input creation outcomes, including partial failures",
+            description =
+                "Per-input outcomes when onConflict is specified; otherwise newly created entities",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = BulkCreateResult.class))),
+                    schema = @Schema(oneOf = {BulkCreateResult.class, GlossaryTerm[].class}))),
         @ApiResponse(responseCode = "400", description = "Bad request")
       })
   public Response createMany(
@@ -907,28 +911,29 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @NotNull @Valid List<@NotNull CreateGlossaryTerm> creates,
       @Parameter(
               description =
-                  "Report conflicting inputs as skipped or failed; other inputs continue.",
+                  "Opt into per-input outcomes; conflicts skip or fail while other inputs continue.",
               schema = @Schema(implementation = BulkCreateConflictPolicy.class))
           @QueryParam("onConflict")
-          @DefaultValue("skip")
           String onConflict) {
-    final BulkCreateConflictPolicy conflictPolicy = BulkCreateConflictPolicy.fromValue(onConflict);
-    final BulkCreateResult result =
-        repository.createMany(
-            creates,
-            create -> {
-              final GlossaryTerm term =
-                  mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-              final CreateResourceContext<GlossaryTerm> context =
-                  new CreateResourceContext<>(entityType, term);
-              final OperationContext operation =
-                  new OperationContext(entityType, MetadataOperation.CREATE);
-              limits.enforceLimits(securityContext, context, operation);
-              authorizer.authorize(securityContext, operation, context);
-              return term;
-            },
-            conflictPolicy);
-    return Response.ok(result).build();
+    final BulkCreateConflictPolicy conflictPolicy =
+        onConflict == null ? null : BulkCreateConflictPolicy.fromValue(onConflict);
+    final Function<CreateGlossaryTerm, GlossaryTerm> toEntity =
+        create -> {
+          final GlossaryTerm term =
+              mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+          final CreateResourceContext<GlossaryTerm> context =
+              new CreateResourceContext<>(entityType, term);
+          final OperationContext operation =
+              new OperationContext(entityType, MetadataOperation.CREATE);
+          limits.enforceLimits(securityContext, context, operation);
+          authorizer.authorize(securityContext, operation, context);
+          return term;
+        };
+    return Response.ok(
+            conflictPolicy == null
+                ? repository.createMany(null, creates.stream().map(toEntity).toList())
+                : repository.createMany(creates, toEntity, conflictPolicy))
+        .build();
   }
 
   @PATCH

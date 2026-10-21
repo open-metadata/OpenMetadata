@@ -1,5 +1,7 @@
 package org.openmetadata.sdk.services.tests;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -69,14 +71,15 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   // BULK OPERATIONS
   // ===================================================================
 
-  /**
-   * Create multiple test cases, skipping conflicts and reporting one outcome per input.
-   *
-   * @param requests List of test case creation requests
-   * @return Creation, skip, and failure counts and ordered per-input outcomes
-   */
-  public BulkCreateResult createMany(List<CreateTestCase> requests) throws OpenMetadataException {
-    return createMany(requests, BulkCreateConflictPolicy.SKIP);
+  /** Returns newly created tests, skipping conflicts and rejecting validation errors. */
+  public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
+    final String response =
+        httpClient.execute(HttpMethod.POST, basePath + "/createMany", requests, String.class);
+    try {
+      return objectMapper.readValue(response, new TypeReference<List<TestCase>>() {});
+    } catch (JsonProcessingException exception) {
+      throw new OpenMetadataException("Failed to parse bulk test case response", exception);
+    }
   }
 
   /** Conflicts fail or skip only the affected inputs; callers must inspect the returned outcomes. */

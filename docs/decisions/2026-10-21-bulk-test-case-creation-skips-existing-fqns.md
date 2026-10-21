@@ -55,27 +55,29 @@ glossary name validation for different parents, whose FQNs differ even when thei
 
 ## Amendment v4: explicit outcomes and request conflict policy
 
-Both test-case and glossary-term `createMany` endpoints return a `BulkCreateResult` instead of an
-entity array. The response contains `createdCount`, `skippedCount`, `failedCount`, and one result per
+Both test-case and glossary-term `createMany` endpoints return a `BulkCreateResult` when the
+request explicitly supplies `onConflict=skip` or `onConflict=fail`. Omitting the parameter preserves
+the created-entity array and rejects validation errors before writes, as existing clients expect. The response contains `createdCount`, `skippedCount`, `failedCount`, and one result per
 input in request order. Each result includes its zero-based input index, FQN when it can be resolved,
 and `created`, `skipped`, or `failed` status. Skipped and failed results include a stable reason code
-and a readable message. An ID is returned only for a newly created entity or an identified existing
-entity, never for a candidate that was not stored.
+and a readable message. An ID is returned only for a newly created entity. Conflict results do not expose stored IDs
+because permission to create does not imply permission to read the existing entity.
 
-The `onConflict` query parameter accepts `skip` (default) or `fail`. It applies to existing FQNs,
+The `onConflict` query parameter accepts `skip` or `fail`. Legacy requests skip conflicts. It applies to existing FQNs,
 including soft-deleted entities, repeated FQNs in the request, and concurrent winners during
 preparation or insertion. `fail` marks the conflicting input as failed and continues with other
 valid inputs; it does not mean all-or-nothing request execution. Both policies preserve existing
-entities. Repeated names still use the first occurrence, even if that occurrence fails validation.
+entities. Repeated new names use the first valid occurrence. An input that fails mapping or preparation
+does not reserve its FQN; a later valid occurrence can be created.
 
-Entity mapping and preparation validation failures are reported per input as `VALIDATION_ERROR`;
+With an explicit policy, entity mapping and preparation validation failures are reported per input as `VALIDATION_ERROR`;
 valid inputs continue. Conflicts use `ALREADY_EXISTS` or `DUPLICATE_IN_REQUEST`. Authentication,
 authorization, malformed requests, request limits, and unexpected storage or post-commit failures
 remain HTTP errors. Those errors may occur after earlier transaction chunks committed, as in v2;
 the API does not promise request-wide atomicity or reinterpret infrastructure errors as skips.
 
-This intentionally changes the REST response and the Java SDK `createMany` return type. Clients
-must consume the result list and inspect failures instead of assuming every submitted input was
-created. No existing UI or Python ingestion caller uses these endpoints in this repository. The
-generated Java, Python, and TypeScript models share the response schema. The bulk create-or-update
+The Java SDK keeps its existing `createMany(requests)` list return type and adds an explicit-policy
+overload returning the detailed result. This preserves Collate AI's existing array parser without a
+coordinated rollout. Consumers opting in must inspect the ordered outcomes and failure reasons.
+Generated Java, Python, and TypeScript models share the response schema. The bulk create-or-update
 API keeps its separate contract.

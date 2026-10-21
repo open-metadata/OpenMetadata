@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,7 +11,6 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
@@ -101,7 +101,7 @@ class EntityBulkCreateRecoveryIT {
 
     assertNotNull(winner.get());
     assertTrue(conflicts.get() > 0, "The batch must encounter a real duplicate-key error");
-    assertConflictOutcome(result, result.getResults().getLast(), winner.get().getId());
+    assertConflictOutcome(result, result.getResults().getLast());
     final List<TestCase> created =
         result.getResults().stream()
             .filter(item -> item.getStatus() == Status.CREATED)
@@ -169,7 +169,7 @@ class EntityBulkCreateRecoveryIT {
     }
 
     assertNotNull(winner.get(), "The competing request must commit before preparation");
-    assertConflictOutcome(result, result.getResults().getFirst(), winner.get().getId());
+    assertConflictOutcome(result, result.getResults().getFirst());
     final List<GlossaryTerm> created = createdTerms(result);
     assertEquals(
         List.of(requests.getLast().getName()),
@@ -249,7 +249,7 @@ class EntityBulkCreateRecoveryIT {
     }
 
     assertTrue(conflicts.get() > 0, "The second transaction must hit a real duplicate");
-    assertConflictOutcome(result, result.getResults().get(100), winner.get().getId());
+    assertConflictOutcome(result, result.getResults().get(100));
     assertEquals(101, result.getCreatedCount());
     final List<GlossaryTerm> created = createdTerms(result);
     assertEquals(
@@ -339,14 +339,13 @@ class EntityBulkCreateRecoveryIT {
         .toList();
   }
 
-  private void assertConflictOutcome(
-      BulkCreateResult result, BulkCreateItemResult item, UUID winnerId) {
+  private void assertConflictOutcome(BulkCreateResult result, BulkCreateItemResult item) {
     final boolean skip = result.getOnConflict() == BulkCreateConflictPolicy.SKIP;
     assertEquals(skip ? 1 : 0, result.getSkippedCount());
     assertEquals(skip ? 0 : 1, result.getFailedCount());
     assertEquals(skip ? Status.SKIPPED : Status.FAILED, item.getStatus());
     assertEquals(Reason.ALREADY_EXISTS, item.getReason());
-    assertEquals(winnerId, item.getId());
+    assertNull(item.getId());
     assertFalse(item.getMessage().isBlank());
     assertEquals(
         result.getResults().size(),
