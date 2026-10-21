@@ -36,7 +36,8 @@ def bulk_api(request, monkeypatch):
             authProvider="openmetadata",
             securityConfig={"jwtToken": "test-token"},
             enableVersionValidation=False,
-        )
+        ),
+        additional_client_config_arguments={"retry_wait": 0},
     )
     send = MagicMock()
     monkeypatch.setattr(client.client._session, "send", send)
@@ -139,3 +140,40 @@ def test_http_errors_are_not_reported_as_item_outcomes(bulk_api):
 
     with pytest.raises(APIError, match="Permission denied"):
         facade.create_many([create_request])
+
+
+@pytest.mark.parametrize("status", [503, 504])
+@pytest.mark.parametrize("policy", [ConflictPolicy.skip, ConflictPolicy.fail])
+def test_bulk_create_does_not_retry_gateway_errors(bulk_api, status, policy):
+    facade, create_request, _, _, send = bulk_api
+    send.side_effect = [
+        response({"code": status, "message": "Gateway failure"}, status=status),
+        response(outcomes(policy)),
+    ]
+
+    with pytest.raises(APIError, match="Gateway failure"):
+        facade.create_many([create_request], on_conflict=policy)
+
+    assert send.call_count == 1
+
+
+@pytest.mark.parametrize("body", [b"", b"null"])
+def test_bulk_create_rejects_empty_response(bulk_api, body):
+    facade, create_request, endpoint, _, send = bulk_api
+    send.return_value = response(None)
+    send.return_value._content = body
+
+    with pytest.raises(RuntimeError, match=f"No response from /{endpoint}/createMany"):
+        facade.create_many([create_request])
+
+    assert send.call_count == 1
+
+
+def test_bulk_create_rejects_swallowed_client_error(bulk_api):
+    facade, create_request, endpoint, _, send = bulk_api
+    send.side_effect = ValueError("Unexpected client failure")
+
+    with pytest.raises(RuntimeError, match=f"No response from /{endpoint}/createMany"):
+        facade.create_many([create_request])
+
+    assert send.call_count == 1

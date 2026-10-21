@@ -1,9 +1,9 @@
 # Bulk test-case creation skips existing fully qualified names
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial), v2 2026-10-21 (shared bulk-create recovery), v3 2026-10-21 (preparation races), v4 2026-10-21 (per-input outcomes and conflict policy)
+- **Revisions:** v1 2026-10-21 (initial), v2 2026-10-21 (shared bulk-create recovery), v3 2026-10-21 (preparation races), v4 2026-10-21 (per-input outcomes and conflict policy), v5 2026-10-21 (SDK defaults and retry behavior)
 - **Deciders:** Harsha
-- **Guard:** `TestCaseResourceIT`, `GlossaryTermResourceIT`, `EntityBulkCreateRecoveryIT`
+- **Guard:** `TestCaseResourceIT`, `GlossaryTermResourceIT`, `EntityBulkCreateRecoveryIT`, `BulkCreateFluentAPITest`, `ingestion/tests/unit/sdk/test_bulk_create.py`
 - **Related:** `POST /api/v1/dataQuality/testCases/createMany`
 
 ## Context
@@ -81,3 +81,15 @@ overload returning the detailed result. This preserves Collate AI's existing arr
 coordinated rollout. Consumers opting in must inspect the ordered outcomes and failure reasons.
 Generated Java, Python, and TypeScript models share the response schema. The bulk create-or-update
 API keeps its separate contract.
+
+## Amendment v5: SDK defaults and retry behavior
+
+The Java fluent and Python SDK bulk-create facades default to `onConflict=skip`, always request
+the detailed `BulkCreateResult`, and are unsupported against servers without `onConflict`.
+This applies to both `TestCases` and `GlossaryTerms`; the legacy Java service overload in v4
+keeps its existing array response.
+
+The Python facades disable REST-level retries for the bulk POST (`retries=0`). A 503 or 504 can
+arrive after chunks committed, and replaying the batch would replace the original created outcomes
+with conflicts. HTTP errors propagate; an empty or missing response raises a clear `RuntimeError`
+instead of a model validation error. Neither error proves that creation rolled back.

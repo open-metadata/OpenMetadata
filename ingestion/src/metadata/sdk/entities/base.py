@@ -198,9 +198,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
         payload = json.dumps(
             [request.model_dump(mode="json", by_alias=True, exclude_none=True) for request in requests]
         )
+        # A gateway error may follow a commit; replaying would lose the original created outcomes.
         response = cls._get_rest_client(client).post(
-            f"{endpoint}/createMany?onConflict={on_conflict.value}", data=payload
+            f"{endpoint}/createMany?onConflict={on_conflict.value}", data=payload, retries=0
         )
+        if response is None:
+            raise RuntimeError(f"No response from {endpoint}/createMany; creation may have completed")
         return BulkCreateResult.model_validate(response)
 
     @classmethod
