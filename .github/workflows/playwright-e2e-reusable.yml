@@ -271,7 +271,6 @@ jobs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
       distribution: ${{ steps.fingerprints.outputs.distribution }}
       fixture: ${{ steps.fingerprints.outputs.fixture }}
-      fixture_base: ${{ steps.fingerprints.outputs.fixture_base }}
       ingestion: ${{ steps.fingerprints.outputs.ingestion }}
       toolchain: ${{ steps.fingerprints.outputs.toolchain }}
     steps:
@@ -308,7 +307,6 @@ jobs:
             echo "bundle_mode=$bundle_mode"
             echo "distribution=$distribution"
             echo "fixture=$(python3 .github/scripts/playwright_cache_fingerprint.py --kind fixture)"
-            echo "fixture_base=$(python3 .github/scripts/playwright_cache_fingerprint.py --kind fixture-base)"
             echo "ingestion=$(python3 .github/scripts/playwright_cache_fingerprint.py --kind ingestion)"
             echo "toolchain=$toolchain"
           } >> "$GITHUB_OUTPUT"
@@ -905,7 +903,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       fixture_cache_hit: ${{ steps.validate-fixture.outputs.usable }}
-      fixture_mode: ${{ steps.validate-fixture.outputs.mode }}
       ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
     steps:
       - name: Checkout
@@ -931,38 +928,25 @@ jobs:
         id: restore-fixture
         # The content hash excludes the commit SHA so compatible main/nightly
         # fixtures can be reused across commits. Cache ref scoping keeps PR saves isolated.
-        # The restore-keys prefix is the fixture-base hash: a main fixture built
-        # before schema/migration-only changes is restored and migrated by each
-        # shard instead of being rebuilt (~17 min) on every merge group.
         uses: actions/cache/restore@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
-          key: playwright-golden-fixture-v3-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture_base }}-${{ needs.cache-keys.outputs.fixture }}
-          restore-keys: |
-            playwright-golden-fixture-v3-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture_base }}-
+          key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Validate restored golden fixture
         id: validate-fixture
         env:
           EXPECTED_FINGERPRINT: ${{ needs.cache-keys.outputs.fixture }}
-          # Main (push/schedule) always rebuilds and saves the exact fixture, so
-          # the fixture other runs migrate from never drifts further behind.
-          PW_FIXTURE_ALLOW_UPGRADE: ${{ !contains(fromJSON('["push","schedule"]'), github.event_name) }}
         run: |
           usable=false
-          mode=none
           fixture="$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst"
-          if [[ -s "$fixture" ]] &&
-            validation=$(.github/scripts/validate_playwright_fixture.sh "$fixture" "$EXPECTED_FINGERPRINT"); then
-            echo "$validation"
+          if [[ "${{ steps.restore-fixture.outputs.cache-hit }}" == "true" && -s "$fixture" ]] && \
+            .github/scripts/validate_playwright_fixture.sh "$fixture" "$EXPECTED_FINGERPRINT"; then
             usable=true
-            mode=$(sed -n 's/^fixture-mode=//p' <<< "$validation")
           else
             rm -rf "$FIXTURE_CACHE_DIR"
           fi
           echo "usable=$usable" >> "$GITHUB_OUTPUT"
-          echo "mode=$mode" >> "$GITHUB_OUTPUT"
-          echo "Golden fixture: $mode" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Restore ingestion image cache
         id: restore-ingestion
@@ -1023,8 +1007,32 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' }}
         run: echo "The golden fixture was restored while the distribution was prepared."
 
+      # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
+      # any docker work runs. `create_playwright_fixture.sh` does a
+      # `docker image save <ingestion>` after packing the fixture tar, which
+      # streams multi-GB blobs through /var/lib/docker/tmp/. On a fresh
+      # ubuntu-latest that partition has ~14 GB free after all the OM images
+      # (server, ingestion, postgres, opensearch, airflow) and their seeded
+      # volumes are loaded — not enough headroom for the docker export tmp,
+      # so the save fails with:
+      #   Error response from daemon: write /var/lib/docker/tmp/...: no space left on device
+      # (See failure on https://github.com/open-metadata/OpenMetadata/actions/runs/30097915650)
+      # docker-images:false is deliberate — the OM images are exactly what
+      # this job needs to snapshot, so we can't prune them here.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
       - name: Checkout
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
@@ -1039,90 +1047,20 @@ jobs:
           persist-credentials: false
 
       - name: Initialize generated fixture paths
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           echo "FIXTURE_CACHE_DIR=$RUNNER_TEMP/playwright-fixture-cache" >> "$GITHUB_ENV"
           echo "INGESTION_CACHE_DIR=$RUNNER_TEMP/playwright-ingestion-cache" >> "$GITHUB_ENV"
 
       - name: Download OpenMetadata distribution
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/download-artifact@v7
         with:
           name: openmetadata-distribution
           path: openmetadata-dist/target
 
-      # Upgrade mode only: start the restored fixture exactly as a shard will
-      # (migrate, then server health) before 30+ shards depend on it. If that
-      # fails, fall through to the full rebuild below instead of failing every
-      # shard — reuse is an optimisation and must never be the reason CI is red.
-      - name: Download restored fixture for the upgrade trial
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
-        uses: actions/download-artifact@v7
-        with:
-          name: playwright-seeded-fixture
-          path: ${{ runner.temp }}/playwright-upgrade-trial
-
-      - name: Resolve upgrade trial inputs
-        id: upgrade-inputs
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
-        run: |
-          {
-            echo "fixture=$(find "$RUNNER_TEMP/playwright-upgrade-trial" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit)"
-            echo "distribution=$(realpath "$(find openmetadata-dist/target -maxdepth 1 -type f -name 'openmetadata-*.tar.gz' -print -quit)")"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Try migrating the restored fixture
-        id: upgrade-trial
-        if: ${{ needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
-        continue-on-error: true
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: "3.10"
-          fast-mode: "true"
-          fixture-path: ${{ steps.upgrade-inputs.outputs.fixture }}
-          distribution-path: ${{ steps.upgrade-inputs.outputs.distribution }}
-          install-test-dependencies: "false"
-
-      - name: Stop the upgrade trial
-        if: ${{ always() && needs.restore-playwright-fixture.outputs.fixture_mode == 'upgrade' }}
-        continue-on-error: true
-        env:
-          # Named explicitly: a launcher killed by its timeout never exports
-          # these, and a surviving server would hold :8585 against the rebuild.
-          PW_SERVER_PID_FILE: /dev/shm/openmetadata-playwright-${{ github.run_id }}-local/openmetadata-server.pid
-          PW_SERVER_CAPTURE_PID_FILE: /dev/shm/openmetadata-playwright-${{ github.run_id }}-local/openmetadata-server-capture.pid
-        run: ./.github/scripts/stop_playwright_fast_environment.sh
-
-      - name: Fall back to a full fixture rebuild
-        if: ${{ steps.upgrade-trial.outcome == 'failure' }}
-        run: echo "::warning title=Playwright fixture::The cached fixture could not be migrated to this commit, so it is being rebuilt from scratch. Shards are unaffected."
-
-      # Reclaim ~30 GB of runner disk (dotnet, android, haskell, swap) BEFORE
-      # any docker work runs. `create_playwright_fixture.sh` does a
-      # `docker image save <ingestion>` after packing the fixture tar, which
-      # streams multi-GB blobs through /var/lib/docker/tmp/. On a fresh
-      # ubuntu-latest that partition has ~14 GB free after all the OM images
-      # (server, ingestion, postgres, opensearch, airflow) and their seeded
-      # volumes are loaded — not enough headroom for the docker export tmp,
-      # so the save fails with:
-      #   Error response from daemon: write /var/lib/docker/tmp/...: no space left on device
-      # (See failure on https://github.com/open-metadata/OpenMetadata/actions/runs/30097915650)
-      # docker-images:false is deliberate — the OM images are exactly what
-      # this job needs to snapshot, so we can't prune them here.
-      - name: Free Disk Space (Ubuntu)
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
-        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
-        with:
-          tool-cache: false
-          android: true
-          dotnet: true
-          haskell: true
-          large-packages: false
-          swap-storage: true
-          docker-images: false
-
       - name: Prepare seeded environment
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         env:
           STRICT_DAG_VALIDATION: "true"
@@ -1134,7 +1072,7 @@ jobs:
           lightweight-ingestion: "true"
 
       - name: Setup Node.js for fixture state
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/setup-node@v5
         with:
           node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
@@ -1142,7 +1080,7 @@ jobs:
       # restore-keys fallback + retry — see the rationale on the
       # plan-playwright job's yarn cache step.
       - name: Restore yarn package cache
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/yarn
@@ -1151,7 +1089,7 @@ jobs:
             yarn-pkg-cache-${{ runner.os }}-
 
       - name: Install fixture-state dependencies
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         run: |
           corepack enable
@@ -1169,7 +1107,7 @@ jobs:
       # main-scoped copy is saved by populate-playwright-caches.yml; the
       # plan job additionally seeds a run-scoped copy on lockfile changes.
       - name: Restore Playwright browser cache
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
@@ -1187,7 +1125,7 @@ jobs:
       # bump that adds a new dep does not silently miss it.
       - name: Cache Playwright system deps
         id: apt-deps-cache
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
@@ -1243,7 +1181,7 @@ jobs:
       # ceilings back to 5 min and drop `environmentAtMostFiveMinutes`'s
       # threshold from 480 → 300 in evaluate_playwright_performance.py.
       - name: Install fixture-state browser
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}
@@ -1281,7 +1219,7 @@ jobs:
           npx playwright install chromium
 
       - name: Seed reusable Playwright auth and entity state
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1294,7 +1232,7 @@ jobs:
           test -s playwright/output/entity-response-data.json
 
       - name: Verify the authenticated application bundle
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         working-directory: openmetadata-ui/src/main/resources/ui
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1303,7 +1241,7 @@ jobs:
         run: npx playwright test --project=bundle-smoke --reporter=line
 
       - name: Upload fixture-state failure diagnostics
-        if: ${{ failure() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ failure() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
         uses: actions/upload-artifact@v6
         with:
@@ -1315,7 +1253,7 @@ jobs:
           retention-days: 7
 
       - name: Snapshot database and OpenSearch
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           if ! command -v zstd >/dev/null 2>&1; then
             sudo apt-get update
@@ -1325,7 +1263,7 @@ jobs:
           ./.github/scripts/create_playwright_fixture.sh "$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst"
 
       - name: Validate generated golden fixture
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           .github/scripts/validate_playwright_fixture.sh \
             "$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst" \
@@ -1336,7 +1274,7 @@ jobs:
       # ephemeral queue ref must never write the cache.
       - name: Save golden fixture cache
         if: >-
-          (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') &&
+          needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
           github.event_name != 'pull_request' &&
           !(github.event_name == 'pull_request_target' &&
@@ -1345,20 +1283,19 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: ${{ env.FIXTURE_CACHE_DIR }}
-          key: playwright-golden-fixture-v3-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture_base }}-${{ needs.cache-keys.outputs.fixture }}
+          key: playwright-golden-fixture-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.fixture }}
 
       - name: Upload seeded fixture
-        if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/upload-artifact@v6
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
           compression-level: 0
-          overwrite: true
           retention-days: 1
 
       - name: Clean fixture builder
-        if: ${{ always() && (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || steps.upgrade-trial.outcome == 'failure') }}
+        if: ${{ always() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         run: |
           docker compose -f "$DB_COMPOSE_FILE" down --remove-orphans || true
           sudo rm -rf "$GITHUB_WORKSPACE/docker/development/docker-volume"

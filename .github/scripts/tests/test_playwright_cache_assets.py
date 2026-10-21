@@ -123,11 +123,7 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
 ) -> None:
     write(tmp_path, "pom.xml", "<version>1</version>")
     write(tmp_path, "bootstrap/sql/migrations/V1.sql", "select 1;")
-    write(
-        tmp_path,
-        "openmetadata-spec/src/main/resources/json/schema/entity/table.json",
-        "{}",
-    )
+    write(tmp_path, "openmetadata-spec/src/main/resources/entity.json", "{}")
     write(tmp_path, "ingestion/examples/sample_data/table.json", "{}")
     write(
         tmp_path,
@@ -142,48 +138,27 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
     write(tmp_path, ".dockerignore", "docker/development/docker-volume\n")
     initialize_repository(tmp_path)
 
-    def keys() -> tuple[str, str]:
-        return (
-            fingerprints.fingerprint("fixture", root=tmp_path),
-            fingerprints.fingerprint("fixture-base", root=tmp_path),
-        )
+    initial = fingerprints.fingerprint("fixture", root=tmp_path)
+    write(tmp_path, "bootstrap/sql/migrations/V1.sql", "select 2;")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != initial
 
-    # Upgradable inputs: the exact fixture changes, the base it can be
-    # migrated from does not.
-    for relative, content in (
-        ("bootstrap/sql/migrations/V1.sql", "select 2;"),
-        (
-            "openmetadata-spec/src/main/resources/json/schema/entity/table.json",
-            '{"a":1}',
-        ),
-    ):
-        exact, base = keys()
-        write(tmp_path, relative, content)
-        assert keys()[0] != exact
-        assert keys()[1] == base
+    changed_schema = fingerprints.fingerprint("fixture", root=tmp_path)
+    write(tmp_path, "pom.xml", "<version>2</version>")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) != changed_schema
 
-    # Dependency pins change libraries, not seeded rows.
-    for relative, content in (
-        ("pom.xml", "<version>2</version>"),
+    fixture_inputs = (
         ("openmetadata-ui/src/main/resources/ui/package.json", "{}"),
         ("openmetadata-ui/src/main/resources/ui/yarn.lock", "playwright@2"),
-    ):
-        before = keys()
-        write(tmp_path, relative, content)
-        assert keys() == before
-
-    for relative, content in (
-        ("ingestion/examples/sample_data/table.json", '{"changed":true}'),
         ("openmetadata-ui/src/main/resources/ui/.nvmrc", "24\n"),
         ("docker/postgresql/Dockerfile_postgres", "FROM postgres:16\n"),
         ("docker/postgresql/postgres-script.sql", "select 2;\n"),
         ("docker/development/Dockerfile", "FROM eclipse-temurin:22\n"),
         (".dockerignore", "different-volume\n"),
-    ):
-        exact, base = keys()
+    )
+    for relative, content in fixture_inputs:
+        before = fingerprints.fingerprint("fixture", root=tmp_path)
         write(tmp_path, relative, content)
-        assert keys()[0] != exact
-        assert keys()[1] != base
+        assert fingerprints.fingerprint("fixture", root=tmp_path) != before
 
 
 def test_fixture_fingerprint_tracks_search_mappings(tmp_path: Path) -> None:
@@ -465,119 +440,6 @@ def test_ingestion_sidecar_validator_rejects_archive_tampering(tmp_path: Path) -
     assert result.returncode != 0
 
 
-def current_hash(kind: str) -> str:
-    return subprocess.check_output(
-        ["python3", str(SCRIPTS / "playwright_cache_fingerprint.py"), "--kind", kind],
-        cwd=ROOT,
-        text=True,
-    ).strip()
-
-
-def build_fixture(tmp_path: Path, **overrides: str) -> Path:
-    stage = tmp_path / "stage"
-    write(stage, "postgres/PG_VERSION", "15\n")
-    write(stage, "opensearch/nodes/0/state", "x")
-    for name in (
-        "auth/admin.json",
-        "auth/admin-api-token.json",
-        "entity-response-data.json",
-        "lineage-data.json",
-        "shared-infra.json",
-    ):
-        write(stage, f"playwright-state/{name}", "{}")
-    state_hash = subprocess.check_output(
-        "find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d ' ' -f1",
-        cwd=stage / "playwright-state",
-        shell=True,
-        text=True,
-    ).strip()
-    seed_version = subprocess.check_output(
-        "sed -n 's:.*<version>\\([^<]*\\)</version>.*:\\1:p' pom.xml | head -1",
-        cwd=ROOT,
-        shell=True,
-        text=True,
-    ).strip()
-    manifest = {
-        "version": 2,
-        "sourceSha": "a" * 40,
-        "createdAt": "2026-10-13T00:00:00Z",
-        "compatibilityHash": current_hash("fixture"),
-        "baseHash": current_hash("fixture-base"),
-        "postgresImage": f"postgres@sha256:{'1' * 64}",
-        "opensearchImage": f"opensearch@sha256:{'2' * 64}",
-        "searchClusterAlias": "openmetadata",
-        "schemaHash": current_hash("schema"),
-        "seedHash": current_hash("seed"),
-        "seedVersion": seed_version,
-        "playwrightStateHash": state_hash,
-        **overrides,
-    }
-    (stage / "fixture-manifest.json").write_text(json.dumps(manifest))
-    archive = tmp_path / "playwright-fixture.tar.zst"
-    subprocess.run(["tar", "--zstd", "-C", stage, "-cf", archive, "."], check=True)
-    return archive
-
-
-def validate_fixture(archive: Path, allow_upgrade: bool) -> subprocess.CompletedProcess:
-    return subprocess.run(
-        [SCRIPTS / "validate_playwright_fixture.sh", archive, current_hash("fixture")],
-        cwd=ROOT,
-        env={**os.environ, "PW_FIXTURE_ALLOW_UPGRADE": str(allow_upgrade).lower()},
-        capture_output=True,
-        text=True,
-    )
-
-
-def test_fixture_validator_reuses_a_fixture_across_schema_and_migration_changes(
-    tmp_path: Path,
-) -> None:
-    exact = validate_fixture(build_fixture(tmp_path / "exact"), allow_upgrade=False)
-    assert exact.returncode == 0, exact.stderr
-    assert "fixture-mode=exact" in exact.stdout
-
-    head = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
-    ).strip()
-    # Built before a schema/migration change: same base, older exact hashes.
-    older = build_fixture(
-        tmp_path / "older",
-        sourceSha=head,
-        compatibilityHash="0" * 64,
-        schemaHash="0" * 64,
-    )
-    upgraded = validate_fixture(older, allow_upgrade=True)
-    assert upgraded.returncode == 0, upgraded.stderr
-    assert "fixture-mode=upgrade" in upgraded.stdout
-    # Main must rebuild the exact fixture rather than keep migrating an old one.
-    assert validate_fixture(older, allow_upgrade=False).returncode != 0
-
-    reseeded = build_fixture(
-        tmp_path / "reseeded",
-        sourceSha=head,
-        compatibilityHash="0" * 64,
-        baseHash="0" * 64,
-    )
-    assert validate_fixture(reseeded, allow_upgrade=True).returncode != 0
-
-    # restore-keys can return a fixture from a commit this checkout does not
-    # contain (a newer main); migrate cannot move a database backwards, so it
-    # must be rebuilt rather than upgraded. An unreferenced commit stands in.
-    unrelated = subprocess.check_output(
-        ["git", "commit-tree", "HEAD^{tree}", "-m", "fixture from an unrelated commit"],
-        cwd=ROOT,
-        text=True,
-    ).strip()
-    newer = build_fixture(
-        tmp_path / "newer",
-        sourceSha=unrelated,
-        compatibilityHash="0" * 64,
-        schemaHash="0" * 64,
-    )
-    rejected = validate_fixture(newer, allow_upgrade=True)
-    assert rejected.returncode != 0
-    assert "fixture-mode=" not in rejected.stdout
-
-
 def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
     tmp_path: Path,
 ) -> None:
@@ -639,7 +501,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
     assert "actions/cache/restore@v6" in workflow
     assert "actions/cache/save@v6" in workflow
-    assert "playwright-golden-fixture-v3-" in workflow
+    assert "playwright-golden-fixture-v2-" in workflow
     assert "playwright-ingestion-image-v2-" in workflow
     assert "playwright-distribution-v2-" in workflow
     assert "mvn -DskipTests clean package -pl openmetadata-dist -am" in workflow
@@ -669,45 +531,20 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert "if: ${{ steps.validate-fixture.outputs.usable == 'true' }}" in restore_job
     assert "if: ${{ steps.validate-ingestion.outputs.usable == 'true' }}" in restore_job
     assert (
-        "if: ${{ (needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true'"
-        " || steps.upgrade-trial.outcome == 'failure') }}" in prepare_job
+        "if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}"
+        in prepare_job
     )
-    # The ingestion image is built off the critical path; a missing image must
-    # not force the ~17 min fixture re-seed.
+    # The ingestion image is built off the critical path, alongside `build`.
     assert "ingestion_cache_hit" not in prepare_job
     assert (
         "needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true'"
         in ingestion_job
     )
     assert "pack_playwright_ingestion_image.sh" in ingestion_job
-    # A restored fixture that cannot be migrated falls back to the full rebuild
-    # instead of failing every shard.
-    trial = prepare_job.split("      - name: Try migrating the restored fixture\n", 1)[
-        1
-    ].split("\n      - name:", 1)[0]
-    assert "id: upgrade-trial" in trial
-    assert "continue-on-error: true" in trial
-    assert 'fast-mode: "true"' in trial
-    seed = prepare_job.split("      - name: Prepare seeded environment\n", 1)[1].split(
-        "\n", 1
+    planner = workflow.split("  plan-playwright:", 1)[1].split(
+        "  restore-playwright-fixture:", 1
     )[0]
-    assert "steps.upgrade-trial.outcome == 'failure'" in seed
-    upload = prepare_job.split("      - name: Upload seeded fixture\n", 1)[1].split(
-        "\n      - name:", 1
-    )[0]
-    assert "overwrite: true" in upload
-    assert (
-        "plan-playwright:\n" in workflow
-        and "    needs: [detect-changes]\n"
-        in workflow.split("  plan-playwright:", 1)[1].split(
-            "  restore-playwright-fixture:", 1
-        )[0]
-    )
-    assert "restore-keys: |\n            playwright-golden-fixture-v3-" in restore_job
-    assert (
-        'PW_FIXTURE_ALLOW_UPGRADE: ${{ !contains(fromJSON(\'["push","schedule"]\'), github.event_name) }}'
-        in restore_job
-    )
+    assert "    needs: [detect-changes]\n" in planner
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
     assert (
         workflow.count("npx playwright test --project=bundle-smoke --reporter=line")

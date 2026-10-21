@@ -86,7 +86,6 @@ sudo cp -a "$shared_infra_state_source" "$stage_dir/playwright-state/shared-infr
 postgres_image=$(resolve_digest postgres:15)
 opensearch_image=$(resolve_digest "$opensearch_reference")
 fixture_compatibility_hash=$(python3 "$fingerprint_script" --kind fixture)
-fixture_base_hash=$(python3 "$fingerprint_script" --kind fixture-base)
 schema_hash=$(python3 "$fingerprint_script" --kind schema)
 seed_hash=$(python3 "$fingerprint_script" --kind seed)
 seed_version=$(sed -n 's:.*<version>\([^<]*\)</version>.*:\1:p' pom.xml | head -1)
@@ -104,7 +103,6 @@ jq -n \
   --arg sourceSha "$source_sha" \
   --arg createdAt "$created_at" \
   --arg compatibilityHash "$fixture_compatibility_hash" \
-  --arg baseHash "$fixture_base_hash" \
   --arg postgresImage "$postgres_image" \
   --arg opensearchImage "$opensearch_image" \
   --arg searchClusterAlias "$search_cluster_alias" \
@@ -117,7 +115,6 @@ jq -n \
     sourceSha: $sourceSha,
     createdAt: $createdAt,
     compatibilityHash: $compatibilityHash,
-    baseHash: $baseHash,
     postgresImage: $postgresImage,
     opensearchImage: $opensearchImage,
     searchClusterAlias: $searchClusterAlias,
