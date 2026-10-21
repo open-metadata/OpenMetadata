@@ -378,8 +378,7 @@ describe('TestSuite Pipeline component', () => {
     );
   });
 
-  // Ingestion pipelines page by cursor. A number-based pager never hands the handler a
-  // cursorType, so Next and Previous did nothing at all.
+  // Ingestion pipelines page by cursor, and only a cursor pager hands the handler a cursorType.
   it('should fetch the next cursor page when the real pager Next is pressed', async () => {
     const { default: ActualNextPrevious } = jest.requireActual(
       '../../../common/NextPrevious/NextPrevious'

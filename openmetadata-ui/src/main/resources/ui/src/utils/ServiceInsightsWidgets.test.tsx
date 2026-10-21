@@ -17,8 +17,8 @@ import { ThemeConfiguration } from '../generated/configuration/uiThemePreference
 import { getServiceInsightsWidgetPlaceholder } from './ServiceInsightsWidgets';
 
 describe('getServiceInsightsWidgetPlaceholder', () => {
-  // A Tooltip around the sentence wrapped it in a `w-max` button: the copy could not wrap and
-  // overflowed the card, and the docs link sat inside a <button>.
+  // A Tooltip trigger is a `w-max` button: around this sentence it stops the copy wrapping
+  // inside the card and nests the docs link in a <button>.
   it('renders the docs link as plain wrapping text, not inside a button', () => {
     render(
       getServiceInsightsWidgetPlaceholder({

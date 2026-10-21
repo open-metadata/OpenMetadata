@@ -198,8 +198,8 @@ describe('LineageSection', () => {
     expect(container.querySelector('hr')).toBeInTheDocument();
   });
 
-  // The summary panel clips overflow and both items are nowrap buttons, so a narrow panel
-  // (or a longer translation) cut "Downstream" off unless the row may wrap.
+  // The summary panel clips overflow and both items are nowrap buttons, so the row must wrap
+  // for a narrow panel or a longer translation to keep "Downstream" visible.
   it('lets the upstream/downstream row wrap so a narrow panel does not clip it', async () => {
     (getLineagePagingData as jest.Mock).mockResolvedValue({
       upstreamDepthInfo: [{ depth: 1, entityCount: 1 }],
