@@ -26,7 +26,14 @@ export interface AssetTypeRowsProps {
   formatDelta: (value: number) => string;
 }
 
-/** One row per asset type: swatch, name, share, count and its change. */
+/**
+ * One row per asset type: swatch, name, share, count and its change.
+ *
+ * The rows share one grid (each row is a subgrid), so every column is as wide
+ * as its widest cell: a large count or a "+115,264" badge widens its column
+ * for all rows instead of overlapping its neighbour, and the columns stay
+ * aligned whether or not a row has moved.
+ */
 const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
   assetTypes,
   colors,
@@ -35,11 +42,11 @@ const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
   formatDelta,
 }) => (
   <ul
-    className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+    className="tw:grid tw:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto] tw:gap-x-3 tw:divide-y tw:divide-secondary"
     data-testid="asset-type-rows">
     {assetTypes.map((type, index) => (
       <li
-        className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-2.5"
+        className="tw:col-span-full tw:grid tw:grid-cols-subgrid tw:items-center tw:py-2.5"
         data-testid={`asset-type-row-${type.key}`}
         key={type.key}>
         <span
@@ -47,9 +54,7 @@ const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
           className="tw:size-2.5 tw:shrink-0 tw:rounded-xs"
           style={{ backgroundColor: colors[index] }}
         />
-        {/* The span takes the free width; Typography's ellipsis box does not
-          stretch as a flex item, so share and count would hug the name. */}
-        <span className="tw:min-w-0 tw:flex-1">
+        <span className="tw:min-w-0">
           <Typography
             className="tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
@@ -58,19 +63,18 @@ const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
           </Typography>
         </span>
         <Typography
-          className="tw:shrink-0 tw:tabular-nums tw:text-text-tertiary!"
+          className="tw:text-right tw:tabular-nums tw:text-text-tertiary!"
           size="text-sm">
           {formatShare(type.share)}
         </Typography>
         <Typography
-          className="tw:min-w-10 tw:shrink-0 tw:text-right tw:tabular-nums tw:text-text-primary!"
+          className="tw:text-right tw:tabular-nums tw:text-text-primary!"
           data-testid="asset-type-count"
           size="text-sm"
           weight="medium">
           {formatCount(type.count)}
         </Typography>
-        {/* A fixed slot, so counts line up whether or not a row has moved. */}
-        <span className="tw:flex tw:w-12 tw:shrink-0 tw:justify-end">
+        <span className="tw:flex tw:justify-end">
           {type.delta !== null && (
             <Badge
               color={deltaColor(type.delta)}

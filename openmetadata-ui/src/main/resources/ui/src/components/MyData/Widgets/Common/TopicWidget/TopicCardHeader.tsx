@@ -87,17 +87,20 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
   );
 
   // The status sits on the right, beside the chevron, so every card's title
-  // starts on the same line regardless of how long its badge is.
+  // starts on the same line regardless of how long its badge is. It takes at
+  // most half the strip and truncates past that, with the full text on hover,
+  // so a long status never squeezes the title and summary into a sliver.
   const trailing = (chevron?: React.ReactNode) => (
-    <div className="tw:mt-1 tw:flex tw:shrink-0 tw:items-center tw:gap-3">
+    <div className="tw:mt-1 tw:flex tw:min-w-0 tw:max-w-1/2 tw:items-center tw:gap-3">
       {status && !isLoading && (
         <Badge
-          className="tw:font-medium"
+          className="tw:min-w-0 tw:max-w-full tw:font-medium"
           color={status.color}
           data-testid={`topic-status-${topicKey}`}
           size="sm"
+          title={status.label}
           type="pill-color">
-          {status.label}
+          <span className="tw:truncate">{status.label}</span>
         </Badge>
       )}
       {chevron}
@@ -124,7 +127,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       {trailing(
         <Chevron
           aria-hidden
-          className="tw:size-4 tw:text-fg-tertiary tw:[&_path]:stroke-2"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-tertiary tw:[&_path]:stroke-2"
         />
       )}
     </button>

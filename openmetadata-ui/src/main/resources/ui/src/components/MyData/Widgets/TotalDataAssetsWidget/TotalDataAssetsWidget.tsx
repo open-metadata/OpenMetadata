@@ -77,6 +77,13 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       signed: new Intl.NumberFormat(i18n.language, {
         signDisplay: 'exceptZero',
       }),
+      // The header chip shares its line with the title, so a large change
+      // reads "+115K" there; the rows below keep the exact figure.
+      signedCompact: new Intl.NumberFormat(i18n.language, {
+        maximumFractionDigits: 1,
+        notation: 'compact',
+        signDisplay: 'exceptZero',
+      }),
     }),
     [i18n.language]
   );
@@ -117,7 +124,7 @@ const TotalDataAssetsWidget: React.FC<TotalDataAssetsWidgetProps> = ({
       ? undefined
       : t('message.value-in-last-count-days', {
           count: measuredWindowDays,
-          value: formats.signed.format(totalDelta),
+          value: formats.signedCompact.format(totalDelta),
         });
 
   const summary = [
