@@ -18,9 +18,6 @@ ci:
   - .github/workflows/py-sonarcloud-nightly.yml
   - .github/workflows/populate-playwright-caches.yml
   - .github/actions/setup-openmetadata-test-environment/**
-  - .github/actions/python-checkstyle/**
-  - .github/actions/ci-selection/**
-  - .github/actions/prepare-spacy-model/**
   - .github/ci-paths.yml
   - .github/scripts/tests/test_nox_cli.py
   - Makefile

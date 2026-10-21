@@ -17,13 +17,19 @@ name: Build backend distribution
         description: Exact revision to build
         type: string
         required: true
+    outputs:
+      artifact-id:
+        description: Uploaded backend distribution artifact ID
+        value: ${{ jobs.build.outputs.artifact-id }}
 permissions:
   contents: read
 jobs:
   build:
     name: Build Backend Distribution
-    timeout-minutes: 45
+    outputs:
+      artifact-id: ${{ steps.distribution.outputs.artifact-id }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -47,6 +53,7 @@ jobs:
         run: mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
         shell: bash
       - name: Upload backend distribution
+        id: distribution
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: openmetadata-backend-distribution

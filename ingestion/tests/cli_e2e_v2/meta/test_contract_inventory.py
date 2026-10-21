@@ -249,8 +249,8 @@ def test_ci_invocation_enforces_complete_contracts(pytester, monkeypatch, omit_c
 @pytest.mark.parametrize("fails", [False, True])
 def test_ci_meta_invocation_runs_offline_tests_and_propagates_failure(pytester, monkeypatch, fails):
     root = Path(__file__).resolve().parents[4]
-    workflow = yaml.safe_load((root / ".github/workflows/python-unit-tests-reusable.yml").read_text())
-    steps = workflow["jobs"]["tests"]["steps"]
+    workflow = yaml.safe_load((root / ".github/workflows/python-checks-reusable.yml").read_text())
+    steps = workflow["jobs"]["unit"]["steps"]
     script = next(step["run"] for step in steps if step.get("name") == "Run offline E2E framework tests")
     arguments = shlex.split(script[script.index("python -m pytest") :])[3:]
     suite = _child(pytester, monkeypatch, directory="tests/cli_e2e_v2")

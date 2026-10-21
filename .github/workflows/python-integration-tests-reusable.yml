@@ -25,6 +25,14 @@ name: Python integration tests
         description: Python version supplying coverage and control tests
         type: string
         required: true
+      spacy-artifact-id:
+        description: spaCy wheel supplied by the preparation stage (artifact ID)
+        type: string
+        required: true
+      backend-artifact-id:
+        description: Backend distribution supplied by the caller (artifact ID)
+        type: string
+        required: true
 permissions:
   contents: read
 jobs:
@@ -38,8 +46,8 @@ jobs:
         py-version: ${{ fromJSON(inputs.python-versions) }}
         shard:
           - name: shard-1
-            nox-args: tests/integration/automations tests/integration/data_quality tests/integration/mysql tests/integration/postgres tests/integration/powerbi tests/integration/sas
-              tests/integration/superset
+            nox-args: tests/integration/automations tests/integration/data_quality tests/integration/mysql tests/integration/postgres tests/integration/powerbi
+              tests/integration/sas tests/integration/superset
           - name: shard-2
             needs-disk: true
             nox-args: tests/integration/alationsink tests/integration/auto_classification tests/integration/datalake tests/integration/profiler tests/integration/sources
@@ -47,7 +55,8 @@ jobs:
           - name: shard-3
             nox-args: --ignore=tests/integration/automations --ignore=tests/integration/data_quality --ignore=tests/integration/mysql --ignore=tests/integration/postgres
               --ignore=tests/integration/powerbi --ignore=tests/integration/sas --ignore=tests/integration/superset --ignore=tests/integration/alationsink --ignore=tests/integration/auto_classification
-              --ignore=tests/integration/datalake --ignore=tests/integration/profiler --ignore=tests/integration/sources --ignore=tests/integration/sql_server --ignore=tests/integration/ssrs
+              --ignore=tests/integration/datalake --ignore=tests/integration/profiler --ignore=tests/integration/sources --ignore=tests/integration/sql_server
+              --ignore=tests/integration/ssrs
         backend:
           - name: mysql
             args: -m no-ui -s true -i false
@@ -78,8 +87,8 @@ jobs:
       - name: Download backend distribution
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: openmetadata-backend-distribution
           path: openmetadata-dist/target
+          artifact-ids: ${{ inputs.backend-artifact-id }}
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -88,8 +97,8 @@ jobs:
       - name: Download spaCy model
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: spacy-en-model
           path: /tmp/spacy-model
+          artifact-ids: ${{ inputs.spacy-artifact-id }}
       - name: Install and verify spaCy model
         run: |
           source env/bin/activate

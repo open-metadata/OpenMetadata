@@ -30,129 +30,33 @@ concurrency:
     != github.repository) }}
 jobs:
   changes:
-    name: Authorize & Detect Changes
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      python: ${{ steps.selection.outputs.python }}
-      style: ${{ steps.selection.outputs.style }}
-      minimum: ${{ steps.selection.outputs.minimum }}
-      image: ${{ steps.selection.outputs.image }}
-      versions: ${{ steps.selection.outputs.versions }}
-      checkout-ref: ${{ steps.selection.outputs.checkout-ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          fetch-depth: 0
-          filter: blob:none
-      - name: Select CI work
-        id: selection
-        uses: ./.github/actions/ci-selection
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994
-        if: ${{ github.event_name == 'pull_request_target' && (steps.selection.outputs.python == 'true' || steps.selection.outputs.style == 'true') }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 30
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401
-        if: ${{ github.event_name == 'pull_request_target' && (steps.selection.outputs.python == 'true' || steps.selection.outputs.style == 'true') }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          valid-labels: safe to test
-          pull-request-number: ${{ github.event.pull_request.number }}
-          disable-reviews: true
+    uses: ./.github/workflows/ci-selection-reusable.yml
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name ==
       'safe to test') }}
-  py-checkstyle:
-    name: py-checkstyle
-    needs: changes
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name
-      == 'safe to test') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Validate selection
-        env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
-        run: |
-          case "$CHANGES_RESULT:$STYLE_CHANGED" in
-            success:true|success:false) ;;
-            *) echo "Python checkstyle selection did not succeed"; exit 1 ;;
-          esac
-        shell: bash
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.changes.outputs.checkout-ref }}
-          persist-credentials: false
-          allow-unsafe-pr-checkout: true
-        if: ${{ needs.changes.outputs.style == 'true' }}
-      - name: Python checkstyle
-        id: style
-        if: ${{ needs.changes.outputs.style == 'true' }}
-        uses: ./.github/actions/python-checkstyle
-        with:
-          python-version: ${{ needs.changes.outputs.minimum }}
-      - name: Create a comment in the PR with the instructions
-        if: ${{ failure() && steps.style.outcome == 'failure' && github.event_name == 'pull_request_target' }}
-        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            **The Python checkstyle failed.**
-
-            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
-            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
-
-            You can install the pre-commit hooks with `make install_test precommit_install`.
-  static:
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    uses: ./.github/workflows/python-static-checks-reusable.yml
-    with:
-      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
-      python-version: ${{ needs.changes.outputs.minimum }}
   prepare-spacy-model:
-    name: Prepare spaCy model
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout CI actions
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          sparse-checkout: .github/actions/prepare-spacy-model
-      - name: Prepare spaCy model
-        uses: ./.github/actions/prepare-spacy-model
+    uses: ./.github/workflows/python-assets-reusable.yml
   backend:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/backend-build-reusable.yml
     with:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
-  unit:
+  python-checks:
     needs:
       - changes
       - prepare-spacy-model
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    uses: ./.github/workflows/python-unit-tests-reusable.yml
+    if: ${{ always() && needs.changes.result == 'success' && (needs.changes.outputs.python == 'true' || needs.changes.outputs.style == 'true') }}
+    uses: ./.github/workflows/python-checks-reusable.yml
     with:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      run-tests: ${{ needs.changes.outputs.python == 'true' }}
+      run-style: ${{ needs.changes.outputs.style == 'true' }}
+      minimum-python: ${{ needs.changes.outputs.minimum }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
   integration:
     needs:
       - changes
@@ -164,12 +68,50 @@ jobs:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
+      backend-artifact-id: ${{ needs.backend.outputs.artifact-id }}
+  py-checkstyle:
+    name: py-checkstyle
+    needs:
+      - changes
+      - python-checks
+    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name
+      == 'safe to test') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Verify Python checkstyle outcome
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
+          STYLE_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.style-result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          case "$STYLE_CHANGED:$STYLE_RESULT" in
+            true:success|false:skipped) ;;
+            *) echo "Unexpected Python checkstyle result: selected=$STYLE_CHANGED result=$STYLE_RESULT"; exit 1 ;;
+          esac
+      - name: Create a comment in the PR with the instructions
+        if: ${{ failure() && needs.python-checks.outputs.style-result == 'failure' && github.event_name == 'pull_request_target' }}
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            **The Python checkstyle failed.**
+
+            Please run `make py_format` and `py_format_check` in the root of your repository and commit the changes to this PR.
+            You can also use [pre-commit](https://pre-commit.com/) to automate the Python code formatting.
+
+            You can install the pre-commit hooks with `make install_test precommit_install`.
   py-tests-status:
     name: py-tests-status
     needs:
       - changes
-      - static
-      - unit
+      - python-checks
       - integration
       - backend
       - prepare-spacy-model
@@ -182,14 +124,13 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
-          STATIC_RESULT: ${{ needs.static.result }}
-          UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           MODEL_RESULT: ${{ needs.prepare-spacy-model.result }}
+          CHECKS_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.tests-result }}
         run: |
           test "$CHANGES_RESULT" = success
-          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
+          for result in "$CHECKS_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
             case "$PYTHON_CHANGED:$result" in
               true:success|false:skipped) ;;
               *) echo "Unexpected Python job result: selected=$PYTHON_CHANGED result=$result"; exit 1 ;;
@@ -199,9 +140,9 @@ jobs:
   coverage:
     needs:
       - changes
-      - unit
+      - python-checks
       - integration
-    if: ${{ always() && needs.changes.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' }}
+    if: ${{ always() && needs.changes.result == 'success' && needs.python-checks.outputs.tests-result == 'success' && needs.integration.result == 'success' }}
     uses: ./.github/workflows/python-coverage-reusable.yml
     with:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}

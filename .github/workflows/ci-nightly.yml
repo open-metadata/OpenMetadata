@@ -16,101 +16,39 @@ name: CI — Nightly
   workflow_dispatch: null
 permissions:
   contents: read
+  pull-requests: read
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   changes:
-    name: Read Python versions
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    outputs:
-      python: ${{ steps.selection.outputs.python }}
-      style: ${{ steps.selection.outputs.style }}
-      minimum: ${{ steps.selection.outputs.minimum }}
-      image: ${{ steps.selection.outputs.image }}
-      versions: ${{ steps.selection.outputs.versions }}
-      checkout-ref: ${{ steps.selection.outputs.checkout-ref }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Select CI work
-        id: selection
-        uses: ./.github/actions/ci-selection
-        with:
-          full-matrix: 'true'
-  py-checkstyle:
-    name: py-checkstyle
-    needs: changes
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Validate selection
-        env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
-        run: |
-          case "$CHANGES_RESULT:$STYLE_CHANGED" in
-            success:true|success:false) ;;
-            *) echo "Python checkstyle selection did not succeed"; exit 1 ;;
-          esac
-        shell: bash
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.changes.outputs.checkout-ref }}
-          persist-credentials: false
-        if: ${{ needs.changes.outputs.style == 'true' }}
-      - name: Python checkstyle
-        id: style
-        if: ${{ needs.changes.outputs.style == 'true' }}
-        uses: ./.github/actions/python-checkstyle
-        with:
-          python-version: ${{ needs.changes.outputs.minimum }}
-  static:
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    uses: ./.github/workflows/python-static-checks-reusable.yml
+    uses: ./.github/workflows/ci-selection-reusable.yml
     with:
-      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
-      python-version: ${{ needs.changes.outputs.minimum }}
+      full-python-matrix: true
   prepare-spacy-model:
-    name: Prepare spaCy model
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout CI actions
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          sparse-checkout: .github/actions/prepare-spacy-model
-      - name: Prepare spaCy model
-        uses: ./.github/actions/prepare-spacy-model
+    uses: ./.github/workflows/python-assets-reusable.yml
   backend:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/backend-build-reusable.yml
     with:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
-  unit:
+  python-checks:
     needs:
       - changes
       - prepare-spacy-model
-    if: ${{ needs.changes.outputs.python == 'true' }}
-    uses: ./.github/workflows/python-unit-tests-reusable.yml
+    if: ${{ always() && needs.changes.result == 'success' && (needs.changes.outputs.python == 'true' || needs.changes.outputs.style == 'true') }}
+    uses: ./.github/workflows/python-checks-reusable.yml
     with:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      run-tests: ${{ needs.changes.outputs.python == 'true' }}
+      run-style: ${{ needs.changes.outputs.style == 'true' }}
+      minimum-python: ${{ needs.changes.outputs.minimum }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
   integration:
     needs:
       - changes
@@ -122,12 +60,36 @@ jobs:
       checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
+      spacy-artifact-id: ${{ needs.prepare-spacy-model.outputs.spacy-artifact-id }}
+      backend-artifact-id: ${{ needs.backend.outputs.artifact-id }}
+  py-checkstyle:
+    name: py-checkstyle
+    needs:
+      - changes
+      - python-checks
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Verify Python checkstyle outcome
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
+          STYLE_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.style-result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          case "$STYLE_CHANGED:$STYLE_RESULT" in
+            true:success|false:skipped) ;;
+            *) echo "Unexpected Python checkstyle result: selected=$STYLE_CHANGED result=$STYLE_RESULT"; exit 1 ;;
+          esac
   py-tests-status:
     name: py-tests-status
     needs:
       - changes
-      - static
-      - unit
+      - python-checks
       - integration
       - backend
       - prepare-spacy-model
@@ -139,14 +101,13 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
-          STATIC_RESULT: ${{ needs.static.result }}
-          UNIT_RESULT: ${{ needs.unit.result }}
           INTEGRATION_RESULT: ${{ needs.integration.result }}
           BACKEND_RESULT: ${{ needs.backend.result }}
           MODEL_RESULT: ${{ needs.prepare-spacy-model.result }}
+          CHECKS_RESULT: ${{ needs.python-checks.result == 'skipped' && 'skipped' || needs.python-checks.outputs.tests-result }}
         run: |
           test "$CHANGES_RESULT" = success
-          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
+          for result in "$CHECKS_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
             case "$PYTHON_CHANGED:$result" in
               true:success|false:skipped) ;;
               *) echo "Unexpected Python job result: selected=$PYTHON_CHANGED result=$result"; exit 1 ;;
@@ -156,7 +117,7 @@ jobs:
   coverage:
     needs:
       - changes
-      - unit
+      - python-checks
       - integration
     if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/python-coverage-reusable.yml

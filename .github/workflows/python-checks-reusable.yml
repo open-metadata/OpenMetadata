@@ -9,29 +9,102 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Python unit tests
+name: Python checks
 'on':
   workflow_call:
     inputs:
       checkout-ref:
-        description: Exact revision to test
+        description: Exact revision to check
+        type: string
+        required: true
+      run-tests:
+        description: Run static checks and unit tests
+        type: boolean
+        required: true
+      run-style:
+        description: Run Python checkstyle
+        type: boolean
+        required: true
+      minimum-python:
+        description: Minimum supported Python for static and style checks
         type: string
         required: true
       python-versions:
-        description: JSON array of Python versions
+        description: JSON unit-test version matrix
         type: string
         required: true
       coverage-python:
-        description: Python version supplying coverage and control tests
+        description: Python supplying coverage and control tests
         type: string
         required: true
+      spacy-artifact-id:
+        description: spaCy wheel artifact from the preparation stage (artifact ID)
+        type: string
+        required: true
+    outputs:
+      style-result:
+        description: Checkstyle job result
+        value: ${{ jobs.style.result }}
+      tests-result:
+        description: Combined static-check and unit-test result
+        value: ${{ jobs.static.result == jobs.unit.result && jobs.unit.result || 'failure' }}
 permissions:
   contents: read
 jobs:
-  tests:
-    name: Python unit tests (${{ matrix.py-version }})
-    timeout-minutes: 60
+  style:
+    name: Python checkstyle
+    if: ${{ inputs.run-style }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.checkout-ref }}
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ inputs.minimum-python }}
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+      - name: Install Ruff and check style
+        shell: bash
+        run: |
+          uv venv env --python "${{ inputs.minimum-python }}"
+          uv pip install --python env/bin/python "ruff~=0.15.12"
+          source env/bin/activate
+          make py_format_check
+  static:
+    name: Python static checks
+    if: ${{ inputs.run-tests }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.checkout-ref }}
+          persist-credentials: false
+          allow-unsafe-pr-checkout: true
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ inputs.minimum-python }}
+          install-server: 'false'
+      - name: Run Static Checks
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          python -m nox --non-interactive --no-venv -s static-checks 2>&1 | tee static-checks-run.log
+        shell: bash
+  unit:
+    name: Python unit tests (${{ matrix.py-version }})
+    if: ${{ inputs.run-tests && inputs.spacy-artifact-id != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -51,8 +124,8 @@ jobs:
       - name: Download spaCy model
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          name: spacy-en-model
           path: /tmp/spacy-model
+          artifact-ids: ${{ inputs.spacy-artifact-id }}
       - name: Run Nox argument regressions
         if: ${{ matrix.py-version == inputs.coverage-python }}
         run: |
