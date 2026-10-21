@@ -149,19 +149,12 @@ export const getViewportForBoundsReactFlow = (
 
 export const getViewportForLineageExport = (
   nodes: Node[],
-  documentSelector: string
-): ExportViewport => {
-  const exportElement = document.querySelector(documentSelector) as HTMLElement;
-
-  const imageWidth = exportElement.scrollWidth;
-  const imageHeight = exportElement.scrollHeight;
-
-  const nodesBounds = getNodesBoundsReactFlow(nodes);
-
-  return getViewportForBoundsReactFlow(
-    nodesBounds,
+  imageWidth: number,
+  imageHeight: number
+): ExportViewport =>
+  getViewportForBoundsReactFlow(
+    getNodesBoundsReactFlow(nodes),
     imageWidth,
     imageHeight,
     0.9
   );
-};

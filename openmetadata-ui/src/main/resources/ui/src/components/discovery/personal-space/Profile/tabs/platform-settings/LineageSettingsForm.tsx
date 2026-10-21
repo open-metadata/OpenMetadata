@@ -161,9 +161,12 @@ const LineageSettingsForm = ({
   const handleSubmit = async (values: LineageFormValues) => {
     setIsSaving(true);
     try {
+      // The settings PUT replaces the whole value, so send back the fields
+      // this form does not edit (graphPerformanceConfig) or the save drops them.
       const { data } = await updateSettingsConfig({
         config_type: SettingType.LineageSettings,
         config_value: {
+          ...config,
           upstreamDepth: Number(values.upstreamDepth),
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer?.id as LineageLayer,

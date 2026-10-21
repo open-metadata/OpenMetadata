@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -46,9 +46,18 @@ const mockNavigate = jest.fn();
 const mockGetEntityAPIfromSource = jest.fn();
 const mockGetEntityPermissionByFqn = jest.fn();
 const mockShowErrorToast = jest.fn();
-const mockShowModal = jest.fn();
 const mockGetOperationPermissions = jest.fn();
 const mockSetLineageConfig = jest.fn();
+// Renders "<platformType> lineage" so header and title assertions can see
+// what each was labelled with; every other key still comes back as itself.
+const mockT = jest.fn((key: string, params?: { platformType?: string }) =>
+  params?.platformType ? `${params.platformType} lineage` : key
+);
+
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({ t: mockT }),
+}));
 
 // Captures the last props LineageConfigModal was rendered with so tests can
 // exercise its onSave/onCancel callbacks — enough to prove the modal is wired
@@ -189,24 +198,15 @@ jest.mock('../../utils/EntityLineagePureUtils', () => ({
   getLineageEntityExclusionFilter: jest.fn(() => ({ mustNot: [] })),
 }));
 
-jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
-  getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
-}));
-
 jest.mock('../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn((val) => encodeURIComponent(val)),
 }));
 
-jest.mock('../../utils/date-time/DateTimeUtils', () => ({
-  getCurrentISODate: jest.fn(() => '2025-03-05'),
-}));
-
 jest.mock(
-  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  '../../components/Lineage/LineageExportButton/LineageExportButton',
   () => ({
-    useEntityExportModalProvider: jest.fn(() => ({
-      showModal: mockShowModal,
-    })),
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="lineage-export-button" />),
   })
 );
 
@@ -234,6 +234,9 @@ const mockLineageWrapper = require('../../components/Lineage/Lineage/Lineage')
   .Lineage as jest.Mock;
 const mockPageLayoutV1 = require('../../components/PageLayoutV1/PageLayoutV1')
   .default as jest.Mock;
+const mockPageHeader =
+  require('../../components/PageHeader/PageHeader.component')
+    .default as jest.Mock;
 const mockDataAssetAsyncSelectList =
   require('../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList')
     .default as jest.Mock;
@@ -532,17 +535,18 @@ describe('PlatformLineage Component Logic', () => {
   });
 
   describe('Export Functionality', () => {
-    it('should pass export callback in platformHeader', async () => {
+    it('exports through the lineage export button in the platform header', async () => {
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
+
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
-      await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
-      });
-
-      const lineageCall = mockLineage.mock.calls.at(-1);
-      const platformHeader = lineageCall[0].platformHeader;
-
-      expect(platformHeader).toBeDefined();
+      expect(
+        await screen.findByTestId('lineage-export-button')
+      ).toBeInTheDocument();
     });
   });
 
@@ -568,34 +572,41 @@ describe('PlatformLineage Component Logic', () => {
     });
   });
 
-  describe('Platform View Query Parameter', () => {
-    it('should default to Service view when not specified', async () => {
-      mockLocationSearch = '';
+  describe('Page header and title', () => {
+    const lastHeader = () => mockPageHeader.mock.calls.at(-1)[0].data.header;
+    const lastPageTitle = () => mockPageLayoutV1.mock.calls.at(-1)[0].pageTitle;
+
+    it.each([
+      ['', 'label.service lineage'],
+      ['?lineageLens=domain', 'label.domain lineage'],
+      ['?lineageLens=dataProduct', 'label.data-product lineage'],
+      // The map reads only lineageLens, so the legacy parameter must not relabel it.
+      ['?platformView=Domain', 'label.service lineage'],
+    ])('names the lens the map shows for %j', async (search, header) => {
+      mockLocationSearch = search;
 
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
+        expect(lastHeader()).toBe(header);
       });
     });
 
-    it('should parse platformView from query params', async () => {
-      mockLocationSearch = '?platformView=Domain';
-
+    it('names the focused entity in the browser tab title', async () => {
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
+        expect(lastPageTitle()).toBe('Customer Dimension lineage');
       });
     });
 
-    it('should handle DataProduct platform view', async () => {
-      mockLocationSearch = '?platformView=DataProduct';
+    it('titles the platform root as Lineage', async () => {
+      mockFqn = '';
 
       render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
 
       await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
+        expect(lastPageTitle()).toBe('label.lineage');
       });
     });
   });

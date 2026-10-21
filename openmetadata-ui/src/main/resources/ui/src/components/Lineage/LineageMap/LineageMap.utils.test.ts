@@ -29,6 +29,7 @@ import {
   getConnectedLineagePathHighlight,
   getDeleteKeyAction,
   getDrillBand,
+  getLensLabelKey,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -472,6 +473,12 @@ describe('LineageMap utils', () => {
     expect(getLensRootLabelKey(LineageLens.DataProduct)).toBe(
       'label.all-data-product-plural'
     );
+  });
+
+  it('names each lens with a translated label', () => {
+    expect(getLensLabelKey(LineageLens.Service)).toBe('label.service');
+    expect(getLensLabelKey(LineageLens.Domain)).toBe('label.domain');
+    expect(getLensLabelKey(LineageLens.DataProduct)).toBe('label.data-product');
   });
 
   it('maps root breadcrumb clicks to the layer scene', () => {

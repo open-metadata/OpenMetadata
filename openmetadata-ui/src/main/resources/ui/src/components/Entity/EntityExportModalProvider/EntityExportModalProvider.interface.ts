@@ -54,14 +54,20 @@ export type ExportData = {
   title?: string;
   documentSelector?: string;
   exportTypes: ExportTypes[];
-  viewport?: ExportViewport;
+  /**
+   * Frames the content of a PNG capture. Called after `beforeCapture` with the
+   * size the capture renders at, so the frame covers what `beforeCapture`
+   * mounted; a frame fitted before that would shrink the content to a corner.
+   */
+  getViewport?: (imageWidth: number, imageHeight: number) => ExportViewport;
   exportConfig?: Partial<PDFLayoutConfig>;
   hideExportModal?: boolean;
   renderEdgesOverlay?: (
     imageWidth: number,
     imageHeight: number,
     padding: number,
-    pixelRatio: number
+    pixelRatio: number,
+    viewport?: ExportViewport
   ) => HTMLCanvasElement | null;
   /**
    * Awaited before a PNG capture clones `documentSelector`, so the page can

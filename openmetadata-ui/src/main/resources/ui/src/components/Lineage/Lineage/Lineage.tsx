@@ -130,6 +130,7 @@ import { addBaseNodeDepthToNodes } from '../../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../../utils/TableClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
+import { ExportViewport } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import '../../Entity/EntityLineage/entity-lineage.style.less';
 import { LineageConfig } from '../../Entity/EntityLineage/EntityLineage.interface';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -1026,46 +1027,55 @@ export const Lineage = ({
         return;
       }
 
-      const effectiveExportTypes = isPlatformLineage
-        ? [ExportTypes.PNG]
-        : exportTypes;
-      const includePNG = effectiveExportTypes.includes(ExportTypes.PNG);
-      const exportViewport = includePNG
-        ? getViewportForLineageExport(nodes, LINEAGE_EXPORT_SELECTOR)
-        : undefined;
-
-      showModal({
-        ...(isPlatformLineage
-          ? {
+      // On the Lineage page the lineage map draws the graph and publishes it
+      // to the store, and it exports as a PNG only; the asset tab exports its
+      // own graph in the types asked for.
+      const { graph, fileOptions } = isPlatformLineage
+        ? {
+            graph: useLineageStore.getState(),
+            fileOptions: {
               name: `${t('label.lineage')}_${getCurrentISODate()}`,
               exportTypes: [ExportTypes.PNG],
-            }
-          : {
-              name: entityFqn,
-              exportTypes,
-            }),
+            },
+          }
+        : {
+            graph: { nodes, edges },
+            fileOptions: { name: entityFqn, exportTypes },
+          };
+      const { nodes: exportNodes, edges: exportEdges } = graph;
+      const includePNG = fileOptions.exportTypes.includes(ExportTypes.PNG);
+
+      showModal({
+        ...fileOptions,
         title: t('label.lineage'),
         documentSelector: LINEAGE_EXPORT_SELECTOR,
-        viewport: exportViewport,
-        renderEdgesOverlay:
-          includePNG && exportViewport
-            ? (imageWidth, imageHeight, padding, pixelRatio) => {
-                const nodeMap = new Map(nodes.map((n) => [n.id, n]));
-                const { columnsInCurrentPages } = useLineageStore.getState();
-
-                return drawEdgesForExport(
-                  edges,
-                  nodeMap,
-                  exportViewport,
-                  imageWidth,
-                  imageHeight,
-                  padding,
-                  pixelRatio,
-                  columnsInCurrentPages
-                );
-              }
-            : undefined,
         ...(includePNG && {
+          getViewport: (imageWidth: number, imageHeight: number) =>
+            getViewportForLineageExport(exportNodes, imageWidth, imageHeight),
+          renderEdgesOverlay: (
+            imageWidth: number,
+            imageHeight: number,
+            padding: number,
+            pixelRatio: number,
+            viewport?: ExportViewport
+          ) => {
+            if (!viewport) {
+              return null;
+            }
+            const nodeMap = new Map(exportNodes.map((n) => [n.id, n]));
+            const { columnsInCurrentPages } = useLineageStore.getState();
+
+            return drawEdgesForExport(
+              exportEdges,
+              nodeMap,
+              viewport,
+              imageWidth,
+              imageHeight,
+              padding,
+              pixelRatio,
+              columnsInCurrentPages
+            );
+          },
           // The canvases leave off-screen nodes out of the DOM. Mount them
           // for the capture, which clones the DOM, so the image holds every
           // node and not only the ones in view.
@@ -2185,12 +2195,17 @@ export const Lineage = ({
   // Mirror the still-local graph state (`useMapBasedNodesEdges`) to the store
   // so store-only consumers (LineageOverlays, Phase-D-migrated components)
   // read the same nodes/edges `<Lineage />` is rendering instead of defaults.
+  // On the Lineage page the lineage map renders the graph and publishes it
+  // itself; the classic graph here stays empty and would overwrite it.
   useEffect(() => {
+    if (isPlatformLineageProp) {
+      return;
+    }
     const store = useLineageStore.getState();
     store.setNodes(nodes);
     store.setEdges(edges);
     store.setColumnEdges(columnEdges);
-  }, [nodes, edges, columnEdges]);
+  }, [isPlatformLineageProp, nodes, edges, columnEdges]);
 
   // Mirror the still-local fetch-lifecycle state to the store for the same
   // reason.

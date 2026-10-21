@@ -85,6 +85,30 @@ describe('LineageConfigPage', () => {
     });
   });
 
+  it('keeps the settings the form does not edit', async () => {
+    const storedConfig = {
+      ...savedConfig,
+      graphPerformanceConfig: { enableCaching: false, cacheTTLSeconds: 300 },
+    };
+    (getSettingsByType as jest.Mock).mockResolvedValue(storedConfig);
+
+    await act(async () => {
+      render(<LineageConfigPage pageTitle="lineage" />);
+    });
+
+    fireEvent.change(screen.getByTestId('field-upstream'), {
+      target: { value: '1' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(updateSettingsConfig).toHaveBeenCalledWith({
+      config_type: 'lineageSettings',
+      config_value: { ...storedConfig, upstreamDepth: 1 },
+    });
+  });
+
   it('rejects a negative depth', async () => {
     await act(async () => {
       render(<LineageConfigPage pageTitle="lineage" />);

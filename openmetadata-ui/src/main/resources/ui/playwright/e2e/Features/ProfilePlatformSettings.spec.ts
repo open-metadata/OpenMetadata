@@ -437,12 +437,19 @@ test.describe(
     });
 
     test('lineage: saves depths and layer', async ({ page }) => {
+      // The form does not edit it, but the settings PUT replaces the whole
+      // value, so the save has to send it back.
+      const graphPerformanceConfig = {
+        enableCaching: false,
+        cacheTTLSeconds: 600,
+      };
       const settings = await stubSettingRoundTrip(page, 'lineageSettings', {
         initial: {
           upstreamDepth: 2,
           downstreamDepth: 2,
           lineageLayer: 'EntityLineage',
           pipelineViewMode: 'Node',
+          graphPerformanceConfig,
         },
       });
       await openPlatformSettings(page);
@@ -466,6 +473,7 @@ test.describe(
         downstreamDepth: 2,
         lineageLayer: 'ColumnLevelLineage',
         pipelineViewMode: 'Node',
+        graphPerformanceConfig,
       });
       await expect(page.getByTestId('upstream-depth-value')).toHaveText('4');
       await expect(page.getByTestId('lineage-layer-value')).toHaveText(

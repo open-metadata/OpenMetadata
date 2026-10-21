@@ -10,16 +10,70 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { Edge, Node } from 'reactflow';
+import {
+  ExportTypes,
+  LINEAGE_EXPORT_SELECTOR,
+} from '../../../constants/Export.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { useLineageStore } from '../../../hooks/useLineageStore';
+import { drawEdgesForExport } from '../../../utils/CanvasUtils';
+import { getViewportForLineageExport } from '../../../utils/EntityLineageLayoutUtils';
 import { Lineage } from './Lineage';
+import { useLineageHandlers } from './LineageHandlersContext';
+
+const mockShowModal = jest.fn();
+const EXPORT_VIEWPORT = { x: 4, y: 8, zoom: 0.5 };
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
+
+jest.mock(
+  '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: () => ({ showModal: mockShowModal }),
+  })
+);
+
+// The real helper measures the export element in the DOM, which jsdom does
+// not lay out.
+jest.mock('../../../utils/EntityLineageLayoutUtils', () => ({
+  ...jest.requireActual('../../../utils/EntityLineageLayoutUtils'),
+  getViewportForLineageExport: jest.fn(() => ({ x: 4, y: 8, zoom: 0.5 })),
+}));
+
+jest.mock('../../../utils/CanvasUtils', () => ({
+  ...jest.requireActual('../../../utils/CanvasUtils'),
+  drawEdgesForExport: jest.fn(),
+}));
+
+const MAP_NODES = [
+  { id: 'service:a', position: { x: 0, y: 0 }, data: {} },
+  { id: 'service:b', position: { x: 400, y: 0 }, data: {} },
+] as Node[];
+const MAP_EDGES = [
+  {
+    id: 'scene-edge:service:a->service:b:LAYER',
+    source: 'service:a',
+    target: 'service:b',
+  },
+] as Edge[];
+
+const ExportTrigger = () => {
+  const { onExportClick } = useLineageHandlers();
+
+  return (
+    <button
+      data-testid="trigger-export"
+      onClick={() => onExportClick([ExportTypes.PNG])}>
+      Export
+    </button>
+  );
+};
 
 jest.mock('../../../rest/lineageAPI', () => ({
   getDataQualityLineage: jest.fn(),
@@ -127,6 +181,83 @@ describe('Lineage', () => {
 
       expect(s.entityFqn).toBe('svc.db.s.t');
       expect(s.entityType).toBe(EntityType.TABLE);
+    });
+  });
+
+  describe('on the Lineage page, where the lineage map draws the graph', () => {
+    beforeEach(() => {
+      // The map publishes what it draws; its effects run before this
+      // parent's, so the graph is already in the store when Lineage mounts.
+      useLineageStore.setState({ nodes: MAP_NODES, edges: MAP_EDGES });
+    });
+
+    it("keeps the map's graph in the store", () => {
+      render(
+        <MemoryRouter>
+          <Lineage isPlatformLineage entityFqn="" />
+        </MemoryRouter>
+      );
+
+      expect(useLineageStore.getState().nodes).toEqual(MAP_NODES);
+      expect(useLineageStore.getState().edges).toEqual(MAP_EDGES);
+    });
+
+    it("exports the map's graph as a PNG with its edges and off-screen nodes", async () => {
+      render(
+        <MemoryRouter>
+          <Lineage isPlatformLineage entityFqn="">
+            <ExportTrigger />
+          </Lineage>
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('trigger-export'));
+
+      const options = mockShowModal.mock.calls[0][0];
+
+      expect(options).toEqual(
+        expect.objectContaining({
+          exportTypes: [ExportTypes.PNG],
+          documentSelector: LINEAGE_EXPORT_SELECTOR,
+        })
+      );
+      // The capture asks for the frame once every node is mounted, with the
+      // size it renders at.
+      expect(options.getViewport(8000, 12000)).toEqual(EXPORT_VIEWPORT);
+      expect(getViewportForLineageExport).toHaveBeenCalledWith(
+        MAP_NODES,
+        8000,
+        12000
+      );
+
+      options.renderEdgesOverlay(800, 600, 20, 2, EXPORT_VIEWPORT);
+
+      expect(drawEdgesForExport).toHaveBeenCalledWith(
+        MAP_EDGES,
+        new Map(MAP_NODES.map((node) => [node.id, node])),
+        EXPORT_VIEWPORT,
+        800,
+        600,
+        20,
+        2,
+        expect.anything()
+      );
+
+      // beforeCapture waits two frames for the mounted nodes to paint.
+      jest
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((callback: FrameRequestCallback) => {
+          callback(0);
+
+          return 0;
+        });
+      await options.beforeCapture();
+
+      expect(useLineageStore.getState().renderAllNodes).toBe(true);
+
+      options.afterCapture();
+
+      expect(useLineageStore.getState().renderAllNodes).toBe(false);
     });
   });
 });

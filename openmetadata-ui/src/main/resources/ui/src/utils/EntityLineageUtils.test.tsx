@@ -36,6 +36,7 @@ import {
   centerNodePosition,
   getNodesBoundsReactFlow,
   getViewportForBoundsReactFlow,
+  getViewportForLineageExport,
 } from './EntityLineageLayoutUtils';
 import {
   getConnectedNodesEdges,
@@ -1372,6 +1373,38 @@ describe('Test EntityLineageUtils utility', () => {
         y: -60,
         zoom: 2.2857142857142856,
       });
+    });
+  });
+
+  describe('getViewportForLineageExport', () => {
+    it('fits every node inside the image it is given', () => {
+      const nodes = [
+        { id: 'a', position: { x: 0, y: 0 }, width: 400, height: 100 },
+        { id: 'b', position: { x: 5600, y: 9000 }, width: 400, height: 100 },
+        { id: 'c', position: { x: 2800, y: 4500 }, width: 400, height: 100 },
+      ] as Node[];
+      const imageWidth = 6000;
+      const imageHeight = 9100;
+
+      const { x, y, zoom } = getViewportForLineageExport(
+        nodes,
+        imageWidth,
+        imageHeight
+      );
+
+      nodes.forEach(({ position, width = 0, height = 0 }) => {
+        const left = x + position.x * zoom;
+        const top = y + position.y * zoom;
+
+        expect(left).toBeGreaterThanOrEqual(0);
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(left + width * zoom).toBeLessThanOrEqual(imageWidth);
+        expect(top + height * zoom).toBeLessThanOrEqual(imageHeight);
+      });
+
+      // The image is about the size of the graph, so the graph fills it
+      // rather than sitting shrunk in a corner.
+      expect(zoom).toBeGreaterThan(0.8);
     });
   });
 });
