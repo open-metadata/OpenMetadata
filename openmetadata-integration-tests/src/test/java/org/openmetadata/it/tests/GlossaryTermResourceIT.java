@@ -486,7 +486,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     final String response =
         SdkClients.adminClient()
             .getHttpClient()
-            .execute(HttpMethod.POST, "/v1/glossaryTerms/createMany", requests, String.class);
+            .executeForString(HttpMethod.POST, "/v1/glossaryTerms/createMany", requests);
     return JsonUtils.readObjects(response, GlossaryTerm.class);
   }
 

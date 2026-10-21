@@ -1098,11 +1098,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     final String response =
         SdkClients.adminClient()
             .getHttpClient()
-            .execute(
+            .executeForString(
                 HttpMethod.POST,
                 "/v1/dataQuality/testCases/createMany",
-                List.of(fresh, existing, fresh),
-                String.class);
+                List.of(fresh, existing, fresh));
     final List<TestCase> created = JsonUtils.readObjects(response, TestCase.class);
     assertEquals(List.of(fresh.getName()), created.stream().map(TestCase::getName).toList());
     assertEquals(

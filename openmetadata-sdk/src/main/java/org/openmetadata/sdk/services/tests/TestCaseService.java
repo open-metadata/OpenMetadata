@@ -74,7 +74,7 @@ public class TestCaseService extends EntityServiceBase<TestCase> {
   /** Returns newly created tests, skipping conflicts and rejecting validation errors. */
   public List<TestCase> createMany(List<CreateTestCase> requests) throws OpenMetadataException {
     final String response =
-        httpClient.execute(HttpMethod.POST, basePath + "/createMany", requests, String.class);
+        httpClient.executeForString(HttpMethod.POST, basePath + "/createMany", requests);
     try {
       return objectMapper.readValue(response, new TypeReference<List<TestCase>>() {});
     } catch (JsonProcessingException exception) {
