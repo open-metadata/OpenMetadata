@@ -117,4 +117,3 @@ describe('TeamsRow', () => {
     }
   );
 });
-

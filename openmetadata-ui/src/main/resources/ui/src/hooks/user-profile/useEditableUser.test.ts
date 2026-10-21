@@ -143,8 +143,14 @@ describe('useEditableUser', () => {
 
     let adminSave!: Promise<void>;
     await act(async () => {
-      adminSave = result.current.updateUserDetails({ isAdmin: true }, 'isAdmin');
-      await result.current.updateUserDetails({ description: 'Hi' }, 'description');
+      adminSave = result.current.updateUserDetails(
+        { isAdmin: true },
+        'isAdmin'
+      );
+      await result.current.updateUserDetails(
+        { description: 'Hi' },
+        'description'
+      );
     });
     await act(async () => {
       resolveAdmin({ id: 'u2', name: 'jane', isAdmin: true });
@@ -169,4 +175,3 @@ describe('useEditableUser', () => {
     expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
 });
-

@@ -101,4 +101,3 @@ describe('UserDescriptionRow', () => {
     expect(screen.getByTestId('editor')).toHaveValue('Unsaved draft');
   });
 });
-
