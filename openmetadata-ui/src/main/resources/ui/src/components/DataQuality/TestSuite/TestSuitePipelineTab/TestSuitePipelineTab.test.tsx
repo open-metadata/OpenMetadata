@@ -22,6 +22,7 @@ import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { useAirflowStatus } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
@@ -383,6 +384,32 @@ describe('TestSuite Pipeline component', () => {
 
     expect(screen.getByText('pipeline1')).toBeInTheDocument();
     expect(screen.getByText('pipeline2')).toBeInTheDocument();
+  });
+
+  it('should render pagination when there are pipelines', async () => {
+    await act(async () => {
+      render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+    });
+
+    expect(screen.getByText('Next Page')).toBeInTheDocument();
+  });
+
+  it('should hide pagination when there are no pipelines, even with showPagination', async () => {
+    const pagingState = usePaging();
+    (usePaging as jest.Mock).mockReturnValue({
+      ...pagingState,
+      paging: { total: 0 },
+    });
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      expect(screen.queryByText('Next Page')).not.toBeInTheDocument();
+    } finally {
+      (usePaging as jest.Mock).mockReturnValue(pagingState);
+    }
   });
 
   it('should show error placeholder when airflow is not available', async () => {
