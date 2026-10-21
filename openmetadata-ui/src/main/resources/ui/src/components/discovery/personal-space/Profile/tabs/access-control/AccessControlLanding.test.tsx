@@ -49,6 +49,7 @@ describe('AccessControlLanding', () => {
     render(<AccessControlLanding onNavigate={jest.fn()} />);
 
     expect(screen.getByTestId('access-control-card-roles')).toBeInTheDocument();
+
     ['policies', 'permission-debugger', 'audit-logs'].forEach((id) =>
       expect(
         screen.queryByTestId(`access-control-card-${id}`)
