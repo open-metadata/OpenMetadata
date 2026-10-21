@@ -13,20 +13,6 @@
 @import (reference) '../../styles/variables.less';
 
 .learning-resource-form-drawer {
-  .ant-drawer-header {
-    padding: @padding-md @padding-lg;
-    border-bottom: 1px solid @border-color-1;
-  }
-
-  .ant-drawer-header-title {
-    flex: 1;
-  }
-
-  .ant-drawer-body {
-    padding: var(--om-space-20);
-    background-color: var(--tw-color-bg-primary);
-  }
-
   .drawer-title-container {
     display: flex;
     justify-content: space-between;
@@ -52,11 +38,6 @@
         background-color: @grey-100;
       }
     }
-  }
-
-  .ant-drawer-footer {
-    border-top: 1px solid @border-color-1;
-    padding: @padding-md @padding-lg;
   }
 
   .drawer-footer {
@@ -197,11 +178,11 @@
 
   .ant-select-selection-item,
   .ant-select-item-option-content {
-    .ant-space {
+    :is(.ant-space, .layout-space) {
       display: flex;
       align-items: center;
 
-      .ant-space-item {
+      :is(.ant-space-item, .layout-space-item) {
         display: flex;
         align-items: center;
       }

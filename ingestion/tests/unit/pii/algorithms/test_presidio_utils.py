@@ -8,24 +8,604 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
+import re
 from unittest.mock import Mock, patch
 
 import pytest
-from presidio_analyzer import EntityRecognizer, RecognizerResult
+from presidio_analyzer import EntityRecognizer, RecognizerResult, predefined_recognizers
 from presidio_analyzer.nlp_engine import NlpArtifacts
+from presidio_analyzer.predefined_recognizers import CreditCardRecognizer, IpRecognizer, PhoneRecognizer, UrlRecognizer
 
+from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
+from metadata.generated.schema.type.predefinedRecognizer import Name, PredefinedRecognizer
+from metadata.generated.schema.type.recognizer import Recognizer, RecognizerConfig
+from metadata.pii.algorithms.presidio_recognizer_factory import PresidioRecognizerFactory
 from metadata.pii.algorithms.presidio_utils import (
     MIN_SCORE_FOR_ENHANCEMENT,
+    PrefixedItVatRecognizer,
+    _get_all_pattern_recognizers,
     apply_confidence_threshold,
     build_analyzer_engine,
     context_matches,
     decorate_recognizer,
     enhance_using_context,
     load_nlp_engine,
+    recognizer_factories,
     set_presidio_logger_level,
 )
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
+
+
+def _registered_recognizer(recognizer_class: type[EntityRecognizer]) -> EntityRecognizer:
+    return recognizer_factories.get(recognizer_class, recognizer_class)()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Card 4111111111111111 issued", "4111111111111111"),
+        ("(4111-1111-1111-1111)", "4111-1111-1111-1111"),
+        ("'4111 1111 1111 1111'", "4111 1111 1111 1111"),
+        ("Card 4111111111111111 2025", "4111111111111111"),
+        ("4111111111111111 2025", "4111111111111111"),
+        ("4111111111111111" + " " * 2028 + "2025", "4111111111111111"),
+        ("4322 7148 2639 4388 390", "4322 7148 2639 4388 390"),
+        ("4111 1111 1111 1111 2025", "4111 1111 1111 1111"),
+        ("3782 822463 10005", "3782 822463 10005"),
+        ("6221 2600 0000 0000 001", "6221 2600 0000 0000 001"),
+        ("4222222222222", "4222222222222"),
+        pytest.param("50180000000009", "50180000000009", id="maestro-14-compact"),
+        ("4000000000000000006", "4000000000000000006"),
+        ("4991123456788", "4991123456788"),
+        ("4930123456786", "4930123456786"),
+        ("4989123456782", "4989123456782"),
+        ("é 4111111111111111 and 5555555555554444", "4111111111111111"),
+    ],
+)
+def test_card_results_use_original_candidate_spans(text, expected):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+
+    assert any(text[result.start : result.end] == expected for result in results)
+    assert all(result.score == 1.0 for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name == "Credit Card Number" for result in results)
+
+
+@pytest.mark.parametrize(
+    "card",
+    [
+        pytest.param("3056 930902 5904", id="diners-spaces"),
+        pytest.param("3000 000000 0004", id="diners-300-prefix"),
+        pytest.param("3600-000000-0008", id="diners-36-prefix"),
+        pytest.param("3800  000000   0006", id="diners-38-prefix"),
+        pytest.param("3056-930902-5904", id="diners-dashes"),
+        pytest.param("3056  930902  5904", id="diners-repeated-spaces"),
+        pytest.param("3056  930902   5904", id="diners-uneven-spaces"),
+        pytest.param("4111  1111  1111  1111", id="visa-repeated-spaces"),
+        pytest.param("4111  1111   1111    1111", id="visa-uneven-spaces"),
+        pytest.param("3782  822463   10005", id="amex-uneven-spaces"),
+        pytest.param("4322  7148   2639    4388  390", id="visa-19-uneven-spaces"),
+    ],
+)
+def test_grouped_cards_preserve_exact_original_span_and_metadata(card):
+    text = f"é Card {card} issued"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+
+    assert [(result.start, result.end, result.score) for result in results] == [(7, 7 + len(card), 1.0)]
+    assert text[results[0].start : results[0].end] == card
+    assert results[0].recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name
+    assert results[0].analysis_explanation.pattern_name == "Credit Card Number"
+
+
+@pytest.mark.parametrize("year", ["1999", "2025"])
+def test_grouped_card_recovers_only_separate_year_with_original_spacing(year):
+    card = "3056  930902   5904"
+    text = f"Card {card}    {year}"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(5, 5 + len(card), 1.0)]
+
+
+def test_separate_compact_cards_keep_independent_offsets_with_repeated_spaces():
+    text = "30569309025904   4111111111111111"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(0, 14, 1.0), (17, 33, 1.0)]
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "2024-01-15 ",
+        "2024-02-29   ",
+        "2000-02-29 ",
+        "Qty 2 ",
+        "Qty 0 ",
+        "Quantity 999999999999999999999999 ",
+        "qTy 002   ",
+        "QUANTITY 12 ",
+        "Quantity\t2 ",
+    ],
+)
+@pytest.mark.parametrize(
+    "card",
+    [
+        "4111111111111111",
+        "4111 1111 1111 1111",
+        "4111-1111-1111-1111",
+        "3056  930902   5904",
+        "4322 7148 2639 4388 390",
+    ],
+)
+def test_card_recovers_complete_remainder_after_explicit_prefix(prefix, card):
+    text = f"é {prefix}{card} issued"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+    start = 2 + len(prefix)
+    assert [(result.start, result.end, result.score) for result in results] == [(start, start + len(card), 1.0)]
+    assert results[0].recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name
+    assert results[0].analysis_explanation.pattern_name == "Credit Card Number"
+
+
+@pytest.mark.parametrize(
+    "prefix",
+    [
+        "2023-02-29 ",
+        "1900-02-29 ",
+        "2024-02-30 ",
+        "2024-13-01 ",
+        "0000-01-01 ",
+        "2024-1-15 ",
+        "1234 ",
+        "2 ",
+        "Qty -2 ",
+        "Qty +2 ",
+        "Qty 2.5 ",
+        "xQty 2 ",
+        "Qty_2 ",
+        "Quantity2 ",
+        "Phone +2 ",
+    ],
+)
+def test_card_rejects_unapproved_numeric_prefix(prefix):
+    assert _registered_recognizer(CreditCardRecognizer).analyze(prefix + "4111111111111111", ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("prefix", ["2024-01-15 ", "Qty 2 ", "Quantity 12 "])
+@pytest.mark.parametrize(
+    "remainder",
+    [
+        "4111111111111112",
+        "4111-1111 1111-1111",
+        "4111111111111111 123",
+        "4111 1111 1111 1111 123",
+        "4111111111111111 2025",
+        "41 12 34 56 78 90 12 38",
+        "+ 4111111111111111",
+        "x4111111111111111",
+        "4111111111111111_suffix",
+    ],
+)
+def test_card_prefix_recovery_requires_entire_valid_remainder(prefix, remainder):
+    assert _registered_recognizer(CreditCardRecognizer).analyze(prefix + remainder, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("separator", ["\t", "\n", "\r\n", "\u00a0"])
+@pytest.mark.parametrize("prefix", ["2024-01-15", "2023-02-29", "Qty 2", "Quantity 12"])
+def test_card_preserves_independent_candidate_after_whitespace(prefix, separator):
+    text = f"é {prefix}{separator}4111111111111111"
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end) for result in results] == [(len(text) - 16, len(text))]
+
+
+@pytest.mark.parametrize("length", [5000, 5001])
+def test_card_prefix_recovery_preserves_candidate_bound(length):
+    prefix, card = "2024-01-15", "4111111111111111"
+    text = prefix + " " * (length - len(prefix) - len(card)) + card
+    results = _registered_recognizer(CreditCardRecognizer).analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end) for result in results] == (
+        [(length - len(card), length)] if length == 5000 else []
+    )
+
+
+@pytest.mark.parametrize("card", ["4939323083746", "4924867307503760", "4930582239178"])
+def test_valid_card_is_not_vetoed_by_phone_overlap(card):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(f"Reference {card} recorded", ["CREDIT_CARD"])
+    assert [(result.start, result.end, result.score) for result in results] == [(10, 10 + len(card), 1.0)]
+
+
+def test_competing_phone_and_card_evidence_remain_independent():
+    value = "4991123456788"
+    card = _registered_recognizer(CreditCardRecognizer)
+    phone = PhoneRecognizer()
+    assert [(result.start, result.end, result.score) for result in card.analyze(value, ["CREDIT_CARD"])] == [
+        (0, len(value), 1.0)
+    ]
+    assert any(result.start == 0 and result.end == len(value) for result in phone.analyze(value, ["PHONE_NUMBER"]))
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "4111 1111 1111 1111 123",
+        "4322 7148 2639 4388 391",
+    ],
+)
+def test_card_does_not_recover_prefix_from_plausible_complete_candidate(text):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_compact_card_followed_by_distant_year_within_preprocessing_limit(length):
+    card = "4111111111111111"
+    text = card + " " * (length - len(card) - len("2025")) + "2025"
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    results = recognizer.analyze(text, ["CREDIT_CARD"])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == [(0, 16, card)]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        pytest.param("5018  000000   0009", id="maestro-14-grouping-not-expanded"),
+        pytest.param("3056  930902   5905", id="diners-wrong-checksum"),
+        pytest.param("4111  1111   1111  1112", id="visa-wrong-checksum"),
+        pytest.param("3056-930902 5904", id="diners-mixed-separators"),
+        pytest.param("3056--930902--5904", id="diners-repeated-dashes"),
+        pytest.param("3056\t930902\t5904", id="diners-tabs"),
+        pytest.param("3056\n930902\n5904", id="diners-newlines"),
+        pytest.param("+ 3056  930902   5904", id="diners-plus-phone"),
+        pytest.param("1234  3056  930902   5904", id="diners-numeric-prefix"),
+        pytest.param("3056  930902   5904  123", id="diners-short-suffix"),
+        pytest.param("4111  1111   1111  1111  123", id="visa-short-suffix"),
+        pytest.param("4322  7148   2639  4388  391", id="visa-19-invalid-complete"),
+        pytest.param("Scores 41  12   34  56 78 90 12 38 final", id="uneven-score-list"),
+        pytest.param("Batch 5  312   34567  8901233 done", id="uneven-batch-groups"),
+        "4111111111111112",
+        "4111-1111-1111-1112",
+        "x4111111111111111",
+        "41111111111111111",
+        "4111--1111--1111--1111",
+        "1234 4111111111111111",
+        "4111111111111111.25",
+        "0.4111111111111111",
+        "4111111111111111e2",
+        "4111111111111111_suffix",
+        "+49 1512 3456787",
+        "Call me on +49 1512 3456787 tomorrow",
+        "+ 49 1512 3456787",
+        "+ 4111111111111111",
+        ("+" + " " * 20 + "4111111111111111"),
+        "Scores 41 12 34 56 78 90 12 38 final",
+        "Batch 5 312 34567 8901233 done",
+        "4111-1111 1111-1111",
+        "4111 1111 1111 1111 123 45",
+    ],
+)
+def test_card_rejects_invalid_enclosing_candidate(text):
+    recognizer = _registered_recognizer(CreditCardRecognizer)
+    assert recognizer.analyze(text, ["CREDIT_CARD"]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected", "score"),
+    [
+        (UrlRecognizer, "URL", "Visit https://example.com/a.b?x=1&y=2.", "https://example.com/a.b?x=1&y=2", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/a?value=wow!", "https://example.com/a?value=wow!", 0.6),
+        (UrlRecognizer, "URL", "https://example.com/v1;", "https://example.com/v1;", 0.6),
+        (UrlRecognizer, "URL", "https://example.com#section!", "https://example.com#section!", 0.6),
+        (UrlRecognizer, "URL", "https://example.company/path", "https://example.company/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.community/path", "https://example.community/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.international/path", "https://example.international/path", 0.6),
+        (UrlRecognizer, "URL", "https://example.com:8443/path", "https://example.com:8443/path", 0.6),
+        (UrlRecognizer, "URL", "Visit https://example.org!", "https://example.org", 0.6),
+        (UrlRecognizer, "URL", "https://example.org/a://b", "https://example.org/a://b", 0.6),
+        (UrlRecognizer, "URL", "HTTPS://example.com/path", "HTTPS://example.com/path", 0.6),
+        (UrlRecognizer, "URL", "('http://example.org/a(b)c')", "http://example.org/a(b)c", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path.>", "https://example.com/path.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com/path,>", "https://example.com/path,", 0.6),
+        (UrlRecognizer, "URL", "'https://example.com/path,'", "https://example.com/path,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.5:8080/health", "10.0.0.5", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1/index.html", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/file", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/share", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "src_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "client_ip:10.0.0.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:10.0.0.1:65535/health", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/abc", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/abc", "10.1.2.3", 0.6),
+        (UrlRecognizer, "URL", 'He said "visit https://example.com."', "https://example.com", 0.6),
+        (UrlRecognizer, "URL", "'example.com,'", "example.com", 0.5),
+        (UrlRecognizer, "URL", "<https://example.com.>", "https://example.com", 0.6),
+        (UrlRecognizer, "URL", '"https://example.com/?x=1."', "https://example.com/?x=1.", 0.6),
+        (UrlRecognizer, "URL", "<https://example.com#part,>", "https://example.com#part,", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://@10.0.0.1:8080/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://" + "u" * 1000 + "@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://user:pass@10.0.0.1:8080/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user%40name@10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "smb://10.0.0.1/123", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24foo", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/2025.json", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8.1", "10.0.0.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "IP 2001:db8::1 recorded", "2001:db8::1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "é 192.168.1.1 and 2001:db8::1", "192.168.1.1", 0.6),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            "2001:0db8:0000:0000:0000:0000:0000:0001",
+            0.6,
+        ),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%eth0", "fe80::1%eth0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:192.0.2.128", "::ffff:192.0.2.128", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1/123", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "http://192.168.1.1:8080/path", "192.168.1.1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234", "10.1.2.3", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8", "10.0.0.0", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/64", "2001:db8::1", 0.6),
+        (IpRecognizer, "IP_ADDRESS", "::", "::", 0.1),
+    ],
+    ids=[
+        "url-prose-dot",
+        "url-query-exclamation",
+        "url-path-semicolon",
+        "url-fragment-exclamation",
+        "url-company-suffix",
+        "url-community-suffix",
+        "url-international-suffix",
+        "url-port",
+        "url-host-exclamation",
+        "url-scheme-in-path",
+        "url-uppercase-scheme",
+        "url-balanced-parentheses",
+        "url-delimited-path-dot",
+        "url-delimited-path-comma",
+        "url-quoted-path-comma",
+        "ipv4-port-health-path",
+        "ipv4-html-path",
+        "ftp-ipv4-path",
+        "smb-ipv4-path",
+        "ipv4-src-label",
+        "ipv4-client-label",
+        "ipv4-label-port-path",
+        "ipv4-nonnumeric-path",
+        "ipv4-port-nonnumeric-path",
+        "url-quoted-prose-bare-host-dot",
+        "url-quoted-bare-host-comma",
+        "url-delimited-bare-host-dot",
+        "url-quoted-query-dot",
+        "url-delimited-fragment-comma",
+        "ftp-ipv4-numeric-path",
+        "ftp-user-ipv4-numeric-path",
+        "ftp-empty-user-ipv4-numeric-path",
+        "smb-empty-user-ipv4-port-numeric-path",
+        "ftp-long-user-ipv4-numeric-path",
+        "smb-password-ipv4-port-numeric-path",
+        "ftp-encoded-user-ipv4-numeric-path",
+        "smb-ipv4-numeric-path",
+        "ipv4-numeric-word-path",
+        "ipv4-cidr-looking-json-path",
+        "ipv4-decimal-path",
+        "ipv6-prose",
+        "ipv4-unicode-offset",
+        "ipv6-expanded",
+        "ipv6-zone",
+        "ipv6-mapped",
+        "http-ipv4-numeric-path",
+        "http-ipv4-port-path",
+        "ipv4-port",
+        "ipv4-cidr",
+        "ipv6-cidr",
+        "ipv6-unspecified",
+    ],
+)
+def test_network_results_use_complete_original_candidate(recognizer_class, entity, text, expected, score):
+    recognizer = _registered_recognizer(recognizer_class)
+    results = recognizer.analyze(text, [entity])
+
+    assert any(text[result.start : result.end] == expected and result.score == score for result in results)
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(result.analysis_explanation.pattern_name for result in results)
+
+
+@pytest.mark.parametrize("length", [2049, 4999, 5000])
+def test_url_candidate_within_preprocessing_limit_keeps_full_span(length):
+    url = "https://example.com/" + "a" * (length - len("https://example.com/"))
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(url, ["URL"])
+    assert [(result.start, result.end, url[result.start : result.end]) for result in results] == [(0, length, url)]
+
+
+def test_url_candidate_above_preprocessing_limit_is_bounded():
+    url = "https://example.com/" + "a" * (5001 - len("https://example.com/"))
+    recognizer = _registered_recognizer(UrlRecognizer)
+    assert recognizer.analyze(url, ["URL"]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (UrlRecognizer, "URL", "http://app.internal.local/path"),
+        (UrlRecognizer, "URL", "https://example.com.invalid/path"),
+        (UrlRecognizer, "URL", "user@example.com"),
+        (UrlRecognizer, "URL", "https://example.org:abc/path"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.999"),
+        (IpRecognizer, "IP_ADDRESS", "x192.168.1.1"),
+        (IpRecognizer, "IP_ADDRESS", "192.168.1.1-invalid"),
+        (IpRecognizer, "IP_ADDRESS", "fe80::1%bad-scope"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:65536"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:abc"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/33"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.0/8/24"),
+        (IpRecognizer, "IP_ADDRESS", "10.1.2.3:51234/8"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/99999"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24:80"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/24/path"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/" + "9" * 5000),
+        (IpRecognizer, "IP_ADDRESS", "abc:10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "bad_key:::ffff:999.10.0.0.1"),
+        (IpRecognizer, "IP_ADDRESS", "dead_key:2001:db8::1g"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "1ftp://user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "not_ftp://user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp:/user@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user/path@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user?name@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user#name@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user@@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "ftp://user%ZZ@10.0.0.1/123"),
+        (IpRecognizer, "IP_ADDRESS", "10.0.0.1/8:12"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::10.0.0.1g"),
+        (IpRecognizer, "IP_ADDRESS", "2001:db8::1/129"),
+    ],
+)
+def test_network_rejects_invalid_longer_candidate(recognizer_class, entity, text):
+    recognizer = _registered_recognizer(recognizer_class)
+    assert recognizer.analyze(text, [entity]) == []
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "expected"),
+    [
+        (
+            CreditCardRecognizer,
+            "CREDIT_CARD",
+            "é 4111111111111111 5555555555554444",
+            [(2, 18, "4111111111111111"), (19, 35, "5555555555554444")],
+        ),
+        (
+            IpRecognizer,
+            "IP_ADDRESS",
+            "é 192.168.1.1 2001:db8::1",
+            [(2, 13, "192.168.1.1"), (14, 25, "2001:db8::1")],
+        ),
+        (
+            UrlRecognizer,
+            "URL",
+            "https://example.com/x https://example.org/y",
+            [(0, 21, "https://example.com/x"), (22, 43, "https://example.org/y")],
+        ),
+    ],
+)
+def test_multiple_candidates_have_exact_independent_spans(recognizer_class, entity, text, expected):
+    recognizer = _registered_recognizer(recognizer_class)
+    results = recognizer.analyze(text, [entity])
+    assert [(result.start, result.end, text[result.start : result.end]) for result in results] == expected
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "4" * 10000),
+        (IpRecognizer, "IP_ADDRESS", "f:" * 5000),
+        (UrlRecognizer, "URL", "https://example.com/" + "a" * 5000),
+    ],
+)
+def test_pathological_candidate_runs_are_bounded(recognizer_class, entity, text):
+    recognizer = _registered_recognizer(recognizer_class)
+    assert recognizer.analyze(text, [entity]) == []
+
+
+def test_legacy_analyzer_uses_complete_candidate_spans():
+    analyzer = build_analyzer_engine()
+    text = "Card 4111-1111-1111-1111, https://example.company/a and 2001:db8::1"
+    results = analyzer.analyze(text, language="en", entities=["CREDIT_CARD", "URL", "IP_ADDRESS"])
+    assert {(result.entity_type, text[result.start : result.end]) for result in results} == {
+        ("CREDIT_CARD", "4111-1111-1111-1111"),
+        ("URL", "https://example.company/a"),
+        ("IP_ADDRESS", "2001:db8::1"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("recognizer_class", "entity", "text", "candidate"),
+    [
+        (CreditCardRecognizer, "CREDIT_CARD", "é 4111-1111-1111-1111", "4111111111111111"),
+        (IpRecognizer, "IP_ADDRESS", "é 2001:db8::1/64", "2001:db8::1"),
+    ],
+    ids=["normalized-card", "ipv6-with-cidr"],
+)
+def test_candidate_analysis_preserves_upstream_results_and_artifact_coordinates(
+    monkeypatch, recognizer_class, entity, text, candidate
+):
+    upstream_analyze = recognizer_class.analyze
+    upstream_results = []
+    coordinates = []
+    candidate_artifacts = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        candidate_artifacts.append(nlp_artifacts)
+        assert text == candidate
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        upstream_results.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(recognizer_class, "analyze", capture)
+    recognizer = _registered_recognizer(recognizer_class)
+    engine = load_nlp_engine()
+    engine.load()
+    artifacts = engine.process_text(text, "en")
+    results = recognizer.analyze(text, [entity], artifacts)
+
+    assert candidate_artifacts == [None]
+    assert [(result.start, result.end) for result in upstream_results] == coordinates == [(0, len(candidate))]
+    assert len(results) == 1
+    assert results[0] is not upstream_results[0]
+    assert (results[0].start, results[0].end) == (2, 21 if entity == "CREDIT_CARD" else 13)
+    assert results[0].score == upstream_results[0].score
+    assert results[0].recognition_metadata == upstream_results[0].recognition_metadata
+    assert results[0].analysis_explanation == upstream_results[0].analysis_explanation
+
+
+def test_url_expansion_does_not_mutate_upstream_seed_offsets(monkeypatch):
+    upstream_analyze = UrlRecognizer.analyze
+    seeds = []
+    coordinates = []
+
+    def capture(self, text, entities, nlp_artifacts=None, regex_flags=None):
+        results = upstream_analyze(self, text, entities, nlp_artifacts, regex_flags)
+        seeds.extend(results)
+        coordinates.extend((result.start, result.end) for result in results)
+        return results
+
+    monkeypatch.setattr(UrlRecognizer, "analyze", capture)
+    text = '"https://example.com/a"'
+    results = _registered_recognizer(UrlRecognizer).analyze(text, ["URL"])
+    assert [(seed.start, seed.end) for seed in seeds] == coordinates == [(0, len(text))]
+    assert [(result.start, result.end) for result in results] == [(1, len(text) - 1)]
+    assert results[0] is not seeds[0]
+    assert results[0].score == seeds[0].score
+    assert results[0].recognition_metadata == seeds[0].recognition_metadata
+    assert results[0].analysis_explanation == seeds[0].analysis_explanation
+
+
+def test_url_seed_and_public_host_rules_remain_compatible_with_presidio():
+    upstream = UrlRecognizer()
+    value = '"https://example.com/a"'
+    seeds = upstream.analyze(value, ["URL"])
+    assert len(seeds) == 1
+    assert value[seeds[0].start] == '"'
+    assert seeds[0].analysis_explanation.pattern_name == "Quoted URL"
+    assert re.fullmatch(upstream.BASE_URL_REGEX, "example.company", re.IGNORECASE)
+    assert not re.fullmatch(upstream.BASE_URL_REGEX, "app.internal.local", re.IGNORECASE)
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(value, ["URL"])
+    assert [(value[result.start : result.end], result.score) for result in results] == [
+        ("https://example.com/a", seeds[0].score)
+    ]
 
 
 def test_analyzer_supports_all_expected_pii_entities():
@@ -505,3 +1085,278 @@ class TestDecorateRecognizer:
         composed = decorate_recognizer()
 
         assert callable(composed)
+
+
+def test_keyed_network_candidates_keep_unicode_offsets_and_metadata():
+    text = "é src_ip:10.0.0.1/path; client_ip:192.168.1.1:8080/health"
+    recognizer = _registered_recognizer(IpRecognizer)
+    results = recognizer.analyze(text, ["IP_ADDRESS"])
+    assert [(result.start, result.end) for result in results] == [(9, 17), (34, 45)]
+    assert [text[result.start : result.end] for result in results] == ["10.0.0.1", "192.168.1.1"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )
+
+
+def test_delimited_bare_urls_keep_independent_unicode_spans():
+    text = 'é "https://example.com." and <https://example.org,>'
+    recognizer = _registered_recognizer(UrlRecognizer)
+    results = recognizer.analyze(text, ["URL"])
+    assert [(result.start, result.end) for result in results] == [(3, 22), (30, 49)]
+    assert [text[result.start : result.end] for result in results] == ["https://example.com", "https://example.org"]
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_NAME_KEY] == recognizer.name for result in results
+    )
+    assert all(
+        result.recognition_metadata[RecognizerResult.RECOGNIZER_IDENTIFIER_KEY] == recognizer.id for result in results
+    )
+
+
+# NRIC/FIN values, including F2601815M, are synthetic checksum fixtures, not issued identities.
+def configured(name: Name, language: ClassificationLanguage, context: list[str] | None = None):
+    recognizer = PresidioRecognizerFactory.create_recognizer(
+        Recognizer(
+            name=f"test_{name.value}",
+            recognizerConfig=RecognizerConfig(
+                root=PredefinedRecognizer(
+                    type="predefined",
+                    name=name,
+                    supportedLanguage=language,
+                    context=context,
+                )
+            ),
+        )
+    )
+    assert recognizer is not None
+    return recognizer
+
+
+@pytest.mark.parametrize("value", ["S1234567D", "T1234567J", "F2601815M", "G1234567X", "m7654321j"])
+def test_valid_fin_checksum_keeps_pattern_score_without_context(value):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en, context=["nric"])
+    text = f"sku: {value}; done"
+    results = recognizer.analyze(text, recognizer.supported_entities)
+    assert [(result.entity_type, result.score, text[result.start : result.end]) for result in results] == [
+        ("SG_NRIC_FIN", 0.5, value)
+    ]
+
+
+@pytest.mark.parametrize(
+    "name,language,value",
+    [
+        (Name.IbanRecognizer, ClassificationLanguage.en, "GB82 WEST 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, ClassificationLanguage.es, "12345678Z"),
+        (Name.EsNieRecognizer, ClassificationLanguage.es, "X1234567L"),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "T15LP0010D"),
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51 824 753 556"),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004 085 616"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "T1234567J"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "F1234567N"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "G1234567X"),
+        (Name.SgFinRecognizer, ClassificationLanguage.en, "M1234567K"),
+    ],
+)
+def test_canonical_and_other_prefixes(name, language, value):
+    recognizer = configured(name, language)
+    assert [
+        value[result.start : result.end] for result in recognizer.analyze(value, recognizer.supported_entities)
+    ] == [value]
+
+
+@pytest.mark.parametrize(
+    "prefix,valid,wrong", [("S", "D", "E"), ("T", "J", "Z"), ("F", "N", "M"), ("G", "X", "W"), ("M", "K", "X")]
+)
+def test_nric_prefix_specific_checksum(prefix, valid, wrong):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    assert len(recognizer.analyze(f"{prefix}1234567{valid}", recognizer.supported_entities)) == 1
+    assert recognizer.analyze(f"{prefix}1234567{wrong}", recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "digits,check_letter",
+    [
+        ("0000000", "J"),
+        ("0000001", "I"),
+        ("0000002", "G"),
+        ("0000003", "E"),
+        ("0000004", "C"),
+        ("0000005", "A"),
+        ("0000006", "Z"),
+        ("0000007", "H"),
+        ("0000008", "F"),
+        ("0000009", "D"),
+        ("0000027", "B"),
+    ],
+)
+def test_nric_s_series_all_checksum_remainders(digits, check_letter):
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    value = f"S{digits}{check_letter}"
+    assert len(recognizer.analyze(value, recognizer.supported_entities)) == 1
+    assert recognizer.analyze(f"S{digits}X", recognizer.supported_entities) == []
+
+
+def test_repeated_identifiers_return_distinct_original_spans():
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.en)
+    value = "S1234567D"
+    text = f"{value}; {value}"
+    assert [(result.start, result.end) for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        (0, len(value)),
+        (len(value) + 2, len(text)),
+    ]
+
+
+def test_iban_in_prose_preserves_complete_span_and_next_candidate():
+    recognizer = configured(Name.IbanRecognizer, ClassificationLanguage.en)
+    text = "Deposit GB82 WEST 1234 5698 7654 32 today; DE89370400440532013000 tomorrow."
+    assert [text[result.start : result.end] for result in recognizer.analyze(text, recognizer.supported_entities)] == [
+        "GB82 WEST 1234 5698 7654 32",
+        "DE89370400440532013000",
+    ]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "GB 82 WEST 1234 5698 7654 32",
+        "GB-82-WEST-1234-5698-7654-32",
+    ],
+)
+def test_iban_existing_country_separator_forms(value):
+    recognizer = configured(Name.IbanRecognizer, ClassificationLanguage.en)
+    assert [
+        value[result.start : result.end] for result in recognizer.analyze(value, recognizer.supported_entities)
+    ] == [value]
+
+
+@pytest.mark.parametrize(
+    "name,expected_language",
+    [
+        (Name.EsNifRecognizer, "en"),
+        (Name.EsNieRecognizer, "en"),
+        (Name.ItVatCodeRecognizer, "en"),
+        (Name.SgFinRecognizer, "en"),
+    ],
+)
+def test_omitted_language_uses_schema_default(name, expected_language):
+    recognizer = PresidioRecognizerFactory.create_recognizer(
+        Recognizer(
+            name=f"default_{name.value}",
+            recognizerConfig=RecognizerConfig(root=PredefinedRecognizer(type="predefined", name=name)),
+        )
+    )
+    assert recognizer is not None
+    assert recognizer.supported_language == expected_language
+
+
+def test_legacy_registry_uses_the_validated_fin_adapter():
+    recognizer = next(rec for rec in _get_all_pattern_recognizers() if rec.name == "ValidatedSgFinRecognizer")
+    assert recognizer.analyze("S1234567E", recognizer.supported_entities) == []
+    assert len(recognizer.analyze("S1234567D", recognizer.supported_entities)) == 1
+
+
+@pytest.mark.parametrize(
+    "name,language,value,score",
+    [
+        (Name.IbanRecognizer, ClassificationLanguage.en, "gb82 west 1234 5698 7654 32", 0.5),
+        (Name.EsNifRecognizer, ClassificationLanguage.es, "12345678z", 0.5),
+        (Name.EsNieRecognizer, ClassificationLanguage.es, "x1234567l", 0.5),
+        (Name.SgUenRecognizer, ClassificationLanguage.en, "t15lp0010d", 0.3),
+        (Name.AuAbnRecognizer, ClassificationLanguage.en, "51-824-753-556", 0.3),
+        (Name.AuAcnRecognizer, ClassificationLanguage.en, "004-085-616", 0.3),
+        (Name.ItVatCodeRecognizer, ClassificationLanguage.it, "IT12345678903", 1.0),
+    ],
+)
+def test_identifier_variants_preserve_span_and_require_context(name, language, value, score):
+    recognizer = configured(name, language)
+    text = f"value: {value}; done"
+    results = recognizer.analyze(text, recognizer.supported_entities)
+    assert [(text[result.start : result.end], result.score) for result in results] == [(value, score)]
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        (Name.IbanRecognizer, "GB82 WEST 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, "12345678Z"),
+        (Name.EsNieRecognizer, "X1234567L"),
+        (Name.SgUenRecognizer, "T15LP0010D"),
+        (Name.AuAbnRecognizer, "51 824 753 556"),
+        (Name.AuAbnRecognizer, "51824753556"),
+        (Name.AuAcnRecognizer, "004 085 616"),
+        (Name.AuAcnRecognizer, "004085616"),
+        (Name.ItVatCodeRecognizer, "12345678903"),
+        (Name.ItVatCodeRecognizer, "IT 12345678903"),
+    ],
+)
+def test_canonical_identifier_scores_and_spans_match_upstream(name, value):
+    upstream = getattr(predefined_recognizers, name.value)()
+    adapted = configured(name, ClassificationLanguage.en)
+    expected = upstream.analyze(value, upstream.supported_entities)
+    actual = adapted.analyze(value, adapted.supported_entities)
+    assert [(r.start, r.end, r.score) for r in actual] == [(r.start, r.end, r.score) for r in expected]
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [
+        (Name.IbanRecognizer, "gb83 west 1234 5698 7654 32"),
+        (Name.EsNifRecognizer, "12345678a"),
+        (Name.EsNieRecognizer, "x1234567a"),
+        (Name.SgUenRecognizer, "t15lp0010x"),
+        (Name.AuAbnRecognizer, "51-824-753-557"),
+        (Name.AuAcnRecognizer, "004-085-617"),
+        (Name.ItVatCodeRecognizer, "IT12345678904"),
+        (Name.ItVatCodeRecognizer, "IT00000000000"),
+        (Name.SgFinRecognizer, "A1234567D"),
+        (Name.SgFinRecognizer, "M7654321M"),
+        (Name.EsNifRecognizer, "12345678\u017f"),
+        (Name.EsNieRecognizer, "X1234567\u212a"),
+        (Name.SgUenRecognizer, "\u017f15LP0010D"),
+        (Name.SgFinRecognizer, "\u017f1234567D"),
+        (Name.SgFinRecognizer, "S1234567\u212a"),
+        (Name.ItVatCodeRecognizer, "İT12345678903"),
+    ],
+)
+def test_invalid_identifier_checksums_and_unicode_lookalikes_are_rejected(name, value):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert recognizer.analyze(value, recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "name,value",
+    [(Name.AuAbnRecognizer, "51-824-753-556"), (Name.AuAcnRecognizer, "004-085-616")],
+)
+@pytest.mark.parametrize("enclosure", ["X{}", "{}9", "_{}", "{}-", "9 {}", "{} - 9", "9 _ {}", "{} 9"])
+def test_new_hyphenated_forms_reject_larger_tokens_and_numeric_runs(name, value, enclosure):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert recognizer.analyze(enclosure.format(value), recognizer.supported_entities) == []
+
+
+@pytest.mark.parametrize(
+    "name,text,value",
+    [
+        (Name.AuAbnRecognizer, "ABN 51 824 753 556 - Acme Pty Ltd", "51 824 753 556"),
+        (Name.AuAbnRecognizer, "ABN 51-824-753-556 - Acme Pty Ltd", "51-824-753-556"),
+        (Name.AuAcnRecognizer, "ACN 004-085-616 _ Acme Pty Ltd", "004-085-616"),
+        (Name.IbanRecognizer, "GB82 WEST 1234 5698 7654 32 - Barclays", "GB82 WEST 1234 5698 7654 32"),
+        (Name.IbanRecognizer, "gb82 west 1234 5698 7654 32 - Barclays", "gb82 west 1234 5698 7654 32"),
+        (Name.ItVatCodeRecognizer, "I paid it 12345678903", "12345678903"),
+    ],
+)
+def test_identifier_in_prose_preserves_upstream_punctuation_handling(name, text, value):
+    recognizer = configured(name, ClassificationLanguage.en)
+    assert [text[r.start : r.end] for r in recognizer.analyze(text, recognizer.supported_entities)] == [value]
+
+
+def test_identifier_factory_preserves_configured_language_and_context():
+    recognizer = configured(Name.SgFinRecognizer, ClassificationLanguage.es, context=["custom_identifier"])
+    assert recognizer.supported_language == "es"
+    assert recognizer.context == ["custom_identifier"]
+    assert recognizer.name == Name.SgFinRecognizer.value
+
+
+def test_vat_validator_rejects_unicode_prefix_before_normalizing():
+    assert PrefixedItVatRecognizer().validate_result("\u0130T12345678903") is False

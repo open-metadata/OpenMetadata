@@ -22,10 +22,7 @@ import {
   ChevronDown,
   ChevronUp,
   MessageDotsCircle,
-  Plus,
-  RefreshCcw01,
   ThumbsUp,
-  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -33,6 +30,7 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
 import React, {
+  SVGProps,
   useCallback,
   useEffect,
   useMemo,
@@ -42,9 +40,13 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import Reactions from '../../../../../components/ActivityFeed/Reactions/Reactions';
+import FeedFieldPath from '../../../../../components/ActivityFeed/Shared/FeedFieldPath/FeedFieldPath';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
-import { ReactionOperation } from '../../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../../enums/reactions.enum';
 import {
   ActivityEvent,
   ActivityEventType,
@@ -61,21 +63,27 @@ import {
   formatDateTime,
   formatDateTimeLong,
 } from '../../../../../utils/date-time/DateTimeUtils';
-import EntityLink from '../../../../../utils/EntityLink';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { ActivityKind, ACTIVITY_TYPE_KIND } from '../activityKind';
+import {
+  ActivityBadge,
+  ACTIVITY_EVENT_BADGE,
+  CONVERSATION_BADGE,
+} from '../activityKind';
 import {
   ACTIVITY_CLOCK_FORMAT,
   ACTIVITY_DATE_FORMAT,
   applyReaction,
   getActivityChange,
   getActivityEventLabel,
-  getActivityTypeKey,
+  getActivityKindType,
   getFeedSortTimestamp,
+  INBOX_ENTITY_ICON_CLASS,
+  INBOX_MESSAGE_CLASS,
+  INBOX_RECESSED_SURFACE_CLASS,
   isSameLocalDay,
   sendReaction,
 } from '../inbox.utils';
@@ -84,6 +92,15 @@ import { writeInboxReactions } from '../useInboxActivity';
 import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
+
+// The core Card's surface and hover. Its hover tint is translucent in dark,
+// so it is laid over the surface, not swapped in for it: swapped, the page
+// shows through and the card darkens instead of lifting.
+const CARD_CLASS = classNames(
+  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
+  'tw:transition-colors tw:hover:border-primary',
+  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
+);
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -151,65 +168,23 @@ const getEventEntity = (
   };
 };
 
-type ActivityBadge = Pick<ActivityKind, 'icon' | 'badgeClassName'>;
-
-const DELETED_BADGE = {
-  icon: Trash01,
-  badgeClassName: 'tw:bg-utility-error-600',
-};
-const CONVERSATION_BADGE = {
-  icon: MessageDotsCircle,
-  badgeClassName: 'tw:bg-utility-gray-600',
-};
-
-// Lifecycle events filter as Other but read better with their own badge.
-const LIFECYCLE_BADGE: Partial<Record<ActivityEventType, ActivityBadge>> = {
-  [ActivityEventType.EntityCreated]: {
-    icon: Plus,
-    badgeClassName: 'tw:bg-utility-success-600',
-  },
-  [ActivityEventType.EntityRestored]: {
-    icon: RefreshCcw01,
-    badgeClassName: 'tw:bg-utility-success-600',
-  },
-  [ActivityEventType.EntityDeleted]: DELETED_BADGE,
-  [ActivityEventType.EntitySoftDeleted]: DELETED_BADGE,
-};
-
-// The badge on the actor's avatar that says what kind of change this is.
+// The badge on the actor's avatar that says what kind of change this is, as the
+// card's sentence names it; a type this UI does not know yet reads as a plain
+// update.
 const getActivityBadge = (activity?: ActivityEvent): ActivityBadge =>
   activity
-    ? LIFECYCLE_BADGE[activity.eventType] ??
-      ACTIVITY_TYPE_KIND[getActivityTypeKey(activity)]
+    ? ACTIVITY_EVENT_BADGE[getActivityKindType(activity)] ??
+      ACTIVITY_EVENT_BADGE[ActivityEventType.EntityUpdated]
     : CONVERSATION_BADGE;
 
-/**
- * Where the asset line points. A column-level change reads "table.column" and
- * links to the column; anything else names and links to the entity itself.
- */
-const getEntityTarget = (
-  entity: EntityReference | undefined,
-  entityName: string | undefined,
-  about: string | undefined
-) => {
-  const isColumn = about ? EntityLink.split(about)[2] === 'columns' : false;
-  const fqn =
-    isColumn && about
-      ? EntityLink.getEntityColumnFqn(about)
-      : entity?.fullyQualifiedName;
+const getEntityPath = (entity: EntityReference | undefined) =>
+  entity?.type && entity.fullyQualifiedName
+    ? entityUtilClassBase.getEntityLink(entity.type, entity.fullyQualifiedName)
+    : undefined;
 
-  return {
-    parent: isColumn ? `${entityName}.` : '',
-    leaf: isColumn && about ? EntityLink.getTableColumnName(about) : entityName,
-    path:
-      entity?.type && fqn
-        ? entityUtilClassBase.getEntityLink(entity.type, fqn)
-        : undefined,
-  };
-};
-
-// "Hide replies" while open; otherwise how many there are.
-const getRepliesToggleLabel = (
+// "Hide replies" while open; otherwise how many there are, or "Reply" while
+// there are none.
+const getThreadButtonLabel = (
   isOpen: boolean,
   count: number,
   t: TFunction
@@ -217,13 +192,78 @@ const getRepliesToggleLabel = (
   if (isOpen) {
     return t('label.hide-reply-plural');
   }
+  if (!count) {
+    return t('label.reply');
+  }
 
   return count === 1
     ? t('label.one-reply')
     : t('label.number-reply-plural', { number: count });
 };
 
-interface RepliesToggleProps {
+// The footer's text buttons: 16px icons in the reaction smiley's color, like
+// the smiley between them, and tighter padding, which alone spaces the row.
+const FOOTER_BUTTON_CLASS =
+  'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
+
+// A toggle (Like, the replies thread) reads brand while it is on: its text and
+// icon, without the link underline a link-colored button draws on hover.
+const TOGGLE_ON_CLASS =
+  'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-fg-brand-primary tw:hover:*:data-icon:text-fg-brand-primary';
+
+// A liked card fills its thumb. Every prop passes through: the Button sizes
+// and colors its icon by the `data-icon` it sets.
+const FilledThumbsUp = (props: SVGProps<SVGSVGElement>) => (
+  <ThumbsUp {...props} fill="currentColor" />
+);
+
+const getLikeLabel = (
+  likeCount: number,
+  isLiked: boolean,
+  t: TFunction
+): string => {
+  if (isLiked) {
+    return t('label.liked-with-count', { count: likeCount });
+  }
+
+  return likeCount
+    ? t('label.like-with-count', { count: likeCount })
+    : t('label.like');
+};
+
+interface LikeButtonProps {
+  likeCount: number;
+  isLiked: boolean;
+  onToggle: () => void;
+}
+
+// Like is the thumbs-up reaction, toggled from its own button.
+const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      aria-pressed={isLiked}
+      // Its icon lines up with the body above, past the button's padding.
+      className={classNames(
+        FOOTER_BUTTON_CLASS,
+        'tw:-ml-2',
+        isLiked && TOGGLE_ON_CLASS
+      )}
+      color="tertiary"
+      data-testid="activity-like"
+      iconLeading={isLiked ? FilledThumbsUp : ThumbsUp}
+      size="sm"
+      onPress={onToggle}>
+      {getLikeLabel(likeCount, isLiked, t)}
+    </Button>
+  );
+};
+
+const getThreadChevron = (isOpen: boolean) =>
+  isOpen ? ChevronUp : ChevronDown;
+
+interface ThreadButtonProps {
   isOpen: boolean;
   count: number;
   // Loaded only once the thread has been opened; until then no faces show.
@@ -231,46 +271,57 @@ interface RepliesToggleProps {
   onToggle: () => void;
 }
 
-// How many replied, and who once they are loaded; stays while the thread is
-// open, so it can close even once its last reply is deleted.
-const RepliesToggle = ({
+/**
+ * The card's one button for its thread: "Reply" while the thread is closed and
+ * has no replies, how many replied (and who, once they are loaded) when it has
+ * some, and "Hide replies" while it is open — so it can close even once its
+ * last reply is deleted.
+ */
+const ThreadButton = ({
   isOpen,
   count,
   replies,
   onToggle,
-}: RepliesToggleProps) => {
+}: ThreadButtonProps) => {
   const { t } = useTranslation();
+  const isReply = !isOpen && !count;
   const replyFaces = uniqBy(replies, ({ author }) => author?.name).slice(
     0,
     MAX_REPLY_FACES
   );
+  const faces = replyFaces.length ? (
+    <span className="tw:flex tw:items-center tw:-space-x-1">
+      {replyFaces.map(({ id, author }) => (
+        <ProfilePicture
+          borderless
+          // An edge of the card's surface parts the overlapping faces.
+          className="tw:outline-2 tw:outline-bg-surface"
+          displayName={author?.displayName}
+          key={id}
+          name={author?.name ?? ''}
+          size="xs"
+        />
+      ))}
+    </span>
+  ) : undefined;
 
-  return count > 0 || isOpen ? (
+  return (
     <Button
       aria-expanded={isOpen}
-      className={classNames({
-        'tw:bg-brand-primary tw:text-brand-secondary': isOpen,
-      })}
+      className={classNames(
+        isReply && FOOTER_BUTTON_CLASS,
+        isOpen && TOGGLE_ON_CLASS,
+        isOpen && 'tw:bg-brand-primary tw:hover:bg-brand-primary'
+      )}
       color="tertiary"
-      data-testid="activity-replies-toggle"
-      iconLeading={
-        <span className="tw:flex tw:items-center tw:-space-x-1">
-          {replyFaces.map(({ id, author }) => (
-            <ProfilePicture
-              displayName={author?.displayName}
-              key={id}
-              name={author?.name ?? ''}
-              size="xs"
-            />
-          ))}
-        </span>
-      }
-      iconTrailing={isOpen ? ChevronUp : ChevronDown}
+      data-testid="activity-reply"
+      iconLeading={isReply ? MessageDotsCircle : faces}
+      iconTrailing={isReply ? undefined : getThreadChevron(isOpen)}
       size="sm"
       onPress={onToggle}>
-      {getRepliesToggleLabel(isOpen, count, t)}
+      {getThreadButtonLabel(isOpen, count, t)}
     </Button>
-  ) : null;
+  );
 };
 
 const getEventTimestamp = (
@@ -335,7 +386,7 @@ const CardMeta = ({
 /**
  * A single Inbox card for a 2.0 activity event or a conversation: actor +
  * action + entity link, the change (or message) body, and a footer with Like,
- * reactions, Reply and a replies toggle that opens the thread inline below.
+ * reactions, and one button that opens the thread inline below.
  */
 const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   activity,
@@ -373,7 +424,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
   const cardTimeFormat = getCardTimeFormat(timeFormat, timestamp, feed);
   const { icon: KindIcon, badgeClassName: kindClassName } =
     getActivityBadge(activity);
-  const target = getEntityTarget(entity, entityName, activity?.about);
+  const entityPath = getEntityPath(entity);
+  const about = activity?.about ?? feed?.about;
   const change = useMemo(
     () => (activity ? getActivityChange(activity) : undefined),
     [activity]
@@ -459,7 +511,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:pb-4 tw:shadow-xs tw:transition-colors tw:hover:border-primary"
+      className={CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -474,9 +526,12 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 size="md"
               />
             </AuthorPopover>
+            {/* Glyph and ring take the card's surface, so the badge reads as
+                cut out of it: white in light, and dark on the fill dark mode
+                pales, where a white glyph would wash out. */}
             <span
               className={classNames(
-                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-white tw:outline-2 tw:outline-bg-primary',
+                'tw:absolute tw:-right-1 tw:-bottom-1 tw:flex tw:size-5 tw:items-center tw:justify-center tw:rounded-full tw:text-bg-surface tw:outline-2 tw:outline-bg-surface',
                 kindClassName
               )}
               data-testid="activity-kind-badge">
@@ -487,7 +542,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
             <Box align="center" gap={2}>
               <Typography
                 className="tw:min-w-0 tw:flex-1 tw:text-tertiary"
-                size="text-md">
+                size="text-sm">
                 <AuthorPopover userName={actorName}>
                   <span className="tw:font-semibold tw:text-primary">
                     {authorName}
@@ -501,10 +556,10 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                 timestamp={timestamp}
               />
             </Box>
-            {target.leaf && (
+            {entityName && (
               <Box align="center" className="tw:min-w-0 tw:gap-1.5">
                 {entity?.type && (
-                  <span className="tw:flex tw:shrink-0 tw:items-center tw:[&_img]:size-4 tw:[&_svg]:size-4">
+                  <span className={INBOX_ENTITY_ICON_CLASS}>
                     {searchClassBase.getEntityIcon(entity.type)}
                   </span>
                 )}
@@ -512,20 +567,25 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
                   className="tw:truncate tw:text-quaternary"
                   size="text-sm"
                   weight="medium">
-                  {target.parent}
-                  {target.path ? (
+                  {entityPath ? (
                     <Link
-                      className="tw:font-semibold tw:text-primary tw:underline tw:decoration-border-primary tw:underline-offset-3 tw:hover:text-brand-secondary"
+                      // `!`: the Typography's prose styles color its links.
+                      className="tw:font-normal tw:text-brand-secondary! tw:no-underline! tw:hover:underline!"
                       data-testid="activity-entity-link"
-                      to={target.path}>
-                      {target.leaf}
+                      to={entityPath}>
+                      {entityName}
                     </Link>
                   ) : (
                     <span className="tw:font-semibold tw:text-primary">
-                      {target.leaf}
+                      {entityName}
                     </span>
                   )}
                 </Typography>
+                <FeedFieldPath
+                  about={about}
+                  entityType={entity?.type}
+                  showField={!isActivity}
+                />
               </Box>
             )}
           </Box>
@@ -535,57 +595,48 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
           {change ? (
             <ActivityChangePanel change={change} />
           ) : (
+            // A message reads on the recessed surface of a change's Before.
             <RichTextEditorPreviewerV1
-              className="inbox-feed-message tw:text-sm"
+              className={classNames(
+                INBOX_MESSAGE_CLASS,
+                INBOX_RECESSED_SURFACE_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
+              )}
               markdown={message}
             />
           )}
         </Box>
 
-        <Box align="center" className="inbox-feed-actions tw:ml-13 tw:gap-2">
-          <Button
-            aria-pressed={isLiked}
-            className={classNames({
-              'tw:text-brand-secondary tw:*:data-icon:text-fg-brand-secondary':
-                isLiked,
-            })}
-            color="tertiary"
-            data-testid="activity-like"
-            iconLeading={ThumbsUp}
-            size="sm"
-            onPress={() =>
+        <Box align="center" className="inbox-feed-actions tw:ml-13">
+          <LikeButton
+            isLiked={isLiked}
+            likeCount={likes.length}
+            onToggle={() =>
               handleReactionSelect(
                 ReactionType.ThumbsUp,
                 isLiked ? ReactionOperation.REMOVE : ReactionOperation.ADD
               )
-            }>
-            {likes.length
-              ? t('label.like-with-count', { count: likes.length })
-              : t('label.like')}
-          </Button>
+            }
+          />
           <Reactions
             key={otherReactions
               .map(
                 (reaction) => `${reaction.reactionType}:${reaction.user?.id}`
               )
               .join('|')}
+            // Like is the tray's thumbs up: picked there once liked.
+            pickedReactions={reactions}
             reactions={otherReactions}
+            variant={ReactionsVariant.Pill}
             onReactionSelect={handleReactionSelect}
           />
-          <Button
-            color="tertiary"
-            data-testid="activity-reply"
-            iconLeading={MessageDotsCircle}
-            size="sm"
-            onPress={() => openThread(true)}>
-            {t('label.reply')}
-          </Button>
-          <RepliesToggle
+          <ThreadButton
             count={replyCount}
             isOpen={isThreadOpen}
             replies={replies}
+            // Nothing to read yet: open straight into the composer.
             onToggle={() =>
-              isThreadOpen ? setIsThreadOpen(false) : openThread(false)
+              isThreadOpen ? setIsThreadOpen(false) : openThread(!replyCount)
             }
           />
         </Box>

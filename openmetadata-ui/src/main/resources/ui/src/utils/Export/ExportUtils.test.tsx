@@ -368,6 +368,41 @@ describe('ExportUtils', () => {
       );
     });
 
+    it('captures only after beforeCapture resolves, then runs afterCapture', async () => {
+      const steps: string[] = [];
+      (toCanvas as jest.Mock).mockImplementation(async () => {
+        steps.push('capture');
+
+        return mockNodesCanvas;
+      });
+
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        beforeCapture: async () => {
+          steps.push('before');
+        },
+        afterCapture: () => {
+          steps.push('after');
+        },
+      });
+
+      expect(steps).toEqual(['before', 'capture', 'after']);
+    });
+
+    it('runs afterCapture when the capture fails', async () => {
+      document.querySelector = jest.fn().mockReturnValue(null);
+      const afterCapture = jest.fn();
+
+      await expect(
+        exportPNGImageFromElement({
+          ...mockExportData,
+          beforeCapture: () => Promise.resolve(),
+          afterCapture,
+        })
+      ).rejects.toThrow('message.error-generating-export-type');
+      expect(afterCapture).toHaveBeenCalledTimes(1);
+    });
+
     it('passes a filter callback to toCanvas', async () => {
       await exportPNGImageFromElement(mockExportData);
 

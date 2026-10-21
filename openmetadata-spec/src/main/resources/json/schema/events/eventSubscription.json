@@ -5,7 +5,7 @@
   "description": "This schema defines the EventSubscription entity. An Event Subscription has trigger, filters and Subscription",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.EventSubscription",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "argumentsInput": {
       "description": "Observability Filters for Event Subscription.",
@@ -250,7 +250,7 @@
       "$ref": "../type/basic.json#/definitions/uuid"
     },
     "className": {
-      "description": "Java class for the Event Subscription.",
+      "description": "Id of the registered consumer that runs this Event Subscription, such as `alert`, the consumer that sends its notifications.",
       "type": "string"
     },
     "name": {

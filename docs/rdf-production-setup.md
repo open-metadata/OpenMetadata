@@ -209,6 +209,14 @@ short interval, or a SQL outage that prevents enqueueing, is outside the queue's
 Enqueue failures are logged and degrade projection health when SQL is available; a failed health
 write is retried while that process remains alive. This is not a transactional metadata outbox.
 
+During a rolling upgrade from a release before 2.1.0, reasoning freshness can report results as
+current that are not. Older servers enqueue without recording
+`rdf_projection_health.enqueuedWatermark`. A 2.1.0 server that delivers or dead-letters such a
+write records its ID, but an older server that drains it removes the only trace of that write. An
+older server's blue/green promotion also switches datasets without assigning a new generation.
+Avoid blue/green rebuilds until every server runs 2.1.0, and refresh reasoning after the last older
+server stops.
+
 ## Write throughput
 
 TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
@@ -500,7 +508,6 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_DEREFERENCEABLE_IRIS` | `false` |
 | `RDF_STRICT_OWL_PROFILE` | `true` |
 | `RDF_AI_ENABLED` | `false` |
-| `LLM_ONTOLOGY_MEMORY_DERIVATION_ENABLED` | `false` |
 | `RDF_FEDERATION_ENABLED` | `false` |
 
 Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for
@@ -537,9 +544,15 @@ credentials, and network reachability before increasing retries.
 
 ## Inference
 
-Materialized inference is the production path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs.
+Materialized inference is the only inference path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs. SPARQL queries see that output when they request `inferenceLevel=custom`.
 
-Legacy in-process inference is bounded by `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` and refuses to copy a larger store into the OpenMetadata JVM. Keep the default bound unless a measured small deployment has enough heap. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
+`inferenceLevel=none`, the default, reads asserted data only. Fuseki's union default graph also holds the rule graphs (`<baseUri>graph/inferred/<rule>`), so while materialized inference is enabled OpenMetadata runs such a query with every other named graph as its dataset (`FROM` and `FROM NAMED`). The complete-lineage endpoint, the RDF insights and the agent SPARQL endpoint read asserted data the same way. A query that declares its own `FROM` or `FROM NAMED` runs as written. Each server reads the graph list from Fuseki and relists after its own write names a graph the list lacks, or after a blue/green promotion; a background refresh every two minutes picks up graphs created by another server or written to Fuseki directly, so those can be missing from `none` results until then. Inferred graphs are never included (ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph). Jena evaluates a query over several `FROM` graphs through a read-only union view rather than TDB2's native union default graph, so expect `none` queries over large datasets to cost more than `custom` ones. Disabling materialized inference does not empty the rule graphs: clear `graph/inferred/*` first, or `none` queries include them again.
+
+A run recomputes the whole rule bundle whenever any rule is dirty, because rules read each other's conclusions; a requested rule name only has to exist. The run empties every rule graph, then applies the enabled rules in passes until a pass derives nothing new, so conclusions of facts removed since the last run disappear. While a run is in progress, `custom` queries see an incomplete closure. A run that needs more than 64 passes fails and leaves its rules dirty, as does any rule the store rejects. Changes that arrive during a run, whether graph writes or rule edits, keep the affected rules dirty for the next run. When a run runs out of passes after such changes, the growing input rather than the rules kept it from converging: it stops without recording an error, leaves every rule dirty, and ends `STOPPED` (`409` on demand).
+
+Only one run executes at a time across the cluster. A scheduled run that finds another in progress ends `STOPPED`; an on-demand `POST /v1/rdf/rules/materialize` returns `409`. The run holds a five-minute lease in `rdf_reindex_lock`, renewed every 30 seconds, so a server that stops mid-run blocks others for at most five minutes. A run whose lease another server takes over, for example after its renewals stalled past the expiry, stops at its next update and leaves the rule status to the run that took over, ending `STOPPED` (`409` on demand). A run that stops waiting for an update at `requestTimeoutMs` keeps its lease until it expires instead of releasing it, because Fuseki may still be applying that update; keep `arq:updateTimeout` well under five minutes so the update ends first. Deleting a rule empties its graph at once, or through the next run when one is in progress. The `transitive-lineage-closure` starter rule ships disabled, because it stores every ancestor/descendant pair; prefer `prov:wasDerivedFrom+` anchored to the assets in question. Stored rules that no longer pass validation are disabled before they next run, with the reason in their `lastError`.
+
+OpenMetadata no longer runs reasoners in its own process. `RDF_INFERENCE_ENABLED`, `RDF_DEFAULT_INFERENCE_LEVEL`, and `RDF_MAX_IN_MEMORY_INFERENCE_TRIPLES` are ignored, with a startup warning when `RDF_INFERENCE_ENABLED` is set, and SPARQL requests for `rdfs` or `owl` inference return `503`. Use SPARQL 1.1 property paths for request-specific traversal; they execute inside Fuseki without copying the graph.
 The complete-lineage endpoint intentionally does not impose a row limit on its property-path query.
 Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest
 lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed

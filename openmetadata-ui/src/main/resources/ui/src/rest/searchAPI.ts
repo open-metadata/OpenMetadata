@@ -13,6 +13,7 @@
 
 import { AxiosResponse } from 'axios';
 import { isArray, isNil } from 'lodash';
+import { SKIP_DOMAIN_FILTER_HEADER } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { PreviewSearchRequest } from '../generated/api/search/previewSearchRequest';
 import {
@@ -194,7 +195,7 @@ export const rawSearchQuery = <
   >(apiUrl, {
     params: {
       index: getSearchIndexParam(searchIndex),
-      from: (pageNumber - 1) * pageSize,
+      from: (Math.max(1, pageNumber) - 1) * pageSize,
       size: pageSize,
       deleted: includeDeletedParam,
       query_filter: JSON.stringify(queryFilter),
@@ -210,6 +211,9 @@ export const rawSearchQuery = <
     paramsSerializer: {
       indexes: null,
     },
+    ...(req.skipDomainFilter && {
+      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+    }),
   });
 };
 
@@ -291,7 +295,7 @@ export const nlqSearch = async (payload: SearchRequest<SearchIndex>) => {
         q: query,
         index: searchIndex,
         size: pageSize,
-        from: (pageNumber - 1) * pageSize,
+        from: (Math.max(1, pageNumber) - 1) * pageSize,
         deleted: includeDeletedParam,
         sort_field: sortField,
         sort_order: sortOrder,

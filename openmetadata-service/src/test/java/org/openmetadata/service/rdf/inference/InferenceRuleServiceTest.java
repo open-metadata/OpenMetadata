@@ -13,116 +13,104 @@
 
 package org.openmetadata.service.rdf.inference;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
-import java.net.URI;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
-import org.openmetadata.schema.api.configuration.rdf.InferenceRuleStatus;
 
 class InferenceRuleServiceTest {
-  private static final String RULE_NAME = "test-rule";
-  private static final String GRAPH_URI = "https://open-metadata.org/graph/inferred/test-rule";
+  private static final Clock CLOCK =
+      Clock.fixed(Instant.ofEpochMilli(1_750_000_000_000L), ZoneOffset.UTC);
+  private static final String BASE_URI = "https://open-metadata.org/";
+  private static final String COPY_A_TO_B = "copy-a-to-b";
+  private static final String COPY_B_TO_C = "copy-b-to-c";
+  private static final String SYSTEM_RULE = "schema-tag-inheritance";
 
-  @Test
-  void deleteOfSystemRuleThrowsAndSkipsClearAndDelete() {
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceMaterializer materializer = mock(InferenceMaterializer.class);
-    when(ruleRepository.get(RULE_NAME)).thenReturn(status(true));
-    final InferenceRuleService service = new InferenceRuleService(ruleRepository, materializer);
+  private final UnionDefaultGraphStore store = new UnionDefaultGraphStore();
+  private final InMemoryInferenceRuleDAO ruleDAO = new InMemoryInferenceRuleDAO();
+  private final InMemoryInferenceRunLock runLock = new InMemoryInferenceRunLock();
+  private final InferenceRuleRepository rules =
+      new InferenceRuleRepository(ruleDAO, CLOCK, BASE_URI);
+  private final InferenceRuleService service =
+      new InferenceRuleService(rules, new InferenceMaterializer(store, rules, runLock, CLOCK));
 
-    assertThrows(BadRequestException.class, () -> service.delete(RULE_NAME));
-
-    verify(materializer, never()).clear(anyString());
-    verify(ruleRepository, never()).delete(anyString());
-    verify(ruleRepository, never()).markAllDirty();
+  @BeforeEach
+  void derivePremisesForAChainOfRules() {
+    service.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "b"));
+    service.upsert(COPY_B_TO_C, copyRule(COPY_B_TO_C, "b", "c"));
+    store.assertFact("urn:x", "urn:a", "urn:y");
+    service.materialize(false, null);
   }
 
   @Test
-  void deleteOfCustomRuleClearsBeforeDeletingThenMarksDirty() {
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceMaterializer materializer = mock(InferenceMaterializer.class);
-    when(ruleRepository.get(RULE_NAME)).thenReturn(status(false));
-    final InferenceRuleService service = new InferenceRuleService(ruleRepository, materializer);
+  void deletingARuleRemovesItsConclusionsAndQueuesTheRulesThatReadThem() {
+    service.delete(COPY_A_TO_B);
 
-    service.delete(RULE_NAME);
-
-    final InOrder order = inOrder(materializer, ruleRepository);
-    order.verify(materializer).clear(GRAPH_URI);
-    order.verify(ruleRepository).delete(RULE_NAME);
-    order.verify(ruleRepository).markAllDirty();
+    assertEquals(0, store.tripleCount(graph(COPY_A_TO_B)));
+    assertTrue(service.get(COPY_B_TO_C).getDirty());
+    assertThrows(NotFoundException.class, () -> service.get(COPY_A_TO_B));
   }
 
   @Test
-  void deleteResolvesRuleFirstAndPropagatesNotFoundForUnknownName() {
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceMaterializer materializer = mock(InferenceMaterializer.class);
-    when(ruleRepository.get("missing")).thenThrow(new NotFoundException("missing"));
-    final InferenceRuleService service = new InferenceRuleService(ruleRepository, materializer);
+  void theNextRunRetractsWhatOnlyTheDeletedRuleSupported() {
+    service.delete(COPY_A_TO_B);
 
-    assertThrows(NotFoundException.class, () -> service.delete("missing"));
+    service.materialize(false, null);
 
-    verify(materializer, never()).clear(anyString());
-    verify(ruleRepository, never()).delete(anyString());
-    verify(ruleRepository, never()).markAllDirty();
+    assertEquals(0, store.tripleCount(graph(COPY_B_TO_C)));
   }
 
   @Test
-  void upsertReturnsRepositoryStatusAndMarksAllDirty() {
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceMaterializer materializer = mock(InferenceMaterializer.class);
-    final InferenceRule rule = rule();
-    final InferenceRuleStatus upserted = status(false);
-    when(ruleRepository.upsert(RULE_NAME, rule)).thenReturn(upserted);
-    final InferenceRuleService service = new InferenceRuleService(ruleRepository, materializer);
+  void aRuleDeletedDuringARunHasItsGraphEmptiedByTheNextRun() {
+    store.afterNextUpdate(() -> service.delete(COPY_A_TO_B));
+    service.materialize(true, null);
+    assertTrue(store.tripleCount(graph(COPY_A_TO_B)) > 0);
 
-    final InferenceRuleStatus result = service.upsert(RULE_NAME, rule);
+    service.materialize(false, null);
 
-    assertSame(upserted, result);
-    final InOrder order = inOrder(ruleRepository);
-    order.verify(ruleRepository).upsert(RULE_NAME, rule);
-    order.verify(ruleRepository).markAllDirty();
+    assertEquals(0, store.tripleCount(graph(COPY_A_TO_B)));
+    assertEquals(0, store.tripleCount(graph(COPY_B_TO_C)));
   }
 
   @Test
-  void upsertMarksAllDirtyEvenWhenStatusIsUnchanged() {
-    final InferenceRuleRepository ruleRepository = mock(InferenceRuleRepository.class);
-    final InferenceMaterializer materializer = mock(InferenceMaterializer.class);
-    final InferenceRule rule = rule();
-    final InferenceRuleStatus unchanged = status(false).withDirty(false);
-    when(ruleRepository.upsert(RULE_NAME, rule)).thenReturn(unchanged);
-    final InferenceRuleService service = new InferenceRuleService(ruleRepository, materializer);
+  void systemRulesCannotBeDeleted() {
+    assertThrows(BadRequestException.class, () -> service.delete(SYSTEM_RULE));
 
-    final InferenceRuleStatus result = service.upsert(RULE_NAME, rule);
-
-    assertSame(unchanged, result);
-    verify(ruleRepository).markAllDirty();
-    verify(materializer, never()).materialize(false, null);
+    assertEquals(SYSTEM_RULE, service.get(SYSTEM_RULE).getRule().getName());
   }
 
-  private static InferenceRule rule() {
+  @Test
+  void deletingAnUnknownRuleIsReportedAsMissing() {
+    assertThrows(NotFoundException.class, () -> service.delete("missing-rule"));
+  }
+
+  @Test
+  void savingARuleMarksEveryRuleDirty() {
+    assertFalse(service.get(COPY_B_TO_C).getDirty());
+
+    service.upsert(COPY_A_TO_B, copyRule(COPY_A_TO_B, "a", "d"));
+
+    assertTrue(service.get(COPY_B_TO_C).getDirty());
+  }
+
+  private static String graph(final String ruleName) {
+    return BASE_URI + "graph/inferred/" + ruleName;
+  }
+
+  private static InferenceRule copyRule(final String name, final String from, final String to) {
     return new InferenceRule()
-        .withName(RULE_NAME)
-        .withEnabled(true)
-        .withRuleBody("CONSTRUCT { ?s <urn:inferred> ?o } WHERE { ?s <urn:source> ?o }");
-  }
-
-  private static InferenceRuleStatus status(final boolean systemRule) {
-    return new InferenceRuleStatus()
-        .withRule(rule())
-        .withGraphUri(URI.create(GRAPH_URI))
-        .withDirty(true)
-        .withSystemRule(systemRule)
-        .withTripleCount(0);
+        .withName(name)
+        .withRuleType(InferenceRule.RuleType.CONSTRUCT)
+        .withRuleBody("CONSTRUCT { ?s <urn:%s> ?o } WHERE { ?s <urn:%s> ?o }".formatted(to, from))
+        .withEnabled(true);
   }
 }

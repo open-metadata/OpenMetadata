@@ -11,7 +11,17 @@
  *  limitations under the License.
  */
 
-import { getKnowledgeCenterPagePath } from './TaskNavigationUtils';
+import {
+  Task,
+  TaskCategory,
+  TaskStatus,
+  TaskType,
+} from '../generated/entity/tasks/task';
+import {
+  getKnowledgeCenterPagePath,
+  getTaskDetailPathFromTask,
+} from './TaskNavigationUtils';
+import { getTaskDetailPath } from './TaskUtils';
 
 describe('getKnowledgeCenterPagePath', () => {
   it('points at the Context Center article route', () => {
@@ -26,5 +36,26 @@ describe('getKnowledgeCenterPagePath', () => {
     expect(
       getKnowledgeCenterPagePath('Onboarding.My Runbook', 'tasks', 'open')
     ).toBe('/context-center/articles/Onboarding.My%20Runbook/tasks/open');
+  });
+});
+
+describe('native ontology review routes', () => {
+  it('opens the release review task', () => {
+    const task: Task = {
+      id: 'task-id',
+      name: 'Review',
+      type: TaskType.RequestApproval,
+      status: TaskStatus.Open,
+      category: TaskCategory.Approval,
+      createdBy: { id: 'author-id', type: 'user' },
+      about: {
+        id: 'definition-id',
+        type: 'ontologyRelease',
+        fullyQualifiedName: 'Organization.Customer',
+      },
+    };
+
+    expect(getTaskDetailPathFromTask(task)).toBe('/tasks/task-id');
+    expect(getTaskDetailPath(task)).toBe('/tasks/task-id');
   });
 });

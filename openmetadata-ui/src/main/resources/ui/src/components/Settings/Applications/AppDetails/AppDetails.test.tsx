@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -120,7 +121,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn().mockImplementation(() => mockShowSuccessToast()),
 }));
 
-jest.mock('../../../common/FormBuilder/FormBuilder', () =>
+jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
   jest
     .fn()
     .mockImplementation(({ onSubmit }) => (
@@ -213,7 +214,7 @@ describe('AppDetails component', () => {
 
     // back button
     fireEvent.click(
-      screen.getByRole('button', { name: 'left label.browse-app-plural' })
+      screen.getByRole('button', { name: 'label.browse-app-plural' })
     );
 
     expect(mockNavigate).toHaveBeenCalledWith(
@@ -251,10 +252,26 @@ describe('AppDetails component', () => {
 
     fireEvent.click(screen.getByTestId('manage-button'));
 
-    // enable app
-    ConfirmAction('label.restore');
+    expect(screen.getByText('Confirmation Modal is close')).toBeInTheDocument();
 
-    expect(mockRestoreApp).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'label.restore' }));
+
+    expect(screen.getByText('Confirmation Modal is open')).toBeInTheDocument();
+
+    // Drive the confirm click inside `act` so the awaited `handleRestore`
+    // chain (restore -> toast -> navigate) and the subsequent `setLoadingState`
+    // in `onConfirmAction`'s finally all flush before we assert.
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm Confirmation Modal' })
+      );
+    });
+
+    expect(mockRestoreApp).toHaveBeenCalledTimes(1);
+    expect(mockShowSuccessToast).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith(
+      GlobalSettingOptions.APPLICATIONS
+    );
   });
 
   it('Schedule and Recent Runs tab should not be visible for NoScheduleApps', async () => {

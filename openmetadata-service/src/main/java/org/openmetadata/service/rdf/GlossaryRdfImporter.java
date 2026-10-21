@@ -20,7 +20,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.StringReader;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,18 +49,17 @@ import org.apache.jena.shared.JenaException;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.OntologyImportResult;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyAnnexRevision;
 import org.openmetadata.schema.type.OntologyAnnexSource;
-import org.openmetadata.schema.type.OntologyAttribute;
-import org.openmetadata.schema.type.OntologyAttributeDataType;
-import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyNamespace;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RdfValidationReport;
@@ -78,6 +76,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
+import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.ontology.OntologyAnnexService;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
@@ -115,6 +114,13 @@ public class GlossaryRdfImporter {
   private static final String RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
   private static final String OWL = "http://www.w3.org/2002/07/owl#";
   private static final String DCT = "http://purl.org/dc/terms/";
+  private static final String XSD = "http://www.w3.org/2001/XMLSchema#";
+  private static final String OM_ONTOLOGY = "https://open-metadata.org/ontology/";
+  // The ontology export declares the vocabulary it uses (skos:Concept and om:GlossaryTerm as
+  // classes, om:fullyQualifiedName as a data property); re-importing an export must not turn those
+  // declarations into terms or attributes.
+  private static final Set<String> VOCABULARY_NAMESPACES =
+      Set.of(SKOS, RDFS, RDF, OWL, XSD, OM_ONTOLOGY);
   private static final String SKOS_RELATED = SKOS + "related";
   private static final String SKOS_EXACT_MATCH = SKOS + "exactMatch";
   private static final String SKOS_CLOSE_MATCH = SKOS + "closeMatch";
@@ -167,7 +173,7 @@ public class GlossaryRdfImporter {
 
   /**
    * @param allowGlobalSchemaChanges whether the caller may register global, governed relationship
-   *     types. Per-concept attributes are part of each term and require only glossary edit access.
+   *     types and glossary custom properties.
    */
   public GlossaryRdfImporter(UriInfo uriInfo, String user, boolean allowGlobalSchemaChanges) {
     this(uriInfo, user, allowGlobalSchemaChanges, GlossaryRdfImporter::configuredValidationMode);
@@ -194,7 +200,7 @@ public class GlossaryRdfImporter {
       Map<String, EntityReference> glossaryByScheme =
           createGlossaries(model, targetGlossaryName, dryRun);
       List<TermIntent> intents = buildTermIntents(model);
-      attachDatatypeAttributes(model, intents);
+      registerDatatypeProperties(model, dryRun);
       persistTerms(intents, glossaryByScheme, dryRun);
       registerRelationTypes(model, intents, dryRun);
       wireRelations(intents, dryRun);
@@ -454,10 +460,15 @@ public class GlossaryRdfImporter {
     var resources = model.listResourcesWithProperty(model.getProperty(RDF, "type"), type);
     while (resources.hasNext()) {
       Resource resource = resources.next();
-      if (resource.isURIResource() && !byIri.containsKey(resource.getURI())) {
+      if (isImportableIri(resource) && !byIri.containsKey(resource.getURI())) {
         byIri.put(resource.getURI(), toTermIntent(resource, model));
       }
     }
+  }
+
+  private static boolean isImportableIri(Resource resource) {
+    return resource.isURIResource()
+        && VOCABULARY_NAMESPACES.stream().noneMatch(resource.getURI()::startsWith);
   }
 
   private TermIntent toTermIntent(Resource resource, Model model) {
@@ -469,25 +480,7 @@ public class GlossaryRdfImporter {
     intent.description = firstLiteral(resource, model, SKOS + "definition", RDFS + "comment");
     intent.synonyms = listLiterals(resource, model.getProperty(SKOS, "altLabel"));
     intent.schemeIri = firstResourceUri(resource, model.getProperty(SKOS, "inScheme"));
-    intent.conceptType = detectConceptType(resource, model);
     return intent;
-  }
-
-  /**
-   * Record which vocabulary asserted the concept so the export re-emits it the way the source
-   * declared it. A resource typed as both stays dual-typed.
-   */
-  private OntologyConceptType detectConceptType(Resource resource, Model model) {
-    Property type = model.getProperty(RDF, "type");
-    boolean isOwlClass = resource.hasProperty(type, model.getResource(OWL + "Class"));
-    boolean isSkosConcept = resource.hasProperty(type, model.getResource(SKOS + "Concept"));
-    if (isOwlClass && !isSkosConcept) {
-      return OntologyConceptType.OWL_CLASS;
-    }
-    if (isSkosConcept && !isOwlClass) {
-      return OntologyConceptType.SKOS_CONCEPT;
-    }
-    return OntologyConceptType.BOTH;
   }
 
   private void extractEdges(Model model, TermIntent intent, Set<String> internalIris) {
@@ -1040,8 +1033,6 @@ public class GlossaryRdfImporter {
         .withDescription(nullOrEmpty(intent.description) ? intent.displayName : intent.description)
         .withSynonyms(intent.synonyms)
         .withIri(toUri(intent.iri))
-        .withConceptType(intent.conceptType)
-        .withAttributes(intent.attributes)
         .withConceptMappings(intent.conceptMappings)
         .withUpdatedBy(user)
         .withUpdatedAt(System.currentTimeMillis());
@@ -1147,47 +1138,101 @@ public class GlossaryRdfImporter {
     }
   }
 
-  private void attachDatatypeAttributes(Model model, List<TermIntent> terms) {
-    Map<String, TermIntent> termsByIri = new HashMap<>();
-    terms.forEach(term -> termsByIri.put(term.iri, term));
-    for (DatatypeIntent datatype : buildDatatypeIntents(model)) {
-      attachDatatypeAttribute(datatype, termsByIri);
+  private void registerDatatypeProperties(Model model, boolean dryRun) {
+    List<DatatypeIntent> intents = buildDatatypeIntents(model);
+    if (!intents.isEmpty()) {
+      applyDatatypeProperties(intents, dryRun);
     }
   }
 
-  private void attachDatatypeAttribute(
-      DatatypeIntent datatype, Map<String, TermIntent> termsByIri) {
-    int attached = 0;
-    for (String domainIri : datatype.domainIris) {
-      TermIntent term = termsByIri.get(domainIri);
-      if (term != null) {
-        term.attributes.add(toAttribute(datatype, domainIri));
-        attached++;
-      }
-    }
-    result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + attached);
-    if (attached == 0) {
+  private void applyDatatypeProperties(List<DatatypeIntent> intents, boolean dryRun) {
+    if (!allowGlobalSchemaChanges) {
       addMessage(
           String.format(
-              "Datatype property %s was preserved in the ontology annex because it has no imported class domain",
-              datatype.iri));
+              "%d datatype attribute(s) require admin privileges and were not created",
+              intents.size()));
+    } else if (dryRun) {
+      previewDatatypeProperties(intents);
+    } else {
+      persistDatatypeProperties(intents);
     }
   }
 
-  private OntologyAttribute toAttribute(DatatypeIntent datatype, String domainIri) {
-    UUID id =
-        UUID.nameUUIDFromBytes(
-            (domainIri + '\u0000' + datatype.iri).getBytes(StandardCharsets.UTF_8));
-    return new OntologyAttribute()
-        .withId(id)
-        .withName(datatype.name)
-        .withIri(toUri(datatype.iri))
-        .withDescription(
-            nullOrEmpty(datatype.description) ? datatype.displayName : datatype.description)
-        .withDataType(attributeDataType(datatype.xsdType))
-        .withDatatypeIri(toUri(datatype.xsdType))
-        .withEnumValues(Set.of())
-        .withIsIdentifier(false);
+  private void previewDatatypeProperties(List<DatatypeIntent> intents) {
+    Type type =
+        Entity.getEntityByName(Entity.TYPE, GLOSSARY_TERM, "customProperties", Include.NON_DELETED);
+    Set<String> names =
+        type.getCustomProperties().stream()
+            .map(CustomProperty::getName)
+            .collect(Collectors.toSet());
+    for (DatatypeIntent intent : intents) {
+      if (names.add(intent.name)) {
+        result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
+      } else {
+        addMessage(
+            String.format(
+                "Custom property %s skipped: name '%s' already exists or is repeated in this import",
+                intent.iri, intent.name));
+      }
+    }
+  }
+
+  private void persistDatatypeProperties(List<DatatypeIntent> intents) {
+    TypeRepository typeRepository = (TypeRepository) Entity.getEntityRepository(Entity.TYPE);
+    EntityReference glossaryTermType =
+        Entity.getEntityReferenceByName(Entity.TYPE, GLOSSARY_TERM, Include.NON_DELETED);
+    for (DatatypeIntent intent : intents) {
+      createCustomProperty(typeRepository, glossaryTermType.getId(), intent);
+    }
+  }
+
+  private void createCustomProperty(
+      TypeRepository typeRepository, UUID glossaryTermTypeId, DatatypeIntent intent) {
+    try {
+      EntityReference propertyType =
+          Entity.getEntityReferenceByName(
+              Entity.TYPE, customPropertyTypeFor(intent.xsdType), Include.NON_DELETED);
+      CustomProperty property =
+          new CustomProperty()
+              .withName(intent.name)
+              .withDescription(datatypeDescription(intent))
+              .withPropertyType(propertyType);
+      // An RDF local name cannot identify an existing, globally shared property definition.
+      typeRepository.createCustomProperty(uriInfo, user, glossaryTermTypeId, property);
+      result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
+    } catch (BadRequestException | EntityNotFoundException ex) {
+      addMessage(String.format("Custom property %s skipped: %s", intent.iri, ex.getMessage()));
+    }
+  }
+
+  String customPropertyTypeFor(String xsdIri) {
+    String local = xsdIri == null ? "" : localName(xsdIri).toLowerCase(Locale.ROOT);
+    return switch (local) {
+      case "integer", "int", "long", "short", "nonnegativeinteger", "positiveinteger" -> "integer";
+      case "decimal", "double", "float" -> "number";
+      default -> "string";
+    };
+  }
+
+  private String datatypeDescription(DatatypeIntent intent) {
+    StringBuilder description = new StringBuilder();
+    if (!nullOrEmpty(intent.displayName)) {
+      description.append(intent.displayName);
+    }
+    if (!nullOrEmpty(intent.description)) {
+      appendSpaced(description, intent.description);
+    }
+    for (String domainIri : intent.domainIris) {
+      appendSpaced(description, "(Attribute of " + localName(domainIri) + ".)");
+    }
+    return description.length() == 0 ? intent.name : description.toString();
+  }
+
+  private void appendSpaced(StringBuilder builder, String text) {
+    if (builder.length() > 0) {
+      builder.append(' ');
+    }
+    builder.append(text);
   }
 
   List<DatatypeIntent> buildDatatypeIntents(Model model) {
@@ -1197,7 +1242,7 @@ public class GlossaryRdfImporter {
         model.listResourcesWithProperty(model.getProperty(RDF, "type"), datatypeProperty);
     while (properties.hasNext()) {
       Resource property = properties.next();
-      if (property.isURIResource()) {
+      if (isImportableIri(property)) {
         intents.add(toDatatypeIntent(property, model));
       }
     }
@@ -1213,22 +1258,6 @@ public class GlossaryRdfImporter {
     intent.domainIris = listResourceUris(property, model.getProperty(RDFS, "domain"));
     intent.xsdType = firstResourceUri(property, model.getProperty(RDFS, "range"));
     return intent;
-  }
-
-  OntologyAttributeDataType attributeDataType(String xsdIri) {
-    String local = xsdIri == null ? "" : localName(xsdIri).toLowerCase(Locale.ROOT);
-    OntologyAttributeDataType dataType = OntologyAttributeDataType.STRING;
-    if (Set.of("integer", "int", "long", "short", "nonnegativeinteger", "positiveinteger")
-        .contains(local)) {
-      dataType = OntologyAttributeDataType.INTEGER;
-    } else if (Set.of("decimal", "double", "float").contains(local)) {
-      dataType = OntologyAttributeDataType.DECIMAL;
-    } else if ("boolean".equals(local)) {
-      dataType = OntologyAttributeDataType.BOOLEAN;
-    } else if (Set.of("date", "datetime").contains(local)) {
-      dataType = OntologyAttributeDataType.DATE;
-    }
-    return dataType;
   }
 
   private String customPropertyName(String local) {
@@ -1313,10 +1342,8 @@ public class GlossaryRdfImporter {
     String parentIri;
     String parentPredicate;
     String schemeIri;
-    OntologyConceptType conceptType;
     final List<ConceptMapping> conceptMappings = new ArrayList<>();
     final List<RelationIntent> relations = new ArrayList<>();
-    final List<OntologyAttribute> attributes = new ArrayList<>();
   }
 
   static final class DatatypeIntent {

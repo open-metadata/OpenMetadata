@@ -104,13 +104,15 @@ const CustomPropertiesSection = ({
     }
 
     return (
-      <div className="lineage-items-list">
+      <div className="lineage-items-list tw:min-w-0 tw:px-4">
         <ErrorPlaceHolderNew
           className="text-grey-14"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div className="p-t-md text-justify no-data-placeholder">
-            <Tooltip title={t('label.documentation')}>
+          <div className="p-t-md no-data-placeholder tw:text-center tw:break-words">
+            <Tooltip
+              title={t('label.documentation')}
+              triggerClassName="tw:block tw:whitespace-normal">
               <span>
                 <Transi18next
                   i18nKey="message.no-custom-properties-entity"
@@ -133,7 +135,7 @@ const CustomPropertiesSection = ({
         </ErrorPlaceHolderNew>
       </div>
     );
-  }, [searchText, emptyStateMessage]);
+  }, [searchText, emptyStateMessage, t]);
 
   if (isEntityDataLoading) {
     return <Loader size="default" />;
@@ -183,7 +185,7 @@ const CustomPropertiesSection = ({
       />
       {filteredProperties.length > 0 ? (
         <ul
-          className="tw:m-0 tw:list-none tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-0"
+          className="tw:m-0 tw:list-none tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-0"
           data-testid="custom-properties-list">
           {filteredProperties.map((property: CustomProperty) => (
             <CustomPropertyListItem

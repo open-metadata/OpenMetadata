@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs } from '@openmetadata/ui-core-components';
+import { Tabs, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,7 +30,6 @@ import {
   EntityRightPanelTab,
   EntityRightPanelVerticalNavProps,
 } from './EntityRightPanelVerticalNav.interface';
-import './EntityRightPanelVerticalNav.less';
 
 const shouldShowCustomPropertiesTab = (
   entityType: EntityType,
@@ -136,9 +135,11 @@ const EntityRightPanelVerticalNav: React.FC<
   return (
     <div
       className={classNames(
-        'entity-right-panel-vertical-nav',
+        'entity-right-panel-vertical-nav tw:flex tw:w-20 tw:flex-col tw:items-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface',
         verticalNavConatinerclassName,
-        { 'drawer-entity-right-panel-vertical-nav': isSideDrawer }
+        isSideDrawer
+          ? 'tw:mr-2 tw:h-screen tw:max-h-[calc(100vh-70px)]'
+          : 'tw:h-full'
       )}>
       <Tabs
         className="tw:w-full"
@@ -148,36 +149,18 @@ const EntityRightPanelVerticalNav: React.FC<
         {/* pt-5 keeps the first item where antd's menu clearfix put it. */}
         <Tabs.List
           aria-label={t('label.navigation')}
-          className="tw:w-full tw:gap-5 tw:pt-5">
+          className="tw:w-full tw:gap-5 tw:pt-5"
+          type="line">
           {getTabItems().map(({ key, icon, label, 'data-testid': testId }) => (
             <Tabs.Item
-              className={({ isSelected }) =>
-                classNames(
-                  'tw:relative tw:h-auto tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:rounded-none tw:bg-transparent tw:p-0 tw:font-normal tw:whitespace-normal tw:shadow-none',
-                  'tw:text-utility-gray-600 tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-7)] tw:[&>svg]:size-6 tw:[&>svg]:transition-all tw:[&>svg]:duration-200',
-                  isSelected && [
-                    'tw:text-[var(--ant-primary-6)] tw:hover:text-[var(--ant-primary-6)]',
-                    'tw:before:absolute tw:before:top-1/2 tw:before:left-0 tw:before:h-8 tw:before:w-1',
-                    'tw:before:-translate-y-1/2 tw:before:rounded-r-sm tw:before:bg-[var(--ant-primary-6)]',
-                    'tw:dark:text-utility-brand-300 tw:dark:before:bg-utility-brand-300 tw:dark:hover:text-utility-brand-300',
-                  ]
-                )
-              }
+              className="tw:w-full tw:flex-col tw:justify-center tw:gap-1.5 tw:whitespace-normal tw:[&>svg]:size-6"
               data-testid={testId}
               id={key}
               key={key}>
-              {({ isSelected }) => (
-                <>
-                  {icon}
-                  <span
-                    className={classNames(
-                      'tw:mx-auto tw:block tw:w-[54px] tw:text-center tw:text-[11px] tw:leading-[1.2] tw:break-words tw:whitespace-normal',
-                      isSelected ? 'tw:font-semibold' : 'tw:font-normal'
-                    )}>
-                    {label}
-                  </span>
-                </>
-              )}
+              {icon}
+              <Typography className="tw:w-[54px] tw:text-center tw:text-[10px] tw:leading-[1.2] tw:break-words">
+                {label}
+              </Typography>
             </Tabs.Item>
           ))}
         </Tabs.List>

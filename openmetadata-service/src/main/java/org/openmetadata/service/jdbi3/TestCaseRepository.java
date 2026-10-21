@@ -92,6 +92,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -144,6 +145,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String EXPORT_FIELDS = "testDefinition,testSuite,domains";
   private static final String PLATFORM_WIDE_EXPORT_FIELDS =
       "testDefinition,testSuite,dataProducts,domains";
+  private static final String EXPORT_ENTITY_NOT_FOUND =
+      "Entity '%s' not found. Please provide a valid table FQN, test suite FQN, or '*' for platform-wide export.";
   private static final String OUT_OF_DOMAIN_MESSAGE =
       "Entity '%s' is outside the domains you have access to";
   // One message for "absent" and for "outside your domains" — telling them apart would turn the
@@ -833,7 +836,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  public EntityInterface getParentEntity(TestCase entity, String fields) {
+  public EntityInterface<?> getParentEntity(TestCase entity, String fields) {
     EntityReference testSuite = entity.getTestSuite();
 
     if (testSuite == null) {
@@ -898,6 +901,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 
+    if (!update) {
+      TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
+    }
+
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
     var testSuite = getOrCreateTestSuite(test, table);
@@ -910,11 +917,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   EntityReference getOrCreateTestSuite(TestCase test) {
     var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface tableEntity = Entity.getEntity(entityLink, "", ALL);
+    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
     return getOrCreateTestSuite(test, tableEntity);
   }
 
-  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface tableEntity) {
+  private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
     } catch (EntityNotFoundException e) {
@@ -1586,7 +1593,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
    */
   public RestUtil.PutResponse<TestSuite> addMatchingTestCasesToLogicalTestSuite(
       TestSuite testSuite, String searchFilter, String query, List<UUID> excludeIds) {
-    List<UUID> matchingIds = resolveMatchingTestCaseIds(searchFilter, query, excludeIds);
+    List<UUID> matchingIds =
+        resolveMatchingTestCaseIds(searchFilter, query, excludeIds, Integer.MAX_VALUE);
     if (matchingIds.isEmpty()) {
       return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, ENTITY_NO_CHANGE);
     }
@@ -1622,7 +1630,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   private List<UUID> resolveMatchingTestCaseIds(
-      String searchFilter, String query, List<UUID> excludeIds) {
+      String searchFilter, String query, List<UUID> excludeIds, int maxMatches) {
     Set<String> excluded = excludeIds.stream().map(UUID::toString).collect(Collectors.toSet());
     SearchRepository searchRepository = Entity.getSearchRepository();
     // Sort on the keyword subfield (fullyQualifiedName is analyzed text): a unique, stable key
@@ -1640,13 +1648,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
       collectTestCaseIds(hits, excluded, matchingIds);
       searchAfter = page.getLastDocumentsInBatch();
-      if (hits.size() < BULK_MATCH_SEARCH_BATCH_SIZE
+      if (matchingIds.size() >= maxMatches
+          || hits.size() < BULK_MATCH_SEARCH_BATCH_SIZE
           || searchAfter == null
           || searchAfter.length == 0) {
         break;
       }
     }
-    return matchingIds;
+    return matchingIds.size() > maxMatches ? matchingIds.subList(0, maxMatches) : matchingIds;
   }
 
   private SearchResultListMapper fetchTestCaseIdPage(
@@ -1996,6 +2005,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
+    private void validateChangedConformance() {
+      TestCaseDefinitionConformance.validateUpdate(
+          original,
+          updated,
+          () -> Entity.getEntity(updated.getTestDefinition(), "", ALL),
+          () -> Entity.getEntity(EntityLink.parse(updated.getEntityLink()), "columns", ALL));
+    }
+
     @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
@@ -2004,6 +2021,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      validateChangedConformance();
       compareAndUpdate(
           "entity",
           () -> {
@@ -2237,6 +2255,138 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return new TestCaseCsv(user, null).exportCsv(visibleTestCases, callback);
   }
 
+  /**
+   * Exports the test cases in scope ({@code name}: a table FQN, a test suite FQN or "*") that match
+   * the list filters, one page at a time. Matches are resolved through search, like the filtered
+   * bundle-suite add, so the export selects exactly what the filtered list shows; the rows
+   * themselves are read from the database. Without filters or a page this is the plain export.
+   * ADR:2026-10-12-filtered-test-case-exports-match-through-search
+   */
+  public String exportToCsv(
+      String name,
+      String user,
+      CsvAsyncJobArgs.TestCaseExportArgs exportArgs,
+      CsvExportProgressCallback callback)
+      throws IOException {
+    if (!hasExportCriteria(exportArgs)) {
+      return exportToCsv(name, user, false, callback);
+    }
+    List<TestCase> testCases = getFilteredTestCasesForExport(name, exportArgs);
+    List<TestCase> visibleTestCases =
+        DomainAccessFilter.retainAccessible(testCases, SubjectContext.getSubjectContext(user));
+    return new TestCaseCsv(user, null).exportCsv(visibleTestCases, callback);
+  }
+
+  private static boolean hasExportCriteria(CsvAsyncJobArgs.TestCaseExportArgs exportArgs) {
+    return exportArgs != null
+        && (exportArgs.getTestCaseStatus() != null
+            || exportArgs.getTestCaseType() != null
+            || exportArgs.getEntityFQN() != null
+            || exportArgs.getTags() != null
+            || exportArgs.getTier() != null
+            || exportArgs.getOwnerIds() != null
+            || exportArgs.getQ() != null
+            || exportArgs.getTestPlatforms() != null
+            || exportArgs.getDataQualityDimension() != null
+            || exportArgs.getServiceName() != null
+            || exportArgs.getDataProductFqn() != null
+            || exportArgs.getStartTimestamp() != null
+            || exportArgs.getLimit() != null
+            || (exportArgs.getOffset() != null && exportArgs.getOffset() > 0));
+  }
+
+  private List<TestCase> getFilteredTestCasesForExport(
+      String name, CsvAsyncJobArgs.TestCaseExportArgs exportArgs) {
+    SearchListFilter filter =
+        new SearchListFilter(Include.NON_DELETED)
+            .addQueryParam("testCaseStatus", exportArgs.getTestCaseStatus())
+            .addQueryParam("testCaseType", exportArgs.getTestCaseType())
+            .addQueryParam("tags", exportArgs.getTags())
+            .addQueryParam("tier", exportArgs.getTier())
+            .addQueryParam("owners", exportArgs.getOwnerIds())
+            .addQueryParam("q", exportArgs.getQ())
+            .addQueryParam("testPlatforms", exportArgs.getTestPlatforms())
+            .addQueryParam("dataQualityDimension", exportArgs.getDataQualityDimension())
+            .addQueryParam("serviceName", exportArgs.getServiceName())
+            .addQueryParam("dataProductFqn", exportArgs.getDataProductFqn());
+    if (exportArgs.getStartTimestamp() != null) {
+      filter
+          .addQueryParam("startTimestamp", exportArgs.getStartTimestamp().toString())
+          .addQueryParam("endTimestamp", exportArgs.getEndTimestamp().toString());
+    }
+    addExportScope(name, exportArgs.getEntityFQN(), filter);
+
+    int offset = exportArgs.getOffset() == null ? 0 : exportArgs.getOffset();
+    int maxMatches =
+        exportArgs.getLimit() == null
+            ? Integer.MAX_VALUE
+            : (int) Math.min((long) offset + exportArgs.getLimit(), Integer.MAX_VALUE);
+    List<UUID> matchingIds =
+        resolveMatchingTestCaseIds(
+            filter.getCondition(TEST_CASE), exportArgs.getQ(), List.of(), maxMatches);
+    if (offset >= matchingIds.size()) {
+      return List.of();
+    }
+    String fields = PLATFORM_WIDE_EXPORT.equals(name) ? PLATFORM_WIDE_EXPORT_FIELDS : EXPORT_FIELDS;
+    return findInOrder(
+        matchingIds.subList(offset, matchingIds.size()), new Fields(allowedFields, fields));
+  }
+
+  /**
+   * An {@code entityFQN} filter inside a table export must stay within that table, otherwise it
+   * would read test cases the caller was not authorized for. Checked when the export is requested
+   * so the async endpoint rejects it up front instead of failing the job.
+   */
+  public void validateExportScope(String name, String entityFQN) {
+    if (entityFQN == null || PLATFORM_WIDE_EXPORT.equals(name)) {
+      return;
+    }
+    Table table = Entity.findEntityByNameOrNull(TABLE, name, Include.NON_DELETED);
+    if (table != null && !isWithinTable(entityFQN, table.getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          String.format(
+              "entityFQN '%s' is not part of table '%s'",
+              entityFQN, table.getFullyQualifiedName()));
+    }
+  }
+
+  private static boolean isWithinTable(String entityFQN, String tableFqn) {
+    return entityFQN.equals(tableFqn) || entityFQN.startsWith(tableFqn + Entity.SEPARATOR);
+  }
+
+  private void addExportScope(String name, String entityFQN, SearchListFilter filter) {
+    if (entityFQN != null) {
+      filter.addQueryParam("entityFQN", entityFQN).addQueryParam("includeAllTests", true);
+    }
+    if (PLATFORM_WIDE_EXPORT.equals(name)) {
+      return;
+    }
+    Table table = Entity.findEntityByNameOrNull(TABLE, name, Include.NON_DELETED);
+    if (table != null) {
+      validateExportScope(name, entityFQN);
+      filter.addQueryParam("includeAllTests", true);
+      if (entityFQN == null) {
+        filter.addQueryParam("entityFQN", table.getFullyQualifiedName());
+      }
+      return;
+    }
+    TestSuite testSuite = Entity.findEntityByNameOrNull(TEST_SUITE, name, Include.NON_DELETED);
+    if (testSuite == null) {
+      throw new IllegalArgumentException(String.format(EXPORT_ENTITY_NOT_FOUND, name));
+    }
+    filter.addQueryParam("testSuiteId", testSuite.getId().toString());
+  }
+
+  // find(ids) returns rows in storage order; the page must keep the search order to be stable.
+  private List<TestCase> findInOrder(List<UUID> ids, Fields fields) {
+    Map<UUID, TestCase> byId =
+        find(ids, Include.NON_DELETED).stream()
+            .collect(Collectors.toMap(TestCase::getId, testCase -> testCase));
+    List<TestCase> testCases = ids.stream().map(byId::get).filter(Objects::nonNull).toList();
+    setFieldsInBulk(fields, testCases);
+    return testCases;
+  }
+
   @Override
   public CsvImportResult importFromCsv(
       String name, String csv, boolean dryRun, String user, boolean recursive) {
@@ -2327,10 +2477,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, name, "", Include.NON_DELETED);
         return getTestCasesForTestSuite(testSuite.getId());
       } catch (EntityNotFoundException ex) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Entity '%s' not found. Please provide a valid table FQN, test suite FQN, or '*' for platform-wide export.",
-                name));
+        throw new IllegalArgumentException(String.format(EXPORT_ENTITY_NOT_FOUND, name));
       }
     }
   }
@@ -2355,8 +2502,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     private final TestSuite targetBundleSuite;
     private final List<UUID> importedTestCaseIds = new ArrayList<>();
     private final Map<String, UUID> importedTestSuiteIds = new HashMap<>();
-    private final EntityRepository<EntityInterface> versioningRepo =
-        (EntityRepository<EntityInterface>) Entity.getEntityRepository(TEST_SUITE);
+    private final EntityRepository<EntityInterface<?>> versioningRepo =
+        (EntityRepository<EntityInterface<?>>) Entity.getEntityRepository(TEST_SUITE);
     private final SubjectContext subjectContext;
 
     TestCaseCsv(String user, TestSuite targetBundleSuite) {
@@ -2586,7 +2733,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String entityLink = null;
       try {
         String candidate = convertFQNToEntityLink(entityFQN);
-        EntityInterface target =
+        EntityInterface<?> target =
             Entity.getEntity(EntityLink.parse(candidate), FIELD_DOMAINS, Include.NON_DELETED);
         if (subjectContext.hasDomains(target.getDomains())) {
           entityLink = candidate;

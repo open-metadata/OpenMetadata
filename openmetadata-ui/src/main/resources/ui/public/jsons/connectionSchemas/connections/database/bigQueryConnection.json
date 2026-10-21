@@ -242,6 +242,12 @@
                   "description": "Google Cloud client certificate uri.",
                   "type": "string",
                   "format": "uri"
+                },
+                "universeDomain": {
+                  "title": "Universe Domain",
+                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                  "type": "string",
+                  "default": "googleapis.com"
                 }
               },
               "additionalProperties": false
@@ -557,6 +563,12 @@
     "supportsProfiler": {
       "title": "Supports Profiler",
       "description": "Supports Profiler",
+      "type": "boolean",
+      "default": true
+    },
+    "supportsAutoPartitionDetection": {
+      "title": "Supports Auto Partition Detection",
+      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
       "type": "boolean",
       "default": true
     },

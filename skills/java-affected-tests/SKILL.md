@@ -42,6 +42,7 @@ make java_affected                # what runs, why, and the exact commands
 | `Impacted, but not run locally` | List them in the PR with where they run (nightly, external cluster); don't run |
 | `Changed classes no unit test references` | Add a unit test (see `test-enforcement`), or say in the PR why none applies |
 | `Impact-map gaps` | Add the file's directory to the area that owns that code in `.github/java-tests/impact-map.json`, in this PR, then re-plan. Until then the full suite runs |
+| `Fix .github/java-tests/impact-map.json in this branch before you raise the PR` | Do what each line says: add the named glob to an area's `sources`, a pattern for the new IT to its `tests`, or remove a pattern your deletions emptied. `git push` and `gh pr create` stay blocked until it's clean (rule `java-impact-map.md`) |
 
 ### Ground rules for adding tests
 
@@ -57,7 +58,7 @@ and add tests when it:
 
 When unsure, add the whole area. A few extra minutes locally cost less than an ejection from the
 merge queue. Add with a reason, on the run as well as the plan (nothing is saved between them);
-the PR block shows both:
+the details show both:
 
 ```bash
 make java_affected_run ARGS='--add-area lineage --add-it TableResourceIT --reason "moves the edge payload lineage reads" --update-pr'
@@ -71,7 +72,7 @@ an area's `sources`), so the next change gets it without anyone remembering.
 
 ```bash
 make java_affected_run                         # unit step first, then one step per lane and engine
-make java_affected_run ARGS="--update-pr"      # once the PR exists: upsert the block in its body
+make java_affected_run ARGS="--update-pr"      # once the PR exists: summary in its body, details in a comment
 ```
 
 Measured on 2026-10-07: one unit class took 0.9 min. One small IT took 2.0 min, almost all of
@@ -82,12 +83,16 @@ IT step pays. Big classes add their own time; CI's parallel lane runs 334 classe
 - The run stops at the first failing step. `--keep-going` runs the rest.
 - A step passes only with exit 0, no failures, more than zero tests, and a report for every
   selected class. A green `BUILD SUCCESS` with zero tests is a failure.
-- Results: `target/java-tests/local-pr-results.md`. Before the PR exists, paste it between the
-  `local-java-test-results` markers under "Backend integration tests". Never edit the block.
-- The block's "Tests run locally" list names every class each step ran, with its counts. A module
+- Results: the summary `target/java-tests/local-pr-results.md` and the details
+  `target/java-tests/local-pr-results-details.md`. Before the PR exists, paste the summary between
+  the `local-java-test-results` markers under "Backend integration tests". Once it exists,
+  `gh pr comment --body-file target/java-tests/local-pr-results-details.md` posts the details, and
+  a later `--update-pr` run edits that comment. Never edit either by hand.
+- The summary stays short: the verdict, a row per step, and up to ten failed or missing names.
+  The details' "Tests run locally" list names every class each step ran, with its counts. A module
   run in full is given as counts only: its class list alone can pass GitHub's 65,536-character
-  limit for a PR description. That list is the PR's record of what ran before review, so tests
-  you ran by hand outside the planner go in the PR's Tests section too.
+  limit for a comment. That list is the PR's record of what ran before review, so tests you ran
+  by hand outside the planner go in the PR's Tests section too.
 
 A full-suite plan (`[integration] FULL suite`) is every merge-queue IT. Running it in CI is
 usually faster than locally:
@@ -131,6 +136,10 @@ mvn -B verify -pl :openmetadata-integration-tests -am -Dspring-boot.repackage.sk
 - Without a lane, `-Dit.test` runs the class twice, once in each failsafe execution.
 - `mvn test -pl openmetadata-integration-tests -Dtest=…IT` tests the `openmetadata-service` jar
   in `~/.m2`, which another checkout may have overwritten. Use `-am` as above.
+- After a pull, merge or branch switch that changes a JSON schema, run
+  `mvn -B -q clean -pl openmetadata-spec` first. jsonschema2pojo keeps the `javaType` classes it
+  already compiled, so an incremental build tests the old models. `make java_affected` warns
+  when this applies, and `--run` cleans for you.
 - `mvn test … -am` cannot compile the service. The relocated search clients only exist after
   `package`, which is why unit steps run `mvn -B package -pl <module> -am -Dtest=…`.
 - Check the evidence: a `Tests run: N` line with N > 0, and
@@ -145,7 +154,8 @@ them.
 - PR checks: Java unit tests. `maven-collate-ci` builds Collate and runs its unit tests against
   your change.
 - Merge queue: the full IT suite on MySQL+ES and PostgreSQL+OS (both required), PostgreSQL+ES+Redis
-  (informational), and the Collate ITs.
+  (required once #35761 completes the rollout in
+  ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue, informational until then), and the Collate ITs.
 - Full IT suite on a branch before queueing, for a large refactor:
   `gh workflow run "Integration Tests - MySQL + Elasticsearch" --ref <branch>`.
 

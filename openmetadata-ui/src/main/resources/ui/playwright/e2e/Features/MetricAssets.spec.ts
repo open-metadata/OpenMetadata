@@ -84,7 +84,7 @@ const selectAssetInPicker = async (page: Page, asset: LinkableAsset) => {
 
   const card = assetCard(page, asset);
   await expect(card).toBeVisible();
-  await card.getByTestId('asset-checkbox').check();
+  await card.getByTestId('asset-checkbox').click();
   await expect(card.getByRole('checkbox')).toBeChecked();
 };
 
@@ -276,7 +276,7 @@ test.describe(
       });
 
       await test.step('Bulk unlink the remaining asset', async () => {
-        await assetCard(page, table).getByTestId('asset-checkbox').check();
+        await assetCard(page, table).getByTestId('asset-checkbox').click();
 
         const removeResponse = page.waitForResponse(
           (response) =>

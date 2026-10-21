@@ -38,8 +38,12 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -54,12 +58,14 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
+import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
@@ -68,18 +74,22 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -466,27 +476,33 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     Table table = createTable(ns);
 
-    TestCaseBuilder.create(client)
-        .name(ns.prefix("test1"))
-        .forTable(table)
-        .testDefinition("tableRowCountToEqual")
-        .parameter("value", "100")
-        .create();
+    TestCase test1 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("test1"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
 
-    TestCaseBuilder.create(client)
-        .name(ns.prefix("test2"))
-        .forTable(table)
-        .testDefinition("tableRowCountToEqual")
-        .parameter("value", "200")
-        .create();
+    TestCase test2 =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("test2"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "200")
+            .create();
 
     ListResponse<TestCase> response =
         client
             .testCases()
-            .list(new ListParams().setFields("testDefinition,testSuite").setLimit(10));
+            .list(
+                new ListParams()
+                    .setFields("testDefinition,testSuite")
+                    .setLimit(10)
+                    .addQueryParam("entityLink", tableEntityLink(table)));
 
     assertNotNull(response);
-    assertTrue(response.getData().size() >= 2);
+    assertTrue(idsOf(response).containsAll(List.of(test1.getId(), test2.getId())));
   }
 
   @Test
@@ -494,21 +510,30 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
+    List<UUID> created = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("autopaging_test_" + i))
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf((i + 1) * 100))
-          .create();
+      created.add(
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("autopaging_test_" + i))
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", String.valueOf((i + 1) * 100))
+              .create()
+              .getId());
     }
 
     ListResponse<TestCase> response =
-        client.testCases().list(new ListParams().setLimit(10).setFields("testDefinition"));
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setLimit(10)
+                    .setFields("testDefinition")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
 
     assertNotNull(response);
     assertNotNull(response.getData());
-    assertTrue(response.getData().size() >= 5);
+    assertTrue(idsOf(response).containsAll(created));
   }
 
   @Test
@@ -872,6 +897,132 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_testWithUnofferedOptionValue_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("bad_strategy"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableCustomSQLQuery");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedColumnType_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("length_on_number"));
+    // createTable's `id` column is INT, which columnValueLengthsToBeBetween does not support.
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  @Test
+  void post_rejectedForConformance_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("post_no_suite"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::id>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+
+    assertThrows(Exception.class, () -> createEntity(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  private static EntityReference tableTestSuite(Table table) {
+    return SdkClients.adminClient()
+        .tables()
+        .get(table.getId().toString(), "testSuite")
+        .getTestSuite();
+  }
+
+  @Test
+  void patch_toUnofferedOptionValue_4xx(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("patch_bad_strategy"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">");
+    request.setTestDefinition("tableCustomSQLQuery");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("ROWS")));
+    TestCase testCase = createEntity(request);
+
+    testCase.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    Exception error =
+        assertThrows(Exception.class, () -> patchEntity(testCase.getId().toString(), testCase));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+  }
+
+  @Test
+  void createMany_withOneUnofferedOptionValue_createsNone(TestNamespace ns) {
+    Table table = createTable(ns);
+    String tableLink = "<#E::table::" + table.getFullyQualifiedName() + ">";
+    CreateTestCase valid = new CreateTestCase();
+    valid.setName(ns.prefix("many_valid"));
+    valid.setEntityLink(tableLink);
+    valid.setTestDefinition("tableRowCountToEqual");
+    valid.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("value").withValue("100")));
+    CreateTestCase invalid = new CreateTestCase();
+    invalid.setName(ns.prefix("many_bad_strategy"));
+    invalid.setEntityLink(tableLink);
+    invalid.setTestDefinition("tableCustomSQLQuery");
+    invalid.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("sqlExpression").withValue("SELECT 1"),
+            new TestCaseParameterValue().withName("strategy").withValue("SUM")));
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    Exception error =
+        assertThrows(Exception.class, () -> client.testCases().createMany(List.of(valid, invalid)));
+    assertTrue(error.getMessage().contains("must be one of"), error.getMessage());
+    // The batch wrote nothing: the valid test can still be created on its own.
+    assertEquals(valid.getName(), createEntity(valid).getName());
+  }
+
+  @Test
+  void patch_keepsATestOnARetypedColumnEditable(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("patch_gate"));
+    request.setEntityLink("<#E::table::" + table.getFullyQualifiedName() + "::columns::name>");
+    request.setTestDefinition("columnValueLengthsToBeBetween");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("minLength").withValue("1")));
+    TestCase testCase = createEntity(request);
+
+    // The stored test now targets a column type its definition does not support, as a row created
+    // before the create-time check, or one whose column was retyped by ingestion, does.
+    table.getColumns().stream()
+        .filter(column -> column.getName().equals("name"))
+        .forEach(column -> column.withDataType(ColumnDataType.INT).withDataLength(null));
+    SdkClients.adminClient().tables().update(table.getId().toString(), table);
+
+    testCase.setDescription("edited");
+    TestCase updated = patchEntity(testCase.getId().toString(), testCase);
+
+    assertEquals("edited", updated.getDescription());
+  }
+
+  @Test
   void test_testCaseWithOwner(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -1027,25 +1178,36 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
+    List<UUID> created = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("page_test_" + i))
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", String.valueOf((i + 1) * 100))
-          .create();
+      created.add(
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("page_test_" + i))
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", String.valueOf((i + 1) * 100))
+              .create()
+              .getId());
     }
 
-    ListResponse<TestCase> page1 = client.testCases().list(new ListParams().setLimit(2));
-    assertTrue(page1.getData().size() <= 2);
-
-    if (page1.getPaging() != null && page1.getPaging().getAfter() != null) {
-      ListResponse<TestCase> page2 =
+    List<UUID> paged = new ArrayList<>();
+    String after = null;
+    do {
+      ListResponse<TestCase> page =
           client
               .testCases()
-              .list(new ListParams().setLimit(2).setAfter(page1.getPaging().getAfter()));
-      assertNotNull(page2);
-    }
+              .list(
+                  new ListParams()
+                      .setLimit(2)
+                      .setAfter(after)
+                      .addQueryParam("entityLink", tableEntityLink(table)));
+      assertTrue(page.getData().size() <= 2);
+      paged.addAll(idsOf(page));
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null);
+
+    assertEquals(created.size(), paged.size(), "every test case is paged exactly once");
+    assertTrue(paged.containsAll(created));
   }
 
   @Test
@@ -1534,6 +1696,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  // Adds every test case in the shared database to a suite, rewriting each one's search doc;
+  // run alone so it cannot race another test's updates to its own test cases.
+  @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
   void test_bulkAddAllTestCasesToLogicalTestSuite(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -1601,6 +1766,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  // Adds every test case in the shared database to a suite, rewriting each one's search doc;
+  // run alone so it cannot race another test's updates to its own test cases.
+  @ResourceLock(value = Resources.GLOBAL, mode = ResourceAccessMode.READ_WRITE)
   void test_bulkAddAllTestCasesWithExcludeIds(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -2611,14 +2779,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     // Create several test cases with unique description
     String uniqueToken = ns.shortPrefix();
+    List<UUID> created = new ArrayList<>();
     for (int i = 0; i < 5; i++) {
-      TestCaseBuilder.create(client)
-          .name(ns.prefix("search_test_" + i))
-          .description("Search test " + uniqueToken)
-          .forTable(table)
-          .testDefinition("tableRowCountToEqual")
-          .parameter("value", "100")
-          .create();
+      created.add(
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("search_test_" + i))
+              .description("Search test " + uniqueToken)
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", "100")
+              .create()
+              .getId());
     }
 
     Awaitility.await("Wait for test cases to be listed")
@@ -2629,9 +2800,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         .untilAsserted(
             () -> {
               ListResponse<TestCase> results =
-                  client.testCases().list(new ListParams().setLimit(100));
+                  client
+                      .testCases()
+                      .list(
+                          new ListParams()
+                              .setLimit(100)
+                              .addQueryParam("entityLink", tableEntityLink(table)));
               assertNotNull(results);
-              assertTrue(results.getData().size() >= 5, "Should have at least 5 test cases");
+              assertTrue(idsOf(results).containsAll(created), "Should list all 5 test cases");
             });
   }
 
@@ -2906,6 +3082,65 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(156.0, stored.getMaxBound());
   }
 
+  /**
+   * The UI shows which rows a verdict was measured on from the result's scope, never from its
+   * English message. The scope has to survive the write, and every dimension of the run inherits
+   * it: ingestion sends it once, on the run.
+   */
+  @Test
+  void post_testCaseResultWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_evaluation_scope");
+    long timestamp = System.currentTimeMillis();
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(10.0)
+            .withProfileSampleType(ProfileSampleType.PERCENTAGE)
+            .withPartitioned(true)
+            .withPartitionColumnName("event_date");
+
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(timestamp);
+    create.setTestCaseStatus(TestCaseStatus.Failed);
+    create.setResult("failed");
+    create.setEvaluationScope(scope);
+    create.setDimensionResults(
+        List.of(
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(UUID.randomUUID())
+                .withTimestamp(timestamp)
+                .withDimensionKey("channel=web")
+                .withDimensionValues(
+                    List.of(new DimensionValue().withName("channel").withValue("web")))
+                .withTestCaseStatus(TestCaseStatus.Failed)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    assertEquals(
+        scope,
+        listTestCaseResults(testCase.getFullyQualifiedName()).getFirst().getEvaluationScope());
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult dimension =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .getFirst();
+    assertEquals(scope, dimension.getEvaluationScope());
+  }
+
   private String searchTestCaseResults(String path, String query) {
     return SdkClients.adminClient()
         .getHttpClient()
@@ -3093,6 +3328,174 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertThrows(
         org.openmetadata.sdk.exceptions.OpenMetadataException.class,
         () -> client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsSampleAcceptedWhenPassingWithinThreshold(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "within_threshold_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 7L);
+
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+
+    TableData fetchedSample = client.testCases().getFailedRowsSample(testCase.getId().toString());
+    assertEquals(3, fetchedSample.getRows().size());
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithoutFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "clean_pass_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, 0L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWithoutResult(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "no_result_sample");
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenPassingWithUnknownFailedRows(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "unknown_failed_rows_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Success, null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleRejectedWhenAborted(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "aborted_sample");
+    addTestCaseResult(client, testCase, TestCaseStatus.Aborted, 7L);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample()));
+  }
+
+  @Test
+  void test_failedRowsSampleReplacedAndClearedOnSuccess(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "sample_lifecycle");
+    long timestamp = System.currentTimeMillis();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp)
+                .withTestCaseStatus(TestCaseStatus.Failed));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), idSample());
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 1)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(7L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+
+    TableData replacement =
+        new TableData().withColumns(List.of("id")).withRows(List.of(List.of("4")));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), replacement);
+    assertEquals(replacement, client.testCases().getFailedRowsSample(testCase.getId().toString()));
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(timestamp + 2)
+                .withTestCaseStatus(TestCaseStatus.Success)
+                .withFailedRows(0L));
+    assertEquals(
+        404,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> client.testCases().getFailedRowsSample(testCase.getId().toString()))
+            .getStatusCode());
+  }
+
+  private static void addTestCaseResult(
+      OpenMetadataClient client, TestCase testCase, TestCaseStatus status, Long failedRows) {
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(System.currentTimeMillis())
+            .withTestCaseStatus(status)
+            .withFailedRows(failedRows);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), result);
+  }
+
+  private static TableData idSample() {
+    return new TableData()
+        .withColumns(List.of("id"))
+        .withRows(List.of(List.of("1"), List.of("2"), List.of("3")));
+  }
+
+  @Test
+  void test_failedRowsSampleMasksPiiColumnsNamedWithDifferentCase(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    Table withPii = client.tables().get(table.getId().toString(), "columns,tags");
+    withPii
+        .getColumns()
+        .get(1)
+        .setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                    .withSource(TagLabel.TagSource.CLASSIFICATION)));
+    client.tables().update(withPii.getId().toString(), withPii);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("pii_failed_rows_case"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new org.openmetadata.schema.api.tests.CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Row count mismatch"));
+    // Failed-row samples validate column names ignoring case, so "NAME" is accepted for "name".
+    client
+        .testCases()
+        .addFailedRowsSample(
+            testCase.getId().toString(),
+            new org.openmetadata.schema.type.TableData()
+                .withColumns(List.of("ID", "NAME"))
+                .withRows(List.of(List.of("1", "Alice"))));
+    User reader = UserTestFactory.createUser(ns, "pii_failed_rows_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+
+    org.openmetadata.schema.type.TableData masked =
+        readerClient.testCases().getFailedRowsSample(testCase.getId().toString());
+
+    assertEquals(List.of("ID", "NAME [MASKED]"), masked.getColumns());
+    assertEquals(List.of("1", PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {
@@ -4398,6 +4801,38 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "latest test case result must be returned once indexed");
               assertDurationAndErrorDetails(
                   create, JsonUtils.readValue(response, TestCaseResult.class));
+            });
+  }
+
+  @Test
+  void get_testCaseResultSearchLatestWithEvaluationScope_200(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "result_latest_evaluation_scope");
+    TestCaseEvaluationScope scope =
+        new TestCaseEvaluationScope()
+            .withSampled(true)
+            .withProfileSample(1000.0)
+            .withProfileSampleType(ProfileSampleType.ROWS);
+    CreateTestCaseResult create = new CreateTestCaseResult();
+    create.setTimestamp(System.currentTimeMillis());
+    create.setTestCaseStatus(TestCaseStatus.Success);
+    create.setResult("passed");
+    create.setEvaluationScope(scope);
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String response =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(
+                  response != null && !response.isBlank(),
+                  "latest test case result must be returned once indexed");
+              assertEquals(
+                  scope, JsonUtils.readValue(response, TestCaseResult.class).getEvaluationScope());
             });
   }
 
@@ -6348,6 +6783,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
   private String getTestSuiteSearchIndexName() {
     return "openmetadata_test_suite_search_index";
+  }
+
+  private static String tableEntityLink(Table table) {
+    return String.format("<#E::table::%s>", table.getFullyQualifiedName());
+  }
+
+  private static List<UUID> idsOf(ListResponse<TestCase> response) {
+    return response.getData().stream().map(TestCase::getId).toList();
   }
 
   private void refreshSearchIndex(Rest5Client searchClient, String indexName) throws Exception {

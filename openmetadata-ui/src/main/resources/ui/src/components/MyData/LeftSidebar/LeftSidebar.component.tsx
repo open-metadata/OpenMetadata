@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button, Layout, Menu, MenuProps } from 'antd';
-import Modal from 'antd/lib/modal/Modal';
+import {
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Divider,
+  Dropdown,
+  NavItemBase,
+  NavItemButton,
+  SimpleModal,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { noop } from 'lodash';
-import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -28,6 +34,7 @@ import { SidebarItem } from '../../../enums/sidebar.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useSidebarItems } from '../../../hooks/useSidebarItems';
+import { LeftSidebarItem as SidebarEntry } from '../../../interface/sidebar.interface';
 import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import {
   getSidebarActiveKeys,
@@ -36,25 +43,22 @@ import {
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
 import './left-sidebar.less';
-import LeftSidebarItem from './LeftSidebarItem.component';
-const { Sider } = Layout;
 
 const LeftSidebar = () => {
   const location = useCustomLocation();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
   const [isConfirmLogoutModalOpen, setIsConfirmLogoutModalOpen] =
     useState(false);
   const {
     preferences: { isSidebarCollapsed },
   } = useCurrentUserPreferences();
-
-  const { i18n } = useTranslation();
-  const isDirectionRTL = useMemo(() => i18n.dir() === 'rtl', [i18n]);
+  const isDirectionRTL = i18n.dir() === 'rtl';
   const [openKeys, setOpenKeys] = useState<string[]>([]);
-
+  const [collapsedMenuKey, setCollapsedMenuKey] = useState<string>();
+  const hoverCloseTimer = useRef<ReturnType<typeof setTimeout>>();
+  const collapsedPopover = useRef<HTMLDivElement>(null);
   const sideBarItems = useSidebarItems();
-
   const selectedKeys = useMemo(
     () =>
       getSidebarActiveKeys(
@@ -63,62 +67,211 @@ const LeftSidebar = () => {
       ),
     [location.pathname, location.state]
   );
-
-  const handleLogoutClick = useCallback(() => {
-    setIsConfirmLogoutModalOpen(true);
-  }, []);
-
-  const hideConfirmLogoutModal = () => {
-    setIsConfirmLogoutModalOpen(false);
-  };
-
-  const LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(
-    () =>
-      [SETTING_ITEM, LOGOUT_ITEM].map((item) => ({
-        key: item.key,
-        icon: <Icon component={item.icon} />,
-        onClick: item.key === SidebarItem.LOGOUT ? handleLogoutClick : noop,
-        label: <LeftSidebarItem data={item} />,
-      })),
-    [handleLogoutClick]
-  );
-
-  const menuItems = useMemo(() => {
-    return sideBarItems.map((item) => ({
-      key: item.key,
-      icon: <Icon component={item.icon} />,
-      label: <LeftSidebarItem data={item} />,
-      'data-testid': `side-bar-${item.dataTestId}`,
-      children: item.children?.map((child) => ({
-        key: child.key,
-        icon: <Icon component={child.icon} />,
-        label: <LeftSidebarItem data={child} />,
-        'data-testid': `side-bar-${item.dataTestId}`,
-      })),
-    }));
-  }, [sideBarItems]);
-
-  const handleMenuClick: MenuProps['onClick'] = useCallback(
-    (info: MenuInfo) => {
-      // keyPath is [childKey, ...ancestorKeys]; keep the active item's submenu
-      // open (empty for a top-level item, which collapses any open submenu).
-      setOpenKeys(info.keyPath.slice(1));
-    },
+  const handleLogoutClick = useCallback(
+    () => setIsConfirmLogoutModalOpen(true),
     []
   );
+  const hideConfirmLogoutModal = () => setIsConfirmLogoutModalOpen(false);
+
+  const cancelHoverClose = () => {
+    if (hoverCloseTimer.current !== undefined) {
+      clearTimeout(hoverCloseTimer.current);
+      hoverCloseTimer.current = undefined;
+    }
+  };
+
+  useEffect(() => {
+    setCollapsedMenuKey(undefined);
+
+    return () => {
+      if (hoverCloseTimer.current !== undefined) {
+        clearTimeout(hoverCloseTimer.current);
+      }
+    };
+  }, [isSidebarCollapsed]);
+
+  const navigateToItem = (item: SidebarEntry, parentKey?: string) => {
+    setOpenKeys(parentKey ? [parentKey] : []);
+    // App-mode changes must run before the router follows this item's link.
+    item.onClick?.();
+  };
+
+  const toggleGroup = (groupKey: string, isOpen: boolean) => {
+    const otherKeys = (keys: string[]) =>
+      keys.filter((key) => key !== groupKey);
+    setOpenKeys((keys) =>
+      isOpen ? [...otherKeys(keys), groupKey] : otherKeys(keys)
+    );
+  };
+
+  const renderLeaf = (item: SidebarEntry, parentKey?: string) => {
+    const handleSelect = () => {
+      navigateToItem(item, parentKey);
+      if (item.key === SidebarItem.LOGOUT) {
+        handleLogoutClick();
+      }
+    };
+
+    if (isSidebarCollapsed && !item.redirect_url) {
+      return (
+        <Button
+          aria-label={t(item.title)}
+          color="tertiary"
+          data-testid={item.dataTestId}
+          iconLeading={item.icon}
+          size="md"
+          onPress={handleSelect}
+        />
+      );
+    }
+
+    if (isSidebarCollapsed) {
+      return (
+        <span
+          className="tw:flex tw:justify-center"
+          data-testid={item.dataTestId}>
+          <NavItemButton
+            current={selectedKeys.includes(item.key)}
+            href={item.redirect_url}
+            icon={item.icon}
+            label={t(item.title)}
+            onClick={() => navigateToItem(item, parentKey)}
+          />
+        </span>
+      );
+    }
+
+    return (
+      <NavItemBase
+        badge={
+          item.isBeta ? (
+            <Badge color="brand" size="xs">
+              {t('label.beta')}
+            </Badge>
+          ) : undefined
+        }
+        current={selectedKeys.includes(item.key)}
+        dataTestId={item.dataTestId}
+        href={item.redirect_url}
+        icon={item.icon}
+        size="lg"
+        truncate={false}
+        type={parentKey ? 'collapsible-child' : 'link'}
+        variant="solid"
+        onClick={handleSelect}>
+        {t(item.title)}
+      </NavItemBase>
+    );
+  };
+
+  const renderGroup = (item: SidebarEntry) => {
+    if (isSidebarCollapsed) {
+      return (
+        <Dropdown.Root
+          isOpen={collapsedMenuKey === item.key}
+          onOpenChange={(isOpen) =>
+            setCollapsedMenuKey(isOpen ? item.key : undefined)
+          }>
+          <span
+            className="tw:flex tw:h-10 tw:items-center tw:justify-center"
+            role="presentation"
+            onMouseEnter={() => {
+              cancelHoverClose();
+              setCollapsedMenuKey(item.key);
+            }}
+            onMouseLeave={() => {
+              // A short handoff lets the pointer reach the portal without closing it mid-flight.
+              cancelHoverClose();
+              hoverCloseTimer.current = setTimeout(() => {
+                if (
+                  !collapsedPopover.current?.contains(document.activeElement)
+                ) {
+                  setCollapsedMenuKey(undefined);
+                }
+              }, 150);
+            }}>
+            <ButtonUtility
+              aria-label={t(item.title)}
+              color={
+                item.children?.some((child) => selectedKeys.includes(child.key))
+                  ? 'secondary'
+                  : 'tertiary'
+              }
+              data-testid={item.dataTestId}
+              icon={item.icon}
+              size="sm"
+              // Hover has already opened the group before a pointer press reaches its trigger.
+              onPress={() => setCollapsedMenuKey(item.key)}
+            />
+          </span>
+          {/* Hover menus must leave their triggers and neighbouring groups interactive. */}
+          <Dropdown.Popover
+            isNonModal
+            placement={isDirectionRTL ? 'left top' : 'right top'}>
+            <div
+              ref={collapsedPopover}
+              role="presentation"
+              onMouseEnter={cancelHoverClose}
+              onMouseLeave={() => setCollapsedMenuKey(undefined)}>
+              <Dropdown.Menu
+                aria-label={t(item.title)}
+                selectedKeys={new Set(selectedKeys)}>
+                {item.children?.map((child) => (
+                  <Dropdown.Item
+                    data-testid={child.dataTestId}
+                    href={child.redirect_url}
+                    icon={child.icon}
+                    id={child.key}
+                    key={child.key}
+                    label={t(child.title)}
+                    onAction={() => navigateToItem(child, item.key)}
+                  />
+                ))}
+              </Dropdown.Menu>
+            </div>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      );
+    }
+
+    return (
+      <details
+        className="tw:rounded-xl tw:open:border tw:open:border-t-0 tw:open:border-brand-subtle"
+        open={openKeys.includes(item.key)}
+        onToggle={(event) => toggleGroup(item.key, event.currentTarget.open)}>
+        <NavItemBase
+          current={item.children?.some((child) =>
+            selectedKeys.includes(child.key)
+          )}
+          icon={item.icon}
+          size="lg"
+          truncate={false}
+          type="collapsible"
+          variant="solid">
+          <span data-testid={item.dataTestId}>{t(item.title)}</span>
+        </NavItemBase>
+        <ul className="tw:m-0 tw:list-none tw:p-0">
+          {item.children?.map((child) => (
+            <li data-testid={`side-bar-${child.dataTestId}`} key={child.key}>
+              {renderLeaf(child, item.key)}
+            </li>
+          ))}
+        </ul>
+      </details>
+    );
+  };
 
   return (
-    <Sider
-      collapsible
-      className={classNames({
+    <aside
+      className={classNames('app-sidebar', {
+        'sidebar-collapsed': isSidebarCollapsed,
         'left-sidebar-col-rtl': isDirectionRTL,
         'sidebar-open': !isSidebarCollapsed,
+        'tw:w-18 tw:min-w-18 tw:max-w-18': isSidebarCollapsed,
+        'tw:w-57 tw:min-w-57 tw:max-w-57': !isSidebarCollapsed,
       })}
-      collapsed={isSidebarCollapsed}
-      collapsedWidth={72}
       data-testid="left-sidebar"
-      trigger={null}
-      width={228}>
+      dir={i18n.dir()}>
       <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
@@ -130,74 +283,54 @@ const LeftSidebar = () => {
           />
         </Link>
       </div>
-
       <div className="left-sidebar-layout">
-        <div className="menu-container">
-          <div className="top-menu">
-            <Menu
-              inlineIndent={16}
-              items={menuItems}
-              mode="inline"
-              openKeys={openKeys}
-              rootClassName="left-sidebar-menu"
-              selectedKeys={selectedKeys}
-              onClick={handleMenuClick}
-              onOpenChange={setOpenKeys}
-            />
-          </div>
-
-          <div className="bottom-menu">
-            <Menu
-              inlineIndent={16}
-              items={[
-                {
-                  type: 'divider',
-                  style: {
-                    margin: '8px 0',
-                  },
-                },
-                ...LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS,
-              ]}
-              mode="inline"
-              rootClassName="left-sidebar-menu"
-              selectedKeys={selectedKeys}
-            />
-          </div>
-        </div>
+        <Box className="menu-container" direction="col">
+          <nav aria-label={t('label.navigation')} className="top-menu">
+            <ul className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
+              {sideBarItems.map((item) => (
+                <li data-testid={`side-bar-${item.dataTestId}`} key={item.key}>
+                  {item.children?.length ? renderGroup(item) : renderLeaf(item)}
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <nav
+            aria-label={t('label.setting-plural')}
+            className="bottom-menu tw:ps-4">
+            <Divider className="tw:my-2" />
+            <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
+              {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (
+                <li key={item.key}>{renderLeaf(item)}</li>
+              ))}
+            </ul>
+          </nav>
+        </Box>
       </div>
-
       {isConfirmLogoutModalOpen && (
-        <Modal
-          centered
-          bodyStyle={{ textAlign: 'center' }}
-          closable={false}
-          closeIcon={null}
-          footer={null}
-          open={isConfirmLogoutModalOpen}
+        <SimpleModal
+          isOpen
+          footer={
+            <>
+              <Button color="secondary" onClick={hideConfirmLogoutModal}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="confirm-logout"
+                onClick={onLogoutHandler}>
+                {t('label.logout')}
+              </Button>
+            </>
+          }
+          title={t('label.logout')}
           width={360}
           onCancel={hideConfirmLogoutModal}>
-          <Typography as="h5" size="text-md" weight="semibold">
-            {t('label.logout')}
-          </Typography>
           <Typography color="secondary">
             {t('message.logout-confirmation')}
           </Typography>
-
-          <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              className="confirm-btn"
-              data-testid="confirm-logout"
-              type="primary"
-              onClick={onLogoutHandler}>
-              {t('label.logout')}
-            </Button>
-          </div>
-        </Modal>
+        </SimpleModal>
       )}
-    </Sider>
+    </aside>
   );
 };
 

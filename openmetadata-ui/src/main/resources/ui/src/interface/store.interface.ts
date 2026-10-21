@@ -16,6 +16,7 @@ import type {
 } from '../components/Auth/AuthProviders/AuthProvider.interface';
 import type { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import type { EntityUnion } from '../components/Explore/ExplorePage.interface';
+import type { DefaultColumnOrder } from '../generated/api/configuration/appConfiguration';
 import type { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import type { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import type { LineageSettings } from '../generated/configuration/lineageSettings';
@@ -30,6 +31,8 @@ import type { ExploreSearchIndex } from './discovery/explore.interface';
 export interface AppPreferences {
   lineageConfig?: LineageSettings;
   searchConfig?: SearchSettings;
+  /** Tenant default for table schema views; unset means alphabetical. */
+  defaultColumnOrder?: DefaultColumnOrder;
 }
 
 export interface ApplicationStore
@@ -85,6 +88,8 @@ export interface ApplicationStore
   setAppVersion: (version: string) => void;
   setRdfEnabled: (enabled: boolean) => void;
   initializeAuthState: () => void;
+  timeFormat: '12h' | '24h';
+  setTimeFormat: (format: '12h' | '24h') => void;
 }
 
 export interface DomainStore {
@@ -92,7 +97,15 @@ export interface DomainStore {
   activeDomain: string;
   activeDomainEntityRef?: EntityReference;
   isDomainRestricted: boolean;
-  updateActiveDomain: (domain: EntityReference) => void;
+  updateActiveDomain: (domain?: EntityReference) => void;
   setUserDomains: (userDomainsArr: EntityReference[]) => void;
   setDomainRestriction: (restricted: boolean) => void;
+}
+
+export interface ApprovalEnforcedEntityTypesStore {
+  // Undefined until read; a failed read leaves it undefined so the next caller reads again.
+  entityTypes?: string[];
+  isLoading: boolean;
+  fetchEntityTypes: () => Promise<void>;
+  invalidate: () => void;
 }

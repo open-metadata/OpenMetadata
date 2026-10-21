@@ -28,6 +28,7 @@ import {
   verifyDataProductCountInDataProductWidget,
   verifyDomainCountInDomainWidget,
   verifyWidgetCountOnCurrentPage,
+  waitForLandingPageWidget,
 } from '../../../utils/customizeLandingPage';
 import {
   addAssetsToDataProduct,
@@ -44,6 +45,8 @@ import {
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
+// A second owner, so the cards have more than one to show.
+const coOwner = new UserClass();
 
 const persona = new PersonaClass();
 const widgetEntityId = Date.now().toString(36);
@@ -53,7 +56,9 @@ const domain = new Domain({
   description: 'playwright domain description',
   domainType: 'Aggregate',
 });
-const subDomain = new SubDomain(domain);
+// Named to sort straight after its parent, so leaving it out of the Domains card
+// is the card's scope at work rather than the end of its page.
+const subDomain = new SubDomain(domain, `0000-pw-domain-${widgetEntityId}-sub`);
 const dataProduct = new DataProduct(
   [domain],
   `0000-pw-data-product-${widgetEntityId}`
@@ -74,12 +79,30 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
+  await coOwner.create(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
   await domain.create(apiContext);
   await subDomain.create(apiContext);
   await dataProduct.create(apiContext);
   await table.create(apiContext);
   await topic.create(apiContext);
+
+  const owners = [
+    { id: adminUser.responseData.id, type: 'user' },
+    { id: coOwner.responseData.id, type: 'user' },
+  ];
+  await domain.patch({
+    apiContext,
+    patchData: [{ op: 'add', path: '/owners', value: owners }],
+  });
+  const productOwners = await apiContext.patch(
+    `/api/v1/dataProducts/${dataProduct.responseData.id}`,
+    {
+      data: [{ op: 'add', path: '/owners', value: owners }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(productOwners.ok(), await productOwners.text()).toBe(true);
   await afterAction();
 });
 
@@ -91,6 +114,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await domain.delete(apiContext);
   await persona.delete(apiContext);
   await adminUser.delete(apiContext);
+  await coOwner.delete(apiContext);
 
   await afterAction();
 });
@@ -133,6 +157,42 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     );
   });
 
+  test('Domains card lists top-level domains only, each with every owner', async ({
+    page,
+  }) => {
+    const widget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.Domains'
+    );
+    const row = widget.getByTestId(`domain-card-${domain.responseData.id}`);
+
+    await expect(row).toBeVisible();
+    // The Domains page lists sub-domains under their parent, never beside it.
+    await expect(
+      widget.getByTestId(`domain-card-${subDomain.responseData.id}`)
+    ).toHaveCount(0);
+    await expect(
+      row.getByTestId('domain-owners').getByTestId('avatar-group-item')
+    ).toHaveCount(2);
+  });
+
+  test('Data Products card shows every owner of a product', async ({
+    page,
+  }) => {
+    const widget = await waitForLandingPageWidget(
+      page,
+      'KnowledgePanel.DataProducts'
+    );
+    const row = widget.getByTestId(
+      `data-product-card-${dataProduct.responseData.id}`
+    );
+
+    await expect(row).toBeVisible();
+    await expect(
+      row.getByTestId('data-product-owner').getByTestId('avatar-group-item')
+    ).toHaveCount(2);
+  });
+
   test('Verify Widgets are having 0 count initially', async ({ page }) => {
     test.slow();
     await redirectToHomePage(page, false);
@@ -141,14 +201,9 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await verifyWidgetCountOnCurrentPage(
       page,
       'KnowledgePanel.Domains',
-      [
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-count`,
-        `[data-testid="domain-card-${
-          domain.responseData.id ?? ''
-        }"] .domain-card-full-count`,
-      ].join(', '),
+      `[data-testid="domain-card-${
+        domain.responseData.id ?? ''
+      }"] [data-testid="domain-asset-count"]`,
       0
     );
     await verifyWidgetCountOnCurrentPage(
@@ -235,7 +290,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await page
       .locator(`[data-testid="table-data-card_${topicFqn}"]`)
       .getByTestId('asset-checkbox')
-      .check();
+      .click();
     // Clear so delete-all's post-flow sees the domain-wide state, not
     // a filtered subset (delete-all acts on selectedItems, but the
     // dry-run modal preview shows the visible list).
@@ -310,7 +365,7 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await expect(assetCard).not.toHaveCount(0);
 
     for (const card of await assetCard.all()) {
-      await card.getByTestId('asset-checkbox').check();
+      await card.getByTestId('asset-checkbox').click();
     }
 
     const removeRes = page.waitForResponse('**/assets/remove');

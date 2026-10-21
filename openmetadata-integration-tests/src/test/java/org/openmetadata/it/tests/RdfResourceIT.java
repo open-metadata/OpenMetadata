@@ -419,12 +419,13 @@ public class RdfResourceIT {
 
   /**
    * Inference runs through a separate repository path that wraps its failures as server errors, so
-   * the rejection is exercised with and without it.
+   * the rejection is exercised with and without it. CUSTOM is the only level the server can answer;
+   * the suite enables materialized inference.
    */
   @ParameterizedTest
   @EnumSource(
       value = SparqlQuery.Inference.class,
-      names = {"NONE", "RDFS"})
+      names = {"NONE", "CUSTOM"})
   void testSparqlEndpointRejectsJsonLdForATripleTermGraph(SparqlQuery.Inference inference)
       throws Exception {
     HttpResponse<String> turtle = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
@@ -439,6 +440,19 @@ public class RdfResourceIT {
     assertTrue(
         jsonLd.body().contains("turtle"),
         "The rejection must name a serialization that works: " + jsonLd.body());
+  }
+
+  /** OpenMetadata no longer runs reasoners in its own process, so these levels are refused. */
+  @ParameterizedTest
+  @EnumSource(
+      value = SparqlQuery.Inference.class,
+      names = {"RDFS", "OWL"})
+  void testSparqlEndpointReportsReasonerLevelsAsUnavailable(SparqlQuery.Inference inference)
+      throws Exception {
+    HttpResponse<String> response = postSparql(TRIPLE_TERM_CONSTRUCT, "turtle", inference);
+
+    assertEquals(503, response.statusCode(), response.body());
+    assertTrue(response.body().contains("not available"), response.body());
   }
 
   private static HttpResponse<String> postSparql(

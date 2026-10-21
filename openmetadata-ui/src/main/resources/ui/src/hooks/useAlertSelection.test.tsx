@@ -91,6 +91,28 @@ describe('useAlertSelection', () => {
     ).toEqual(['filterByMentionedName']);
   });
 
+  it('keeps the same search when a new answer says the same thing', async () => {
+    const { result, rerender, waitFor } = renderHook(
+      ({ input }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: ['task'],
+          input,
+        }),
+      { initialProps: { input: {} } }
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    const firstSearch = result.current.search;
+
+    rerender({ input: { filters: [{ name: 'filterByMentionedName' }] } });
+    await waitFor(() =>
+      expect(mockGetAlertCapabilities).toHaveBeenCalledTimes(2)
+    );
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.search).toBe(firstSearch);
+  });
+
   it('lets every field inside the page read the same selection', async () => {
     const { result: page, waitFor } = renderHook(() =>
       useAlertSelection({

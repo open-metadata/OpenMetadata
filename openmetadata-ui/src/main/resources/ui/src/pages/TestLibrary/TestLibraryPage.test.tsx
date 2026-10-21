@@ -55,11 +55,11 @@ describe('TestLibraryPage Component', () => {
       wrapper: MemoryRouter,
     });
 
-    const row = container.querySelector('.ant-row');
+    const row = container.querySelector('.layout-row');
 
     expect(row).toBeInTheDocument();
 
-    const col = container.querySelector('.ant-col-24');
+    const col = container.querySelector('.layout-column');
 
     expect(col).toBeInTheDocument();
   });

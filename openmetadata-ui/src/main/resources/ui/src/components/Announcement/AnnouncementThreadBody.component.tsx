@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  Dialog,
-  Modal,
-  ModalOverlay,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -34,6 +28,7 @@ import {
   AnnouncementThreadBodyProp,
   ConfirmState,
 } from './Announcement.interface';
+import AnnouncementDeleteDialog from './AnnouncementDeleteDialog';
 import AnnouncementThreads from './AnnouncementThreads';
 
 const PAGE_SIZE = 100;
@@ -163,41 +158,11 @@ const AnnouncementThreadBody = ({
         onConfirmation={onConfirmation}
       />
 
-      {/* A core Dialog rather than the shared antd ConfirmationModal: this
-          renders inside the drawer's react-aria overlay, and two scroll-lock
-          implementations on `document.body` fight each other every frame, so
-          the antd confirm never settles and its buttons stay unclickable. */}
-      <ModalOverlay
+      <AnnouncementDeleteDialog
         isOpen={confirmationState.state}
-        onOpenChange={(isOpen) => !isOpen && onDiscard()}>
-        <Modal>
-          <Dialog
-            data-testid="announcement-delete-confirm"
-            width={480}
-            onClose={onDiscard}>
-            <Dialog.Header title={t('message.delete-message-question-mark')} />
-            <Dialog.Content>
-              <Typography as="p" className="tw:text-secondary">
-                {t('message.confirm-delete-message')}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <Button
-                color="secondary"
-                data-testid="cancel"
-                onClick={onDiscard}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary-destructive"
-                data-testid="save-button"
-                onClick={onPostDelete}>
-                {t('label.delete')}
-              </Button>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
+        onCancel={onDiscard}
+        onConfirm={onPostDelete}
+      />
     </div>
   );
 };

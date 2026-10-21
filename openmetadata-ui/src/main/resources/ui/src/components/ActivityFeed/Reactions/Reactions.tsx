@@ -17,6 +17,8 @@ import {
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
+import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +27,10 @@ import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
 } from '../../../constants/reactions.constant';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import {
   Reaction as ReactionProp,
   ReactionType,
@@ -34,15 +39,29 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Emoji from './Emoji';
 import Reaction from './Reaction';
 
+const isPill = (variant: ReactionsVariant) => variant === ReactionsVariant.Pill;
+
 interface ReactionsProps {
   reactions: ReactionProp[];
+  /**
+   * What the tray marks as already picked; defaults to `reactions`. Lets a
+   * reaction shown outside the pills (the Inbox's Like is the thumbs up) still
+   * read as picked, and be taken back, in the tray.
+   */
+  pickedReactions?: ReactionProp[];
+  variant?: ReactionsVariant;
   onReactionSelect: (
     reaction: ReactionType,
     operation: ReactionOperation
   ) => void | Promise<void>;
 }
 
-const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
+const Reactions: FC<ReactionsProps> = ({
+  reactions,
+  pickedReactions = reactions,
+  variant = ReactionsVariant.Default,
+  onReactionSelect,
+}) => {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const { currentUser } = useApplicationStore();
@@ -57,7 +76,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
    * @returns true if current user has reacted with {reactionType}
    */
   const isReacted = (reactionType: ReactionType) => {
-    return reactions.some(
+    return pickedReactions.some(
       (reactionItem) =>
         reactionItem.user.id === currentUser?.id &&
         reactionType === reactionItem.reactionType
@@ -77,6 +96,13 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
     );
   });
 
+  // The Inbox's pills drop the tray once every reaction is picked: there is
+  // nothing left to add, and each pill takes its own back. The classic feed
+  // keeps it, as the way it takes a reaction back.
+  const canAddReaction =
+    !isPill(variant) ||
+    REACTION_LIST.some(({ reaction }) => !isReacted(reaction));
+
   // prepare dictionary for each emojis and corresponding users list
   const modifiedReactionObject = groupBy(reactions, 'reactionType');
 
@@ -90,6 +116,7 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
           key={reaction}
           reaction={reaction}
           reactionList={reactionListValue}
+          variant={variant}
           onReactionSelect={onReactionSelect}
         />
       )
@@ -98,32 +125,47 @@ const Reactions: FC<ReactionsProps> = ({ reactions, onReactionSelect }) => {
 
   return (
     <div
-      className="tw:inline-flex tw:items-center tw:gap-2"
+      className={classNames(
+        'tw:inline-flex tw:items-center',
+        isPill(variant) ? 'tw:gap-1.5' : 'tw:gap-2'
+      )}
       data-testid="feed-reaction-container">
       {emojis}
-      <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
-        <Button
-          aria-label={t('label.add-entity', {
-            entity: t('label.reaction-lowercase-plural'),
-          })}
-          className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
-          color="tertiary"
-          data-testid="add-reactions"
-          iconLeading={<AddReactionIcon data-icon height={16} width={16} />}
-          size="xs"
-          title={t('label.add-entity', {
-            entity: t('label.reaction-lowercase-plural'),
-          })}
-          onClick={(e: MouseEvent) => e.stopPropagation()}
-        />
-        <Popover
-          arrow
-          containerClassName="tw:flex tw:gap-2 tw:p-1"
-          data-testid="feed-reactions-popover"
-          placement="top start">
-          {reactionList}
-        </Popover>
-      </PopoverTrigger>
+      {canAddReaction && (
+        <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
+          <Button
+            aria-label={t('label.add-entity', {
+              entity: t('label.reaction-lowercase-plural'),
+            })}
+            className={
+              isPill(variant)
+                ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
+                : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
+            }
+            color="tertiary"
+            data-testid="add-reactions"
+            iconLeading={
+              isPill(variant) ? (
+                <FaceSmile data-icon size={16} />
+              ) : (
+                <AddReactionIcon data-icon height={16} width={16} />
+              )
+            }
+            size="xs"
+            title={t('label.add-entity', {
+              entity: t('label.reaction-lowercase-plural'),
+            })}
+            onClick={(e: MouseEvent) => e.stopPropagation()}
+          />
+          <Popover
+            arrow
+            containerClassName="tw:flex tw:gap-2 tw:p-1"
+            data-testid="feed-reactions-popover"
+            placement="top start">
+            {reactionList}
+          </Popover>
+        </PopoverTrigger>
+      )}
     </div>
   );
 };

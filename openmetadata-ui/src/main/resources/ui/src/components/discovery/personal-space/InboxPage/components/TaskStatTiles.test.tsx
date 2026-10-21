@@ -14,14 +14,11 @@
 import { render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
-jest.mock('react-router-dom', () => ({
-  Link: ({ children, to }: { children?: ReactNode; to: string }) => (
-    <a href={to}>{children}</a>
-  ),
-}));
-
 jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Button: ({ children, href }: { children?: ReactNode; href?: string }) => (
+    <a href={href}>{children}</a>
+  ),
   Box: ({
     children,
     className,

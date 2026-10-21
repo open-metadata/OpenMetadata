@@ -62,7 +62,7 @@ test.describe(
         invalidated = await createMemory('invalidated', 'Approved');
 
         await patchMemory(apiContext, superseded.id, [
-          { op: 'replace', path: '/entityStatus', value: 'Deprecated' },
+          { op: 'replace', path: '/entityStatus', value: 'Superseded' },
           {
             op: 'add',
             path: '/supersededBy',
@@ -71,7 +71,7 @@ test.describe(
           { op: 'add', path: '/statusReason', value: supersededReason },
         ]);
         await patchMemory(apiContext, invalidated.id, [
-          { op: 'replace', path: '/entityStatus', value: 'Rejected' },
+          { op: 'replace', path: '/entityStatus', value: 'Invalidated' },
           { op: 'add', path: '/statusReason', value: invalidatedReason },
         ]);
       } finally {
@@ -106,7 +106,7 @@ test.describe(
       test.slow();
       await navigateToMemories(page);
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        '2 Statuses'
+        '3 Statuses'
       );
       await expect(
         await searchAndGetMemoryRow(page, successor.title, successor.id)
@@ -116,10 +116,10 @@ test.describe(
       ).not.toBeVisible();
 
       await page.getByTestId('memory-status-filter').click();
-      await page.getByRole('menuitemcheckbox', { name: 'Deprecated' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Superseded' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        '3 Statuses'
+        '4 Statuses'
       );
       await expect(
         page.getByTestId(`memory-row-${superseded.id}`)
@@ -136,9 +136,7 @@ test.describe(
       ).toBeVisible();
     });
 
-    test('unprocessed memories appear by default and cannot propose terms', async ({
-      page,
-    }) => {
+    test('unprocessed memories appear by default', async ({ page }) => {
       await navigateToMemories(page);
       const row = await searchAndGetMemoryRow(
         page,
@@ -153,9 +151,6 @@ test.describe(
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
         'Unprocessed'
       );
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
       await page.screenshot({
         path: test.info().outputPath('unprocessed-memory.png'),
       });
@@ -164,18 +159,16 @@ test.describe(
       await page.getByRole('menuitemcheckbox', { name: 'Unprocessed' }).click();
       await page.keyboard.press('Escape');
       await expect(page.getByTestId('memory-status-filter')).toContainText(
-        'Approved'
+        '2 Statuses'
       );
       await expect(row).not.toBeVisible();
     });
 
-    test('retired details show reasons and successor while proposal actions stay hidden', async ({
-      page,
-    }) => {
+    test('retired details show reasons and successor', async ({ page }) => {
       test.slow();
       await navigateToMemories(page);
       await page.getByTestId('memory-status-filter').click();
-      await page.getByRole('menuitemcheckbox', { name: 'Deprecated' }).click();
+      await page.getByRole('menuitemcheckbox', { name: 'Superseded' }).click();
       await page.keyboard.press('Escape');
 
       const supersededRow = await searchAndGetMemoryRow(
@@ -185,7 +178,7 @@ test.describe(
       );
       await expect(
         supersededRow.getByTestId(`memory-status-${superseded.id}`)
-      ).toContainText('Deprecated');
+      ).toContainText('Superseded');
       await expect(
         supersededRow.getByTestId(`memory-status-reason-${superseded.id}`)
       ).toContainText(supersededReason);
@@ -193,14 +186,15 @@ test.describe(
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Deprecated'
+        'Superseded'
       );
       await expect(dialog.getByTestId('memory-lifecycle-reason')).toContainText(
         supersededReason
       );
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath('superseded-memory.png'),
+        animations: 'disabled',
+      });
       await dialog.getByTestId('memory-lifecycle-successor').click();
       await expect(page).toHaveURL(new RegExp(`memory=${successor.name}`));
       await expect(
@@ -210,14 +204,15 @@ test.describe(
       await page.goto(`${MEMORIES_URL}?memory=${invalidated.name}`);
       await waitForAllLoadersToDisappear(page);
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Rejected'
+        'Invalidated'
       );
       await expect(dialog.getByTestId('memory-lifecycle-reason')).toContainText(
         invalidatedReason
       );
-      await expect(
-        dialog.getByRole('button', { name: /propose term/i })
-      ).not.toBeVisible();
+      await page.screenshot({
+        path: test.info().outputPath('invalidated-memory.png'),
+        animations: 'disabled',
+      });
     });
 
     test('linked memory modals stay closed after cancel, escape, editing and successor navigation', async ({
@@ -226,7 +221,7 @@ test.describe(
       await page.goto(`${MEMORIES_URL}?memory=${superseded.name}`);
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByTestId('memory-lifecycle-status')).toContainText(
-        'Deprecated'
+        'Superseded'
       );
       await dialog.getByTestId('memory-lifecycle-successor').click();
       await expect(
