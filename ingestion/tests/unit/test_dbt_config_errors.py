@@ -166,8 +166,9 @@ def _dbt_cloud_artifacts(run_steps, run_results_by_step):
             return {"data": [run]}
         if path.endswith("manifest.json"):
             return {"nodes": {}}
-        if path.endswith("run_results.json") and (data or {}).get("step") in run_results_by_step:
-            return run_results_by_step[(data or {}).get("step")]
+        if path.endswith("run_results.json"):
+            # dbt Cloud nests the 404 code under "status", so the REST client returns None, not raises
+            return run_results_by_step.get((data or {}).get("step"))
         raise _http_error(404)
 
     return get
