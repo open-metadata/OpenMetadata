@@ -40,7 +40,7 @@ The `@ingestion` project is excluded from common Chromium only when the dynamic 
 
 Two lanes run a whole project on one shard and are switched on by their own path filters in `check-changes` (always on for manual and nightly runs), not by spec impact:
 
-- `visual` runs `visual-regression` on the shared fixture, inside `mcr.microsoft.com/playwright:v1.57.0-jammy` because its baselines were captured there.
+- `visual` runs `visual-regression` against its own MySQL environment seeded from scratch with the regular UI bundle — the environment its baselines were captured on — reusing the shared ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason.
 - `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
 
 Both are shards of the same run, so they count toward `playwright-summary`.

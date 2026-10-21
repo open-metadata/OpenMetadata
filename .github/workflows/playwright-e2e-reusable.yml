@@ -1496,9 +1496,10 @@ jobs:
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
       PW_SHARD_LANE: ${{ matrix.lane }}
-      # The RDF lane seeds its own RDF-enabled environment, so its setup
-      # projects run for real instead of reading the shared fixture's state.
-      PW_PRESEEDED_STATE: ${{ matrix.lane != 'rdf' }}
+      # The visual and RDF lanes seed their own environments (visual: the
+      # MySQL + regular-bundle setup its baselines were captured on; RDF:
+      # Fuseki with RDF enabled), so their setup projects run for real.
+      PW_PRESEEDED_STATE: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
@@ -1530,7 +1531,7 @@ jobs:
 
       - name: Download seeded fixture
         id: download-fixture
-        if: ${{ matrix.lane != 'rdf' }}
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-seeded-fixture
@@ -1538,7 +1539,7 @@ jobs:
 
       - name: Download ingestion image
         id: download-ingestion-image
-        if: ${{ matrix.requiresAirflow || matrix.lane == 'rdf' }}
+        if: ${{ matrix.requiresAirflow || contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-ingestion-image
@@ -1555,8 +1556,8 @@ jobs:
         id: fast-inputs
         env:
           PLAN_NAME: ${{ matrix.plan }}
-          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow || matrix.lane == 'rdf' }}
-          NEEDS_FIXTURE: ${{ matrix.lane != 'rdf' }}
+          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow || contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
+          NEEDS_FIXTURE: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         run: |
           distribution=$(find "$RUNNER_TEMP/openmetadata-distribution" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
           fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit 2>/dev/null || true)
@@ -1591,7 +1592,7 @@ jobs:
 
       - name: Setup Openmetadata Test Environment
         id: setup-environment
-        if: ${{ matrix.lane != 'rdf' }}
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
@@ -1601,18 +1602,43 @@ jobs:
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
           install-test-dependencies: "false"
 
-      # The RDF lane needs Fuseki and an RDF-enabled server seeded from
-      # scratch, so it cannot use the shared fixture. It still reuses the
-      # shared distribution (no Maven build) and ingestion image (no image build).
-      - name: Prepare the RDF environment inputs
-        if: ${{ matrix.lane == 'rdf' }}
+      # The visual and RDF lanes cannot use the shared fixture (see
+      # PW_PRESEEDED_STATE above), so each seeds its own environment from
+      # scratch. Both load the shared ingestion image instead of building it;
+      # RDF also reuses the shared distribution, while visual keeps the regular
+      # UI bundle its baselines were captured with and builds it as before.
+      - name: Free Disk Space (Ubuntu)
+        if: ${{ contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Restore Maven dependencies
+        if: ${{ matrix.lane == 'visual' }}
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Prepare the own-environment inputs
+        if: ${{ contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         env:
           COMPOSE_FILE: docker/development/docker-compose-postgres.yml
           DISTRIBUTION: ${{ steps.fast-inputs.outputs.distribution }}
           INGESTION_IMAGE: ${{ steps.fast-inputs.outputs.ingestion_image }}
         run: |
-          mkdir -p openmetadata-dist/target
-          cp "$DISTRIBUTION" openmetadata-dist/target/
+          if [[ "$PW_SHARD_LANE" == "rdf" ]]; then
+            mkdir -p openmetadata-dist/target
+            cp "$DISTRIBUTION" openmetadata-dist/target/
+          fi
           if ! command -v zstd >/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y zstd
@@ -1621,6 +1647,16 @@ jobs:
           compose_image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
           docker image tag "$(jq -r .image "${INGESTION_IMAGE%.tar.zst}.manifest.json")" "$compose_image"
           echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"
+
+      - name: Setup the visual environment
+        id: setup-visual-environment
+        if: ${{ matrix.lane == 'visual' }}
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d mysql"
+          ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
 
       - name: Setup the RDF environment
         id: setup-rdf-environment
@@ -1779,7 +1815,7 @@ jobs:
 
       - name: Verify the restored authenticated application bundle
         id: verify-bundle
-        if: ${{ matrix.lane != 'rdf' }}
+        if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -2031,7 +2067,7 @@ jobs:
           DOWNLOAD_INGESTION_IMAGE_OUTCOME: ${{ steps.download-ingestion-image.outcome }}
           DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
           FAST_INPUTS_OUTCOME: ${{ steps.fast-inputs.outcome }}
-          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome != 'skipped' && steps.setup-environment.outcome || steps.setup-rdf-environment.outcome }}
+          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome != 'skipped' && steps.setup-environment.outcome || (steps.setup-visual-environment.outcome != 'skipped' && steps.setup-visual-environment.outcome || steps.setup-rdf-environment.outcome) }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_DEPENDENCIES_OUTCOME: ${{ steps.install-dependencies.outcome }}
           RESTORE_BROWSER_OUTCOME: ${{ steps.restore-browser.outcome }}
