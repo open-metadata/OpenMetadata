@@ -564,8 +564,9 @@ test.describe(
           ).toBeVisible();
           await page
             .getByRole('dialog')
-            .getByRole('button', { name: 'Cancel', exact: true })
+            .getByRole('button', { name: 'Close', exact: true })
             .click();
+          await expect(page.getByRole('dialog')).not.toBeVisible();
         });
       } finally {
         if (ontology) {
