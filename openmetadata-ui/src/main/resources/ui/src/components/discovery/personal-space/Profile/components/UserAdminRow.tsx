@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Toggle } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
-import InlineEditCard from './InlineEditCard';
+import { ReadOnlyRow } from './SettingsSection';
 
 interface UserAdminRowProps {
   userData: User;
@@ -23,39 +23,42 @@ interface UserAdminRowProps {
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
 
+/**
+ * Admin flag as an always-visible toggle that saves on change — a single
+ * on/off value has nothing to review, so it skips the edit/Save step.
+ */
 const UserAdminRow: React.FC<UserAdminRowProps> = ({
   userData,
   canEdit,
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
-  const isAdmin = Boolean(userData.isAdmin);
-  const [draft, setDraft] = useState(isAdmin);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleChange = async (isAdmin: boolean) => {
+    setIsSaving(true);
+    try {
+      // updateUserDetails toasts its own failures; the toggle then reverts
+      // because it reads the unchanged userData.
+      await updateUserDetails({ isAdmin }, 'isAdmin');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <InlineEditCard
-      canEdit={canEdit}
+    <ReadOnlyRow
       description={t('message.user-admin-description')}
-      isSaveDisabled={draft === isAdmin}
-      lockedLabel={t('label.admin-managed')}
-      renderEdit={() => (
-        <Toggle
-          data-testid="user-admin-toggle"
-          isSelected={draft}
-          label={t('label.admin')}
-          onChange={setDraft}
-        />
-      )}
       testId="user-admin"
-      title={t('label.admin')}
-      view={
-        <Typography className="tw:text-primary" size="text-sm">
-          {isAdmin ? t('label.yes') : t('label.no')}
-        </Typography>
-      }
-      onEnterEdit={() => setDraft(isAdmin)}
-      onSave={() => updateUserDetails({ isAdmin: draft }, 'isAdmin')}
-    />
+      title={t('label.admin')}>
+      <Toggle
+        aria-label={t('label.admin')}
+        data-testid="user-admin-toggle"
+        isDisabled={!canEdit || isSaving}
+        isSelected={Boolean(userData.isAdmin)}
+        onChange={handleChange}
+      />
+    </ReadOnlyRow>
   );
 };
 

@@ -329,18 +329,18 @@ test.describe('AI Profile Users', () => {
 
     await openUserEditView(page, user.responseData.name);
 
-    await page.getByTestId('user-admin-edit').click();
-    await expect(page.getByTestId('user-admin-save')).toBeDisabled();
-    await page.getByTestId('user-admin-toggle').click();
+    const adminToggle = page.getByTestId('user-admin').getByRole('switch');
+    await expect(adminToggle).not.toBeChecked();
 
+    // The toggle saves on change: no edit mode, no Save button.
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
-    await page.getByTestId('user-admin-save').click();
+    await page.getByTestId('user-admin-toggle').click();
     const response = await patch;
 
     expect(response.request().postDataJSON()).toEqual([
       { op: 'replace', path: '/isAdmin', value: true },
     ]);
-    await expect(page.getByTestId('user-admin')).toContainText('Yes');
+    await expect(adminToggle).toBeChecked();
   });
 
   test('Non-admin can edit own name but not persona', async ({

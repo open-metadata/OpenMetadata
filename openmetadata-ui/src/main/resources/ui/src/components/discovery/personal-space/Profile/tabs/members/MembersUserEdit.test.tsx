@@ -37,6 +37,10 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
   useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
+jest.mock('../../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { name: 'admin' } }),
+}));
+
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -184,4 +188,23 @@ describe('MembersUserEdit', () => {
 
     expect(screen.getByTestId('user-not-found')).toBeInTheDocument();
   });
+
+  it("keeps an admin's own admin toggle read-only so they can't demote themselves", async () => {
+    mockIsAdminUser = true;
+    mockGetUserByName.mockResolvedValue({
+      id: 'u0',
+      name: 'admin',
+      email: 'admin@acme.io',
+      isAdmin: true,
+    });
+    mockUseEntityPermissions.mockReturnValue(
+      permissionsWith([Operation.ViewAll, Operation.EditAll])
+    );
+
+    await renderView();
+
+    expect(canEditOf('row-admin')).toBe('false');
+    expect(canEditOf('row-roles')).toBe('true');
+  });
 });
+

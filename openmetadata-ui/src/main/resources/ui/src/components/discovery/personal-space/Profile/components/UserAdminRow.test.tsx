@@ -21,7 +21,7 @@ jest.mock('react-i18next', () => ({
 const user = { id: 'u1', name: 'jane', isAdmin: false } as User;
 
 describe('UserAdminRow', () => {
-  it('saves isAdmin only after the toggle actually changes', async () => {
+  it('saves isAdmin as soon as the visible toggle is flipped', async () => {
     const updateUserDetails = jest.fn().mockResolvedValue(undefined);
     render(
       <UserAdminRow
@@ -31,15 +31,13 @@ describe('UserAdminRow', () => {
       />
     );
 
-    expect(screen.getByTestId('user-admin')).toHaveTextContent('label.no');
+    const toggle = screen.getByRole('switch');
 
-    fireEvent.click(screen.getByTestId('user-admin-edit'));
+    expect(toggle).not.toBeChecked();
+    expect(screen.queryByText('label.save-changes')).not.toBeInTheDocument();
 
-    expect(screen.getByTestId('user-admin-save')).toBeDisabled();
-
-    fireEvent.click(screen.getByRole('switch'));
     await act(async () => {
-      fireEvent.click(screen.getByTestId('user-admin-save'));
+      fireEvent.click(toggle);
     });
 
     expect(updateUserDetails).toHaveBeenCalledWith(
@@ -48,16 +46,16 @@ describe('UserAdminRow', () => {
     );
   });
 
-  it('shows the admin-managed lock when it cannot be edited', () => {
+  it('shows the toggle disabled when the viewer cannot change admin status', () => {
     render(
       <UserAdminRow
         canEdit={false}
         updateUserDetails={jest.fn()}
-        userData={user}
+        userData={{ ...user, isAdmin: true }}
       />
     );
 
-    expect(screen.queryByTestId('user-admin-edit')).not.toBeInTheDocument();
-    expect(screen.getByTestId('user-admin-locked')).toBeInTheDocument();
+    expect(screen.getByRole('switch')).toBeChecked();
+    expect(screen.getByRole('switch')).toBeDisabled();
   });
 });

@@ -21,6 +21,7 @@ import { FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEditableUser } from '../../../../../../hooks/user-profile/useEditableUser';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -52,6 +53,7 @@ interface MembersUserEditProps {
 const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
+  const { currentUser } = useApplicationStore();
   const { userData, isNotFound, updateUserDetails } = useEditableUser(name);
   const {
     hasViewAccess,
@@ -98,6 +100,10 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
   }
 
   const canEditPrivileged = Boolean(isAdminUser) && !userData.deleted;
+  // The toggle saves instantly, so an admin could lock themselves out with one
+  // click; their own admin status stays read-only here.
+  const canEditAdminFlag =
+    canEditPrivileged && userData.name !== currentUser?.name;
 
   return (
     <Box
@@ -131,17 +137,28 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
       <SettingsSection
         testId="user-section-access"
         title={t('label.identity-and-access')}>
-        <UserAdminRow
-          canEdit={canEditPrivileged}
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-        />
         <DomainsRow
           canEdit={canEditAll}
           description={t('message.user-domain-description')}
           updateUserDetails={updateUserDetails}
           userData={userData}
         />
+        <PersonaRow
+          canEdit={canEditAll}
+          description={t('message.user-persona-description')}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+        />
+        <UserAdminRow
+          canEdit={canEditAdminFlag}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+        />
+      </SettingsSection>
+
+      <SettingsSection
+        testId="user-section-membership"
+        title={t('label.membership')}>
         <TeamsRow
           canEdit={canEditAll}
           description={t('message.user-team-description')}
@@ -152,12 +169,6 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
           canEdit={canEditPrivileged}
           description={t('message.user-role-description')}
           showAdminRole={false}
-          updateUserDetails={updateUserDetails}
-          userData={userData}
-        />
-        <PersonaRow
-          canEdit={canEditAll}
-          description={t('message.user-persona-description')}
           updateUserDetails={updateUserDetails}
           userData={userData}
         />
