@@ -62,6 +62,49 @@ describe('GlobalSettingItem', () => {
     ).toHaveFocus();
   });
 
+  it('returns focus to the edit button after a save that kept focus in the editor', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<GlobalSettingItem {...mockProps} />);
+
+    await user.click(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    );
+    await user.click(screen.getByTestId('inline-save-btn'));
+
+    expect(
+      await screen.findByRole('button', { name: /label\.edit-entity/ })
+    ).toHaveFocus();
+  });
+
+  it('does not pull focus back when a slow save finishes after the user moved on', async () => {
+    let finishSave: () => void = () => undefined;
+    const onUpdate = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finishSave = resolve;
+        })
+    );
+    const user = userEvent.setup({ delay: null });
+    render(
+      <>
+        <GlobalSettingItem {...mockProps} onUpdate={onUpdate} />
+        <button>Other setting</button>
+      </>
+    );
+
+    await user.click(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    );
+    await user.click(screen.getByTestId('inline-save-btn'));
+    const otherSetting = screen.getByRole('button', { name: 'Other setting' });
+    otherSetting.focus();
+    await act(async () => {
+      finishSave();
+    });
+
+    expect(otherSetting).toHaveFocus();
+  });
+
   it('Should update value when input changes', () => {
     render(<GlobalSettingItem {...mockProps} />);
 

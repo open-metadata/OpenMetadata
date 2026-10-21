@@ -45,6 +45,7 @@ export const GlobalSettingItem = ({
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const valueContainerRef = useRef<HTMLDivElement>(null);
+  const editorRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const restoreFocusRef = useRef(false);
 
@@ -52,7 +53,14 @@ export const GlobalSettingItem = ({
   // the focused input: move focus to the control that replaces each, instead
   // of letting it fall to <body>.
   const closeEditor = () => {
-    restoreFocusRef.current = true;
+    const focused = document.activeElement;
+    // Restore only if focus is still in this editor, or was dropped to <body>
+    // (the input disables while saving). A slow save must not pull focus back
+    // from an edit the user has started elsewhere in the meantime.
+    restoreFocusRef.current =
+      !focused ||
+      focused === document.body ||
+      Boolean(editorRef.current?.contains(focused));
     setIsEditing(false);
   };
 
@@ -99,7 +107,9 @@ export const GlobalSettingItem = ({
       <Typography data-testid="global-setting-label">{label}</Typography>
 
       {isEditing ? (
-        <div className="m-l-md d-flex justify-end flex-wrap inline-edit-container">
+        <div
+          className="m-l-md d-flex justify-end flex-wrap inline-edit-container"
+          ref={editorRef}>
           <InlineEdit
             isLoading={isUpdating}
             onCancel={handleCancel}
