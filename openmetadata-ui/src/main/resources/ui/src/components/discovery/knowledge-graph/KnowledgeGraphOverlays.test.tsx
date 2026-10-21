@@ -115,6 +115,22 @@ it('offers a way back to the group after drilling into one of its relationships'
   expect(screen.queryByTestId('inspector-back')).not.toBeInTheDocument();
 });
 
+it('closes the inspector on Escape without letting the key reach the fullscreen overlay', async () => {
+  const outerKeyDown = jest.fn();
+  document.addEventListener('keydown', outerKeyDown);
+  render(<Harness initial={() => ({ kind: 'node', id: root.id })} />);
+
+  await userEvent.click(screen.getByRole('heading', { level: 3 }));
+  await userEvent.keyboard('{Escape}');
+
+  expect(screen.queryByTestId('graph-inspector')).not.toBeInTheDocument();
+  expect(outerKeyDown).not.toHaveBeenCalledWith(
+    expect.objectContaining({ key: 'Escape' })
+  );
+
+  document.removeEventListener('keydown', outerKeyDown);
+});
+
 it('lists every relationship in the drawer when "view all" is pressed', async () => {
   render(<Harness initial={() => ({ kind: 'node', id: root.id })} />);
   const rows = () => screen.getAllByRole('button', { name: /^Orders / });

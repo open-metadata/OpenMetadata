@@ -32,6 +32,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { useKeyboard } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -528,6 +529,18 @@ const KnowledgeGraphOverlays = ({
       }
     });
   };
+  // useKeyboard stops propagation, so Escape closes only the panel and not the
+  // fullscreen overlay (useOverlay) that also dismisses on Escape.
+  const { keyboardProps: inspectorKeyboardProps } = useKeyboard({
+    onKeyDown: (event) => {
+      if (event.key === 'Escape') {
+        closeInspector();
+      } else {
+        event.continuePropagation();
+      }
+    },
+  });
+
   const nodeMap = useMemo(
     () => new Map(nodes.map((node) => [node.id, node])),
     [nodes]
@@ -663,19 +676,13 @@ const KnowledgeGraphOverlays = ({
         </span>
       )}
       {inspectorOpen && (
-        <Box
+        <div
           aria-label={t('label.kg-inspector')}
           aria-modal={false}
-          className="kg-inspector tw:relative tw:z-10 tw:h-full tw:min-h-0 tw:min-w-0 tw:overflow-hidden tw:bg-surface"
+          className="kg-inspector tw:relative tw:z-10 tw:flex tw:h-full tw:min-h-0 tw:min-w-0 tw:flex-col tw:overflow-hidden tw:bg-surface"
           data-testid="graph-inspector"
-          direction="col"
           role="dialog"
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.stopPropagation();
-              closeInspector();
-            }
-          }}>
+          {...inspectorKeyboardProps}>
           <InspectorHeader
             headingRef={headingRef}
             subtitle={getInspectorSubtitle(
@@ -736,7 +743,7 @@ const KnowledgeGraphOverlays = ({
               />
             )
           )}
-        </Box>
+        </div>
       )}
       {detailsNode?.fullyQualifiedName && (
         <SlideoutMenu

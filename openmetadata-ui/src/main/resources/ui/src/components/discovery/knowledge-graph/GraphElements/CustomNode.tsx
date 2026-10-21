@@ -34,10 +34,7 @@ import {
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-  CustomNodeProps,
-  GraphNode,
-} from '../../../../interface/discovery/knowledge-graph.interface';
+import type { CustomNodeProps } from '../../../../interface/discovery/knowledge-graph.interface';
 import {
   getGraphNodeLabel,
   getGroupMemberLabelKey,
@@ -50,6 +47,7 @@ import {
 import { GraphNodePresentation } from '../KnowledgeGraph.interface';
 import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';
+import MemberVisual from './MemberVisual';
 
 export type { CustomNodeProps };
 
@@ -106,42 +104,6 @@ const getNodeView = (nodeData: NodeData) => {
   };
 };
 
-/** Leading visual for a bundled member: people get an avatar, entities their type icon. */
-const MemberVisual = ({ member }: { member: GraphNode }) => {
-  const type = member.type.toLowerCase();
-  if (type === 'user') {
-    const name = getGraphNodeLabel(member);
-
-    return (
-      <Avatar
-        alt={name}
-        className="tw:shrink-0"
-        initials={name.trim().charAt(0).toUpperCase()}
-        size="xxs"
-      />
-    );
-  }
-  if (type === 'team') {
-    return (
-      <Avatar
-        className="tw:shrink-0"
-        colorVariant="neutral"
-        placeholderIcon={Users01}
-        size="xxs"
-      />
-    );
-  }
-  const Icon = getNodeIcon(member.type);
-
-  return (
-    <Icon
-      aria-hidden="true"
-      className="tw:shrink-0 tw:text-fg-quaternary"
-      size={12}
-    />
-  );
-};
-
 function CustomNode({
   nodeData,
   onSelect,
@@ -181,15 +143,18 @@ function CustomNode({
   };
 
   return (
-    <Box
-      className={classNames('knowledge-graph-custom-node', getNodeShadow(), {
-        highlighted: data.highlighted,
-        dimmed: data.dimmed,
-        'kg-node-root': isRoot,
-        'kg-node-group': members,
-        'kg-node-gap': presentation?.coverage === 'unmapped',
-      })}
-      direction="col">
+    <div
+      className={classNames(
+        'knowledge-graph-custom-node tw:flex tw:flex-col',
+        getNodeShadow(),
+        {
+          highlighted: data.highlighted,
+          dimmed: data.dimmed,
+          'kg-node-root': isRoot,
+          'kg-node-group': members,
+          'kg-node-gap': presentation?.coverage === 'unmapped',
+        }
+      )}>
       <Button
         noTextPadding
         aria-label={t('label.kg-node-description', {
@@ -270,16 +235,33 @@ function CustomNode({
           className="tw:mx-3 tw:min-h-0 tw:border-t tw:border-secondary tw:pt-1"
           direction="col"
           gap={0}>
-          {members.slice(0, 3).map((member) => (
-            <Box align="center" className="tw:min-w-0" gap={2} key={member.id}>
-              <MemberVisual member={member} />
-              <Typography
-                className="tw:min-w-0 tw:truncate tw:text-secondary"
-                size="text-xs">
-                {getGraphNodeLabel(member)}
-              </Typography>
-            </Box>
-          ))}
+          {members.slice(0, 3).map((member) => {
+            const MemberIcon = getNodeIcon(member.type);
+
+            return (
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                gap={2}
+                key={member.id}>
+                <MemberVisual
+                  icon={
+                    <MemberIcon
+                      aria-hidden="true"
+                      className="tw:shrink-0 tw:text-fg-quaternary"
+                      size={12}
+                    />
+                  }
+                  member={member}
+                />
+                <Typography
+                  className="tw:min-w-0 tw:truncate tw:text-secondary"
+                  size="text-xs">
+                  {getGraphNodeLabel(member)}
+                </Typography>
+              </Box>
+            );
+          })}
           <Box align="center" className="tw:mt-1" justify="between">
             <Button
               aria-expanded={Boolean(presentation.expanded)}
@@ -304,7 +286,7 @@ function CustomNode({
           </Box>
         </Box>
       )}
-    </Box>
+    </div>
   );
 }
 
