@@ -42,6 +42,7 @@ import { createPortal } from 'react-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { ROUTES } from '../../constants/constants';
+import { ALL_ONTOLOGIES_SCOPE_KEY } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import { EntityType } from '../../enums/entity.enum';
 import { UpdateTermRelation } from '../../generated/api/data/updateTermRelation';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -173,7 +174,7 @@ function OntologyOnboardingEmptyState() {
           <Button
             color="primary"
             data-testid="ontology-view-all"
-            href={ROUTES.ONTOLOGY_EXPLORER}>
+            href={`${ROUTES.ONTOLOGY_EXPLORER}?scope=${ALL_ONTOLOGIES_SCOPE_KEY}`}>
             {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
           </Button>
         }
