@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { Button } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +19,7 @@ import { EntityReference } from '../../../generated/type/entityReference';
 import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamAndUserDetailsPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { TeamPopoverTitleProps } from './UserPopOverCard.interface';
 
 export const TeamPopoverTitle = React.memo(

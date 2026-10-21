@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +21,7 @@ import { Team } from '../../../generated/entity/teams/team';
 import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTeamAndUserDetailsPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewerNew from '../RichTextEditor/RichTextEditorPreviewNew';
 import { TeamPopoverContentProps } from './UserPopOverCard.interface';
@@ -86,7 +86,9 @@ export const TeamPopoverContent = React.memo(
                 <Link
                   className="bg-grey rounded-4 p-x-xs text-grey-body text-xs m-b-xss m-r-xss"
                   key={parent.id}
-                  to={getSettingsLink(getTeamAndUserDetailsPath(parent.name ?? ''))}>
+                  to={getSettingsLink(
+                    getTeamAndUserDetailsPath(parent.name ?? '')
+                  )}>
                   {getEntityName(parent)}
                 </Link>
               ))}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from './SettingsModalLinkUtils';
 import type { Operation } from 'fast-json-patch';
 import { capitalize } from 'lodash';
 import type { FC } from 'react';
@@ -99,6 +98,7 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -184,10 +184,12 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.WEBHOOK]: ({ fullyQualifiedName }) =>
     getEditWebhookPath(fullyQualifiedName),
   [EntityType.TYPE]: ({ fullyQualifiedName }) =>
-    getSettingsLink(getSettingPath(
-      GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-      `${fullyQualifiedName}s`
-    )),
+    getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+        `${fullyQualifiedName}s`
+      )
+    ),
   [EntityType.TAG]: ({ fullyQualifiedName, tab, subTab }) =>
     getClassificationTagPath(fullyQualifiedName, tab, subTab),
   [EntityType.CLASSIFICATION]: ({ fullyQualifiedName }) =>
@@ -219,7 +221,8 @@ const ENTITY_LINK_HANDLERS: Record<
     getSettingsLink(getPolicyWithFqnPath(fullyQualifiedName)),
   [EntityType.PERSONA]: ({ fullyQualifiedName }) =>
     getSettingsLink(getPersonaDetailsPath(fullyQualifiedName)),
-  [EntityType.BOT]: ({ fullyQualifiedName }) => getSettingsLink(getBotsPath(fullyQualifiedName)),
+  [EntityType.BOT]: ({ fullyQualifiedName }) =>
+    getSettingsLink(getBotsPath(fullyQualifiedName)),
   [EntityType.KPI]: ({ fullyQualifiedName }) => getKpiPath(fullyQualifiedName),
   [EntityType.KNOWLEDGE_PAGE]: ({ fullyQualifiedName, tab, subTab }) =>
     getKnowledgePagePath(fullyQualifiedName, tab, subTab),

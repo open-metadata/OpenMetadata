@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { Button } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import React from 'react';
@@ -24,6 +23,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { PopoverTitleProps } from './UserPopOverCard.interface';
 
 export const PopoverTitle = React.memo(

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import {
   Box,
   Breadcrumbs,
@@ -35,6 +34,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';

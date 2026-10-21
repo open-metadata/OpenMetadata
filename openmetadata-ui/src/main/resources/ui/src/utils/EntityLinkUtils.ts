@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from './SettingsModalLinkUtils';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
@@ -40,6 +39,7 @@ import {
   getTeamsWithFqnPath,
   getTestCaseDetailPagePath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 const DIRECT_DETAILS_PATH_ENTITY_TYPES: ReadonlyArray<EntityType> = [
   EntityType.TABLE,
@@ -96,7 +96,8 @@ const SIMPLE_ENTITY_LINK_BUILDERS: Partial<
   [EntityType.CLASSIFICATION]: getTagsDetailsPath,
   [EntityType.BOT]: (fqn) => getSettingsLink(getBotsPath(fqn)),
   [EntityType.TEAM]: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
-  [EntityType.APPLICATION]: (fqn) => getSettingsLink(getApplicationDetailsPath(fqn)),
+  [EntityType.APPLICATION]: (fqn) =>
+    getSettingsLink(getApplicationDetailsPath(fqn)),
   [EntityType.TEST_CASE]: getTestCaseDetailPagePath,
   [EntityType.TEST_SUITE]: (fullyQualifiedName: string) =>
     getEntityDetailsPath(

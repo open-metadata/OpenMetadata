@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import type { Key } from '@openmetadata/ui-core-components';
 import {
   Box,
@@ -60,6 +59,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   getSidebarHiddenKeys,

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import {
   Accordion,
   AccordionHeader,
@@ -49,6 +48,7 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import './UserPermissions.style.less';

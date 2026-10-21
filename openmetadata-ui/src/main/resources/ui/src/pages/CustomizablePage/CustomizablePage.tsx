@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';

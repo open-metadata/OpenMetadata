@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import {
   Box,
   EmptyPlaceholder,
@@ -47,6 +46,7 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {

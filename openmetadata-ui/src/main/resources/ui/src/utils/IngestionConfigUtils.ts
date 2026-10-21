@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from './SettingsModalLinkUtils';
 import { isEmpty, isUndefined, startCase, uniq } from 'lodash';
 import type { ServicesUpdateRequest } from 'Models';
 import { DATA_INSIGHTS_APP_NAME } from '../constants/Applications.constant';
@@ -49,6 +48,7 @@ import {
   getServiceCategoryLabel,
 } from './ServicePureUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const getIngestionHeadingName = (
   ingestionType: string,

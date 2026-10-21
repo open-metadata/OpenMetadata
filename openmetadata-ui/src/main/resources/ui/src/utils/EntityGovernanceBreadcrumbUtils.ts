@@ -208,7 +208,9 @@ export const getBreadcrumbForBot = (entityName: string, fqn: string) => [
 export const getBreadcrumbForTeam = (entity: Team) => [
   {
     name: getEntityName(entity.parents?.[0]),
-    url: getSettingsLink(getTeamsWithFqnPath(entity.parents?.[0]?.fullyQualifiedName ?? '')),
+    url: getSettingsLink(
+      getTeamsWithFqnPath(entity.parents?.[0]?.fullyQualifiedName ?? '')
+    ),
     iconType: EntityType.TEAM,
   },
   {
@@ -224,7 +226,9 @@ export const getBreadcrumbForApplication = (
 ) => [
   {
     name: i18n.t('label.application-plural'),
-    url: getSettingsLink(getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS)),
+    url: getSettingsLink(
+      getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS)
+    ),
   },
   {
     name: entityName,
@@ -236,10 +240,12 @@ export const getBreadcrumbForApplication = (
 export const getBreadcrumbForPersona = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.persona-plural'),
-    url: getSettingsLink(getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.PERSONA
-    )),
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.PERSONA
+      )
+    ),
   },
   {
     name: entityName,
@@ -251,10 +257,12 @@ export const getBreadcrumbForPersona = (entityName: string, fqn: string) => [
 export const getBreadcrumbForRole = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.role-plural'),
-    url: getSettingsLink(getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.ROLES
-    )),
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      )
+    ),
   },
   {
     name: entityName,
@@ -266,10 +274,12 @@ export const getBreadcrumbForRole = (entityName: string, fqn: string) => [
 export const getBreadcrumbForPolicy = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.policy-plural'),
-    url: getSettingsLink(getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.POLICIES
-    )),
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.POLICIES
+      )
+    ),
   },
   {
     name: entityName,

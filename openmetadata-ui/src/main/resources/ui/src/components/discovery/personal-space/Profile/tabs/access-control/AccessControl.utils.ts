@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../../../../utils/SettingsModalLinkUtils';
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { uniqBy } from 'lodash';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -22,6 +21,7 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../../utils/SettingsModalLinkUtils';
 import type { AccessControlView } from './AccessControl.types';
 
 const PATH_ROLES = 'roles';

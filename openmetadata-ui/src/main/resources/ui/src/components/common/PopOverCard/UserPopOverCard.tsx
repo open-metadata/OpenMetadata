@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { HoverCard } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
@@ -21,6 +20,7 @@ import {
   getTeamAndUserDetailsPath,
   getUserPath,
 } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { PopoverContent } from './PopoverContent.component';
 import { PopoverTitle } from './PopoverTitle.component';
