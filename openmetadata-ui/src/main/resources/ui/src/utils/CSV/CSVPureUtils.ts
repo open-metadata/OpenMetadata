@@ -408,6 +408,23 @@ export const convertEntityExtensionToCustomPropertyString = (
   return `${convertedString}`;
 };
 
+/**
+ * Ids of the rows a dry-run import marked `failure`. A preview grid row's id is
+ * its index in the uploaded CSV, and the result CSV lists rows in that order.
+ */
+export const getFailedImportRowIds = (importResultsCsv = ''): Set<string> => {
+  const [header = [], ...rows] = parse<string[]>(importResultsCsv, {
+    skipEmptyLines: true,
+  }).data;
+  const statusIndex = header.indexOf('status');
+
+  return new Set(
+    rows.flatMap((row, index) =>
+      row[statusIndex] === 'failure' ? [String(index)] : []
+    )
+  );
+};
+
 export const splitCSV = (input: string): string[] => {
   const normalizedInput = input.replaceAll(/\\"/g, '__ESCAPED_QUOTE__');
 

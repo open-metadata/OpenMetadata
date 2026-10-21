@@ -104,6 +104,7 @@ import {
   COLUMNS_WIDTH,
   getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
+  getFailedImportRowIds,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -1315,13 +1316,24 @@ const BulkEntityImportPage = () => {
     Updating store will trigger re-render of the component
     This will cause the owner dropdown or full grid to re-render
   */
+  // The grid holds the uploaded CSV, which has no status column.
+  const failedRowIds = useMemo(
+    () => getFailedImportRowIds(validationData?.importResultsCsv),
+    [validationData?.importResultsCsv]
+  );
+
   const editableDataSource = useMemo(() => {
     if (rowFilter === 'failed') {
-      return dataSource.filter((row) => row.status === 'failure');
+      return dataSource.filter((row) => failedRowIds.has(row.id));
     }
 
     return dataSource;
-  }, [dataSource, rowFilter]);
+  }, [dataSource, failedRowIds, rowFilter]);
+
+  const hasFailedRows = useMemo(
+    () => dataSource.some((row) => failedRowIds.has(row.id)),
+    [dataSource, failedRowIds]
+  );
 
   const editableRowIndexMap = useMemo(
     () => new Map(editableDataSource.map((row, index) => [row, index])),
@@ -1942,11 +1954,15 @@ const BulkEntityImportPage = () => {
             </Button>
             <Button
               color="secondary"
+              data-testid="row-filter-btn"
               iconLeading={FilterLines}
+              isDisabled={rowFilter === 'all' && !hasFailedRows}
               onPress={() =>
                 setRowFilter((filter) => (filter === 'all' ? 'failed' : 'all'))
               }>
-              {t('label.filter')}
+              {rowFilter === 'failed'
+                ? t('label.show-all')
+                : t('label.failed-rows')}
             </Button>
             <Button
               color="secondary"

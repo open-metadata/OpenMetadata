@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
+import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CardExpandCollapseIconButton } from '../IconButtons/EditIconButton';
 
 interface ExpandableCardProps {
   children: ReactNode;
@@ -66,17 +66,16 @@ const ExpandableCard = ({
         <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
           {title}
         </div>
-        <div className="expandable-card-extra tw:ml-3 tw:font-normal tw:text-primary">
-          <CardExpandCollapseIconButton
-            className={classNames(
-              'expand-collapse-icon bordered tw:[&_svg]:fill-bg-primary',
-              { 'tw:rotate-180': !isExpanded }
-            )}
+        <div className="expandable-card-extra tw:ml-3 tw:flex tw:font-normal tw:text-primary">
+          <ButtonUtility
+            className="expand-collapse-icon"
+            color="secondary"
             data-testid="expand-collapse-icon"
-            disabled={isExpandDisabled}
-            size="small"
-            title={isExpanded ? t('label.collapse') : t('label.expand')}
-            onClick={handleExpandClick}
+            icon={isExpanded ? ChevronUp : ChevronDown}
+            isDisabled={isExpandDisabled}
+            size="sm"
+            tooltip={isExpanded ? t('label.collapse') : t('label.expand')}
+            onPress={handleExpandClick}
           />
         </div>
       </div>

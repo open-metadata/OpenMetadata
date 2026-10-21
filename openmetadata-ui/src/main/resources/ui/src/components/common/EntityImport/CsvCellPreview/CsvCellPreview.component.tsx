@@ -30,8 +30,8 @@ const CHIP_VARIANT_BY_COLUMN: Record<string, string> = {
   relatedMetrics: 'metric',
 };
 
+// Tags have no fallback: a fixed hex can't follow the theme, so .csv-chip-tag colors them.
 const CHIP_FALLBACK_COLORS: Record<string, string> = {
-  tags: '#5925dc',
   glossaryTerms: '#1570ef',
   relatedTerms: '#1570ef',
   domains: '#1570ef',

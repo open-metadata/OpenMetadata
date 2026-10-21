@@ -75,6 +75,15 @@ describe('CsvCellPreview', () => {
     });
   });
 
+  it('should leave an uncolored tag chip to the theme class', () => {
+    render(<CsvCellPreview column="tags" value="PII.Sensitive" />);
+
+    const chip = screen.getByText('PII.Sensitive');
+
+    expect(chip).toHaveClass('csv-chip-tag');
+    expect(chip).not.toHaveAttribute('style');
+  });
+
   it('should render tier chips', () => {
     render(<CsvCellPreview column="tiers" value="Tier.Tier1" />);
 

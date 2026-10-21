@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Column } from 'react-data-grid';
-import { getCsvGridRowHeight } from './CSVPureUtils';
+import { getCsvGridRowHeight, getFailedImportRowIds } from './CSVPureUtils';
 
 type GridColumn = Column<Record<string, string>>;
 
@@ -75,5 +75,22 @@ describe('getCsvGridRowHeight columnWidth branch', () => {
     expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns, 60)).toBe(
       60
     );
+  });
+});
+
+describe('getFailedImportRowIds', () => {
+  it('returns the upload index of every failed row', () => {
+    const csv = [
+      'status,details,name*,description',
+      'failure,"Tags a, b are mutually exclusive",Churn,"first, row"',
+      'success,Entity updated,Customer,second',
+      'failure,Missing owner,Order,third',
+    ].join('\n');
+
+    expect([...getFailedImportRowIds(csv)]).toEqual(['0', '2']);
+  });
+
+  it('returns no ids without a dry-run result', () => {
+    expect(getFailedImportRowIds(undefined).size).toBe(0);
   });
 });

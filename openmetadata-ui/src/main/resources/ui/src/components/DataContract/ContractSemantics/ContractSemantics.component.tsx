@@ -71,7 +71,7 @@ const ContractSemantics: React.FC<{
           return (
             <div className="rule-item" key={item.rule}>
               <RuleIcon
-                className={classNames('rule-icon tw:size-3.5 tw:shrink-0', {
+                className={classNames('rule-icon tw:size-5 tw:shrink-0', {
                   'rule-icon-default': !latestContractResults || !item.enabled,
                 })}
                 fill="currentColor"

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   FieldTypes,
   FormField,
   FormItemLabel,
@@ -23,14 +24,17 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus as PlusIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Edit01,
+  Plus as PlusIcon,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/ui';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -42,7 +46,6 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilder from '../../common/QueryBuilder/QueryBuilder';
 import { SearchOutputType } from '../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
@@ -162,21 +165,23 @@ export const ContractSemanticFormTab: React.FC<{
           </Typography>
         </div>
       </div>
-      <div className="tw:flex tw:items-center tw:gap-2">
-        <EditIconButton
-          newLook
+      <div className="tw:flex tw:items-center tw:gap-3">
+        <ButtonUtility
           className="edit-expand-button"
+          color="secondary"
           data-testid={`edit-semantic-${index}`}
-          size="middle"
-          onClick={() => setEditingKey(index)}
+          icon={Edit01}
+          size="sm"
+          tooltip={t('label.edit')}
+          onPress={() => setEditingKey(index)}
         />
-        <Button
-          aria-label={t('label.delete')}
+        <ButtonUtility
           className="delete-expand-button"
           color="secondary-destructive"
           data-testid={`delete-semantic-${index}`}
-          iconLeading={DeleteIcon}
+          icon={Trash01}
           size="sm"
+          tooltip={t('label.delete')}
           onPress={() => handleDeleteSemantic(index)}
         />
       </div>

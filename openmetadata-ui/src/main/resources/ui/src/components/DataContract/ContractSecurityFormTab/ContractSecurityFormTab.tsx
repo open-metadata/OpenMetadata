@@ -12,6 +12,7 @@
  */
 import {
   Button,
+  ButtonUtility,
   Divider,
   FieldProp,
   FieldTypes,
@@ -21,7 +22,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Edit01,
   Plus as PlusIcon,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -36,7 +39,6 @@ import {
   useWatch,
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { SUPPORTED_ROW_FILTER_ENTITIES } from '../../../constants/DataContract.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -48,7 +50,6 @@ import { Table } from '../../../generated/entity/data/table';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 import './contract-security-form-tab.less';
@@ -249,21 +250,23 @@ const ContractPolicyCard = ({
             <Typography className="consumer-form-item-title">
               {accessPolicy || t('label.untitled')}
             </Typography>
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <EditIconButton
-                newLook
+            <div className="tw:flex tw:items-center tw:gap-3">
+              <ButtonUtility
                 className="edit-expand-button"
+                color="secondary"
                 data-testid={`edit-policy-${policyIndex}`}
-                size="middle"
-                onClick={() => onEdit(policyIndex)}
+                icon={Edit01}
+                size="sm"
+                tooltip={t('label.edit')}
+                onPress={() => onEdit(policyIndex)}
               />
-              <Button
-                aria-label={t('label.delete')}
+              <ButtonUtility
                 className="delete-expand-button"
                 color="secondary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
-                iconLeading={DeleteIcon}
+                icon={Trash01}
                 size="sm"
+                tooltip={t('label.delete')}
                 onPress={() => onDelete(policyIndex)}
               />
             </div>

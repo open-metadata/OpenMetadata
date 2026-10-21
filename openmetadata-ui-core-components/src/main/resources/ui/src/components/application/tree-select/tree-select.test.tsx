@@ -244,6 +244,52 @@ describe('TreeSelect', () => {
     expect(await screen.findByText('Node C')).toBeInTheDocument();
   });
 
+  it.each([
+    [false, '2'],
+    [true, '1'],
+  ])(
+    'counts a selected root in the badge only outside cascade mode (cascade=%s)',
+    async (cascadeSelection, expected) => {
+      const root = (id: string): TreeSelectNode => ({
+        id,
+        label: id,
+        value: id,
+        isLeaf: false,
+      });
+      const child: TreeSelectNode = {
+        id: 'Banking.Retail',
+        label: 'Retail',
+        value: 'Banking.Retail',
+        isLeaf: true,
+        parentId: 'Banking',
+      };
+      const fetchData = vi.fn().mockResolvedValue({
+        nodes: [root('Banking'), root('Clinical')],
+      });
+
+      render(
+        <TreeSelect
+          multiple
+          cascadeSelection={cascadeSelection}
+          fetchData={fetchData}
+          label="Domain"
+          triggerVariant="button"
+          value={
+            cascadeSelection
+              ? [root('Banking'), child]
+              : [root('Banking'), root('Clinical')]
+          }
+        />
+      );
+
+      await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+      expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+        expected
+      );
+    }
+  );
+
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {
     const fetchData = fetchNodes();
 
