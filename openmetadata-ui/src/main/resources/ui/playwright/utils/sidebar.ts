@@ -62,14 +62,14 @@ export const clickSidebarLink = async (page: Page, testId: string) => {
 };
 
 export const sidebarClick = async (page: Page, id: string) => {
-  // In the AI shell the profile menu's Settings opens the settings modal, not
-  // the legacy settings page these specs drive, so go to that route directly.
+  // In the AI shell settings live in the settings modal; the /settings pages
+  // are classic-only (ADR:2026-10-21-settings-pages-are-classic-only).
   if (
     id === SidebarItem.SETTINGS &&
     (await page.getByTestId('ask-sidebar').count()) > 0
   ) {
-    await page.goto('/settings');
-    await page.waitForURL('**/settings');
+    await page.goto('/my-data#profile');
+    await page.getByTestId('ai-profile-page').waitFor();
 
     return;
   }
