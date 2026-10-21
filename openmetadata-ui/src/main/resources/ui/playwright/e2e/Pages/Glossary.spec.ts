@@ -1969,7 +1969,7 @@ test.describe('Glossary tests', () => {
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
       ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();
