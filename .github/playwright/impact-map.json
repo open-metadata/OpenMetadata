@@ -391,6 +391,7 @@
       "_comment": "The application config forms are built from the UI-local application schemas by ApplicationsClassBase, and the Search Indexing form additionally fills its entity picker from GET /v1/search/entityTypes. The Settings/** entry above selects no spec that actually opens an app config form, so a change to the schemas, the loader, or the endpoint that fills them shipped unrun — the SearchIndexApplication entity-picker locator broke once the server-driven list gained tableColumn and nothing caught it.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Applications.constant.ts",
         "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
@@ -609,6 +610,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase*",
         "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
@@ -1094,6 +1096,12 @@
     {
       "_comment": "The ESLint suppressions baseline is read only by the linter: it ships in neither the server nor the UI bundle, so no change to it can alter a spec outcome. Mapped to no specs rather than left unmapped, so pruning it does not escalate to a full-suite run.",
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "The limit banner shows only once a resource limit is reached, and only Collate enables the limits config that sets one, so no spec in this suite can display it. Mapped to no specs rather than left unmapped, so a change to it does not escalate to a full-suite run.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/components/common/LimitBanner/**"],
       "projects": [],
       "specs": []
     },
