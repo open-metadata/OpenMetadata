@@ -108,6 +108,20 @@ class OpenLineageTopicResolverTest {
     }
   }
 
+  /**
+   * prod has not ingested the topic yet; staging, another cluster behind the same gateway host, has
+   * a same-named one. Falling back to it would draw a permanent edge to the wrong cluster.
+   */
+  @Test
+  void exactServiceWithoutTheTopic_doesNotFallBackToAnotherPort() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubServices(entity, service("prod", "gateway:9092"), service("staging", "gateway:9192"));
+      stubTopics(entity, Set.of("staging.orders"));
+
+      assertUnresolved(resolve("kafka://gateway:9092", "orders"), UnresolvedReason.NOT_FOUND);
+    }
+  }
+
   @Test
   void servicesSharingABroker_resolveToTheOnlyOneHoldingTheTopic() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
