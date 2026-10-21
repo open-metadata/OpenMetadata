@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
 import { Document as DocStoreDocument } from '../../../../generated/entity/docStore/document';
 import { PageType } from '../../../../generated/system/ui/page';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
@@ -67,7 +68,13 @@ const WidgetCard = ({
   return (
     <Card
       isClickable
-      className="widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden"
+      className={classNames(
+        'widget-card tw:flex tw:h-full tw:flex-col tw:overflow-hidden',
+        // On a dark surface a brand border plus a brand tint on every added
+        // card turns the whole grid blue; the check badge alone marks it.
+        isSelected && 'tw:dark:border-primary tw:dark:bg-surface'
+      )}
+      color={isSelected ? 'brand' : 'default'}
       data-testid={widget.fullyQualifiedName}
       isSelected={isSelected}
       onClick={handleClick}>
@@ -75,10 +82,13 @@ const WidgetCard = ({
         {/* An empty src resolves against the page URL, so the browser paints a
           broken-image icon rather than nothing. Widgets added without a preview
           screenshot keep an empty tile instead. */}
+        {/* ponytail: the previews are light-theme screenshots; dark mode inverts
+          them (hue-rotate puts brand and status colors back). Swap in real
+          dark screenshots if the approximation stops being good enough. */}
         {widgetImage ? (
           <img
             alt={widgetLabel}
-            className="tw:h-full tw:w-full tw:object-cover"
+            className="tw:h-full tw:w-full tw:object-cover tw:dark:invert tw:dark:hue-rotate-180"
             data-testid="widget-image"
             src={widgetImage}
           />
@@ -91,10 +101,10 @@ const WidgetCard = ({
         {isSelected && (
           <Box
             align="center"
-            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-md tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:text-fg-brand-primary"
+            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-full tw:bg-brand-solid tw:p-1 tw:text-white tw:shadow-sm"
             data-testid="widget-selected-check"
             justify="center">
-            <CheckIcon className="tw:size-4" />
+            <Check className="tw:size-4" />
           </Box>
         )}
       </Box>

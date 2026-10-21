@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   Dialog,
@@ -25,7 +26,6 @@ import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import {
@@ -243,20 +243,19 @@ const CustomiseHomeModal = ({
               (widget) => widget.startsWith(item.key) || widget === item.id
             );
 
+          let labelWeight: 'regular' | 'medium' | 'semibold' = 'medium';
+          if (selectedKey === item.key) {
+            labelWeight = 'semibold';
+          } else if (isWidgetItem) {
+            labelWeight = 'regular';
+          }
+
           return (
             <div
               className={classNames(
-                'sidebar-option text-md font-medium border-radius-xs cursor-pointer d-flex flex-wrap items-center',
-                isWidgetItem
-                  ? 'sidebar-widget-item tw:hover:bg-primary_hover'
-                  : '',
-                selectedKey === item.key
-                  ? 'active tw:bg-brand-primary tw:text-brand-primary'
-                  : '',
-                isWidgetItem && selectedKey !== item.key
-                  ? 'tw:text-tertiary'
-                  : '',
-                isSelectedWidget ? 'selected' : ''
+                'sidebar-option border-radius-xs cursor-pointer d-flex items-center tw:gap-1.5',
+                isWidgetItem && 'sidebar-widget-item tw:hover:bg-primary_hover',
+                selectedKey === item.key && 'active tw:bg-brand-primary'
               )}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
@@ -266,16 +265,26 @@ const CustomiseHomeModal = ({
               onKeyDown={handleKeyboardActivation(() =>
                 handleSidebarClick(item.key)
               )}>
-              <span>{item.label}</span>
+              <Typography
+                className={classNames({
+                  'tw:text-brand-primary': selectedKey === item.key,
+                  'tw:text-secondary':
+                    selectedKey !== item.key && !isWidgetItem,
+                  'tw:text-brand-secondary tw:dark:text-primary':
+                    isSelectedWidget,
+                  'tw:text-tertiary': isWidgetItem && !isSelectedWidget,
+                })}
+                size="text-md"
+                weight={labelWeight}>
+                {item.label}
+              </Typography>
               {isAllWidgetsTab && (
-                <span className="widget-count tw:bg-brand-primary tw:text-brand-primary text-xs border-radius-md m-l-sm">
+                <Badge color="brand" size="sm" type="pill-color">
                   {widgets.length}
-                </span>
+                </Badge>
               )}
               {isSelectedWidget && (
-                <span className="selected-widget-icon">
-                  <Check />
-                </span>
+                <Check className="selected-widget-icon tw:size-4 tw:shrink-0 tw:text-fg-brand-primary" />
               )}
             </div>
           );
@@ -338,21 +347,12 @@ const CustomiseHomeModal = ({
       <Modal>
         <Dialog
           showCloseButton
-          aria-label={title}
           data-testid="customise-home-modal"
           dividers="scroll"
           panelClassName="customise-home-modal"
+          title={title}
           width={1800}
           onClose={onClose}>
-          <Box
-            align="center"
-            className="customise-home-modal-header p-box"
-            gap={3}>
-            <AddIcon className="add-icon tw:size-8" />
-            <Typography className="text-white" size="text-xl" weight="semibold">
-              {title}
-            </Typography>
-          </Box>
           {/* Fixed height: the sidebar and content columns scroll on their own. */}
           <Dialog.Content className="customise-home-modal-body tw:h-[70vh] tw:max-h-none tw:flex-row tw:gap-1 tw:p-0 tw:sm:px-0">
             <div className="sidebar p-box tw:overflow-y-auto">
