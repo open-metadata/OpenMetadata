@@ -19,37 +19,29 @@ permissions:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-env:
-  SPACY_MODEL_VERSION: 3.8.0
-  SPACY_MODEL_SHA256: 5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310
-  BRANCH_NAME: ${{ github.ref_name }}
-  PROJECT_BASE_DIR: ingestion
 jobs:
   changes:
     name: Read Python versions
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
-      python: 'true'
-      style: 'true'
-      minimum: ${{ steps.versions.outputs.minimum }}
-      image: ${{ steps.versions.outputs.image }}
-      versions: ${{ steps.versions.outputs.versions }}
+      python: ${{ steps.selection.outputs.python }}
+      style: ${{ steps.selection.outputs.style }}
+      minimum: ${{ steps.selection.outputs.minimum }}
+      image: ${{ steps.selection.outputs.image }}
+      versions: ${{ steps.selection.outputs.versions }}
+      checkout-ref: ${{ steps.selection.outputs.checkout-ref }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-      - name: Read Python versions
-        id: versions
-        run: |
-          jq -er '
-            .image as $image | select(.tested | index($image)) |
-            "minimum=\(.tested[0])", "image=\(.image)",
-            "versions=\(.tested | tojson)"
-          ' ingestion/python-versions.json >> "$GITHUB_OUTPUT"
-        shell: bash
+      - name: Select CI work
+        id: selection
+        uses: ./.github/actions/ci-selection
+        with:
+          full-matrix: 'true'
   py-checkstyle:
     name: py-checkstyle
     needs: changes
@@ -72,7 +64,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.changes.outputs.checkout-ref }}
           persist-credentials: false
         if: ${{ needs.changes.outputs.style == 'true' }}
       - name: Python checkstyle
@@ -82,29 +74,12 @@ jobs:
         with:
           python-version: ${{ needs.changes.outputs.minimum }}
   static:
-    name: Python static checks
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: ${{ needs.changes.outputs.minimum }}
-          install-server: 'false'
-      - name: Run Static Checks
-        run: |
-          set -o pipefail
-          source env/bin/activate
-          cd ingestion
-          python -m nox --non-interactive --no-venv -s static-checks 2>&1 | tee static-checks-run.log
-        shell: bash
+    uses: ./.github/workflows/python-static-checks-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      python-version: ${{ needs.changes.outputs.minimum }}
   prepare-spacy-model:
     name: Prepare spaCy model
     needs: changes
@@ -112,47 +87,20 @@ jobs:
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
-      - name: Restore spaCy model wheel
-        id: spacy-model-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+      - name: Checkout CI actions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          path: .cache/spacy-model
-          key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
-      - name: Download spaCy model wheel
-        if: steps.spacy-model-cache.outputs.cache-hit != 'true'
-        run: |
-          mkdir -p .cache/spacy-model
-          wheel_path=".cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
-          curl --fail --location --retry 10 --retry-all-errors --connect-timeout 20 --max-time 600 \
-            --output "${wheel_path}" \
-            "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-${SPACY_MODEL_VERSION}/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
-          echo "${SPACY_MODEL_SHA256}  ${wheel_path}" | sha256sum --check --strict
-        shell: bash
-      - name: Verify spaCy model wheel
-        run: echo "${SPACY_MODEL_SHA256}  .cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl" | sha256sum --check --strict
-        shell: bash
-      - name: Upload spaCy model wheel
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
-        with:
-          name: spacy-en-model
-          path: .cache/spacy-model/*.whl
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-      - name: Save spaCy model wheel
-        if: ${{ steps.spacy-model-cache.outputs.cache-hit != 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref
-          == 'refs/heads/main' }}
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
-        with:
-          path: .cache/spacy-model
-          key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
-        continue-on-error: true
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: .github/actions/prepare-spacy-model
+      - name: Prepare spaCy model
+        uses: ./.github/actions/prepare-spacy-model
   backend:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/backend-build-reusable.yml
     with:
-      checkout-ref: ${{ github.sha }}
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
   unit:
     needs:
       - changes
@@ -160,7 +108,7 @@ jobs:
     if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/python-unit-tests-reusable.yml
     with:
-      checkout-ref: ${{ github.sha }}
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
   integration:
@@ -171,7 +119,7 @@ jobs:
     if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/python-integration-tests-reusable.yml
     with:
-      checkout-ref: ${{ github.sha }}
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
       python-versions: ${{ needs.changes.outputs.versions }}
       coverage-python: ${{ needs.changes.outputs.image }}
   py-tests-status:
@@ -206,86 +154,18 @@ jobs:
           done
         shell: bash
   coverage:
-    if: ${{ always() && needs.changes.result == 'success' && needs.unit.result == 'success' && needs.integration.result == 'success' }}
     needs:
       - changes
       - unit
       - integration
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: ${{ needs.changes.outputs.image }}
-      - name: Install uv
-        run: pip install uv
-        shell: bash
-      - name: Install coverage
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          uv pip install "coverage[toml]" nox
-        shell: bash
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: py-coverage-*
-          path: ingestion/coverage-data/
-      - name: Prepare coverage files
-        run: |
-          cd ingestion
-          shopt -s globstar nullglob
-          files=(coverage-data/**/.coverage)
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No Python coverage data downloaded"
-            exit 1
-          fi
-          for index in "${!files[@]}"; do
-            mv "${files[$index]}" ".coverage.ci-$index"
-          done
-        shell: bash
-      - name: Combine coverage
-        run: |
-          source env/bin/activate
-          cd ingestion
-          python -m nox --non-interactive --no-venv -s combine-coverage
-        shell: bash
-      - name: Remove pom.xml
-        run: rm pom.xml
-        shell: bash
-      - name: Push Results To Sonar
-        if: ${{ !cancelled() }}
-        id: push-to-sonar
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
-          args: |
-            -Dsonar.branch.name=${{ env.BRANCH_NAME }}
-      - name: Wait to retry 'Push Results to Sonar'
-        if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
-        run: sleep 20s
-        shell: bash
-      - name: Retry 'Push Results to Sonar'
-        if: ${{ !cancelled() && steps.push-to-sonar.outcome != 'success' }}
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ${{ env.PROJECT_BASE_DIR }}/
-          args: |
-            -Dsonar.branch.name=${{ env.BRANCH_NAME }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.python == 'true' }}
+    uses: ./.github/workflows/python-coverage-reusable.yml
+    with:
+      checkout-ref: ${{ needs.changes.outputs.checkout-ref }}
+      python-version: ${{ needs.changes.outputs.image }}
+      report-branch: true
+    secrets:
+      sonar-token: ${{ secrets.INGESTION_SONAR_SECRET }}
   notify:
     needs:
       - py-tests-status
@@ -305,5 +185,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> 🔥 *SonarCloud Ingestion Nightly* failed on `${{ env.BRANCH_NAME }}` 🔥\ntests: ${{ needs.py-tests-status.result }} · checkstyle: ${{ needs.py-checkstyle.result }} · combine+sonar: ${{ needs.coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> 🔥 *SonarCloud Ingestion Nightly* failed on `${{ github.ref_name }}` 🔥\ntests: ${{ needs.py-tests-status.result }} · checkstyle: ${{ needs.py-checkstyle.result }} · combine+sonar: ${{ needs.coverage.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

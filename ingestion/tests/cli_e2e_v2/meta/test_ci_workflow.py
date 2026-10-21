@@ -198,6 +198,8 @@ def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
     root = Path(__file__).resolve().parents[4]
     for name in ("ci-pr.yml", "ci-merge-queue.yml"):
         workflow = yaml.safe_load((root / ".github/workflows" / name).read_text())
-        step = next(step for step in workflow["jobs"]["changes"]["steps"] if step.get("id") == "filter")
-        filters = yaml.safe_load(step["with"]["filters"])
+        selection = next(step for step in workflow["jobs"]["changes"]["steps"] if step.get("id") == "selection")
+        action = yaml.safe_load((root / selection["uses"] / "action.yml").read_text())
+        step = next(step for step in action["runs"]["steps"] if step.get("id") == "filter")
+        filters = yaml.safe_load((root / step["with"]["filters"]).read_text())
         assert set(_E2E_WORKFLOWS) <= set(filters["python"]), name
