@@ -54,7 +54,7 @@ COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh /
-COPY --from=dist /shim/usr/bin/env /usr/bin/env
+COPY --from=dist /shim/usr/bin /usr/bin
 
 USER 65532:65532
 
