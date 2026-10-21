@@ -692,7 +692,7 @@ llmConfiguration:
       accessKeyId: ${AWS_ACCESS_KEY_ID:-""}
       secretAccessKey: ${AWS_SECRET_ACCESS_KEY:-""}
       sessionToken: ${AWS_SESSION_TOKEN:-""}
-    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-4-5-20251001-v1:0"}
+    modelId: ${LLM_BEDROCK_MODEL_ID:-"eu.anthropic.claude-haiku-5-5"}
     maxTokens: ${LLM_BEDROCK_MAX_TOKENS:-4096}
   google:
     apiKey: ${LLM_GOOGLE_API_KEY:-""}
