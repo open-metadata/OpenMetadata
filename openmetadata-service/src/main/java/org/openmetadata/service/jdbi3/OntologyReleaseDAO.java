@@ -17,12 +17,52 @@ import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.ontology.OntologyJson;
 import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json_unquote(json_extract(json, '$.semanticVersion')) FROM ontology_release_entity "
+              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
+              + "AND json_unquote(json_extract(json, '$.semanticVersion')) IS NOT NULL "
+              + "ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT json ->> 'semanticVersion' FROM ontology_release_entity "
+              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
+              + "AND json ->> 'semanticVersion' IS NOT NULL ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
+      connectionType = POSTGRES)
+  String findLatestSemanticVersion(@BindUUID("ontologyId") UUID ontologyId);
+
+  @SqlQuery(
+      "SELECT COALESCE(MAX(releaseRevision), 0) FROM ontology_release_entity "
+          + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
+          + "AND (deleted IS NULL OR deleted = false)")
+  long latestSealedRevision(@BindUUID("ontologyId") UUID ontologyId);
+
+  @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND sealedAt IS NOT NULL AND (deleted IS NULL OR deleted = false) "
+          + "AND releaseRevision <= :highWater AND (:before = 0 OR releaseRevision < :before) "
+          + "ORDER BY releaseRevision DESC LIMIT :limit")
+  List<String> listChronological(
+      @BindUUID("ontologyId") UUID ontologyId,
+      @Bind("highWater") long highWater,
+      @Bind("before") long before,
+      @Bind("limit") int limit);
+
+  @SqlQuery(
+      "SELECT COUNT(*) FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND sealedAt IS NOT NULL AND (deleted IS NULL OR deleted = false) "
+          + "AND releaseRevision <= :highWater")
+  int countChronological(
+      @BindUUID("ontologyId") UUID ontologyId, @Bind("highWater") long highWater);
+
   @SqlQuery(
       "SELECT id FROM ontology_release_entity WHERE ontologyId = :ontologyId LIMIT 1 FOR UPDATE")
   String findRetainedReleaseForUpdate(@BindUUID("ontologyId") UUID ontologyId);
