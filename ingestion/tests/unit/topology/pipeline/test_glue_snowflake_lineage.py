@@ -306,6 +306,24 @@ df = spark.read.format("snowflake").options(**sf_options).load()
 
         assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
 
+    @pytest.mark.parametrize(
+        "preactions",
+        [
+            '"""DELETE FROM AUDIT WHERE dbtable = \'STALE\'"""',
+            "'''DELETE FROM AUDIT WHERE \"dbtable\": \"STALE\"'''",
+            '"UPDATE AUDIT SET note = \\"dbtable=\\\'STALE\\\'\\""',
+        ],
+    )
+    def test_settings_inside_a_string_value_are_ignored(self, preactions):
+        """SQL in preactions mentions dbtable: triple-quoted or escaped, it must not replace the table."""
+        script = f"""
+sf_options = {{"sfDatabase": "SALES_DB", "sfSchema": "RAW"}}
+df.write.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").option("preactions", {preactions}).save()
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
     def test_backslash_continued_chain(self):
         script = """
 sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}

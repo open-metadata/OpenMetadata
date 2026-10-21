@@ -153,16 +153,29 @@ SPARK_WRITE_SNOWFLAKE_PATTERN = re.compile(
 SNOWFLAKE_DATABASE_PATTERN = re.compile(r"[\"']sfDatabase[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
 SNOWFLAKE_SCHEMA_PATTERN = re.compile(r"[\"']sfSchema[\"']\s*[:=]\s*[\"']([^\"']+)[\"']")
 
+
+def _string_literal(name: str) -> str:
+    """
+    A complete Python string literal whose body is captured as `name`: triple or
+    single quoted, escapes included, possibly empty. Reading strings whole keeps
+    text inside them, such as SQL in .option("preactions", ...), from being
+    scanned as option settings.
+    """
+    quote = f"{name}_quote"
+    return rf"(?P<{quote}>\"\"\"|\'\'\'|\"|\')(?P<{name}>(?:\\.|(?!(?P={quote})).)*)(?P={quote})"
+
+
 # Every way a Snowflake option is set, scanned in call order so a later setting
 # wins as it does in Spark: .option("k", "v"), a "k": "v" dict entry, a k="v"
-# keyword, and a shared dict passed as **name or connection_options=name.
-# A value stops at its own closing quote and may be empty (.option("preactions", "")),
-# so it never runs into the next setting.
+# keyword, and a shared dict passed as **name or connection_options=name. Any
+# other string literal is consumed whole so nothing inside it counts as a setting.
 OPTION_SETTER_PATTERN = re.compile(
-    r"option\s*\(\s*[\"'](?P<option_key>\w+)[\"']\s*,\s*(?P<oq>[\"'])(?P<option_value>(?:(?!(?P=oq)).)*)(?P=oq)"
-    r"|[\"'](?P<entry_key>\w+)[\"']\s*:\s*(?P<eq>[\"'])(?P<entry_value>(?:(?!(?P=eq)).)*)(?P=eq)"
-    r"|\b(?P<kwarg_key>\w+)\s*=\s*(?P<kq>[\"'])(?P<kwarg_value>(?:(?!(?P=kq)).)*)(?P=kq)"
+    rf"option\s*\(\s*[\"'](?P<option_key>\w+)[\"']\s*,\s*{_string_literal('option_value')}"
+    rf"|[\"'](?P<entry_key>\w+)[\"']\s*:\s*{_string_literal('entry_value')}"
+    rf"|\b(?P<kwarg_key>\w+)\s*=\s*{_string_literal('kwarg_value')}"
     r"|(?:\*\*\s*|connection_options\s*=\s*)(?P<shared_name>[A-Za-z_]\w*)"
+    rf"|{_string_literal('other_string')}",
+    re.DOTALL,
 )
 
 # A backslash at the end of a line continues the statement: spark.read \\n .format(...)
@@ -485,9 +498,11 @@ def _ordered_options(block: str, source_code: str, expand_shared: bool = True) -
             shared = _shared_options_dict(shared_name, source_code)
             options.update(_ordered_options(shared, source_code, expand_shared=False))
         elif not shared_name:
-            # pick the value by the form that matched: an empty value is falsy
-            form = next(form for form in ("option", "entry", "kwarg") if match.group(f"{form}_key"))
-            options[match.group(f"{form}_key").lower()] = match.group(f"{form}_value")
+            # pick the value by the form that matched: an empty value is falsy;
+            # a bare string literal is no setting
+            form = next((form for form in ("option", "entry", "kwarg") if match.group(f"{form}_key")), None)
+            if form:
+                options[match.group(f"{form}_key").lower()] = match.group(f"{form}_value")
     return options
 
 
