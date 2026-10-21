@@ -20,7 +20,7 @@ import {
   navigateToMembersPanel,
   openAdminsPanel,
   openAiProfile,
-  openUserProfile,
+  openUserEditView,
   openUsersPanel,
   searchUserRow,
   waitForUserPatch,
@@ -46,7 +46,6 @@ const trackUser = (
   apiContext: Parameters<UserClass['create']>[0]
 ): Promise<UserClass> => createTrackedUser(apiContext, createdUsers);
 
-/** Open a user's profile view (#profile/<name>) from the Users list. */
 test.describe('AI Profile Users', () => {
   test.beforeAll(async ({ browser }) => {
     createdUsers = [];
@@ -223,7 +222,7 @@ test.describe('AI Profile Users', () => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('preferred-name-edit').click();
     await page
@@ -240,7 +239,7 @@ test.describe('AI Profile Users', () => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('persona-edit').click();
     await chooseSelectOption(
@@ -267,7 +266,7 @@ test.describe('AI Profile Users', () => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('domains-edit').click();
     // The row uses the shared DomainSelect tree picker; searching keeps the
@@ -307,6 +306,8 @@ test.describe('AI Profile Users', () => {
     await expect(
       dataConsumerPage.getByTestId('profile-details-panel')
     ).toBeVisible();
+    // The Profile tab is always the logged-in user, so its hash carries no name.
+    expect(new URL(dataConsumerPage.url()).hash).toBe('#profile');
 
     await expect(
       dataConsumerPage.getByTestId('preferred-name-edit')

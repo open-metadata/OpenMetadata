@@ -209,8 +209,11 @@ export const addUserToTeam = async (
   await patchResponse;
 };
 
-/** Open a user's profile-details panel from the Users list. */
-export const openUserProfile = async (
+/**
+ * Open a user's Edit User view (`#members/user/<name>`) by clicking their name
+ * in the Users list.
+ */
+export const openUserEditView = async (
   page: Page,
   userName: string
 ): Promise<void> => {
@@ -218,15 +221,18 @@ export const openUserProfile = async (
   await openUsersPanel(page);
   const userCell = await searchUserRow(page, userName);
 
-  const profileResponse = page.waitForResponse((response) =>
+  const userResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(`/api/v1/users/name/${encodeURIComponent(userName)}`)
   );
   await userCell.click();
-  await profileResponse;
+  await userResponse;
 
-  await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+  await expect(page.getByTestId('members-user-edit')).toBeVisible();
+  expect(new URL(page.url()).hash).toBe(
+    `#members/user/${encodeURIComponent(userName)}`
+  );
 };
 
 /** Click the "Members" breadcrumb in the profile content header. */

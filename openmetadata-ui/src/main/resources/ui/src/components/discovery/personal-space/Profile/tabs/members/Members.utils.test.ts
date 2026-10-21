@@ -44,6 +44,29 @@ describe('hash <-> view round-trip', () => {
     expect(view).toEqual({ type: 'team-detail', fqn, name: fqn });
   });
 
+  it('round-trips the edit-user view for a name with special characters', () => {
+    const name = 'jane.doe@acme.io';
+    const subPath = viewToSubPath({ type: 'user-edit', name });
+
+    expect(subPath).toBe(`user/${encodeURIComponent(name)}`);
+    expect(hashSubPathToView(subPath as string)).toEqual({
+      type: 'user-edit',
+      name,
+    });
+  });
+
+  it('keeps users/create as the create form, even next to a user named "create"', () => {
+    expect(hashSubPathToView('users/create')).toEqual({
+      type: 'user-create',
+      isAdmin: false,
+    });
+    expect(hashSubPathToView('user/create')).toEqual({
+      type: 'user-edit',
+      name: 'create',
+    });
+    expect(hashSubPathToView('user')).toEqual({ type: 'users' });
+  });
+
   it('maps teams/add to the add view (not a team named "add")', () => {
     expect(hashSubPathToView('teams/add')).toEqual({ type: 'teams-add' });
   });
