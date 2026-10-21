@@ -213,8 +213,9 @@ class _ScopeBuilder(ast.NodeVisitor):
         self.visit(node.value)
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        if isinstance(node.target, ast.Name) and node.value is not None:
-            self._bind(node.target.id, _Assignment(node.value, node))
+        if isinstance(node.target, ast.Name):
+            if node.value is not None:  # `name: dict` alone binds nothing
+                self._bind(node.target.id, _Assignment(node.value, node))
         else:
             self.visit(node.target)
         self._visit_all([node.annotation, node.value])
@@ -225,6 +226,11 @@ class _ScopeBuilder(ast.NodeVisitor):
             scope = scope.parent
         self._bind(node.target.id, scope=scope)
         self.visit(node.value)
+
+    def visit_AugAssign(self, node: ast.AugAssign) -> None:
+        if isinstance(node.target, ast.Name):  # d |= {...} changes the dict in place, and rebinds d
+            self.changes.append((self._scope, node.target.id))
+        self.generic_visit(node)
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Load):
@@ -286,10 +292,13 @@ class _Bindings:
       under a loop, and every binding before the read sits in a block enclosing
       it (so `if`/`else` branches or an `if` body read after the `if` are
       unknown): the latest one wins.
+    A class body is read in order: before its own binding runs, a read sees the
+    enclosing one. A bare annotation (`name: dict`) binds nothing.
     A global with several bindings read from inside a function is unknown, since
     its value depends on when the function is called. A dict changed in place
-    (d["k"] = v, d.update(...), d |= ...) is unknown in the scope it belongs to;
-    a dict handed to a function that changes it is not tracked.
+    (d["k"] = v, d.update(...), d |= ...), directly or through a name assigned
+    from it, is unknown in the scope it belongs to; a dict handed to a function
+    that changes it, or stored on an object, is not tracked.
     """
 
     def __init__(self, tree: ast.Module):
@@ -310,8 +319,22 @@ class _Bindings:
             builder.events, key=lambda event: event[0].declarations.get(event[1]) is ast.Nonlocal
         ):
             self._binding_owner(scope, name).bindings.setdefault(name, []).append(binding)
-        for scope, name in builder.changes:
-            self._owner(scope, name).changed.add(name)
+        # a change through an alias (opts = sf_options; opts["k"] = v) changes the dict it names too
+        pending = list(builder.changes)
+        while pending:
+            scope, name = pending.pop()
+            owner = self._owner(scope, name)
+            if name not in owner.changed:
+                owner.changed.add(name)
+                pending.extend(self._aliased(owner.bindings.get(name, [])))
+
+    def _aliased(self, bindings: list[_Binding]) -> list[tuple[_Scope, str]]:
+        """The names these bindings make an alias of: `opts = sf_options`."""
+        return [
+            (self._reads[binding.value], binding.value.id)
+            for binding in bindings
+            if binding is not None and isinstance(binding.value, ast.Name) and binding.value in self._reads
+        ]
 
     def _binding_owner(self, scope: _Scope, name: str) -> _Scope:
         declaration = scope.declarations.get(name)
@@ -343,14 +366,28 @@ class _Bindings:
         scope = self._reads.get(name)
         if scope is None:
             return None
-        owner = self._owner(scope, name.id)
+        return self._value(self._owner(scope, name.id), scope, name)
+
+    def _value(self, owner: _Scope, scope: _Scope, name: ast.Name) -> ast.expr | None:
+        """The value `name`, read in `scope`, takes from the bindings of `owner`."""
         bindings = owner.bindings.get(name.id, [])
         assignments = [binding for binding in bindings if binding is not None]
         if not assignments or len(assignments) != len(bindings) or name.id in owner.changed:
             return None
+        if owner is scope and isinstance(owner.node, ast.ClassDef):
+            return self._class_body_value(owner, name, assignments)
         if len(assignments) == 1:
             return assignments[0].value
         return self._reaching(name, assignments) if owner is scope else None
+
+    def _class_body_value(self, scope: _Scope, name: ast.Name, assignments: list[_Assignment]) -> ast.expr | None:
+        """A class body reads its own binding once one has run, and the enclosing one before that."""
+        read_at = self._statement_of(name)
+        if any(_position(assignment.statement) < _position(read_at) for assignment in assignments):
+            return self._reaching(name, assignments)
+        if any(self._in_loop(assignment.statement) for assignment in assignments) or scope.parent is None:
+            return None
+        return self._value(self._enclosing_owner(scope.parent, name.id), scope, name)
 
     def _reaching(self, name: ast.Name, assignments: list[_Assignment]) -> ast.expr | None:
         """The latest assignment before the read, when no other one could have run in between."""
@@ -496,8 +533,7 @@ def _spark_snowflake_call(call: ast.Call, reader: _ScriptReader) -> tuple[str, l
         if method == "format" and step.args:
             spark_format = reader.string(step.args[0])
         elif method == "option":
-            is_positional = len(step.args) == 2 and not step.keywords
-            settings.append(reader.setting(*step.args) if is_positional else (OPAQUE, None))
+            settings.append(_option_setting(step, reader))
         elif method == "options":
             settings.extend(reader.keyword_settings(step.keywords))
     # load(format="snowflake", dbtable="T") / save(..., **options): applied last
@@ -509,6 +545,14 @@ def _spark_snowflake_call(call: ast.Call, reader: _ScriptReader) -> tuple[str, l
     )
     is_snowflake = isinstance(spark_format, str) and spark_format.lower() in SNOWFLAKE_FORMATS
     return (direction, settings) if is_snowflake else None
+
+
+def _option_setting(call: ast.Call, reader: _ScriptReader) -> tuple:
+    """`.option("k", "v")` / `.option(key="k", value="v")`; opaque when the key cannot be read."""
+    arguments: dict[str, ast.expr] = dict(zip(("key", "value"), call.args, strict=False))
+    arguments.update({keyword.arg: keyword.value for keyword in call.keywords if keyword.arg})
+    is_readable = set(arguments) == {"key", "value"} and len(call.args) + len(call.keywords) == 2
+    return reader.setting(arguments["key"], arguments["value"]) if is_readable else (OPAQUE, None)
 
 
 def _glue_snowflake_call(call: ast.Call, reader: _ScriptReader) -> tuple[str, list[tuple]] | None:

@@ -464,6 +464,26 @@ df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORD
 """
         assert parse_glue_script(script).snowflake_sources == []
 
+    @pytest.mark.parametrize(
+        "option",
+        ['option(key="preactions", value="")', 'option("preactions", value="")'],
+    )
+    def test_option_with_literal_keywords_is_read(self, option):
+        script = f"""
+{SF_DICT}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").{option}.load()
+"""
+        assert parse_glue_script(script).snowflake_sources == [
+            SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")
+        ]
+
+    def test_option_with_a_literal_keyword_key_sets_it(self):
+        script = f"""
+{SF_DICT}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").option(value="CUSTOMERS", key="dbtable").load()
+"""
+        assert [ref.table for ref in parse_glue_script(script).snowflake_sources] == ["CUSTOMERS"]
+
     def test_load_and_save_keywords_are_options(self):
         script = f"""
 {SF_DICT}
@@ -624,6 +644,46 @@ def main():
 """
         assert _sources(script) == ORDERS
 
+    def test_class_body_reads_the_global_before_its_own_binding(self):
+        script = f"""
+{SALES_RAW}
+
+class Job:
+    source = {READ_ORDERS}
+    {DEV_RAW}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_class_body_reads_its_own_binding_once_made(self):
+        script = f"""
+{DEV_RAW}
+
+class Job:
+    {SALES_RAW}
+    source = {READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_class_binding_in_a_branch_before_the_read_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+
+class Job:
+    if args["ENV"] == "dev":
+        {DEV_RAW}
+    source = {READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    @pytest.mark.parametrize("annotation", ["sf_options: dict", "sf_options: dict[str, str]"])
+    def test_bare_annotation_binds_nothing(self, annotation):
+        script = f"""
+{SALES_RAW}
+{annotation}
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
     def test_global_reassigned_from_a_function_is_unknown(self):
         script = f"""
 {SALES_RAW}
@@ -659,6 +719,25 @@ def switch():
 {READ_ORDERS}
 """
         assert _sources(script) == []
+
+    @pytest.mark.parametrize("change", ['opts["sfSchema"] = "STAGE"', 'opts |= {"sfSchema": "STAGE"}'])
+    def test_dict_changed_through_an_alias_is_unknown(self, change):
+        script = f"""
+{SALES_RAW}
+opts = sf_options
+{change}
+{READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    def test_copy_changed_in_place_leaves_the_original(self):
+        script = f"""
+{SALES_RAW}
+opts = dict(sf_options)
+opts["sfSchema"] = "STAGE"
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
 
     def test_dict_built_from_itself_reads_the_earlier_binding(self):
         script = f"""
