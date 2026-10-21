@@ -318,8 +318,18 @@ describe('FeaturesPlaceholder', () => {
       <FeaturesPlaceholder
         description="Set it up in three steps"
         features={[
-          { key: 'one', title: 'Define it', description: 'Step one' },
-          { key: 'two', title: 'Own it', description: 'Step two' },
+          {
+            key: 'one',
+            icon: <span />,
+            title: 'Define it',
+            description: 'Step one',
+          },
+          {
+            key: 'two',
+            icon: <span />,
+            title: 'Own it',
+            description: 'Step two',
+          },
         ]}
         title="Get started"
       />
