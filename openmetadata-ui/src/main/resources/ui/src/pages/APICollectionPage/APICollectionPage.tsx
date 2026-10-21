@@ -25,6 +25,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -93,6 +94,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const queryClient = useQueryClient();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -245,10 +247,17 @@ const APICollectionPage: FunctionComponent = () => {
             decodedAPICollectionFQN,
             apiCollectionPermission,
             apiCollection,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection, navigate]
+    [
+      apiCollectionPermission,
+      decodedAPICollectionFQN,
+      apiCollection,
+      navigate,
+      showModal,
+    ]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(

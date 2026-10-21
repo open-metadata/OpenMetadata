@@ -25,6 +25,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -116,6 +117,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     type: EntityType.DATABASE_SCHEMA,
   });
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -278,12 +280,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         decodedDatabaseSchemaFQN,
         databaseSchemaPermission,
         databaseSchema ?? ({} as DatabaseSchema),
-        navigate
+        navigate,
+        showModal
       ),
     [
       databaseSchemaPermission,
       decodedDatabaseSchemaFQN,
       databaseSchema?.deleted,
+      showModal,
     ]
   );
 

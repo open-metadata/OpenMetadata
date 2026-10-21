@@ -28,6 +28,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -219,6 +220,7 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<boolean>(false);
 
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -322,9 +324,10 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN,
         databasePermission,
         database ?? ({} as Database),
-        navigate
+        navigate,
+        showModal
       ),
-    [decodedDatabaseFQN, databasePermission, database]
+    [decodedDatabaseFQN, databasePermission, database, showModal]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {

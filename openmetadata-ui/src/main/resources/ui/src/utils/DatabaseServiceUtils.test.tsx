@@ -42,14 +42,6 @@ jest.mock('./loadConnectionSchema', () => {
 });
 
 jest.mock(
-  '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn().mockReturnValue({
-      showModal: jest.fn(),
-    }),
-  })
-);
-jest.mock(
   '../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
   () => ({
     ManageButtonItemLabel: jest
@@ -63,6 +55,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
+
+const mockShowModal = jest.fn();
 
 describe('ExtraDatabaseServiceDropdownOptions', () => {
   beforeEach(() => {
@@ -80,7 +74,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
@@ -97,11 +92,31 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('export-button');
+  });
+
+  // Callers build these options inside useMemo, so the helper must not call
+  // hooks: a hook here broke ServiceDetailsPage's hook order. Run outside any
+  // component, a hook call would throw.
+  it('should use the passed showModal instead of calling a hook', () => {
+    const result = ExtraDatabaseServiceDropdownOptions(
+      'databaseServiceFqn',
+      { ViewAll: true, EditAll: false } as OperationPermission,
+      false,
+      mockNavigate,
+      mockShowModal
+    );
+
+    result[0].onClick?.();
+
+    expect(mockShowModal).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'databaseServiceFqn' })
+    );
   });
 
   it('should render both button when user has viewAll & editAll permission', () => {
@@ -114,7 +129,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(2);
@@ -131,7 +147,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       false,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);
@@ -147,7 +164,8 @@ describe('ExtraDatabaseServiceDropdownOptions', () => {
       'databaseServiceFqn',
       permission,
       true,
-      mockNavigate
+      mockNavigate,
+      mockShowModal
     );
 
     expect(result).toHaveLength(0);

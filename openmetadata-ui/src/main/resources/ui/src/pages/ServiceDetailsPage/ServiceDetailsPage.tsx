@@ -32,6 +32,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
@@ -225,6 +226,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging();
   const collateAgentPagingInfo = usePaging();
@@ -428,9 +430,17 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN,
         servicePermission,
         serviceDetails,
-        navigate
+        navigate,
+        showModal
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
+    [
+      servicePermission,
+      decodedServiceFQN,
+      serviceCategory,
+      serviceDetails,
+      tab,
+      showModal,
+    ]
     // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
   );
 

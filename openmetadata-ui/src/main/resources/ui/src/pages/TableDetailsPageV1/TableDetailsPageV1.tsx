@@ -20,6 +20,7 @@ import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
@@ -162,6 +163,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const location = useLocation();
   const breadcrumbData = (
     location.state as {
@@ -354,10 +356,11 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             tablePermissions,
             tableDetails,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [tablePermissions, tableFqn, tableDetails, navigate]
+    [tablePermissions, tableFqn, tableDetails, navigate, showModal]
   );
 
   const fetchDqIndicatorCounts = useCallback(
