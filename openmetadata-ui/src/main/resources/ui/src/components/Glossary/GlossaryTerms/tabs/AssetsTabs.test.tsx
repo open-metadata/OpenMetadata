@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -542,6 +542,26 @@ describe('AssetsTabs queryParam logic', () => {
           'tags.tagFQN': '',
         });
       });
+    });
+  });
+
+  describe('Empty state', () => {
+    it('shows the caller message as the description instead of the generic text', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="test.domain"
+          noDataPlaceholder={{ message: 'No assets in this domain' }}
+          type={AssetsOfEntity.DOMAIN}
+        />
+      );
+
+      expect(
+        await screen.findByText('No assets in this domain')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-available')
+      ).not.toBeInTheDocument();
     });
   });
 });

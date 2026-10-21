@@ -894,27 +894,20 @@ const AssetsTabs = forwardRef(
 
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
+        const searchMessage =
+          searchValue && type !== AssetsOfEntity.MY_DATA
+            ? t('label.no-matching-data-asset')
+            : undefined;
+
         return (
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              footer={
-                <>
-                  {searchValue && type !== AssetsOfEntity.MY_DATA && (
-                    <div className="gap-4">
-                      <Typography as="p">
-                        {t('label.no-matching-data-asset')}
-                      </Typography>
-                    </div>
-                  )}
-                  {isObject(noDataPlaceholder) && (
-                    <div className="gap-4">
-                      <Typography as="p">
-                        {noDataPlaceholder.message}
-                      </Typography>
-                    </div>
-                  )}
-                </>
+              description={
+                searchMessage ??
+                (isObject(noDataPlaceholder)
+                  ? noDataPlaceholder.message
+                  : undefined)
               }
             />
           </div>
