@@ -247,7 +247,7 @@ export const CustomizablePageHeader = ({
             className="tw:mb-4"
             data-testid="customize-landing-page-header"
             subtitle={
-              <Typography className="tw:text-secondary" size="text-sm">
+              <Typography color="secondary" size="text-sm">
                 {headerSubtitle}
               </Typography>
             }
@@ -264,21 +264,24 @@ export const CustomizablePageHeader = ({
           />
         ) : (
           <Card
-            className="tw:mb-5 tw:p-5"
-            data-testid="customize-landing-page-header">
-            <Box align="center" direction="row" justify="between">
-              <Box className="tw:gap-0.5" direction="col">
-                <Typography as="h3" data-testid="customize-page-title">
-                  {headerTitle}
-                </Typography>
-                <Typography className="tw:text-secondary" size="text-xs">
-                  {headerSubtitle}
-                </Typography>
+            className="tw:mb-5"
+            data-testid="customize-landing-page-header"
+            size="md">
+            <Card.Content>
+              <Box align="center" direction="row" justify="between">
+                <Box className="tw:gap-0.5" direction="col">
+                  <Typography as="h3" data-testid="customize-page-title">
+                    {headerTitle}
+                  </Typography>
+                  <Typography color="secondary" size="text-xs">
+                    {headerSubtitle}
+                  </Typography>
+                </Box>
+                <Box align="center" direction="row" gap={2}>
+                  {headerActions}
+                </Box>
               </Box>
-              <Box align="center" direction="row" gap={2}>
-                {headerActions}
-              </Box>
-            </Box>
+            </Card.Content>
           </Card>
         )}
       </Box>
