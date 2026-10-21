@@ -31,6 +31,7 @@ import {
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
 import { EntityTabs } from '../enums/entity.enum';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { getEncodedFqn } from './StringUtils';
 
 export const getSettingPath = (
@@ -60,7 +61,8 @@ export const getSettingPath = (
     path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   }
 
-  return path;
+  // A `withFqn` result is a route template the caller fills in, not a link.
+  return withFqn ? path : getSettingsLink(path);
 };
 
 export const getTeamAndUserDetailsPath = (name?: string) => {
@@ -77,7 +79,7 @@ export const getTeamAndUserDetailsPath = (name?: string) => {
     path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(name));
   }
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getUserPath = (username: string, tab?: string, subTab = 'all') => {

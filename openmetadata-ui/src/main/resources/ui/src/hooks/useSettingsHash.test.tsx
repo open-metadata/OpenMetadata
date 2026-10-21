@@ -186,6 +186,23 @@ describe('useSettingsHash', () => {
     expect(result.current.settings.state.tab).toBeNull();
   });
 
+  // A mode-aware settings link (`getSettingsLink`) pushes `#<tab>` on the same
+  // pathname; the store must adopt it so the modal opens over the page.
+  it('should adopt a settings hash pushed by a link on the same page', () => {
+    const { result } = renderHook(
+      () => ({ navigate: useNavigate(), settings: useSettingsHash() }),
+      { wrapper }
+    );
+
+    act(() => {
+      globalThis.location.hash = '#bots/ingestion-bot';
+      result.current.navigate('#bots/ingestion-bot');
+    });
+
+    expect(result.current.settings.state.tab).toBe('bots');
+    expect(result.current.settings.state.subPath).toBe('ingestion-bot');
+  });
+
   // Deep link opened in a new tab: an initial app/auth redirect can strip the
   // URL hash before the hook's mount sync runs. The captured hash must survive.
   it('keeps a captured deep-link hash when a later mount sees an empty URL hash', () => {

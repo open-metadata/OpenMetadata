@@ -49,6 +49,7 @@ import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.inter
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getSettingPath } from './RouterPaths';
 import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { getEncodedFqn } from './StringUtils';
 
 // Moved to RouterPaths so callers needing only a profile URL (the app
@@ -218,20 +219,24 @@ export const getApplicationDetailsPath = (fqn: string) => {
     )
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getMarketPlaceAppDetailsPath = (fqn: string) => {
-  return ROUTES.MARKETPLACE_APP_DETAILS.replace(
-    PLACEHOLDER_ROUTE_FQN,
-    getEncodedFqn(fqn)
+  return getSettingsLink(
+    ROUTES.MARKETPLACE_APP_DETAILS.replace(
+      PLACEHOLDER_ROUTE_FQN,
+      getEncodedFqn(fqn)
+    )
   );
 };
 
 export const getAppInstallPath = (fqn: string) => {
-  return ROUTES.MARKETPLACE_APP_INSTALL.replace(
-    PLACEHOLDER_ROUTE_FQN,
-    getEncodedFqn(fqn)
+  return getSettingsLink(
+    ROUTES.MARKETPLACE_APP_INSTALL.replace(
+      PLACEHOLDER_ROUTE_FQN,
+      getEncodedFqn(fqn)
+    )
   );
 };
 
@@ -265,7 +270,7 @@ export const getSettingsPathWithFqn = (
   path = path.replace(PLACEHOLDER_SETTING_CATEGORY, category);
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getSettingCategoryPath = (category: string) => {
@@ -286,7 +291,7 @@ export const getTeamsWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.TEAMS)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getRoleWithFqnPath = (fqn: string) => {
@@ -297,7 +302,7 @@ export const getRoleWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.ROLES)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getPolicyWithFqnPath = (fqn: string) => {
@@ -308,7 +313,7 @@ export const getPolicyWithFqnPath = (fqn: string) => {
     .replace(PLACEHOLDER_ROUTE_TAB, GlobalSettingOptions.POLICIES)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getPath = (pathName: string) => {
@@ -347,7 +352,7 @@ export const getAddPolicyRulePath = (fqn: string) => {
 
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
@@ -358,7 +363,7 @@ export const getEditPolicyRulePath = (fqn: string, ruleName: string) => {
     // rule name is same as entity fqn so we need to encode it to pass it as a param
     .replace(PLACEHOLDER_RULE_NAME, getEncodedFqn(ruleName));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getTagPath = (fqn?: string) => {
@@ -595,7 +600,7 @@ export const getPersonaDetailsPath = (fqn: string) => {
     .replace(PLACEHOLDER_SETTING_CATEGORY, GlobalSettingOptions.PERSONA)
     .replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getObservabilityAlertsEditPath = (fqn: string) => {
@@ -611,7 +616,7 @@ export const getNotificationAlertsEditPath = (fqn: string) => {
 
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getObservabilityAlertDetailsPath = (fqn: string, tab?: string) => {
@@ -639,7 +644,7 @@ export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
     tab ?? AlertDetailTabs.CONFIGURATION
   );
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getTagsDetailsPath = (entityFQN: string) => {
@@ -808,7 +813,7 @@ export const getBotsPath = (botsName: string) => {
   let path = ROUTES.BOTS_PROFILE;
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(botsName));
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getCreateUserPath = (bot: boolean) => {
@@ -818,17 +823,21 @@ export const getCreateUserPath = (bot: boolean) => {
     path = path.replace(PLACEHOLDER_USER_BOT, 'bot');
   }
 
-  return path;
+  return getSettingsLink(path);
 };
 
 export const getUsersPagePath = (isAdmin?: boolean) => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
-    isAdmin ? 'admins' : 'users'
-  }`;
+  return getSettingsLink(
+    `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.MEMBERS}/${
+      isAdmin ? 'admins' : 'users'
+    }`
+  );
 };
 
 export const getBotsPagePath = () => {
-  return `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`;
+  return getSettingsLink(
+    `${ROUTES.SETTINGS}/${GlobalSettingsMenuCategory.BOTS}`
+  );
 };
 
 export const getKpiPath = (kpiName: string) => {

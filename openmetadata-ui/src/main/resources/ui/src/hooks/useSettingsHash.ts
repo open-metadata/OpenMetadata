@@ -18,7 +18,12 @@ import {
   useRef,
   useSyncExternalStore,
 } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  NavigationType,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from 'react-router-dom';
 import { ProfileNavId, PROFILE_NAV_IDS } from '../constants/Profile.constants';
 
 /**
@@ -149,6 +154,7 @@ const getStoreHash = (): string => storeHash;
 export const useSettingsHash = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
 
   // Keep navigate reachable from the stable callbacks below without listing it
   // (or location) as a dependency — an unstable `setHash` identity propagates
@@ -213,6 +219,16 @@ export const useSettingsHash = () => {
     }
     setStoreHash(globalThis.location.hash);
   }, [location.pathname]);
+
+  // A `<Link>`/`navigate()` to a settings hash from outside the modal (a
+  // mode-aware settings link, `getSettingsLink`) pushes a new entry on the same
+  // pathname, which neither effect above sees. Adopt the live hash on every
+  // push; `setHash`/`clearHash` replace, so in-modal navigation never echoes.
+  useEffect(() => {
+    if (navigationType === NavigationType.Push) {
+      setStoreHash(globalThis.location.hash);
+    }
+  }, [location.key, navigationType]);
 
   // pathname/search are read from `globalThis.location` at call time (mirroring
   // useTableFilters) so these callbacks stay referentially stable.
