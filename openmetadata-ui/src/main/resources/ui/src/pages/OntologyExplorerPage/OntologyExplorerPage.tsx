@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  EmptyPlaceholder,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -84,7 +85,10 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { getOntology, getOntologyWorkingDiff } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
+  ALL_GLOSSARIES_SCOPE,
+  ALL_GLOSSARIES_SCOPE_KEY,
   ALL_ONTOLOGIES_SCOPE,
+  ALL_ONTOLOGIES_SCOPE_KEY,
   getScopeKey,
   getStudioScope,
   isOntologyScope,
@@ -564,6 +568,21 @@ function aggregateEnabled(
   );
 }
 
+// A bare Studio link on an instance with glossaries but no native ontologies
+// would otherwise open empty (ADR:2026-10-19-ontology-studio-opens-native-models-by-default).
+function shouldFallBackToGlossaryScope(
+  searchParams: URLSearchParams,
+  isAllOntologies: boolean,
+  isCreatingOntology: boolean,
+  scopes: ReturnType<typeof useOntologyStudioScopes>
+): boolean {
+  return (
+    !searchParams.has('scope') &&
+    aggregateEnabled(isAllOntologies, isCreatingOntology, scopes) &&
+    scopes.ontologies.length === 0
+  );
+}
+
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -737,6 +756,27 @@ const OntologyExplorerPage: React.FC = () => {
     studioScopes.ontologies,
     aggregateEnabled(isAllOntologies, isCreatingOntology, studioScopes)
   );
+
+  const shouldFallBackToGlossaries = shouldFallBackToGlossaryScope(
+    searchParams,
+    isAllOntologies,
+    isCreatingOntology,
+    studioScopes
+  );
+
+  useEffect(() => {
+    if (shouldFallBackToGlossaries) {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          next.set('scope', ALL_GLOSSARIES_SCOPE_KEY);
+
+          return next;
+        },
+        { replace: true }
+      );
+    }
+  }, [setSearchParams, shouldFallBackToGlossaries]);
 
   const selectOntology = (
     ontology?: Ontology,
@@ -1065,7 +1105,7 @@ const OntologyExplorerPage: React.FC = () => {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.delete('ontology');
-        next.delete('scope');
+        next.set('scope', ALL_ONTOLOGIES_SCOPE_KEY);
         next.delete(DRAFT_SEARCH_PARAM);
         next.delete('concept');
 
@@ -1535,7 +1575,11 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function renderAllOntologies() {
-    if (studioScopes.isOntologyLoading || allModels.isLoading) {
+    if (
+      studioScopes.isOntologyLoading ||
+      allModels.isLoading ||
+      shouldFallBackToGlossaries
+    ) {
       return <Typography role="status">{t('label.loading')}</Typography>;
     }
     if (studioScopes.isOntologyError || allModels.isError) {
@@ -1545,16 +1589,33 @@ const OntologyExplorerPage: React.FC = () => {
     if (availableOntologies.length === 0) {
       return (
         <Box
-          className="tw:p-6"
+          align="center"
+          className="tw:flex-1 tw:p-6"
           data-testid="all-ontologies-empty"
-          direction="col"
-          gap={3}>
-          <Typography>{t('message.no-data-available')}</Typography>
-          {canCreateOntology ? (
-            <Button onPress={() => setIsCreatingOntology(true)}>
-              {t('label.new-entity', { entity: t('label.ontology') })}
-            </Button>
-          ) : null}
+          justify="center">
+          <EmptyPlaceholder
+            description={t('message.ontology-empty-description')}
+            footer={
+              <Box gap={3}>
+                <Button
+                  color="secondary"
+                  onPress={() => handleScopeChange(ALL_GLOSSARIES_SCOPE)}>
+                  {t('label.view-all-entity', {
+                    entity: t('label.glossary-plural'),
+                  })}
+                </Button>
+                {canCreateOntology ? (
+                  <Button
+                    iconLeading={Plus}
+                    onPress={() => setIsCreatingOntology(true)}>
+                    {t('label.new-entity', { entity: t('label.ontology') })}
+                  </Button>
+                ) : null}
+              </Box>
+            }
+            title={t('message.ontology-empty-title')}
+            variant="blank"
+          />
         </Box>
       );
     }

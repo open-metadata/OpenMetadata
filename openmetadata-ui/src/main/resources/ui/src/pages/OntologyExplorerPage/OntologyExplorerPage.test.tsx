@@ -416,8 +416,28 @@ describe('OntologyExplorerPage', () => {
     );
   };
 
+  it('opens glossary vocabulary when a bare link finds no native ontologies', async () => {
+    mockUseRealRouter = true;
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/']}>
+        <OntologyExplorerPage />
+        <Location />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'scope=glossary%3Aall'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('all-ontologies-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('shows the empty native catalog without glossary controls', async () => {
-    mockSearchParams = new URLSearchParams();
+    mockSearchParams = new URLSearchParams('scope=ontology:all');
     render(<OntologyExplorerPage />);
 
     expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
