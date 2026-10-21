@@ -87,7 +87,7 @@
   // borders, with a 1s colour transition) outrank Tailwind utilities, so the
   // 1px divider and its brand hover are set here.
   .kg-stage-main.reflex-container.horizontal > .kg-stage-splitter {
-    height: calc(var(--tw-spacing) / 4);
+    height: 1px;
     border: 0;
     background-color: var(--tw-border-color-secondary);
     transition: none;
@@ -120,8 +120,8 @@
     background-color: var(--tw-background-color-primary);
     background-image: radial-gradient(
       circle,
-      var(--tw-border-color-secondary) calc(var(--tw-spacing) / 4),
-      transparent calc(var(--tw-spacing) / 4)
+      var(--tw-border-color-secondary) 1px,
+      transparent 1px
     );
     background-size: calc(var(--tw-spacing) * 6) calc(var(--tw-spacing) * 6);
   }
@@ -199,8 +199,7 @@
     grid-column: 2;
     grid-row-start: 1;
     grid-row-end: 3;
-    border-left: calc(var(--tw-spacing) / 4) solid
-      var(--tw-border-color-secondary);
+    border-left: 1px solid var(--tw-border-color-secondary);
   }
 
   .kg-inspector-body {
@@ -217,7 +216,7 @@
     place-items: center;
     flex-shrink: 0;
     border-radius: var(--tw-radius-md);
-    border: calc(var(--tw-spacing) / 4) solid;
+    border: 1px solid;
   }
 
   .kg-inspector-tile-md {
@@ -255,7 +254,7 @@
   .kg-inspector-row {
     padding: calc(var(--tw-spacing) * 2.5) calc(var(--tw-spacing) * 3);
     background: transparent;
-    border: calc(var(--tw-spacing) / 4) solid var(--tw-border-color-secondary);
+    border: 1px solid var(--tw-border-color-secondary);
     border-radius: var(--tw-radius-lg);
     outline: none;
     cursor: pointer;
@@ -294,8 +293,7 @@
     flex-shrink: 0;
     padding: calc(var(--tw-spacing) * 3) calc(var(--tw-spacing) * 3.5);
     background: var(--tw-background-color-surface);
-    border-top: calc(var(--tw-spacing) / 4) solid
-      var(--tw-border-color-secondary);
+    border-top: 1px solid var(--tw-border-color-secondary);
   }
 
   @media (max-width: 900px) {
@@ -314,8 +312,7 @@
       grid-row: 3;
       max-height: 40vh;
       border-left: 0;
-      border-top: calc(var(--tw-spacing) / 4) solid
-        var(--tw-border-color-secondary);
+      border-top: 1px solid var(--tw-border-color-secondary);
     }
   }
 }

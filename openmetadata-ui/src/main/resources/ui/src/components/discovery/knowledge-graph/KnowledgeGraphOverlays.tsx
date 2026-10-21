@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   SlideoutMenu,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -628,29 +629,35 @@ const KnowledgeGraphOverlays = ({
           ))}
       </div>
       {tooltip && (
-        <div
-          aria-hidden="true"
-          className="tw:pointer-events-none tw:z-1500 tw:max-w-72.5 tw:rounded-md tw:border tw:border-primary tw:bg-surface tw:px-2.5 tw:py-1.5 tw:text-xs tw:shadow-lg"
-          data-testid="edge-tooltip"
-          style={{
-            position: 'fixed',
-            left: Math.min(tooltip.x + 12, window.innerWidth - 300),
-            top: Math.min(tooltip.y + 12, window.innerHeight - 100),
-          }}>
-          <div className="tw:mb-1 tw:truncate tw:text-tertiary">
-            {tooltip.sourceLabel +
+        // The canvas has no DOM node per edge, so a zero-size anchor at the
+        // hover point stands in as the tooltip trigger.
+        <span
+          className="tw:pointer-events-none tw:fixed tw:size-0"
+          style={{ left: tooltip.x, top: tooltip.y }}>
+          <Tooltip
+            excludeTriggerFromTabOrder
+            isOpen
+            crossOffset={12}
+            data-testid="edge-tooltip"
+            description={
+              tooltip.sourceLabel +
               (tooltip.derived ? ' — ' : ' → ') +
-              tooltip.targetLabel}
-          </div>
-          {tooltip.labels.map((label) => (
-            <div
-              className="tw:font-medium tw:wrap-anywhere tw:text-primary"
-              data-testid="edge-tooltip-label"
-              key={label}>
-              {label}
-            </div>
-          ))}
-        </div>
+              tooltip.targetLabel
+            }
+            key={tooltip.edgeId}
+            offset={12}
+            placement="bottom start"
+            title={tooltip.labels.map((label) => (
+              <span
+                className="tw:block"
+                data-testid="edge-tooltip-label"
+                key={label}>
+                {label}
+              </span>
+            ))}>
+            <span />
+          </Tooltip>
+        </span>
       )}
       {inspectorOpen && (
         <Box

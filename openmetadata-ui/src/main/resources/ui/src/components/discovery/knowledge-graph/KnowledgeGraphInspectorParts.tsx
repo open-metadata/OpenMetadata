@@ -135,20 +135,6 @@ export const InspectorStatement = ({
   </Box>
 );
 
-/** Small caps label above an inspector field or section. */
-export const InspectorSectionTitle = ({
-  children,
-}: {
-  children: ReactNode;
-}) => (
-  <Typography
-    className="tw:tracking-[0.08em] tw:text-quaternary tw:uppercase"
-    size="text-xs"
-    weight="semibold">
-    {children}
-  </Typography>
-);
-
 interface IdentityCardProps {
   /** Short caps label above the identifier — e.g. "FULL PATH", "USERNAME", "FQN". */
   fieldLabel: string;
@@ -173,7 +159,12 @@ export const InspectorIdentityCard = ({
   valueTestId,
 }: IdentityCardProps) => (
   <Box className="kg-inspector-statement" direction="col" gap={2}>
-    <InspectorSectionTitle>{fieldLabel}</InspectorSectionTitle>
+    <Typography
+      className="tw:tracking-[0.08em] tw:text-quaternary tw:uppercase"
+      size="text-xs"
+      weight="semibold">
+      {fieldLabel}
+    </Typography>
     <Typography
       className="tw:break-all tw:font-mono tw:text-utility-purple-700"
       data-testid={valueTestId}
@@ -283,7 +274,12 @@ interface SectionProps {
 export const InspectorSection = ({ title, meta, children }: SectionProps) => (
   <Box direction="col" gap={2}>
     <Box align="center" className="tw:mt-0.5" gap={2} justify="between">
-      <InspectorSectionTitle>{title}</InspectorSectionTitle>
+      <Typography
+        className="tw:tracking-[0.08em] tw:text-quaternary tw:uppercase"
+        size="text-xs"
+        weight="semibold">
+        {title}
+      </Typography>
       {meta && (
         <Typography className="tw:text-quaternary" size="text-xs">
           {meta}
