@@ -244,8 +244,8 @@ describe('RolesRow', () => {
       );
     });
 
-    // Only the real role is listed; no synthetic Admin chip.
-    expect(screen.getByTestId('chip-list')).toHaveTextContent('1');
+    // The Admin chip still shows in the view (role + Admin).
+    expect(screen.getByTestId('chip-list')).toHaveTextContent('2');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-role'));

@@ -37,7 +37,8 @@ interface RolesRowProps {
   canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
   description?: string;
-  // Offer Admin as a pseudo-role; off where a dedicated admin toggle exists.
+  // Offer Admin as an editable pseudo-role; off where a dedicated admin toggle
+  // exists. The Admin chip in the view shows either way.
   showAdminRole?: boolean;
 }
 
@@ -126,7 +127,7 @@ const RolesRow: React.FC<RolesRowProps> = ({
   // synthetic chip — otherwise an admin-only user reads as "No roles assigned".
   const roleChips = useMemo(() => {
     const chips: EntityReference[] = [...(userData.roles ?? [])];
-    if (showAdminRole && userData.isAdmin) {
+    if (userData.isAdmin) {
       chips.push({
         id: TERM_ADMIN,
         type: 'role',
@@ -136,7 +137,7 @@ const RolesRow: React.FC<RolesRowProps> = ({
     }
 
     return chips;
-  }, [userData.roles, userData.isAdmin, showAdminRole, t]);
+  }, [userData.roles, userData.isAdmin, t]);
 
   return (
     <InlineEditCard
