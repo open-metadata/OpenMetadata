@@ -55,13 +55,6 @@ interface OntologyGraphMockProps {
 const mockOntologyGraph = jest.fn<void, [OntologyGraphMockProps]>();
 const mockRelationPanelMount = jest.fn();
 
-const mockNavigate = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
-
 jest.mock('./hooks/useOntologyExplorer', () => ({
   useOntologyExplorer: jest.fn(),
 }));
@@ -588,9 +581,8 @@ describe('OntologyExplorer Studio data controls', () => {
 
     render(<OntologyExplorer scope="global" />);
 
-    fireEvent.click(screen.getByTestId('ontology-view-all'));
-
-    expect(mockNavigate).toHaveBeenCalledWith(
+    expect(screen.getByTestId('ontology-view-all')).toHaveAttribute(
+      'href',
       '/governance/ontology?scope=ontology:all'
     );
   });

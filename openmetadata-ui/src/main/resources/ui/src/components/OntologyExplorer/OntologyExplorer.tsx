@@ -41,7 +41,6 @@ import React, {
 import { createPortal } from 'react-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { UpdateTermRelation } from '../../generated/api/data/updateTermRelation';
@@ -142,7 +141,6 @@ function GraphEmptyState({ message, testId }: GraphEmptyStateProps) {
 
 function OntologyOnboardingEmptyState() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
 
   return (
     <div
@@ -176,11 +174,7 @@ function OntologyOnboardingEmptyState() {
           <Button
             color="primary"
             data-testid="ontology-view-all"
-            onPress={() =>
-              navigate(
-                `${ROUTES.ONTOLOGY_EXPLORER}?scope=${ALL_ONTOLOGIES_SCOPE_KEY}`
-              )
-            }>
+            href={`${ROUTES.ONTOLOGY_EXPLORER}?scope=${ALL_ONTOLOGIES_SCOPE_KEY}`}>
             {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
           </Button>
         }

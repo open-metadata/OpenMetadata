@@ -356,6 +356,10 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          // Host apps ship unlayered `a:hover` underline rules that outrank layered
+          // utilities; a link-rendered button keeps its own hover (link colours
+          // underline their inner text instead).
+          href && 'tw:no-underline!',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',
           // If in `loading` state, hide everything except the loading icon

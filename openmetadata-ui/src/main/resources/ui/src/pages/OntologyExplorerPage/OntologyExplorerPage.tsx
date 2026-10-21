@@ -93,6 +93,7 @@ import {
   getStudioScope,
   isOntologyScope,
   OntologyStudioScope,
+  shouldFallBackToGlossaryScope,
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
@@ -568,21 +569,6 @@ function aggregateEnabled(
   );
 }
 
-// A bare Studio link on an instance with glossaries but no native ontologies
-// would otherwise open empty (ADR:2026-10-19-ontology-studio-opens-native-models-by-default).
-function shouldFallBackToGlossaryScope(
-  searchParams: URLSearchParams,
-  isAllOntologies: boolean,
-  isCreatingOntology: boolean,
-  scopes: ReturnType<typeof useOntologyStudioScopes>
-): boolean {
-  return (
-    !searchParams.has('scope') &&
-    aggregateEnabled(isAllOntologies, isCreatingOntology, scopes) &&
-    scopes.ontologies.length === 0
-  );
-}
-
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -759,9 +745,12 @@ const OntologyExplorerPage: React.FC = () => {
 
   const shouldFallBackToGlossaries = shouldFallBackToGlossaryScope(
     searchParams,
-    isAllOntologies,
-    isCreatingOntology,
-    studioScopes
+    {
+      isCreatingOntology,
+      isOntologyError: studioScopes.isOntologyError,
+      isOntologyLoading: studioScopes.isOntologyLoading,
+      ontologyCount: studioScopes.ontologies.length,
+    }
   );
 
   useEffect(() => {
