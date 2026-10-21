@@ -71,9 +71,11 @@ class LeftSidebarClassBase {
   }
 
   /**
-   * Route prefixes that mark another Classic sidebar item as active, keyed by
-   * the route's first two path segments. A downstream build (Collate) extends
-   * it for routes it owns outside the item's own path.
+   * Route prefixes that mark another Classic sidebar item as active. Matched
+   * on the route's first two path segments, then on its first segment. A
+   * downstream build (Collate) spreads `super` and adds routes it owns outside
+   * the item's own path.
+   * ADR:2026-10-21-classic-sidebar-path-aliases-are-a-class-base-hook
    */
   public getSidebarPathAliases(): Record<string, string> {
     return SIDEBAR_ENTITY_PATH_ALIASES;
