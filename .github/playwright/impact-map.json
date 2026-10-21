@@ -1001,6 +1001,26 @@
       ]
     },
     {
+      "_comment": "Settings modal Bots panel: list, add form, detail and token section.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/bots/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/BotsProfile.spec.ts"]
+    },
+    {
+      "_comment": "Settings modal Notifications panel: alert list, alert form and detail views.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+      ]
+    },
+    {
       "_comment": "FormBuilderV1 renders every app-config, SSO, ingestion and service-connection form, so it runs the specs those forms map to.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/FormBuilderV1/**"
