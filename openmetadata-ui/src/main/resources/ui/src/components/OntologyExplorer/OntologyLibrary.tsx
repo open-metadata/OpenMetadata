@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   ButtonUtility,
@@ -24,7 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  BookOpen01,
+  BookClosed,
   RefreshCcw01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
@@ -35,6 +36,10 @@ import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPack
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import OntologyNativeLibraryDetail, {
+  NativeLibraryCompletion,
+  OntologyNativeLibraryDetailProps,
+} from '../governance/ontology/OntologyNativeLibraryDetail/OntologyNativeLibraryDetail';
 import {
   defaultModuleIds,
   updateModuleSelection,
@@ -44,16 +49,27 @@ import OntologyLibraryDetail, {
   OntologyLibraryAction,
 } from './OntologyLibraryDetail';
 
-interface OntologyLibraryProps {
-  canInstall?: boolean;
-  onClose?: () => void;
-  onOpenGlossary?: (glossaryName: string) => void;
-}
+type OntologyLibraryProps = { onClose?: () => void } & (
+  | {
+      native: Omit<
+        OntologyNativeLibraryDetailProps,
+        'pack' | 'onBack' | 'completion' | 'onCompleted' | 'onBusyChange'
+      >;
+      canInstall?: never;
+      onOpenGlossary?: never;
+    }
+  | {
+      native?: never;
+      canInstall?: boolean;
+      onOpenGlossary?: (glossaryName: string) => void;
+    }
+);
 
 const LIBRARY_DIALOG_WIDTH = 1120;
 
 const OntologyLibrary = ({
   canInstall = false,
+  native,
   onClose,
   onOpenGlossary,
 }: OntologyLibraryProps) => {
@@ -69,6 +85,10 @@ const OntologyLibrary = ({
   const [activeAction, setActiveAction] = useState<OntologyLibraryAction>();
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
+  const [isNativeBusy, setIsNativeBusy] = useState(false);
+  const [nativeCompletions, setNativeCompletions] = useState<
+    Record<string, NativeLibraryCompletion>
+  >({});
 
   const loadPacks = useCallback(async () => {
     setIsLoading(true);
@@ -121,7 +141,7 @@ const OntologyLibrary = ({
         clearImportResults();
       }
     },
-    [clearImportResults, selectedPack]
+    [canInstall, clearImportResults, selectedPack]
   );
 
   const handleTargetGlossaryChange = useCallback(
@@ -176,13 +196,16 @@ const OntologyLibrary = ({
   const sentenceCaseLibraryTitle = `${libraryTitle.charAt(0)}${libraryTitle
     .slice(1)
     .toLocaleLowerCase()}`;
+  const installedCount = packs.filter(
+    (pack) => nativeCompletions[pack.id]
+  ).length;
 
   let libraryBody: JSX.Element;
   if (isLoading) {
     libraryBody = (
       <Card data-testid="ontology-library-loading" size="lg">
         <Card.Content>
-          <Typography as="p" className="tw:text-tertiary" size="text-sm">
+          <Typography as="p" color="secondary" size="text-sm">
             {t('label.loading')}
           </Typography>
         </Card.Content>
@@ -202,6 +225,32 @@ const OntologyLibrary = ({
         }
         title={t('message.ontology-library-load-error')}
         variant="error"
+      />
+    );
+  } else if (selectedPack && native) {
+    libraryBody = (
+      <OntologyNativeLibraryDetail
+        {...native}
+        completion={nativeCompletions[selectedPack.id]}
+        key={selectedPack.id}
+        pack={selectedPack}
+        onBack={handleBack}
+        onBusyChange={setIsNativeBusy}
+        onCompleted={(completion) => {
+          setNativeCompletions((current) => ({
+            ...current,
+            [selectedPack.id]: completion,
+          }));
+          setIsNativeBusy(false);
+          setSelectedPack(undefined);
+          showSuccessToast(
+            t(
+              completion.outcome === 'unchanged'
+                ? 'message.no-changes-to-save'
+                : 'message.ontology-pack-installed-success'
+            )
+          );
+        }}
       />
     );
   } else if (selectedPack) {
@@ -224,16 +273,22 @@ const OntologyLibrary = ({
     );
   } else {
     libraryBody = (
-      <OntologyLibraryCatalogue packs={packs} onSelect={handleSelectPack} />
+      <OntologyLibraryCatalogue
+        installedPackIds={Object.keys(nativeCompletions)}
+        packs={packs}
+        onSelect={handleSelectPack}
+      />
     );
   }
 
   return (
     <ModalOverlay
-      isDismissable
       isOpen
+      isDismissable={!isNativeBusy}
+      isKeyboardDismissDisabled={isNativeBusy}
+      presentation={native ? 'fullscreen' : 'dialog'}
       onOpenChange={(isOpen) => {
-        if (!isOpen) {
+        if (!isOpen && !isNativeBusy) {
           onClose?.();
         }
       }}>
@@ -244,39 +299,66 @@ const OntologyLibrary = ({
           dividers="scroll"
           width={LIBRARY_DIALOG_WIDTH}>
           <Dialog.Header>
-            <Box align="center" gap={3}>
+            <Box align="start" gap={3}>
               <FeaturedIcon
                 color="brand"
-                icon={BookOpen01}
-                size="md"
-                theme="light"
+                icon={BookClosed}
+                size="sm"
+                theme="dark"
               />
-              <Box className="tw:min-w-0 tw:flex-1" direction="col">
-                <Typography
-                  aria-level={2}
-                  className="tw:text-primary"
-                  id="ontology-library-title"
-                  role="heading"
-                  size="text-md"
-                  weight="semibold">
-                  {sentenceCaseLibraryTitle}
-                </Typography>
-                <Typography className="tw:text-tertiary" size="text-sm">
-                  {t('message.ontology-library-description')}
-                </Typography>
+              <Box
+                align="center"
+                className="tw:min-w-0 tw:flex-1"
+                gap={2}
+                wrap="wrap">
+                <Box
+                  className="tw:min-w-full tw:flex-1 tw:sm:min-w-0"
+                  direction="col">
+                  <Typography
+                    aria-level={2}
+                    id="ontology-library-title"
+                    role="heading"
+                    size="text-md"
+                    weight="semibold">
+                    {sentenceCaseLibraryTitle}
+                  </Typography>
+                  <Typography color="secondary" size="text-sm">
+                    {t('message.ontology-library-description')}
+                  </Typography>
+                </Box>
+                {native && installedCount > 0 && (
+                  <Badge
+                    color="success"
+                    data-testid="ontology-library-installed-count"
+                    size="lg"
+                    type="pill-color">
+                    {t('label.ontology-library-installed-count', {
+                      count: installedCount,
+                    })}
+                  </Badge>
+                )}
               </Box>
               <ButtonUtility
-                color="tertiary"
+                color="secondary"
                 data-testid="ontology-library-close"
                 icon={XClose}
+                isDisabled={isNativeBusy}
                 size="sm"
                 tooltip={t('label.close')}
                 onClick={onClose}
               />
             </Box>
           </Dialog.Header>
-          <Dialog.Content className="tw:h-[80vh] tw:max-h-none tw:pb-6">
-            {libraryBody}
+          <Dialog.Content>
+            <Box
+              className={
+                native
+                  ? 'tw:mx-auto tw:min-w-0 tw:w-full tw:max-w-[1040px]'
+                  : 'tw:w-full'
+              }
+              direction="col">
+              {libraryBody}
+            </Box>
           </Dialog.Content>
         </Dialog>
       </Modal>
