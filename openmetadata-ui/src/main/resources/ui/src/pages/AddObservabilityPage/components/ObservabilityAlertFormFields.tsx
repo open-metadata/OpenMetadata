@@ -36,15 +36,12 @@ import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
 import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAlertForm';
 
-import {
-  applyAlertValueChanges,
-  getAlertSourceChanges,
-} from '../../../utils/Alerts/ClassicAlertForm.utils';
+import { getAlertSourceChanges } from '../../../utils/Alerts/AlertSelectionUtil';
+import { applyAlertValueChanges } from '../../../utils/Alerts/ClassicAlertForm.utils';
 
 function ObservabilityAlertFormFields({
   alert,
   extraFormWidgets,
-  filterResources,
   form,
   isLoading,
   shouldShowActionsSection,
@@ -134,7 +131,6 @@ function ObservabilityAlertFormFields({
           <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
             <AlertFormSourceItem
               error={validationErrors.resources}
-              filterResources={filterResources}
               value={resources}
               onChange={(next, previous) => {
                 onValuesChange(getAlertSourceChanges(next, previous));
