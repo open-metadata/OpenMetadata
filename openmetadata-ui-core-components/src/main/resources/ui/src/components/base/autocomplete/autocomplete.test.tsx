@@ -524,3 +524,35 @@ describe('Autocomplete – +N checkbox view edge cases', () => {
     expect(onItemCleared).toHaveBeenCalledWith('a');
   });
 });
+
+describe('Autocomplete – +N view with created values', () => {
+  it('lists a value created in the session when children are static', async () => {
+    const items: SelectItemType[] = [
+      { id: 'low', label: 'low' },
+      { id: 'high', label: 'high' },
+    ];
+    render(
+      <Autocomplete
+        allowsCreation
+        items={items}
+        maxVisibleItems={1}
+        selectedItems={[items[0]]}>
+        {items.map((item) => (
+          <Autocomplete.Item id={String(item.id)} key={item.id}>
+            {item.label}
+          </Autocomplete.Item>
+        ))}
+      </Autocomplete>
+    );
+
+    await userEvent.click(screen.getByRole('combobox'));
+    await userEvent.keyboard('medium{Enter}');
+    await userEvent.click(screen.getByTestId('autocomplete-overflow-trigger'));
+
+    const options = within(await screen.findByRole('listbox')).getAllByRole(
+      'option'
+    );
+
+    expect(options.map((option) => option.textContent)).toContain('medium');
+  });
+});

@@ -15,6 +15,7 @@ import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { Search } from '../../../icons';
 import type {
+  CSSProperties,
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
@@ -147,20 +148,27 @@ export interface AutocompleteProps
 }
 
 const CHIP_MIN_VISIBLE_CHARS = 5;
+// Rem left of the chips' share: +N (2.5) plus the gaps beside it and the input (0.75).
+const CHIP_ROW_RESERVED_REM = 3.25;
+const CHIP_GAP_REM = 0.375;
 
 // In a one-line (capped) field the chips shrink to fit, and without a floor the
-// shortest label shrank first, down to one letter. Short labels never shrink;
-// longer ones keep about four letters before the ellipsis. The rem is the
-// badge's own padding, gap and remove button, plus the leading icon if any.
-const chipWidthClass = (item: SelectItemType) => {
-  if ((item.label ?? '').length <= CHIP_MIN_VISIBLE_CHARS) {
-    return 'tw:shrink-0';
-  }
+// shortest label shrank first, down to one letter. Each chip keeps about four
+// letters (all of a short label), but never more than its share of the row,
+// so a narrow field still fits. The rem is the badge's own padding, gap and
+// remove button, plus the leading icon if any.
+const chipMinWidth = (item: SelectItemType) => {
+  const chars = Math.min((item.label ?? '').length, CHIP_MIN_VISIBLE_CHARS);
+  const chromeRem = item.avatarUrl || item.icon ? 3.25 : 2.125;
 
-  return item.avatarUrl || item.icon
-    ? 'tw:min-w-[calc(5ch+3.25rem)]'
-    : 'tw:min-w-[calc(5ch+2.125rem)]';
+  return `min(calc(${chars}ch + ${chromeRem}rem), var(--autocomplete-chip-share))`;
 };
+
+// The input keeps 20% of the row; the chips split what +N and the gaps leave.
+const chipShare = (chipCount: number) =>
+  `calc((80% - ${
+    CHIP_ROW_RESERVED_REM + chipCount * CHIP_GAP_REM
+  }rem) / ${chipCount})`;
 
 const renderChipIcon = (item: SelectItemType) => {
   if (item.avatarUrl) {
@@ -306,12 +314,17 @@ const InnerAutocomplete = ({
       <BadgeWithButton
         // Capped at the field width so a long label ends in an ellipsis.
         buttonLabel={t('label.remove-entity', { entity: item.label })}
-        className={cx('tw:max-w-full', chipWidthClass(item))}
+        className="tw:max-w-full"
         color="gray"
         data-testid="autocomplete-selected-item"
         isDisabled={isDisabled}
         key={item.id}
         size="lg"
+        style={
+          context.wrapsSelectedItems
+            ? undefined
+            : { minWidth: chipMinWidth(item) }
+        }
         type="modern"
         onButtonClick={() => context.onRemove(new Set([item.id]))}
         onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
@@ -335,7 +348,14 @@ const InnerAutocomplete = ({
         'tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:items-center tw:justify-start tw:gap-1.5',
         // A capped field stays one line: chips truncate, +N holds the rest.
         context.wrapsSelectedItems ? 'tw:flex-wrap' : 'tw:flex-nowrap'
-      )}>
+      )}
+      style={
+        context.wrapsSelectedItems || visibleSelected.length === 0
+          ? undefined
+          : ({
+              '--autocomplete-chip-share': chipShare(visibleSelected.length),
+            } as CSSProperties)
+      }>
       {!isSelectionEmpty && visibleSelected.map((item) => renderChip(item))}
 
       {overflowCount > 0 && (
@@ -567,6 +587,21 @@ export const AutocompleteBase = ({
     () => new Set(visibleItems.map((item) => String(item.id))),
     [visibleItems]
   );
+  // Static children render only the caller's items, so a selection they lack
+  // (an async miss, or a value created in this session) needs its own row.
+  const unrenderedSelection = useMemo(() => {
+    if (typeof children === 'function' || !listsSelection || filterText) {
+      return [];
+    }
+    const renderedIds = new Set(
+      Children.toArray(children)
+        .filter(isValidElement)
+        .map((child) => String((child.props as { id?: Key }).id))
+    );
+
+    return openedSelection.filter((item) => !renderedIds.has(String(item.id)));
+  }, [children, listsSelection, filterText, openedSelection]);
+
   const visibleChildren = useMemo(() => {
     if (typeof children === 'function') {
       return children;
@@ -583,8 +618,7 @@ export const AutocompleteBase = ({
 
       return visibleIds.has(String(childId));
     });
-    // Static children only cover the caller's items, so draw the rest here.
-    const unloadedRows = unloadedSelection.map((item) => (
+    const unloadedRows = unrenderedSelection.map((item) => (
       <AutocompleteItem
         avatarUrl={item.avatarUrl}
         icon={item.icon}
@@ -596,7 +630,7 @@ export const AutocompleteBase = ({
     ));
 
     return [...unloadedRows, ...filtered];
-  }, [children, visibleIds, itemMap, unloadedSelection]);
+  }, [children, visibleIds, itemMap, unrenderedSelection]);
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
