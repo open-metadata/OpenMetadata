@@ -61,7 +61,7 @@ export const DomainLabel = ({
     return showDashPlaceholder
       ? NO_DATA_PLACEHOLDER
       : t('label.no-entity', { entity: t('label.domain-plural') });
-  }, [showDashPlaceholder]);
+  }, [showDashPlaceholder, t]);
 
   const widgetTitle = useMemo(
     () => (multiple ? t('label.domain-plural') : t('label.domain')),
@@ -321,7 +321,6 @@ export const DomainLabel = ({
     );
   }, [
     activeDomain,
-    hasPermission,
     selectableList,
     labelClassName,
     variant,
@@ -329,6 +328,8 @@ export const DomainLabel = ({
     widgetEditor,
     widgetTitle,
     showDomainHeading,
+    defaultDomainText,
+    headerLayout,
     t,
   ]);
 
