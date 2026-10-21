@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
-import { Select } from 'antd';
+import {
+  Box,
+  Grid,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import moment from 'moment';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -70,12 +74,12 @@ const OnlineUsersPage = () => {
 
   // Time window options
   const TIME_WINDOWS = [
-    { value: 5, label: t('label.last-n-minutes', { n: 5 }) },
-    { value: 60, label: t('label.last-hour') },
-    { value: 1440, label: t('label.last-24-hours') },
-    { value: 10080, label: t('label.last-7-days') },
-    { value: 43200, label: t('label.last-30-days') },
-    { value: 0, label: t('label.all-time') },
+    { id: '5', label: t('label.last-n-minutes', { n: 5 }) },
+    { id: '60', label: t('label.last-hour') },
+    { id: '1440', label: t('label.last-24-hours') },
+    { id: '10080', label: t('label.last-7-days') },
+    { id: '43200', label: t('label.last-30-days') },
+    { id: '0', label: t('label.all-time') },
   ];
 
   const [timeWindow, setTimeWindow] = useState<number>(1440); // Default: 24 hours
@@ -287,13 +291,14 @@ const OnlineUsersPage = () => {
                 itemClassName="layout-space-item">
                 <Typography>{t('label.time-window')}:</Typography>
                 <Select
+                  aria-label={t('label.time-window')}
+                  className="tw:w-45"
                   data-testid="time-window-select"
-                  options={TIME_WINDOWS}
-                  size="small"
-                  style={{ width: 180 }}
-                  value={timeWindow}
-                  onChange={setTimeWindow}
-                />
+                  items={TIME_WINDOWS}
+                  value={String(timeWindow)}
+                  onChange={(key) => setTimeWindow(Number(key))}>
+                  {(item) => <Select.Item id={item.id} label={item.label} />}
+                </Select>
               </Box>
             }
             loading={isDataLoading}

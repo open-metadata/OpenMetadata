@@ -20,6 +20,10 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
@@ -174,8 +178,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Owner: jest.fn().mockImplementation(() => <div>Owner.component</div>),
   ClassificationTag: jest
     .fn()
-    .mockImplementation(({ label, 'data-testid': testId }) => (
-      <div data-testid={testId ?? 'classification-tag'}>{label}</div>
+    .mockImplementation(({ label, href, 'data-testid': testId }) => (
+      <a data-testid={testId ?? 'classification-tag'} href={href}>
+        {label}
+      </a>
     )),
 }));
 jest.mock('../../../components/common/TierCard/TierCard', () =>
@@ -542,6 +548,26 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(screen.getByTestId('Tier')).toBeInTheDocument();
+  });
+
+  it('should show the Tier description tooltip on the Tier chip', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          tags: [MOCK_TIER_DATA],
+        }}
+      />
+    );
+
+    act(() => {
+      screen.getByTestId('Tier').focus();
+    });
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      MOCK_TIER_DATA.tagFQN
+    );
   });
 
   it('should not render the Tier data if not  present', () => {
@@ -1212,6 +1238,25 @@ describe('DataAssetsHeader component', () => {
     const mockUseCustomPages = useCustomPages as jest.Mock;
     const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
 
+    it('should not fetch a data contract for the tour mock entity', async () => {
+      (getContractByEntityId as jest.Mock).mockClear();
+
+      await act(async () => {
+        render(
+          <TourContext.Provider
+            value={
+              {
+                isTourPage: true,
+              } as Partial<TourProviderContextProps> as TourProviderContextProps
+            }>
+            <DataAssetsHeader {...mockProps} />
+          </TourContext.Provider>
+        );
+      });
+
+      expect(getContractByEntityId).not.toHaveBeenCalled();
+    });
+
     it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
@@ -1229,12 +1274,15 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button).toBeInTheDocument();
-      expect(button).toHaveClass('data-contract-latest-result-button');
-      expect(button).toHaveClass('failed');
+      expect(button).toHaveTextContent('label.entity-failed');
+      // Badge error palette on the button: meets contrast in both themes.
+      expect(button).toHaveClass(
+        'tw:bg-utility-error-50!',
+        'tw:text-utility-error-700!'
+      );
     });
 
-    it('should tint the aborted contract button via legacy tokens that flip in dark', async () => {
+    it('should tint the aborted contract badge with the orange badge palette on the button', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
@@ -1251,10 +1299,8 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(screen.getByTestId('data-contract-latest-result-btn')).toHaveClass(
-        'tw:text-(--om-legacy-color-b93815)!',
-        'tw:bg-(--om-legacy-color-fef6ee)!',
-        'tw:dark:text-utility-orange-700!',
-        'tw:dark:bg-utility-orange-50!'
+        'tw:bg-utility-orange-50!',
+        'tw:text-utility-orange-700!'
       );
     });
 
@@ -1278,12 +1324,14 @@ describe('DataAssetsHeader component', () => {
       ).toBeInTheDocument();
     });
 
-    it('should navigate to contract tab when button is clicked', async () => {
+    it('should link to the contract tab', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: {
           tabs: [{ id: EntityTabs.CONTRACT }],
         },
       });
+
+      mockGetEntityDetailsPath.mockReturnValue('/contract-tab');
 
       const mockDataContract = {
         ...MOCK_DATA_CONTRACT,
@@ -1300,15 +1348,14 @@ describe('DataAssetsHeader component', () => {
         render(<DataAssetsHeader {...mockProps} />);
       });
 
-      const button = screen.getByTestId('data-contract-latest-result-btn');
-      fireEvent.click(button);
-
       expect(mockGetEntityDetailsPath).toHaveBeenCalledWith(
         EntityType.CONTAINER,
         'fullyQualifiedName',
         EntityTabs.CONTRACT
       );
-      expect(mockNavigate).toHaveBeenCalled();
+      expect(
+        screen.getByTestId('data-contract-latest-result-btn')
+      ).toHaveAttribute('href', '/contract-tab');
     });
 
     it('should not render data contract button when contract tab is not visible', async () => {
@@ -1425,7 +1472,9 @@ describe('DataAssetsHeader component', () => {
 
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
-      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+      expect(
+        within(button).getByTestId('contract-status-icon')
+      ).toBeInTheDocument();
     });
 
     it('should render button without icon when getDataContractStatusIcon returns null', async () => {

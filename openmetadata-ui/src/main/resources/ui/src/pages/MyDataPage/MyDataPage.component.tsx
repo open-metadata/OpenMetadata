@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import HomeLandingPage from '../../components/MyData/HomeLandingPage/HomeLandingPage';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { LOGGED_IN_USER_STORAGE_KEY } from '../../constants/constants';
 import LimitWrapper from '../../hoc/LimitWrapper';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import { useWelcomeStore } from '../../hooks/useWelcomeStore';
+import { useFirstLoginWelcome } from '../../hooks/useFirstLoginWelcome';
 
 const WelcomeScreen = withSuspenseFallback(
   lazy(
@@ -39,44 +36,16 @@ const WelcomeScreen = withSuspenseFallback(
  */
 const MyDataPage = () => {
   const { t } = useTranslation();
-  const { currentUser } = useApplicationStore();
-  const { isWelcomeVisible } = useWelcomeStore();
+  const { showWelcome, closeWelcome } = useFirstLoginWelcome();
 
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(false);
-
-  const storageData = useMemo(
-    () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
-    []
-  );
-  const loggedInUserName = currentUser?.name ?? '';
-  const usernameExistsInCookie = useMemo(
-    () =>
-      storageData ? storageData.split(',').includes(loggedInUserName) : false,
-    [storageData, loggedInUserName]
-  );
-
-  const updateWelcomeScreen = (show: boolean) => {
-    if (loggedInUserName) {
-      const seen = storageData ? storageData.split(',') : [];
-      if (!seen.includes(loggedInUserName)) {
-        seen.push(loggedInUserName);
-        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, seen.join(','));
-      }
-    }
-    setShowWelcomeScreen(show);
-  };
-
-  useEffect(() => {
-    updateWelcomeScreen(!usernameExistsInCookie && isWelcomeVisible);
-
-    return () => updateWelcomeScreen(false);
-  }, []);
-
-  if (showWelcomeScreen) {
+  if (showWelcome) {
     return (
-      <PageLayoutV1 pageTitle={t('label.my-data')}>
-        <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
-      </PageLayoutV1>
+      <>
+        <DocumentTitle title={t('label.my-data')} />
+        <div className="tw:h-full tw:pb-1.5 tw:pl-3 tw:pr-1.5">
+          <WelcomeScreen onClose={closeWelcome} />
+        </div>
+      </>
     );
   }
 

@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createOntology.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CreateOntologyRequest",
+  "description": "Create or update an independent ontology. Approval is managed through existing approval workflows.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateOntology",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "../../entity/data/ontology.json#/properties/name"
+    },
+    "displayName": {
+      "$ref": "../../entity/data/ontology.json#/properties/displayName"
+    },
+    "description": {
+      "$ref": "../../entity/data/ontology.json#/properties/description"
+    },
+    "owners": {
+      "$ref": "../../entity/data/ontology.json#/properties/owners"
+    },
+    "reviewers": {
+      "$ref": "../../entity/data/ontology.json#/properties/reviewers"
+    },
+    "provider": {
+      "$ref": "../../entity/data/ontology.json#/properties/provider"
+    },
+    "iri": {
+      "$ref": "../../entity/data/ontology.json#/properties/iri"
+    },
+    "namespace": {
+      "$ref": "../../entity/data/ontology.json#/properties/namespace"
+    },
+    "layer": {
+      "$ref": "../../entity/data/ontology.json#/properties/layer"
+    },
+    "prefixes": {
+      "$ref": "../../entity/data/ontology.json#/properties/prefixes"
+    }
+  },
+  "required": [
+    "name",
+    "iri",
+    "namespace"
+  ],
+  "additionalProperties": false
+}

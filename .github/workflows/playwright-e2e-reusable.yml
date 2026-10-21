@@ -719,15 +719,25 @@ jobs:
           mkdir -p "$core_output/node_modules" "$core_output/dist" "$core_output/vite-temp"
           # Dependency installation can execute repository-controlled package-manager
           # configuration even with lifecycle scripts disabled. Keep it off the runner.
-          docker run --rm --read-only \
-            --cap-drop ALL --security-opt no-new-privileges \
-            --user "$(id -u):$(id -g)" \
-            --tmpfs /tmp:rw,nosuid,size=4g \
-            --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
-            --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
-            --workdir "/workspace/$core_dir" \
-            node:22.22.2-bookworm-slim \
-            yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache
+          # Retry transient registry failures — yarn v1 does not retry HTTP errors.
+          for attempt in 1 2 3; do
+            docker run --rm --read-only \
+              --cap-drop ALL --security-opt no-new-privileges \
+              --user "$(id -u):$(id -g)" \
+              --tmpfs /tmp:rw,nosuid,size=4g \
+              --mount "type=bind,source=$GITHUB_WORKSPACE,target=/workspace,readonly" \
+              --mount "type=bind,source=$core_output/node_modules,target=/workspace/$core_dir/node_modules" \
+              --workdir "/workspace/$core_dir" \
+              node:22.22.2-bookworm-slim \
+              yarn --ignore-scripts --frozen-lockfile --cache-folder /tmp/yarn-cache \
+                --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
           # Only temporary build output is writable; dependencies and source stay read-only.
           mkdir -p "$core_output/node_modules/.vite-temp"
@@ -754,6 +764,11 @@ jobs:
           # container, so anything written to either dies with the container.
           # Give the run one writable mount and point Playwright's output at it,
           # otherwise a failure here is a single line of `list` output.
+          # Chromium sets DBUS_SESSION_BUS_ADDRESS (main thread) and FC_FONTATIONS
+          # (fontconfig thread) at startup. In this container's minimal env both
+          # are new, so each setenv reallocates `environ` while another thread is
+          # in getenv -- a use-after-free that SIGSEGVs the browser at launch.
+          # Preset, the first is a no-op and the second overwrites in place.
           mkdir -p "$RUNNER_TEMP/browser-helper-results"
           docker run --rm --network none --read-only --shm-size=1g \
             --cap-drop ALL --security-opt no-new-privileges \
@@ -766,6 +781,8 @@ jobs:
             --workdir /workspace/openmetadata-ui/src/main/resources/ui \
             --env CI=true \
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
+            --env DBUS_SESSION_BUS_ADDRESS=disabled: \
+            --env FC_FONTATIONS=1 \
             mcr.microsoft.com/playwright:v1.57.0-jammy \
             ./node_modules/.bin/playwright test \
             --config=playwright/browser-helper-tests.config.ts
@@ -1001,7 +1018,7 @@ jobs:
       # this job needs to snapshot, so we can't prune them here.
       - name: Free Disk Space (Ubuntu)
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
           tool-cache: false
           android: true
@@ -1106,7 +1123,7 @@ jobs:
       - name: Cache Playwright system deps
         id: apt-deps-cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' || (needs.plan-playwright.outputs.requires_airflow == 'true' && needs.restore-playwright-fixture.outputs.ingestion_cache_hit != 'true') }}
-        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
         with:
@@ -1503,7 +1520,7 @@ jobs:
       # on a bad-mirror day, see runs 30788758311 / 32157314266 / 32166970973).
       - name: Cache Playwright system deps
         id: apt-deps-cache
-        uses: awalsh128/cache-apt-pkgs-action@v1.5.1
+        uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
         with:

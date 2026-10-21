@@ -43,6 +43,8 @@ export interface GlossaryTermDetailPageTabProps {
   refreshActiveGlossaryTerm?: () => void;
   setAssetModalVisible: (visible: boolean) => void;
   setPreviewAsset: (asset?: EntityDetailsObjectInterface) => void;
+  /** Child terms awaiting review, for the Glossary Terms tab. */
+  proposedCount?: number;
 }
 
 class GlossaryTermClassBase {

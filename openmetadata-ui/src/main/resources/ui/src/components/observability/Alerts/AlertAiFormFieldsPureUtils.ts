@@ -501,8 +501,8 @@ export const getDestinationWithNotifyDownstream = (
 
 /**
  * Event types offered by the event-type filter. Only the Settings → Notifications
- * flow narrows them to the source's supported types (classic
- * `AddNotificationPage`); the Observability flow always offered every type.
+ * flow narrows them to the source's supported types; the Observability flow
+ * always offered every type.
  */
 export const getRuleEventTypes = (
   alertType: AlertType | undefined,

@@ -52,6 +52,13 @@ SELECT
 """
 )
 
+CLICKHOUSE_TABLE_NAMES_AND_ENGINES = (
+    "SELECT name, engine FROM system.tables "
+    "WHERE engine NOT LIKE '%View' "
+    "AND name NOT LIKE '.inner%' "
+    "AND database = :database"
+)
+
 CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent(
     """
 select

@@ -34,6 +34,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
   isEditMode,
   nodeLabels,
   onCreateRelation,
+  relationTypeGroups,
+  canCreateRelationType,
 }) => {
   const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -174,6 +176,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
             transform: 'translate(-50%, 16px)',
           }}>
           <RelationshipTypePicker
+            canCreateType={canCreateRelationType}
+            groups={relationTypeGroups}
             sourceLabel={getNodeLabel(pendingRelation.fromId)}
             targetLabel={getNodeLabel(pendingRelation.toId)}
             onCancel={dismissPending}

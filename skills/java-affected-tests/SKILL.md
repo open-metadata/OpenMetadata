@@ -58,7 +58,7 @@ and add tests when it:
 
 When unsure, add the whole area. A few extra minutes locally cost less than an ejection from the
 merge queue. Add with a reason, on the run as well as the plan (nothing is saved between them);
-the PR block shows both:
+the details show both:
 
 ```bash
 make java_affected_run ARGS='--add-area lineage --add-it TableResourceIT --reason "moves the edge payload lineage reads" --update-pr'
@@ -154,7 +154,8 @@ them.
 - PR checks: Java unit tests. `maven-collate-ci` builds Collate and runs its unit tests against
   your change.
 - Merge queue: the full IT suite on MySQL+ES and PostgreSQL+OS (both required), PostgreSQL+ES+Redis
-  (informational), and the Collate ITs.
+  (required once #35761 completes the rollout in
+  ADR:2026-10-19-the-redis-cache-lane-gates-the-merge-queue, informational until then), and the Collate ITs.
 - Full IT suite on a branch before queueing, for a large refactor:
   `gh workflow run "Integration Tests - MySQL + Elasticsearch" --ref <branch>`.
 

@@ -221,7 +221,7 @@ const EntitySearchSettings = ({
           data-testid="restore-defaults-btn"
           iconLeading={RefreshCcw01}
           isDisabled={!config || isSaving}
-          size="sm"
+          size="xs"
           onPress={() => setIsRestoreOpen(true)}>
           {t('label.restore-default-plural')}
         </Button>
@@ -230,7 +230,7 @@ const EntitySearchSettings = ({
           data-testid="save-btn"
           isDisabled={!isChanged || isSaving}
           isLoading={isSaving}
-          size="sm"
+          size="xs"
           onPress={handleSave}>
           {t('label.save')}
         </Button>
@@ -433,23 +433,20 @@ const EntitySearchSettings = ({
           </Box>
         </SearchSection>
 
-        <SearchSection
-          actions={
-            <Button
-              color="secondary"
-              data-testid="add-field-value-boost-btn"
-              iconLeading={Plus}
-              size="sm"
-              onPress={() => setEditingBoost({})}>
-              {t('label.add')}
-            </Button>
-          }
-          count={draft.fieldValueBoosts.length}
-          testId="field-value-boosts"
-          title={t('label.field-value-boost')}>
+        <Box data-testid="field-value-boosts" direction="col">
           <FieldValueBoostTable
             isCompact
             boosts={draft.fieldValueBoosts}
+            headerActions={
+              <Button
+                color="secondary"
+                data-testid="add-field-value-boost-btn"
+                iconLeading={Plus}
+                size="sm"
+                onPress={() => setEditingBoost({})}>
+                {t('label.add')}
+              </Button>
+            }
             testId="entity-field-value-boost-table"
             onDelete={(field) =>
               updateDraft({
@@ -460,7 +457,7 @@ const EntitySearchSettings = ({
             }
             onEdit={(boost) => setEditingBoost({ boost })}
           />
-        </SearchSection>
+        </Box>
       </Box>
 
       <SearchPreviewPanel

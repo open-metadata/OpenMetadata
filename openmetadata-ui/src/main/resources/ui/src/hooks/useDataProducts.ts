@@ -15,6 +15,7 @@ import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { EntityReference } from '../generated/entity/type';
 import { getAllDataProductsWithAssetsCount } from '../rest/dataProductAPI';
 import { postAggregateFieldOptions } from '../rest/miscAPI';
 import { getAggregations } from '../utils/ExplorePureUtils';
@@ -23,6 +24,7 @@ import {
   fetchOverviewPage,
   fetchUnownedCount,
   OverviewFilter,
+  OverviewOrder,
   OVERVIEW_PAGE_SIZE,
 } from './useDomainOverview';
 
@@ -39,7 +41,8 @@ export interface DataProductSummary {
   name: string;
   fullyQualifiedName: string;
   domainName?: string;
-  ownerName?: string;
+  /** Every owner, users and teams alike; empty when the product has none. */
+  owners: EntityReference[];
   assetCount: number;
   /** Only ever compared, never formatted — so the epoch unit does not matter. */
   updatedAt: number;
@@ -69,7 +72,7 @@ interface DataProductSource {
   displayName?: string;
   fullyQualifiedName: string;
   domains?: Array<{ displayName?: string; name?: string }>;
-  owners?: Array<{ displayName?: string; name?: string }>;
+  owners?: EntityReference[];
   updatedAt?: number;
 }
 
@@ -104,7 +107,8 @@ const fetchDomainCount = async (): Promise<number> => {
  * it also gives the total and the "empty" bucket.
  */
 export const useDataProducts = (
-  filter: OverviewFilter = OverviewFilter.ALL
+  filter: OverviewFilter = OverviewFilter.ALL,
+  order: OverviewOrder = OverviewOrder.NAME
 ): DataProductsOverview => {
   const [countsQuery, unownedQuery, domainsQuery] = useQueries({
     queries: [
@@ -137,11 +141,12 @@ export const useDataProducts = (
     // loads, instead of dropping the card back to its first-load skeleton.
     placeholderData: keepPreviousData,
     queryFn: () =>
-      fetchOverviewPage(SearchIndex.DATA_PRODUCT, filter, emptyFqns),
+      fetchOverviewPage(SearchIndex.DATA_PRODUCT, filter, emptyFqns, order),
     queryKey: [
       ...DATA_PRODUCTS_QUERY_KEY,
       'list',
       filter,
+      order,
       needsCounts ? emptyFqns.slice(0, OVERVIEW_PAGE_SIZE) : [],
     ],
     staleTime: TTL_MS,
@@ -160,7 +165,7 @@ export const useDataProducts = (
         fullyQualifiedName: source.fullyQualifiedName,
         id: source.id,
         name: source.displayName || source.name,
-        ownerName: firstName(source.owners),
+        owners: source.owners ?? [],
         updatedAt: source.updatedAt ?? 0,
       })),
     [listData, counts]

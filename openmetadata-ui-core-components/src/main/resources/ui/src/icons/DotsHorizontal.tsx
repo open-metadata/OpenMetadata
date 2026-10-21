@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const DotsHorizontal: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,11 +29,11 @@ export const DotsHorizontal: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
-    viewBox="0 0 24 24"
+    viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="M12 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2m7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2M5 13a1 1 0 1 0 0-2 1 1 0 0 0 0 2"
+      d="M10 10.833a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667m5.833 0a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667m-11.666 0a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667"
       stroke="currentColor"
       strokeWidth={1.3}
     />

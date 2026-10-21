@@ -17,6 +17,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { EntityType } from '../enums/entity.enum';
 import {
   EntityStatus,
+  ProviderType,
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
 import type { Task } from '../generated/entity/tasks/task';
@@ -279,13 +280,43 @@ export const glossaryTermTableColumnsWidth = () => {
     // Ceiling for the same cell: under auto table layout an unbounded cell
     // would take its longest line's width and keep widening the column —
     // the two-line clamp only clamps against a bounded box.
-    descriptionMax: 600,
+    descriptionMax: 480,
     reviewers: 200,
     synonyms: 200,
     owners: 220,
     status: 150,
   };
 };
+
+interface TermStatusNode {
+  fullyQualifiedName?: string;
+  entityStatus?: EntityStatus;
+  children?: unknown[];
+}
+
+/** The term tree with one term's status replaced, wherever it sits. */
+export const updateGlossaryTermStatus = <T extends TermStatusNode>(
+  terms: T[],
+  targetFqn: string,
+  newStatus: EntityStatus
+): T[] =>
+  terms.map((term) => {
+    if (term.fullyQualifiedName === targetFqn) {
+      return { ...term, entityStatus: newStatus };
+    }
+    if (term.children?.length) {
+      return {
+        ...term,
+        children: updateGlossaryTermStatus(
+          term.children as T[],
+          targetFqn,
+          newStatus
+        ),
+      };
+    }
+
+    return term;
+  });
 
 export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
   `<#E::${EntityType.GLOSSARY_TERM}::${glossaryTermFQN}>`;
@@ -337,3 +368,45 @@ export const referenceURLValidator = (
     new Error(i18n.t('message.url-must-start-with-http-or-https'))
   );
 };
+
+const AWAITING_DECISION = new Set<EntityStatus>([
+  EntityStatus.Draft,
+  EntityStatus.InReview,
+]);
+
+/** A term an automation (an AI agent) created that no one has approved yet. */
+export const isAiGeneratedDraft = (
+  term: Pick<GlossaryTerm, 'entityStatus' | 'provider'>
+): boolean =>
+  term.provider === ProviderType.Automation &&
+  AWAITING_DECISION.has(term.entityStatus ?? EntityStatus.Approved);
+
+const isReviewerOf = (term: GlossaryTerm, user?: User): boolean => {
+  const teamIds = new Set(user?.teams?.map((team) => team.id));
+
+  return (
+    term.reviewers?.some(
+      (reviewer) =>
+        reviewer.id === user?.id ||
+        (reviewer.type === EntityType.TEAM && teamIds.has(reviewer.id))
+    ) ?? false
+  );
+};
+
+const isUndecidedAiDraft = (term: GlossaryTerm): boolean =>
+  term.provider === ProviderType.Automation &&
+  term.entityStatus === EntityStatus.Draft;
+
+const isAllowedToDecide = (term: GlossaryTerm, user?: User): boolean =>
+  !term.reviewers?.length || isReviewerOf(term, user);
+
+/**
+ * Mirrors the server: people decide an AI draft directly, its reviewers when it has any, anyone
+ * who can edit it otherwise. An In Review draft is decided through its approval task instead.
+ */
+export const canDecideAiGeneratedDraft = (
+  term: GlossaryTerm,
+  user: User | undefined,
+  canEditAll: boolean
+): boolean =>
+  canEditAll && isUndecidedAiDraft(term) && isAllowedToDecide(term, user);

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Page, Request } from '@playwright/test';
-import { isUndefined } from 'lodash';
+import { isUndefined, startCase } from 'lodash';
 import { Column, Table } from '../../../src/generated/entity/data/table';
 import {
   COMMON_TIER_TAG,
@@ -1345,16 +1345,14 @@ pickEntityMatrix(
               .getByTestId('filter-icon')
               .click();
 
-            // AntD mounts the dropdown as .ant-table-filter-dropdown;
-            // TableV2 mounts ColumnFilter inside a react-aria dialog popover.
-            const filterDropdown = page.locator(
-              '.ant-table-filter-dropdown:visible, [role="dialog"]:has(.ant-menu)'
-            );
+            // TableV2 mounts ColumnFilter in `filter-dropdown`; its core
+            // checkboxes are labelled with the start-cased tag FQN.
+            const filterDropdown = page.getByTestId('filter-dropdown');
 
             await expect(filterDropdown).toBeVisible();
 
             await filterDropdown
-              .locator(`.ant-checkbox-wrapper:has(input[value="${filterTag}"])`)
+              .getByText(startCase(filterTag), { exact: true })
               .click();
 
             await expect(filterDropdown).toBeHidden();
@@ -1766,20 +1764,20 @@ pickEntityMatrix(
             const testCase1 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_success_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 1 },
-                { name: 'maxLength', value: 10 },
+                { name: 'minValue', value: 1 },
+                { name: 'maxValue', value: 10 },
               ],
             });
 
             const testCase2 = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_dq_failed_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 
@@ -1905,10 +1903,10 @@ pickEntityMatrix(
             const testCase = await tableEntity.createTestCase(apiContext, {
               name: `pw_col_incident_${uuid()}`,
               entityLink: `<#E::table::${tableFQN}::columns::${columnName}>`,
-              testDefinition: 'columnValueLengthsToBeBetween',
+              testDefinition: 'columnValuesToBeBetween',
               parameterValues: [
-                { name: 'minLength', value: 100 },
-                { name: 'maxLength', value: 200 },
+                { name: 'minValue', value: 100 },
+                { name: 'maxValue', value: 200 },
               ],
             });
 

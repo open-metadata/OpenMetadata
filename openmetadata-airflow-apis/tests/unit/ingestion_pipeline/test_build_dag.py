@@ -24,7 +24,7 @@ correctly and that a poisoned ``DagContext`` no longer breaks the build.
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import timezone as datetime_timezone
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -114,6 +114,17 @@ def test_build_dag_attaches_task():
     assert len(dag.tasks) == 1
     assert TASK_NAME in dag.task_dict
     assert dag.task_dict[TASK_NAME].dag is dag
+
+
+@pytest.mark.parametrize("timeout, expected", [(120, timedelta(minutes=2)), (None, None), (0, None)])
+def test_build_dag_uses_workflow_timeout_in_seconds(timeout, expected):
+    name = "workflow_timeout"
+    pipeline = _ingestion_pipeline(name)
+    pipeline.airflowConfig.workflowTimeout = timeout
+
+    dag = build_dag(TASK_NAME, pipeline, _workflow_config(name), _noop_workflow_fn)
+
+    assert dag.dagrun_timeout == expected
 
 
 def test_build_dag_survives_poisoned_dag_context():
