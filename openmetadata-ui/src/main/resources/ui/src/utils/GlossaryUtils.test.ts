@@ -13,7 +13,12 @@
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { EntityType } from '../enums/entity.enum';
-import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
+import {
+  EntityStatus,
+  GlossaryTerm,
+  ProviderType,
+} from '../generated/entity/data/glossaryTerm';
+import { User } from '../generated/entity/teams/user';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -22,11 +27,13 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
+  canDecideAiGeneratedDraft,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
   getQueryFilterToExcludeTerm,
   glossaryTermTableColumnsWidth,
+  isAiGeneratedDraft,
   permissionForApproveOrReject,
   referenceURLValidator,
   validateReferenceURL,
@@ -521,5 +528,67 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     it('should resolve for empty string', async () => {
       await expect(referenceURLValidator({}, '')).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('AI-generated glossary drafts', () => {
+  const reviewer = { id: 'reviewer-id', type: EntityType.USER };
+  const reviewerTeam = { id: 'team-id', type: EntityType.TEAM };
+  const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
+    ({
+      id: 'term-id',
+      name: 'churn',
+      description: 'Customers who cancel',
+      glossary: { id: 'glossary-id', type: EntityType.GLOSSARY },
+      provider: ProviderType.Automation,
+      entityStatus: EntityStatus.Draft,
+      ...overrides,
+    } as GlossaryTerm);
+  const user = (overrides: Partial<User> = {}): User =>
+    ({ id: 'user-id', name: 'user', email: 'u@x.io', ...overrides } as User);
+
+  it('marks an automation term until it is approved', () => {
+    expect(isAiGeneratedDraft(draft())).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.InReview }))
+    ).toBe(true);
+    expect(
+      isAiGeneratedDraft(draft({ entityStatus: EntityStatus.Approved }))
+    ).toBe(false);
+    expect(isAiGeneratedDraft(draft({ entityStatus: undefined }))).toBe(false);
+    expect(isAiGeneratedDraft(draft({ provider: ProviderType.User }))).toBe(
+      false
+    );
+  });
+
+  it('lets anyone who can edit decide a draft without reviewers', () => {
+    expect(canDecideAiGeneratedDraft(draft(), user(), true)).toBe(true);
+    expect(canDecideAiGeneratedDraft(draft(), user(), false)).toBe(false);
+  });
+
+  it('leaves a reviewed draft to its reviewers, directly or through a team', () => {
+    const reviewed = draft({ reviewers: [reviewer, reviewerTeam] });
+
+    expect(canDecideAiGeneratedDraft(reviewed, user(), true)).toBe(false);
+    expect(
+      canDecideAiGeneratedDraft(reviewed, user({ id: 'reviewer-id' }), true)
+    ).toBe(true);
+    expect(
+      canDecideAiGeneratedDraft(
+        reviewed,
+        user({ teams: [{ id: 'team-id', type: EntityType.TEAM }] }),
+        true
+      )
+    ).toBe(true);
+  });
+
+  it('leaves an In Review draft to its approval task', () => {
+    expect(
+      canDecideAiGeneratedDraft(
+        draft({ entityStatus: EntityStatus.InReview }),
+        user(),
+        true
+      )
+    ).toBe(false);
   });
 });
