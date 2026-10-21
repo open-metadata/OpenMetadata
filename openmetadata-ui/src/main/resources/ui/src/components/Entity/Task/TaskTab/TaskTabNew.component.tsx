@@ -52,7 +52,10 @@ import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
+import {
+  getTaskTypeMessageKey,
+  isRevisionRequest,
+} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -625,7 +628,7 @@ export const TaskTabNew = ({
   }, [taskColumnLabel, t]);
 
   const taskDisplayMessage = useMemo(() => {
-    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? 'label.task');
+    const taskTypeLabel = t(getTaskTypeMessageKey(task) ?? 'label.task');
     const entityName = entityFQN
       ? getNameFromFQN(entityFQN)
       : task.about?.name ?? '';
@@ -710,7 +713,7 @@ export const TaskTabNew = ({
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="p-xss task-details">
-              {t(TASK_ENTITY_TYPES[task.type])}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -1909,7 +1912,8 @@ export const TaskTabNew = ({
   };
 
   const renderActionRequiredSection = () => {
-    if (!isTaskActionable || rest.isOpenInDrawer) {
+    // A Revise and resubmit task is completed by editing the asset; it has no action of its own.
+    if (!isTaskActionable || rest.isOpenInDrawer || isRevisionRequest(task)) {
       return null;
     }
 

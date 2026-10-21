@@ -17,6 +17,7 @@ import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
   getRequiredFieldLabel,
+  isRevisionTask,
 } from './MetadataCompletionTask.utils';
 
 interface MetadataCompletionTaskProps {
@@ -29,6 +30,7 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
   const payload = getMetadataCompletionPayload(task);
   const missingFields = payload.missingFields ?? [];
   const isOpen = task.status === TaskEntityStatus.Open;
+  const revision = isRevisionTask(payload) ? payload.revision : undefined;
   // The task names missing fields; an unmet condition is reported, not spelled out.
   const conditionsUnmet = isOpen && payload.conditionsMet === false;
 
@@ -52,6 +54,35 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
               ))}
             </ul>
           )}
+          {revision && (
+            <Box
+              className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
+              data-testid="metadata-completion-revision"
+              direction="col"
+              gap={1}>
+              <Typography
+                as="span"
+                className="tw:text-secondary"
+                size="text-xs"
+                weight="medium">
+                {revision.requestedBy
+                  ? `${t('label.comment')} · ${t('label.requested-by')}: ${
+                      revision.requestedBy
+                    }`
+                  : t('label.comment')}
+              </Typography>
+              <Typography
+                as="p"
+                className={
+                  revision.comment ? 'tw:text-primary' : 'tw:text-tertiary'
+                }
+                data-testid="metadata-completion-revision-comment"
+                size="text-sm">
+                {revision.comment ??
+                  t('message.metadata-completion-revision-no-comment')}
+              </Typography>
+            </Box>
+          )}
           {conditionsUnmet && (
             <Typography
               as="p"
@@ -63,10 +94,12 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
           )}
           {task.status === TaskEntityStatus.Completed && (
             <Typography as="p" className="tw:text-primary" size="text-sm">
-              {t('message.metadata-completion-filled-in')}
+              {revision
+                ? t('message.metadata-completion-resubmitted')
+                : t('message.metadata-completion-filled-in')}
             </Typography>
           )}
-          {isOpen && (
+          {isOpen && !revision && (
             <Typography as="p" className="tw:text-tertiary" size="text-xs">
               {t('message.metadata-completion-hint')}
             </Typography>

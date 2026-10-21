@@ -29,6 +29,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/teams/user';
 import {
   MetadataCollectionConfiguration,
+  Revision,
   TaskAssignees,
 } from '../../../../generated/governance/workflows/elements/nodes/automatedTask/collectMetadataTask';
 import { NodeSubType } from '../../../../generated/governance/workflows/elements/nodeSubType';
@@ -167,6 +168,23 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </FormField>
         )}
 
+        {config.revision && (
+          <FormField label={t('label.revise-and-resubmit')}>
+            <Typography
+              as="p"
+              className="tw:m-0 tw:text-tertiary"
+              data-testid="collect-metadata-revision"
+              size="text-sm">
+              {t(
+                config.revision === Revision.Request
+                  ? 'message.collect-metadata-revision-request-hint'
+                  : 'message.collect-metadata-revision-resubmit-hint',
+                { stage: config.stage }
+              )}
+            </Typography>
+          </FormField>
+        )}
+
         {config.conditions && (
           <div data-testid="collect-metadata-conditions">
             <QueryBuilderSection
@@ -181,8 +199,13 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </div>
         )}
 
+        {config.revision !== Revision.Resubmit && (
         <FormField
-          description={t('message.collect-metadata-assignees-hint')}
+          description={t(
+            config.revision === Revision.Request
+              ? 'message.collect-metadata-revision-assignees-hint'
+              : 'message.collect-metadata-assignees-hint'
+          )}
           label={t('label.assign-to')}>
           <RadioGroup
             aria-label={t('label.assign-to')}
@@ -204,11 +227,15 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </RadioGroup>
         </FormField>
 
-        <AskedGroupWarning
-          assignees={taskAssignees}
-          fields={config.fields}
-          groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
-        />
+        )}
+
+        {config.revision !== Revision.Resubmit && (
+          <AskedGroupWarning
+            assignees={taskAssignees}
+            fields={config.fields}
+            groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
+          />
+        )}
 
         {taskAssignees === TaskAssignees.Candidates && (
           <FormField label={t('label.specific-users-and-teams')}>

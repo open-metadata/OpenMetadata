@@ -17,10 +17,15 @@ import {
   TaskEntityType,
 } from '../../../../rest/tasksAPI';
 import MetadataCompletionTask from './MetadataCompletionTask';
+import { getTaskTypeMessageKey } from './MetadataCompletionTask.utils';
 
 const task = (
   status: TaskEntityStatus,
-  outstanding: { missingFields?: string[]; conditionsMet?: boolean } = {
+  outstanding: {
+    missingFields?: string[];
+    conditionsMet?: boolean;
+    revision?: { comment?: string; requestedBy?: string };
+  } = {
     missingFields: ['experts', 'extension.costCenter'],
   }
 ) =>
@@ -111,5 +116,71 @@ describe('MetadataCompletionTask', () => {
     expect(
       screen.queryByText('message.metadata-completion-filled-in')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows the reviewer comment on a revise and resubmit task', () => {
+    render(
+      <MetadataCompletionTask
+        task={task(TaskEntityStatus.Open, {
+          revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+        })}
+      />
+    );
+
+    expect(
+      screen.getByText('message.metadata-completion-revision')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('metadata-completion-revision-comment')
+    ).toHaveTextContent('Name a business owner');
+    expect(screen.getByTestId('metadata-completion-revision')).toHaveTextContent(
+      'karan'
+    );
+    expect(
+      screen.queryByText('message.metadata-completion-hint')
+    ).not.toBeInTheDocument();
+  });
+
+  it('says so when the reviewer left no comment', () => {
+    render(
+      <MetadataCompletionTask
+        task={task(TaskEntityStatus.Open, { revision: { requestedBy: 'karan' } })}
+      />
+    );
+
+    expect(
+      screen.getByTestId('metadata-completion-revision-comment')
+    ).toHaveTextContent('message.metadata-completion-revision-no-comment');
+  });
+
+  it('says a revision was resubmitted once it completes', () => {
+    render(
+      <MetadataCompletionTask
+        task={task(TaskEntityStatus.Completed, {
+          revision: { comment: 'Name a business owner' },
+        })}
+      />
+    );
+
+    expect(
+      screen.getByText('message.metadata-completion-resubmitted')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.metadata-completion-filled-in')
+    ).not.toBeInTheDocument();
+  });
+
+  it('names a revision task by itself in titles, and other tasks by their type', () => {
+    expect(
+      getTaskTypeMessageKey(
+        task(TaskEntityStatus.Open, { revision: { requestedBy: 'karan' } })
+      )
+    ).toBe('message.revise-and-resubmit-message');
+    expect(getTaskTypeMessageKey(task(TaskEntityStatus.Open))).toBe(
+      'message.metadata-completion-message'
+    );
+    expect(
+      getTaskTypeMessageKey({ type: TaskEntityType.RequestApproval })
+    ).toBe('message.request-approval-message');
   });
 });

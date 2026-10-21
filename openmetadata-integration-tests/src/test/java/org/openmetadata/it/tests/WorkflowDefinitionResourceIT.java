@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
@@ -163,11 +164,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.MetadataCompletionPayload;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -16251,6 +16254,184 @@ public class WorkflowDefinitionResourceIT {
               return !found.isEmpty();
             });
     return found.getFirst();
+  }
+
+  @Test
+  void test_rejectedApprovalAsksForARevisionAndTheNextEditResubmitsIt(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    User approver =
+        client
+            .users()
+            .create(
+                new CreateUser()
+                    .withName("revision_approver_" + suffix)
+                    .withEmail("revision_approver_" + suffix + "@example.com"));
+    String domainName = "RevisionDomain_" + suffix;
+    String workflowJson =
+        """
+            {
+              "name": "%s",
+              "displayName": "Revise and resubmit workflow",
+              "description": "A rejected approval asks the owners to revise the domain",
+              "trigger": {
+                "type": "eventBasedEntity",
+                "config": {
+                  "entityTypes": ["domain"],
+                  "events": ["Created", "Updated"],
+                  "exclude": ["entityStatus"],
+                  "filter": {"domain": "{\\"!\\":{\\"in\\":[\\"%s\\",{\\"var\\":\\"name\\"}]}}"}
+                },
+                "output": ["relatedEntity", "updatedBy"]
+              },
+              "nodes": [
+                {"name": "start", "type": "startEvent", "subType": "startEvent"},
+                {
+                  "name": "Resubmit",
+                  "type": "automatedTask",
+                  "subType": "collectMetadataTask",
+                  "config": {"stage": "Unprocessed", "taskAssignees": "owners", "revision": "resubmit"},
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {
+                  "name": "Approve",
+                  "type": "userTask",
+                  "subType": "userApprovalTask",
+                  "config": {
+                    "assignees": {
+                      "addReviewers": false,
+                      "addOwners": false,
+                      "candidates": [
+                        {"id": "%s", "type": "user", "fullyQualifiedName": "%s", "name": "%s"}
+                      ]
+                    },
+                    "approvalThreshold": 1,
+                    "rejectionThreshold": 1
+                  },
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"},
+                  "output": ["updatedBy"],
+                  "branches": ["true", "false"]
+                },
+                {
+                  "name": "Revise",
+                  "type": "automatedTask",
+                  "subType": "collectMetadataTask",
+                  "config": {"stage": "Unprocessed", "taskAssignees": "owners", "revision": "request"},
+                  "input": ["relatedEntity"],
+                  "inputNamespaceMap": {"relatedEntity": "global"}
+                },
+                {"name": "end", "type": "endEvent", "subType": "endEvent"}
+              ],
+              "edges": [
+                {"from": "start", "to": "Resubmit"},
+                {"from": "Resubmit", "to": "Approve"},
+                {"from": "Approve", "to": "end", "condition": "approve"},
+                {"from": "Approve", "to": "Revise", "condition": "reject"},
+                {"from": "Revise", "to": "end"}
+              ],
+              "config": {"storeStageStatus": true}
+            }
+            """
+            .formatted(
+                "wf_reviseAndResubmit_" + suffix,
+                domainName,
+                approver.getId(),
+                approver.getFullyQualifiedName(),
+                approver.getName());
+    WorkflowDefinition workflow =
+        client
+            .workflowDefinitions()
+            .create(JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class));
+    trackWorkflow(workflow.getName(), workflow.getId().toString());
+    waitForWorkflowDeployment(client, workflow.getName());
+    OpenMetadataClient approverClient =
+        SdkClients.createClient(approver.getName(), approver.getEmail(), new String[] {});
+
+    Domain domain =
+        client
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(domainName)
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("A domain whose approval is rejected")
+                    .withOwners(List.of(SharedEntities.get().USER2_REF)));
+    String fqn = domain.getFullyQualifiedName();
+    Task first = awaitOpenApprovalTaskAssignedTo(client, fqn, approver.getId());
+    approverClient
+        .tasks()
+        .resolve(
+            first.getId().toString(),
+            new ResolveTask()
+                .withResolutionType(TaskResolutionType.Rejected)
+                .withComment("Name a business owner first"));
+
+    Task revision = awaitRevisionTask(client, fqn, TaskEntityStatus.Open);
+    MetadataCompletionPayload asked =
+        JsonUtils.convertValue(revision.getPayload(), MetadataCompletionPayload.class);
+    assertEquals("Revise and resubmit", revision.getDisplayName());
+    assertEquals("Name a business owner first", asked.getRevision().getComment());
+    assertEquals(approver.getName(), asked.getRevision().getRequestedBy());
+    assertEquals(
+        List.of(SharedEntities.get().USER2.getId()),
+        revision.getAssignees().stream().map(EntityReference::getId).toList());
+    assertTrue(listOrEmpty(revision.getAvailableTransitions()).isEmpty());
+
+    client
+        .domains()
+        .patch(
+            domain.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Owned by sales\"}]"));
+    Task second = awaitOpenApprovalTaskAssignedTo(client, fqn, approver.getId());
+    assertNotEquals(first.getId(), second.getId());
+    Task resubmitted = awaitRevisionTask(client, fqn, TaskEntityStatus.Completed);
+    assertEquals(revision.getId(), resubmitted.getId());
+    assertEquals("Resubmitted for approval", resubmitted.getResolution().getComment());
+
+    approverClient
+        .tasks()
+        .resolve(
+            second.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+    Task reopened = awaitRevisionTask(client, fqn, TaskEntityStatus.Open);
+    MetadataCompletionPayload askedAgain =
+        JsonUtils.convertValue(reopened.getPayload(), MetadataCompletionPayload.class);
+    assertEquals(revision.getId(), reopened.getId());
+    assertNull(askedAgain.getRevision().getComment());
+    assertEquals(approver.getName(), askedAgain.getRevision().getRequestedBy());
+  }
+
+  /** The asset's Revise and resubmit task once it reaches the status. */
+  private Task awaitRevisionTask(OpenMetadataClient client, String fqn, TaskEntityStatus status) {
+    return await("revise and resubmit task of %s to be %s".formatted(fqn, status))
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                client
+                    .tasks()
+                    .listWithFilters(
+                        Map.of(
+                            "limit",
+                            "50",
+                            "aboutEntity",
+                            fqn,
+                            "status",
+                            status.value(),
+                            "fields",
+                            "assignees,payload,resolution"))
+                    .getData()
+                    .stream()
+                    .filter(task -> task.getType() == TaskEntityType.MetadataCompletion)
+                    .filter(task -> "Revise and resubmit".equals(task.getDisplayName()))
+                    .findFirst()
+                    .orElse(null),
+            Objects::nonNull);
   }
 
   @Test

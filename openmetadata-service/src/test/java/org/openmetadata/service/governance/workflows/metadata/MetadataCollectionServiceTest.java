@@ -42,6 +42,21 @@ class MetadataCollectionServiceTest {
   }
 
   @Test
+  void keepsOneRevisionTaskPerAssetWorkflowAndStage() {
+    final UUID asset = UUID.randomUUID();
+    final UUID draft =
+        MetadataCollectionService.revisionTaskId(asset, "DomainLifecycle", EntityStatus.DRAFT);
+
+    assertEquals(
+        draft,
+        MetadataCollectionService.revisionTaskId(asset, "DomainLifecycle", EntityStatus.DRAFT));
+    assertNotEquals(
+        draft,
+        MetadataCollectionService.revisionTaskId(asset, "DomainLifecycle", EntityStatus.IN_REVIEW));
+    assertNotEquals(draft, MetadataCollectionService.taskId(asset, "DomainLifecycle", "Collect0"));
+  }
+
+  @Test
   void namesMissingFieldsButReportsUnmetConditionsOnlyGenerically() {
     assertEquals(
         "Still missing: Experts. The task completes itself once these are filled in."
