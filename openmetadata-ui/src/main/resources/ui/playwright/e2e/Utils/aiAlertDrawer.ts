@@ -118,20 +118,19 @@ export const selectAlertSource = async (
   await expect(page.getByRole('listbox')).toBeHidden();
 };
 
-// Takes every chosen source away, so that a source of another kind can be chosen.
-export const clearAlertSources = async (page: Page) => {
+// Takes the chosen sources away, so that a source of another kind can be chosen. The caller names
+// them, so the chips are awaited rather than counted at whatever instant the helper runs.
+export const clearAlertSources = async (page: Page, labels: string[]) => {
   const sourceSelect = page.getByTestId('source-select');
-  const input = sourceSelect.getByRole('combobox');
-  // The only buttons in the control are the chosen sources' remove buttons.
-  const chosen = sourceSelect.getByRole('button');
+  const chosen = sourceSelect.getByTestId('autocomplete-selected-item');
+  await expect(chosen).toHaveText(labels);
 
-  // Backspace in the empty input moves to the last chosen source; Backspace there removes it.
-  for (let left = await chosen.count(); left > 0; left--) {
-    await input.click();
-    await input.press('Backspace');
-    await page.keyboard.press('Backspace');
-    await expect(chosen).toHaveCount(left - 1);
+  for (const label of labels) {
+    await sourceSelect
+      .getByRole('button', { name: `Remove ${label}`, exact: true })
+      .click();
   }
+  await expect(chosen).toHaveCount(0);
   await dismissPopover(page.getByRole('dialog').filter({ has: sourceSelect }));
 };
 

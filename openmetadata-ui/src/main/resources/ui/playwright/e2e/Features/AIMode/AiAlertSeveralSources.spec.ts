@@ -16,12 +16,19 @@
  * Observability drawer, the Settings → Notifications drawer and the profile's Notification panel.
  */
 
-import { expect, Locator, Page, test } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { AlertDetails } from '../../../constant/alert.interface';
+import { expect, test } from '../../../support/fixtures/base';
 import { performAdminLogin } from '../../../utils/admin';
 import { watchPerSourceListRequests } from '../../../utils/alert';
-import { uuid } from '../../../utils/common';
+import { deleteFixtureEntity } from '../../../utils/apiResponse';
+import {
+  chooseSelectOption,
+  selectOptionWithRetry,
+  uuid,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   addInternalDestinationProfile,
   closeSourcePicker,
@@ -50,7 +57,8 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   for (const id of createdAlertIds) {
-    await apiContext.delete(
+    await deleteFixtureEntity(
+      apiContext,
       `/api/v1/events/subscriptions/${id}?hardDelete=true`
     );
   }
@@ -72,24 +80,38 @@ const openAlertsPage = async (page: Page, path: string) => {
   await waitForAllLoadersToDisappear(page);
 };
 
-// A trigger names the sources it applies to once the alert has several.
+// A trigger names the sources it applies to once the alert has several. Choosing one asks the
+// server again, so the wait matches the question that holds this trigger: one still in flight for
+// an earlier pick would otherwise satisfy it.
 const addTrigger = async (
   page: Page,
   dialog: Locator,
-  { index, name, state }: { index: number; name: string; state: string }
+  {
+    index,
+    trigger,
+    label,
+    state,
+  }: { index: number; trigger: string; label: string; state: string }
 ) => {
   await dialog.getByTestId('add-actions').click();
-  const answered = page.waitForResponse(
-    '/api/v1/events/subscriptions/capabilities'
+  const answered = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().includes('/api/v1/events/subscriptions/capabilities') &&
+      (response.request().postDataJSON()?.input?.actions ?? []).some(
+        (action: { name?: string }) => action.name === trigger
+      ),
+    200
   );
-  await dialog
-    .getByTestId(`actions-select-${index}`)
-    .getByRole('button')
-    .click();
-  await page.getByRole('option', { name, exact: true }).click();
+  await selectOptionWithRetry(
+    dialog.getByTestId(`actions-select-${index}`).getByRole('button'),
+    page.getByRole('option', { name: label, exact: true })
+  );
   await answered;
-  await dialog.getByTestId(`actions-${index}`).getByRole('combobox').click();
-  await page.getByRole('option', { name: state, exact: true }).click();
+  await chooseSelectOption(
+    dialog.getByTestId(`actions-${index}`).getByRole('combobox'),
+    page.getByRole('option', { name: state, exact: true })
+  );
   await dismissPopover(dialog);
 };
 
@@ -104,8 +126,6 @@ const expectSources = async (picker: Locator, labels: string[]) => {
 test('An observability alert in the drawer takes several sources, with a trigger for each', async ({
   page,
 }) => {
-  test.slow();
-
   await openAlertsPage(page, '/observability/alerts');
   const dialog = await openAddAlertDrawer(page);
   await fillAlertName(dialog, `pw-ai-sources-${uuid()}`);
@@ -120,7 +140,8 @@ test('An observability alert in the drawer takes several sources, with a trigger
   await test.step('a source no chosen trigger applies to is warned about', async () => {
     await addTrigger(page, dialog, {
       index: 0,
-      name: 'Get Pipeline Status Updates (Pipeline)',
+      trigger: 'GetPipelineStatusUpdates',
+      label: 'Get Pipeline Status Updates (Pipeline)',
       state: 'Failed',
     });
 
@@ -131,7 +152,8 @@ test('An observability alert in the drawer takes several sources, with a trigger
   await test.step('a trigger for that source clears the warning', async () => {
     await addTrigger(page, dialog, {
       index: 1,
-      name: 'Get Ingestion Pipeline Status Updates (Ingestion Pipeline)',
+      trigger: 'GetIngestionPipelineStatusUpdates',
+      label: 'Get Ingestion Pipeline Status Updates (Ingestion Pipeline)',
       state: 'Failed',
     });
 
@@ -146,10 +168,10 @@ test('An observability alert in the drawer takes several sources, with a trigger
   await selectInternalDestinationType(page, dialog, 'Email', 0);
 
   const { request, response } = await saveAlertDrawer(page, dialog);
+  expect(response?.status()).toBe(201);
   const created = await response?.json();
   createdAlertIds.push(created.id);
 
-  expect(response?.status()).toBe(201);
   expect(request.postDataJSON().resources).toEqual([
     'pipeline',
     'ingestionPipeline',
@@ -164,11 +186,7 @@ test('An observability alert in the drawer takes several sources, with a trigger
       'Ingestion Pipeline',
     ]);
 
-    await page
-      .getByTestId('delete-button')
-      .locator('xpath=..')
-      .getByTestId('edit-button')
-      .click();
+    await page.getByTestId('edit-button').click();
     const editDialog = page
       .getByRole('dialog')
       .filter({ has: page.getByTestId('save-button') });
@@ -182,8 +200,6 @@ test('An observability alert in the drawer takes several sources, with a trigger
 test('A notification alert in the drawer takes sources of one kind only', async ({
   page,
 }) => {
-  test.slow();
-
   await openAlertsPage(page, '/settings/notifications/alerts');
   const dialog = await openAddAlertDrawer(page);
   await fillAlertName(dialog, `pw-ai-sources-${uuid()}`);
@@ -210,18 +226,16 @@ test('A notification alert in the drawer takes sources of one kind only', async 
   await selectInternalDestinationType(page, dialog, 'Email', 0);
 
   const { request, response } = await saveAlertDrawer(page, dialog);
+  expect(response?.status()).toBe(201);
   const created = await response?.json();
   createdAlertIds.push(created.id);
 
-  expect(response?.status()).toBe(201);
   expect(request.postDataJSON().resources).toEqual(['table', 'dashboard']);
 });
 
 test('A notification alert on the profile takes several sources, and its view shows them', async ({
   page,
 }) => {
-  test.slow();
-
   await navigateToAlertsList(page);
   await page.getByTestId('add-alert').click();
   await inputAlertInformation({
@@ -231,8 +245,10 @@ test('A notification alert on the profile takes several sources, and its view sh
   });
 
   const picker = page.getByTestId('source-select');
-  await picker.getByRole('combobox').fill('dash');
-  await page.getByRole('listbox').getByTestId('dashboard-option').click();
+  await chooseSelectOption(
+    picker,
+    page.getByRole('listbox').getByTestId('dashboard-option')
+  );
   await closeSourcePicker(page);
   await expectSources(picker, ['Table', 'Dashboard']);
 

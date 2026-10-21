@@ -26,6 +26,10 @@ import {
   watchPerSourceListRequests,
 } from '../../utils/alert';
 import {
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from '../../utils/common';
+import {
   addInternalDestination,
   visitNotificationAlertPage,
 } from '../../utils/notificationAlert';
@@ -183,14 +187,19 @@ test.describe('Alerts with several sources', () => {
       // Tables and data contracts name this filter after their own assets, so together it has
       // its general name.
       await page.getByTestId('add-filters').click();
-      await page.getByTestId('filter-select-0').click();
+      const filterSelect = page
+        .getByTestId('filter-select-0')
+        .getByRole('button');
+      const generalName = page
+        .getByRole('listbox')
+        .getByTestId('Entity FQN-filter-option');
+      await scrollIntoViewAndSettle(filterSelect);
+      await filterSelect.click();
+      await expect(generalName).toBeVisible();
       await expect(
         page.getByRole('listbox').getByTestId('Table Name-filter-option')
       ).toHaveCount(0);
-      await page
-        .getByRole('listbox')
-        .getByTestId('Entity FQN-filter-option')
-        .click();
+      await selectOptionWithRetry(filterSelect, generalName);
 
       const names = page.getByTestId('fqn-list-select').getByRole('combobox');
       const found = page.getByRole('listbox');

@@ -333,7 +333,7 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
     ]);
 
     // A table cannot join a conversation, so the conversation goes first.
-    await clearAlertSources(page);
+    await clearAlertSources(page, ['Conversation']);
     await selectAlertSource(page, 'Table');
     await dialog.getByTestId('add-destination-button').click();
 

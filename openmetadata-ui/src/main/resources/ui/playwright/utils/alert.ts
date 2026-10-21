@@ -973,17 +973,26 @@ export const inputBasicAlertInformation = async ({
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
-// Resolves once the server has answered about exactly these sources, in any order.
+// Resolves once the server has answered about exactly these sources, in any order, and fails
+// legibly if that answer is an error. Only a capabilities request has a body worth reading.
 export const waitForCapabilitiesOf = (page: Page, sources: string[]) =>
-  page.waitForResponse((response) => {
-    const asked = response.request().postDataJSON()?.sources ?? [];
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      if (
+        !response.url().includes('/api/v1/events/subscriptions/capabilities')
+      ) {
+        return false;
+      }
+      const asked: string[] = response.request().postDataJSON()?.sources ?? [];
 
-    return (
-      response.url().includes('/api/v1/events/subscriptions/capabilities') &&
-      asked.length === sources.length &&
-      sources.every((source) => asked.includes(source))
-    );
-  });
+      return (
+        asked.length === sources.length &&
+        sources.every((source) => asked.includes(source))
+      );
+    },
+    200
+  );
 
 const PER_SOURCE_LIST =
   /\/api\/v1\/events\/subscriptions\/(observability|notification)\/resources/;
