@@ -184,7 +184,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 ]
               : []
           }
-          icon={<QuickLink className="tw:text-secondary" />}
+          icon={<QuickLink />}
           title={t('label.quick-link-plural')}
         />
       </Card>

@@ -77,7 +77,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
           description={t('server.entity-fetch-error', {
             entity: t('label.task-plural'),
           })}
-          icon={<AlertCircle className="tw:text-fg-quaternary" />}
+          icon={<AlertCircle />}
           title={t('message.something-went-wrong')}
         />
       </div>
@@ -89,7 +89,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
         <NoDataPlaceholder
           description={t('message.no-memory-conflicts-to-review')}
-          icon={<CheckCircle className="tw:text-fg-quaternary" />}
+          icon={<CheckCircle />}
           title={t('label.nothing-to-review')}
         />
       </div>

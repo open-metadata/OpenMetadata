@@ -571,7 +571,7 @@ function TestSummaryGraph({
       <Box className="tw:relative tw:min-h-80 tw:w-full">
         <NoFilteredResultsPlaceholder
           description={t('message.try-extending-time-frame')}
-          icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+          icon={<FilterOffIcon />}
           title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}

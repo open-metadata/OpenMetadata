@@ -302,7 +302,7 @@ const DataModelTable = ({
             {searchValue ? (
               <NoSearchResultsPlaceholder
                 description={t('message.check-spelling-or-try-shorter-term')}
-                icon={<NoSearch className="tw:text-secondary" />}
+                icon={<NoSearch />}
                 title={t('label.no-matching-result-plural')}
               />
             ) : (

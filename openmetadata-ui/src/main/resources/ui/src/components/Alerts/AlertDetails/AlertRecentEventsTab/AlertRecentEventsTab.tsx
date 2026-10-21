@@ -189,7 +189,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
             )}
             icon={
               isFiltered ? (
-                <NoFilterFunnel className="tw:text-fg-quaternary" />
+                <NoFilterFunnel />
               ) : (
                 <Bell01 className="tw:text-fg-brand-primary" />
               )

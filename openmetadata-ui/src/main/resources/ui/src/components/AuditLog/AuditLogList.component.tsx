@@ -766,7 +766,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
         <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       );
@@ -775,7 +775,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
         <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.no-results-for-filters-description')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-result-for-these-filter-plural')}
         />
       );

@@ -332,7 +332,7 @@ const SystemAnnouncementsTable = ({
               },
             ]}
             data-testid="announcements-error"
-            icon={<AlertCircle className="tw:text-quaternary" />}
+            icon={<AlertCircle />}
             title={t('server.entity-fetch-error', {
               entity: t('label.announcement-plural'),
             })}
@@ -346,7 +346,7 @@ const SystemAnnouncementsTable = ({
         <NoSearchResultsPlaceholder
           data-testid="announcements-no-match"
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       </div>
@@ -365,7 +365,7 @@ const SystemAnnouncementsTable = ({
           ]}
           data-testid="announcements-empty"
           description={t('message.no-system-announcements-description')}
-          icon={<Announcement02 className="tw:text-quaternary" />}
+          icon={<Announcement02 />}
           title={t('label.no-entity-found', {
             entity: t('label.announcement-plural'),
           })}

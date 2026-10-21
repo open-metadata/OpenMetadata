@@ -120,7 +120,7 @@ const EmailSettings = ({
         <div className="tw:relative tw:min-h-90">
           <NoDataPlaceholder
             data-testid="email-config-empty"
-            icon={<Mail01 className="tw:text-quaternary" />}
+            icon={<Mail01 />}
             title={t('label.no-entity', {
               entity: t('label.email-configuration'),
             })}

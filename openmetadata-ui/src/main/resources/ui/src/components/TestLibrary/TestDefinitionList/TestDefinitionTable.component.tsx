@@ -317,7 +317,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                        <FilterOffIcon />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )

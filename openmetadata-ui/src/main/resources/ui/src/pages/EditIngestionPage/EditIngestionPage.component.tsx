@@ -358,7 +358,7 @@ const EditIngestionPage = () => {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <SomethingWentWrongPlaceholder
           description={errorMsg}
-          icon={<AlertTriangle className="tw:text-secondary" />}
+          icon={<AlertTriangle />}
           title={t('message.something-went-wrong')}
         />
       </div>

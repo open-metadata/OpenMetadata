@@ -76,7 +76,7 @@ const NotificationSectionPlaceholder: FC<{
   return (
     <Box className="tw:relative tw:min-h-60">
       <NoDataPlaceholder
-        icon={isDenied ? <Lock className="tw:text-secondary" /> : undefined}
+        icon={isDenied ? <Lock /> : undefined}
         title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
       />
     </Box>
@@ -487,7 +487,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
         return (
           <Box className="tw:relative tw:min-h-60">
             <PermissionPlaceholder
-              icon={<Lock className="tw:text-secondary" />}
+              icon={<Lock />}
               title={t('label.access-denied')}
             />
           </Box>

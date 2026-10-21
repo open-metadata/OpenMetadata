@@ -879,7 +879,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
     <div className="tw:relative tw:flex-1">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
       />
     </div>

@@ -911,7 +911,7 @@ const KnowledgePagesHierarchy = forwardRef<
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
             <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles className="tw:text-secondary" />}
+              icon={<Articles />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}

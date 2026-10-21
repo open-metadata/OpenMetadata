@@ -2616,7 +2616,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       return (
         <NoSearchResultsPlaceholder
           description={t('message.check-spelling-or-try-shorter-term')}
-          icon={<NoSearch className="tw:text-fg-secondary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-result-plural')}
         />
       );
@@ -2634,7 +2634,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
             },
           ]}
           description={t('message.nothing-matches-current-filter')}
-          icon={<NoFilterFunnel className="tw:text-fg-secondary" />}
+          icon={<NoFilterFunnel />}
           title={t('label.no-result-for-these-filter-plural')}
         />
       );
@@ -2643,7 +2643,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     return (
       <NoDataPlaceholder
         description={t('message.column-bulk-empty-description')}
-        icon={<TableIcon className="tw:text-fg-secondary" />}
+        icon={<TableIcon />}
         title={t('message.no-columns-to-work-with')}
       />
     );

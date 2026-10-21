@@ -192,7 +192,7 @@ const DataQualitySettings = ({
             items={dimensions}
             renderEmptyState={() => (
               <NoDataPlaceholder
-                icon={<DataQuality className="tw:text-quaternary" />}
+                icon={<DataQuality />}
                 title={
                   searchTerm
                     ? t('label.no-matching-results')

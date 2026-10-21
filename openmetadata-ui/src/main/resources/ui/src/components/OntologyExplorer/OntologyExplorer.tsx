@@ -201,7 +201,7 @@ function FilteredGraphEmptyState({
       data-testid={testId}>
       <NoFilteredResultsPlaceholder
         description={description}
-        icon={<NoFilterFunnel className="tw:text-secondary" />}
+        icon={<NoFilterFunnel />}
         title={t('label.no-result-for-these-filter-plural')}
       />
     </div>
@@ -217,7 +217,7 @@ function SearchGraphEmptyState() {
       data-testid="ontology-graph-search-empty">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-shorter-term')}
-        icon={<NoSearch className="tw:text-secondary" />}
+        icon={<NoSearch />}
         title={t('label.no-matching-result-plural')}
       />
     </div>

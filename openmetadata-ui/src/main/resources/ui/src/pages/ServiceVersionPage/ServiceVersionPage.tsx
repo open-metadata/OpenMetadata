@@ -536,7 +536,7 @@ function ServiceVersionPage() {
                 }}
               />
             }
-            icon={<Lock01 className="tw:text-secondary" />}
+            icon={<Lock01 />}
             title={t('label.access-denied')}
           />
         </div>

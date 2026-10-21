@@ -262,7 +262,7 @@ const AlertAiRecentEventsTab = ({
             )}
             icon={
               isFiltered ? (
-                <FilterLines className="tw:text-fg-quaternary" />
+                <FilterLines />
               ) : (
                 <Bell01 className="tw:text-fg-brand-primary" />
               )

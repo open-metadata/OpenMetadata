@@ -361,7 +361,7 @@ const TaskFormBuilderSection = ({
             <Box className="tw:relative tw:min-h-40">
               <NoDataPlaceholder
                 data-testid={`${testIdPrefix}-empty`}
-                icon={<List className="tw:text-secondary" />}
+                icon={<List />}
                 title={t('message.no-fields-configured')}
               />
             </Box>

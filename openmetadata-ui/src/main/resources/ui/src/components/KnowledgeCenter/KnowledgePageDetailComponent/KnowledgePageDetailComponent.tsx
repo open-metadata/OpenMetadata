@@ -1021,7 +1021,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               }}
             />
           }
-          icon={<Lock className="tw:text-secondary" />}
+          icon={<Lock />}
           title={t('label.access-denied')}
         />
       </div>
@@ -1032,7 +1032,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
         <NoDataPlaceholder
-          icon={<Articles className="tw:text-secondary" />}
+          icon={<Articles />}
           title={t('label.no-entity', { entity: t('label.article') })}
         />
       </div>

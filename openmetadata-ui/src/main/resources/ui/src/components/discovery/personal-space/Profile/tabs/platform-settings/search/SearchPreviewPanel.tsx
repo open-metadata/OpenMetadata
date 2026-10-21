@@ -132,7 +132,7 @@ const SearchPreviewPanel = ({
         <div className="tw:relative tw:min-h-60">
           <NoDataPlaceholder
             data-testid="search-preview-empty"
-            icon={<Search className="tw:text-quaternary" />}
+            icon={<Search />}
             title={t('message.no-data-available')}
           />
         </div>

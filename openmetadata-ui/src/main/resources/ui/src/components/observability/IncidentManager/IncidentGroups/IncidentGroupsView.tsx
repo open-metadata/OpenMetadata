@@ -295,7 +295,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
               },
             ]}
             description={t('message.try-adjusting-filter')}
-            icon={<Search className="tw:text-fg-quaternary" />}
+            icon={<Search />}
             title={t('message.no-match-found')}
           />
         </Box>
@@ -406,7 +406,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
             },
           ]}
           description={t('message.try-adjusting-filter')}
-          icon={<Search className="tw:text-fg-quaternary" />}
+          icon={<Search />}
           title={t('message.no-match-found')}
         />
       </Box>

@@ -206,7 +206,7 @@ function NotificationRecentEvents({
           )}
           icon={
             isFiltered ? (
-              <FilterOffIcon className="tw:text-fg-quaternary" />
+              <FilterOffIcon />
             ) : (
               <Bell01 className="tw:text-fg-brand-primary" />
             )

@@ -535,13 +535,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
               ? t('message.check-spelling-or-try-different-term')
               : t('message.no-results-for-filters-description')
           }
-          icon={
-            isSearching ? (
-              <NoSearchResultIcon className="tw:text-quaternary" />
-            ) : (
-              <NoFilterResultsIcon className="tw:text-quaternary" />
-            )
-          }
+          icon={isSearching ? <NoSearchResultIcon /> : <NoFilterResultsIcon />}
           title={
             isSearching
               ? t('label.no-matching-results')

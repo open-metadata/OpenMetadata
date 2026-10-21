@@ -724,7 +724,7 @@ export const AddTestCaseList = ({
         <Box className="tw:relative tw:min-h-80 tw:w-full">
           <NoFilteredResultsPlaceholder
             description={t('message.try-adjusting-filter')}
-            icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+            icon={<FilterOffIcon />}
             title={t('label.no-result-found')}
           />
         </Box>

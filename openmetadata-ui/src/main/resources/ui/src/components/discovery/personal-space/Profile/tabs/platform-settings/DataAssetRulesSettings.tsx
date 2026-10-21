@@ -84,7 +84,7 @@ const DataAssetRulesSettings = () => {
       <div className="tw:relative tw:min-h-90">
         <NoDataPlaceholder
           data-testid="data-asset-rules-empty"
-          icon={<FileCheck02 className="tw:text-quaternary" />}
+          icon={<FileCheck02 />}
           title={t('label.no-entity', { entity: t('label.data-asset-rules') })}
         />
       </div>

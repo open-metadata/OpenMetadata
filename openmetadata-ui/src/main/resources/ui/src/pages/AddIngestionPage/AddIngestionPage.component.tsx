@@ -357,7 +357,7 @@ const AddIngestionPage = () => {
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <SomethingWentWrongPlaceholder
           description={getEntityMissingError(serviceCategory, serviceFQN)}
-          icon={<AlertTriangle className="tw:text-secondary" />}
+          icon={<AlertTriangle />}
           title={t('message.something-went-wrong')}
         />
       </div>

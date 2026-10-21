@@ -170,7 +170,7 @@ const KnowledgePageAccessDenied = () => {
             }}
           />
         }
-        icon={<Lock className="tw:text-secondary" />}
+        icon={<Lock />}
         title={t('label.access-denied')}
       />
     </div>
@@ -184,7 +184,7 @@ const KnowledgePageNoSearchResults = () => {
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
       />
     </div>
@@ -266,7 +266,7 @@ const KnowledgePageEmptyState = ({
             {addQuickLinkModalElement}
           </>
         }
-        icon={<Articles className="tw:text-secondary" />}
+        icon={<Articles />}
         title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.article'),
         })}
