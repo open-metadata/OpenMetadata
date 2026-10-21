@@ -98,6 +98,7 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLink.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
         "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
