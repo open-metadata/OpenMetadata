@@ -179,6 +179,7 @@ df = spark.read.format("snowflake").options(**sf_options).option("dbtable", '{db
     def test_script_wide_fallback_needs_a_single_value(self):
         """Two blocks with their own sfSchema: a block without one must not inherit the first match."""
         script = """
+sf = {"sfDatabase": "SALES_DB"}
 raw = spark.read.format("snowflake").options(**sf).option("sfSchema", "RAW").option("dbtable", "ORDERS").load()
 cur = spark.read.format("snowflake").options(**sf).option("sfSchema", "CURATED").option("dbtable", "ORDERS_DAILY").load()
 other = spark.read.format("snowflake").options(**sf).option("dbtable", "CUSTOMERS").load()
@@ -240,8 +241,8 @@ glueContext.create_dynamic_frame.from_options(connection_type="snowflake", conne
         ]
         assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
 
-    def test_reassigned_options_dict_is_not_trusted(self):
-        """sf_options is rebound before the write: neither call may take dbtable from the first dict."""
+    def test_reassigned_options_dict_uses_the_assignment_before_the_call(self):
+        """sf_options is rebound before the write: each call reads the dict assigned just before it."""
         script = """
 sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS"}
 orders = spark.read.format("snowflake").options(**sf_options).load()
@@ -250,8 +251,8 @@ orders.write.format("snowflake").options(**sf_options).save()
 """
         result = parse_glue_script(script)
 
-        assert result.snowflake_sources == []
-        assert result.snowflake_targets == []
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")]
 
     def test_quoted_name_with_a_dot_is_one_identifier(self):
         script = """
@@ -342,6 +343,129 @@ orders.write \\
 
         assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
         assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="RAW")]
+
+
+SF_DICT = 'sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}'
+
+
+class TestSnowflakeScriptParsedAsPython:
+    """Snowflake calls are read from the Python AST: comments, quoting and scoping cannot fool it."""
+
+    def test_apostrophe_in_a_comment(self):
+        script = f"""
+{SF_DICT}
+df = (spark.read.format('snowflake')
+    # don't hardcode
+    .options(**sf_options)
+    .option('dbtable', 'ORDERS')
+    .load())
+"""
+        assert parse_glue_script(script).snowflake_sources == [
+            SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")
+        ]
+
+    def test_settings_in_a_comment_are_ignored(self):
+        script = f"""
+{SF_DICT}
+df = (spark.read.format("snowflake")
+    .options(**sf_options)
+    .option("dbtable", "ORDERS")
+    # .option("dbtable", "FAKE")
+    .load())
+"""
+        assert [ref.table for ref in parse_glue_script(script).snowflake_sources] == ["ORDERS"]
+
+    def test_format_constant_used_inside_a_function(self):
+        script = f"""
+SNOWFLAKE_SOURCE_NAME = "net.snowflake.spark.snowflake"
+{SF_DICT}
+
+def main():
+    spark.read.format(SNOWFLAKE_SOURCE_NAME).options(**sf_options).option("dbtable", "ORDERS").load()
+"""
+        assert [ref.table for ref in parse_glue_script(script).snowflake_sources] == ["ORDERS"]
+
+    def test_later_unknown_value_overrides_a_literal(self):
+        script = f"""
+{SF_DICT}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").option("dbtable", args["TABLE"]).load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    def test_unknown_schema_is_not_guessed(self):
+        script = f"""
+{SF_DICT}
+df = spark.read.format("snowflake").options(**sf_options).option("sfSchema", args["SCHEMA"]).option("dbtable", "ORDERS").load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    def test_function_parameter_is_unknown(self):
+        script = f"""
+{SF_DICT}
+
+def write(df, table):
+    df.write.format("snowflake").options(**sf_options).option("dbtable", table).save()
+"""
+        assert parse_glue_script(script).snowflake_targets == []
+
+    def test_dict_bound_in_branches_is_unknown(self):
+        script = """
+if args["ENV"] == "prod":
+    sf_options = {"sfDatabase": "PROD", "sfSchema": "RAW", "dbtable": "ORDERS"}
+else:
+    sf_options = {"sfDatabase": "DEV", "sfSchema": "RAW", "dbtable": "ORDERS"}
+df = spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    def test_dict_changed_in_place_is_unknown(self):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS"}
+sf_options["dbtable"] = args["TABLE"]
+df = spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    def test_unlisted_options_may_set_the_schema(self):
+        """**get_options() could set sfSchema: a table-only setting after it is not linked by guess."""
+        script = """
+df = spark.read.format("snowflake").options(**get_options()).option("dbtable", "ORDERS").load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    @pytest.mark.parametrize(
+        "options",
+        ['{**base, "dbtable": "ORDERS"}', 'dict(base, dbtable="ORDERS")', 'dict(**base, dbtable="ORDERS")'],
+    )
+    def test_merged_dicts(self, options):
+        script = f"""
+base = {{"sfDatabase": "SALES_DB", "sfSchema": "RAW"}}
+df = glueContext.create_dynamic_frame.from_options(connection_type="snowflake", connection_options={options})
+"""
+        assert parse_glue_script(script).snowflake_sources == [
+            SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")
+        ]
+
+    def test_glue_context_positional_and_flat_forms(self):
+        script = """
+opts = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED", "dbtable": "ORDERS_DAILY"}
+glueContext.write_dynamic_frame.from_options(frame, "snowflake", opts)
+glueContext.write_dynamic_frame_from_options(frame=frame, connection_type="SNOWFLAKE", connection_options=opts)
+"""
+        assert (
+            parse_glue_script(script).snowflake_targets
+            == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")] * 2
+        )
+
+    def test_unparseable_script_keeps_other_lineage(self):
+        script = """
+df = spark.read.parquet("s3://bucket/input/")
+df.write.format("snowflake").option("dbtable", "ORDERS").save(
+"""
+        result = parse_glue_script(script)
+
+        assert result.s3_sources == ["s3://bucket/input/"]
+        assert result.snowflake_targets == []
 
 
 class TestSnowflakeStudioNode:
