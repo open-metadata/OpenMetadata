@@ -35,8 +35,8 @@ class EventSubscriptionResourceTest {
   @Test
   void theSuccessorLinkKeepsTheBasePath() {
     assertEquals(
-        "</openmetadata/api/v1/events/subscriptions/capabilities>; rel=\"alternate\"",
-        EventSubscriptionResource.successorLink(servedAt("https://host/openmetadata/api/")));
+        "</some-prefix/api/v1/events/subscriptions/capabilities>; rel=\"alternate\"",
+        EventSubscriptionResource.successorLink(servedAt("https://host/some-prefix/api/")));
   }
 
   private static UriInfo servedAt(String baseUri) {
