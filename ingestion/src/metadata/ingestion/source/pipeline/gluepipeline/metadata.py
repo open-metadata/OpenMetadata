@@ -238,7 +238,12 @@ class GluepipelineSource(PipelineServiceSource):
                                     lineage_details["targets"].append(storage_entity)
                                 break
 
-    def _add_visual_table_lineage(self, key: str, table_model, lineage_details: dict):
+    def _add_visual_table_lineage(
+        self,
+        key: str,
+        table_model: AmazonRedshift | JDBCSource | CatalogSource | SnowflakeNode,
+        lineage_details: dict,
+    ):
         # a Snowflake source of type "query" carries no table: nothing to link
         if not table_model.table_name:
             return
@@ -256,17 +261,15 @@ class GluepipelineSource(PipelineServiceSource):
                 lineage_details[direction].append(table_entity)
             return
         for db_service_name in self.get_db_service_names() or ["*"]:
-            table_entity = self.metadata.get_entity_reference(
-                entity=Table,
-                fqn=fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    table_name=table_model.table_name,
-                    database_name=table_model.database_name,
-                    schema_name=table_model.schema_name,
-                    service_name=db_service_name,
-                ),
+            table_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                table_name=table_model.table_name,
+                database_name=table_model.database_name,
+                schema_name=table_model.schema_name,
+                service_name=db_service_name,
             )
+            table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqn) if table_fqn else None
             if table_entity:
                 lineage_details[direction].append(table_entity)
                 break

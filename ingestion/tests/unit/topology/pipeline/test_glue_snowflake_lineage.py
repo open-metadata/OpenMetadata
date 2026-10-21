@@ -457,6 +457,30 @@ glueContext.write_dynamic_frame_from_options(frame=frame, connection_type="SNOWF
             == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="CURATED")] * 2
         )
 
+    def test_option_with_keywords_may_set_any_key(self):
+        script = f"""
+{SF_DICT}
+df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").option(key=k, value=v).load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
+    def test_load_and_save_keywords_are_options(self):
+        script = f"""
+{SF_DICT}
+df = spark.read.options(**sf_options).load(format="snowflake", dbtable="ORDERS")
+df.write.format("snowflake").options(**sf_options).option("dbtable", "STAGE").save(mode="overwrite", dbtable="ORDERS_DAILY")
+"""
+        result = parse_glue_script(script)
+
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+        assert result.snowflake_targets == [SnowflakeRef(table="ORDERS_DAILY", database="SALES_DB", schema="RAW")]
+
+    def test_name_with_more_than_three_parts_is_not_linked(self):
+        script = """
+df = spark.read.format("snowflake").option("dbtable", "A.B.C.D").load()
+"""
+        assert parse_glue_script(script).snowflake_sources == []
+
     def test_unparseable_script_keeps_other_lineage(self):
         script = """
 df = spark.read.parquet("s3://bucket/input/")
@@ -466,6 +490,190 @@ df.write.format("snowflake").option("dbtable", "ORDERS").save(
 
         assert result.s3_sources == ["s3://bucket/input/"]
         assert result.snowflake_targets == []
+
+    def test_expression_too_deep_to_analyse_keeps_other_lineage(self):
+        """It parses, but walking it would overflow the stack: Snowflake lineage is skipped, not raised."""
+        sql = " + ".join(['"SELECT 1"'] * 1500)
+        script = f"""
+df = spark.read.parquet("s3://bucket/input/")
+query = {sql}
+spark.read.format("snowflake").option("dbtable", "ORDERS").load()
+"""
+        result = parse_glue_script(script)
+
+        assert result.s3_sources == ["s3://bucket/input/"]
+        assert result.snowflake_sources == []
+
+
+READ_ORDERS = 'spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").load()'
+SALES_RAW = 'sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW"}'
+DEV_RAW = 'sf_options = {"sfDatabase": "DEV_DB", "sfSchema": "RAW"}'
+
+
+def _sources(script: str) -> list[SnowflakeRef]:
+    return parse_glue_script(script).snowflake_sources
+
+
+ORDERS = [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
+
+
+class TestSnowflakeNameResolution:
+    """Which assignment of an options dict a read sees, following Python's scoping and control flow."""
+
+    @pytest.mark.parametrize(
+        "wrapper",
+        ['if __name__ == "__main__":', "try:", 'with open("job.conf") as conf:'],
+    )
+    def test_binding_and_read_in_one_block(self, wrapper):
+        handler = "except Exception:\n    raise\n" if wrapper == "try:" else ""
+        script = f"""
+{wrapper}
+    {SALES_RAW}
+    {READ_ORDERS}
+{handler}"""
+        assert _sources(script) == ORDERS
+
+    def test_reassigned_in_the_same_block_reads_the_latest(self):
+        script = f"""
+if __name__ == "__main__":
+    {DEV_RAW}
+    {SALES_RAW}
+    {READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_rebound_in_an_enclosing_block(self):
+        script = f"""
+{DEV_RAW}
+if __name__ == "__main__":
+    {SALES_RAW}
+    {READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_rebound_in_a_branch_before_the_read_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+if args["ENV"] == "dev":
+    {DEV_RAW}
+{READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    def test_rebound_in_a_loop_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+for env in ("dev", "prod"):
+    {READ_ORDERS}
+    {DEV_RAW}
+"""
+        assert _sources(script) == []
+
+    def test_single_binding_is_seen_from_anywhere(self):
+        """One binding, even in a branch: wherever the read runs, that is the only value it can have."""
+        script = f"""
+def main():
+    {READ_ORDERS}
+
+if __name__ == "__main__":
+    {SALES_RAW}
+    main()
+"""
+        assert _sources(script) == ORDERS
+
+    def test_reassigned_global_read_in_a_function_is_unknown(self):
+        """The function reads the global when it is called, not where it is defined."""
+        script = f"""
+{DEV_RAW}
+
+def main():
+    {READ_ORDERS}
+
+{SALES_RAW}
+main()
+"""
+        assert _sources(script) == []
+
+    @pytest.mark.parametrize(
+        "helper",
+        [
+            "def write(df, sf_options):\n    pass",
+            "merge = lambda sf_options: sf_options",
+            "names = [sf_options for sf_options in configs]",
+            "class Config:\n    sf_options = {}",
+            "def reset():\n    sf_options = {}",
+        ],
+    )
+    def test_names_in_other_scopes_do_not_hide_the_global(self, helper):
+        script = f"""
+{SALES_RAW}
+
+{helper}
+
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_local_dict_shadows_the_global(self):
+        script = f"""
+{DEV_RAW}
+
+def main():
+    {SALES_RAW}
+    {READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_global_reassigned_from_a_function_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+
+def switch():
+    global sf_options
+    {DEV_RAW}
+
+{READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    def test_local_dict_changed_in_place_leaves_the_global(self):
+        script = f"""
+{SALES_RAW}
+
+def build():
+    sf_options = {{}}
+    sf_options.update(sfSchema="STAGE")
+    return sf_options
+
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_global_changed_in_place_from_a_function_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+
+def switch():
+    sf_options.update(sfSchema="STAGE")
+
+{READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    def test_dict_built_from_itself_reads_the_earlier_binding(self):
+        script = f"""
+{SALES_RAW}
+sf_options = {{**sf_options, "dbtable": "ORDERS"}}
+df = spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert _sources(script) == ORDERS
+
+    def test_scala_script_has_no_snowflake_lineage(self):
+        """Snowflake script lineage is Python-only: a Scala job does not parse."""
+        script = """
+val df = spark.read.format("snowflake").options(sfOptions).option("dbtable", "ORDERS").load()
+"""
+        assert _sources(script) == []
 
 
 class TestSnowflakeStudioNode:
