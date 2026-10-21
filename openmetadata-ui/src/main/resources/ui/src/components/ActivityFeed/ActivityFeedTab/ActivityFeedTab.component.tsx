@@ -19,6 +19,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -36,7 +37,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
@@ -295,7 +295,7 @@ const TaskFilterBar = ({
         <Button
           color="secondary"
           data-testid="user-profile-page-task-filter-icon"
-          iconLeading={<FilterIcon aria-hidden height={16} width={16} />}
+          iconLeading={FilterLines}
           isDisabled={isMentionTabSelected}
           size="sm">
           {filterLabel}

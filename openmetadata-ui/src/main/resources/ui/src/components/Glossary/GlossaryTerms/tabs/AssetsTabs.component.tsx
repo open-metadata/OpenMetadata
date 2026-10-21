@@ -21,6 +21,7 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -37,7 +38,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -293,7 +293,7 @@ const AssetsFilterBar = ({
             className="tw:size-9"
             color="secondary"
             data-testid="asset-filter-button"
-            icon={FilterIcon}
+            icon={FilterLines}
             size="sm"
             tooltip={t('label.filter-plural')}
           />
