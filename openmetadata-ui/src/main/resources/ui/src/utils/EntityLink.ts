@@ -32,6 +32,11 @@ export default class EntityLink {
       const lexer = new EntityLinkLexer(chars);
       const tokens = new antlr4.CommonTokenStream(lexer);
       const parser = new EntityLinkParser(tokens);
+      // A feed's `about` can name a field the grammar does not list (e.g.
+      // `entityStatus`); the default listeners would log a syntax error for it
+      // on every render. The split of what did parse is still returned.
+      lexer.removeErrorListeners();
+      parser.removeErrorListeners();
       const tree = parser.entitylink();
       const splitter = new EntityLinkSplitListener();
       ParseTreeWalker.DEFAULT.walk(splitter, tree);

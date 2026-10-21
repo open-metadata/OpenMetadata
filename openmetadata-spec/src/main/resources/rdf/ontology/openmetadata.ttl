@@ -4118,6 +4118,14 @@ om:releaseRevision a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "releaseRevision" .
 
+om:semanticVersion a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "semanticVersion" .
+
+om:releaseNotes a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "releaseNotes" .
+
 om:baseReleaseId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "baseReleaseId" .

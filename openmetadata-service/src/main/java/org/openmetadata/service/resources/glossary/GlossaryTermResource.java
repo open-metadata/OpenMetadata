@@ -73,6 +73,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -86,6 +87,7 @@ import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository.TermSearch;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -384,7 +386,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               description =
                   "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
           @QueryParam("entityStatus")
-          String entityStatus) {
+          String entityStatus,
+      @Parameter(
+              description =
+                  "Only terms from this provider, such as `automation` for the terms an AI agent proposed")
+          @QueryParam("provider")
+          String provider,
+      @Parameter(description = "Leave out the terms from this provider")
+          @QueryParam("excludeProvider")
+          String excludeProvider) {
 
     Fields fields = getFields(fieldsParam);
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
@@ -400,32 +410,37 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
+    TermSearch search =
+        new TermSearch(
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            entityStatus,
+            providerValue(provider),
+            providerValue(excludeProvider));
     ResultList<GlossaryTerm> result;
     if (glossaryId != null) {
-      result =
-          repository.searchGlossaryTermsById(
-              glossaryId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsById(glossaryId, search);
     } else if (glossaryFqn != null) {
-      result =
-          repository.searchGlossaryTermsByFQN(
-              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByFQN(glossaryFqn, search);
     } else if (parentId != null) {
-      result =
-          repository.searchGlossaryTermsByParentId(
-              parentId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentId(parentId, search);
     } else if (parentFqn != null) {
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              parentFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(parentFqn, search);
     } else {
       // Search across all glossary terms without parent filter
       // Uses efficient database-level search and pagination
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              null, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
 
     return addHref(uriInfo, result);
+  }
+
+  // An unknown provider is a bad request rather than a filter that silently matches nothing.
+  private static String providerValue(String provider) {
+    return nullOrEmpty(provider) ? null : ProviderType.fromValue(provider).value();
   }
 
   @GET
