@@ -223,14 +223,17 @@ test.describe('Alerts with several sources', () => {
         })
         .toBe(true);
       await expect(
-        field.getByTitle(table.entityResponseData.fullyQualifiedName)
+        field
+          .getByTestId('autocomplete-selected-item')
+          .filter({ hasText: table.entityResponseData.fullyQualifiedName })
       ).toBeVisible();
       await page.setViewportSize({ width: 1024, height: 768 });
       await expect
         .poll(async () => {
           const fieldBounds = await field.boundingBox();
           const chipBounds = await field
-            .getByTitle(table.entityResponseData.fullyQualifiedName)
+            .getByTestId('autocomplete-selected-item')
+            .filter({ hasText: table.entityResponseData.fullyQualifiedName })
             .boundingBox();
 
           return Boolean(
