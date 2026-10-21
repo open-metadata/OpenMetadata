@@ -18,6 +18,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -272,6 +273,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               </Typography>
             </>
           }
+          icon={<MessageChatSquare />}
         />
       </div>
     ) : (

@@ -17,6 +17,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import Qs from 'qs';
@@ -168,6 +169,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
                 </Typography>
               </>
             }
+            icon={<Database01 />}
           />
         </div>
       </div>

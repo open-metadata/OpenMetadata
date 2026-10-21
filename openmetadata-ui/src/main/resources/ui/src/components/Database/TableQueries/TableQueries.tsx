@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Database01,
   SortAscending,
   SortDescending,
 } from '@openmetadata/ui-core-components/icons';
@@ -533,6 +534,7 @@ const TableQueries: FC<TableQueriesProp> = ({
                 })}
               </>
             }
+            icon={<Database01 />}
           />
         </div>
       </div>

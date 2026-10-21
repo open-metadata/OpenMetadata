@@ -16,6 +16,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
@@ -51,6 +52,7 @@ function AddObservabilityPage({
               </Typography>
             </>
           }
+          icon={<Database01 />}
         />
       </div>
     );

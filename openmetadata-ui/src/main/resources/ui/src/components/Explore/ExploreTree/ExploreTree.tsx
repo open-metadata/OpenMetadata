@@ -18,6 +18,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import { Bucket } from 'Models';
@@ -908,6 +909,7 @@ const ExploreTree = ({
               </Typography>
             </>
           }
+          icon={<Database01 />}
         />
       </div>
     );

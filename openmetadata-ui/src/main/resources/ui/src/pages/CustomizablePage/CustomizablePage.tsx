@@ -15,6 +15,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -546,6 +547,7 @@ const CustomizablePageContent = () => {
                   </Typography>
                 </>
               }
+              icon={<Database01 />}
             />
           </div>
         </Grid.Item>

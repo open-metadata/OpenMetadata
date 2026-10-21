@@ -15,6 +15,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -208,6 +209,7 @@ const ImportTeamsPage = () => {
               </div>
             </>
           }
+          icon={<Database01 />}
         />
       </div>
     );

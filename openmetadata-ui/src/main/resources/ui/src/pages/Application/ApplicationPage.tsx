@@ -20,6 +20,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -142,6 +143,7 @@ const ApplicationPage = () => {
                 <div>{t('message.no-installed-applications-found')}</div>
               </>
             }
+            icon={<Database01 />}
           />
         </div>
       </Grid.Item>

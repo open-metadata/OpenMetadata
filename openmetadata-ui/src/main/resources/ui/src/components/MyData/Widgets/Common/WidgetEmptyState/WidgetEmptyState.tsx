@@ -17,6 +17,7 @@ import {
   EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -91,7 +92,7 @@ const WidgetEmptyState = ({
               </Box>
             </>
           }
-          icon={icon}
+          icon={icon ?? <Database01 />}
         />
       </div>
     </Box>

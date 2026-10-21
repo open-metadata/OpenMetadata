@@ -18,6 +18,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, sortBy } from 'lodash';
 import { Heading } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -88,6 +89,7 @@ function AddDetailsPageWidgetModal({
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={<>{t('message.no-widgets-to-add')}</>}
+            icon={<Database01 />}
           />
         </div>
       );

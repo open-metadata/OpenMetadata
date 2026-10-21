@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -346,6 +347,7 @@ const DataProductsPage = () => {
               </div>
             </>
           }
+          icon={<Database01 />}
         />
       </div>
     );

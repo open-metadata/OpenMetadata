@@ -16,6 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DATA_INSIGHT_DOCS } from '../../constants/docs.constants';
@@ -60,7 +61,7 @@ export const EmptyGraphPlaceholder = ({ icon }: { icon?: ReactElement }) => {
             </Typography>
           </>
         }
-        icon={icon}
+        icon={icon ?? <Database01 />}
       />
     </div>
   );

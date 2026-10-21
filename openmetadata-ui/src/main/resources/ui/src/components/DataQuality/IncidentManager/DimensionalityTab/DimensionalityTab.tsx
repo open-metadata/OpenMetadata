@@ -18,6 +18,7 @@ import {
   Skeleton,
   Table,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, split, toLower } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
@@ -298,6 +299,7 @@ const DimensionalityTab = () => {
               />
             </>
           }
+          icon={<Database01 />}
         />
       </div>
     );

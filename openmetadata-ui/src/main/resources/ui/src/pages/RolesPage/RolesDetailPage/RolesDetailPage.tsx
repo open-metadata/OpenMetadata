@@ -20,6 +20,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
@@ -376,6 +377,7 @@ const RolesDetailPage = () => {
                   </div>
                 </>
               }
+              icon={<Database01 />}
             />
           </div>
         ) : (

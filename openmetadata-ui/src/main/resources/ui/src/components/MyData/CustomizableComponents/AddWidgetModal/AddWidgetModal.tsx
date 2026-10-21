@@ -19,7 +19,7 @@ import {
   ModalOverlay,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { Check, Database01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, toString } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -144,6 +144,7 @@ function AddWidgetModal({
           <EmptyPlaceholder
             data-testid="no-data-placeholder"
             footer={<>{t('message.no-widgets-to-add')}</>}
+            icon={<Database01 />}
           />
         </div>
       );

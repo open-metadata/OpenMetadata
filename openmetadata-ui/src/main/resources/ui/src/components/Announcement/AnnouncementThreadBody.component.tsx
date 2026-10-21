@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { EmptyPlaceholder, Typography } from '@openmetadata/ui-core-components';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
@@ -145,6 +146,7 @@ const AnnouncementThreadBody = ({
               </Typography>
             </>
           }
+          icon={<Announcement02 />}
         />
       </div>
     );

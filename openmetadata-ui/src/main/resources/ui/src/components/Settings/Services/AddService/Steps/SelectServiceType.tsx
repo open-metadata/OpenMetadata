@@ -22,7 +22,7 @@ import {
   Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Database01, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -168,6 +168,7 @@ const SelectServiceType = ({
                     </Typography>
                   </>
                 }
+                icon={<Database01 />}
               />
             </div>
           </div>
