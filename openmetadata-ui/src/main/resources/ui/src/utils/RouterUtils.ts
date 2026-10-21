@@ -12,7 +12,6 @@
  */
 
 import { isUndefined } from 'lodash';
-import { ServiceTypes } from 'Models';
 import QueryString from 'qs';
 import {
   IN_PAGE_SEARCH_ROUTES,
@@ -38,17 +37,13 @@ import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../constants/GlobalSettings.constants';
-import { arrServiceTypes } from '../constants/Services.constant';
 import { AlertDetailTabs } from '../enums/Alerts.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
-import { ServiceAgentSubTabs } from '../enums/service.enum';
-import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { useMarketplaceStore } from '../hooks/useMarketplaceStore';
 import type { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
 import { TestCasePageTabs } from '../pages/IncidentManager/IncidentManager.interface';
 import { getPartialNameFromFQN } from './FqnUtils';
 import { getSettingPath } from './RouterPaths';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
 import { getSettingsLink } from './SettingsModalLinkUtils';
 import { getEncodedFqn } from './StringUtils';
 
@@ -858,42 +853,6 @@ export const getKpiPath = (kpiName: string) => {
   path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(kpiName));
 
   return path;
-};
-
-/**
- * It returns a path
- * @param {string} path - The path of the current page.
- * @param {string | undefined} logEntityType - The type of the log entity.
- * @returns a string.
- */
-export const getLogEntityPath = (
-  path: string,
-  logEntityType: string | undefined
-): string => {
-  if (isUndefined(logEntityType)) {
-    return '';
-  }
-
-  if (logEntityType === PipelineType.TestSuite) {
-    return getTestSuitePath(path);
-  }
-
-  if (
-    !arrServiceTypes.includes(path as ServiceTypes) &&
-    path !== PipelineType.TestSuite
-  ) {
-    return getServiceDetailsPath(
-      path,
-      logEntityType,
-      EntityTabs.AGENTS,
-      ServiceAgentSubTabs.METADATA
-    );
-  }
-
-  return getSettingPath(
-    GlobalSettingsMenuCategory.SERVICES,
-    getServiceRouteFromServiceType(logEntityType as ServiceTypes)
-  );
 };
 
 export const getCustomizePagePath = (personaFqn: string, pageFqn: string) => {
