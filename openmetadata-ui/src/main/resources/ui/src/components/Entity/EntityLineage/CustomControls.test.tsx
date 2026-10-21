@@ -105,25 +105,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        disabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={disabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children, onSelectionChange }) => (
       <div

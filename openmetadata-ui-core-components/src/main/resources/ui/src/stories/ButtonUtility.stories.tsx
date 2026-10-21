@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     icon: Edit01,
-    color: 'secondary',
+    color: 'tertiary',
     size: 'sm',
     tooltip: 'Edit',
   },

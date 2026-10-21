@@ -356,7 +356,10 @@ describe('Ingestion', () => {
       });
     });
 
-    expect(screen.getByTestId('agent-group-refresh')).toBeDisabled();
+    expect(screen.getByTestId('agent-group-refresh')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('should not render the AddIngestionButton if no Create ingestion pipeline permission', async () => {

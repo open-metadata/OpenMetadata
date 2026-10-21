@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 
 import type { TourSteps } from '@deuex-solutions/react-tour';
 import { lazy, Suspense, useState } from 'react';
@@ -68,22 +69,11 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             closeWithMask={false}
             inViewThreshold={200}
             lastStepNextButton={
-              <Button
-                aria-label={t('label.next')}
-                color="tertiary"
+              <ButtonUtility
                 data-testid="last-step-button"
-                iconLeading={
-                  <svg viewBox="0 0 18.4 14.4" width={16}>
-                    <path
-                      d="M17 7.2H1M10.8 1 17 7.2l-6.2 6.2"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeMiterlimit={10}
-                      strokeWidth={2}
-                    />
-                  </svg>
-                }
+                icon={ArrowRight}
+                size="lg"
+                tooltip={t('label.next')}
                 onClick={() => setShowTourEndModal(true)}
               />
             }

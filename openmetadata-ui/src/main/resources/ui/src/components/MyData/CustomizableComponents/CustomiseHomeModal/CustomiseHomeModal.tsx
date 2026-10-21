@@ -19,13 +19,12 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { Check, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddIcon } from '../../../../assets/svg/add-square.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../../constants/constants';
 import { DEFAULT_HEADER_BG_COLOR } from '../../../../constants/Mydata.constants';
 import {
@@ -348,7 +347,7 @@ const CustomiseHomeModal = ({
             align="center"
             className="customise-home-modal-header p-box"
             gap={3}>
-            <AddIcon className="add-icon tw:size-8" />
+            <Plus className="add-icon tw:size-8" />
             <Typography className="text-white" size="text-xl" weight="semibold">
               {title}
             </Typography>

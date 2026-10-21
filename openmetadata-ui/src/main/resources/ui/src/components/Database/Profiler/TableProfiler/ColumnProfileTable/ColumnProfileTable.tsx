@@ -11,14 +11,19 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Table, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Skeleton,
+  Table,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isNil, isUndefined } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router-dom';
@@ -322,22 +327,21 @@ const ColumnProfileTable = () => {
             <div className="d-inline-flex items-start gap-1 flex-column">
               <div className="d-inline-flex items-baseline tw:gap-1">
                 {hasChildren ? (
-                  <button
+                  <ButtonUtility
                     aria-expanded={isExpanded}
-                    className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex"
+                    aria-label={
+                      isExpanded ? t('label.collapse') : t('label.expand')
+                    }
                     data-testid="expand-icon"
-                    onClick={(e) => {
+                    icon={isExpanded ? ChevronDown : ChevronRight}
+                    size="xs"
+                    onClick={(e: MouseEvent) => {
                       e.stopPropagation();
                       handleToggleExpand(rowKey);
-                    }}>
-                    {isExpanded ? (
-                      <ChevronDown className="tw:size-4" />
-                    ) : (
-                      <ChevronRight className="tw:size-4" />
-                    )}
-                  </button>
+                    }}
+                  />
                 ) : (
-                  <span className="tw:inline-block tw:w-4" />
+                  <span className="tw:inline-block tw:w-5" />
                 )}
                 <Link
                   className="break-word p-0 d-block text-link-color tw:font-medium hover:tw:underline"

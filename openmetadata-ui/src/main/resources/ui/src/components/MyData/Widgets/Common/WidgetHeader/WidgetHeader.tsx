@@ -129,11 +129,10 @@ const WidgetHeader = ({
             {onEditClick && (
               <ButtonUtility
                 aria-label={t('label.edit-widget')}
-                color="secondary"
                 data-testid="edit-widget-button"
                 icon={Edit01}
                 isDisabled={disableEdit}
-                size="sm"
+                size="lg"
                 onPress={onEditClick}
               />
             )}

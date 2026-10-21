@@ -79,9 +79,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       />
       <ButtonUtility
         className="tw:absolute tw:top-4 tw:right-4 tw:z-10"
-        color="tertiary"
         data-testid="welcome-screen-close-btn"
         icon={XClose}
+        size="lg"
         tooltip={t('label.close')}
         onClick={onClose}
       />

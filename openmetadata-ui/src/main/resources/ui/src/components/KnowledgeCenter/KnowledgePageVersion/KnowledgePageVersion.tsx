@@ -185,7 +185,7 @@ const KnowledgePageVersion: FC<KnowledgePageVersionProps> = ({
             <Button
               color={version ? 'secondary-brand' : 'secondary'}
               data-testid="version-button"
-              iconLeading={<VersionIcon className="tw:size-3.5 tw:shrink-0" />}
+              iconLeading={VersionIcon}
               onClick={handleVersionClick}>
               {toString(version)}
             </Button>

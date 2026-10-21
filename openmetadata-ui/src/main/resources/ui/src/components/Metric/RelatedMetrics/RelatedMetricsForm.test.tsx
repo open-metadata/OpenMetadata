@@ -106,7 +106,10 @@ describe('RelatedMetricsForm', () => {
       'aria-disabled',
       'true'
     );
-    expect(screen.getByTestId('cancelRelatedMetrics')).toBeDisabled();
+    expect(screen.getByTestId('cancelRelatedMetrics')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
 
     resolveSubmit();
     await waitFor(() =>

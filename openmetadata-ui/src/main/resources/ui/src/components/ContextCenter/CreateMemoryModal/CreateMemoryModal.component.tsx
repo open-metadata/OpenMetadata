@@ -36,12 +36,14 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Edit01,
   FileLock02,
   InfoCircle,
   Lightbulb03,
   Lock01,
   Plus,
   Share07,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -58,8 +60,6 @@ import { Control, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link, useLocation } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -131,6 +131,7 @@ const LinkedAssetCard: FC<{
   asset: DataAssetOption;
   onRemove?: (fqn: string) => void;
 }> = ({ asset, onRemove }) => {
+  const { t } = useTranslation();
   const displayName =
     asset.displayName || (typeof asset.label === 'string' ? asset.label : '');
 
@@ -177,9 +178,10 @@ const LinkedAssetCard: FC<{
           )}
           {onRemove && (
             <ButtonUtility
-              color="tertiary"
               data-testid="remove-linked-asset-btn"
-              icon={<XClose size={18} strokeWidth={2} />}
+              icon={XClose}
+              size="sm"
+              tooltip={t('label.remove')}
               onClick={() => onRemove(fqn)}
             />
           )}
@@ -416,7 +418,7 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
       {Boolean(memoryToEdit) && canDelete && (
         <Button
           color="tertiary-destructive"
-          iconLeading={TrashIcon}
+          iconLeading={Trash01}
           isDisabled={isDeleting || isSubmitting}
           isLoading={isDeleting}
           size="sm"
@@ -436,7 +438,7 @@ const MemoryModalFooter: FC<MemoryModalFooterProps> = ({
       {showEditButton && (
         <Button
           color="primary"
-          iconLeading={EditIcon}
+          iconLeading={Edit01}
           size="sm"
           onClick={handleSwitchToEdit}>
           {t('label.edit')}
@@ -551,9 +553,10 @@ const MemoryVisibilityRow: FC<{
                 )}
                 {!isViewOnly && isOwner && (
                   <ButtonUtility
-                    color="tertiary"
                     data-testid="memory-visibility-edit-button"
-                    icon={<EditIcon height={14} width={14} />}
+                    icon={Edit01}
+                    size="sm"
+                    tooltip={t('label.edit')}
                     onClick={() => setIsEditingVisibility(true)}
                   />
                 )}

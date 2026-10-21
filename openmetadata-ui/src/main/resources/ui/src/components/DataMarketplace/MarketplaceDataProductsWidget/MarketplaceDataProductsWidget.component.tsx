@@ -242,8 +242,9 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (

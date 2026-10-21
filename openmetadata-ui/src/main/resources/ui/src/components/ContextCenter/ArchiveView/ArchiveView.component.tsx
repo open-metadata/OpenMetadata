@@ -21,10 +21,10 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FC, UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RefreshIcon } from '../../../assets/svg/action-icons/refresh.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ArchiveIcon } from '../../../assets/svg/sidebar-icons/archive.svg';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
@@ -102,20 +102,18 @@ const ArchiveRow: FC<ArchiveRowProps> = ({
       <div className="tw:flex tw:items-center tw:gap-2 tw:shrink-0">
         {canRestore && (
           <ButtonUtility
-            color="tertiary"
             data-testid="restore-btn"
-            icon={<RefreshIcon height={20} width={20} />}
-            size="sm"
+            icon={RefreshIcon}
+            size="lg"
             tooltip={t('label.restore')}
             onClick={() => onRestore(item)}
           />
         )}
         {canDelete && (
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-btn"
-            icon={<TrashIcon height={20} width={20} />}
-            size="sm"
+            icon={Trash01}
+            size="lg"
             tooltip={t('label.delete')}
             onClick={() => onDelete(item)}
           />

@@ -15,14 +15,13 @@ import {
   Autocomplete,
   ButtonUtility,
   Grid,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import React, { Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyLeft } from '../../../../../assets/svg/copy-left.svg';
 import { useClipboard } from '../../../../../hooks/useClipBoard';
 import { splitCSV } from '../../../../../utils/CSV/CSVPureUtils';
 const WorkflowArrayFieldTemplate = (props: FieldProps) => {
@@ -157,21 +156,17 @@ const WorkflowArrayFieldTemplate = (props: FieldProps) => {
             {(item) => <Autocomplete.Item id={item.id} label={item.label} />}
           </Autocomplete>
         </div>
-        <Tooltip
-          arrow
-          placement="top"
-          title={hasCopied ? 'Copied to clipboard' : 'Copy'}>
-          <ButtonUtility
-            aria-label={t('label.copy')}
-            color="tertiary"
-            icon={CopyLeft}
-            size="xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCopy(e);
-            }}
-          />
-        </Tooltip>
+        <ButtonUtility
+          icon={Copy01}
+          size="sm"
+          tooltip={
+            hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
+          }
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleCopy(e);
+          }}
+        />
       </Grid.Item>
     </Grid>
   );

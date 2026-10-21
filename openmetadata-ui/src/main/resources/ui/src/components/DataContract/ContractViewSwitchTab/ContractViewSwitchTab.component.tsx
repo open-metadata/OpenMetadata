@@ -48,8 +48,9 @@ const ContractViewSwitchTab = ({
         className={SEGMENT_TOGGLE_ITEM_CLASS}
         id={DataContractMode.UI}>
         <BookOutline
-          className="tw:size-5"
           data-testid="contract-view-switch-tab-ui"
+          height={20}
+          width={20}
         />
       </ButtonGroupItem>
       <ButtonGroupItem
@@ -57,8 +58,9 @@ const ContractViewSwitchTab = ({
         className={SEGMENT_TOGGLE_ITEM_CLASS}
         id={DataContractMode.YAML}>
         <CodeOutline
-          className="tw:size-5"
           data-testid="contract-view-switch-tab-yaml"
+          height={20}
+          width={20}
         />
       </ButtonGroupItem>
     </ButtonGroup>

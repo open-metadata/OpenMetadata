@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   EmptyPlaceholder,
   Owner,
   PageHeader,
@@ -21,6 +22,7 @@ import {
 import {
   Classification as ClassificationIcon,
   Download01,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -93,10 +95,6 @@ import { NextPreviousProps } from '../../common/NextPrevious/NextPrevious.interf
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
@@ -822,16 +820,18 @@ const ClassificationDetails = forwardRef(
                         });
                       }}>
                       {isEmpty(currentClassification.owners) ? (
-                        <WidgetPlusButton
+                        <ButtonUtility
                           data-testid="add-owner"
-                          title={t('label.add-entity', {
+                          icon={Plus}
+                          tooltip={t('label.add-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />
                       ) : (
-                        <WidgetEditButton
+                        <ButtonUtility
                           data-testid="edit-owner"
-                          title={t('label.edit-entity', {
+                          icon={Edit01}
+                          tooltip={t('label.edit-entity', {
                             entity: t('label.owner-plural'),
                           })}
                         />

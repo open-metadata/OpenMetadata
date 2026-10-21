@@ -19,14 +19,12 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditProfileIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as ChangePassword } from '../../assets/svg/ic-change-pw.svg';
 import { ReactComponent as MenuDots } from '../../assets/svg/ic-menu-dots.svg';
-import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-trash.svg';
-import { ICON_DIMENSION_USER_PAGE } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangePasswordRequest,
@@ -84,7 +82,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="edit-displayname"
-        iconLeading={<EditProfileIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Edit01}
         onClick={onEditDisplayName}>
         {t('label.edit-entity', {
           entity: t('label.display-name'),
@@ -96,7 +94,7 @@ const ProfileManageOptions = ({
         className="tw:w-full tw:justify-start"
         color="tertiary"
         data-testid="change-password-button"
-        iconLeading={<ChangePassword {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={ChangePassword}
         onClick={onChangePassword}>
         {t('label.change-entity', {
           entity: t('label.password-lowercase'),
@@ -107,7 +105,7 @@ const ProfileManageOptions = ({
       <Button
         className="tw:w-full tw:justify-start"
         color="tertiary"
-        iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+        iconLeading={Trash01}
         onClick={onRestore}>
         {t('label.restore')}
       </Button>
@@ -116,7 +114,7 @@ const ProfileManageOptions = ({
         <Button
           className="tw:w-full tw:justify-start"
           color="tertiary"
-          iconLeading={<DeleteIcon {...ICON_DIMENSION_USER_PAGE} />}
+          iconLeading={Trash01}
           onClick={onDelete}>
           {t('label.delete-profile')}
         </Button>
@@ -255,13 +253,13 @@ const ProfileSectionUserDetailsCard = ({
           isOpen={isPopoverVisible}
           onOpenChange={setisPopoverVisible}>
           <ButtonUtility
-            aria-label={t('label.manage-entity', {
+            className="user-details-menu-icon"
+            data-testid="user-profile-manage-btn"
+            icon={MenuDots}
+            size="lg"
+            tooltip={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon"
-            color="tertiary"
-            data-testid="user-profile-manage-btn"
-            icon={<MenuDots height={24} width={24} />}
           />
           <Popover
             className="profile-management-popover"
@@ -330,7 +328,7 @@ const ProfileSectionUserDetailsCard = ({
         <span
           className="user-profile-deleted-badge"
           data-testid="deleted-badge">
-          <DeleteIcon className="tw:mr-1 tw:size-3.5 tw:shrink-0" />
+          <Trash01 className="tw:mr-1 tw:shrink-0" size={14} />
 
           {t('label.deleted')}
         </span>

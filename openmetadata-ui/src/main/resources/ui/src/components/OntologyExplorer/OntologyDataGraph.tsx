@@ -863,9 +863,7 @@ const OntologyDataGraph = ({
               : 'tw:border-secondary tw:bg-primary'
           )}
           justify="center">
-          {isMetric ? (
-            <BarChart01 aria-hidden="true" className="tw:size-4" />
-          ) : null}
+          {isMetric ? <BarChart01 aria-hidden="true" size={16} /> : null}
           {!isMetric && iconUrl ? (
             <img
               alt=""

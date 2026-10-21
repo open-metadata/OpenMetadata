@@ -160,11 +160,13 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ButtonUtility: ({
     onClick,
     tooltip,
+    isDisabled,
     isSelected,
     ...rest
   }: {
     onClick?: () => void;
     tooltip?: string;
+    isDisabled?: boolean;
     isSelected?: boolean;
     'data-testid'?: string;
   }) => (
@@ -172,6 +174,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       aria-label={tooltip}
       aria-pressed={isSelected}
       data-testid={rest['data-testid']}
+      disabled={isDisabled}
       onClick={onClick}
     />
   ),

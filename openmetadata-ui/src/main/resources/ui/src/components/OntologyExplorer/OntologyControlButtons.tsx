@@ -34,40 +34,36 @@ const OntologyControlButtons: FC<OntologyControlButtonsProps> = ({
   return (
     <div className="tw:flex tw:shrink-0 tw:flex-wrap-nowrap tw:items-center tw:gap-1">
       <ButtonUtility
-        color="tertiary"
         data-testid="fit-view"
         icon={Maximize01}
-        size="sm"
+        size="lg"
         tooltip={t('label.fit-to-screen')}
         onClick={onFitToScreen}
       />
       <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <ButtonUtility
-        color="tertiary"
         data-testid="zoom-in"
         icon={ZoomIn}
-        size="sm"
+        size="lg"
         tooltip={t('label.zoom-in')}
         onClick={onZoomIn}
       />
       <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
       <ButtonUtility
-        color="tertiary"
         data-testid="zoom-out"
         icon={ZoomOut}
-        size="sm"
+        size="lg"
         tooltip={t('label.zoom-out')}
         onClick={onZoomOut}
       />
       <div className="tw:h-6 tw:w-px tw:bg-quaternary" />
 
       <ButtonUtility
-        color="tertiary"
         data-testid="refresh"
         icon={RefreshCw01}
         isDisabled={isLoading}
-        size="sm"
+        size="lg"
         tooltip={t('label.refresh')}
         onClick={onRefresh}
       />

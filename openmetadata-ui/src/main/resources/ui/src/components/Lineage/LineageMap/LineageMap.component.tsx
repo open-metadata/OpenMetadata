@@ -827,7 +827,6 @@ const LineageMapControls = ({
           <ButtonUtility
             aria-label={label}
             className="lineage-map-rail-button tw:z-1 tw:size-6 tw:p-0!"
-            color="tertiary"
             data-testid={`lineage-map-band-${stop}`}
             icon={
               <span

@@ -13,6 +13,7 @@
 import {
   Badge,
   Button,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -45,7 +46,8 @@ import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 const FOLLOW_BUTTON_CLASS_NAME = classNames(
   'entity-follow-button tw:h-auto tw:gap-1 tw:rounded-2xl tw:px-3 tw:py-1',
   'tw:bg-utility-brand-50 tw:text-sm tw:font-medium tw:text-utility-brand-700',
-  'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0'
+  'tw:hover:bg-utility-brand-50 tw:hover:text-utility-brand-700 tw:*:data-text:px-0',
+  'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600'
 );
 
 const getFollowLabelKey = (isFollowing?: boolean) =>
@@ -198,9 +200,7 @@ const EntityHeaderTitle = ({
           className={FOLLOW_BUTTON_CLASS_NAME}
           color="tertiary"
           data-testid="entity-follow-button"
-          iconLeading={
-            <Star01 className="tw:text-utility-brand-600" size={14} />
-          }
+          iconLeading={Star01}
           isDisabled={deleted}
           isLoading={isFollowingLoading}
           size="sm"
@@ -255,24 +255,17 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <Tooltip
-            placement="top right"
-            title={
-              copyTooltip ??
+          <ButtonUtility
+            data-testid="entity-header-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={
+              copyTooltip ||
               t('label.copy-item', { item: t('label.url-uppercase') })
-            }>
-            <Button
-              aria-label={t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })}
-              color="tertiary"
-              data-testid="entity-header-copy-button"
-              iconLeading={Copy01}
-              size="xs"
-              type="button"
-              onClick={handleShareButtonClick}
-            />
-          </Tooltip>
+            }
+            tooltipPlacement="top right"
+            onClick={handleShareButtonClick}
+          />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}
         </div>

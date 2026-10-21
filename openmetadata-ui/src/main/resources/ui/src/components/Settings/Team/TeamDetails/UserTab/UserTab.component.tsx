@@ -18,14 +18,16 @@ import {
   SimpleModal,
   Tooltip,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Plus,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRemove } from '../../../../../assets/svg/ic-remove.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { ExportTypes } from '../../../../../constants/Export.constants';
@@ -275,23 +277,19 @@ export const UserTab = ({
             className="layout-space layout-space-horizontal w-full justify-center remove-icon"
             gap={2}
             itemClassName="layout-space-item">
-            <Tooltip
-              arrow
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={IconRemove}
+              isDisabled={!editUserPermission}
+              size="lg"
+              tooltip={
                 editUserPermission
                   ? t('label.remove')
                   : t('message.no-permission-for-action')
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="remove-user-btn"
-                icon={IconRemove}
-                isDisabled={!editUserPermission}
-                size="sm"
-                onClick={() => handleRemoveClick(record.id)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => handleRemoveClick(record.id)}
+            />
           </Box>
         ),
       },
@@ -334,7 +332,7 @@ export const UserTab = ({
             description={t('message.export-entity-help', {
               entity: t('label.user-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -353,7 +351,7 @@ export const UserTab = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />

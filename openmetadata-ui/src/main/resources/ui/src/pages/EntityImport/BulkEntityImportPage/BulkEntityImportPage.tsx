@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Modal,
@@ -1569,13 +1570,13 @@ const BulkEntityImportPage = () => {
             )}`}
           </span>
         </div>
-        <button
-          aria-label={t('label.remove')}
-          className="csv-selected-file-remove"
-          type="button"
-          onClick={() => setSelectedCsvFile(undefined)}>
-          <XClose size={18} />
-        </button>
+        <ButtonUtility
+          className="tw:shrink-0"
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={() => setSelectedCsvFile(undefined)}
+        />
       </div>
     );
   };

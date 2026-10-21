@@ -13,18 +13,17 @@
 
 import {
   Autocomplete,
-  Button,
   ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as RoleIcon } from '../../../../../assets/svg/ic-roles.svg';
@@ -232,10 +231,9 @@ const UserProfileRoles = ({
           {isAdminUser && (
             <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-roles-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
+                icon={Edit01}
+                size="sm"
                 tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
@@ -279,21 +277,21 @@ const UserProfileRoles = ({
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      aria-label={t('label.cancel')}
+                    <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
-                      iconLeading={<ClosePopoverIcon height={24} />}
-                      size="xs"
+                      icon={ClosePopoverIcon}
+                      size="sm"
+                      tooltip={t('label.cancel')}
                       onClick={handleCloseEditRole}
                     />
-                    <Button
-                      aria-label={t('label.save')}
+                    <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-save-button"
-                      iconLeading={<SavePopoverIcon height={24} />}
+                      icon={SavePopoverIcon}
                       isLoading={isLoading}
-                      size="xs"
+                      size="sm"
+                      tooltip={t('label.save')}
                       onClick={handleRolesSave}
                     />
                   </div>

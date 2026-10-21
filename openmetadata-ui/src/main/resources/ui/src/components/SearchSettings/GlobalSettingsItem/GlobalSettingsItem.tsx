@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { clamp } from 'lodash';
 import { useState } from 'react';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { useTranslation } from 'react-i18next';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
 import './global-settings-item.less';
@@ -35,6 +40,7 @@ export const GlobalSettingItem = ({
   step,
   onUpdate,
 }: GlobalSettingItemProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -98,9 +104,12 @@ export const GlobalSettingItem = ({
             data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
-          <EditIcon
-            className="tw:ml-3 tw:shrink-0 tw:size-3.5"
+          <ButtonUtility
+            className="tw:ml-3"
             data-testid={`global-setting-edit-icon-${label}`}
+            icon={Edit01}
+            size="sm"
+            tooltip={t('label.edit-entity', { entity: label })}
             onClick={() => setIsEditing(true)}
           />
         </div>

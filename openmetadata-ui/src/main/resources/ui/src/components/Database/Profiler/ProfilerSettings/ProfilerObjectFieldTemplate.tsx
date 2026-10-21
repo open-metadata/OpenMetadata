@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { ObjectFieldTemplateProps } from '@rjsf/utils';
 import classNames from 'classnames';
@@ -42,14 +46,13 @@ export const ProfilerObjectFieldTemplate: FC<ObjectFieldTemplateProps> = (
         </span>
 
         {schema.additionalProperties && (
-          <Button
-            aria-label={t('label.add-entity', { entity: title })}
+          <ButtonUtility
             color="primary"
             data-testid={`add-item-${title}`}
-            iconLeading={Plus}
+            icon={Plus}
             id={`${idSchema.$id}`}
-            size="xs"
-            onPress={() => {
+            tooltip={t('label.add-entity', { entity: title })}
+            onClick={() => {
               onAddClick(schema)();
             }}
           />

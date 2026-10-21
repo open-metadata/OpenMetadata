@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   Input,
   Select,
   SelectItemType,
@@ -706,13 +707,14 @@ const AlertAiRuleSection = ({
                     </Select>
                   </div>
                   {!isViewOnly && (
-                    <Button
-                      className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-                      color="secondary"
+                    <ButtonUtility
+                      className="tw:shrink-0"
+                      color="tertiary-destructive"
                       data-testid={`remove-${field}-${ruleIndex}`}
-                      iconLeading={Trash01}
-                      size="sm"
-                      onPress={() => removeRule(ruleIndex)}
+                      icon={Trash01}
+                      size="lg"
+                      tooltip={t('label.remove')}
+                      onClick={() => removeRule(ruleIndex)}
                     />
                   )}
                 </Box>

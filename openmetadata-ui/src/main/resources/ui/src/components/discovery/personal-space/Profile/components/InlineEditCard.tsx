@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Edit02, Lock01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Lock01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -125,14 +130,14 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
           )}
         </FieldRow>
         {!isEditing && canEdit && (
-          <button
-            aria-label={t('label.edit')}
-            className="tw:absolute tw:top-1/2 tw:right-4 tw:-translate-y-1/2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:text-quaternary tw:hover:text-secondary"
+          <ButtonUtility
+            className="tw:absolute tw:top-1/2 tw:right-4 tw:-translate-y-1/2"
             data-testid={subTestId('edit')}
-            type="button"
-            onClick={enterEdit}>
-            <Edit02 height={14} width={14} />
-          </button>
+            icon={Edit01}
+            size="lg"
+            tooltip={t('label.edit')}
+            onClick={enterEdit}
+          />
         )}
         {showLock && (
           <Box

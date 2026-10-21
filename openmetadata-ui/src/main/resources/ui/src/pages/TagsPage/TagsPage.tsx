@@ -32,7 +32,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
@@ -743,10 +742,10 @@ const TagsPage = () => {
             <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  className="tw:w-full"
+                  className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                   color="secondary"
                   data-testid="add-classification"
-                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={() => {
                     classificationForm.reset();

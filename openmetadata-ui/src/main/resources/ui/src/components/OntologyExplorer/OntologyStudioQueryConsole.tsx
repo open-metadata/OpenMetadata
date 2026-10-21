@@ -24,7 +24,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Check,
-  Edit03,
+  Edit01,
   InfoCircle,
   Lock01,
   Play,
@@ -289,14 +289,14 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
           data-testid="ontology-query-rename-save"
           icon={Check}
           isDisabled={!rename.value.trim()}
-          size="xs"
+          size="sm"
           tooltip={t('label.save')}
           onClick={rename.onCommit}
         />
         <ButtonUtility
           color="tertiary"
           icon={XClose}
-          size="xs"
+          size="sm"
           tooltip={t('label.cancel')}
           onClick={rename.onCancel}
         />
@@ -318,8 +318,8 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
         <ButtonUtility
           color="tertiary"
           data-testid="ontology-query-rename"
-          icon={Edit03}
-          size="xs"
+          icon={Edit01}
+          size="sm"
           tooltip={t('label.rename')}
           onClick={rename.onStart}
         />
@@ -927,16 +927,16 @@ const OntologyStudioQueryConsole = ({
           <ButtonUtility
             color="tertiary"
             data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
-            icon={Edit03}
-            size="xs"
+            icon={Edit01}
+            size="sm"
             tooltip={`${t('label.edit')} ${queryTemplate.name}`}
             onClick={() => handleTemplateEdit(queryTemplate)}
           />
           <ButtonUtility
-            color="tertiary"
+            color="tertiary-destructive"
             data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
             icon={Trash01}
-            size="xs"
+            size="sm"
             tooltip={`${t('label.delete')} ${queryTemplate.name}`}
             onClick={() => void handleDeleteTemplate(queryTemplate.id)}
           />
@@ -956,16 +956,16 @@ const OntologyStudioQueryConsole = ({
         <ButtonUtility
           color="tertiary"
           data-testid={`ontology-query-saved-rename-${savedQuery.id}`}
-          icon={Edit03}
-          size="xs"
+          icon={Edit01}
+          size="sm"
           tooltip={`${t('label.rename')} ${savedQuery.name}`}
           onClick={() => startRename(savedQuery)}
         />
         <ButtonUtility
-          color="tertiary"
+          color="tertiary-destructive"
           data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
           icon={Trash01}
-          size="xs"
+          size="sm"
           tooltip={`${t('label.delete')} ${savedQuery.name}`}
           onClick={() => void handleDeleteSavedQuery(savedQuery.id)}
         />

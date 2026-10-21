@@ -274,10 +274,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     return (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="copy-persona-link"
           icon={Copy01}
-          size="xs"
           tooltip={String(
             hasCopied
               ? t('message.link-copy-to-clipboard')
@@ -287,11 +285,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           onPress={() => onCopyToClipBoard()}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-persona-btn"
           icon={Edit}
           isDisabled={!canEditDescription}
-          size="xs"
           tooltip={String(
             canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -324,7 +320,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="secondary"
           data-testid="set-default-persona-btn"
-          iconLeading={<CheckCircle />}
+          iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
           size="sm"
@@ -334,11 +330,10 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             : t('label.set-as-default')}
         </Button>
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-persona-btn"
           icon={Delete}
           isDisabled={!canDeletePersona}
-          size="sm"
+          size="lg"
           tooltip={String(
             canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -432,10 +427,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             </Typography>
             {canEditDescription && !isEditingDesc && (
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-persona-description-btn"
                 icon={Edit}
-                size="xs"
                 tooltip={String(
                   t('label.edit-entity', { entity: t('label.description') })
                 )}

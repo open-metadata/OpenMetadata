@@ -109,7 +109,7 @@ describe('FileAttachment', () => {
 
     const downloadButton = screen.getByTestId(DOWNLOAD_TEST_ID);
 
-    expect(downloadButton).toBeDisabled();
+    expect(downloadButton).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('does not show a download button for a plain external URL', () => {

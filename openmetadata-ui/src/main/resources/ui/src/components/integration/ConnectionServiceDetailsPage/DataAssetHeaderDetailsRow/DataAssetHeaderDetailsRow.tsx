@@ -13,6 +13,7 @@
 
 import {
   Button,
+  ButtonUtility,
   Dot,
   Owner,
   Popover,
@@ -22,6 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Database01,
+  Edit01,
   Globe01,
   User03,
 } from '@openmetadata/ui-core-components/icons';
@@ -29,7 +31,6 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getTierTags } from '../../../../utils/TablePureUtils';
 import DomainSelectableList from '../../../common/DomainSelectableList/DomainSelectableList.component';
-import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TierCard from '../../../common/TierCard/TierCard';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetHeaderDetailsRowProps } from './DataAssetHeaderDetailsRow.interface';
@@ -127,11 +128,12 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             multiple
             selectedDomain={domains}
             onUpdate={onUpdateDomain}>
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-domain-button"
-              size="small"
-              title={t('label.edit-entity', { entity: t('label.domain') })}
+              icon={Edit01}
+              size="sm"
+              tooltip={t('label.edit-entity', { entity: t('label.domain') })}
+              type="button"
             />
           </DomainSelectableList>
         )}
@@ -166,13 +168,14 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
             multiple={{ user: true, team: true }}
             owner={owners}
             onUpdate={onUpdateOwners}>
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-owner-button"
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              size="sm"
+              tooltip={t('label.edit-entity', {
                 entity: t('label.owner-plural'),
               })}
+              type="button"
             />
           </UserTeamSelectableList>
         )}
@@ -201,13 +204,14 @@ const DataAssetHeaderDetailsRow: React.FC<DataAssetHeaderDetailsRowProps> = ({
               : t('label.add-entity', { entity: t('label.tier') })}
           </Typography>
           {canEditTier && onUpdateTier && (
-            <EditIconButton
-              newLook
+            <ButtonUtility
               aria-expanded={tierPopoverOpen}
               aria-haspopup="dialog"
               data-testid="edit-tier-button"
-              size="small"
-              title={t('label.edit-entity', { entity: t('label.tier') })}
+              icon={Edit01}
+              size="sm"
+              tooltip={t('label.edit-entity', { entity: t('label.tier') })}
+              type="button"
               onClick={() => setTierPopoverOpen(true)}
             />
           )}

@@ -11,12 +11,16 @@
  *  limitations under the License.
  */
 
-import { Button, HintText, Label } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  HintText,
+  Label,
+} from '@openmetadata/ui-core-components';
 import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { useCallback, useState } from 'react';
+import { MouseEvent, useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
@@ -108,13 +112,12 @@ const ArrayValueChip = ({
           tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-brand-200">
       {value}
       {!isDisabled && (
-        <button
+        <ButtonUtility
           aria-label={t('label.remove-entity', { entity: value })}
-          className="tw:flex tw:cursor-pointer tw:items-center tw:text-utility-brand-400 tw:hover:text-utility-brand-700"
-          type="button"
-          onClick={onRemove}>
-          <XClose size={10} strokeWidth={2.5} />
-        </button>
+          icon={XClose}
+          size="xs"
+          onClick={onRemove}
+        />
       )}
     </span>
   );
@@ -244,14 +247,14 @@ const CoreArrayField = (props: FieldProps) => {
             onKeyDown={handleKeyDown}
           />
         )}
-        <Button
-          className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
-          color="tertiary"
-          iconLeading={Copy01}
+        <ButtonUtility
+          className="tw:ml-auto"
+          icon={Copy01}
+          size="sm"
           tooltip={
             hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
           }
-          onPress={async (e) => {
+          onClick={async (e: MouseEvent) => {
             e.stopPropagation();
             await onCopyToClipBoard();
           }}

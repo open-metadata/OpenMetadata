@@ -19,11 +19,10 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isArray } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconEdit } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
 import {
   Effect,
   EventSubscription,
@@ -77,14 +76,14 @@ export const AlertDetailsComponent = ({
               <Button
                 color="secondary"
                 href={`${EDIT_LINK_PATH}/${alerts?.id}`}
-                iconLeading={<IconEdit height={12} />}>
+                iconLeading={Edit01}>
                 {t('label.edit')}
               </Button>
             )}
             {allowDelete && (
               <Button
                 color="secondary"
-                iconLeading={<IconDelete height={12} />}
+                iconLeading={Trash01}
                 onClick={onDelete}>
                 {t('label.delete')}
               </Button>

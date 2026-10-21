@@ -17,7 +17,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
+  ButtonUtility,
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import {
@@ -396,14 +396,13 @@ export const SSOGroupedFieldTemplate: FunctionComponent<
           </label>
 
           {schema.additionalProperties && (
-            <Button
-              aria-label={t('label.add')}
+            <ButtonUtility
               color="primary"
               data-testid={`add-item-${title}`}
-              iconLeading={Plus}
+              icon={Plus}
               id={`${idSchema.$id}`}
               isDisabled={disabled}
-              size="xs"
+              tooltip={t('label.add')}
               onClick={() => {
                 onAddClick(schema)();
               }}

@@ -14,7 +14,7 @@
 import {
   AvatarGroup,
   Box,
-  Button,
+  ButtonUtility,
   Checkbox,
   Table,
   toOwnerRefs,
@@ -295,13 +295,12 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          <Button
-            aria-label={t('label.view-entity', { entity: groupName })}
-            color="tertiary"
+          <ButtonUtility
             data-testid={`group-open-${rowId}`}
-            iconLeading={ChevronRight}
-            size="sm"
-            onPress={() => onGroupOpen(group)}
+            icon={ChevronRight}
+            size="xs"
+            tooltip={t('label.view-entity', { entity: groupName })}
+            onClick={() => onGroupOpen(group)}
           />
         </Table.Cell>
       </Table.Row>

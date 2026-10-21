@@ -19,7 +19,7 @@ import {
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit03,
+  Edit01,
   RefreshCw04,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -59,9 +59,6 @@ import AlertAiRecentEventsTab from './AlertAiRecentEventsTab';
 import AlertDescriptionCard from './AlertDescriptionCard.component';
 import AlertEditModal from './AlertEditModal.component';
 import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
-
-const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
-const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
 
 interface AlertDetailsPageProps {
   /** Which alerts this page serves; Settings → Notifications passes its kind. */
@@ -328,9 +325,9 @@ const AlertDetailsPage = ({
       <>
         {editPermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            className={ACTION_BUTTON_CLASS_NAME}
             data-testid="edit-button"
-            icon={<Edit03 className={ACTION_ICON_CLASS_NAME} />}
+            icon={Edit01}
+            size="lg"
             tooltip={t('label.edit-entity', {
               entity: t('label.alert'),
             })}
@@ -339,9 +336,9 @@ const AlertDetailsPage = ({
         )}
         {deletePermission && alertDetails?.provider !== ProviderType.System && (
           <ButtonUtility
-            className={ACTION_BUTTON_CLASS_NAME}
             data-testid="delete-button"
-            icon={<Trash01 className={ACTION_ICON_CLASS_NAME} />}
+            icon={Trash01}
+            size="lg"
             tooltip={t('label.delete-entity', {
               entity: t('label.alert'),
             })}
@@ -349,10 +346,10 @@ const AlertDetailsPage = ({
           />
         )}
         <ButtonUtility
-          className={ACTION_BUTTON_CLASS_NAME}
           data-testid="sync-button"
-          icon={<RefreshCw04 className={ACTION_ICON_CLASS_NAME} />}
+          icon={RefreshCw04}
           isDisabled={isSyncing}
+          size="lg"
           tooltip={t('label.sync-alert-offset', {
             entity: t('label.alert'),
           })}

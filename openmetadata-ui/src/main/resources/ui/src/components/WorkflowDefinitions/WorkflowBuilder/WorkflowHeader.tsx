@@ -26,7 +26,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@openmetadata/ui-core-components/icons';
+import { DotsVertical, Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +34,6 @@ import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { WorkflowHeaderProps } from '../../../interface/workflow-builder-components.interface';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { WorkflowControls } from './WorkflowControls';
 
 const getInitialDisplayName = (title?: string) => title ?? '';
@@ -62,10 +61,9 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   return (
     <Dropdown.Root>
       <ButtonUtility
-        color="tertiary"
         data-testid="workflow-manage-button"
         icon={DotsVertical}
-        size="sm"
+        size="lg"
         tooltip={t('label.more-action-plural')}
       />
       <Dropdown.Popover className="tw:w-min">
@@ -252,11 +250,11 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     () =>
       !isViewMode &&
       !isNoOp && (
-        <EditIconButton
-          newLook
+        <ButtonUtility
           data-testid="edit-workflow-title-button"
-          size="small"
-          title={t('label.edit-entity', { entity: t('label.workflow') })}
+          icon={Edit01}
+          size="sm"
+          tooltip={t('label.edit-entity', { entity: t('label.workflow') })}
           onClick={handleOpenEditModal}
         />
       ),

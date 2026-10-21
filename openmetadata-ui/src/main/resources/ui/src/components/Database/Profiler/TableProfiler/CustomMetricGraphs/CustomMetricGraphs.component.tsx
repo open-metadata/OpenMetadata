@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
@@ -198,11 +198,11 @@ const CustomMetricGraphs = ({
                       onOpenChange={(isOpen) =>
                         setOpenMenuKey(isOpen ? key : null)
                       }>
-                      <Button
-                        color="secondary"
+                      <ButtonUtility
                         data-testid={`${key}-custom-metrics-menu`}
-                        iconLeading={DotsVertical}
-                        size="sm"
+                        icon={DotsVertical}
+                        size="lg"
+                        tooltip={t('label.more-action')}
                       />
                       <Dropdown.Popover className="tw:w-max">
                         <Dropdown.Menu items={items}>

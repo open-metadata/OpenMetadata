@@ -134,13 +134,7 @@ const RowActions = ({
 
   return (
     <Dropdown.Root>
-      {/* Core draws the focus outline while the button is pressed, and the
-          menu trigger stays pressed for as long as the menu is open. Only a
-          keyboard focus keeps the ring. */}
       <Dropdown.DotsButton
-        className={({ isFocusVisible, isPressed }) =>
-          isPressed && !isFocusVisible ? 'tw:outline-0' : ''
-        }
         data-testid={`announcement-actions-${announcement.name}`}
       />
       <Dropdown.Popover className="tw:w-min">

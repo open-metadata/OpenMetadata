@@ -14,14 +14,15 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Divider,
   PasswordInput,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/copy-right-squared.svg';
 import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
@@ -129,8 +130,10 @@ const AuthMechanism: FC<Props> = ({
           {!isSCIMBot ? (
             <CopyToClipboardButton copyText={JWTToken} />
           ) : (
-            <CopyIcon
-              className="tw:mt-2 tw:cursor-pointer"
+            <ButtonUtility
+              className="tw:mt-2"
+              icon={Copy01}
+              tooltip={t('message.copy-to-clipboard')}
               onClick={() => navigator.clipboard.writeText(JWTToken)}
             />
           )}

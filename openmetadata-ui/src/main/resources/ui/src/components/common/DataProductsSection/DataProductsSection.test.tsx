@@ -76,9 +76,6 @@ jest.mock('antd', () => {
 });
 
 // Mock svg icons
-jest.mock('../../../assets/svg/edit-new.svg', () => ({
-  ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
-}));
 jest.mock('../../../assets/svg/close-icon.svg', () => ({
   ReactComponent: () => <div data-testid="close-icon-svg">Close</div>,
 }));
@@ -162,19 +159,6 @@ jest.mock(
       ),
   })
 );
-
-// Mock EditIconButton
-jest.mock('../IconButtons/EditIconButton', () => ({
-  EditIconButton: jest.fn().mockImplementation(({ onClick, ...props }) => (
-    <button
-      className="edit-icon"
-      data-testid="edit-icon-button"
-      onClick={onClick}
-      {...props}>
-      Edit
-    </button>
-  )),
-}));
 
 // Mock Loader
 jest.mock('../Loader/Loader', () => ({

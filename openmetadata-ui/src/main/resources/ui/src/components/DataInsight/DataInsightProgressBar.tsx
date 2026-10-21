@@ -12,7 +12,6 @@
  */
 
 import { ProgressBar } from '@openmetadata/ui-core-components';
-
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactComponent as IconSuccessBadge } from '../../assets/svg/success-badge.svg';

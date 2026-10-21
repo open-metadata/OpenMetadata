@@ -41,6 +41,7 @@
  */
 
 import {
+  ButtonUtility,
   EmptyPlaceholder,
   PaginationCardWithControls,
   Table as UntitledTable,
@@ -52,7 +53,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -66,7 +67,6 @@ import React, {
   useState,
 } from 'react';
 import {
-  Button as AriaButton,
   ColumnResizer,
   Dialog,
   Popover,
@@ -381,14 +381,15 @@ const HeaderFilterTrigger = ({
       onKeyDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}>
-      <AriaButton
+      <ButtonUtility
         aria-label="filter"
-        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        className="tw:ml-1"
         data-testid="filter-trigger"
+        icon={icon}
         ref={triggerRef}
-        onPress={() => onOpenChange(!isOpen)}>
-        {icon}
-      </AriaButton>
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
       <Popover
         isOpen={isOpen}
         placement="bottom right"
@@ -759,21 +760,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -789,7 +787,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {

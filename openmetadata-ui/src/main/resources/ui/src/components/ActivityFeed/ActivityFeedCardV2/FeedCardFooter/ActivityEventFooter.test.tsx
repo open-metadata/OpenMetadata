@@ -73,7 +73,6 @@ describe('ActivityEventFooter', () => {
       render(<ActivityEventFooter activity={activity} />);
 
       expect(screen.getByTestId('comment-button')).toBeInTheDocument();
-      expect(screen.getByTestId('comment-icon')).toBeInTheDocument();
     });
 
     it('should render reactions component', () => {

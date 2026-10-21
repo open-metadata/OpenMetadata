@@ -131,11 +131,9 @@ function useDetailHeaderInjection({
 
     const renameButtonNode: React.ReactNode = isRenaming ? undefined : (
       <ButtonUtility
-        color="tertiary"
         data-testid="rename-bot-btn"
         icon={Edit01}
         isDisabled={!canEditAll}
-        size="xs"
         tooltip={String(
           canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
         )}
@@ -148,11 +146,10 @@ function useDetailHeaderInjection({
 
     const deleteButtonNode: React.ReactNode = isRenaming ? undefined : (
       <ButtonUtility
-        color="tertiary"
         data-testid="delete-bot-btn"
         icon={Trash01}
         isDisabled={!canDelete}
-        size="xs"
+        size="lg"
         tooltip={String(
           canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
         )}

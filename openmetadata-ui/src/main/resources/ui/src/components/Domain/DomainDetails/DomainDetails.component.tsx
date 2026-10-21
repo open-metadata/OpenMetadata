@@ -14,13 +14,16 @@ import {
   Avatar,
   Box,
   Button,
+  ButtonUtility,
   Dropdown,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
   ChevronDown,
+  Collapse,
   Edit01,
+  Expand,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -124,7 +127,6 @@ import {
   ManageMenuItem,
 } from '../../common/EntityPageInfos/ManageButton/ManageMenu';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import { DEFAULT_DOMAIN_ICON } from '../../common/IconPicker/IconPicker.constants';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -1168,9 +1170,11 @@ const DomainDetails = ({
                 <Tabs.List
                   actions={
                     isExpandViewSupported && (
-                      <AlignRightIconButton
-                        className={isTabExpanded ? 'rotate-180' : ''}
-                        title={
+                      <ButtonUtility
+                        data-testid="tab-expand-button"
+                        icon={isTabExpanded ? Collapse : Expand}
+                        size="lg"
+                        tooltip={
                           isTabExpanded
                             ? t('label.collapse')
                             : t('label.expand')

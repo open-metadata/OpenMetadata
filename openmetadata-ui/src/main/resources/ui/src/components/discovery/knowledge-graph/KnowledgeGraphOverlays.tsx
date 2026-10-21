@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -460,13 +461,12 @@ const InspectorHeader = ({
   return (
     <Box align="start" className="kg-inspector-header" gap={2}>
       {onBack && (
-        <Button
-          aria-label={t('label.back')}
-          color="tertiary"
+        <ButtonUtility
           data-testid="inspector-back"
-          iconLeading={ChevronLeft}
-          size="sm"
-          onPress={onBack}
+          icon={ChevronLeft}
+          size="lg"
+          tooltip={t('label.back')}
+          onClick={onBack}
         />
       )}
       {tile}
@@ -484,12 +484,11 @@ const InspectorHeader = ({
           {subtitle}
         </Typography>
       </Box>
-      <Button
-        aria-label={t('label.close')}
-        color="tertiary"
-        iconLeading={XClose}
-        size="sm"
-        onPress={onClose}
+      <ButtonUtility
+        icon={XClose}
+        size="lg"
+        tooltip={t('label.close')}
+        onClick={onClose}
       />
     </Box>
   );

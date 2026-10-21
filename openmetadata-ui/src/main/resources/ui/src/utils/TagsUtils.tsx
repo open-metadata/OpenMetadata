@@ -14,16 +14,16 @@
 import {
   Badge,
   Box,
+  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Check, XClose } from '@openmetadata/ui-core-components/icons';
+import { Check, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import React from 'react';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -147,14 +147,19 @@ export const getDeleteIcon = (arg: {
   if (deleteTagId === id) {
     if (status === 'success') {
       return (
-        <Check className="tw:shrink-0" data-testid="check-outline" size={14} />
+        <Check
+          data-icon
+          className="tw:shrink-0"
+          data-testid="check-outline"
+          size={14}
+        />
       );
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
+  return <Trash01 data-icon data-testid="delete-icon" name="Delete" />;
 };
 
 export const tagRender = (customTagProps: CustomTagProps) => {
@@ -187,13 +192,13 @@ export const tagRender = (customTagProps: CustomTagProps) => {
           {tagLabel}
         </Typography>
       </Tooltip>
-      <button
+      <ButtonUtility
         aria-label={t('label.remove')}
-        className="tw:flex tw:cursor-pointer tw:border-0 tw:bg-transparent tw:p-0 tw:text-quaternary"
-        type="button"
-        onClick={onClose}>
-        <XClose data-testid="remove-tags" height={8} width={8} />
-      </button>
+        data-testid="remove-tags"
+        icon={XClose}
+        size="xs"
+        onClick={onClose}
+      />
     </Badge>
   );
 };

@@ -398,11 +398,10 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
       case 'actions':
         return (
           <ButtonUtility
-            color="tertiary"
             data-testid={`delete-action-${getEntityName(role)}`}
             icon={Trash01}
             isDisabled={!deleteRolePermission}
-            size="xs"
+            size="lg"
             tooltip={
               deleteRolePermission
                 ? t('label.delete-entity', { entity: t('label.role') })

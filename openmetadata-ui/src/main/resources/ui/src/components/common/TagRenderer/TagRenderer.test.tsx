@@ -14,6 +14,13 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { TagRenderer } from './TagRenderer';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  ButtonUtility: ({
+    'aria-label': ariaLabel,
+    onClick,
+  }: {
+    'aria-label'?: string;
+    onClick?: () => void;
+  }) => <button aria-label={ariaLabel} onClick={onClick} />,
   Tooltip: ({
     title,
     children,

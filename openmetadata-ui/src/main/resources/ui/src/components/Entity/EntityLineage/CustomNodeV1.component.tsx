@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   memo,
@@ -167,20 +167,17 @@ const SceneDrillButton = ({
   const drillLabel = label || t('label.zoom-in');
 
   return (
-    <Tooltip title={drillLabel}>
-      <Button
-        aria-label={drillLabel}
-        // Less paints the static light brand tint (@primary-1) in every state.
-        className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
-        color="tertiary"
-        iconLeading={ZoomInIcon}
-        size="sm"
-        onClick={(event: MouseEvent<HTMLButtonElement>) => {
-          event.stopPropagation();
-          onDrill(node);
-        }}
-      />
-    </Tooltip>
+    <ButtonUtility
+      // Less paints the static light brand tint (@primary-1) in every state.
+      className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
+      icon={ZoomInIcon}
+      size="lg"
+      tooltip={drillLabel}
+      onClick={(event: MouseEvent<HTMLButtonElement>) => {
+        event.stopPropagation();
+        onDrill(node);
+      }}
+    />
   );
 };
 

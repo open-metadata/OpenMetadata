@@ -339,11 +339,10 @@ const OntologyLibrary = ({
                 )}
               </Box>
               <ButtonUtility
-                color="secondary"
                 data-testid="ontology-library-close"
                 icon={XClose}
                 isDisabled={isNativeBusy}
-                size="sm"
+                size="lg"
                 tooltip={t('label.close')}
                 onClick={onClose}
               />

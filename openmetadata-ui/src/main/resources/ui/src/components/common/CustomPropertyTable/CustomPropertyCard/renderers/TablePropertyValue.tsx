@@ -151,11 +151,10 @@ const TablePropertyEdit = ({
                   ))}
                   <td className="tw:px-1">
                     <ButtonUtility
-                      color="tertiary"
                       data-testid={`delete-row-${rowIndex}`}
                       icon={Trash01}
                       isDisabled={isSaving}
-                      size="xs"
+                      size="lg"
                       tooltip={t('label.delete-row')}
                       onClick={() => removeRow(row.key)}
                     />

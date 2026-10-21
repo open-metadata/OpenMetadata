@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Owner,
   Tooltip,
@@ -357,7 +358,12 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box>
         <Box align="center" gap={2} justify="center">
-          <ReplyIcon height={20} width={20} onClick={showReplies} />
+          <ButtonUtility
+            icon={ReplyIcon}
+            size="lg"
+            tooltip={t('label.reply')}
+            onClick={showReplies}
+          />
           {commentsCount > 0 ? (
             <Button
               color="link-gray"
@@ -390,9 +396,7 @@ const TaskFeedCardFromTask = ({
             <Button
               color="tertiary"
               data-testid="approve-button"
-              iconLeading={
-                <CheckCircleFilled className="tw:shrink-0" size={14} />
-              }
+              iconLeading={CheckCircleFilled}
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
@@ -402,9 +406,7 @@ const TaskFeedCardFromTask = ({
             <Button
               color="tertiary-destructive"
               data-testid="reject-button"
-              iconLeading={
-                <CloseCircleFilled className="tw:shrink-0" size={14} />
-              }
+              iconLeading={CloseCircleFilled}
               size="xs"
               onPress={onTaskReject}>
               {t('label.reject')}

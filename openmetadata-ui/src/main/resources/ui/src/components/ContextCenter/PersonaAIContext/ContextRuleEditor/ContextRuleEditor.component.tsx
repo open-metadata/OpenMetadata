@@ -32,7 +32,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
-  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -113,10 +112,6 @@ const BEHAVIOR_CARD_CLASS =
 
 const ENTITY_TYPE_POPUP_CLASS =
   'tw:max-h-[min(320px,calc(100vh-96px))] tw:overflow-y-auto tw:overscroll-contain';
-
-const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
-  <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
-);
 
 const resolveFullyRendered = (
   rule: ContextRule | undefined,
@@ -517,7 +512,7 @@ export const ContextRuleEditor = ({
               className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
               color="link-color"
               href={getRuleExplorePath(entityType, filterJsonTree, queryFilter)}
-              iconTrailing={ViewInExploreIcon}
+              iconTrailing={LinkExternal01}
               size="sm"
               target="_blank">
               {t('label.view-in-explore')}

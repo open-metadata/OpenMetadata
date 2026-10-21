@@ -85,6 +85,3 @@ export interface TopicIconTone {
   /** Tinted tile behind the icon — surface plus its matching foreground. */
   tile: string;
 }
-
-/** One size for every icon-button affordance in a topic card's header. */
-export const TOGGLE_ICON_CLASS = 'tw:*:data-icon:size-3.5';

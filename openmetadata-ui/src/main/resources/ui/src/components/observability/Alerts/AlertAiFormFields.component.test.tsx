@@ -165,6 +165,7 @@ interface MockCoreProps {
   id?: string;
   onButtonClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onBlur?: () => void;
+  onClick?: () => void;
   onChange?: (value: string | boolean) => void;
   onItemCleared?: (key: string) => void;
   onItemInserted?: (key: string) => void;
@@ -340,6 +341,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <button data-testid={testId} disabled={isDisabled} onClick={onPress}>
         {children}
       </button>
+    ),
+    ButtonUtility: ({
+      'data-testid': testId,
+      isDisabled,
+      onClick,
+    }: MockCoreProps) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     ),
     Card: ({ children, className, 'data-testid': testId }: MockCoreProps) => (
       <section className={className} data-testid={testId}>

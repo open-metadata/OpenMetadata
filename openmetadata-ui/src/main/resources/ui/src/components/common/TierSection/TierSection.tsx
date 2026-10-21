@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import {
+  ButtonUtility,
   ClassificationTag,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
@@ -21,7 +23,6 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
 import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
@@ -175,12 +176,10 @@ const TierSection: React.FC<TierSectionProps> = ({
             open={popoverOpen}
             updateTier={handleTierSelection}
             onOpenChange={handlePopoverOpenChange}>
-            <EditIconButton
-              newLook
+            <ButtonUtility
               data-testid="edit-icon-tier"
-              disabled={false}
-              size="small"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.tier'),
               })}
             />

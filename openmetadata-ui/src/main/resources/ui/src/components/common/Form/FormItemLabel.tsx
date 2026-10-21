@@ -12,7 +12,6 @@
  */
 
 import { Badge, Tooltip } from '@openmetadata/ui-core-components';
-
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';

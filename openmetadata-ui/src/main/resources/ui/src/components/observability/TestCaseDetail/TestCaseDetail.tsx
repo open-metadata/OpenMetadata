@@ -12,12 +12,16 @@
  */
 import {
   Box,
-  Button,
+  ButtonUtility,
   Tabs,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01, RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Collapse,
+  Copy01,
+  Expand,
+  RefreshCcw01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
@@ -53,7 +57,6 @@ import { BetaBadge } from '../../common/Badge/Badge.component';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
@@ -363,9 +366,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }
 
     return (
-      <AlignRightIconButton
-        className={isTabExpanded ? 'rotate-180' : ''}
-        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      <ButtonUtility
+        data-testid="tab-expand-button"
+        icon={isTabExpanded ? Collapse : Expand}
+        size="lg"
+        tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}
       />
     );
@@ -427,27 +432,19 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                     data-testid="entity-header-title"
                     gap={3}>
                     {renderHeaderTitle()}
-                    <Tooltip
-                      placement="top"
-                      title={
+                    <ButtonUtility
+                      data-testid="entity-header-copy-button"
+                      icon={Copy01}
+                      size="lg"
+                      tooltip={
                         hasCopied
                           ? t('message.link-copy-to-clipboard')
                           : t('label.copy-item', {
                               item: t('label.url-uppercase'),
                             })
-                      }>
-                      <Button
-                        aria-label={t('label.copy-item', {
-                          item: t('label.url-uppercase'),
-                        })}
-                        color="tertiary"
-                        data-testid="entity-header-copy-button"
-                        iconLeading={Copy01}
-                        size="xs"
-                        type="button"
-                        onClick={handleCopyEntityUrl}
-                      />
-                    </Tooltip>
+                      }
+                      onClick={handleCopyEntityUrl}
+                    />
                   </Box>
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>

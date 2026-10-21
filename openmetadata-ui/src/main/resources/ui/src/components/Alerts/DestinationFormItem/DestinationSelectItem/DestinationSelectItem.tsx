@@ -13,7 +13,7 @@
 
 import {
   Alert,
-  Button,
+  ButtonUtility,
   Grid,
   Input,
   Select,
@@ -440,13 +440,15 @@ function DestinationSelectItem({
       </div>
 
       {!isViewMode && (
-        <Button
-          data-icon
-          color="tertiary"
+        <ButtonUtility
           data-testid={`remove-destination-${id}`}
-          onPress={() => remove(id)}>
-          <XClose className="tw:shrink-0" size={14} />
-        </Button>
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove-entity', {
+            entity: t('label.destination'),
+          })}
+          onClick={() => remove(id)}
+        />
       )}
     </div>
   );

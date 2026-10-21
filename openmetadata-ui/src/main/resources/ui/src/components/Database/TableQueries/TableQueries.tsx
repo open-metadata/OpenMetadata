@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Tooltip,
   Typography,
@@ -642,26 +643,17 @@ const TableQueries: FC<TableQueriesProp> = ({
                         handleFieldDropDown={handleSortFieldChange}
                         sortField={sortQuery.field}
                       />
-                      <Button
-                        color="tertiary"
+                      <ButtonUtility
                         data-testid="sort-order-button"
+                        icon={isAscSortOrder ? SortAscending : SortDescending}
+                        size="lg"
+                        tooltip={t('label.sort-order')}
                         onClick={() =>
                           handleSortOderChange(
                             isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
                           )
-                        }>
-                        {isAscSortOrder ? (
-                          <SortAscending
-                            className="tw:text-quaternary tw:shrink-0"
-                            size={14}
-                          />
-                        ) : (
-                          <SortDescending
-                            className="tw:text-quaternary tw:shrink-0"
-                            size={14}
-                          />
-                        )}
-                      </Button>
+                        }
+                      />
                       {addButton}
                     </Box>
                   </Box>

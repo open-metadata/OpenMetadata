@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import CloseIcon from '../../../components/Modals/CloseIcon.component';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -74,7 +75,13 @@ const ActivityPanelHeader: FC<ActivityPanelHeaderProps> = ({
       </p>
       <div className="d-flex items-center">
         {hideCloseIcon ? null : (
-          <CloseIcon dataTestId="closeDrawer" handleCancel={onCancel} />
+          <ButtonUtility
+            data-testid="closeDrawer"
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={onCancel}
+          />
         )}
       </div>
     </header>

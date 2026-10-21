@@ -21,7 +21,7 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { FilterLines } from '@openmetadata/ui-core-components/icons';
+import { FilterLines, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
@@ -291,11 +290,9 @@ const AssetsFilterBar = ({
       <Grid.Item className="layout-column d-flex gap-3" span={24}>
         <Dropdown.Root>
           <ButtonUtility
-            className="tw:size-9"
-            color="secondary"
             data-testid="asset-filter-button"
             icon={FilterLines}
-            size="sm"
+            size="lg"
             tooltip={t('label.filter-plural')}
           />
           <Dropdown.Popover className="tw:w-auto" placement="bottom start">
@@ -728,7 +725,7 @@ const AssetsTabs = forwardRef(
             description={t('message.delete-asset-from-entity-type', {
               entityType: entityTypeString,
             })}
-            icon={DeleteIcon}
+            icon={Trash01}
             id="delete-button"
             name={t('label.delete')}
           />

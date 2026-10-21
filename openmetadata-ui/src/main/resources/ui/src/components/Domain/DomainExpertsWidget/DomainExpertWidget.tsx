@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,10 +21,6 @@ import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
@@ -90,14 +88,20 @@ export const DomainExpertWidget = () => {
         selectedUsers={domain.experts ?? []}
         onUpdate={handleExpertsUpdate}>
         {isEmpty(domain.experts) ? (
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="Add"
-            title={t('label.add-entity', { entity: t('label.expert-plural') })}
+            icon={Plus}
+            tooltip={t('label.add-entity', {
+              entity: t('label.expert-plural'),
+            })}
           />
         ) : (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-expert-button"
-            title={t('label.edit-entity', { entity: t('label.expert-plural') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
+              entity: t('label.expert-plural'),
+            })}
           />
         )}
       </UserSelectableList>

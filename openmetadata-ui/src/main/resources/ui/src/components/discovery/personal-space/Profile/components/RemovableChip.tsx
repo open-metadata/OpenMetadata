@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Badge, Button } from '@openmetadata/ui-core-components';
+import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 
@@ -36,15 +36,14 @@ const RemovableChip: React.FC<RemovableChipProps> = ({
 }) => (
   <Badge color="gray" size="lg" type="modern">
     <span className="tw:max-w-40 tw:truncate">{label}</span>
-    <Button
+    <ButtonUtility
       className="tw:ml-1"
-      color="tertiary"
       data-testid={testId}
-      iconLeading={XClose}
+      icon={XClose}
       isDisabled={isDisabled}
       size="xs"
       slot={null}
-      onPress={onRemove}
+      onClick={onRemove}
     />
   </Badge>
 );

@@ -86,20 +86,18 @@ export const DimensionActionsCell = ({
   return (
     <Box direction="row" gap={1}>
       <ButtonUtility
-        color="tertiary"
         data-testid={`edit-${dimension.name}`}
         icon={Edit01}
         isDisabled={isSystem}
-        size="xs"
+        size="lg"
         tooltip={isSystem ? lockedTooltip : t('label.edit-entity', { entity })}
         onPress={() => onEdit(dimension)}
       />
       <ButtonUtility
-        color="tertiary"
         data-testid={`delete-${dimension.name}`}
         icon={Trash01}
         isDisabled={isSystem}
-        size="xs"
+        size="lg"
         tooltip={
           isSystem ? lockedTooltip : t('label.delete-entity', { entity })
         }

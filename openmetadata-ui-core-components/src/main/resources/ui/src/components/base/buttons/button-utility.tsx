@@ -2,21 +2,38 @@ import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { styles as buttonStyles } from './button';
+import { ButtonLoadingIcon, styles as buttonStyles } from './button';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
   DetailedHTMLProps,
   FC,
+  KeyboardEvent,
   ReactNode,
+  SyntheticEvent,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type { Placement } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
+
+const stopPress = (event: SyntheticEvent) => event.stopPropagation();
+// The soft-disabled button stays natively enabled, so its click still carries the
+// default action (a `type="submit"` button would submit its form). Enter and
+// Space activate a button through this same click. Pointer and mouse down are
+// left alone so the button can still take focus and show its tooltip.
+const blockClick = (event: SyntheticEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+const stopKeyPress = (event: KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.stopPropagation();
+  }
+};
 
 const neutralIcon =
   'tw:text-utility-gray-500 tw:hover:text-utility-gray-600 tw:*:data-icon:text-current';
@@ -65,6 +82,8 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 export interface CommonProps {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
+  /** Replaces the icon with a spinner and disables the button */
+  isLoading?: boolean;
   /** The size variant of the button */
   size?: keyof typeof sizes;
   /** The color variant of the button */
@@ -94,6 +113,8 @@ export interface ButtonProps
     > {
   /** Slot name for react-aria component */
   slot?: AriaButtonProps['slot'];
+  /** Handler called when the button is pressed */
+  onPress?: AriaButtonProps['onPress'];
 }
 
 /**
@@ -112,19 +133,30 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const ButtonUtility = ({
-  tooltip,
-  className,
-  isDisabled,
-  icon: Icon,
-  size = 'sm',
-  color = 'secondary',
-  tooltipPlacement = 'top',
-  isSelected,
-  ...otherProps
-}: Props) => {
+export const ButtonUtility = forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  Props
+>(function ButtonUtility(
+  {
+    tooltip,
+    className,
+    isDisabled: isDisabledProp,
+    isLoading,
+    icon: Icon,
+    size = 'sm',
+    color = 'tertiary',
+    tooltipPlacement = 'top',
+    isSelected,
+    ...otherProps
+  },
+  ref
+) {
   const href = 'href' in otherProps ? otherProps.href : undefined;
+  const isDisabled = isDisabledProp || isLoading;
   const Component = href ? AriaLink : AriaButton;
+  // A disabled button with a tooltip stays focusable and keeps its tooltip,
+  // which usually says why it is disabled; only the press is dropped.
+  const softDisabled = Boolean(isDisabled && tooltip && !href);
 
   let props = {};
 
@@ -144,17 +176,21 @@ export const ButtonUtility = ({
       ...otherProps,
 
       type: otherProps.type || 'button',
-      isDisabled,
+      isDisabled: isDisabled && !softDisabled,
+      ...(softDisabled
+        ? { 'aria-disabled': true, onClick: undefined, onPress: undefined }
+        : {}),
       ...(isSelected === undefined ? {} : { 'aria-pressed': isSelected }),
     };
   }
 
-  const content = (
+  const button = (
     <Component
       aria-label={tooltip}
       {...props}
       className={cx(
         'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2 tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled_subtle tw:disabled:*:data-icon:text-fg-disabled_subtle',
+        'tw:aria-disabled:cursor-not-allowed tw:aria-disabled:*:data-icon:text-fg-disabled_subtle',
         sizes[size],
         styles[(size === 'xs' && borderless[color]) || color],
         isSelected && selectedStyles,
@@ -163,23 +199,49 @@ export const ButtonUtility = ({
         'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
 
         className
-      )}>
-      {isReactComponent(Icon) && <Icon data-icon />}
-      {isValidElement(Icon) && Icon}
+      )}
+      // See the matching cast in button.tsx: `Component` is chosen at runtime.
+      ref={ref as never}>
+      {isLoading ? (
+        <ButtonLoadingIcon />
+      ) : (
+        <>
+          {isReactComponent(Icon) && <Icon data-icon />}
+          {isValidElement(Icon) && Icon}
+        </>
+      )}
     </Component>
   );
 
-  if (tooltip) {
-    return (
-      <Tooltip
-        isDisabled={isDisabled}
-        offset={size === 'xs' || size === 'sm' ? 4 : 6}
-        placement={tooltipPlacement}
-        title={tooltip}>
-        {content}
-      </Tooltip>
-    );
+  const content = tooltip ? (
+    <Tooltip
+      offset={size === 'xs' || size === 'sm' ? 4 : 6}
+      placement={tooltipPlacement}
+      title={tooltip}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
+
+  if (!tooltip || href) {
+    return content;
   }
 
-  return content;
-};
+  // A parent MenuTrigger / DialogTrigger presses through context, not props, so
+  // a soft-disabled button stops the press events before they reach it. The
+  // wrapper sits outside Tooltip, which would otherwise make it a second tab stop.
+  // It stays mounted while enabled too, so toggling isDisabled updates the button
+  // in place instead of remounting it and dropping keyboard focus.
+  return (
+    <span
+      className="tw:contents"
+      onClickCapture={softDisabled ? blockClick : undefined}
+      onKeyDownCapture={softDisabled ? stopKeyPress : undefined}
+      onKeyUpCapture={softDisabled ? stopKeyPress : undefined}
+      onMouseDownCapture={softDisabled ? stopPress : undefined}
+      onPointerDownCapture={softDisabled ? stopPress : undefined}>
+      {content}
+    </span>
+  );
+});

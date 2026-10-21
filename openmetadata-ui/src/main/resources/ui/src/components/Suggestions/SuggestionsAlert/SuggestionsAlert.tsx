@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Card, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -79,21 +83,22 @@ const SuggestionsAlert = ({
 
         {hasEditAccess && (
           <div className="d-flex justify-end gap-2">
-            <Button
-              color="secondary-brand"
+            <ButtonUtility
               data-testid="reject-suggestion"
-              iconLeading={XClose}
-              size="xs"
-              onPress={() =>
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.reject')}
+              onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Reject)
               }
             />
-            <Button
+            <ButtonUtility
               color="primary"
               data-testid="accept-suggestion"
-              iconLeading={Check}
-              size="xs"
-              onPress={() =>
+              icon={Check}
+              size="lg"
+              tooltip={t('label.accept')}
+              onClick={() =>
                 acceptRejectSuggestion(suggestion, SuggestionAction.Accept)
               }
             />

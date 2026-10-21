@@ -255,12 +255,11 @@ const AnnouncementActions = ({
       )}
       {onDismiss && (
         <ButtonUtility
-          aria-label={t('label.close')}
           className={actionClassName}
-          color="tertiary"
           data-testid="announcement-dismiss-btn"
           icon={XClose}
-          size="xs"
+          size="sm"
+          tooltip={t('label.close')}
           onClick={stopAnd(onDismiss)}
         />
       )}

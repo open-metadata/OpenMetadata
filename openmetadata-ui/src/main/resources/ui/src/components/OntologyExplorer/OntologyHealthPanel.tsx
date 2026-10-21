@@ -163,16 +163,14 @@ const OntologyHealthPanel = ({
         <>
           <span className="tw:flex-1" />
           <ButtonUtility
-            color="tertiary"
             icon={Minus}
-            size="xs"
+            size="lg"
             tooltip={t('label.minimize')}
             onClick={() => setView('minimized')}
           />
           <ButtonUtility
-            color="tertiary"
             icon={isOpen ? ChevronDown : ChevronUp}
-            size="xs"
+            size="lg"
             tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
             onClick={() => setView(isOpen ? 'summary' : 'open')}
           />

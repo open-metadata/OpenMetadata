@@ -237,10 +237,10 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         <span className="tw:flex-1" />
         {onCancel ? (
           <ButtonUtility
-            className="tw:size-5 tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-fg-quaternary hover:tw:text-fg-secondary"
+            className="tw:shrink-0"
             data-testid="relation-type-cancel"
             icon={XClose}
-            size="xs"
+            size="lg"
             tooltip={t('label.close')}
             onClick={onCancel}
           />
