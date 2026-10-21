@@ -149,6 +149,26 @@ public final class MetadataCollectionService {
         .ifPresent(task -> resolve(task, TaskResolutionType.Completed, RESUBMITTED));
   }
 
+  /**
+   * The workflow moved the asset to {@code stage}: a Revise and resubmit task of any other stage
+   * can no longer be resubmitted there, so it closes.
+   */
+  public void closeRevisionsOutside(final EntityInterface<?> entity, final String stage) {
+    repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> isRevisionOutside(task, stage))
+        .forEach(task -> finish(task, false));
+  }
+
+  private static boolean isRevisionOutside(final Task task, final String stage) {
+    final MetadataCompletionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
+    return payload.getRevision() != null
+        && payload.getStage() != null
+        && !payload.getStage().value().equals(stage);
+  }
+
   /** Resolving the task only re-checks it: it completes once nothing is missing. */
   public static boolean decides(final Task task) {
     return task != null && task.getType() == TASK_TYPE;
