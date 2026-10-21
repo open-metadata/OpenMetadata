@@ -33,6 +33,19 @@ const AINotFoundPage = withPageSuspenseFallback(
 );
 
 /**
+ * Classic-only page trees. Settings live in the settings modal in AI mode, so
+ * these must not render inside the shell — not from the classic route table
+ * and not from a plugin's catch-all fallback, which both sit at `/*` and so
+ * lose to these more specific splats. Links reach the modal through
+ * `getSettingsLink`. ADR:2026-10-21-settings-pages-are-classic-only
+ */
+export const CLASSIC_ONLY_ROUTE_PATHS = [
+  `${ROUTES.SETTINGS}/*`,
+  `${ROUTES.MARKETPLACE}/*`,
+  '/bots/*',
+];
+
+/**
  * Top-level routes component for app mode.
  *
  * OSS `AppRouter` renders this shell directly whenever the active
@@ -106,6 +119,9 @@ export const AppModeRoutes = () => {
       ) : (
         <KeepAliveRoutes routes={routes}>
           <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
+          {CLASSIC_ONLY_ROUTE_PATHS.map((path) => (
+            <Route element={<AINotFoundPage />} key={path} path={path} />
+          ))}
           {fallback ? (
             <Route element={fallback.element} path="/*" />
           ) : (

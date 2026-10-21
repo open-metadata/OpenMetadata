@@ -12,7 +12,7 @@
  */
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Routes } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -91,11 +91,18 @@ const mockKeepAliveRoutesRender = jest.fn();
 
 jest.mock('../KeepAliveRoutes/KeepAliveRoutes', () => ({
   __esModule: true,
-  default: ({ routes }: { routes: Array<{ path?: string | string[] }> }) => {
+  default: ({
+    routes,
+    children,
+  }: {
+    routes: Array<{ path?: string | string[] }>;
+    children: React.ReactNode;
+  }) => {
     mockKeepAliveRoutesRender(routes);
 
     return (
       <div data-testid="mounted-routes">
+        <Routes>{children}</Routes>
         {routes.map((route) => {
           const pathKey = Array.isArray(route.path)
             ? route.path.join(',')
@@ -110,6 +117,25 @@ jest.mock('../KeepAliveRoutes/KeepAliveRoutes', () => ({
       </div>
     );
   },
+}));
+
+jest.mock('../../../../utils/ApplicationRoutesClassBase', () => ({
+  __esModule: true,
+  default: {
+    getRouteElements: () => () => <div data-testid="classic-route-table" />,
+  },
+}));
+
+jest.mock('../AINotFoundPage/AINotFoundPage', () => ({
+  __esModule: true,
+  default: () => <div data-testid="ai-not-found-page" />,
+}));
+
+let mockFallback: { element: React.ReactNode } | undefined;
+
+jest.mock('../appModeExtensions', () => ({
+  ...jest.requireActual('../appModeExtensions'),
+  useAppModeRoutesFallback: () => mockFallback,
 }));
 
 jest.mock('../AppShell', () => ({
@@ -199,4 +225,59 @@ describe('AppModeRoutes — contribution lifecycle', () => {
 
     expect(routesAfterRerender).toBe(routesAfterSettling);
   });
+});
+
+describe('AppModeRoutes — classic-only settings routes', () => {
+  const renderAt = (path: string) =>
+    render(
+      <MemoryRouter initialEntries={[path]}>
+        <ApplicationsProvider>
+          <AppModeRoutes />
+        </ApplicationsProvider>
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    mockFallback = undefined;
+    mockUsePermissionProvider.mockReturnValue({ permissions: { app: {} } });
+    mockUseApplicationStore.mockReturnValue({
+      setApplicationsName: jest.fn(),
+      setApplicationsLoaded: jest.fn(),
+    });
+    mockGetInstalledApplicationList.mockResolvedValue([]);
+  });
+
+  it.each([
+    '/settings',
+    '/settings/members/teams/Org',
+    '/settings/billing/credits',
+    '/marketplace',
+    '/marketplace/apps/SearchIndexing',
+    '/bots/ingestion-bot',
+  ])('serves the AI not-found page at %s', async (path) => {
+    renderAt(path);
+
+    expect(await screen.findByTestId('ai-not-found-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('classic-route-table')).not.toBeInTheDocument();
+  });
+
+  it('wins over a plugin fallback router mounted at the catch-all', async () => {
+    mockFallback = { element: <div data-testid="plugin-fallback" /> };
+    renderAt('/settings/billing/credits');
+
+    expect(await screen.findByTestId('ai-not-found-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('plugin-fallback')).not.toBeInTheDocument();
+  });
+
+  it.each(['/explore/tables', '/data-marketplace', '/my-data'])(
+    'still serves %s from the classic route table',
+    async (path) => {
+      renderAt(path);
+
+      expect(
+        await screen.findByTestId('classic-route-table')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('ai-not-found-page')).not.toBeInTheDocument();
+    }
+  );
 });
