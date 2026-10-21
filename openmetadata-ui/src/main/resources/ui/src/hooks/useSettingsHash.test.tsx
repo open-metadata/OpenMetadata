@@ -326,6 +326,69 @@ describe('useSettingsHash', () => {
       expect(result.current.settings.state.tab).toBeNull();
     });
 
+    // Panels, the paging hook and the modal each mount the hook; one push is
+    // still one entry to pop.
+    it('counts a push once however many hooks see it', () => {
+      const { result } = renderHook(
+        () => ({
+          location: useLocation(),
+          navigate: useNavigate(),
+          settings: useSettingsHash(),
+          panel: useSettingsHash(),
+          paging: useSettingsHash(),
+        }),
+        { wrapper: makeWrapper('/x?a=1') }
+      );
+      const pageKey = result.current.location.key;
+
+      follow(result, '/settings/members/teams');
+      follow(result, '/settings/members/teams/Org');
+      // The last-mounted hook's effects run after the others have adopted the
+      // push, so it is the one that would miscount.
+      act(() => result.current.paging.clearHash());
+
+      expect(result.current.location.key).toBe(pageKey);
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '',
+      });
+    });
+
+    // The count lives with the hook instance, so a modal that was never closed
+    // (a test that ends mid-flow, an HMR remount) cannot make a later close pop
+    // the page itself off the history.
+    it('does not carry a count over to a new mount', () => {
+      const first = renderOnPage('/x?a=1');
+      follow(first.result, '/settings/members/teams');
+      follow(first.result, '/settings/members/teams/Org');
+      first.unmount();
+
+      const { result } = renderHook(
+        () => ({
+          location: useLocation(),
+          settings: useSettingsHash(),
+        }),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <MemoryRouter initialEntries={['/a', '/y']} initialIndex={1}>
+              {children}
+            </MemoryRouter>
+          ),
+        }
+      );
+      act(() => {
+        result.current.settings.setHash('bots');
+        globalThis.location.hash = '#bots';
+      });
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location).toMatchObject({
+        pathname: '/y',
+        hash: '',
+      });
+    });
+
     // A modal link to another page (e.g. team detail → Explore) navigates, then
     // closes the modal; the close must not pop history back onto the modal.
     it('keeps a navigation to another page that lands before the close', () => {

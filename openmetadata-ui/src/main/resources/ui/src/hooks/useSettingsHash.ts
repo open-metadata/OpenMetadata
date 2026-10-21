@@ -145,14 +145,6 @@ const subscribeStoreHash = (onStoreChange: () => void): (() => void) => {
 
 const getStoreHash = (): string => storeHash;
 
-// History entries a settings link pushed for the open modal: 1 when a link
-// opened it over the page, +1 per link followed inside it. Closing pops them so
-// the page's own entry is current again instead of a duplicate of it; 0 (deep
-// link, refresh, Back/Forward) closes by replacing as before. Every mounted
-// hook sees the same push, so it is counted once per history entry key.
-let pushedEntries = 0;
-let countedPushKey: string | undefined;
-
 /**
  * Hook that syncs settings modal navigation with `location.hash`.
  *
@@ -163,6 +155,16 @@ export const useSettingsHash = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const navigationType = useNavigationType();
+
+  // History entries a settings link pushed for the open modal: 1 when a link
+  // opened it over the page, +1 per link followed inside it. Closing pops them
+  // so the page's own entry is current again instead of a duplicate of it; 0
+  // (deep link, refresh, Back/Forward) closes by replacing as before. Each hook
+  // instance counts the pushes it sees, so the count belongs to whoever closes:
+  // `useSettingsHashSync` in PersonalSpaceModal, mounted for the whole AI
+  // shell. An instance mounted while the modal is open undercounts and closes
+  // by replacing, which leaves a duplicate entry but never pops past the page.
+  const pushedEntriesRef = useRef(0);
 
   // Keep navigate reachable from the stable callbacks below without listing it
   // (or location) as a dependency — an unstable `setHash` identity propagates
@@ -184,6 +186,11 @@ export const useSettingsHash = () => {
   );
 
   const state = useMemo(() => parseHash(hash), [hash]);
+  // This render's store value, read by the push effect below: it predates any
+  // instance adopting the push, so every instance decides alike whatever order
+  // their effects run in.
+  const renderedHashRef = useRef(hash);
+  renderedHashRef.current = hash;
 
   // The urgent `storeHash` is the single source of truth; `setHash`/`clearHash`
   // keep it correct for in-app navigation. Only GENUINE browser-driven changes
@@ -195,7 +202,7 @@ export const useSettingsHash = () => {
   // navigations do not emit `popstate`, so they never echo back.
   useEffect(() => {
     const onPopState = () => {
-      pushedEntries = 0;
+      pushedEntriesRef.current = 0;
       setStoreHash(globalThis.location.hash);
     };
     globalThis.addEventListener('popstate', onPopState);
@@ -244,14 +251,11 @@ export const useSettingsHash = () => {
 
       return;
     }
-    if (
-      navigationType === NavigationType.Push &&
-      location.key !== countedPushKey
-    ) {
-      countedPushKey = location.key;
+    if (navigationType === NavigationType.Push) {
       const liveHash = globalThis.location.hash;
-      pushedEntries =
-        liveHash && (!storeHash || pushedEntries) ? pushedEntries + 1 : 0;
+      const pushed = pushedEntriesRef.current;
+      pushedEntriesRef.current =
+        liveHash && (!renderedHashRef.current || pushed) ? pushed + 1 : 0;
       setStoreHash(liveHash);
     }
   }, [location.key, navigationType]);
@@ -292,12 +296,11 @@ export const useSettingsHash = () => {
       new URL(storeHash, globalThis.location.href).hash ===
         globalThis.location.hash;
 
+    const entries = pushedEntriesRef.current;
+    pushedEntriesRef.current = 0;
     if (!urlStillOnModal) {
-      pushedEntries = 0;
       setStoreHash('');
-    } else if (pushedEntries) {
-      const entries = pushedEntries;
-      pushedEntries = 0;
+    } else if (entries) {
       setStoreHash('');
       void navigateRef.current(-entries);
     } else {
