@@ -255,6 +255,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -1311,6 +1312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -1573,14 +1577,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    checkEntityStatusNotOwnedByWorkflow(current, change);
-    // A workflow's approval task already decided who may approve (reviewers, owners or named
-    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (isDecidedByPeople(current, change, from)) {
+      checkDecidedByAPerson(current, change);
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    } else {
+      checkEntityStatusNotOwnedByWorkflow(current, change);
+      checkReviewerLeavesReview(current, change, from, to);
+    }
+  }
+
+  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
+  private boolean isDecidedByPeople(T current, T change, String from) {
+    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
+  }
+
+  private void checkDecidedByAPerson(T current, T change) {
+    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve or reject %s '%s'; a bot cannot",
+              entityType, current.getFullyQualifiedName()));
+    }
+  }
+
+  // A workflow's approval task already decided who may approve (reviewers, owners or named
+  // candidates), so the reviewer rule only guards direct edits and imports.
+  private void checkReviewerLeavesReview(T current, T change, String from, String to) {
     if (EntityStatus.IN_REVIEW.value().equals(from)
         && (EntityStatus.APPROVED.value().equals(to) || EntityStatus.REJECTED.value().equals(to))
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
+  }
+
+  /**
+   * Whether people move this entity out of {@code from} directly, even while a workflow owns its
+   * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
+   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
+   * decides it.
+   */
+  protected boolean isStageDecidedByPeople(T current, String from) {
+    return false;
   }
 
   /**
@@ -1608,7 +1645,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
   // included, before checking who may move the entity out of review.
   private void loadReviewersForStageCheck(T original, String from) {
-    if (supportsReviewers && EntityStatus.IN_REVIEW.value().equals(from)) {
+    if (supportsReviewers
+        && (EntityStatus.IN_REVIEW.value().equals(from)
+            || isStageDecidedByPeople(original, from))) {
       T withReviewers =
           get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
       original.setReviewers(withReviewers.getReviewers());
@@ -3813,7 +3852,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
     // invalidateCacheForEntity so the Guava-L1 eviction stays inline (cheap) while the Redis-L2
-    // round trip is deferred to the post-commit drain when a flush scope is open — never issued
+    // round trip is deferred to the drain that runs once the transaction commits or rolls back
+    // when a flush scope is open — never issued
     // while the pooled connection is held. The previous per-row pub/sub reason label was
     // informational only (remote listeners evict L1 regardless), so the unified path is equivalent.
     for (EntityDAO.EntityIdFqnPair row : affected) {
@@ -3826,8 +3866,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * records the Redis-L2 invalidation key here instead of issuing the (blocking, syncCommands)
    * Redis round trip inline. The flush opens a scope before its DB transaction so no Redis call
    * runs while a pooled connection is held — only the cheap local Guava-L1 invalidate stays inline
-   * — then drains the de-duplicated keys after commit, on the request thread, preserving
-   * read-your-write. {@code null} means "no scope active" and the Redis-L2 work runs inline.
+   * — then drains the de-duplicated keys once the transaction commits or rolls back, on the request
+   * thread, preserving read-your-write. {@code null} means "no scope active" and the Redis-L2 work
+   * runs inline.
    */
   private static final ThreadLocal<Map<CacheInvalidationKey, CacheInvalidationKey>>
       DEFERRED_CACHE_INVALIDATIONS = new ThreadLocal<>();
@@ -3847,7 +3888,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
-   * post-commit invalidation; the {@code fqn} is carried along (best non-null wins) so the by-name
+   * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
+   * the by-name
    * Redis variant is evicted when any caller knew the FQN.
    */
   private static final class CacheInvalidationKey {
@@ -3885,8 +3927,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #invalidateCacheForEntity} records keys instead of issuing the blocking Redis round trip.
    * Returns {@code true} if this call opened the scope (caller owns draining/closing it), {@code
    * false} if a scope was already open (nested call — the outer owner stays responsible). Pair a
-   * {@code true} result with {@link #drainCacheInvalidations()} after commit and {@link
-   * #clearCacheInvalidations()} on failure.
+   * {@code true} result with {@link #drainCacheInvalidations()} once the transaction ends, whether
+   * it committed or rolled back.
    */
   static boolean beginCacheInvalidationDeferral() {
     boolean opened = DEFERRED_CACHE_INVALIDATIONS.get() == null;
@@ -3901,22 +3943,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
     DEFERRED_CACHE_INVALIDATIONS.remove();
     if (deferred != null) {
-      evictCommittedWrites(List.copyOf(deferred.values()));
+      evictTransactionWrites(List.copyOf(deferred.values()));
     }
   }
 
   /**
-   * Post-commit eviction of everything the transaction wrote. The entity keys leave Redis in one
-   * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
-   * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
-   * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
-   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
-   * the one armed inside the transaction may already have fired.
+   * Eviction of everything the transaction wrote, once it has committed or rolled back. The entity
+   * keys leave Redis in one DEL: evicted one entity at a time, a restored database read fresh while
+   * its schemas still served their soft-deleted copies. The write epochs move before that DEL so a
+   * loader holding the pre-commit row cannot write it back afterwards, and L1 is evicted after it
+   * because a reader in the window re-populated L1 from the stale Redis entry. They move again
+   * before the L1 eviction: a reader that took its epoch after the first move and fetched the stale
+   * entry before the DEL would otherwise pass its re-check after putting that entry into L1. The
+   * repair is re-armed once the transaction ends: the one armed inside it may already have fired.
    */
-  private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
+  private static void evictTransactionWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
+      bumpWriteEpoch(write.entityType, write.id, write.fqn);
       evictLocalCopies(write.entityType, write.id, write.fqn);
       invalidateDerivedRedisL2(write.entityType, write.id);
       publishRefChange(write.entityType, write.id, write.fqn);
@@ -3924,7 +3969,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  /** Discard captured keys and close the scope without running them (failed transaction). */
+  /**
+   * Close the scope without evicting its keys. Only tests reset a scope this way: a transaction that
+   * fails still evicts the keys its writes recorded, see
+   * ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote.
+   */
+  @VisibleForTesting
   static void clearCacheInvalidations() {
     DEFERRED_CACHE_INVALIDATIONS.remove();
   }
@@ -3939,7 +3989,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * <p>The Guava-L1 eviction always runs inline (local, cheap). The Redis-L2 portion (base/by-name
    * hash, relationship, bundle, lineage, pub/sub) issues a blocking {@code syncCommands} round
    * trip, so when a deferral scope is active (a flush is holding a pooled DB connection) it is
-   * recorded and replayed post-commit on the request thread instead — never inside the handle.
+   * recorded and replayed on the request thread once the transaction commits or rolls back instead
+   * — never inside the handle.
    */
   public static void invalidateCacheForEntity(String entityType, UUID id, String fqn) {
     if (entityType == null || id == null) {
@@ -4028,8 +4079,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Issue the Redis-L2 eviction now, or record it for the post-commit drain when a deferral scope is
-   * open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
+   * Issue the Redis-L2 eviction now, or record it for the drain that runs once the transaction
+   * commits or rolls back, when a deferral scope is open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
    * DEL} sent while the writer's transaction is still open is undone by any concurrent reader, which
    * takes the resulting miss, reads the not-yet-committed row, and re-populates the key with the
    * pre-write value. That stale entry then outlives the commit (until TTL), which is how a restored
@@ -4237,7 +4288,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void invalidateCache(T entity) {
     try {
       // Guava L1 is a local map eviction, so it stays inline. The Redis L2 round trip does not:
-      // deferOrInvalidateRedisL2 holds it until the transaction commits when a scope is open.
+      // deferOrInvalidateRedisL2 holds it until the transaction ends when a scope is open.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
       deferOrInvalidateRedisL2(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -4415,9 +4466,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
-    // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
-    // the
-    // handle is held).
+    // storeRelationshipsInternal are recorded and drained once the transaction ends (no Redis round
+    // trip while the handle is held).
     flushInOneTransaction(
         entities,
         () -> {
@@ -4463,8 +4513,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
-    // invalidations issued here are recorded and drained post-commit so no Redis round trip runs
-    // while the handle is held.
+    // invalidations issued here are recorded and drained once the transaction ends so no Redis
+    // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
           updateMany(updatedEntities);
@@ -4602,6 +4652,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")
@@ -5855,9 +5916,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
    * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
    * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
-   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
-   * post-commit on the request thread (read-your-write safe).
+   * #beginCacheInvalidationDeferral()} — the lineage writes drained post-commit on the request
+   * thread, the cache keys once the transaction commits or rolls back. Only the cheap local
+   * Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens on the request
+   * thread after the transaction ends (read-your-write safe).
    *
    * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
    * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
@@ -5949,11 +6011,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Run {@code flushBody} as one wrapped DB transaction with the post-commit side-effect collectors
-   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + Redis-L2 cache) opened fresh
-   * for each deadlock-retry attempt and drained exactly once, synchronously on the request thread,
-   * after the final successful commit — so search/lineage stay read-your-write visible by the time
-   * the request returns. A rolled-back attempt clears its collector so a replay never double-enqueues.
-   * The collectors are (re-)opened inside the transactional runnable so each replay starts empty.
+   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + post-commit actions) opened
+   * fresh for each deadlock-retry attempt and drained exactly once, synchronously on the request
+   * thread, after the final successful commit — so search/lineage stay read-your-write visible by
+   * the time the request returns. A rolled-back attempt clears them so a replay never
+   * double-enqueues, and they are (re-)opened inside the transactional runnable so each replay
+   * starts empty. The Redis-L2 cache collector instead keeps every attempt's keys and is drained
+   * whether the transaction commits or rolls back (see {@link DeferralScope}).
    */
   protected void flushInOneTransaction(Runnable flushBody) {
     DeferralScope scope = new DeferralScope();
@@ -6027,13 +6091,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
-   * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
-   * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
-   * #finish(boolean)} drains all three once on success (running the captured work post-commit on the
-   * request thread) or clears all three on failure. A scope only owns (and therefore drains) the
-   * collectors it actually opened — an inner flush nested under an outer scope leaves draining to the
-   * outer owner, so a retried inner flush never double-enqueues into the outer collector.
+   * Holds the per-thread deferral collectors for one flush: RDF, lineage-ES, rename-cascade search,
+   * post-commit actions and the Redis-L2 cache. {@link #reopenForAttempt()} resets the closure
+   * collectors at the start of every deadlock-retry attempt so a replayed body never inherits
+   * closures captured by a rolled-back attempt. {@link #finish(boolean)} drains every collector once
+   * on success (running the captured work post-commit on the request thread) or clears the closure
+   * collectors on failure. The cache collector is the exception: it keeps a
+   * rolled-back attempt's keys and evicts them even when the transaction fails, because a read inside
+   * the transaction may have cached the row the rollback undid
+   * (ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote). A scope only owns (and
+   * therefore drains) the collectors it actually opened — an inner flush nested under an outer scope
+   * leaves draining to the outer owner, so a retried inner flush never double-enqueues into the outer
+   * collector.
    */
   private final class DeferralScope {
     private boolean opened;
@@ -6074,7 +6143,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * scope only roll back this flush's own contributions (back to the entry checkpoint) so the
      * inner replay never double-enqueues into the outer owner's collector. The cache collector
      * de-duplicates by (type, id), so re-recording a key on replay is idempotent and needs no
-     * checkpoint.
+     * checkpoint; it keeps the abandoned attempt's keys, which are evicted with the final attempt's.
      */
     private void resetForReplay() {
       if (ownsRdf) {
@@ -6094,10 +6163,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         SearchRepository.beginSearchWriteDeferral();
       } else {
         SearchRepository.rollbackSearchWriteToCheckpoint(searchWriteCheckpoint);
-      }
-      if (ownsCache) {
-        clearCacheInvalidations();
-        beginCacheInvalidationDeferral();
       }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
@@ -6151,11 +6216,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (ownsSearchWrite) {
         SearchRepository.clearSearchWriteDeferred();
       }
-      if (ownsCache) {
-        clearCacheInvalidations();
-      }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
+      }
+      if (ownsCache) {
+        runGuarded(EntityRepository::drainCacheInvalidations);
       }
     }
   }
@@ -6164,7 +6229,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try {
       drainStep.run();
     } catch (Exception e) {
-      LOG.error("Post-commit deferral drain step failed", e);
+      LOG.error("Deferral drain step failed", e);
     }
   }
 
@@ -12005,26 +12070,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * order those copies: a same-session revert moves both back. Evictions commute, so the order in
      * which writers finish no longer matters.
      */
-    private void invalidateCachesAfterStore() {
+    @VisibleForTesting
+    void invalidateCachesAfterStore() {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
       // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
       // when it does its end-of-load check. Pair with the loader-side race guard in
       // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
-      bumpWriteEpoch(entityType, id, fqn);
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        bumpWriteEpoch(entityType, null, originalFqn);
-      }
-
-      // Evict the Guava L1 so future reads reload from Redis/DB.
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
-      // getByName(oldFqn) misses and falls through to a 404 from DB.
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-      }
+      bumpWriteEpochs(id, fqn);
 
       // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
       // row. A stale base hash field would otherwise serve old values, including old owners and
@@ -12058,6 +12112,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         cachedLineage.invalidate(id);
       }
 
+      // Evict L1 only once Redis has dropped the old JSON. Evicting it first let a concurrent
+      // read, in the gap before the Redis delete above, reload the pre-commit copy from Redis
+      // into L1, where it outlived this write until EntityCacheRepair ran. A read that fetched
+      // that copy before the delete can still put it after this eviction, and it took its epoch
+      // after the first bump, so bump again: its re-check after the put then drops the copy.
+      bumpWriteEpochs(id, fqn);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
+      // getByName(oldFqn) misses and falls through to a 404 from DB.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
+      }
       RequestEntityCache.invalidate(entityType, id, fqn);
       deferCacheBundleInvalidation(entityType, id, fqn);
 
@@ -12069,6 +12136,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (originalFqn != null && !originalFqn.equals(fqn)) {
           pubsub.publish(entityType, id, originalFqn, "rename-old");
         }
+      }
+    }
+
+    private void bumpWriteEpochs(UUID id, String fqn) {
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
       }
     }
 
