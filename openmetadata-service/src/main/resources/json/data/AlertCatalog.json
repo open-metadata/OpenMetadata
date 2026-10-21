@@ -634,8 +634,7 @@
         "Teams",
         "Admins",
         "Owners",
-        "Mentions",
-        "Followers"
+        "Mentions"
       ]
     },
     {
@@ -646,7 +645,6 @@
       ],
       "recipientCategories": [
         "Assignees",
-        "Owners",
         "Mentions"
       ]
     },

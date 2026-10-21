@@ -62,17 +62,42 @@ class CapabilitiesIT {
     assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
   }
 
-  // Offered in the form, never enforced on save.
+  // Offered in the form, never enforced on save. A task has no owners, so they are not offered.
   @Test
   void offersTheRecipientsInsideThePlatformTheSourcesReach() {
     AlertCapabilities capabilities = ask(AlertType.NOTIFICATION, List.of("task"));
 
     assertEquals(
-        List.of(
-            SubscriptionCategory.ASSIGNEES,
-            SubscriptionCategory.OWNERS,
-            SubscriptionCategory.MENTIONS),
+        List.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS),
         capabilities.getRecipientCategories());
+  }
+
+  // Owners and followers are fields of the entity, so a type without the field offers no one.
+  @Test
+  void entitySourceOffersTheOwnersAndFollowersItsTypeHolds() {
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.FOLLOWERS),
+        ask(AlertType.NOTIFICATION, List.of("table")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.OWNERS),
+        ask(AlertType.NOTIFICATION, List.of("glossaryTerm")).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS, SubscriptionCategory.TEAMS, SubscriptionCategory.ADMINS),
+        ask(AlertType.NOTIFICATION, List.of("user")).getRecipientCategories());
+    assertFalse(
+        ask(AlertType.OBSERVABILITY, List.of("testSuite"))
+            .getRecipientCategories()
+            .contains(SubscriptionCategory.FOLLOWERS));
   }
 
   @Test
