@@ -34,33 +34,42 @@ const mockProps = {
   pageTitle: 'data-quality',
 };
 
+const dataQualityPageAt = (initialPath: string) => (
+  <MemoryRouter initialEntries={[initialPath]}>
+    <Routes>
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab/:subTab"
+      />
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab"
+      />
+    </Routes>
+  </MemoryRouter>
+);
+
 const renderDataQualityPage = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab/:subTab"
-        />
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab"
-        />
-      </Routes>
-    </MemoryRouter>
-  );
+  render(dataQualityPageAt(initialPath));
 
 // Mock navigation function
 const mockNavigate = jest.fn();
 const mockShowModal = jest.fn();
+const HOOK_ERROR =
+  /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/;
 
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
 jest.mock(
   '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn(() => ({
-      showModal: mockShowModal,
-    })),
-  })
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
 );
 
 jest.mock('./DataQualityProvider', () => ({
@@ -394,14 +403,30 @@ describe('DataQualityPage', () => {
       expect(screen.getByText('label.add')).toBeInTheDocument();
     });
 
-    it('should pass the active tab and showModal to getExportDataQualityDashboardButton', async () => {
-      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.dashboard);
+    it('should read the export modal hook outside the export button memo and hand its showModal to the builder', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const exportData = { name: 'data-quality', onExport: jest.fn() };
 
+      const { rerender } = renderDataQualityPage(
+        DATA_QUALITY_TEST_PATHS.dashboard
+      );
       await screen.findByTestId('tabs');
+      rerender(dataQualityPageAt(DATA_QUALITY_TEST_PATHS.dashboard));
 
+      const [activeTab, showModal] = (
+        DataQualityClassBase.getExportDataQualityDashboardButton as jest.Mock
+      ).mock.calls.at(-1);
+      showModal(exportData);
+
+      expect(activeTab).toBe(DataQualityPageTabs.DASHBOARD);
+      expect(mockShowModal).toHaveBeenCalledWith(exportData);
       expect(
-        DataQualityClassBase.getExportDataQualityDashboardButton
-      ).toHaveBeenCalledWith(DataQualityPageTabs.DASHBOARD, mockShowModal);
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          HOOK_ERROR.test(String(message))
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

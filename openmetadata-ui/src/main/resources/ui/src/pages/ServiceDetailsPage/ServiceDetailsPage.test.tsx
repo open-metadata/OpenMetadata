@@ -95,6 +95,22 @@ const mockServiceDetails = {
   },
 };
 
+const mockShowModal = jest.fn();
+
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
+
 // Mock all the API calls
 jest.mock('../../rest/serviceAPI', () => ({
   getServiceByFQN: jest
@@ -364,8 +380,24 @@ jest.mock(
       onStyleUpdate,
       disableRunAgentsButton,
       disableRunAgentsButtonMessage,
+      extraDropdownContent,
     }: DataAssetsHeaderProps) => (
       <div data-testid="data-assets-header">
+        {extraDropdownContent?.map((item) => {
+          const { key, onClick } = item as {
+            key: string;
+            onClick: () => void;
+          };
+
+          return (
+            <button
+              data-testid={`extra-option-${key}`}
+              key={key}
+              onClick={onClick}>
+              {key}
+            </button>
+          );
+        })}
         <button data-testid="follow-button" onClick={onFollowClick}>
           Follow
         </button>
@@ -748,22 +780,48 @@ describe('ServiceDetailsPage', () => {
       expect(screen.getByTestId('tabs')).toBeInTheDocument();
     });
 
-    it('should pass the active tab to getManageExtraOptions', async () => {
+    it('should build the manage menu without hooks and export through showModal', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      (
+        entityUtilClassBase.getManageExtraOptions as jest.Mock
+      ).mockImplementation((...args) =>
+        jest
+          .requireActual('../../utils/EntityUtilClassBase')
+          .default.getManageExtraOptions(...args)
+      );
+
+      const { rerender } = render(<ServiceDetailsPage />);
+      await screen.findByTestId('extra-option-export-button');
+
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.DATABASE_SERVICES,
         tab: EntityTabs.CONNECTION,
       });
-      await renderComponent();
+      rerender(<ServiceDetailsPage />);
 
-      await waitFor(() => {
-        expect(screen.getByTestId('service-page')).toBeInTheDocument();
-      });
+      expect(
+        (entityUtilClassBase.getManageExtraOptions as jest.Mock).mock.calls
+          .at(-1)
+          ?.at(-1)
+      ).toBe(EntityTabs.CONNECTION);
 
-      const lastCallArgs = (
-        entityUtilClassBase.getManageExtraOptions as jest.Mock
-      ).mock.calls.at(-1);
+      fireEvent.click(screen.getByTestId('extra-option-export-button'));
 
-      expect(lastCallArgs?.at(-1)).toBe(EntityTabs.CONNECTION);
+      expect(mockShowModal).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'test-service' })
+      );
+      expect(
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/.test(
+            String(message)
+          )
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
+      (entityUtilClassBase.getManageExtraOptions as jest.Mock).mockReturnValue(
+        []
+      );
     });
 
     it('should render error placeholder when service is not found', async () => {
