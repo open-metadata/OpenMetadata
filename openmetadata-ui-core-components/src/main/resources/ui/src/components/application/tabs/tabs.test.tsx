@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Tabs, useTabItemState } from './tabs';
 
 const SelectionLabel = ({ name }: { name: string }) => {
@@ -115,5 +115,45 @@ describe('useTabItemState', () => {
     render(<Probe />);
 
     expect(screen.getByTestId('probe')).toHaveTextContent('null');
+  });
+
+  describe('card overflow fade', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    const mockScrollBox = (scrollWidth: number, clientWidth: number) => {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          disconnect() {}
+        }
+      );
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        scrollWidth
+      );
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(
+        clientWidth
+      );
+    };
+
+    it('fades the end edge while tabs overflow it', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+
+      const { maskImage } = screen.getByRole('tablist').style;
+
+      expect(maskImage).toContain('linear-gradient(to right, #000');
+      expect(maskImage).toMatch(/transparent\)$/);
+    });
+
+    it('leaves the list unmasked when every tab fits', () => {
+      mockScrollBox(600, 600);
+      renderTabs('card');
+
+      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+    });
   });
 });

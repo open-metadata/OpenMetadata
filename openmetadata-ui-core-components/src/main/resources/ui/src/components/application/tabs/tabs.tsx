@@ -4,7 +4,14 @@ import { Card } from '@/components/base/card/card';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
-import { createContext, useContext, useMemo } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   TabListProps as AriaTabListProps,
   TabProps as AriaTabProps,
@@ -20,6 +27,54 @@ import {
 } from 'react-aria-components';
 
 type Orientation = 'horizontal' | 'vertical';
+
+const EDGE_FADE = '32px';
+
+/**
+ * Tracks which ends of a horizontally scrolling element hide content. The card
+ * tab list scrolls with its scrollbar hidden, so a faded edge is the only sign
+ * that more tabs sit past it.
+ */
+const useOverflowEdges = (enabled: boolean) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!enabled || !el || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const update = () => {
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEdges((prev) =>
+        prev.start === start && prev.end === end ? prev : { start, end }
+      );
+    };
+    // Observing the tabs too catches a count badge widening a tab.
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    el.addEventListener('scroll', update, { passive: true });
+    update();
+
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('scroll', update);
+    };
+  }, [enabled]);
+
+  const maskImage =
+    edges.start || edges.end
+      ? `linear-gradient(to right, ${
+          edges.start ? 'transparent' : '#000'
+        }, #000 ${EDGE_FADE}, #000 calc(100% - ${EDGE_FADE}), ${
+          edges.end ? 'transparent' : '#000'
+        })`
+      : undefined;
+
+  return { ref, maskImage };
+};
 
 /** `card` wraps a horizontal tab list in a Card, with an `actions` slot on the right. */
 type TabListVariant = 'default' | 'card';
@@ -280,6 +335,7 @@ export const TabList = <K extends Orientation>({
   );
 
   const isCard = variant === 'card';
+  const overflow = useOverflowEdges(isCard && orientation === 'horizontal');
 
   const tabList = (
     <AriaTabList
@@ -306,7 +362,9 @@ export const TabList = <K extends Orientation>({
 
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={overflow.ref}
+      style={{ maskImage: overflow.maskImage }}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
