@@ -38,6 +38,7 @@ import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -479,6 +481,36 @@ public class DomainReassignmentAuthorizationIT {
 
     DataProduct reloaded =
         SdkClients.adminClient().dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertEquals(Set.of(scoped.heldDomain().getId()), idsOf(reloaded.getDomains()));
+  }
+
+  /** Queries may hold several domains whatever the entity rules say. */
+  @Test
+  void test_queryCannotBeGivenAnUnheldDomainBesideAHeldOne(TestNamespace ns) {
+    DomainScopedUser scoped = domainScopedUser(ns);
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("svc_" + ns.uniqueShortId(), ns);
+    Query query =
+        SdkClients.adminClient()
+            .queries()
+            .create(
+                new CreateQuery()
+                    .withName(ns.shortPrefix("query"))
+                    .withQuery("SELECT 1 AS " + ns.shortPrefix("col"))
+                    .withService(service.getFullyQualifiedName())
+                    .withDomains(List.of(scoped.heldDomain().getFullyQualifiedName())));
+
+    assertRefusedNaming(
+        scoped.otherDomain(),
+        scoped.heldDomain(),
+        () ->
+            patchDomainsAt(
+                scoped.client(),
+                "/v1/queries/" + query.getId(),
+                scoped.heldDomain(),
+                scoped.otherDomain()));
+
+    Query reloaded = SdkClients.adminClient().queries().get(query.getId().toString(), "domains");
     assertEquals(Set.of(scoped.heldDomain().getId()), idsOf(reloaded.getDomains()));
   }
 
