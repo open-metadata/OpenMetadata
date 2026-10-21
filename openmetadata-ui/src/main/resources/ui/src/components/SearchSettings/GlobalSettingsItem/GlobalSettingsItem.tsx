@@ -45,17 +45,21 @@ export const GlobalSettingItem = ({
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const valueContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const restoreFocusRef = useRef(false);
 
-  // Closing the editor removes the input that held focus; hand focus back to
-  // the edit button instead of letting it fall to <body>.
+  // Opening the editor removes the focused edit button and closing it removes
+  // the focused input: move focus to the control that replaces each, instead
+  // of letting it fall to <body>.
   const closeEditor = () => {
     restoreFocusRef.current = true;
     setIsEditing(false);
   };
 
   useEffect(() => {
-    if (!isEditing && restoreFocusRef.current) {
+    if (isEditing) {
+      inputRef.current?.focus();
+    } else if (restoreFocusRef.current) {
       restoreFocusRef.current = false;
       valueContainerRef.current
         ?.querySelector<HTMLButtonElement>('button')
@@ -101,12 +105,12 @@ export const GlobalSettingItem = ({
             onCancel={handleCancel}
             onSave={handleSave}>
             <Input
-              autoFocus
               aria-label={label}
               id="value"
               inputDataTestId="value-input"
               isDisabled={isUpdating}
               placeholder={t('label.value')}
+              ref={inputRef}
               step={step}
               type="number"
               value={Number.isNaN(updatedValue) ? '' : String(updatedValue)}
