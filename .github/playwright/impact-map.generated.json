@@ -9723,6 +9723,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/EntityImport/CsvJobsTray/CsvJobsTray.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/EntityImport/EntityImport.component.tsx"
       ],
       "specs": [
