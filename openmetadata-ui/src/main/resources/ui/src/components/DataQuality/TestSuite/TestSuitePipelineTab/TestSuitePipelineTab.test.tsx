@@ -24,6 +24,7 @@ import { Table } from '../../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getIngestionPipelines } from '../../../../rest/ingestionPipelineAPI';
+import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import TestSuitePipelineTab from './TestSuitePipelineTab.component';
 
 const mockTestSuite = {
@@ -375,6 +376,33 @@ describe('TestSuite Pipeline component', () => {
         limit: PAGE_SIZE_BASE,
       })
     );
+  });
+
+  // Ingestion pipelines page by cursor. A number-based pager never hands the handler a
+  // cursorType, so Next and Previous did nothing at all.
+  it('should fetch the next cursor page when the real pager Next is pressed', async () => {
+    const { default: ActualNextPrevious } = jest.requireActual(
+      '../../../common/NextPrevious/NextPrevious'
+    );
+    const mockedNextPrevious = NextPrevious as jest.Mock;
+    const mockPager = mockedNextPrevious.getMockImplementation();
+    mockedNextPrevious.mockImplementation(ActualNextPrevious);
+
+    try {
+      await act(async () => {
+        render(<TestSuitePipelineTab testSuite={mockTestSuite} />);
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('next'));
+      });
+
+      expect(getIngestionPipelines).toHaveBeenLastCalledWith(
+        expect.objectContaining({ paging: { after: 'after-id' } })
+      );
+    } finally {
+      mockedNextPrevious.mockImplementation(mockPager);
+    }
   });
 
   it('should render pipeline rows', async () => {

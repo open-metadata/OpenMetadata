@@ -573,7 +573,6 @@ const TestSuitePipelineTab = ({
 
         {showPagination && paging.total > 0 && (
           <NextPrevious
-            isNumberBased
             currentPage={currentPage}
             isLoading={isLoading}
             pageSize={pageSize}
