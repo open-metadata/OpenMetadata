@@ -71,8 +71,8 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityFeedEditor = withSuspenseFallback(
-  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+const CommentComposer = withSuspenseFallback(
+  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
@@ -314,10 +314,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             gap={2}
             itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
-            <ActivityFeedEditor
+            <CommentComposer
               // Shown on demand (new conversation, or an empty panel just
-              // opened), so it takes focus as it did before FeedEditor stopped
-              // focusing itself on mount.
+              // opened), so it takes focus.
               focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
@@ -355,6 +354,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
+            hideCloseIcon
             entityLink={selectedConversation?.about ?? threadLink}
             noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}
