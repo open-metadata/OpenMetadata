@@ -20,7 +20,7 @@ class GenericBackgroundWorkerTest {
   @ParameterizedTest
   @EnumSource(
       value = BackgroundJob.JobType.class,
-      names = {"CONTEXT_MEMORY_EXTRACTION", "ONTOLOGY_MEMORY_DERIVATION"})
+      names = {"CONTEXT_MEMORY_EXTRACTION", "MEMORY_GLOSSARY_DERIVATION"})
   void memoryJobLeavesWorkerCapacityForOtherJobs(BackgroundJob.JobType firstType)
       throws InterruptedException {
     JobDAO jobDao = mock(JobDAO.class);

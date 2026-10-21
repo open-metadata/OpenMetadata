@@ -140,6 +140,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
+    conditions.add(getAboutEntityIdsCondition(tableName));
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
@@ -429,6 +430,19 @@ public class ListFilter extends Filter<ListFilter> {
       return "";
     }
     return buildFqnPrefixOrCondition("about", aboutEntityFqn);
+  }
+
+  private String getAboutEntityIdsCondition(String tableName) {
+    String ids = queryParams.get("aboutEntityIds");
+    return nullOrEmpty(ids)
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE toEntity = '%s' "
+                + "AND relation = %d AND deleted = FALSE AND fromId IN (%s))",
+            qualifyColumn(tableName, "id"),
+            Entity.TASK,
+            Relationship.MENTIONED_IN.ordinal(),
+            buildIndexedBindParams("aboutEntityId", ids));
   }
 
   /**
