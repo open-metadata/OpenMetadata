@@ -77,7 +77,7 @@ export const applyThemeToRoot = (theme: Theme, darkModeClass: string) => {
     globalThis.document.head.appendChild(freeze);
     root.classList.toggle(darkModeClass, shouldUseDarkMode);
     // Force a style recalc so the new colours apply while transitions are off.
-    void globalThis.getComputedStyle(root).color;
+    globalThis.getComputedStyle(root).getPropertyValue('color');
     globalThis.requestAnimationFrame(() => freeze.remove());
   }
   if (root.style.colorScheme !== theme) {
