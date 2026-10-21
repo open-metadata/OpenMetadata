@@ -315,7 +315,7 @@ const KPIChart: FC<Props> = ({
                       })}
                     </Button>
                   }
-                  className="m-0 border-none tw:bg-transparent!"
+                  className="m-0 border-none"
                   permission={createKPIPermission}
                   permissionValue={t('label.create-entity', {
                     entity: t('label.kpi-uppercase'),
