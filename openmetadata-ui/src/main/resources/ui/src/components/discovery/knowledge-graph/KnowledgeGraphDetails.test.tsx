@@ -199,3 +199,119 @@ it('navigates to the property returned by the graph', async () => {
 
   expect(onSelect).toHaveBeenCalledWith('node', 'kg:property:person:birthDate');
 });
+
+it('shows tags and glossary terms as chips, five inline and the rest in a popover, without selecting the row', async () => {
+  const onSelect = jest.fn();
+  const terms = ['Account', 'Branch', 'Customer', 'Employee', 'Testing', 'CLV'];
+  openDetails({
+    onSelect,
+    data: {
+      nodes: [
+        {
+          id: 'col',
+          label: 'customer',
+          type: 'column',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+        },
+      ],
+      edges: [],
+    },
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          fullyQualifiedName: 'svc.db.sales.orders.customer',
+          dataType: 'VARCHAR',
+          dataTypeDisplay: 'varchar',
+          tags: [
+            ...terms.map((name) => ({
+              tagFQN: 'Glossary.' + name,
+              name,
+              source: 'Glossary',
+            })),
+            {
+              tagFQN: 'PII.Sensitive',
+              name: 'Sensitive',
+              source: 'Classification',
+            },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+  const grid = screen.getByRole('grid');
+
+  expect(within(grid).getByText('varchar')).toBeVisible();
+  expect(within(grid).getByText('Sensitive')).toBeVisible();
+  expect(within(grid).getByText('Testing')).toBeVisible();
+  expect(within(grid).queryByText('CLV')).not.toBeInTheDocument();
+
+  await userEvent.click(within(grid).getByTestId('plus-more-count'));
+
+  expect(await screen.findByText('CLV')).toBeVisible();
+  expect(onSelect).not.toHaveBeenCalled();
+});
+
+it('hides the paging footer when every row is already shown', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: props.columns.columns.slice(0, 3),
+      total: 3,
+    },
+  });
+
+  expect(screen.getByText('label.kg-list-count')).toHaveClass('tw:sr-only');
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+});
+
+it('keeps same-named terms from different glossaries as separate chips', () => {
+  openDetails({
+    columns: {
+      ...props.columns,
+      columns: [
+        {
+          name: 'customer',
+          dataType: 'VARCHAR',
+          tags: [
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+            {
+              tagFQN: 'Marketing.Customer',
+              name: 'Customer',
+              source: 'Glossary',
+            },
+            { tagFQN: 'Sales.Customer', name: 'Customer', source: 'Glossary' },
+          ],
+        },
+      ] as Column[],
+      total: 1,
+    },
+  });
+
+  expect(
+    within(screen.getByRole('grid')).getAllByText('Customer')
+  ).toHaveLength(2);
+});
+
+it('keeps one live count region while the search crosses the paging threshold', async () => {
+  openDetails();
+  const live = () =>
+    screen
+      .getAllByText('label.kg-list-count')
+      .find((element) => element.getAttribute('aria-live') === 'polite');
+  const before = live();
+
+  await userEvent.type(
+    screen.getByRole('textbox', { name: 'label.search' }),
+    'column_299'
+  );
+
+  expect(
+    screen.queryByRole('button', { name: /label.kg-show-more/ })
+  ).not.toBeInTheDocument();
+  expect(live()).toBe(before);
+}, 30_000);

@@ -79,6 +79,8 @@ export interface TopicCardProps {
    * over it: neither has an answer, so neither may claim the card is empty.
    */
   emptyState?: TopicEmptyStateConfig;
+  /** Extra classes for the scrolling body, e.g. a denser vertical padding. */
+  bodyClassName?: string;
 }
 
 /** Body placeholder: a few rows at the widths a populated card tends to use. */
@@ -104,7 +106,10 @@ const TopicSummary = ({
   ) : (
     // `!` on the colour: Typography renders `.prose`, whose unlayered `color`
     // rule is emitted after the Tailwind utilities and would otherwise win.
-    <Typography className="tw:text-pretty tw:text-quaternary!" size="text-xs">
+    <Typography
+      className="tw:text-pretty tw:text-quaternary!"
+      size="text-xs"
+      weight="medium">
       {summary}
     </Typography>
   );
@@ -201,7 +206,10 @@ const TopicBody = ({
   );
 };
 
-type TopicBodyRegionProps = TopicBodyProps & { isFetching: boolean };
+type TopicBodyRegionProps = TopicBodyProps & {
+  isFetching: boolean;
+  className?: string;
+};
 
 /**
  * The scrolling body, or nothing for a card with nothing to show.
@@ -213,6 +221,7 @@ type TopicBodyRegionProps = TopicBodyProps & { isFetching: boolean };
  */
 const TopicBodyRegion = ({
   children,
+  className,
   isFetching,
   ...bodyProps
 }: TopicBodyRegionProps) => {
@@ -233,7 +242,8 @@ const TopicBodyRegion = ({
       aria-busy={isRefetching}
       className={classNames(
         'tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-y-auto tw:border-t tw:border-secondary tw:p-5 tw:transition-opacity tw:*:shrink-0',
-        isRefetching && 'tw:opacity-60'
+        isRefetching && 'tw:opacity-60',
+        className
       )}
       data-testid={`topic-body-${bodyProps.topicKey}`}>
       <TopicBody {...bodyProps}>{children}</TopicBody>
@@ -298,6 +308,7 @@ const TopicCard: React.FC<TopicCardProps> = ({
   isError = false,
   onRetry,
   emptyState,
+  bodyClassName,
 }) => {
   const { t } = useTranslation();
   const collapse = useTopicCollapse();
@@ -353,6 +364,7 @@ const TopicCard: React.FC<TopicCardProps> = ({
 
       {!isCollapsed && (
         <TopicBodyRegion
+          className={bodyClassName}
           emptyState={shownEmptyState}
           isError={hasError}
           isFetching={isFetching}

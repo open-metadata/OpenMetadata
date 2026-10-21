@@ -25,6 +25,7 @@ import {
   getApiContext,
   getDefaultAdminAPIContext,
   redirectToHomePage,
+  uuid,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -630,6 +631,43 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test.describe('Hierarchical map edit guards', () => {
     test('platform lineage is view only in every band', async ({ page }) => {
+      // Every container is reported expandable, so an empty service can lead
+      // the service view (other specs leave them behind). Put one first so
+      // the Data Assets click must skip it rather than land on an empty map.
+      const emptyServiceFqn = `pw-empty-service-${uuid()}`;
+      await page.route(
+        (url) =>
+          url.pathname.endsWith('/api/v1/lineage/scene') &&
+          url.searchParams.get('band') === 'LAYER' &&
+          !url.searchParams.has('focusFqn'),
+        async (route) => {
+          const response = await route.fetch();
+          const scene = await response.json();
+          const [first] = scene.nodes ?? [];
+          if (!first) {
+            await route.fulfill({ response });
+
+            return;
+          }
+          const emptyService = {
+            ...first,
+            id: `service:${emptyServiceFqn}`,
+            fullyQualifiedName: emptyServiceFqn,
+            label: emptyServiceFqn,
+            displayName: emptyServiceFqn,
+            parentId: `service:${emptyServiceFqn}`,
+            parentFqn: emptyServiceFqn,
+            childrenCount: 0,
+            counts: {},
+            isExpandable: true,
+          };
+          await route.fulfill({
+            response,
+            json: { ...scene, nodes: [emptyService, ...scene.nodes] },
+          });
+        }
+      );
+
       const sceneResponse = page.waitForResponse('**/api/v1/lineage/scene?*');
       await sidebarClick(page, SidebarItem.LINEAGE);
       expect((await sceneResponse).ok()).toBeTruthy();
@@ -648,7 +686,11 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // The Asset band shows real tables, where asset tabs offer the menu.
       const assetScene = page.waitForResponse('**/api/v1/lineage/scene?*');
       await page.getByTestId('lineage-map-band-ASSET').click();
-      expect((await assetScene).ok()).toBeTruthy();
+      const assetResponse = await assetScene;
+      expect(assetResponse.ok()).toBeTruthy();
+      expect(
+        new URL(assetResponse.url()).searchParams.get('focusFqn')
+      ).not.toBe(emptyServiceFqn);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.locator('.react-flow__node')).not.toHaveCount(0);

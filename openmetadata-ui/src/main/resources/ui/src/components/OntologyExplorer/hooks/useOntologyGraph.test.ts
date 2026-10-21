@@ -12,6 +12,7 @@
  */
 import type { Graph, GraphData } from '@antv/g6';
 import {
+  buildStudioNodeStyle,
   canEndRelationship,
   findBadgeIndex,
   isDataModeAssetBadgeShape,
@@ -19,6 +20,20 @@ import {
   isGraphTopologySynced,
   stripNodePositionsForDataMode,
 } from './useOntologyGraph';
+
+describe('selected studio node canvas colors', () => {
+  it('passes resolved brand colors to the canvas stroke and halo', () => {
+    const style = buildStudioNodeStyle(
+      { id: 'concept' },
+      { isSelected: true },
+      undefined
+    );
+
+    expect(style.stroke).not.toContain('var(');
+    expect(style.haloStroke).toBe(style.stroke);
+    expect(style.haloFill).not.toContain('var(');
+  });
+});
 
 jest.mock('@antv/g6', () => ({
   Circle: class {},
