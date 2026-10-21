@@ -1904,7 +1904,10 @@ jobs:
               "${env_args[@]}"
               -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$RUNNER_TEMP:$RUNNER_TEMP"
               -w "$PWD" mcr.microsoft.com/playwright:v1.57.0-jammy npx)
-            if ! "${runner[@]:0:${#runner[@]}-1}" test -r playwright/.auth/admin.json; then
+            # Only a shard restoring the shared fixture has auth state before its
+            # setup projects run; an own-environment lane creates it in the run.
+            if [[ "$PW_PRESEEDED_STATE" == "true" ]] &&
+              ! "${runner[@]:0:${#runner[@]}-1}" test -r playwright/.auth/admin.json; then
               echo "The seeded auth state is not readable inside the visual container" >&2
               exit 1
             fi
