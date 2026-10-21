@@ -166,6 +166,7 @@ const props: ServiceVersionMainTabContentProps = {
   serviceName: 'sample_data',
   data: mockData,
   isServiceLoading: false,
+  pageSize: 15,
   paging: { total: 1 },
   pagingHandler: mockPagingHandler,
   currentPage: 1,

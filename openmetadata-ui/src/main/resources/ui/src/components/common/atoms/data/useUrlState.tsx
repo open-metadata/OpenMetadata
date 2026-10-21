@@ -13,6 +13,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { UrlState, UrlStateConfig, UrlStateHook } from '../shared/types';
 
@@ -26,7 +27,7 @@ export const useUrlState = (
     filterKeys,
     pageKey = 'page',
     pageSizeKey = 'size',
-    defaultPageSize = 10,
+    defaultPageSize = PAGE_SIZE_BASE,
     filterConfigs,
   } = config;
 
@@ -170,6 +171,10 @@ export const useUrlState = (
     updateUrlParams(updates);
   }, [searchKey, pageKey, filterKeys, updateUrlParams]);
 
+  const resetPaging = useCallback(() => {
+    updateUrlParams({ [pageKey]: null, [pageSizeKey]: null });
+  }, [pageKey, pageSizeKey, updateUrlParams]);
+
   return {
     urlState,
     parsedFilters,
@@ -179,5 +184,6 @@ export const useUrlState = (
     setPageSize,
     resetFilters,
     resetAll,
+    resetPaging,
   };
 };

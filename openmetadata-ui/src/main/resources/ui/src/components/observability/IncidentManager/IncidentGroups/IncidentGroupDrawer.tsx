@@ -34,7 +34,6 @@ import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { computeTotalPages } from '../../../../utils/PaginationUtils';
 import IncidentGroupRelatedBadge from './IncidentGroupRelatedBadge';
 import {
-  INCIDENT_GROUPS_PAGE_SIZE,
   INCIDENT_GROUPS_PAGE_SIZE_OPTIONS,
   INCIDENT_TABLE_CARD_CLASS,
   INCIDENT_TABLE_PAGER_CLASS,
@@ -105,7 +104,6 @@ const IncidentGroupDrawer = ({
   } = useIncidentGroupIncidents({
     group,
     filters,
-    defaultPageSize: INCIDENT_GROUPS_PAGE_SIZE,
   });
 
   return (

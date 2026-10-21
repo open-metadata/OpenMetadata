@@ -166,7 +166,7 @@ describe('Learning resources settings', () => {
             searchText: 'video',
             filterState: { type: ['Video'] },
             currentPage: 2,
-            pageSize: 25,
+            pageSize: 15,
           }}
           onNavigate={onNavigate}
           onSaveState={onSaveState}
@@ -183,8 +183,33 @@ describe('Learning resources settings', () => {
         searchText: 'video',
         filterState: { type: ['Video'] },
         currentPage: 2,
-        pageSize: 25,
+        pageSize: 15,
       })
+    );
+  });
+
+  it('starts at page 1 when the restored page was counted at a size no longer saved', async () => {
+    const onSaveState = jest.fn();
+    render(
+      <MemoryRouter>
+        <LearningResourcesSettings
+          savedState={{
+            searchText: 'video',
+            filterState: { type: ['Video'] },
+            currentPage: 2,
+            pageSize: 25,
+          }}
+          onNavigate={onNavigate}
+          onSaveState={onSaveState}
+          onSetHeaderActions={onSetHeaderActions}
+        />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('intro-video');
+
+    expect(onSaveState).toHaveBeenLastCalledWith(
+      expect.objectContaining({ currentPage: 1, pageSize: 15 })
     );
   });
 

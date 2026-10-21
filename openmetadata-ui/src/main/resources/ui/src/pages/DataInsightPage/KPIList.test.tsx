@@ -16,6 +16,7 @@ import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
+import { getListKPIs } from '../../rest/KpiAPI';
 import KPIList from './KPIList';
 import { KPI_DATA } from './mocks/KPIList';
 
@@ -90,6 +91,29 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 describe('KPI list component', () => {
+  it('asks for the saved page size and shows the pager when the server has more KPIs', async () => {
+    (getListKPIs as jest.Mock).mockResolvedValueOnce({
+      data: KPI_DATA,
+      paging: { after: 'next-page', total: 20 },
+    });
+
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    // The fetched page never holds more rows than the page size, so only the cursor can say a
+    // second page exists.
+    expect(await screen.findByTestId('next')).toBeInTheDocument();
+    expect(getListKPIs).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 15 })
+    );
+  });
+
+  it('hides the pager when every KPI fits on one page', async () => {
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    expect(await screen.findByText('Description KPI')).toBeInTheDocument();
+    expect(screen.queryByTestId('next')).not.toBeInTheDocument();
+  });
+
   it('Should render the kpi list', async () => {
     render(<KPIList />, { wrapper: MemoryRouter });
 

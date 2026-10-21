@@ -15,15 +15,16 @@ import { act, renderHook } from '@testing-library/react';
 import { useIncidentPaging } from './useIncidentPaging';
 
 describe('useIncidentPaging', () => {
-  it('should start on the first page in the default size', () => {
-    const { result } = renderHook(() => useIncidentPaging('query', 10));
+  it('should start on the first page at the saved page size', () => {
+    const { result } = renderHook(() => useIncidentPaging('query'));
 
+    // No size saved yet, so the list scale's first step.
     expect(result.current.currentPage).toBe(1);
-    expect(result.current.pageSize).toBe(10);
+    expect(result.current.pageSize).toBe(15);
   });
 
   it('should go straight to any page asked for', () => {
-    const { result } = renderHook(() => useIncidentPaging('query', 10));
+    const { result } = renderHook(() => useIncidentPaging('query'));
 
     act(() => result.current.goToPage(7));
 
@@ -36,7 +37,7 @@ describe('useIncidentPaging', () => {
 
   it('should start over when the query changes', () => {
     const { result, rerender } = renderHook(
-      ({ queryKey }) => useIncidentPaging(queryKey, 10),
+      ({ queryKey }) => useIncidentPaging(queryKey),
       { initialProps: { queryKey: 'query' } }
     );
 
@@ -47,7 +48,7 @@ describe('useIncidentPaging', () => {
   });
 
   it('should start over in the new size when the page size changes', () => {
-    const { result } = renderHook(() => useIncidentPaging('query', 10));
+    const { result } = renderHook(() => useIncidentPaging('query'));
 
     act(() => result.current.goToPage(3));
     act(() => result.current.setPageSize(25));

@@ -23,14 +23,11 @@ import {
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { walkToAfterCursor } from '../../../../../../utils/CursorPaging.utils';
@@ -53,8 +50,11 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(GRID_PAGE_SIZE_OPTIONS);
+  const { savePageSize, resolvePageSize } = useSavedPageSize(
+    GRID_PAGE_SIZE_OPTIONS
+  );
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -178,6 +178,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -305,11 +306,7 @@ const PersonasLanding = ({ onNavigate }: PersonasLandingProps) => {
             className="tw:rounded-none tw:border-0 tw:bg-transparent tw:p-0 tw:shadow-none"
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

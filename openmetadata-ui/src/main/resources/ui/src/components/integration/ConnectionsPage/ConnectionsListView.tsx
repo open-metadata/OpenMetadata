@@ -30,6 +30,10 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { SERVICE_EMPTY_STATE_ICON_CLASS } from '../../../constants/ServiceEmptyState.constant';
 import { ServiceHealth } from '../../../generated/api/services/servicesOverview';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -53,9 +57,7 @@ import {
   DELETED_PARAM,
   ENTITY_TYPE_TO_CATEGORY,
   getConnectionsEmptyState,
-  GRID_PAGE_SIZE_OPTIONS,
   HEALTH_PARAM,
-  LIST_PAGE_SIZE_OPTIONS,
   SERVICE_TYPE_PARAM,
 } from './ConnectionsPage.constants';
 import ConnectionsPageSkeleton from './ConnectionsPageSkeleton';

@@ -38,6 +38,18 @@ describe('useCursorPagedList', () => {
     expect(result.current.showPagination).toBe(true);
   });
 
+  it('starts at the first step of the scale its caller passes', async () => {
+    const { result } = renderHook(() =>
+      useCursorPagedList(fetchPage, [12, 24, 48])
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(fetchPage).toHaveBeenCalledWith({ limit: 12 });
+    expect(result.current.pageSize).toBe(12);
+    expect(result.current.totalPages).toBe(4);
+  });
+
   it('follows the after cursor forward and reloads the first page going back to 1', async () => {
     const { result } = renderHook(() => useCursorPagedList(fetchPage));
     await waitFor(() => expect(result.current.isLoading).toBe(false));

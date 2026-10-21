@@ -39,6 +39,13 @@ jest.mock('../../../../../../hooks/authHooks', () => ({
 }));
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
+  useHashPagingParams: () => ({
+    page: 1,
+    pageSize: undefined,
+    cursor: undefined,
+    cursorType: undefined,
+    setPage: jest.fn(),
+  }),
   useSettingsHash: () => ({
     state: { tab: 'bots', subPath: '', params: {} },
     updateParams: mockUpdateParams,

@@ -1,4 +1,9 @@
-import { computeTotalPages } from './PaginationUtils';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../constants/constants';
+import { PageViewMode } from '../generated/type/personaPreferences';
+import { computeTotalPages, getViewPageSizeOptions } from './PaginationUtils';
 
 /*
  *  Copyright 2024 Collate.
@@ -39,5 +44,27 @@ describe('computeTotalPages', () => {
 
   it('should handle page size greater than total items', () => {
     expect(computeTotalPages(20, 10)).toBe(1);
+  });
+});
+
+// ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
+describe('view page sizes', () => {
+  it('pages lists at 15/25/50 and card grids at 12/24/48', () => {
+    expect(LIST_PAGE_SIZE_OPTIONS).toEqual([15, 25, 50]);
+    expect(GRID_PAGE_SIZE_OPTIONS).toEqual([12, 24, 48]);
+  });
+
+  it('uses the grid scale only for the card view', () => {
+    expect(getViewPageSizeOptions(PageViewMode.Card)).toBe(
+      GRID_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions('card')).toBe(GRID_PAGE_SIZE_OPTIONS);
+    expect(getViewPageSizeOptions(PageViewMode.Table)).toBe(
+      LIST_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions(PageViewMode.Tree)).toBe(
+      LIST_PAGE_SIZE_OPTIONS
+    );
+    expect(getViewPageSizeOptions(undefined)).toBe(LIST_PAGE_SIZE_OPTIONS);
   });
 });

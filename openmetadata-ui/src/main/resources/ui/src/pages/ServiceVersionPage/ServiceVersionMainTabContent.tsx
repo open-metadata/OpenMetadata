@@ -24,7 +24,6 @@ import { ColumnsType } from '../../components/common/Table/Table.interface';
 import Table from '../../components/common/Table/TableV2';
 import TagsContainerV2 from '../../components/Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../components/Tag/TagsViewer/TagsViewer.interface';
-import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
@@ -40,6 +39,7 @@ function ServiceVersionMainTabContent({
   data,
   isServiceLoading,
   paging,
+  pageSize,
   pagingHandler,
   currentPage,
   serviceDetails,
@@ -106,7 +106,7 @@ function ServiceVersionMainTabContent({
                   showPagination:
                     Boolean(!isNil(paging.after) || !isNil(paging.before)) &&
                     !isEmpty(data),
-                  pageSize: PAGE_SIZE,
+                  pageSize,
                   paging,
                   pagingHandler,
                 }}

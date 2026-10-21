@@ -32,7 +32,6 @@ interface UseIncidentGroupIncidentsProps {
   group?: TestCaseIncidentGroup;
   /** The filters the group was fetched with, so the list matches its count. */
   filters: IncidentGroupFilters;
-  defaultPageSize: number;
 }
 
 const NO_INCIDENTS: TestCaseResolutionStatus[] = [];
@@ -49,7 +48,6 @@ const NO_INCIDENTS: TestCaseResolutionStatus[] = [];
 export const useIncidentGroupIncidents = ({
   group,
   filters,
-  defaultPageSize,
 }: UseIncidentGroupIncidentsProps) => {
   const { activeDomain } = useDomainStore();
   const domain =
@@ -58,8 +56,7 @@ export const useIncidentGroupIncidents = ({
     ? `${group.groupBy}|${getIncidentGroupKey(group)}`
     : '';
   const { currentPage, pageSize, setPageSize, goToPage } = useIncidentPaging(
-    `${groupKey}|${domain}|${JSON.stringify(filters)}`,
-    defaultPageSize
+    `${groupKey}|${domain}|${JSON.stringify(filters)}`
   );
   // The group object changes with every re-read of the groups; the read is
   // keyed on its identity, and takes the latest object when it runs.

@@ -579,7 +579,8 @@ describe('LineageTable', () => {
 
       render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-      expect(mockUsePaging).toHaveBeenCalledWith(50);
+      // No fixed default: the table starts from the user's saved page size.
+      expect(mockUsePaging).toHaveBeenCalledWith();
     });
   });
 

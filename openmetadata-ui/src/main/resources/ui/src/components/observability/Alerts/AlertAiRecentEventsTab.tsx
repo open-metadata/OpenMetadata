@@ -190,7 +190,7 @@ const AlertAiRecentEventsTab = ({
     pageSize,
     paging,
     showPagination,
-  } = usePaging(PAGE_SIZE_BASE, PAGE_SIZE_OPTIONS);
+  } = usePaging(undefined, PAGE_SIZE_OPTIONS);
   const { id } = alertDetails;
   const isFiltered = filter !== AlertRecentEventFilters.ALL;
 

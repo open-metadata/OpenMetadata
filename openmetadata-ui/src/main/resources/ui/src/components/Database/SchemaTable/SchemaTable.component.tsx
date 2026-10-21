@@ -34,7 +34,6 @@ import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg
 import {
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -155,7 +154,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,
@@ -921,8 +920,8 @@ const SchemaTable = () => {
             entity: t('label.constraint'),
           }),
         })}
-        selectedKey={editConstraint ?? null}
-        onSelectionChange={(key) =>
+        value={editConstraint ?? null}
+        onChange={(key) =>
           setEditConstraint(
             key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
           )

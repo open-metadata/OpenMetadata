@@ -153,7 +153,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     handlePageChange,
     handlePagingChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const paginationInfoKeyRef = useRef<string | null>(null);
 

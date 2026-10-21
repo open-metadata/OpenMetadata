@@ -42,6 +42,7 @@ import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.consta
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -49,6 +50,7 @@ import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
@@ -154,7 +156,26 @@ const DataProductListPage = ({
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
+  const dataProductListing = useDataProductListingData({
+    enableNlq: isAiMode,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
+  });
+  const { resetPaging } = dataProductListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -234,9 +255,6 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const extraColumns = useMemo(
@@ -474,7 +492,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

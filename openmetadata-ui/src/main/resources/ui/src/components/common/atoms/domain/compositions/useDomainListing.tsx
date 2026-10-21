@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
+import { PAGE_SIZE_BASE } from '../../../../../constants/constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import domainClassBase from '../../../../../utils/Domain/DomainClassBase';
@@ -27,6 +27,7 @@ interface UseDomainListingConfig {
   enableNlq?: boolean;
   nameLabelKey?: string;
   pageSize?: number;
+  pageSizeOptions?: number[];
   basePath?: string;
   includeOwners?: boolean;
   includeGlossaryTerms?: boolean;
@@ -46,7 +47,8 @@ export const useDomainListing = (
     baseFilter = '',
     enableNlq = false,
     nameLabelKey = 'label.domain',
-    pageSize = TABLE_CARD_PAGE_SIZE,
+    pageSize = PAGE_SIZE_BASE,
+    pageSizeOptions,
     basePath = '/domain',
     includeOwners = true,
     includeGlossaryTerms = true,
@@ -103,6 +105,7 @@ export const useDomainListing = (
     searchIndex: SearchIndex.DOMAIN,
     baseFilter,
     pageSize,
+    pageSizeOptions,
     filterKeys,
     filterConfigs,
     columns,

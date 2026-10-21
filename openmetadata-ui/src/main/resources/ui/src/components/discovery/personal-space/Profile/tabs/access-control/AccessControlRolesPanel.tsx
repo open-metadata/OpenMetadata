@@ -36,6 +36,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
@@ -51,6 +52,7 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getRoles } from '../../../../../../rest/rolesAPIV1';
 import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -84,8 +86,9 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const { savePageSize, resolvePageSize } = useSavedPageSize();
+  const pageSize = resolvePageSize(hashPageSize);
 
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -283,6 +286,7 @@ const AccessControlRolesPanel: React.FC<AccessControlRolesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
