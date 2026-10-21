@@ -171,17 +171,20 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
       {!emptyState && (
         <>
           <div className="tw:flex tw:items-start tw:justify-between tw:gap-3">
-            <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-1">
+            <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
               {/* `!` on the colours: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
             otherwise silently win. */}
-              <Typography className="tw:text-text-tertiary!" size="text-xs">
+              <Typography
+                className="tw:text-text-tertiary!"
+                size="text-xs"
+                weight="medium">
                 {t('label.total-assets')}
               </Typography>
               <Typography
                 className="tw:text-text-primary!"
                 data-testid="data-estate-total"
-                size="text-sm"
+                size="text-md"
                 weight="semibold">
                 {numberFormat.format(totalAssets)}
               </Typography>
