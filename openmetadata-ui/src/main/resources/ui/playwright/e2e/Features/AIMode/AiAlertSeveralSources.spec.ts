@@ -28,7 +28,6 @@ import {
   uuid,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   addInternalDestinationProfile,
   closeSourcePicker,
@@ -36,6 +35,7 @@ import {
   navigateToAlertsList,
   saveNewAlertAndVerify,
 } from '../../../utils/profileNotificationAlert';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import {
   addDestination,
   dismissPopover,
