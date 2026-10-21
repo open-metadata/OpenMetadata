@@ -317,7 +317,7 @@ public class TaskWorkflowHandler {
     }
 
     if (isRejection(resolutionType, selectedTransition)) {
-      String reason =
+      final String reason =
           nullOrEmpty(comment)
               ? latestCommentBy(
                   user,
@@ -438,7 +438,7 @@ public class TaskWorkflowHandler {
   }
 
   private static boolean isRejection(
-      TaskResolutionType resolutionType, TaskAvailableTransition selectedTransition) {
+      final TaskResolutionType resolutionType, final TaskAvailableTransition selectedTransition) {
     return resolutionType == TaskResolutionType.Rejected
         || (selectedTransition != null
             && selectedTransition.getTargetTaskStatus() == TaskEntityStatus.Rejected);
@@ -448,7 +448,7 @@ public class TaskWorkflowHandler {
    * The user's latest comment on the task: a reviewer can explain in the task thread and then
    * reject without a comment of their own.
    */
-  static String latestCommentBy(String user, List<TaskComment> comments) {
+  static String latestCommentBy(final String user, final List<TaskComment> comments) {
     return listOrEmpty(comments).stream()
         .filter(posted -> posted.getAuthor() != null && user.equals(posted.getAuthor().getName()))
         .max(
@@ -461,7 +461,10 @@ public class TaskWorkflowHandler {
   // The steps after a rejected approval read why it was rejected and by whom, e.g. to ask the
   // asset's owners for a revision. A rejection without a reason clears an earlier one.
   private static void recordRejection(
-      WorkflowHandler workflowHandler, UUID taskId, String comment, String user) {
+      final WorkflowHandler workflowHandler,
+      final UUID taskId,
+      final String comment,
+      final String user) {
     workflowHandler.setProcessVariable(
         taskId, getNamespacedVariableName(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE), comment);
     workflowHandler.setProcessVariable(

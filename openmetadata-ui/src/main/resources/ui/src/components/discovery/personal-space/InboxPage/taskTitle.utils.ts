@@ -13,7 +13,6 @@
 
 import { TFunction } from 'i18next';
 import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
-import { getTaskTypeMessageKey } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   Task,
@@ -22,6 +21,7 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
+import { getTaskTypeMessageKey } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   getPlainDescription,
   resolveIncidentTestCaseFqn,

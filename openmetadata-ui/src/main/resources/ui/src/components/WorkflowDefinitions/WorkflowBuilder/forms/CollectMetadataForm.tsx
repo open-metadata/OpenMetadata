@@ -68,6 +68,86 @@ const ASSIGNEE_LABEL_KEYS: Record<TaskAssignees, string> = {
   [TaskAssignees.Candidates]: 'label.specific-users-and-teams',
 };
 
+/** What a revision step does: ask the stage's people to revise, or close that request. */
+const RevisionHint = ({
+  revision,
+  stage,
+}: Pick<MetadataCollectionConfiguration, 'revision' | 'stage'>) => {
+  const { t } = useTranslation();
+
+  return revision ? (
+    <FormField label={t('label.revise-and-resubmit')}>
+      <Typography
+        as="p"
+        color="secondary"
+        data-testid="collect-metadata-revision"
+        size="text-sm">
+        {t(
+          revision === Revision.Request
+            ? 'message.collect-metadata-revision-request-hint'
+            : 'message.collect-metadata-revision-resubmit-hint',
+          { stage }
+        )}
+      </Typography>
+    </FormField>
+  ) : null;
+};
+
+interface AssigneeSectionProps {
+  config: MetadataCollectionConfiguration;
+  entityTypes?: EntityType[];
+  isDisabled: boolean;
+  taskAssignees: TaskAssignees;
+  onChange: (assignees: TaskAssignees) => void;
+}
+
+/** Who gets the task; a step that only closes a revision request asks nobody. */
+const AssigneeSection = ({
+  config,
+  entityTypes,
+  isDisabled,
+  taskAssignees,
+  onChange,
+}: AssigneeSectionProps) => {
+  const { t } = useTranslation();
+
+  return config.revision === Revision.Resubmit ? null : (
+    <>
+      <FormField
+        description={t(
+          config.revision === Revision.Request
+            ? 'message.collect-metadata-revision-assignees-hint'
+            : 'message.collect-metadata-assignees-hint'
+        )}
+        label={t('label.assign-to')}>
+        <RadioGroup
+          aria-label={t('label.assign-to')}
+          data-testid="collect-metadata-assignees"
+          isDisabled={isDisabled}
+          value={taskAssignees}
+          onChange={(value) => onChange(value as TaskAssignees)}>
+          {ASSIGNEE_ORDER.filter(
+            (assignees) =>
+              assignees !== TaskAssignees.Reviewers ||
+              !entityTypes?.includes(EntityType.DOMAIN)
+          ).map((assignees) => (
+            <RadioButton
+              key={assignees}
+              label={t(ASSIGNEE_LABEL_KEYS[assignees])}
+              value={assignees}
+            />
+          ))}
+        </RadioGroup>
+      </FormField>
+      <AskedGroupWarning
+        assignees={taskAssignees}
+        fields={config.fields}
+        groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
+      />
+    </>
+  );
+};
+
 /**
  * The stage, its required fields and its conditions belong to the lifecycle that compiled this
  * node, so they are shown read-only; who is asked to complete them can change here.
@@ -168,22 +248,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </FormField>
         )}
 
-        {config.revision && (
-          <FormField label={t('label.revise-and-resubmit')}>
-            <Typography
-              as="p"
-              className="tw:m-0 tw:text-tertiary"
-              data-testid="collect-metadata-revision"
-              size="text-sm">
-              {t(
-                config.revision === Revision.Request
-                  ? 'message.collect-metadata-revision-request-hint'
-                  : 'message.collect-metadata-revision-resubmit-hint',
-                { stage: config.stage }
-              )}
-            </Typography>
-          </FormField>
-        )}
+        <RevisionHint revision={config.revision} stage={config.stage} />
 
         {config.conditions && (
           <div data-testid="collect-metadata-conditions">
@@ -199,43 +264,13 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           </div>
         )}
 
-        {config.revision !== Revision.Resubmit && (
-        <FormField
-          description={t(
-            config.revision === Revision.Request
-              ? 'message.collect-metadata-revision-assignees-hint'
-              : 'message.collect-metadata-assignees-hint'
-          )}
-          label={t('label.assign-to')}>
-          <RadioGroup
-            aria-label={t('label.assign-to')}
-            data-testid="collect-metadata-assignees"
-            isDisabled={isFormDisabled}
-            value={taskAssignees}
-            onChange={(value) => setTaskAssignees(value as TaskAssignees)}>
-            {ASSIGNEE_ORDER.filter(
-              (assignees) =>
-                assignees !== TaskAssignees.Reviewers ||
-                !entityTypes?.includes(EntityType.DOMAIN)
-            ).map((assignees) => (
-              <RadioButton
-                key={assignees}
-                label={t(ASSIGNEE_LABEL_KEYS[assignees])}
-                value={assignees}
-              />
-            ))}
-          </RadioGroup>
-        </FormField>
-
-        )}
-
-        {config.revision !== Revision.Resubmit && (
-          <AskedGroupWarning
-            assignees={taskAssignees}
-            fields={config.fields}
-            groupLabel={t(ASSIGNEE_LABEL_KEYS[taskAssignees])}
-          />
-        )}
+        <AssigneeSection
+          config={config}
+          entityTypes={entityTypes}
+          isDisabled={isFormDisabled}
+          taskAssignees={taskAssignees}
+          onChange={setTaskAssignees}
+        />
 
         {taskAssignees === TaskAssignees.Candidates && (
           <FormField label={t('label.specific-users-and-teams')}>

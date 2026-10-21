@@ -133,9 +133,9 @@ describe('MetadataCompletionTask', () => {
     expect(
       screen.getByTestId('metadata-completion-revision-comment')
     ).toHaveTextContent('Name a business owner');
-    expect(screen.getByTestId('metadata-completion-revision')).toHaveTextContent(
-      'karan'
-    );
+    expect(
+      screen.getByTestId('metadata-completion-revision')
+    ).toHaveTextContent('karan');
     expect(
       screen.queryByText('message.metadata-completion-hint')
     ).not.toBeInTheDocument();
@@ -144,7 +144,9 @@ describe('MetadataCompletionTask', () => {
   it('says so when the reviewer left no comment', () => {
     render(
       <MetadataCompletionTask
-        task={task(TaskEntityStatus.Open, { revision: { requestedBy: 'karan' } })}
+        task={task(TaskEntityStatus.Open, {
+          revision: { requestedBy: 'karan' },
+        })}
       />
     );
 

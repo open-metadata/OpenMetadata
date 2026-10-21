@@ -11,18 +11,84 @@
  *  limitations under the License.
  */
 import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Revision } from '../../../../generated/type/metadataCompletionPayload';
 import { Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
   getRequiredFieldLabel,
-  isRevisionTask,
 } from './MetadataCompletionTask.utils';
 
 interface MetadataCompletionTaskProps {
   task: Task;
 }
+
+/** The reviewer's comment on a rejected approval, and who rejected it. */
+const RevisionNote = ({ revision }: { revision: Revision }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Card
+      color="secondary"
+      data-testid="metadata-completion-revision"
+      size="sm">
+      <Card.Content>
+        <Box direction="col" gap={1}>
+          <Typography
+            as="span"
+            color="secondary"
+            size="text-xs"
+            weight="medium">
+            {revision.requestedBy
+              ? `${t('label.comment')} · ${t('label.requested-by')}: ${
+                  revision.requestedBy
+                }`
+              : t('label.comment')}
+          </Typography>
+          <Typography
+            as="p"
+            color={revision.comment ? undefined : 'secondary'}
+            data-testid="metadata-completion-revision-comment"
+            size="text-sm">
+            {revision.comment ??
+              t('message.metadata-completion-revision-no-comment')}
+          </Typography>
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
+
+/** How the task ended, or while it is open, how it closes. */
+const CompletionStatus = ({
+  status,
+  isRevision,
+}: {
+  status: Task['status'];
+  isRevision: boolean;
+}) => {
+  const { t } = useTranslation();
+  let message: ReactNode = null;
+  if (status === TaskEntityStatus.Completed) {
+    message = (
+      <Typography as="p" size="text-sm">
+        {isRevision
+          ? t('message.metadata-completion-resubmitted')
+          : t('message.metadata-completion-filled-in')}
+      </Typography>
+    );
+  } else if (status === TaskEntityStatus.Open && !isRevision) {
+    message = (
+      <Typography as="p" color="secondary" size="text-xs">
+        {t('message.metadata-completion-hint')}
+      </Typography>
+    );
+  }
+
+  return message;
+};
 
 /** What a lifecycle stage still needs, which the task's own workflow keeps current. */
 const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
@@ -30,7 +96,6 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
   const payload = getMetadataCompletionPayload(task);
   const missingFields = payload.missingFields ?? [];
   const isOpen = task.status === TaskEntityStatus.Open;
-  const revision = isRevisionTask(payload) ? payload.revision : undefined;
   // The task names missing fields; an unmet condition is reported, not spelled out.
   const conditionsUnmet = isOpen && payload.conditionsMet === false;
 
@@ -54,35 +119,7 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
               ))}
             </ul>
           )}
-          {revision && (
-            <Box
-              className="tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:p-3"
-              data-testid="metadata-completion-revision"
-              direction="col"
-              gap={1}>
-              <Typography
-                as="span"
-                className="tw:text-secondary"
-                size="text-xs"
-                weight="medium">
-                {revision.requestedBy
-                  ? `${t('label.comment')} · ${t('label.requested-by')}: ${
-                      revision.requestedBy
-                    }`
-                  : t('label.comment')}
-              </Typography>
-              <Typography
-                as="p"
-                className={
-                  revision.comment ? 'tw:text-primary' : 'tw:text-tertiary'
-                }
-                data-testid="metadata-completion-revision-comment"
-                size="text-sm">
-                {revision.comment ??
-                  t('message.metadata-completion-revision-no-comment')}
-              </Typography>
-            </Box>
-          )}
+          {payload.revision && <RevisionNote revision={payload.revision} />}
           {conditionsUnmet && (
             <Typography
               as="p"
@@ -92,18 +129,10 @@ const MetadataCompletionTask = ({ task }: MetadataCompletionTaskProps) => {
               {t('message.lifecycle-conditions-not-met')}
             </Typography>
           )}
-          {task.status === TaskEntityStatus.Completed && (
-            <Typography as="p" className="tw:text-primary" size="text-sm">
-              {revision
-                ? t('message.metadata-completion-resubmitted')
-                : t('message.metadata-completion-filled-in')}
-            </Typography>
-          )}
-          {isOpen && !revision && (
-            <Typography as="p" className="tw:text-tertiary" size="text-xs">
-              {t('message.metadata-completion-hint')}
-            </Typography>
-          )}
+          <CompletionStatus
+            isRevision={Boolean(payload.revision)}
+            status={task.status}
+          />
         </Box>
       </Card.Content>
     </Card>

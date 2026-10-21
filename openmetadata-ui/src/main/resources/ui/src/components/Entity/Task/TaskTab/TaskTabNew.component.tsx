@@ -52,10 +52,6 @@ import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import {
-  getTaskTypeMessageKey,
-  isRevisionRequest,
-} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -160,6 +156,10 @@ import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPane
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
+import {
+  getTaskTypeMessageKey,
+  isRevisionRequest,
+} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {

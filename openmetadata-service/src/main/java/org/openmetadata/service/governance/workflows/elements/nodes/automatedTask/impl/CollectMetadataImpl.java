@@ -31,6 +31,9 @@ public class CollectMetadataImpl implements JavaDelegate {
   private Expression workflowNameExpr;
   private Expression nodeNameExpr;
 
+  /** The workflow and node a collect step runs in, which name the tasks it keeps. */
+  private record Step(String workflow, String node) {}
+
   @Override
   public void execute(final DelegateExecution execution) {
     final var variables = new WorkflowVariableHandler(execution);
@@ -60,12 +63,14 @@ public class CollectMetadataImpl implements JavaDelegate {
     final var actor =
         Entity.getEntityReferenceByName(Entity.USER, "governance-bot", Include.NON_DELETED);
     final var service = new MetadataCollectionService(repository, actor);
-    final String workflow = (String) workflowNameExpr.getValue(execution);
-    final String node = (String) nodeNameExpr.getValue(execution);
+    final var step =
+        new Step(
+            (String) workflowNameExpr.getValue(execution),
+            (String) nodeNameExpr.getValue(execution));
     if (configuration.getRevision() == null) {
-      service.reconcile(entity, configuration, workflow, node);
+      service.reconcile(entity, configuration, step.workflow(), step.node());
     } else {
-      revise(service, variables, entity, configuration, workflow, node);
+      revise(service, variables, entity, configuration, step);
     }
   }
 
@@ -74,12 +79,11 @@ public class CollectMetadataImpl implements JavaDelegate {
       final WorkflowVariableHandler variables,
       final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
-      final String workflow,
-      final String node) {
+      final Step step) {
     switch (configuration.getRevision()) {
       case REQUEST -> service.requestRevision(
-          entity, configuration, workflow, node, rejectionOf(variables));
-      case RESUBMIT -> service.resubmit(entity, configuration, workflow);
+          entity, configuration, step.workflow(), step.node(), rejectionOf(variables));
+      case RESUBMIT -> service.resubmit(entity, configuration, step.workflow());
     }
   }
 

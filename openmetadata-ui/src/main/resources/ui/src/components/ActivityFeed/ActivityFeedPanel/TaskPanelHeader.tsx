@@ -20,10 +20,10 @@ import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskDisplayId } from '../../../utils/TaskNavigationUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import './feed-panel-header.less';
 
 interface TaskPanelHeaderProps {

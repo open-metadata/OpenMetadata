@@ -34,7 +34,6 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -72,6 +71,7 @@ import {
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
   handleCardContainerKeyDown,
@@ -231,7 +231,7 @@ const TaskFeedCardFromTask = ({
       handleTaskLinkClick,
       isEntityDetailsAvailable,
       t,
-      task.type,
+      task,
       taskDisplayId,
       taskColumnName,
     ]

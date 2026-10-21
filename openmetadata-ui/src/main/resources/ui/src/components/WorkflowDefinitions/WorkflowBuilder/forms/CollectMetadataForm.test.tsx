@@ -206,7 +206,9 @@ describe('CollectMetadataForm', () => {
     expect(screen.getByTestId('collect-metadata-revision')).toHaveTextContent(
       'message.collect-metadata-revision-request-hint'
     );
-    expect(screen.getByTestId('collect-metadata-assignees')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('collect-metadata-assignees')
+    ).toBeInTheDocument();
     expect(
       screen.getByText('message.collect-metadata-revision-assignees-hint')
     ).toBeInTheDocument();
