@@ -266,6 +266,22 @@ describe('Classic alert rules', () => {
     expect(screen.getByTestId('add-filters')).toBeDisabled();
   });
 
+  // While the server answers for other sources, the save could reject what they support.
+  it('disables adding a filter until the server has answered for the chosen sources', () => {
+    render(
+      <AlertSelectionProvider value={{ ...selection, support: {} }}>
+        <ClassicAlertRuleSection
+          field="filters"
+          title="Filters"
+          value={initial}
+          onChange={jest.fn()}
+        />
+      </AlertSelectionProvider>
+    );
+
+    expect(screen.getByTestId('add-filters')).toBeDisabled();
+  });
+
   it('keeps saved rules visible and disabled in the configuration view', () => {
     render(
       <Controlled

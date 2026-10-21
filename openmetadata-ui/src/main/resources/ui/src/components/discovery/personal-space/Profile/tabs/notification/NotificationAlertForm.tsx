@@ -139,11 +139,10 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     input: capabilitiesInput,
   });
 
-  const { supportedFilters } = selection.support;
+  const { hasFilters } = selection.support;
   const shouldShowFiltersSection = useMemo(
-    () =>
-      shouldShowRuleSection(sources, supportedFilters, formData.input?.filters),
-    [sources, supportedFilters, formData.input?.filters]
+    () => shouldShowRuleSection(sources, hasFilters, formData.input?.filters),
+    [sources, hasFilters, formData.input?.filters]
   );
 
   const fetchData = useCallback(async () => {

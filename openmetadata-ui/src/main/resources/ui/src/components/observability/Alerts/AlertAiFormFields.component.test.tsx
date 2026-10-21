@@ -29,6 +29,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { isEmpty } from 'lodash';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { NotificationTemplate } from '../../../generated/entity/events/notificationTemplate';
@@ -95,9 +96,15 @@ const LISTED_SOURCES = {
 } as unknown as AlertCapabilities;
 
 // What the page that shows the form hands it: what the chosen sources support, and their search.
+// An answer for the chosen sources says whether it lists any rule, as getSelectionSupport does.
 const selectionOf = (support: SelectionSupport = {}): AlertSelection => ({
   sources: [],
-  support,
+  support: {
+    hasFilters: support.supportedFilters && !isEmpty(support.supportedFilters),
+    hasTriggers:
+      support.supportedTriggers && !isEmpty(support.supportedTriggers),
+    ...support,
+  },
   capabilities: {
     selection: LISTED_SOURCES,
     knownSources: [],

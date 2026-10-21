@@ -20,6 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Effect } from '../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../hooks/useAlertSelection';
@@ -239,7 +240,7 @@ export const ClassicAlertRuleSection = ({
             <Button
               color="primary"
               data-testid={field === 'filters' ? 'add-filters' : 'add-trigger'}
-              isDisabled={sources.length === 0}
+              isDisabled={sources.length === 0 || isUndefined(supportedRules)}
               size="sm"
               onPress={() => changeRules(getRulesWithAddedRule(rules))}>
               {t('label.add-entity', { entity: copy.label })}

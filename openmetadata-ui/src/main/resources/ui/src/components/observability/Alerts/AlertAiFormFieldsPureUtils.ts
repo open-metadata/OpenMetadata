@@ -110,22 +110,22 @@ export const getAlertAiResources = (
 };
 
 /**
- * Whether a rule section displays. Once the server has said what the sources support, it displays
- * when they support any rule of its kind. Until then, a view keeps the parent's flag, and a form
+ * Whether a rule section displays. Once the server has said whether the sources support any rule
+ * of its kind, it displays when they do. Until then, a view keeps the parent's flag, and a form
  * displays it only for rules the alert already holds, so a saved alert never hides them.
  */
 const resolveSectionDisplay = (
   isViewOnly: boolean | undefined,
   hasSources: boolean,
-  supportedRules: EventFilterRule[] | undefined,
+  hasRules: boolean | undefined,
   chosenRules: ArgumentsInput[],
   shouldShowSection: boolean
 ): boolean => {
   if (!hasSources) {
     return shouldShowSection;
   }
-  if (!isUndefined(supportedRules)) {
-    return !isEmpty(supportedRules);
+  if (!isUndefined(hasRules)) {
+    return hasRules;
   }
 
   return isViewOnly ? shouldShowSection : !isEmpty(chosenRules);
@@ -136,16 +136,16 @@ export const getAlertAiSectionInputs = ({
   value,
   isViewOnly,
   selectedSources,
-  supportedFilters,
-  supportedTriggers,
+  hasFilters,
+  hasTriggers,
   shouldShowActionsSection,
   shouldShowFiltersSection,
 }: {
   value: AlertAiFormValue;
   isViewOnly?: boolean;
   selectedSources: string[];
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
+  hasFilters?: boolean;
+  hasTriggers?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
 }) => {
@@ -159,14 +159,14 @@ export const getAlertAiSectionInputs = ({
     shouldDisplayFiltersSection: resolveSectionDisplay(
       isViewOnly,
       hasSources,
-      supportedFilters,
+      hasFilters,
       selectedFilters,
       shouldShowFiltersSection
     ),
     shouldDisplayActionsSection: resolveSectionDisplay(
       isViewOnly,
       hasSources,
-      supportedTriggers,
+      hasTriggers,
       selectedTriggers,
       shouldShowActionsSection
     ),

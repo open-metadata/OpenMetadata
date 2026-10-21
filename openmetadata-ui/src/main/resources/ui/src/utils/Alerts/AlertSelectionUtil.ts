@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, isUndefined, uniq } from 'lodash';
+import { isEmpty, isEqual, isUndefined, sortBy, uniq } from 'lodash';
 import {
   AlertCapabilities,
   AlertConditionCapability,
@@ -31,6 +31,10 @@ export interface SelectionSupport {
   supportedEventTypes?: EventType[];
   /** Who inside the platform the alert can be sent to. Unknown until the server has answered. */
   recipientCategories?: string[];
+  /** Whether the sources support any filter, and so whether the filters section is shown. */
+  hasFilters?: boolean;
+  /** Whether the sources support any trigger, and so whether the triggers section is shown. */
+  hasTriggers?: boolean;
 }
 
 // A trigger applies only to the sources that support it, so with several sources it says which.
@@ -52,23 +56,33 @@ const labelledWithItsSources = (
  * applies, so the form cannot offer what the save would reject. Until it has answered for some
  * of the selected sources, what they support is unknown and every field is left out. An answer for
  * no sources, which usually arrives before a saved alert has loaded, says nothing about them.
- * While a new selection is asked about, the answer for the previous one is used.
+ * While a new selection is asked about, the answer for the previous one still says which sections
+ * are shown, so they do not blink, but nothing it lists can be chosen: it was given for other
+ * sources, and the save may reject it.
  */
 export const getSelectionSupport = (
   sources: string[] = [],
   selection?: AlertCapabilities,
-  answeredFor?: string[]
+  answeredFor: string[] = []
 ): SelectionSupport => {
   const selected = uniq(sources);
   if (selected.length === 0) {
     return { recipientCategories: selection?.recipientCategories };
   }
-  if (!selection || answeredFor?.length === 0) {
+  if (!selection || answeredFor.length === 0) {
     return {};
+  }
+  const shown = {
+    recipientCategories: selection.recipientCategories,
+    hasFilters: !isEmpty(selection.filters),
+    hasTriggers: !isEmpty(selection.triggers),
+  };
+  if (!isEqual(sortBy(uniq(answeredFor)), sortBy(selected))) {
+    return shown;
   }
 
   return {
-    recipientCategories: selection.recipientCategories,
+    ...shown,
     supportedFilters: selection.filters.map(
       (filter) => filter.condition as EventFilterRule
     ),
@@ -85,21 +99,19 @@ export const getSelectionSupport = (
 
 /**
  * Whether a section of rules is shown. With no source chosen it is, empty. Once the server has said
- * what the sources support, it is shown when they support any rule of that kind. Until then it is
+ * whether the sources support any rule of that kind, it is shown when they do. Until then it is
  * shown only for rules the alert already holds, so a saved alert never hides them.
  */
 export const shouldShowRuleSection = (
   sources: string[],
-  supportedRules: EventFilterRule[] | undefined,
+  hasRules: boolean | undefined,
   chosenRules: unknown[] | undefined
 ) => {
   if (isEmpty(sources)) {
     return true;
   }
 
-  return isUndefined(supportedRules)
-    ? !isEmpty(chosenRules)
-    : !isEmpty(supportedRules);
+  return isUndefined(hasRules) ? !isEmpty(chosenRules) : hasRules;
 };
 
 /**

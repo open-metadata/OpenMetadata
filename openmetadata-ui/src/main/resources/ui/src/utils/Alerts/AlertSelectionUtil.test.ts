@@ -15,10 +15,6 @@ import {
   SourceKind,
 } from '../../generated/events/api/alertCapabilities';
 import {
-  Effect,
-  EventFilterRule,
-} from '../../generated/events/eventFilterRule';
-import {
   getAlertSourceChanges,
   getSelectionSupport,
   getSourceKindLabel,
@@ -74,8 +70,18 @@ describe('getSelectionSupport', () => {
     expect(getSelectionSupport(['table'], TABLE_AND_TOPIC, [])).toEqual({});
   });
 
-  it('uses the answer for another selection while it asks about this one', () => {
+  // The save may reject what the answer for other sources lists, so none of it is offered.
+  it('keeps the sections of the answer for another selection, but offers none of its rules', () => {
     const support = getSelectionSupport(['table'], TABLE_AND_TOPIC, [
+      'table',
+      'topic',
+    ]);
+
+    expect(support).toEqual({ hasFilters: true, hasTriggers: true });
+  });
+
+  it('takes an answer for the same sources in another order as the answer for them', () => {
+    const support = getSelectionSupport(['topic', 'table'], TABLE_AND_TOPIC, [
       'table',
       'topic',
     ]);
@@ -130,20 +136,16 @@ describe('getSelectionSupport', () => {
   });
 });
 
-const RULE: EventFilterRule = {
-  name: 'filterByOwner',
-  condition: 'matchAnyOwnerName()',
-  effect: Effect.Include,
-};
-
 describe('shouldShowRuleSection', () => {
   it('shows an empty section while no source is chosen', () => {
     expect(shouldShowRuleSection([], undefined, [])).toBe(true);
   });
 
   it('follows what the sources support once the server has said it', () => {
-    expect(shouldShowRuleSection(['table'], [RULE], [])).toBe(true);
-    expect(shouldShowRuleSection(['table'], [], [{ name: 'f' }])).toBe(false);
+    expect(shouldShowRuleSection(['table'], true, [])).toBe(true);
+    expect(shouldShowRuleSection(['table'], false, [{ name: 'f' }])).toBe(
+      false
+    );
   });
 
   it('keeps the rules an alert holds while what its sources support is unknown', () => {

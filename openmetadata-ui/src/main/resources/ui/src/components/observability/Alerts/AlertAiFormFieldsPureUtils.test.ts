@@ -90,8 +90,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: viewValueWithRules,
         isViewOnly: true,
         selectedSources: ['table'],
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,
@@ -116,20 +116,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: viewValueWithRules,
         isViewOnly: true,
         selectedSources: ['table'],
-        supportedFilters: [
-          {
-            condition: '',
-            effect: Effect.Include,
-            name: 'domainList',
-          },
-        ],
-        supportedTriggers: [
-          {
-            condition: '',
-            effect: Effect.Include,
-            name: 'testResultTrigger',
-          },
-        ],
+        hasFilters: true,
+        hasTriggers: true,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,
@@ -151,8 +139,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: viewValueWithRules,
         isViewOnly: true,
         selectedSources: ['table'],
-        supportedFilters: [],
-        supportedTriggers: [],
+        hasFilters: false,
+        hasTriggers: false,
       });
 
       expect(inputs.shouldDisplayFiltersSection).toBe(false);
@@ -167,8 +155,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: viewValueWithRules,
         isViewOnly: false,
         selectedSources: ['table'],
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
 
       expect(inputs.shouldDisplayFiltersSection).toBe(true);
@@ -182,8 +170,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: { input: {} } as unknown as AlertAiFormValue,
         isViewOnly: false,
         selectedSources: ['table'],
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
 
       expect(inputs.shouldDisplayFiltersSection).toBe(false);
@@ -200,8 +188,8 @@ describe('AlertAiFormFieldsPureUtils', () => {
         value: emptyValue,
         isViewOnly: true,
         selectedSources: ['table'],
-        supportedFilters: undefined,
-        supportedTriggers: undefined,
+        hasFilters: undefined,
+        hasTriggers: undefined,
       });
       const visibility = getAlertAiSectionVisibility({
         isViewOnly: true,

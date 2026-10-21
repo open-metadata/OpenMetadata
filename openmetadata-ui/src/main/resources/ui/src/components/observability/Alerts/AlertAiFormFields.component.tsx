@@ -113,8 +113,8 @@ function AlertAiFormFields({
     value,
     isViewOnly,
     selectedSources,
-    supportedFilters: support.supportedFilters,
-    supportedTriggers: support.supportedTriggers,
+    hasFilters: support.hasFilters,
+    hasTriggers: support.hasTriggers,
     shouldShowActionsSection,
     shouldShowFiltersSection,
   });

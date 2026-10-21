@@ -5,9 +5,9 @@
 - **Deciders:** Adrià Manero
 - **Guard:** `EventSubscriptionResourceIT` (the `Deprecation` and `Link` headers on both
   `/resources` lists); `EventSubscriptionResourceTest` (the `Link` keeps a configured base
-  path); `watchPerSourceListRequests` in `AiAlertSeveralSources.spec.ts`,
-  `AlertSeveralSources.spec.ts` and `ProfileNotificationTab.spec.ts` (no page asks for the
-  per-source list)
+  path); `AlertSelectionUtil.test.ts` (an answer for other sources offers no rule);
+  `watchPerSourceListRequests` in `AiAlertSeveralSources.spec.ts`, `AlertSeveralSources.spec.ts`
+  and `ProfileNotificationTab.spec.ts` (no page asks for the per-source list)
 - **Related:** #20504, PR #35782, PR #33970
 
 ## Context
@@ -29,10 +29,11 @@ server already applies.
 - Every alert form and view, in both modes and for both alert types, takes the source list,
   filters, triggers, recipients, containers and event types only from `POST /capabilities`.
 - Until the first answer for an alert's sources arrives, it shows a loader instead of guessing.
-  After that the loader never comes back: a later question keeps the previous answer on screen
-  while it loads, and a failure shows an inline error with Retry.
+  After that the loader never comes back: while a later question loads, the sections the previous
+  answer showed stay on screen, and a failure shows an inline error with Retry.
 - While what the sources support is unknown, the rules an alert already holds are shown by name,
-  and no rule can be added.
+  and no rule can be added. An answer given for other sources counts as unknown: the save may
+  reject what it lists.
 - `GET /{alertType}/resources` is deprecated. It still answers as before, adds
   `Deprecation: @1792454400` (RFC 9745, 2026-10-20) and a `Link` to `/capabilities` with
   `rel="alternate"`, and is marked deprecated in its OpenAPI description. The link is a path under

@@ -46,18 +46,16 @@ export function useAlertResources(
     sources,
     input: capabilitiesInput,
   });
-  const { supportedFilters, supportedTriggers } = selection.support;
+  const { hasFilters, hasTriggers } = selection.support;
 
   const shouldShowFiltersSection = useMemo(
-    () =>
-      shouldShowRuleSection(sources, supportedFilters, chosenSoFar?.filters),
-    [sources, supportedFilters, chosenSoFar?.filters]
+    () => shouldShowRuleSection(sources, hasFilters, chosenSoFar?.filters),
+    [sources, hasFilters, chosenSoFar?.filters]
   );
 
   const shouldShowActionsSection = useMemo(
-    () =>
-      shouldShowRuleSection(sources, supportedTriggers, chosenSoFar?.actions),
-    [sources, supportedTriggers, chosenSoFar?.actions]
+    () => shouldShowRuleSection(sources, hasTriggers, chosenSoFar?.actions),
+    [sources, hasTriggers, chosenSoFar?.actions]
   );
 
   return {

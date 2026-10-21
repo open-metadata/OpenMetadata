@@ -112,6 +112,37 @@ describe('useAlertSelection', () => {
     );
   });
 
+  // A filter one source supports may not hold for the one just added, and the save would refuse it.
+  it('offers no rule from the previous answer while it asks about a new source', async () => {
+    let answerBoth: (value: unknown) => void = jest.fn();
+    mockGetAlertCapabilities.mockImplementation(({ sources }) =>
+      sources.length > 1
+        ? new Promise((resolve) => (answerBoth = resolve))
+        : Promise.resolve(answer(sources, ['Owners']))
+    );
+    const { result, rerender, waitFor } = renderHook(
+      (props: { sources: string[] }) =>
+        useAlertSelection({
+          alertType: AlertType.Notification,
+          sources: props.sources,
+        }),
+      { initialProps: { sources: ['task'] } }
+    );
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+
+    rerender({ sources: ['task', 'conversation'] });
+
+    expect(result.current.support.supportedFilters).toBeUndefined();
+    expect(result.current.support.hasFilters).toBe(true);
+
+    answerBoth(answer(['task', 'conversation'], ['Owners']));
+    await waitFor(() =>
+      expect(result.current.support.supportedFilters).toHaveLength(1)
+    );
+  });
+
   it('says what the chosen sources support, from one answer of the server', async () => {
     const { result, waitFor } = renderHook(() =>
       useAlertSelection({
