@@ -1125,11 +1125,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
         }
         updateTaskDescription(storedTask, updatedTask);
         updateTaskDisplayName(storedTask, updatedTask);
-        updateTags(
-            storedTask.getFullyQualifiedName(),
-            EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
-            storedTask.getTags(),
-            updatedTask.getTags());
+        updatedTask.setTags(
+            updateTags(
+                storedTask.getFullyQualifiedName(),
+                EntityUtil.getFieldName(TASKS_FIELD, updatedTask.getName(), FIELD_TAGS),
+                storedTask.getTags(),
+                updatedTask.getTags()));
       }
 
       boolean removedTasks = updatedTasks.size() < origTasks.size();

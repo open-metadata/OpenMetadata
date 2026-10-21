@@ -10674,11 +10674,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         compareAndUpdate(
             FIELD_TAGS,
             () ->
-                updateTags(
-                    updated.getFullyQualifiedName(),
-                    FIELD_TAGS,
-                    original.getTags(),
-                    updated.getTags()));
+                updated.setTags(
+                    updateTags(
+                        updated.getFullyQualifiedName(),
+                        FIELD_TAGS,
+                        original.getTags(),
+                        updated.getTags())));
         compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
         compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
         compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
@@ -10886,8 +10887,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    protected void updateTags(
+    /**
+     * Applies the tag changes for {@code fqn} and returns the tags it ends up with. A PUT merges the
+     * stored tags into the requested ones, and when the request carried no tags that merge lands in
+     * a new list, so callers must keep the returned list rather than the one they passed in.
+     */
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // `original` comes off the read path, so it carries its ancestors' tags as DERIVED, while
       // `updated` has been through prepareInternal, whose addDerivedTags strips that label class.
       // Diffing the two as-is sees an inherited label on one side only and calls it a deletion:
@@ -10904,14 +10911,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // inherited `original` and never runs it through prepareInternal, so there the derived
       // labels sit on the updated side instead -- and diffing that way records the same inherited
       // tag as an addition on every restore. `updatedTags` itself is left alone: the PUT branch
-      // merges into that list in place and the entity keeps the result, so only the two diff
-      // reads are narrowed.
+      // merges into that list and returns it, so only the two diff reads are narrowed.
       origTags = getNonDerivedTags(listOrEmpty(origTags));
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+        return requestedTags; // Nothing to update
       }
 
       List<TagLabel> addedTags = new ArrayList<>();
@@ -10981,8 +10987,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // This diffs the two lists directly rather than reusing addedTags/deletedTags, so it needs
       // the same persistable view: the version history and the ChangeEvent are exactly what was
       // wrong before. Taken after the PUT merge above, so on that path it still sees the request's
-      // tags unioned with what already existed. `updatedTags` itself stays the live list -- the
-      // entity keeps the merged result and the sort below orders it.
+      // tags unioned with what already existed. `updatedTags` itself stays the live list -- it is
+      // what this method returns, ordered by the sort below.
       recordListChange(
           fieldName,
           origTags,
@@ -10991,6 +10997,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           new ArrayList<>(),
           tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+      return updatedTags;
     }
 
     /**
@@ -12344,11 +12351,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateColumnDataLength(columnPrefix, stored, updated);
         updateColumnPrecision(columnPrefix, stored, updated);
         updateColumnScale(columnPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
         updateColumnConstraint(columnPrefix, stored, updated);
         updateColumnExtension(entityId, columnPrefix, stored, updated);
 
