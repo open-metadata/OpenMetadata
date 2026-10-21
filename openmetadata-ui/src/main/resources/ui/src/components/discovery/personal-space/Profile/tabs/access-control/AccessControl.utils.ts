@@ -13,8 +13,15 @@
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { uniqBy } from 'lodash';
+import { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { Function } from '../../../../../../generated/type/function';
+import {
+  checkPermission,
+  userPermissions,
+} from '../../../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
   getPolicyWithFqnPath,
@@ -215,4 +222,43 @@ export const getDetailHeaderNames = (
     roleName: view.type === ROLES_DETAIL ? resolvedName || urlName : '',
     policyName: isPolicyView ? resolvedName || urlName : '',
   };
+};
+
+const canViewRoles = (permissions: UIPermission) =>
+  userPermissions.hasViewPermissions(ResourceEntity.ROLE, permissions);
+const canViewPolicies = (permissions: UIPermission) =>
+  userPermissions.hasViewPermissions(ResourceEntity.POLICY, permissions);
+
+// What a non-admin needs to open each view: the gates classic `SettingsRouter`
+// put on the matching page (the debugger was admin-only there).
+const VIEW_GATES: Partial<
+  Record<AccessControlView['type'], (permissions: UIPermission) => boolean>
+> = {
+  roles: canViewRoles,
+  'roles-add': canViewRoles,
+  [ROLES_DETAIL]: canViewRoles,
+  policies: canViewPolicies,
+  'policies-add': canViewPolicies,
+  [POLICIES_DETAIL]: canViewPolicies,
+  [POLICIES_RULE]: canViewPolicies,
+  'permission-debugger': () => false,
+  'audit-logs': (permissions) =>
+    Boolean(
+      checkPermission(
+        Operation.AuditLogs,
+        ResourceEntity.AUDIT_LOG,
+        permissions
+      )
+    ),
+};
+
+/** Whether the user may open an Access Control view (panel and landing cards). */
+export const canOpenAccessControlView = (
+  type: AccessControlView['type'],
+  permissions: UIPermission,
+  isAdmin?: boolean
+): boolean => {
+  const gate = VIEW_GATES[type];
+
+  return Boolean(isAdmin) || !gate || gate(permissions);
 };

@@ -291,4 +291,14 @@ describe('MembersPanel hash navigation', () => {
     ).toBeInTheDocument();
     expect(screen.queryByTestId('users-panel')).not.toBeInTheDocument();
   });
+
+  it('keeps online users open to a non-admin without team or user view permission', () => {
+    mockPermissions = { table: { ViewBasic: true } };
+    renderAt('#members/online-users');
+
+    expect(screen.getByTestId('online-users')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+  });
 });

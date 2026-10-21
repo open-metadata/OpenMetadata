@@ -23,8 +23,13 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
+import {
+  ResourceEntity,
+  UIPermission,
+} from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import type {
   MembersView,
   OnlineStatusInfo,
@@ -448,4 +453,30 @@ export const buildMembersHeaderMaps = (
       section?.description
     ),
   };
+};
+
+// Classic gated the team and user lists on view permission; the Members tab is
+// open to either, so each list keeps its own gate. Online users stays ungated,
+// as it was in classic.
+const LIST_VIEW_RESOURCE: Partial<Record<MembersView['type'], ResourceEntity>> =
+  {
+    teams: ResourceEntity.TEAM,
+    'team-detail': ResourceEntity.TEAM,
+    users: ResourceEntity.USER,
+    admins: ResourceEntity.USER,
+  };
+
+/** Whether the user may open a Members list view (panel and landing cards). */
+export const canViewMembersView = (
+  type: MembersView['type'],
+  permissions: UIPermission,
+  isAdmin?: boolean
+): boolean => {
+  const resource = LIST_VIEW_RESOURCE[type];
+
+  return (
+    Boolean(isAdmin) ||
+    !resource ||
+    userPermissions.hasViewPermissions(resource, permissions)
+  );
 };

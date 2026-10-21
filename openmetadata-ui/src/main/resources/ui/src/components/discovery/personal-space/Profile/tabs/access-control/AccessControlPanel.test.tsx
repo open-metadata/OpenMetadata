@@ -106,4 +106,20 @@ describe('AccessControlPanel permission gates', () => {
 
     expect(screen.getByTestId('debugger')).toBeInTheDocument();
   });
+
+  it('gates audit logs on the AuditLogs operation', () => {
+    renderAt('#access-control/audit-logs');
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('audit-logs')).not.toBeInTheDocument();
+  });
+
+  it('shows audit logs to a non-admin allowed the AuditLogs operation', () => {
+    mockPermissions = { auditLog: { AuditLogs: true } };
+    renderAt('#access-control/audit-logs');
+
+    expect(screen.getByTestId('audit-logs')).toBeInTheDocument();
+  });
 });
