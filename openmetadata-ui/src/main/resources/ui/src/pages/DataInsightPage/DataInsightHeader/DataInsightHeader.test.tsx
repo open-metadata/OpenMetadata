@@ -12,9 +12,20 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ROUTES } from '../../../constants/constants';
+import dataInsightClassBase from '../DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader.component';
 
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
+
+jest.mock(
+  '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => ({
+    useEntityExportModalProvider: jest.fn(() => ({
+      showModal: mockShowModal,
+    })),
+  })
+);
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
@@ -111,5 +122,13 @@ describe('DataInsightHeader component', () => {
     expect(screen.getByText('DatePickerMenu')).toBeInTheDocument();
     expect(screen.getByText('DataInsightSummary')).toBeInTheDocument();
     expect(screen.getByText('KPIChart')).toBeInTheDocument();
+  });
+
+  it('should pass showModal from the export modal provider to getManageExtraOptions', () => {
+    render(<DataInsightHeader {...mockProps} />);
+
+    expect(dataInsightClassBase.getManageExtraOptions).toHaveBeenCalledWith(
+      mockShowModal
+    );
   });
 });
