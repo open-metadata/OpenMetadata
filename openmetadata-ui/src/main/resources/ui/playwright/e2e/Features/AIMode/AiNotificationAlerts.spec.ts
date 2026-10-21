@@ -18,6 +18,7 @@ import { getApiContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   addFilter,
+  clearAlertSources,
   dismissPopover,
   fillAlertName,
   getDestinationCategoryOptions,
@@ -331,6 +332,8 @@ test.describe('AI mode — notification alert form keeps the classic behaviour',
       'Mentioned Users',
     ]);
 
+    // A table cannot join a conversation, so the conversation goes first.
+    await clearAlertSources(page, ['Conversation']);
     await selectAlertSource(page, 'Table');
     await dialog.getByTestId('add-destination-button').click();
 

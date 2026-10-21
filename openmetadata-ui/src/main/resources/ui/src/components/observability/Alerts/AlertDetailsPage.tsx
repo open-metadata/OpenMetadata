@@ -151,7 +151,7 @@ const AlertDetailsPage = ({
     fqn,
     sources,
   });
-  const { support } = alertFormState.selection;
+  const { selection } = alertFormState;
 
   const handleConfirmDelete = useCallback(async () => {
     if (!alertDetails?.id) {
@@ -209,16 +209,18 @@ const AlertDetailsPage = ({
     }
 
     if (tab === AlertDetailTabs.CONFIGURATION && alertConfigValue) {
+      // The configuration shows what the server says the sources support, so it waits for it.
+      if (!selection.ready) {
+        return <Loader />;
+      }
+
       return (
         <AlertAiForm
           shouldShowFiltersSection
           alert={alertConfigValue}
-          filterResources={alertFormState.filterResources}
           mode="view"
-          recipientCategories={support.recipientCategories}
+          selection={selection}
           shouldShowActionsSection={kind.hasTriggers}
-          supportedFilters={support.supportedFilters}
-          supportedTriggers={support.supportedTriggers}
           templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
           templatesLoading={alertFormState.loadingState.templates}
@@ -232,12 +234,11 @@ const AlertDetailsPage = ({
     alertConfigValue,
     alertDetails,
     fqn,
-    alertFormState.filterResources,
     alertFormState.loadingState.templates,
     alertFormState.templateResourcePermission,
     alertFormState.templates,
     kind.hasTriggers,
-    support,
+    selection,
     tab,
   ]);
 
