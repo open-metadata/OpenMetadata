@@ -63,7 +63,8 @@ const LeftSidebar = () => {
     () =>
       getSidebarActiveKeys(
         getSidebarPathname(location.pathname, location.state),
-        leftSidebarClassBase.getSidebarNestedKeys()
+        leftSidebarClassBase.getSidebarNestedKeys(),
+        leftSidebarClassBase.getSidebarPathAliases()
       ),
     [location.pathname, location.state]
   );

@@ -149,6 +149,7 @@ const TopViewEntities: FC<Props> = ({ chartFilter }) => {
               }}
               pagination={false}
               size="small"
+              tableLayout="auto"
             />
           </>
         )}

@@ -201,7 +201,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 span={6}
                 onClick={() => onScrollToChart(summary.id)}>
                 <SummaryCard
-                  className="summary-card-item"
+                  className="summary-card-item tw:h-full"
                   isLoading={isLoading}
                   showProgressBar={false}
                   title={summary.label}
@@ -226,7 +226,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 span={6}
                 onClick={() => onScrollToChart(summary.id)}>
                 <SummaryCard
-                  className="summary-card-item h-full"
+                  className="summary-card-item tw:h-full"
                   isLoading={isLoading}
                   showProgressBar={false}
                   title={summary.label}
@@ -245,6 +245,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
                 key={DataInsightChartType.MostActiveUsers}
                 span={6}>
                 <SummaryCard
+                  className="tw:h-full"
                   isLoading={isLoading}
                   showProgressBar={false}
                   title={t('label.most-active-user')}

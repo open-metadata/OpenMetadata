@@ -268,6 +268,7 @@ const KPIList = () => {
         pagination={false}
         rowKey="name"
         size="small"
+        tableLayout="auto"
       />
 
       {selectedKpi && (

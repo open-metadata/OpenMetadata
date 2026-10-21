@@ -103,6 +103,14 @@ describe('KPI list component', () => {
     expect(ownerKPI).toBeInTheDocument();
   });
 
+  it('sizes the KPI columns to their content instead of fixed equal widths', async () => {
+    render(<KPIList />, { wrapper: MemoryRouter });
+
+    await screen.findByText('Description KPI');
+
+    expect(screen.getByRole('grid')).not.toHaveClass('tw:table-fixed');
+  });
+
   it('Action button should work', async () => {
     const KPI = KPI_DATA[0];
 

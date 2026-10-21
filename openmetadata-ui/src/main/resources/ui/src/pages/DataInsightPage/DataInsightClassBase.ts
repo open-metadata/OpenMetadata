@@ -40,7 +40,7 @@ class DataInsightClassBase {
       {
         key: DataInsightTabs.DATA_ASSETS,
         label: i18n.t('label.data-asset-plural'),
-        icon: AppAnalyticsIcon,
+        icon: DataAssetsIcon,
         iconProps: {
           className: SIDE_PANEL_ICONS_CLASS,
         },
@@ -48,7 +48,7 @@ class DataInsightClassBase {
       {
         key: DataInsightTabs.APP_ANALYTICS,
         label: i18n.t('label.app-analytic-plural'),
-        icon: DataAssetsIcon,
+        icon: AppAnalyticsIcon,
         iconProps: {
           className: SIDE_PANEL_ICONS_CLASS,
         },
