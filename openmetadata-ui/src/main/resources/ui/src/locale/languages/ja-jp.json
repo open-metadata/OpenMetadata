@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "チームをリストアすると、すべてのメタデータが {{brandName}} に戻されます。",
     "restore-entities-error": "{{entity}} のリストア中にエラーが発生しました。",
     "restore-entities-success": "{{entity}} のリストアが成功しました。",
+    "restore-user-to-edit": "詳細を編集するには、ユーザー一覧からこのユーザーを復元してください。",
     "result-limit-message": "クエリログの上限を設定します。",
     "retention-period-description": "保持期間は、データが削除またはアーカイブの対象となるまでの保存期間を示します。例：30日、6ヶ月、1年、または ISO 8601（UTC）形式の P23DT23H など。",
     "retention-sla-description": "<0>{{label}}</0>: データは<0>{{data}}</0>間保持する必要があります",

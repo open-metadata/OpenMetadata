@@ -5759,6 +5759,7 @@
     "restore-deleted-team": " Ripristinando il Team tutti i metadati verranno riaggiunti a {{brandName}}",
     "restore-entities-error": "Errore durante il ripristino di {{entity}}",
     "restore-entities-success": "{{entity}} ripristinato correttamente",
+    "restore-user-to-edit": "Ripristina questo utente dall'elenco Utenti per modificarne i dettagli.",
     "result-limit-message": "Configurazione per impostare il limite dei log delle query.",
     "retention-period-description": "Il periodo di conservazione indica la durata per cui i dati vengono conservati prima di essere considerati idonei all'eliminazione o all'archiviazione. Esempio: sono validi 30 giorni, 6 mesi, 1 anno o qualsiasi formato ISO 8601 in UTC come P23DT23H.",
     "retention-sla-description": "<0>{{label}}</0>: i dati devono essere conservati per <0>{{data}}</0>",

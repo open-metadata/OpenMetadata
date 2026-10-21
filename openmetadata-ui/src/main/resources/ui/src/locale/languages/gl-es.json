@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "Restaurar o equipo engadirá todos os metadatos de volta a {{brandName}}.",
     "restore-entities-error": "Erro ao restaurar {{entity}}",
     "restore-entities-success": "{{entity}} restaurado correctamente",
+    "restore-user-to-edit": "Restaura este usuario desde a lista de usuarios para editar os seus datos.",
     "result-limit-message": "Configuración para establecer o límite dos rexistros de consultas.",
     "retention-period-description": "O período de retención refírese á duración durante a cal os datos se conservan antes de consideralos elixibles para a eliminación ou o arquivado. Exemplo: 30 días, 6 meses, 1 ano ou calquera formato ISO 8601 en UTC como P23DT23H será válido.",
     "retention-sla-description": "<0>{{label}}</0>: Os datos deben conservarse por <0>{{data}}</0>.",

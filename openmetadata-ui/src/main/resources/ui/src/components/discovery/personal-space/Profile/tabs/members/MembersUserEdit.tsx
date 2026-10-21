@@ -32,6 +32,7 @@ interface MembersUserEditProps {
 /**
  * Edit User view, opened by clicking a user name in the Settings modal
  * (`#members/user/<name>`): the Create User form, pre-filled, saving one patch.
+ * Deleted users get a restore hint instead, since the server rejects the patch.
  */
 const MembersUserEdit: FC<MembersUserEditProps> = ({
   name,
@@ -61,6 +62,29 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({
 
   if (isLoading || !userData) {
     return <Loader />;
+  }
+
+  // The server only patches live users, so a soft-deleted one can't be edited
+  // until it is restored from the Users list.
+  if (userData.deleted) {
+    return (
+      <Box className="tw:relative tw:flex-1 tw:min-h-90">
+        <EmptyPlaceholder
+          actions={[
+            {
+              color: 'secondary',
+              key: 'back-to-users',
+              label: t('label.user-plural'),
+              onPress: () => onNavigate({ type: 'users' }),
+            },
+          ]}
+          data-testid="deleted-user"
+          description={t('message.restore-user-to-edit')}
+          icon={User01}
+          title={t('label.deleted-entity', { entity: t('label.user') })}
+        />
+      </Box>
+    );
   }
 
   return (

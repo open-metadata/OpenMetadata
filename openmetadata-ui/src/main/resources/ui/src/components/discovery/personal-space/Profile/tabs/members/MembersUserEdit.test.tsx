@@ -82,4 +82,28 @@ describe('MembersUserEdit', () => {
     expect(screen.getByTestId('user-not-found')).toBeInTheDocument();
     expect(screen.queryByTestId('user-form')).not.toBeInTheDocument();
   });
+
+  it('shows a restore hint instead of the form for a deleted user', async () => {
+    mockGetUserByName.mockResolvedValue({
+      id: 'u3',
+      name: 'gone',
+      email: 'gone@acme.io',
+      deleted: true,
+    });
+    const onNavigate = jest.fn();
+
+    await act(async () => {
+      render(
+        <MembersUserEdit
+          name="gone"
+          onNavigate={onNavigate}
+          onResolveName={jest.fn()}
+        />
+      );
+    });
+
+    expect(screen.getByTestId('deleted-user')).toBeInTheDocument();
+    expect(screen.queryByTestId('user-form')).not.toBeInTheDocument();
+  });
 });
+

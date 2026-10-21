@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "Restaurar el equipo agregará todos los metadatos de nuevo a {{brandName}}",
     "restore-entities-error": "Error al restaurar {{entity}}",
     "restore-entities-success": "{{entity}} restaurado correctamente",
+    "restore-user-to-edit": "Restaura este usuario desde la lista de usuarios para editar sus datos.",
     "result-limit-message": "Configuración para establecer el límite de los registros de consulta.",
     "retention-period-description": "El periodo de retención se refiere a la duración durante la cual los datos se retienen antes de que sean elegibles para su eliminación o archivo.",
     "retention-sla-description": "<0>{{label}}</0>: Los datos deben conservarse durante <0>{{data}}</0>.",

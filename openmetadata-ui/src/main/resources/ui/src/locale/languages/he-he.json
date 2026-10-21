@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "שחזור הקבוצה יחזיר את כל המטה-דאטה אל {{brandName}}.",
     "restore-entities-error": "שגיאה במהלך השחזור של {{entity}}",
     "restore-entities-success": "{{entity}} שוחזר בהצלחה",
+    "restore-user-to-edit": "שחזר את המשתמש מרשימת המשתמשים כדי לערוך את פרטיו.",
     "result-limit-message": "הגדר את הגבלת התוצאה ללוגי שאילתות.",
     "retention-period-description": "תקופת שמירה מתייחסת למשך הזמן שבו נתונים נשמרים לפני שהם נחשבים כזכאים למחיקה או לארכוב. לדוגמה: 30 ימים, 6 חודשים, שנה אחת או כל פורמט ISO 8601 ב-UTC כמו P23DT23H יהיה תקף.",
     "retention-sla-description": "<0>{{label}}</0>: הנתונים צריכים להיות נשמרים במשך <0>{{data}}</0>.",

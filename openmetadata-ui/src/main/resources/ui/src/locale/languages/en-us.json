@@ -5759,6 +5759,7 @@
     "restore-deleted-team": " Restoring the Team will add all the metadata back to {{brandName}}",
     "restore-entities-error": "Error while restoring {{entity}}",
     "restore-entities-success": "{{entity}} restored successfully",
+    "restore-user-to-edit": "Restore this user from the Users list to edit their details.",
     "result-limit-message": "Configuration to set the limit for query logs.",
     "retention-period-description": "Retention period refers to the duration for which data is retained before it is considered eligible for deletion or archival. Example: 30 days, 6 months, 1 year or any ISO 8601 format in UTC like P23DT23H will be valid.",
     "retention-sla-description": "<0>{{label}}</0>: Data should be retained for <0>{{data}}</0>",

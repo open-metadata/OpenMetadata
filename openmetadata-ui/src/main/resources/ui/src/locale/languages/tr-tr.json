@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "Takımı geri yüklemek, tüm metadatayı {{brandName}}'ya geri ekleyecektir",
     "restore-entities-error": "{{entity}} geri yüklenirken hata oluştu",
     "restore-entities-success": "{{entity}} başarıyla geri yüklendi",
+    "restore-user-to-edit": "Ayrıntılarını düzenlemek için bu kullanıcıyı Kullanıcılar listesinden geri yükleyin.",
     "result-limit-message": "Sorgu günlükleri için sınırı ayarlamak için yapılandırma.",
     "retention-period-description": "Saklama süresi, verilerin silinmeye veya arşivlenmeye uygun görülmeden önce saklandığı süreyi ifade eder. Örnek: 30 gün, 6 ay, 1 yıl veya P23DT23H gibi UTC cinsinden herhangi bir ISO 8601 formatı geçerli olacaktır.",
     "retention-sla-description": "<0>{{label}}</0>: Veriler <0>{{data}}</0> süreyle saklanmalıdır.",

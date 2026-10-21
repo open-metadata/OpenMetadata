@@ -71,6 +71,32 @@ const keepOrReplaceRefs = (
 const keepOrReplaceText = (current: string | undefined, next: string) =>
   next === (current ?? '') ? current : next || undefined;
 
+// Team-inherited domains aren't the user's to edit: they stay out of the
+// picker and go back to the server untouched (an `{ id, type }` rebuild would
+// drop `inherited` and turn them into direct assignments).
+export const getDirectDomains = (domains?: EntityReference[]) =>
+  (domains ?? []).filter((domain) => !domain.inherited);
+
+// The stored domain list with its direct part replaced by `directIds`;
+// unchanged when the direct ids are the same.
+export const mergeDomainEdits = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+): EntityReference[] | undefined => {
+  const direct = getDirectDomains(current);
+  if (isEmpty(xor(directIds, direct.map((domain) => domain.id)))) {
+    return current;
+  }
+
+  return [
+    ...(current ?? []).filter((domain) => domain.inherited),
+    ...directIds.map(
+      (id) =>
+        direct.find((domain) => domain.id === id) ?? { id, type: 'domain' }
+    ),
+  ];
+};
+
 // JSON patch from the edit-user form values to the stored user; empty when
 // nothing changed, which the form uses to keep Save disabled.
 export const buildUserEditPatch = (
@@ -86,10 +112,9 @@ export const buildUserEditPatch = (
     teams: keepOrReplaceRefs(user.teams, edits.teams, 'team'),
     roles: keepOrReplaceRefs(user.roles, edits.roles, 'role'),
     personas: keepOrReplaceRefs(user.personas, edits.personas, 'persona'),
-    domains: keepOrReplaceRefs(
+    domains: mergeDomainEdits(
       user.domains,
-      edits.domains.map((domain) => domain.id),
-      'domain'
+      edits.domains.map((domain) => domain.id)
     ),
   });
 
@@ -110,7 +135,7 @@ export const getUserFormInitialState = (user?: User, isAdmin?: boolean) => {
     },
     isAdmin: isAdminUser,
     description: user?.description ?? '',
-    domains: user?.domains ?? [],
+    domains: getDirectDomains(user?.domains),
     backView: isAdminUser ? ('admins' as const) : ('users' as const),
   };
 };

@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { isEmpty, xor } from 'lodash';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import DomainSelect from '../../../../common/DomainSelect/DomainSelect';
+import {
+  getDirectDomains,
+  mergeDomainEdits,
+} from '../tabs/members/Members.utils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 
@@ -33,21 +36,19 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const canEdit = Boolean(isAdminUser) && !userData.deleted;
-  const [draft, setDraft] = useState<EntityReference[]>(userData.domains ?? []);
+  const [draft, setDraft] = useState<EntityReference[]>(
+    getDirectDomains(userData.domains)
+  );
 
   const handleSave = async () => {
-    const currentDomains = userData.domains ?? [];
-    const draftIdSet = new Set(draft.map((domain) => domain.id));
-    const currentIdSet = new Set(currentDomains.map((domain) => domain.id));
-    // Keep the stored references as-is so the patch only touches real changes.
-    const retainedDomains = currentDomains.filter((domain) =>
-      draftIdSet.has(domain.id)
-    );
-    const newlyAddedDomains = draft
-      .filter((domain) => !currentIdSet.has(domain.id))
-      .map(({ id }) => ({ id, type: 'domain' }));
     await updateUserDetails(
-      { domains: [...retainedDomains, ...newlyAddedDomains] },
+      {
+        domains:
+          mergeDomainEdits(
+            userData.domains,
+            draft.map((domain) => domain.id)
+          ) ?? [],
+      },
       'domains'
     );
   };
@@ -56,12 +57,12 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
     <InlineEditCard
       canEdit={canEdit}
       description={t('message.domain-belong-description')}
-      isSaveDisabled={isEmpty(
-        xor(
-          draft.map((domain) => domain.id),
-          (userData.domains ?? []).map((domain) => domain.id)
-        )
-      )}
+      isSaveDisabled={
+        mergeDomainEdits(
+          userData.domains,
+          draft.map((domain) => domain.id)
+        ) === userData.domains
+      }
       renderEdit={() => (
         <DomainSelect
           multiple
@@ -88,8 +89,8 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
           values={userData.domains ?? []}
         />
       }
-      onCancel={() => setDraft(userData.domains ?? [])}
-      onEnterEdit={() => setDraft(userData.domains ?? [])}
+      onCancel={() => setDraft(getDirectDomains(userData.domains))}
+      onEnterEdit={() => setDraft(getDirectDomains(userData.domains))}
       onSave={handleSave}
     />
   );

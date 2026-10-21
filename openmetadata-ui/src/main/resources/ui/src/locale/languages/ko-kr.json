@@ -5759,6 +5759,7 @@
     "restore-deleted-team": "팀을 복원하면 모든 메타데이터가 {{brandName}}로 다시 추가됩니다",
     "restore-entities-error": "{{entity}} 복원 중 오류 발생",
     "restore-entities-success": "{{entity}}이(가) 성공적으로 복원되었습니다",
+    "restore-user-to-edit": "세부 정보를 편집하려면 사용자 목록에서 이 사용자를 복원하세요.",
     "result-limit-message": "쿼리 로그의 제한을 설정하는 구성입니다.",
     "retention-period-description": "보존 기간은 데이터가 삭제 또는 보관 대상으로 간주되기 전에 유지되는 기간을 의미합니다. 예: 30일, 6개월, 1년 또는 P23DT23H와 같은 UTC의 ISO 8601 형식이 유효합니다.",
     "retention-sla-description": "<0>{{label}}</0>: 데이터는 <0>{{data}}</0> 동안 보관되어야 합니다.",

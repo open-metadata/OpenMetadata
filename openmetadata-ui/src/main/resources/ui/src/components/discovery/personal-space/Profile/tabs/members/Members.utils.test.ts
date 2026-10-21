@@ -232,5 +232,22 @@ describe('buildUserEditPatch', () => {
     );
     expect(patch.some((op) => op.path.startsWith('/teams'))).toBe(false);
   });
+
+  it('keeps inherited domains intact when the direct domains change', () => {
+    const inherited = {
+      id: 'd-team',
+      type: 'domain',
+      name: 'TeamDomain',
+      inherited: true,
+    };
+    const direct = { id: 'd1', type: 'domain', name: 'Sales' };
+
+    const patch = buildUserEditPatch(
+      { ...user, domains: [inherited, direct] },
+      { ...unchanged, domains: [] }
+    );
+
+    expect(patch).toEqual([{ op: 'remove', path: '/domains/1' }]);
+  });
 });
 
