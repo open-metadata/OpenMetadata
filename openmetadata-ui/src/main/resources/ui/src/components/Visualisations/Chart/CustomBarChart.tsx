@@ -84,7 +84,7 @@ const CustomBarChart = ({
         className="layout-row h-full w-full"
         justify="center"
         wrap="wrap">
-        <Box className="layout-column tw:block">
+        <Box className="layout-column tw:block tw:w-full">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoDataPlaceholder
               data-testid="no-data-placeholder"
