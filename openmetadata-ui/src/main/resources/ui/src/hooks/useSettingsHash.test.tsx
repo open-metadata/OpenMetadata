@@ -325,5 +325,21 @@ describe('useSettingsHash', () => {
       expect(result.current.location.key).toBe(pageKey);
       expect(result.current.settings.state.tab).toBeNull();
     });
+
+    // A modal link to another page (e.g. team detail → Explore) navigates, then
+    // closes the modal; the close must not pop history back onto the modal.
+    it('keeps a navigation to another page that lands before the close', () => {
+      const { result } = renderOnPage('/x?a=1');
+
+      follow(result, '/settings/members/teams/Org');
+      act(() => {
+        globalThis.location.hash = '';
+        result.current.navigate('/explore');
+        result.current.settings.clearHash();
+      });
+
+      expect(result.current.location.pathname).toBe('/explore');
+      expect(result.current.settings.state.tab).toBeNull();
+    });
   });
 });

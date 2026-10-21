@@ -282,12 +282,25 @@ export const useSettingsHash = () => {
   );
 
   const clearHash = useCallback(() => {
-    if (storeHash && pushedEntries) {
+    // A close that follows a navigation away (e.g. a modal link to Explore,
+    // then `closePersonalSpace()`) runs while react-router's transition still
+    // holds the old location. The URL already moved on, so popping or replacing
+    // would undo that navigation: only drop the store. Compare through `URL` so
+    // a hash the browser percent-encoded still matches the one we wrote.
+    const urlStillOnModal =
+      storeHash !== '' &&
+      new URL(storeHash, globalThis.location.href).hash ===
+        globalThis.location.hash;
+
+    if (!urlStillOnModal) {
+      pushedEntries = 0;
+      setStoreHash('');
+    } else if (pushedEntries) {
       const entries = pushedEntries;
       pushedEntries = 0;
       setStoreHash('');
       void navigateRef.current(-entries);
-    } else if (storeHash) {
+    } else {
       setStoreHash('');
       void navigateRef.current(
         {
