@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-21 (initial); v2 2026-10-21 (links keep the page query string; modal
-  tabs and views follow classic's view permissions); v3 2026-10-21 (a team link carries its tab)
+  tabs and views follow classic's view permissions); v3 2026-10-21 (a team link carries its tab);
+  v4 2026-10-21 (billing plans map to `#billing/plans`)
 - **Deciders:** Chirag Madlani
 - **Guard:** `AppModeRoutes.test.tsx` ("classic-only settings routes": the AI shell serves its
   not-found page for `/settings/*`, `/marketplace/*` and `/bots/*`, ahead of a plugin fallback);
@@ -45,7 +46,7 @@ URLs alive as a second way in, and the redirect needed its own permission rules.
 - **`settingsPathToHash` is the contract.** Classic path segments map to modal tabs and to the
   sub-paths each panel's own parser reads. A downstream distribution's settings pages join only
   by matching it. Collate's `/settings/billing/<page>` maps to `#billing/<page>`, so its billing
-  page slugs must equal its modal slugs. `/settings/billing/plans` has no modal view. A team
+  page slugs must equal its modal slugs, `plans` included. A team
   page's `?activeTab=<key>` maps to `#members/teams/<fqn>?activeTab=<key>`, which the team
   detail opens on once that tab exists (built-in or contributed); build it with
   `getTeamsWithFqnPath(fqn, { activeTab })`.
@@ -53,7 +54,7 @@ URLs alive as a second way in, and the redirect needed its own permission rules.
 ## Consequences
 A new modal tab or sub-view that replaces a classic page adds a row to `settingsPathToHash` and its
 test. A classic page with no modal equivalent is unreachable in AI mode until it gets one.
-Services, workflow definitions, edit-config forms and billing plans are in that state today. A
+Services, workflow definitions and edit-config forms are in that state today. A
 downstream router that mounts more `/settings/*` pages needs no change to keep them out of AI
 mode. To link to them from AI mode, it maps them in `settingsPathToHash`. Revisit if AI mode gets
 its own page for any of these trees.

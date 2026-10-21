@@ -232,11 +232,8 @@ const SETTINGS_HASH_MAPPERS = new Map<string, HashMapper>([
   [GlobalSettingsMenuCategory.PREFERENCES, mapPreferences],
   [GlobalSettingsMenuCategory.SSO, () => 'sso'],
   // Collate-only: it owns the `/settings/billing/<page>` routes and the
-  // `#billing` tab, whose page slugs match. The plans page has no modal view.
-  [
-    'billing',
-    ([page]) => (page === 'plans' ? undefined : withSub('billing', page)),
-  ],
+  // `#billing` tab, whose page slugs match.
+  ['billing', ([page]) => withSub('billing', page)],
 ]);
 
 const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
@@ -267,7 +264,7 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
 /**
  * Settings-modal hash (without `#`) for a classic settings path, or `undefined`
  * when the page has no modal equivalent (services, workflow definitions, edit
- * forms, Collate's billing plans…).
+ * forms…).
  */
 export const settingsPathToHash = (path: string): string | undefined => {
   const [pathname, search = ''] = path.split('#')[0].split('?', 2);
