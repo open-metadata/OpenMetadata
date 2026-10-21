@@ -12,6 +12,11 @@
  */
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 
+const COVER_GRADIENT_LIGHT =
+  'tw:bg-[linear-gradient(271.49deg,#00D2FF_-11.47%,#03A0FF_59.48%,#016AFB_115.84%)]';
+const COVER_GRADIENT_DARK =
+  'tw:dark:bg-[linear-gradient(180deg,rgba(22,24,29,0)_40%,rgba(22,24,29,0.55)_100%),linear-gradient(271.49deg,#0F6E94_-11.47%,#0D3F73_45%,#141A26_115.84%)]';
+
 interface CoverImageProps {
   imageUrl?: string;
   position?: { x?: string; y?: string }; // CSS percentage values like "-16%"
@@ -63,7 +68,7 @@ export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
           className={
             isLoading
               ? 'tw:w-full tw:h-full tw:bg-tertiary'
-              : 'tw:w-full tw:h-full tw:bg-[linear-gradient(271.49deg,#00D2FF_-11.47%,#03A0FF_59.48%,#016AFB_115.84%)] tw:dark:bg-[linear-gradient(180deg,rgba(22,24,29,0)_40%,rgba(22,24,29,0.55)_100%),linear-gradient(271.49deg,#0F6E94_-11.47%,#0D3F73_45%,#141A26_115.84%)]'
+              : `tw:w-full tw:h-full ${COVER_GRADIENT_LIGHT} ${COVER_GRADIENT_DARK}`
           }
           data-testid={
             isLoading ? 'cover-image-loading' : 'cover-image-placeholder'
