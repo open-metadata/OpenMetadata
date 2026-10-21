@@ -133,10 +133,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
           await metadataTab.click();
         }
         await page.click('[data-testid="add-new-ingestion-button"]');
-        await page
-          .locator('.ant-dropdown:visible [data-menu-id*="usage"]')
-          .waitFor();
-        await page.click('[data-menu-id*="usage"]');
+        await page.getByTestId('agent-item-usage').click();
         await waitForIngestionWorkflowForm(page);
         await page.fill('#root\\/queryLogFilePath', this.queryLogFilePath);
 
@@ -154,10 +151,7 @@ class PostgresIngestionClass extends ServiceBaseClass {
         if (await metadataTab2.isVisible()) {
           await metadataTab2.click();
         }
-        await page
-          .getByLabel('agents')
-          .getByTestId('loader')
-          .waitFor({ state: 'detached' });
+        await waitForAllLoadersToDisappear(page.getByLabel('agents'));
 
         const response = await apiContext
           .get(

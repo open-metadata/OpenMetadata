@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfValidationService;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 /** Runs SHACL validation against an entity subgraph or an explicitly requested full graph. */
@@ -54,6 +55,18 @@ public class ShaclValidateTool extends RdfMcpTool<ShaclValidateTool.Result> {
     super(repositorySupplier);
   }
 
+  /**
+   * Stays admin-only: {@code fullGraph=true} loads up to 100k triples into memory, and the REST
+   * {@code /v1/rdf/validate} is admin-only too. The query permission is meant for bounded SELECTs.
+   */
+  @Override
+  protected void authorize(
+      final Authorizer authorizer,
+      final CatalogSecurityContext securityContext,
+      final Map<String, Object> params) {
+    authorizer.authorizeAdmin(securityContext);
+  }
+
   @Override
   protected Result executeAuthorized(
       final CatalogSecurityContext securityContext, final Map<String, Object> params)
@@ -65,9 +78,9 @@ public class ShaclValidateTool extends RdfMcpTool<ShaclValidateTool.Result> {
 
     int maxBytes =
         RdfBody.clamp(
-            parameters.integer("maxBytes", RdfBody.MAX_BYTES),
+            parameters.integer("maxBytes", RdfBody.maxBytes()),
             RdfBody.MIN_BYTES,
-            RdfBody.MAX_BYTES);
+            RdfBody.maxBytes());
     RdfValidationService.ValidationResult validation =
         guardedRead(
             securityContext,

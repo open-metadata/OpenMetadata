@@ -33,58 +33,59 @@ test.describe('Entity header announcements (data asset)', () => {
     try {
       await table.create(apiContext);
       const entityLink = tableEntityLink(table);
+      // Explicit names: this test pages through the announcements in order,
+      // and the list endpoint sorts by `name`. Without them the server assigns
+      // `announcement-<uuid>` and the carousel order is a random UUID sort.
+      const carouselName = `${table.entity.name}-carousel`;
       await createAnnouncementViaApi(
         apiContext,
         entityLink,
         'Carousel Announcement One',
-        'First carousel announcement description'
+        'First carousel announcement description',
+        `${carouselName}-1`
       );
       await createAnnouncementViaApi(
         apiContext,
         entityLink,
         'Carousel Announcement Two',
-        'Second carousel announcement description'
+        'Second carousel announcement description',
+        `${carouselName}-2`
       );
       await createAnnouncementViaApi(
         apiContext,
         entityLink,
         'Carousel Announcement Three',
-        'Third carousel announcement description'
+        'Third carousel announcement description',
+        `${carouselName}-3`
       );
       await table.visitEntityPage(page);
 
       const widget = page.getByTestId('entity-header-announcements');
       const prevButton = page.getByTestId('announcement-prev-btn');
       const nextButton = page.getByTestId('announcement-next-btn');
-      const currentItem = widget.locator('[data-testid^="announcement-item-"]');
+      const banner = widget.getByTestId('announcement-banner');
 
       await expect(widget).toBeVisible();
-      await expect(currentItem).toHaveCount(1);
-      await expect(widget).toContainText('1/3');
+      await expect(banner).toHaveCount(1);
+      await expect(banner).toContainText('Carousel Announcement One');
       await expect(prevButton).toBeDisabled();
       await expect(nextButton).toBeEnabled();
 
-      const firstAnnouncementId = await currentItem.getAttribute('data-testid');
-
       await nextButton.click();
 
-      await expect(widget).toContainText('2/3');
+      await expect(banner).toContainText('Carousel Announcement Two');
       await expect(prevButton).toBeEnabled();
       await expect(nextButton).toBeEnabled();
 
       await nextButton.click();
 
-      await expect(widget).toContainText('3/3');
+      await expect(banner).toContainText('Carousel Announcement Three');
       await expect(nextButton).toBeDisabled();
       await expect(prevButton).toBeEnabled();
-      await expect(currentItem).not.toHaveAttribute(
-        'data-testid',
-        firstAnnouncementId ?? ''
-      );
 
       await prevButton.click();
 
-      await expect(widget).toContainText('2/3');
+      await expect(banner).toContainText('Carousel Announcement Two');
     } finally {
       await table.delete(apiContext);
       await afterAction();
@@ -121,7 +122,7 @@ test.describe('Entity header announcements (data asset)', () => {
     }
   });
 
-  test('opens the announcement drawer from the View all button', async ({
+  test('opens the announcement drawer from the banner title', async ({
     page,
   }) => {
     test.setTimeout(150000);
@@ -150,7 +151,7 @@ test.describe('Entity header announcements (data asset)', () => {
 
       await expect(widget).toBeVisible();
 
-      await widget.getByTestId('view-all-btn').click();
+      await widget.getByTestId('announcement-title-btn').click();
 
       await expect(page.getByTestId('announcement-drawer')).toBeVisible();
     } finally {

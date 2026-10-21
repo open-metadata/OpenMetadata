@@ -95,6 +95,10 @@ const mockGetServicesData = [
   },
 ];
 
+jest.mock('../../common/DomainFilterChip/DomainFilterChip.component', () => ({
+  DomainFilterChip: () => null,
+}));
+
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: jest.fn().mockReturnValue({
@@ -143,6 +147,9 @@ jest.mock('../../../rest/serviceAPI', () => ({
 
 jest.mock('../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../utils/StringUtils'),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 

@@ -12,12 +12,10 @@
  */
 
 import React from 'react';
-import {
-  AVAILABLE_OPTIONS,
-  WorkflowType,
-} from '../../../../constants/WorkflowBuilder.constants';
+import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
+import { ApprovalModeSection } from './ApprovalModeSection';
 import { DataAssetFiltersSection } from './DataAssetFiltersSection';
 import { DataAssetFormSection } from './DataAssetFormSection';
 import { EventTriggerFilterSection } from './EventTriggerFilterSection';
@@ -26,8 +24,10 @@ import { TriggerConfigSection } from './TriggerConfigSection';
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;
+  availableDataAssets: string[];
   availableEventTypes: string[];
   availableExcludeFields: string[];
+  fieldGroups?: Record<string, string>;
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
@@ -57,8 +57,10 @@ function getEventTriggerEntityType(
 
 export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   config,
+  availableDataAssets,
   availableEventTypes,
   availableExcludeFields,
+  fieldGroups,
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
   allowScheduledTrigger,
@@ -89,7 +91,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       />
 
       <DataAssetFormSection
-        availableDataAssets={[...AVAILABLE_OPTIONS.DATA_ASSETS]}
+        availableDataAssets={availableDataAssets}
         dataAssets={config.dataAssets}
         lockFields={lockCoreStartFields}
         onDataAssetsChange={(dataAssets) =>
@@ -116,6 +118,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         cronExpression={config.cronExpression}
         eventType={config.eventType}
         excludeFields={config.excludeFields}
+        fieldGroups={fieldGroups}
         include={config.include}
         lockNonIncludeExcludeFields={lockCoreStartFields}
         lockPeriodicBatchFields={lockFilterSections}
@@ -153,6 +156,16 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           triggerFilter={config.triggerFilter}
           onTriggerFilterChange={(filter) =>
             updateConfig('triggerFilter', filter)
+          }
+        />
+      )}
+
+      {config.triggerType === WorkflowType.EVENT_BASED && (
+        <ApprovalModeSection
+          approvalMode={config.approvalMode}
+          lockFields={lockFilterSections}
+          onApprovalModeChange={(approvalMode) =>
+            updateConfig('approvalMode', approvalMode)
           }
         />
       )}

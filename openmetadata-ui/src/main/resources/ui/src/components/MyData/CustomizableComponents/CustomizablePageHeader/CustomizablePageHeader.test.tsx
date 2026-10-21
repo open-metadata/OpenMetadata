@@ -20,9 +20,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { MemoryRouter } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
+import { CustomizePageChromeContext } from './CustomizePageChrome.context';
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'test-persona' }),
@@ -33,6 +35,10 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
 }));
 
 jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 describe('CustomizablePageHeader', () => {
   const mockProps = {
@@ -46,6 +52,7 @@ describe('CustomizablePageHeader', () => {
       currentPageType: PageType.LandingPage,
     });
     (useRequiredParams as jest.Mock).mockReturnValue({});
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -62,6 +69,30 @@ describe('CustomizablePageHeader', () => {
     expect(screen.getByTestId('customize-page-title')).toBeInTheDocument();
     expect(screen.getByText('label.customize-entity')).toBeInTheDocument();
   });
+
+  // Matches the other pages: the gradient PageHeader in AI mode, a plain card
+  // in Classic.
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should render the gradient header only in AI mode (AI mode: %s)',
+    (isAiMode, hasGradient) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      const header = screen.getByTestId('customize-landing-page-header');
+
+      expect(header.className.includes('linear-gradient')).toBe(hasGradient);
+      expect(screen.getByTestId('customize-page-title')).toBeInTheDocument();
+      expect(screen.getByTestId('save-button')).toBeInTheDocument();
+    }
+  );
 
   it('should render all buttons in the header', () => {
     render(
@@ -255,9 +286,9 @@ describe('CustomizablePageHeader', () => {
       ).toBeInTheDocument();
     });
 
-    it('uses app-mode subheader key when pageFqn is "app-mode"', () => {
+    it('uses app-layout subheader key when pageFqn is "app-layout"', () => {
       (useRequiredParams as jest.Mock).mockReturnValue({
-        pageFqn: 'app-mode',
+        pageFqn: 'app-layout',
       });
 
       render(
@@ -267,7 +298,7 @@ describe('CustomizablePageHeader', () => {
       );
 
       expect(
-        screen.getByTestId('message.customize-your-app-mode-subheader')
+        screen.getByTestId('message.customize-your-app-layout-subheader')
       ).toBeInTheDocument();
     });
 
@@ -323,6 +354,74 @@ describe('CustomizablePageHeader', () => {
           'message.customize-entity-landing-page-header-for-persona'
         )
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('inside the persona settings fullscreen view', () => {
+    const chrome = {
+      breadcrumbs: [
+        { id: 'persona', label: 'Test Persona' },
+        { id: 'current', label: 'Table' },
+      ],
+      onNavigate: jest.fn(),
+    };
+
+    const renderInChrome = (disableSave: boolean) =>
+      render(
+        <MemoryRouter initialEntries={['/my-data']}>
+          <CustomizePageChromeContext.Provider value={chrome}>
+            <CustomizablePageHeader {...mockProps} disableSave={disableSave} />
+          </CustomizePageChromeContext.Provider>
+        </MemoryRouter>
+      );
+
+    it('leaves straight away when there are no unsaved changes', () => {
+      renderInChrome(true);
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+      expect(
+        screen.queryByTestId('unsaved-changes-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    it('asks before leaving with unsaved changes and discards back into persona settings', async () => {
+      renderInChrome(false);
+
+      fireEvent.click(screen.getByTestId('customize-minimize-button'));
+
+      expect(chrome.onNavigate).not.toHaveBeenCalled();
+
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-modal-discard')
+      );
+
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+      expect(mockProps.onSave).not.toHaveBeenCalled();
+    });
+
+    it('saves, then leaves, on "save and leave"', async () => {
+      renderInChrome(false);
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByTestId('unsaved-changes-modal-save')
+        );
+      });
+
+      expect(mockProps.onSave).toHaveBeenCalledTimes(1);
+      expect(chrome.onNavigate).toHaveBeenCalledWith('back');
+    });
+
+    it('renders the persona breadcrumb trail', () => {
+      renderInChrome(true);
+
+      expect(
+        screen.getByTestId('customize-page-breadcrumbs')
+      ).toHaveTextContent('Test Persona');
     });
   });
 });

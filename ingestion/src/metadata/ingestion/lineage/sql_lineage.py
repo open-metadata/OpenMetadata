@@ -668,15 +668,16 @@ def get_column_lineage(
         List[ColumnLineage]
     """
     column_lineage = []
-    if column_lineage_map.get(to_table_raw_name) and column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
-        # Select all
-        if "*" in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name)[0]:
-            column_lineage_map[to_table_raw_name][from_table_raw_name] = [
-                (c.name.root, c.name.root) for c in from_entity.columns
-            ]
+    pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    if pairs:
+        # COUNT(*) yields ("alias", "*"), which must not expand source columns.
+        if ("*", "*") in pairs:
+            explicit = [p for p in pairs if p != ("*", "*")]
+            expanded = [(c.name.root, c.name.root) for c in from_entity.columns]
+            pairs = list(dict.fromkeys(explicit + expanded))
+            column_lineage_map[to_table_raw_name][from_table_raw_name] = pairs
 
-        # Other cases
-        for to_col, from_col in column_lineage_map.get(to_table_raw_name).get(from_table_raw_name):
+        for to_col, from_col in pairs:
             to_col_fqn = get_column_fqn(to_entity, to_col)
             from_col_fqn = get_column_fqn(from_entity, from_col)
             if to_col_fqn and from_col_fqn:
@@ -746,6 +747,8 @@ def _build_table_lineage(
             to_entity_fqn=model_str(to_entity_fqn),
             to_entity_type="table",
             lineage_details=lineage_details,
+            from_entity_id=from_entity.id,
+            to_entity_id=to_entity.id,
         )
         return Either(right=lineage)
     except Exception as e:

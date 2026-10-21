@@ -28,14 +28,18 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
@@ -45,6 +49,9 @@ import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
@@ -87,7 +94,9 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   {
     // User CSV export/import is done through the Team endpoint, not User endpoint
     // The actual export is /v1/teams/name/{teamName}/export which exports users in that team
+    supportsEntityStatus = false;
     supportsImportExport = false;
+    supportsCreationAudit = true;
   }
 
   private static final Profile PROFILE =
@@ -586,6 +595,265 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     User updated = patchEntity(user.getId().toString(), user);
 
     assertEquals("Updated Display Name", updated.getDisplayName());
+  }
+
+  // The navbar selection is personal: only the user can change it, so tests set it as that user.
+  private static User patchDefaultDomainAsSelf(User user) {
+    return clientFor(user).users().update(user.getId().toString(), user);
+  }
+
+  // Clears the selection as the user, with the same JSON Patch the navbar sends.
+  private static void clearDefaultDomainAsSelf(User user) {
+    ArrayNode patch = PATCH_MAPPER.createArrayNode();
+    patch.addObject().put("op", "add").put("path", "/defaultDomain").putNull("value");
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch);
+  }
+
+  // A user whose token resolves back to it (lowercase name matching its email), so tests can act
+  // as that user.
+  private static CreateUser selfLoginUserRequest() {
+    String userName = "navuser" + UUID.randomUUID().toString().substring(0, 8);
+    return new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org");
+  }
+
+  @Test
+  void test_otherUsersCannotChangeTheDefaultDomain(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("othersdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("someone else's pick"));
+    User user = createEntity(createMinimalRequest(ns));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+
+    assertThrows(Exception.class, () -> patchEntity(user.getId().toString(), user));
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_defaultDomainRoundTripsThroughPatch(TestNamespace ns) {
+    // The navbar domain selection is persisted on the user; a PATCH that changes only
+    // defaultDomain must be stored and served back on a fresh read.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection"));
+    User user = createEntity(selfLoginUserRequest());
+    assertNull(user.getDefaultDomain());
+
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
+    assertNotNull(reread.getDefaultDomain(), "defaultDomain must persist through PATCH");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+    assertEquals(domain.getFullyQualifiedName(), reread.getDefaultDomain().getFullyQualifiedName());
+
+    // Clearing the selection must persist too.
+    clearDefaultDomainAsSelf(reread);
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_switchingDefaultDomainDoesNotBumpVersion(TestNamespace ns) {
+    // The navbar pick is a view preference: switching it must not version the user.
+    Domain domainA =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navA"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("first navbar pick"));
+    Domain domainB =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navB"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("second navbar pick"));
+    User user = createEntity(selfLoginUserRequest());
+    Double version = user.getVersion();
+    int historySize = Users.getVersionList(user.getId()).getVersions().size();
+
+    for (Domain domain : List.of(domainA, domainB)) {
+      user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+      patchDefaultDomainAsSelf(user);
+      User reread = Users.get(user.getId().toString(), "defaultDomain");
+      assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+      assertEquals(version, reread.getVersion(), "switching the navbar domain bumped the version");
+      user = reread;
+    }
+
+    clearDefaultDomainAsSelf(user);
+    User cleared = Users.get(user.getId().toString(), "defaultDomain");
+    assertNull(cleared.getDefaultDomain());
+    assertEquals(version, cleared.getVersion(), "clearing the navbar domain bumped the version");
+    assertEquals(historySize, Users.getVersionList(user.getId()).getVersions().size());
+  }
+
+  @Test
+  void test_putWithoutDefaultDomainKeepsTheSelection(TestNamespace ns) {
+    // A PUT body (CreateUser) has no defaultDomain, so a PUT must not clear the saved selection.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("keptdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar selection kept across PUT"));
+    CreateUser create = selfLoginUserRequest();
+    User user = createEntity(create);
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/users", create.withDescription("updated by PUT"), User.class);
+
+    User reread = Users.get(user.getId().toString(), "defaultDomain");
+    assertNotNull(reread.getDefaultDomain(), "a PUT must keep the saved navbar selection");
+    assertEquals(domain.getId(), reread.getDefaultDomain().getId());
+  }
+
+  @Test
+  void test_defaultDomainMustBeARealDomain(TestNamespace ns) {
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(UUID.randomUUID()).withType("domain"));
+    assertThrows(Exception.class, () -> patchDefaultDomainAsSelf(user));
+    assertNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+  }
+
+  @Test
+  void test_deletingSelectedDomainDoesNotEmptyLists(TestNamespace ns) {
+    // A user whose navbar pick is later deleted must fall back to "no selection", not to
+    // lists scoped to a domain that no longer exists (which would come back empty).
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("doomed"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("will be deleted"));
+    Domain subDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("doomedchild"))
+                    .withParent(domain.getFullyQualifiedName())
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("deleted with its parent"));
+    User user = createEntity(selfLoginUserRequest());
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+    assertNotNull(Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain());
+    User subDomainUser = createEntity(selfLoginUserRequest());
+    subDomainUser.setDefaultDomain(
+        new EntityReference().withId(subDomain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(subDomainUser);
+
+    SdkClients.adminClient()
+        .domains()
+        .delete(
+            domain.getId().toString(), java.util.Map.of("hardDelete", "true", "recursive", "true"));
+
+    // The stale selection is cleared on read; listing as this user is unfiltered again.
+    assertNull(
+        Users.get(user.getId().toString(), "defaultDomain").getDefaultDomain(),
+        "a deleted domain must not linger as the user's selection");
+    assertNull(
+        Users.get(subDomainUser.getId().toString(), "defaultDomain").getDefaultDomain(),
+        "a sub-domain deleted with its parent must not linger as a selection");
+  }
+
+  @Test
+  void test_glossaryTermsFollowTheirEffectiveDomain(TestNamespace ns) {
+    // A child's effective domain is its own, else its parent's.
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navTerms"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("navbar pick"));
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("navG"))
+                    .withDescription("glossary in the picked domain")
+                    .withDomains(List.of(domain.getFullyQualifiedName())));
+    GlossaryTerm term =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("inheritsDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("no domain of its own"));
+    Domain otherDomain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.prefix("navOther"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("another domain"));
+    GlossaryTerm otherTerm =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("ownOtherDomain")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("its own domain overrides the glossary's")
+                    .withDomains(List.of(otherDomain.getFullyQualifiedName())));
+    String userName = "navterms" + java.util.UUID.randomUUID().toString().substring(0, 8);
+    String email = userName + "@test.openmetadata.org";
+    User user = createEntity(new CreateUser().withName(userName).withEmail(email));
+    user.setDefaultDomain(new EntityReference().withId(domain.getId()).withType("domain"));
+    patchDefaultDomainAsSelf(user);
+
+    ListParams params = new ListParams();
+    params.setLimit(100);
+    params.addQueryParam("glossary", glossary.getId().toString());
+    ListResponse<GlossaryTerm> terms =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(params);
+
+    assertTrue(
+        terms.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "a term inheriting the selected domain from its glossary must be listed");
+    assertTrue(
+        terms.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "a term whose own domain is outside the selection must not be listed");
+
+    // The glossary page lists a glossary's terms by its FQN (directChildrenOf), not by id.
+    ListParams byFqn = new ListParams();
+    byFqn.setLimit(100);
+    byFqn.addQueryParam("directChildrenOf", glossary.getFullyQualifiedName());
+    ListResponse<GlossaryTerm> children =
+        SdkClients.createClient(email, email, new String[] {}).glossaryTerms().list(byFqn);
+    assertTrue(
+        children.getData().stream().anyMatch(t -> t.getId().equals(term.getId())),
+        "directChildrenOf must list the term inheriting the selected domain");
+    assertTrue(
+        children.getData().stream().noneMatch(t -> t.getId().equals(otherTerm.getId())),
+        "directChildrenOf must not list a term whose own domain is outside the selection");
   }
 
   @Test
@@ -2167,6 +2435,34 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_updateUserEmailToAnotherDomainIsIgnored(TestNamespace ns) throws Exception {
+    // The allowed email domains are checked only when a user is created (UserRepository
+    // createNewEntity). That is complete only while no update can move an email to another
+    // domain, which this pins for both PATCH and PUT
+    String userName = ns.prefix("emailDomainUpdateUser");
+    String originalEmail = toValidEmail(userName);
+    User user = createEntity(new CreateUser().withName(userName).withEmail(originalEmail));
+    String otherDomainEmail =
+        originalEmail.substring(0, originalEmail.indexOf('@')) + "@other-domain.example";
+
+    user.setEmail(otherDomainEmail);
+    User patched = patchEntity(user.getId().toString(), user);
+    assertEquals(originalEmail.toLowerCase(), patched.getEmail().toLowerCase());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser().withName(userName).withEmail(otherDomainEmail));
+
+    assertEquals(
+        originalEmail.toLowerCase(),
+        getEntity(user.getId().toString()).getEmail().toLowerCase(),
+        "PUT must not move an existing user's email to another domain");
+  }
+
+  @Test
   void test_userWithIsBot(TestNamespace ns) {
 
     String botName = ns.prefix("simpleBot");
@@ -2973,6 +3269,257 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(response.contains(description), "Cross user edit without roles must stay allowed");
   }
 
+  // ===================================================================
+  // USER DOMAINS
+  // hasDomain() grants access by the user's domains, so setting them is admin only, like roles
+  // ===================================================================
+
+  @Test
+  void test_patchUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainpatch");
+
+    assertPatchForbidden(clientFor(user), user, addDomainsOp(testDomain().getEntityReference()));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_patchUser_ownDomainsByRootReplacement_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainroot");
+    final ObjectNode withDomain =
+        userJsonWithField(user, "domains", List.of(testDomain().getEntityReference()));
+
+    assertPatchForbidden(clientFor(user), user, rootReplacementOps(withDomain));
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_ownDomains_forbiddenForNonAdmin(TestNamespace ns) {
+    final User user = createRegularUser(ns, "owndomainput");
+
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                clientFor(user)
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(user)));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "Adding a domain to your own user is admin only: " + exception.getMessage());
+
+    assertHoldsNoDomain(user);
+  }
+
+  @Test
+  void test_putUser_keepsOwnDomainButCannotClaimTeamDomain(TestNamespace ns) {
+    // A domain held only through a team goes away with the membership, so naming it on a PUT would
+    // turn it into a direct assignment that outlives the team.
+    final Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("domainTeam"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDomains(List.of(testSubDomain().getFullyQualifiedName())));
+    final String localPart = "teamdomainput" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withTeams(List.of(team.getId()))
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+    final OpenMetadataClient self = clientFor(user);
+
+    self.getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users", userBodyInTeam(user, team, List.of(testDomain())));
+    final OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                self.getHttpClient()
+                    .executeForString(
+                        HttpMethod.PUT,
+                        "/v1/users",
+                        userBodyInTeam(user, team, List.of(testDomain(), testSubDomain()))));
+    assertEquals(
+        403,
+        exception.getStatusCode(),
+        "A team's domain is not the user's own: " + exception.getMessage());
+
+    final List<UUID> directDomainIds =
+        Users.get(user.getId().toString(), "domains").getDomains().stream()
+            .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+            .map(EntityReference::getId)
+            .toList();
+    assertEquals(List.of(testDomain().getId()), directDomainIds);
+  }
+
+  @Test
+  void test_createUser_selfSignUpWithDomains_forbidden(TestNamespace ns) {
+    // The name must equal the email local part for JwtFilter to resolve the caller.
+    final String userName = "domainsignup" + ns.shortPrefix();
+    final String email = userName + "@test.com";
+    final OpenMetadataClient newcomerClient =
+        SdkClients.createClient(userName, email, new String[] {});
+    final String createBody =
+        "{\"name\":\""
+            + userName
+            + "\",\"email\":\""
+            + email
+            + "\",\"domains\":[\""
+            + testDomain().getFullyQualifiedName()
+            + "\"]}";
+
+    final OpenMetadataException postException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.POST, "/v1/users", createBody));
+    assertEquals(
+        403,
+        postException.getStatusCode(),
+        "Self sign-up cannot set domains: " + postException.getMessage());
+
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                newcomerClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", createBody));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Self creation through PUT cannot set domains: " + putException.getMessage());
+
+    final OpenMetadataException notCreated =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, "/v1/users/name/" + userName, null));
+    assertEquals(404, notCreated.getStatusCode(), "The rejected user should not exist");
+  }
+
+  @Test
+  void test_patchUser_ownDisplayName_allowedAndKeepsDomains(TestNamespace ns) {
+    final String localPart = "domainholder" + ns.shortPrefix();
+    final User user =
+        createEntity(
+            new CreateUser()
+                .withName(localPart)
+                .withEmail(localPart + "@open-metadata.org")
+                .withDomains(List.of(testDomain().getFullyQualifiedName())));
+
+    clientFor(user)
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + user.getId(),
+            replaceOp("/displayName", "Domain Holder"));
+
+    final User stored = Users.get(user.getId().toString(), "domains");
+    assertEquals("Domain Holder", stored.getDisplayName());
+    assertEquals(List.of(testDomain().getId()), domainIds(stored));
+  }
+
+  @Test
+  void test_admin_canSetUserDomains(TestNamespace ns) {
+    final User patched = createRegularUser(ns, "admindomainpatch");
+    final User put = createRegularUser(ns, "admindomainput");
+    final OpenMetadataClient admin = SdkClients.adminClient();
+
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + patched.getId(),
+            addDomainsOp(testDomain().getEntityReference()));
+    admin.getHttpClient().executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(put));
+
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(patched.getId().toString(), "domains")));
+    assertEquals(
+        List.of(testDomain().getId()), domainIds(Users.get(put.getId().toString(), "domains")));
+  }
+
+  @Test
+  void test_updateUser_crossUserDomains_forbidden(TestNamespace ns) {
+    // A principal holding EDIT on users may update somebody else, but assigning them a domain stays
+    // admin only, as granting a role does.
+    final OpenMetadataClient editorClient = createUserEditorClient(ns);
+    final User target = createRegularUser(ns, "domaintarget");
+
+    assertPatchForbidden(editorClient, target, addDomainsOp(testDomain().getEntityReference()));
+    final OpenMetadataException putException =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                editorClient
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PUT, "/v1/users", userBodyWithDomain(target)));
+    assertEquals(
+        403,
+        putException.getStatusCode(),
+        "Assigning a domain to another user is admin only: " + putException.getMessage());
+
+    assertHoldsNoDomain(target);
+  }
+
+  private ArrayNode addDomainsOp(final EntityReference domain) {
+    final ArrayNode ops = PATCH_MAPPER.createArrayNode();
+    final ObjectNode operation = ops.addObject().put("op", "add").put("path", "/domains");
+    operation
+        .putArray("value")
+        .addObject()
+        .put("id", domain.getId().toString())
+        .put("type", domain.getType());
+    return ops;
+  }
+
+  private String userBodyWithDomain(final User user) {
+    return "{\"name\":\""
+        + user.getName()
+        + "\",\"email\":\""
+        + user.getEmail()
+        + "\",\"domains\":[\""
+        + testDomain().getFullyQualifiedName()
+        + "\"]}";
+  }
+
+  // Naming the team keeps the user in it; without teams the server moves them to the organization.
+  private static String userBodyInTeam(
+      final User user, final Team team, final List<Domain> domains) {
+    final ObjectNode body =
+        PATCH_MAPPER.createObjectNode().put("name", user.getName()).put("email", user.getEmail());
+    body.putArray("teams").add(team.getId().toString());
+    final ArrayNode domainFqns = body.putArray("domains");
+    domains.forEach(domain -> domainFqns.add(domain.getFullyQualifiedName()));
+    return body.toString();
+  }
+
+  private void assertHoldsNoDomain(final User user) {
+    assertEquals(
+        List.of(),
+        domainIds(Users.get(user.getId().toString(), "domains")),
+        "The rejected request must not have assigned a domain");
+  }
+
+  private static List<UUID> domainIds(final User user) {
+    return user.getDomains() == null
+        ? List.of()
+        : user.getDomains().stream().map(EntityReference::getId).toList();
+  }
+
   // A non admin whose role grants EDIT_ALL on users, through a team's default roles.
   private OpenMetadataClient createUserEditorClient(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -3080,6 +3627,43 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(
         allTime.getData().stream().noneMatch(u -> Boolean.TRUE.equals(u.getIsBot())),
         "Online users response must exclude bots");
+  }
+
+  @Test
+  void test_customPropertyValueSurvivesCreatePatchAndRead(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String property = ns.prefix("userDeskLocation");
+    CustomPropertyTestSupport.registerStringProperty(client, "user", property);
+    try {
+      String name = ns.prefix("cpUser");
+      User user =
+          client
+              .users()
+              .create(
+                  new CreateUser()
+                      .withName(name)
+                      .withEmail(toValidEmail(name))
+                      .withDescription("User carrying a custom property")
+                      .withExtension(Map.of(property, "desk-7")));
+      String id = user.getId().toString();
+
+      User created = client.users().get(id, "extension");
+      assertEquals(
+          "desk-7",
+          CustomPropertyTestSupport.extensionValue(created.getExtension(), property),
+          "extension supplied on create must survive the round trip");
+
+      created.setExtension(Map.of(property, "desk-9"));
+      client.users().update(id, created);
+
+      assertEquals(
+          "desk-9",
+          CustomPropertyTestSupport.extensionValue(
+              client.users().get(id, "extension").getExtension(), property),
+          "PATCHing the extension must replace the stored value");
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "user", property);
+    }
   }
 
   private ResultList<User> listOnlineUsers(int timeWindow, int limit) {

@@ -1,0 +1,42 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReleaseEvent.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseEvent",
+  "description": "Append-only evidence committed with an ontology release capture, completed approval workflow decision, or activation.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReleaseEvent",
+  "properties": {
+    "id": {"$ref": "basic.json#/definitions/uuid"},
+    "ontologyId": {"$ref": "basic.json#/definitions/uuid"},
+    "releaseId": {"$ref": "basic.json#/definitions/uuid"},
+    "eventType": {
+      "type": "string",
+      "enum": ["CAPTURED", "APPROVED", "REJECTED", "ACTIVATED"]
+    },
+    "createdAt": {"$ref": "basic.json#/definitions/timestamp"},
+    "createdBy": {"type": "string", "minLength": 1},
+    "contentDigest": {"$ref": "../entity/data/ontologyRelease.json#/properties/contentDigest"},
+    "activationRevision": {
+      "description": "The new activation revision committed with an ACTIVATED event, including rollback.",
+      "$ref": "ontologyState.json#/properties/activationRevision"
+    },
+    "previousReleaseId": {
+      "description": "Previously active release, absent for the first activation.",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "taskId": {"$ref": "basic.json#/definitions/uuid"},
+    "workflowDefinitionId": {"$ref": "basic.json#/definitions/uuid"},
+    "workflowInstanceId": {"$ref": "basic.json#/definitions/uuid"},
+    "reviewTarget": {"$ref": "ontologyReviewTarget.json"},
+    "voters": {
+      "description": "Distinct reviewers whose votes were accepted by the completed workflow.",
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true,
+      "existingJavaType": "java.util.List<java.lang.String>"
+    },
+    "resolution": {"$ref": "../entity/tasks/task.json#/definitions/taskResolution"}
+  },
+  "required": ["id", "ontologyId", "releaseId", "eventType", "createdAt", "createdBy", "contentDigest"],
+  "additionalProperties": false
+}

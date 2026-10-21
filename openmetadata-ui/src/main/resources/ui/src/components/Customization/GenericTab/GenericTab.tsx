@@ -30,16 +30,11 @@ const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: React.ReactNode }
 >;
 
-export type GenericTabVariant = 'default' | 'flat';
-
 interface GenericTabProps {
   type: PageType;
-  // 'flat' drops the left-panel frame card so the sole widget (e.g. the
-  // Description on Domain/Data Product) stands on its own. Defaults to 'default'.
-  variant?: GenericTabVariant;
 }
 
-export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
+export const GenericTab = ({ type }: GenericTabProps) => {
   const { layout, updateWidgetHeight } = useGenericContext();
 
   const handleHeightChange = useCallback(
@@ -88,14 +83,13 @@ export const GenericTab = ({ type, variant = 'default' }: GenericTabProps) => {
       autoSize
       useCSSTransforms
       verticalCompact
-      className={classNames(
-        'grid-container tw:bg-primary tw:dark:bg-transparent',
-        {
-          'custom-tab': !leftSideWidgetPresent,
-          'height-auto': type === PageType.Glossary,
-          'flat-left-panel': variant === 'flat',
-        }
-      )}
+      className={classNames('grid-container flat-left-panel', {
+        'custom-tab': !leftSideWidgetPresent,
+        'height-auto': type === PageType.Glossary,
+        // The glossary's Terms tab keeps the page height, so widgets that outgrow it, such as a
+        // long review queue in the right column, scroll within the tab instead of being clipped.
+        'tw:overflow-x-hidden tw:overflow-y-auto': type === PageType.Glossary,
+      })}
       cols={8}
       // react-grid-layout rounds each item's `left` and `width` independently, so
       // although the two exact values sum to the container width, each rounding

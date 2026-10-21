@@ -21,7 +21,12 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
+import {
+  CursorClick01,
+  Plus,
+  Settings01,
+  ZapFast,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,7 +41,6 @@ import { PagingHandlerParams } from '../../../components/common/NextPrevious/Nex
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import {
   INITIAL_PAGING_VALUE,
   PAGE_SIZE_BASE,
@@ -53,7 +57,6 @@ import {
   getWorkflowDefinitions,
   WorkflowDefinitionsParams,
 } from '../../../rest/workflowDefinitionsAPI';
-import { SettingMenuItem } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
@@ -63,12 +66,14 @@ import {
   WORKFLOW_NAME_REGEX,
 } from '../../../utils/WorkflowValidationUtils';
 import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
+import WorkflowList, { WorkflowListItem } from './WorkflowList';
+import WorkflowsPageSection from './WorkflowsPageSection';
 
 const WorkflowsPage = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const [loading, setLoading] = useState(true);
-  const [workflows, setWorkflows] = useState<SettingMenuItem[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowListItem[]>([]);
   const [paging, setPaging] = useState<Paging>({
     after: undefined,
     before: undefined,
@@ -141,11 +146,16 @@ const WorkflowsPage = () => {
     setNameError('');
   }, []);
 
-  const onWorkflowClick = useCallback((key: string) => {
-    navigate(
-      getWorkflowDefinitionDetailPath(key, WorkflowDetailsTabs.WORKFLOW)
-    );
-  }, []);
+  const onWorkflowClick = useCallback(
+    (key: string) => {
+      const workflow = workflows.find((item) => item.key === key);
+      navigate(
+        (workflow && workflowClassBase.getWorkflowPath(workflow)) ??
+          getWorkflowDefinitionDetailPath(key, WorkflowDetailsTabs.WORKFLOW)
+      );
+    },
+    [workflows, navigate]
+  );
 
   const handleNewWorkflowClick = useCallback(() => {
     setIsModalOpen(true);
@@ -353,26 +363,23 @@ const WorkflowsPage = () => {
         )}
 
         {isWorkflowsEmpty ? (
-          emptyPlaceholder
+          <>
+            <WorkflowsPageSection />
+            {emptyPlaceholder}
+          </>
         ) : (
           <div
             className={classNames('tw:flex tw:flex-1 tw:min-h-0 tw:flex-col', {
               'tw:mx-2': isAiMode,
             })}>
-            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:rounded-t-xl tw:border-x tw:border-t tw:border-border-secondary tw:bg-surface tw:px-6 tw:pt-4">
-              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pb-4">
-                {workflows.map((workflow) => (
-                  <WorkflowCard
-                    data={workflow}
-                    key={workflow.key}
-                    onClick={onWorkflowClick}
-                  />
-                ))}
-              </div>
+            <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:pt-4">
+              <WorkflowsPageSection />
+              <WorkflowList
+                workflows={workflows}
+                onWorkflowClick={onWorkflowClick}
+              />
             </div>
-            <div
-              className="tw:rounded-b-xl tw:border-x tw:border-b tw:border-border-secondary tw:bg-surface tw:px-6 tw:py-3"
-              data-testid="workflows-pagination">
+            <div className="tw:py-3" data-testid="workflows-pagination">
               <NextPrevious
                 currentPage={currentPage}
                 isLoading={loading}

@@ -10,6 +10,6 @@ public final class DefaultEmailSender implements EmailSender {
 
   @Override
   public CompletableFuture<Void> send(String to, String subject, String htmlContent) {
-    return EmailUtil.sendNotificationEmailAsync(to, subject, htmlContent);
+    return EmailUtil.handOverNotificationEmail(to, subject, htmlContent);
   }
 }

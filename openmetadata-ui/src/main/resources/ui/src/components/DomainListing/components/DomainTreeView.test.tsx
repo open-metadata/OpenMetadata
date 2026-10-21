@@ -114,10 +114,6 @@ jest.mock('../../../utils/DomainRestrictionUtils', () => ({
   filterDomainsToAllowed: jest.fn((domains: unknown[]) => domains),
 }));
 
-jest.mock('../../../utils/DomainUtils', () => ({
-  convertDomainsToTreeOptions: jest.fn((domains: unknown[]) => domains),
-}));
-
 jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn((v: string) => v ?? ''),
   getDecodedFqn: jest.fn((v: string) => v ?? ''),

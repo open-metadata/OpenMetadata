@@ -12,8 +12,6 @@
  */
 
 import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Card } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -109,18 +107,13 @@ const CustomEntityDetailV1 = () => {
     setActiveTab(activeKey as EntityTabs);
   }, []);
 
-  const [form] = useForm();
-
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const handleAddProperty = useCallback(() => {
     setIsDrawerOpen(true);
   }, []);
 
-  const handleDrawerClose = useCallback(() => {
-    setIsDrawerOpen(false);
-    form.resetFields();
-  }, [form]);
+  const handleDrawerClose = useCallback(() => setIsDrawerOpen(false), []);
 
   const handleDrawerSubmit = useCallback(
     async (data: CustomProperty) => {
@@ -246,7 +239,7 @@ const CustomEntityDetailV1 = () => {
         ),
         key: EntityTabs.CUSTOM_PROPERTIES,
         children: (
-          <Card data-testid="entity-custom-fields">
+          <div data-testid="entity-custom-fields">
             <CustomPropertyTable
               customProperties={customProperties ?? []}
               hasAccess={editPermission}
@@ -255,7 +248,7 @@ const CustomEntityDetailV1 = () => {
               onDeleteProperty={handlePropertyDelete}
               onUpdateProperty={handlePropertyUpdate}
             />
-          </Card>
+          </div>
         ),
       },
       {
@@ -313,7 +306,6 @@ const CustomEntityDetailV1 = () => {
       </Box>
       <AddCustomProperty
         entityType={selectedEntityTypeDetail.name as EntityType}
-        formRef={form}
         loading={isButtonLoading}
         open={isDrawerOpen}
         onClose={handleDrawerClose}

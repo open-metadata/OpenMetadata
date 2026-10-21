@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ThumbsDown, ThumbsUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
@@ -33,13 +34,17 @@ import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/commo
 import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
+import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
 import {
   ContextMemory,
+  ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
@@ -189,33 +194,64 @@ const MemoryLinkedEntities: FC<MemoryLinkedEntitiesProps> = ({
 };
 
 interface MemoryUsageInfoProps {
-  usageCount?: number;
-  lastUsedAt?: number;
+  memory: ContextMemory;
 }
 
-const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({
-  usageCount,
-  lastUsedAt,
-}) => {
+const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
   const { t } = useTranslation();
+  const { count, lastAt } = getMemoryCitations(memory);
+  const {
+    positiveCount = 0,
+    negativeCount = 0,
+    correctedCount = 0,
+  } = memory.outcomes ?? {};
 
-  if (usageCount === undefined && lastUsedAt === undefined) {
+  if (count === undefined && lastAt === undefined) {
     return null;
   }
 
   return (
-    <Box align="center" className="tw:mt-1" gap={1}>
-      <ClockIcon className="tw:text-quaternary" height={16} width={16} />
-      <Typography
-        className="tw:text-quaternary tw:whitespace-nowrap"
-        size="text-xs">
-        {usageCount === undefined
-          ? ''
-          : t('label.cited-n-times', { count: usageCount })}
-        {lastUsedAt
-          ? ` · ${t('label.last')} ${getShortRelativeTime(lastUsedAt)}`
-          : ''}
+    <Box
+      align="center"
+      className="tw:mt-1 tw:text-quaternary"
+      data-testid="memory-usage-info"
+      gap={1}>
+      <ClockIcon height={16} width={16} />
+      <Typography className="tw:whitespace-nowrap" size="text-xs">
+        {count === undefined ? '' : t('label.cited-n-times', { count })}
+        {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
       </Typography>
+      {/* A Box has no role, so an aria-label on it is never read: the counts are named in text. */}
+      {positiveCount > 0 && (
+        <Box align="center" data-testid="memory-helpful-count" gap={1}>
+          <ThumbsUp aria-hidden size={14} />
+          <Typography size="text-xs">
+            <span aria-hidden>{positiveCount}</span>
+            <span className="tw:sr-only">
+              {t('label.helpful-vote-count', { count: positiveCount })}
+            </span>
+          </Typography>
+        </Box>
+      )}
+      {negativeCount > 0 && (
+        <Box align="center" data-testid="memory-unhelpful-count" gap={1}>
+          <ThumbsDown aria-hidden size={14} />
+          <Typography size="text-xs">
+            <span aria-hidden>{negativeCount}</span>
+            <span className="tw:sr-only">
+              {t('label.unhelpful-vote-count', { count: negativeCount })}
+            </span>
+          </Typography>
+        </Box>
+      )}
+      {correctedCount > 0 && (
+        <Typography
+          className="tw:whitespace-nowrap"
+          data-testid="memory-corrected-count"
+          size="text-xs">
+          {t('label.corrected-n-times', { count: correctedCount })}
+        </Typography>
+      )}
     </Box>
   );
 };
@@ -279,6 +315,60 @@ interface MemoryRowProps {
   isPinningMemoryId?: string;
 }
 
+const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const { t } = useTranslation();
+  const status = memory.entityStatus;
+
+  if (!status || status === ContextMemoryStatus.Approved) {
+    return null;
+  }
+
+  let color: 'error' | 'warning' | 'gray' = 'gray';
+  if (
+    status === ContextMemoryStatus.Rejected ||
+    status === ContextMemoryStatus.Invalidated
+  ) {
+    color = 'error';
+  } else if (
+    status === ContextMemoryStatus.Deprecated ||
+    status === ContextMemoryStatus.Superseded
+  ) {
+    color = 'warning';
+  }
+
+  return (
+    <Badge
+      color={color}
+      data-testid={`memory-status-${memory.id}`}
+      size="sm"
+      type="color">
+      {MEMORY_STATUS_LABEL_KEYS[status]
+        ? t(MEMORY_STATUS_LABEL_KEYS[status])
+        : status}
+    </Badge>
+  );
+};
+
+const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
+  const { t } = useTranslation();
+
+  if (
+    !memory.statusReason ||
+    memory.entityStatus === ContextMemoryStatus.Approved
+  ) {
+    return null;
+  }
+
+  return (
+    <Typography
+      className="tw:text-tertiary tw:line-clamp-2"
+      data-testid={`memory-status-reason-${memory.id}`}
+      size="text-xs">
+      {t('label.reason')}: {memory.statusReason}
+    </Typography>
+  );
+};
+
 const MemoryRow: FC<MemoryRowProps> = ({
   currentUserName,
   isAdminUser,
@@ -289,6 +379,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
+  const authorDisplayName = useApplicationStore(
+    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
+  );
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -330,7 +423,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
   return (
     <Box
       align="start"
-      className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
+      className={[
+        'tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0',
+        'tw:cursor-pointer tw:transition-colors tw:overflow-hidden tw:hover:bg-primary_hover tw:focus-within:bg-primary_hover',
+      ].join(' ')}
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
@@ -350,12 +446,15 @@ const MemoryRow: FC<MemoryRowProps> = ({
           gap={1}>
           <MemoryRowHeader
             updatedAt={memory.updatedAt}
-            updatedBy={memory.updatedBy}
+            updatedBy={authorDisplayName || memory.updatedBy}
           />
 
-          <Typography ellipsis weight="medium">
-            {memory.title || memory.name}
-          </Typography>
+          <Box align="center" gap={2} wrap="wrap">
+            <Typography ellipsis weight="medium">
+              {memory.title || memory.name}
+            </Typography>
+            <EntityStatusBadge memory={memory} />
+          </Box>
 
           <Typography
             className="tw:text-tertiary tw:line-clamp-2"
@@ -363,15 +462,14 @@ const MemoryRow: FC<MemoryRowProps> = ({
             {stripMarkdown(memory.summary ?? memory.answer ?? '')}
           </Typography>
 
+          <EntityStatusReason memory={memory} />
+
           <MemoryLinkedEntities
             hiddenLinkedEntitiesCount={hiddenLinkedEntitiesCount}
             linkedEntities={linkedEntities}
           />
 
-          <MemoryUsageInfo
-            lastUsedAt={memory.lastUsedAt}
-            usageCount={memory.usageCount}
-          />
+          <MemoryUsageInfo memory={memory} />
         </Box>
 
         {/* Actions — always visible */}

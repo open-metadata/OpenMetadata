@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Select, Space } from 'antd';
+import { Box, Button, Select } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { TeamType } from '../../../generated/entity/teams/team';
 import { getTeamOptionsFromType } from '../../../utils/TeamUtils';
 import { TeamTypeSelectProps } from './TeamTypeSelect.interface';
@@ -25,11 +26,8 @@ function TeamTypeSelect({
   updateTeamType,
   parentTeamType,
 }: TeamTypeSelectProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState<TeamType>(teamType);
-
-  const handleSelect = (type: TeamType) => {
-    setValue(type);
-  };
 
   const handleCancel = () => {
     handleShowTypeSelector(false);
@@ -41,48 +39,57 @@ function TeamTypeSelect({
 
   const options = useMemo(() => {
     const options = getTeamOptionsFromType(parentTeamType).map((type) => ({
+      id: type,
       label: type,
-      value: type,
     }));
 
     return showGroupOption
       ? options
-      : options.filter((opt) => opt.value !== TeamType.Group);
+      : options.filter((opt) => opt.id !== TeamType.Group);
   }, [parentTeamType, showGroupOption]);
 
+  // Editing the team type must not toggle its parent collapsible panel.
   return (
-    <Space
+    <Box
+      inline
       align="center"
-      className="team-type-select"
+      className="layout-space layout-space-horizontal team-type-select"
       data-testid="team-type-select"
-      size={4}
-      // Used to stop click propagation event anywhere in the form to parent TeamDetailsV1 collapsible panel
+      gap={1}
+      itemClassName="layout-space-item"
       onClick={(e) => e.stopPropagation()}>
       <Select
-        defaultActiveFirstOption
-        options={options}
-        value={value}
-        onSelect={handleSelect}
-      />
-      <Space className="m-l-xs" size={4}>
+        aria-label={t('label.team-type')}
+        className="tw:w-40"
+        items={options}
+        selectedKey={value}
+        onSelectionChange={(key) => key && setValue(key as TeamType)}>
+        {(item) => <Select.Item id={item.id} label={item.label} />}
+      </Select>
+      <Box
+        inline
+        align="center"
+        className="layout-space layout-space-horizontal m-l-xs"
+        gap={1}
+        itemClassName="layout-space-item">
         <Button
-          className="h-8 p-x-xss"
+          aria-label={t('label.cancel')}
+          color="primary"
           data-testid="cancel-btn"
-          size="small"
-          type="primary"
-          onClick={handleCancel}>
-          <CloseOutlined />
-        </Button>
+          iconLeading={XClose}
+          size="xs"
+          onClick={handleCancel}
+        />
         <Button
-          className="h-8 p-x-xss"
+          aria-label={t('label.save')}
+          color="primary"
           data-testid="save-btn"
-          size="small"
-          type="primary"
-          onClick={handleSubmit}>
-          <CheckOutlined />
-        </Button>
-      </Space>
-    </Space>
+          iconLeading={Check}
+          size="xs"
+          onClick={handleSubmit}
+        />
+      </Box>
+    </Box>
   );
 }
 

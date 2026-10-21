@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -23,6 +24,7 @@ import {
   getDescriptionBox,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForPageLoaded } from '../../utils/polling';
 import {
   waitForTaskCreateResponse,
@@ -39,7 +41,11 @@ import {
 const adminFile = 'playwright/.auth/admin.json';
 test.use({ storageState: adminFile });
 
-const entityClasses = [TableClass, DashboardClass, TopicClass, PipelineClass];
+const entityClasses = pickEntityMatrix(
+  __filename,
+  [TableClass, DashboardClass, TopicClass, PipelineClass],
+  [TableClass]
+);
 
 let entities: InstanceType<(typeof entityClasses)[number]>[] = [];
 
@@ -51,11 +57,11 @@ const createDescriptionTaskViaUI = async (
 ) => {
   await page.getByTestId('request-description').click();
 
-  await page.waitForSelector('#title', { state: 'visible' });
+  await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-  expect(await page.locator('#title').inputValue()).toContain(
-    `description for ${entityType}`
-  );
+  expect(
+    await page.getByTestId('title').locator('input').inputValue()
+  ).toContain(`description for ${entityType}`);
 
   await selectAssignee(page, assigneeName);
 
@@ -78,11 +84,11 @@ const createTagTaskViaUI = async (
 ) => {
   await page.getByTestId('request-entity-tags').click();
 
-  await page.waitForSelector('#title', { state: 'visible' });
+  await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-  expect(await page.locator('#title').inputValue()).toContain(
-    `tags for ${entityType}`
-  );
+  expect(
+    await page.getByTestId('title').locator('input').inputValue()
+  ).toContain(`tags for ${entityType}`);
 
   await selectAssignee(page, assigneeName);
   await addTagSuggestion({
@@ -108,7 +114,7 @@ const openFirstTaskCard = async (page: Page) => {
   const taskCard = page.locator('[data-testid="task-feed-card"]').first();
   const taskDetailTab = page.locator('[data-testid="task-tab"]');
 
-  await expect(taskCard).toBeVisible({ timeout: 30_000 });
+  await expect(taskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
 
   await taskCard.click();
   await expect(taskDetailTab).toBeVisible();
@@ -320,9 +326,11 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill task form and submit', async () => {
-      await page.waitForSelector('#title', { state: 'visible' });
+      await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-      expect(await page.locator('#title').inputValue()).toContain('columns');
+      expect(
+        await page.getByTestId('title').locator('input').inputValue()
+      ).toContain('columns');
 
       await selectAssignee(page, userName);
 
@@ -369,9 +377,11 @@ test.describe('Task Workflow - Table Column Tasks', () => {
     });
 
     await test.step('Fill tag task form and submit', async () => {
-      await page.waitForSelector('#title', { state: 'visible' });
+      await expect(page.getByTestId('title').locator('input')).toBeVisible();
 
-      expect(await page.locator('#title').inputValue()).toContain('columns');
+      expect(
+        await page.getByTestId('title').locator('input').inputValue()
+      ).toContain('columns');
 
       await selectAssignee(page, userName);
 
@@ -466,7 +476,7 @@ test.describe('Task Activity Feed Integration', () => {
         .locator('[data-testid="task-feed-card"]')
         .first();
 
-      await expect(closedTaskCard).toBeVisible({ timeout: 30_000 });
+      await expect(closedTaskCard).toBeVisible({ timeout: ACTION_TIMEOUT });
     });
   });
 

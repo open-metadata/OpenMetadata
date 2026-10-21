@@ -17,11 +17,14 @@ import {
   Card,
   EmptyPlaceholder,
   Input,
-  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { Globe01, Package, Plus } from '@untitledui/icons';
+import {
+  Globe01,
+  NoSearch,
+  Package,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -35,11 +38,16 @@ import {
 import { useTranslation } from 'react-i18next';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
+import { PageViewMode } from '../../generated/type/personaPreferences';
+import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
+import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
@@ -63,7 +71,9 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
+import ViewToggle from '../common/ViewToggle/ViewToggle';
+import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
@@ -141,10 +151,10 @@ const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
-  const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
+  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -196,7 +206,14 @@ const DataProductListPage = ({
   });
 
   const headerSearch = showHeaderSearch ? (
-    <Input className="tw:w-72" {...searchInputProps} />
+    <MarketplaceSearchInput
+      placeholder={t('label.search-for-type', {
+        type: t('label.data-product-plural'),
+      })}
+      searchQuery={dataProductListing.urlState.searchQuery}
+      onRefresh={dataProductListing.refetch}
+      onSearchChange={dataProductListing.handleSearchChange}
+    />
   ) : undefined;
 
   const { pageHeader } = usePageHeader({
@@ -217,8 +234,19 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
+
+  const extraColumns = useMemo(
+    () =>
+      getVisibleStatusColumns(
+        dataProductClassBase.getListingExtraColumns(),
+        dataProductListing.entities
+      ),
+    [dataProductListing.entities]
+  );
 
   const dataProductColumns: ColumnDef[] = useMemo(
     () => [
@@ -228,8 +256,9 @@ const DataProductListPage = ({
       { id: 'domains', label: t('label.domain-plural') },
       { id: 'tags', label: t('label.tag-plural') },
       { id: 'experts', label: t('label.expert-plural') },
+      ...extraColumns.map(({ id, labelKey }) => ({ id, label: t(labelKey) })),
     ],
-    [t]
+    [t, extraColumns]
   );
 
   const renderDataProductCell = useCallback(
@@ -255,10 +284,14 @@ const DataProductListPage = ({
             showDashPlaceholder: true,
           });
         default:
-          return null;
+          return (
+            extraColumns
+              .find((column) => column.id === columnId)
+              ?.render(entity) ?? null
+          );
       }
     },
-    [dataProductListing.actionHandlers.onEntityClick]
+    [dataProductListing.actionHandlers.onEntityClick, extraColumns]
   );
 
   const selectedDataProductEntities = useMemo(
@@ -335,7 +368,23 @@ const DataProductListPage = ({
       );
     }
 
-    if (view === ViewMode.Table) {
+    const pagination = dataProductListing.totalEntities > 0 && (
+      <Box
+        className="tw:border-t tw:border-secondary tw:p-3 tw:shrink-0"
+        justify="center">
+        <NextPrevious
+          isNumberBased
+          currentPage={dataProductListing.currentPage}
+          pageSize={dataProductListing.pageSize}
+          paging={{ total: dataProductListing.totalEntities }}
+          pagingHandler={({ currentPage }) =>
+            dataProductListing.handlePageChange(currentPage)
+          }
+        />
+      </Box>
+    );
+
+    if (view === PageViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -350,11 +399,7 @@ const DataProductListPage = ({
             onSelect={dataProductListing.handleSelect}
             onSelectAll={dataProductListing.handleSelectAll}
           />
-          <PaginationCardDefault
-            page={dataProductListing.currentPage}
-            total={dataProductListing.totalPages}
-            onPageChange={dataProductListing.handlePageChange}
-          />
+          {pagination}
         </>
       );
     }
@@ -368,11 +413,7 @@ const DataProductListPage = ({
           renderCard={renderDataProductCard}
           onEntityClick={dataProductListing.actionHandlers.onEntityClick}
         />
-        <PaginationCardDefault
-          page={dataProductListing.currentPage}
-          total={dataProductListing.totalPages}
-          onPageChange={dataProductListing.handlePageChange}
-        />
+        {pagination}
       </>
     );
   }, [
@@ -381,7 +422,8 @@ const DataProductListPage = ({
     dataProductListing.selectedEntities,
     dataProductListing.actionHandlers,
     dataProductListing.currentPage,
-    dataProductListing.totalPages,
+    dataProductListing.pageSize,
+    dataProductListing.totalEntities,
     dataProductListing.handlePageChange,
     dataProductListing.handleClearAll,
     isSearchOrFilterActive,

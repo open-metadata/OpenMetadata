@@ -44,14 +44,15 @@ import {
   addToKnowledgeCenterRecentViewed,
   updateKnowledgeCenterRecentViewed,
 } from '../../../utils/KnowledgePageUtils';
-import { stripMarkdown } from '../../../utils/StringUtils';
+import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
@@ -182,7 +183,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   const isQuickLink = knowledgePage.pageType === PageType.QUICK_LINK;
   const path = isQuickLink
-    ? (knowledgePage.page as QuickLink).url
+    ? getSafeHttpUrl((knowledgePage.page as QuickLink).url) ?? '#'
     : contextCenterClassBase.getArticlePath(knowledgePage.fullyQualifiedName);
 
   // Single useEntityPermissions call, `enabled: isQuickLink` — only quick-link cards render

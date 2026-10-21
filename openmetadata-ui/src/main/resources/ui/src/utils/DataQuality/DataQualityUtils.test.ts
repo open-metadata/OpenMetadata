@@ -15,6 +15,7 @@ import { applyPatch, type Operation } from 'fast-json-patch';
 import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
 import { DataQualityDimensions } from '../../enums/DataQuality.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
@@ -24,6 +25,7 @@ import {
   TestDefinition,
   TestPlatform,
 } from '../../generated/tests/testDefinition';
+import { Include } from '../../generated/type/include';
 import {
   LabelType,
   State,
@@ -48,7 +50,11 @@ import {
   getEntityLinkForColumnFilter,
   getSelectedOptionsFromKeys,
   getServiceTypeForTestDefinition,
+  getTestCaseBulkEditSearch,
+  getTestCaseExportFilters,
+  getTestCaseExportFiltersFromSearch,
   getTestCaseFiltersValue,
+  getTestCaseListFilterParams,
   getTestCaseTabPath,
   parseColumnAggregateBuckets,
   transformToTestCaseStatusByDimension,
@@ -390,6 +396,124 @@ describe('DataQualityUtils', () => {
       );
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe('getTestCaseListFilterParams', () => {
+    const params = {
+      testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      testCaseType: 'column',
+      tier: 'Tier.Tier1',
+      tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+    } as unknown as TestCaseSearchParams;
+
+    it('should send the selected filters, the status and the search text', () => {
+      expect(
+        getTestCaseListFilterParams(
+          params,
+          ['testCaseType', 'tableFqn'],
+          'nulls'
+        )
+      ).toEqual({
+        testCaseType: 'column',
+        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+        testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+        q: 'nulls',
+      });
+    });
+
+    it('should drop an empty status and search text', () => {
+      expect(
+        getTestCaseListFilterParams(
+          { testCaseStatus: [] } as unknown as TestCaseSearchParams,
+          [],
+          ''
+        )
+      ).toEqual({ testCaseStatus: undefined, q: undefined });
+    });
+  });
+
+  describe('getTestCaseExportFilters', () => {
+    it('should keep only the params the export accepts', () => {
+      expect(
+        getTestCaseExportFilters({
+          testCaseStatus: TestCaseStatus.Failed,
+          q: 'nulls',
+          startTimestamp: 1720417883445,
+          endTimestamp: 1721022683445,
+          limit: 15,
+          offset: 30,
+          sortField: 'testCaseResult.timestamp',
+          fields: 'testCaseResult',
+          include: Include.Deleted,
+          includeAllTests: true,
+          includePermissions: true,
+          testSuiteId: 'suite-id',
+        } as ListTestCaseParamsBySearch)
+      ).toEqual({
+        testCaseStatus: TestCaseStatus.Failed,
+        q: 'nulls',
+        startTimestamp: 1720417883445,
+        endTimestamp: 1721022683445,
+      });
+    });
+
+    it('should drop empty values', () => {
+      expect(
+        getTestCaseExportFilters({
+          testCaseStatus: [],
+          q: '',
+          tier: undefined,
+          testCaseType: TestCaseType.all,
+        } as unknown as ListTestCaseParamsBySearch)
+      ).toEqual({ testCaseType: TestCaseType.all });
+    });
+
+    it('should return no filters for no params', () => {
+      expect(getTestCaseExportFilters()).toEqual({});
+    });
+  });
+
+  describe('getTestCaseBulkEditSearch', () => {
+    const filters = {
+      testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+      tags: 'PII.Sensitive',
+      q: 'nulls, a & b',
+    };
+
+    it('should round-trip the filters through the Bulk Edit URL', () => {
+      const search = getTestCaseBulkEditSearch(EntityType.TABLE, filters);
+
+      expect(new URLSearchParams(search).get('sourceEntityType')).toBe(
+        EntityType.TABLE
+      );
+      expect(getTestCaseExportFiltersFromSearch(search)).toEqual(filters);
+    });
+
+    it('should keep a single status a single value', () => {
+      expect(
+        getTestCaseExportFiltersFromSearch(
+          getTestCaseBulkEditSearch(undefined, {
+            testCaseStatus: TestCaseStatus.Failed,
+          })
+        )
+      ).toEqual({ testCaseStatus: TestCaseStatus.Failed });
+    });
+
+    it('should not add a query string without a source or filters', () => {
+      expect(getTestCaseBulkEditSearch()).toBe('');
+      expect(getTestCaseBulkEditSearch(EntityType.TEST_SUITE)).toBe(
+        '?sourceEntityType=testSuite'
+      );
+    });
+
+    it('should ignore params the export does not accept', () => {
+      expect(
+        getTestCaseExportFiltersFromSearch(
+          '?sourceEntityType=table&testCaseType=column&limit=10&currentPage=3'
+        )
+      ).toEqual({ testCaseType: 'column' });
     });
   });
 

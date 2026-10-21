@@ -27,6 +27,7 @@ import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
+import { refreshGlossaryProposals } from '../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
@@ -47,7 +48,7 @@ import Loader from '../common/Loader/Loader';
 import { GenericProvider } from '../Customization/GenericProvider/GenericProvider';
 import { GlossaryTermForm } from './AddGlossaryTermForm/AddGlossaryTermForm.interface';
 import GlossaryDetails from './GlossaryDetails/GlossaryDetails.component';
-import GlossaryTermModal from './GlossaryTermModal/GlossaryTermModal.component';
+import GlossaryTermDrawer from './GlossaryTermDrawer/GlossaryTermDrawer';
 import GlossaryTermsV1 from './GlossaryTerms/GlossaryTermsV1.component';
 import { GlossaryV1Props } from './GlossaryV1.interfaces';
 import './glossaryV1.less';
@@ -243,6 +244,11 @@ const GlossaryV1 = ({
     []
   );
 
+  const handleGlossaryTermDrawerClose = useCallback(
+    () => setIsEditModalOpen(false),
+    []
+  );
+
   const updateGlossaryTermInStore = (updatedTerm: GlossaryTerm) => {
     const clonedTerms = cloneDeep(glossaryChildTerms);
     const updatedGlossaryTerms = updateGlossaryTermByFqn(
@@ -273,6 +279,7 @@ const GlossaryV1 = ({
         childrenCount: currentData.childrenCount,
       });
       setIsEditModalOpen(false);
+      refreshGlossaryProposals();
     }
   };
 
@@ -293,6 +300,7 @@ const GlossaryV1 = ({
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
+      refreshGlossaryProposals();
       // Refresh glossary list to update term count
       if (isGlossaryActive && refreshGlossaryList) {
         refreshGlossaryList();
@@ -545,11 +553,10 @@ const GlossaryV1 = ({
       )}
 
       {isEditModalOpen && (
-        <GlossaryTermModal
+        <GlossaryTermDrawer
           editMode={editMode}
           glossaryTermFQN={activeGlossaryTerm?.fullyQualifiedName}
-          visible={isEditModalOpen}
-          onCancel={() => setIsEditModalOpen(false)}
+          onCancel={handleGlossaryTermDrawerClose}
           onSave={handleGlossaryTermSave}
         />
       )}

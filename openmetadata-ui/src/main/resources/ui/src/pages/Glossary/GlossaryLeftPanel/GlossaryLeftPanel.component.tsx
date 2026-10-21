@@ -11,17 +11,26 @@
  *  limitations under the License.
  */
 
-import { Button, NavList, Typography } from '@openmetadata/ui-core-components';
-import { Glossary as GlossaryIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  Badge,
+  Box,
+  Button,
+  NavList,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Glossary as GlossaryIcon,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/plus-primary.svg';
+import { DomainFilterChip } from '../../../components/common/DomainFilterChip/DomainFilterChip.component';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import { ROUTES } from '../../../constants/constants';
+import ProposalSourceMark from '../../../components/governance/glossary/GlossaryReview/ProposalSourceMark';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { useGlossaryPendingCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
@@ -29,11 +38,13 @@ import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { GlossaryLeftPanelProps } from './GlossaryLeftPanel.interface';
 
-const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
+const GlossaryLeftPanel = ({
+  glossaries,
+  onAddGlossary,
+}: GlossaryLeftPanelProps) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
-  const navigate = useNavigate();
   const navRef = useRef<HTMLElement>(null);
 
   const createGlossaryPermission = useMemo(
@@ -49,19 +60,33 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
     return glossaries[0]?.fullyQualifiedName;
   }, [glossaryFqn, glossaries]);
 
+  const pendingCounts = useGlossaryPendingCounts(glossaries.length > 0);
+  const hasPendingTerms = Object.keys(pendingCounts?.all ?? {}).length > 0;
+
   const navItems = useMemo(
     () =>
-      glossaries.map((glossary) => ({
-        label: getEntityName(glossary),
-        href: getGlossaryPath(glossary.fullyQualifiedName),
-        icon: GlossaryIcon,
-      })),
-    [glossaries]
-  );
+      glossaries.map((glossary) => {
+        const pending = pendingCounts?.all[glossary.id] ?? 0;
+        const fromAi = pendingCounts?.ai[glossary.id] ?? 0;
 
-  const handleAddGlossaryClick = () => {
-    navigate(ROUTES.ADD_GLOSSARY);
-  };
+        return {
+          label: getEntityName(glossary),
+          href: getGlossaryPath(glossary.fullyQualifiedName),
+          icon: GlossaryIcon,
+          badge:
+            pending > 0 ? (
+              <Badge
+                color={fromAi > 0 ? 'purple' : 'warning'}
+                data-testid={`pending-terms-${glossary.name}`}
+                size="sm"
+                type="pill-color">
+                {pending}
+              </Badge>
+            ) : undefined,
+        };
+      }),
+    [glossaries, pendingCounts]
+  );
 
   useEffect(() => {
     const activeItem = navRef.current?.querySelector<HTMLElement>(
@@ -100,15 +125,17 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
                 className="tw:w-full"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                iconLeading={<Plus className="tw:text-fg-brand-primary" />}
                 size="sm"
-                onPress={handleAddGlossaryClick}>
+                onPress={onAddGlossary}>
                 <Typography className="tw:text-brand-tertiary" weight="regular">
                   {t('label.add-entity', { entity: t('label.glossary') })}
                 </Typography>
               </Button>
             </div>
           )}
+
+          <DomainFilterChip className="tw:px-3" />
 
           <nav aria-label={t('label.glossary-plural')} ref={navRef}>
             <NavList
@@ -118,6 +145,23 @@ const GlossaryLeftPanel = ({ glossaries }: GlossaryLeftPanelProps) => {
               size="sm"
             />
           </nav>
+
+          {hasPendingTerms && (
+            <div
+              className="tw:mx-3 tw:rounded-lg tw:bg-secondary tw:p-3 tw:text-xs tw:text-tertiary"
+              data-testid="proposal-legend">
+              <Box direction="col" gap={2}>
+                <Box align="center" gap={2}>
+                  <ProposalSourceMark source="ai" />
+                  {t('label.proposed-by-ai-agent')}
+                </Box>
+                <Box align="center" gap={2}>
+                  <ProposalSourceMark source="person" />
+                  {t('label.proposed-by-a-person')}
+                </Box>
+              </Box>
+            </div>
+          )}
         </div>
       </GlossaryV1Skeleton>
     </div>

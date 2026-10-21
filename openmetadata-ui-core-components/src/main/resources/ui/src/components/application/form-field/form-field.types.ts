@@ -91,6 +91,8 @@ export interface FieldPropsMap {
   children?: ReactNode;
   colors?: string[];
   'data-testid'?: string;
+  /** TEXT / PASSWORD / NUMBER only: test id on the inner `<input>`, not the wrapper. */
+  inputDataTestId?: string;
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;
@@ -115,6 +117,10 @@ export interface FieldPropsMap {
   options?: FormSelectItem[];
   coverImageLabels?: CoverImageUploadLabels;
   maxDimensions?: { width: number; height: number };
+  /** Autocomplete: chips drawn before the rest collapse into a +N button that opens the list with them checked. */
+  maxVisibleItems?: number;
+  /** Autocomplete: wrap the chips onto more lines; a capped field otherwise stays on one line. */
+  wrapSelectedItems?: boolean;
   maxSizeMB?: number;
   onValidationError?: (message: string) => void;
   previewClassName?: string;

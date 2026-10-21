@@ -13,11 +13,15 @@
 
 package org.openmetadata.service.resources.ontology;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.mapper.EntityMapper;
@@ -28,14 +32,31 @@ public final class OntologyChangeSetMapper
   public OntologyChangeSet createToEntity(
       final CreateOntologyChangeSet request, final String user) {
     final List<EntityReference> glossaries =
-        request.getGlossaries().stream()
-            .map(fqn -> Entity.getEntityReferenceByName(Entity.GLOSSARY, fqn, Include.NON_DELETED))
-            .toList();
+        (request.getGlossaries() == null ? Set.<String>of() : request.getGlossaries())
+            .stream().map(fqn -> glossaryReference(request, fqn)).toList();
     return copy(new OntologyChangeSet(), request, user)
         .withGlossaries(glossaries)
+        .withOntology(
+            request.getOntology() == null
+                ? null
+                : Entity.getEntityReferenceByName(
+                    Entity.ONTOLOGY, request.getOntology(), Include.NON_DELETED))
+        .withBaseWorkingRevision(request.getBaseWorkingRevision())
         .withState(OntologyChangeSetState.DRAFT)
         .withOperations(request.getOperations())
         .withUndoCursor(request.getOperations() == null ? 0 : request.getOperations().size())
         .withProvider(request.getProvider());
+  }
+
+  private static EntityReference glossaryReference(
+      final CreateOntologyChangeSet request, final String fqn) {
+    return listOrEmpty(request.getOperations()).stream()
+        .filter(operation -> operation.getGlossary() != null)
+        .map(OntologyChangeOperation::getGlossary)
+        .filter(glossary -> fqn.equals(glossary.getFullyQualifiedName()))
+        .findFirst()
+        .map(glossary -> glossary.getEntityReference())
+        .orElseGet(
+            () -> Entity.getEntityReferenceByName(Entity.GLOSSARY, fqn, Include.NON_DELETED));
   }
 }

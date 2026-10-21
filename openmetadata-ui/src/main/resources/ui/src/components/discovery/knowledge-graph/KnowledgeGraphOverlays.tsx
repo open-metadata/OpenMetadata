@@ -17,8 +17,20 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link01, XClose } from '@untitledui/icons';
-import { lazy, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChevronLeft,
+  Link01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import {
+  lazy,
+  ReactNode,
+  RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -26,15 +38,17 @@ import {
 } from '../../../constants/discovery/knowledge-graph.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { GraphSelection } from '../../../hooks/discovery/knowledge-graph/useKnowledgeGraphCanvas';
+import { MappingCoverage } from '../../../interface/discovery/knowledge-graph.interface';
 import {
   getColorSetForType,
-  resolveFocusNodeId,
+  getGroupRelationship,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import {
   getGraphNodeHref,
   isGraphColumnNode,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphNavigation.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { SearchSourceDetails } from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.interface';
 import { getNodeTypeLabel } from './GraphElements/CustomNode';
 import {
@@ -42,14 +56,21 @@ import {
   GraphNode,
   KnowledgeGraphG6Edge,
 } from './KnowledgeGraph.interface';
+import { getRelationStyle } from './KnowledgeGraph.relations';
 import KnowledgeGraphGroupInspector from './KnowledgeGraphGroupInspector';
 import {
   entityTile,
-  InspectorRow,
+  InspectorGapNote,
+  InspectorIdentityCard,
+  InspectorRelationshipRow,
   InspectorSection,
-  InspectorStatement,
   relationTile,
 } from './KnowledgeGraphInspectorParts';
+import {
+  INLINE_RELATIONSHIPS,
+  PREVIEW_RELATIONSHIPS,
+} from './KnowledgeGraphOverlays.constants';
+import { getBackTarget, InspectorBack } from './KnowledgeGraphOverlays.utils';
 import KnowledgeGraphRelationship from './KnowledgeGraphRelationship';
 
 const EntitySummaryPanel = withSuspenseFallback(
@@ -59,23 +80,22 @@ const EntitySummaryPanel = withSuspenseFallback(
   )
 );
 
-const edgeArrow = (derived: boolean, outgoing: boolean) => {
-  if (derived) {
-    return '— ';
-  }
-
-  return outgoing ? '→ ' : '← ';
-};
-
 const getInspectorSubtitle = (
   t: (key: string, options?: Record<string, unknown>) => string,
   node?: GraphNode,
-  edge?: KnowledgeGraphG6Edge
+  edge?: KnowledgeGraphG6Edge,
+  edges?: KnowledgeGraphG6Edge[]
 ) => {
-  if (node?.presentation?.members) {
-    return t('label.kg-bundle-subtitle', {
+  if (node?.presentation?.members && edges) {
+    // Mock 2f: "Grouped · N relationships · <Family>" — the family name
+    // belongs on the drawer header so the statement card stays uncluttered.
+    const bundle = getGroupRelationship(node, edges);
+    const style = bundle ? getRelationStyle(bundle.data.category) : undefined;
+    const base = t('label.kg-bundle-subtitle', {
       count: node.presentation.members.length,
     });
+
+    return style ? base + ' · ' + t(style.labelKey) : base;
   }
   if (node) {
     const type = getNodeTypeLabel(node.type, t);
@@ -104,146 +124,395 @@ const getInspectorTitle = (node?: GraphNode, edge?: KnowledgeGraphG6Edge) =>
 interface InspectorProps {
   nodes: GraphNode[];
   edges: KnowledgeGraphG6Edge[];
-  /** The entity the graph is centred on; its label anchors the statements. */
-  rootId: string;
   selection: GraphSelection;
   tooltip: EdgeTooltipState | null;
+  /** Coverage per node id — drives the Unmapped CTA on the entity drawer. */
+  coverage?: Map<string, MappingCoverage>;
   onSelectionChange: (selection: GraphSelection) => void;
   onExpandGroup?: (id: string) => void;
-  onViewRelationships?: (groupId?: string) => void;
+  /**
+   * Opens the paged relationships table, scoped to a group's bundle
+   * (`groupId`) or to an explicit set of edges (`scope`).
+   */
+  onViewRelationships?: (
+    groupId?: string,
+    scope?: { label: string; edgeIds: string[] }
+  ) => void;
 }
 
 interface NodeInspectorProps
-  extends Pick<
-    InspectorProps,
-    'onSelectionChange' | 'onExpandGroup' | 'onViewRelationships'
-  > {
+  extends Pick<InspectorProps, 'onExpandGroup' | 'onViewRelationships'> {
   node: GraphNode;
   root?: GraphNode;
   connections: KnowledgeGraphG6Edge[];
   nodeMap: Map<string, GraphNode>;
   nodeHref: string;
+  coverage?: MappingCoverage;
+  onDetails: (node: GraphNode) => void;
+  onSelectRelationship: (id: string) => void;
+  showAllRelationships: boolean;
+  onShowAllRelationshipsChange: (showAll: boolean) => void;
+}
+
+/** Entity types that render as "USERNAME" / "FQN" instead of "FULL PATH". */
+const USERNAME_TYPES = new Set<string>([EntityType.USER, EntityType.TEAM]);
+const FQN_TYPES = new Set<string>([EntityType.TAG, EntityType.CLASSIFICATION]);
+/** Entity types where mapping-coverage CTAs (unmapped / owner) do not apply. */
+const COVERAGE_SIGNAL_SKIP = new Set<string>([
+  EntityType.USER,
+  EntityType.TEAM,
+  EntityType.TAG,
+  EntityType.CLASSIFICATION,
+  EntityType.DATABASE_SCHEMA,
+  EntityType.DATABASE,
+]);
+
+/** Short caps field label above the identifier, chosen by entity family. */
+const identityFieldKey = (type: string): string => {
+  if (USERNAME_TYPES.has(type)) {
+    return 'label.kg-username';
+  }
+  if (FQN_TYPES.has(type)) {
+    return 'label.kg-fqn';
+  }
+
+  return 'label.kg-full-path';
+};
+
+const hasIdentityCard = (node: GraphNode) =>
+  Boolean(node.fullyQualifiedName || node.name);
+
+const hasMappingCoverageSignal = (type: string) =>
+  !COVERAGE_SIGNAL_SKIP.has(type);
+
+interface RelationshipsSectionProps {
+  node: GraphNode;
+  connections: KnowledgeGraphG6Edge[];
+  nodeMap: Map<string, GraphNode>;
+  onSelectRelationship: (id: string) => void;
+  onViewRelationships?: InspectorProps['onViewRelationships'];
+  showAll: boolean;
+  onShowAllChange: (showAll: boolean) => void;
+}
+
+const RelationshipsSection = ({
+  node,
+  connections,
+  nodeMap,
+  onSelectRelationship,
+  onViewRelationships,
+  showAll,
+  onShowAllChange,
+}: RelationshipsSectionProps) => {
+  const { t } = useTranslation();
+  const previewSlice = connections.slice(
+    0,
+    showAll ? INLINE_RELATIONSHIPS : PREVIEW_RELATIONSHIPS
+  );
+  if (connections.length === 0) {
+    return null;
+  }
+
+  return (
+    <InspectorSection
+      meta={t('label.kg-in-view-of', {
+        shown: previewSlice.length,
+        total: connections.length,
+      })}
+      title={t('label.relationship-plural')}>
+      {previewSlice.map((edge) => {
+        const otherId = edge.source === node.id ? edge.target : edge.source;
+        const other = nodeMap.get(otherId);
+        const outgoing = edge.source === node.id;
+        const subject = outgoing ? node.label : other?.label ?? otherId;
+        const object = outgoing ? other?.label ?? otherId : node.label;
+
+        return (
+          <InspectorRelationshipRow
+            key={edge.id}
+            object={object}
+            predicate={String(edge.data?.label ?? '')}
+            subject={subject}
+            tile={entityTile(other?.type ?? node.type, 'sm')}
+            onPress={() => onSelectRelationship(String(edge.id))}
+          />
+        );
+      })}
+      {connections.length > PREVIEW_RELATIONSHIPS && (
+        <Button
+          aria-expanded={showAll}
+          className="tw:self-start"
+          color="link-color"
+          size="sm"
+          onPress={() => onShowAllChange(!showAll)}>
+          {showAll
+            ? t('label.view-less')
+            : t('label.kg-view-all-relationships', {
+                count: connections.length,
+              })}
+        </Button>
+      )}
+      {showAll && connections.length > INLINE_RELATIONSHIPS && (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          size="sm"
+          onPress={() =>
+            onViewRelationships?.(undefined, {
+              label: node.label,
+              edgeIds: connections.map((edge) => String(edge.id)),
+            })
+          }>
+          {t('label.kg-view-in-list')}
+        </Button>
+      )}
+    </InspectorSection>
+  );
+};
+
+interface OntologyDetailsProps {
+  property: NonNullable<GraphNode['ontologyProperty']>;
+}
+
+const OntologyDetails = ({ property }: OntologyDetailsProps) => {
+  const { t } = useTranslation();
+  const cardinality = property.functional
+    ? 'label.kg-at-most-one'
+    : 'label.kg-not-declared';
+
+  return (
+    <InspectorSection title={t('label.details')}>
+      <Typography className="tw:break-all tw:text-secondary" size="text-sm">
+        {t('label.kg-range') + ': ' + property.range}
+      </Typography>
+      <Typography className="tw:text-secondary" size="text-sm">
+        {t('label.kg-cardinality') + ': ' + t(cardinality)}
+      </Typography>
+    </InspectorSection>
+  );
+};
+
+interface IdentitySectionProps {
+  node: GraphNode;
+}
+
+const IdentitySection = ({ node }: IdentitySectionProps) => {
+  const { t } = useTranslation();
+  if (!hasIdentityCard(node)) {
+    return null;
+  }
+  const value = node.fullyQualifiedName ?? node.name ?? node.label;
+
+  return (
+    <InspectorIdentityCard
+      color={getColorSetForType(node.type).main}
+      family={getNodeTypeLabel(node.type, t)}
+      fieldLabel={t(identityFieldKey(node.type))}
+      value={value}
+      valueTestId="inspector-identity-value"
+    />
+  );
+};
+
+interface GapNotesProps {
+  showUnmappedCTA: boolean;
+  showOwnerAssigned: boolean;
+  nodeHref: string;
+}
+
+const GapNotes = ({
+  showUnmappedCTA,
+  showOwnerAssigned,
+  nodeHref,
+}: GapNotesProps) => {
+  const { t } = useTranslation();
+  if (!showUnmappedCTA && !showOwnerAssigned) {
+    return null;
+  }
+
+  return (
+    <Box direction="col" gap={2}>
+      {showUnmappedCTA && (
+        <InspectorGapNote
+          actionHref={nodeHref || undefined}
+          actionLabel={t('label.kg-map-term')}
+          actionTestId="inspector-cta-map-term"
+          text={t('label.kg-unmapped-glossary')}
+          tone="warning"
+        />
+      )}
+      {showOwnerAssigned && (
+        <InspectorGapNote text={t('label.kg-owner-assigned')} tone="success" />
+      )}
+    </Box>
+  );
+};
+
+interface InspectorActionsProps {
+  node: GraphNode;
+  nodeHref: string;
   onDetails: (node: GraphNode) => void;
 }
+
+const InspectorActions = ({
+  node,
+  nodeHref,
+  onDetails,
+}: InspectorActionsProps) => {
+  const { t } = useTranslation();
+  const previewable = canPreviewNode(node);
+  if (!previewable && !nodeHref) {
+    return null;
+  }
+
+  return (
+    <Box className="kg-inspector-actions" gap={2} justify="end">
+      {previewable && (
+        <Button color="secondary" size="md" onPress={() => onDetails(node)}>
+          {t('label.preview')}
+        </Button>
+      )}
+      {nodeHref && (
+        <Button
+          color="primary"
+          href={nodeHref}
+          rel="noopener noreferrer"
+          size="md"
+          target="_blank">
+          {t('label.kg-open-asset-page')}
+        </Button>
+      )}
+    </Box>
+  );
+};
+
 const GraphNodeInspector = ({
   node,
-  root,
   connections,
   nodeMap,
   nodeHref,
+  coverage,
   onDetails,
-  onSelectionChange,
+  onSelectRelationship,
   onViewRelationships,
+  showAllRelationships,
+  onShowAllRelationshipsChange,
 }: NodeInspectorProps) => {
-  const { t } = useTranslation();
-  const typeLabel = getNodeTypeLabel(node.type, t);
-  const isRoot = Boolean(node.presentation?.root);
-  const statement = isRoot
-    ? t('message.kg-root-statement', { count: connections.length })
-    : t('message.kg-node-statement', {
-        type: typeLabel,
-        root: root?.label ?? '',
-      });
+  const canShowGapNotes = hasMappingCoverageSignal(node.type);
+  const bodyDescription = node.description ?? null;
 
   return (
     <>
       <Box className="kg-inspector-body" direction="col">
-        <InspectorStatement
-          code={node.fullyQualifiedName}
-          color={getColorSetForType(node.type).main}
-          family={typeLabel}
-          statement={statement}
+        <IdentitySection node={node} />
+        <GapNotes
+          nodeHref={nodeHref}
+          showOwnerAssigned={canShowGapNotes && Boolean(node.owner)}
+          showUnmappedCTA={canShowGapNotes && coverage === 'unmapped'}
         />
-        {node.description && (
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {node.description}
-          </Typography>
+        {bodyDescription && (
+          <div className="kg-inspector-description tw:text-xs tw:text-tertiary">
+            <RichTextEditorPreviewerNew
+              clampByLines
+              enableSeeMoreVariant
+              markdown={bodyDescription}
+              maxLineLength="6"
+            />
+          </div>
         )}
         {node.ontologyProperty && (
-          <InspectorSection title={t('label.details')}>
-            <Typography
-              className="tw:break-all tw:text-secondary"
-              size="text-sm">
-              {t('label.kg-range') + ': ' + node.ontologyProperty.range}
-            </Typography>
-            <Typography className="tw:text-secondary" size="text-sm">
-              {t('label.kg-cardinality') +
-                ': ' +
-                t(
-                  node.ontologyProperty.functional
-                    ? 'label.kg-at-most-one'
-                    : 'label.kg-not-declared'
-                )}
-            </Typography>
-          </InspectorSection>
+          <OntologyDetails property={node.ontologyProperty} />
         )}
-        <InspectorSection
-          meta={t('label.kg-in-view', { count: connections.length })}
-          title={t('label.relationship-plural')}>
-          {connections.slice(0, 8).map((edge) => {
-            const otherId = edge.source === node.id ? edge.target : edge.source;
-            const other = nodeMap.get(otherId);
-            const arrow = edgeArrow(
-              Boolean(edge.data.derivation),
-              edge.source === node.id
-            );
-
-            return (
-              <InspectorRow
-                detail={arrow + String(edge.data?.label ?? '')}
-                key={edge.id}
-                name={other?.label ?? otherId}
-                tile={entityTile(other?.type ?? node.type, 'sm')}
-                onPress={() =>
-                  onSelectionChange({ kind: 'edge', id: String(edge.id) })
-                }
-              />
-            );
-          })}
-          <Button
-            className="tw:self-start"
-            color="link-color"
-            size="sm"
-            onPress={() => onViewRelationships?.()}>
-            {t('label.kg-view-relationships')}
-          </Button>
-        </InspectorSection>
+        <RelationshipsSection
+          connections={connections}
+          node={node}
+          nodeMap={nodeMap}
+          showAll={showAllRelationships}
+          onSelectRelationship={onSelectRelationship}
+          onShowAllChange={onShowAllRelationshipsChange}
+          onViewRelationships={onViewRelationships}
+        />
       </Box>
-      {(canPreviewNode(node) || nodeHref) && (
-        <Box className="kg-inspector-actions" gap={2}>
-          {canPreviewNode(node) && (
-            <Button color="primary" size="md" onPress={() => onDetails(node)}>
-              {t('label.kg-view-details')}
-            </Button>
-          )}
-          {nodeHref && (
-            <Button
-              color="secondary"
-              href={nodeHref}
-              rel="noopener noreferrer"
-              size="md"
-              target="_blank">
-              {t('label.kg-open-entity-page')}
-            </Button>
-          )}
-        </Box>
-      )}
+      <InspectorActions node={node} nodeHref={nodeHref} onDetails={onDetails} />
     </>
+  );
+};
+
+interface InspectorHeaderProps {
+  tile: ReactNode;
+  title?: string;
+  subtitle: string;
+  headingRef: RefObject<HTMLHeadingElement>;
+  onBack?: () => void;
+  onClose: () => void;
+}
+
+const InspectorHeader = ({
+  tile,
+  title,
+  subtitle,
+  headingRef,
+  onBack,
+  onClose,
+}: InspectorHeaderProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="start" className="kg-inspector-header" gap={2}>
+      {onBack && (
+        <Button
+          aria-label={t('label.back')}
+          color="tertiary"
+          data-testid="inspector-back"
+          iconLeading={ChevronLeft}
+          size="sm"
+          onPress={onBack}
+        />
+      )}
+      {tile}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
+        <Typography
+          as="h3"
+          className="tw:m-0! tw:break-words tw:text-sm! tw:leading-5! tw:text-primary"
+          ref={headingRef}
+          size="text-sm"
+          tabIndex={-1}
+          weight="semibold">
+          {title ?? t('label.relationship')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {subtitle}
+        </Typography>
+      </Box>
+      <Button
+        aria-label={t('label.close')}
+        color="tertiary"
+        iconLeading={XClose}
+        size="sm"
+        onPress={onClose}
+      />
+    </Box>
   );
 };
 
 const KnowledgeGraphOverlays = ({
   nodes,
   edges,
-  rootId,
   selection,
   tooltip,
+  coverage,
   onSelectionChange,
   onExpandGroup,
   onViewRelationships,
 }: InspectorProps) => {
   const { t } = useTranslation();
   const [detailsNode, setDetailsNode] = useState<GraphNode | null>(null);
+  // Where the inspector came from when it drilled into a relationship, so the
+  // header can offer a way back. Only valid while that relationship is shown.
+  const [back, setBack] = useState<InspectorBack | null>(null);
+  // Lives here, not in the section, so "back" from a relationship returns to
+  // the list as the user left it rather than collapsed to three rows.
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -291,6 +560,13 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
+  // Leaving the drilled-into relationship (canvas click, close, another row)
+  // ends the trip, so a later direct selection of that edge offers no "back".
+  useEffect(() => {
+    if (back && !getBackTarget(back, selection)) {
+      setBack(null);
+    }
+  }, [back, selection]);
   const nodeLink = (node?: GraphNode) => {
     const href = getGraphNodeHref(node);
 
@@ -308,11 +584,19 @@ const KnowledgeGraphOverlays = ({
       <Typography size="text-sm">{node?.label ?? ''}</Typography>
     );
   };
-  const inspectorTitle =
-    getInspectorTitle(selectedNode, selectedEdge) ?? t('label.relationship');
-  const rootNode = nodeMap.get(resolveFocusNodeId(nodes, rootId));
-  const inspectorSubtitle = getInspectorSubtitle(t, selectedNode, selectedEdge);
-  const inspectorTile = getInspectorTile(selectedNode, selectedEdge);
+  // Drilling in or going back unmounts the control that had focus (the row,
+  // the Back button); land keyboard users on the inspector heading instead of
+  // letting focus fall to the page.
+  const focusHeadingAfterRender = () =>
+    requestAnimationFrame(() =>
+      headingRef.current?.focus({ preventScroll: true })
+    );
+  const openRelationship = (id: string) => {
+    setBack({ from: selection, to: id });
+    onSelectionChange({ kind: 'edge', id });
+    focusHeadingAfterRender();
+  };
+  const backTarget = getBackTarget(back, selection);
 
   return (
     <>
@@ -376,32 +660,35 @@ const KnowledgeGraphOverlays = ({
               closeInspector();
             }
           }}>
-          <Box align="start" className="kg-inspector-header" gap={2}>
-            {inspectorTile}
-            <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
-              <h3
-                className="tw:m-0! tw:text-md! tw:leading-6! tw:font-semibold tw:text-primary tw:break-words"
-                ref={headingRef}
-                tabIndex={-1}>
-                {inspectorTitle}
-              </h3>
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {inspectorSubtitle}
-              </Typography>
-            </Box>
-            <Button
-              aria-label={t('label.close')}
-              color="tertiary"
-              iconLeading={XClose}
-              size="sm"
-              onPress={closeInspector}
-            />
-          </Box>
+          <InspectorHeader
+            headingRef={headingRef}
+            subtitle={getInspectorSubtitle(
+              t,
+              selectedNode,
+              selectedEdge,
+              edges
+            )}
+            tile={getInspectorTile(selectedNode, selectedEdge)}
+            title={getInspectorTitle(selectedNode, selectedEdge)}
+            onBack={
+              backTarget
+                ? () => {
+                    setBack(null);
+                    onSelectionChange(backTarget);
+                    focusHeadingAfterRender();
+                  }
+                : undefined
+            }
+            onClose={closeInspector}
+          />
           {selectedEdge && (
             <KnowledgeGraphRelationship
               edge={selectedEdge}
               nodes={nodeMap}
               renderNode={nodeLink}
+              onViewInList={
+                onViewRelationships ? () => onViewRelationships() : undefined
+              }
             />
           )}
           {selectedNode?.presentation?.members ? (
@@ -410,22 +697,25 @@ const KnowledgeGraphOverlays = ({
               node={selectedNode}
               nodes={nodeMap}
               onExpand={() => onExpandGroup?.(selectedNode.id)}
-              onSelectRelationship={(id) =>
-                onSelectionChange({ kind: 'edge', id })
-              }
+              onSelectRelationship={openRelationship}
               onViewRelationships={() => onViewRelationships?.(selectedNode.id)}
             />
           ) : (
             selectedNode && (
               <GraphNodeInspector
                 connections={connections}
+                coverage={coverage?.get(selectedNode.id)}
+                key={selectedNode.id}
                 node={selectedNode}
                 nodeHref={getGraphNodeHref(selectedNode)}
                 nodeMap={nodeMap}
-                root={rootNode}
+                showAllRelationships={expandedNodeId === selectedNode.id}
                 onDetails={setDetailsNode}
                 onExpandGroup={onExpandGroup}
-                onSelectionChange={onSelectionChange}
+                onSelectRelationship={openRelationship}
+                onShowAllRelationshipsChange={(showAll) =>
+                  setExpandedNodeId(showAll ? selectedNode.id : null)
+                }
                 onViewRelationships={onViewRelationships}
               />
             )

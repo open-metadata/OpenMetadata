@@ -26,6 +26,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -38,20 +39,27 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDerivation;
+import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -59,6 +67,8 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryDerivations;
+import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -68,6 +78,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -80,11 +92,17 @@ import org.openmetadata.service.util.EntityUtil;
 @Collection(name = "contextMemories")
 public class ContextMemoryResource extends EntityResource<ContextMemory, ContextMemoryRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/memories/";
-  public static final String FIELDS = "owners,tags,domains,primaryEntity,relatedEntities";
+  public static final String FIELDS =
+      "owners,tags,domains,primaryEntity,relatedEntities,derivedEntities";
+  static final String STALE_RECOUNT = "A later recount of this memory's outcomes is already stored";
+  static final String COUNTED_AT_REQUIRED = "countedAt is required: it orders the recounts";
+  static final String COUNTED_AT_AHEAD = "countedAt %d is ahead of the server clock";
+  static final Duration COUNTED_AT_CLOCK_SKEW = Duration.ofMinutes(1);
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
 
   private final ContextMemoryMapper mapper = new ContextMemoryMapper();
+  private final MemoryDerivations derivations = new MemoryDerivations();
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
@@ -92,6 +110,15 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
     /* Required for serde */
+  }
+
+  public static class MemoryDerivationList extends ResultList<MemoryDerivation> {
+    /* Required for serde */
+    public MemoryDerivationList() {}
+
+    public MemoryDerivationList(List<MemoryDerivation> data) {
+      super(data);
+    }
   }
 
   @Override
@@ -104,6 +131,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     super.addHref(uriInfo, memory);
     Entity.withHref(uriInfo, memory.getPrimaryEntity());
     Entity.withHref(uriInfo, memory.getRelatedEntities());
+    Entity.withHref(uriInfo, memory.getDerivedEntities());
     Entity.withHref(uriInfo, memory.getRootMemory());
     Entity.withHref(uriInfo, memory.getParentMemory());
     return memory;
@@ -159,11 +187,15 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Memory author as user name or user UUID") @QueryParam("author")
           String author,
       @Parameter(description = "Filter by pinned state") @QueryParam("pinned") Boolean pinned,
-      @Parameter(description = "Sort field: updatedAt, usageCount, updatedBy") @QueryParam("sortBy")
+      @Parameter(description = "Sort field: updatedAt, appliedCount, usageCount, updatedBy")
+          @QueryParam("sortBy")
           String sortBy,
       @Parameter(description = "Sort order: asc or desc") @QueryParam("sortOrder") String sortOrder,
       @Parameter(description = "Offset for search-backed pagination") @Min(0) @QueryParam("offset")
           Integer offset,
+      @Parameter(description = "Comma-separated lifecycle statuses for the Context Center list")
+          @QueryParam("statuses")
+          String statuses,
       @Parameter(
               description =
                   "Only return knowledge pills extracted from the context file with this id",
@@ -183,25 +215,28 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @QueryParam("primaryEntityId")
           UUID primaryEntityId)
       throws IOException {
-    if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
-      return listMemoriesFromSearch(
-          uriInfo,
+    if (statuses != null || hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
+      return withVisibleEvidence(
           securityContext,
-          fieldsParam,
-          q,
-          assets,
-          author,
-          pinned,
-          sortBy,
-          sortOrder,
-          limitParam,
-          offset == null ? 0 : offset,
-          before,
-          after,
-          include,
-          sourceFileId,
-          sourceEntityId,
-          primaryEntityId);
+          listMemoriesFromSearch(
+              uriInfo,
+              securityContext,
+              fieldsParam,
+              q,
+              assets,
+              author,
+              pinned,
+              sortBy,
+              sortOrder,
+              limitParam,
+              offset == null ? 0 : offset,
+              before,
+              after,
+              include,
+              sourceFileId,
+              sourceEntityId,
+              primaryEntityId,
+              statuses == null ? null : parseStatuses(statuses)));
     }
 
     ListFilter filter = new ListFilter(include);
@@ -217,13 +252,50 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     ResultList<ContextMemory> memories =
         addHref(
             uriInfo,
-            listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+            listInternal(
+                uriInfo,
+                securityContext,
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
+                filter,
+                limitParam,
+                before,
+                after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
-    if (visible.size() == memories.getData().size()) {
-      return memories;
+    // Keep the cursor so clients can page past hidden rows.
+    return withVisibleEvidence(
+        securityContext,
+        visible.size() == memories.getData().size()
+            ? memories
+            : new ResultList<>(visible).setPaging(memories.getPaging()));
+  }
+
+  private ResultList<ContextMemory> withVisibleEvidence(
+      SecurityContext securityContext, ResultList<ContextMemory> memories) {
+    ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        memories.getData(), authorizer, securityContext);
+    return memories;
+  }
+
+  /**
+   * A write answers with the memory it wrote, redacted for the writer. A copy, because the event
+   * filter builds this write's change event from the response entity asynchronously.
+   */
+  private Response withVisibleEvidence(SecurityContext securityContext, Response response) {
+    Response visible = response;
+    if (response.getEntity() instanceof ContextMemory memory) {
+      ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
+      ContextMemoryEvidenceAccess.redactUnviewableQueries(
+          List.of(copy), authorizer, securityContext);
+      visible = Response.fromResponse(response).entity(copy).build();
     }
-    return new ResultList<>(visible);
+    return visible;
+  }
+
+  private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
+    ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        List.of(memory), authorizer, securityContext);
+    return memory;
   }
 
   private ResultList<ContextMemory> listMemoriesFromSearch(
@@ -243,15 +315,19 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       Include include,
       UUID sourceFileId,
       UUID sourceEntityId,
-      UUID primaryEntityId)
+      UUID primaryEntityId,
+      List<ContextMemoryStatus> statuses)
       throws IOException {
     validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
         buildContextMemorySearchFilter(include, assets, author, pinned, null);
-    SearchSortFilter searchSortFilter =
-        new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
+    if (statuses != null) {
+      searchListFilter.withMemoryStatuses(statuses);
+    }
+    SearchSortFilter searchSortFilter = searchSort(sortBy, sortOrder);
     EntityUtil.Fields fields = getFields(fieldsParam);
-    // shareConfig visibility is enforced at query time by ContextMemorySearchVisibility (see
+    // shareConfig visibility, the conservative anchor rule and the selected statuses are enforced
+    // at query time by ContextMemorySearchVisibility (see
     // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
     // already excludes memories the caller may not see. Post-filtering here would be redundant and
     // would break offset pagination — it truncates a page below the requested limit and drops the
@@ -268,6 +344,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         q,
         null,
         getAuthRequestsForListOps());
+  }
+
+  private static List<ContextMemoryStatus> parseStatuses(String statuses) {
+    Set<ContextMemoryStatus> parsed = new LinkedHashSet<>();
+    for (String value : statuses.split(",", -1)) {
+      parsed.add(parseMemoryStatus(value.trim()));
+    }
+    return List.copyOf(parsed);
+  }
+
+  private static ContextMemoryStatus parseMemoryStatus(String value) {
+    ContextMemoryStatus status = null;
+    try {
+      status = ContextMemoryStatus.fromValue(value);
+    } catch (IllegalArgumentException ex) {
+      LOG.debug("Unknown memory status '{}'", value, ex);
+    }
+    if (status == null || !ContextMemoryRepository.LIFECYCLE.includes(status)) {
+      throw new BadRequestException("Invalid memory status: " + value);
+    }
+    return status;
   }
 
   private static boolean hasSearchBackedListParams(
@@ -355,11 +452,23 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     }
     return switch (sortBy) {
       case "updatedAt" -> "updatedAt";
+      case "appliedCount" -> "outcomes.appliedCount";
       case "usageCount" -> "usageCount";
       case "updatedBy" -> "updatedBy.keyword";
       default -> throw new BadRequestException(
-          "Unsupported sortBy value '" + sortBy + "'. Allowed: updatedAt, usageCount, updatedBy.");
+          "Unsupported sortBy value '"
+              + sortBy
+              + "'. Allowed: updatedAt, appliedCount, usageCount, updatedBy.");
     };
+  }
+
+  /**
+   * Only memories a recount reached carry outcomes, so the others tie on the applied count; their
+   * recorded usage orders them as it did before outcomes existed.
+   */
+  static SearchSortFilter searchSort(String sortBy, String sortOrder) {
+    return new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null)
+        .thenBy("appliedCount".equals(sortBy) ? "usageCount" : null);
   }
 
   private static String resolveSortOrder(String sortOrder) {
@@ -377,6 +486,90 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     return List.of(new AuthRequest(operationContext, getResourceContext()));
+  }
+
+  @GET
+  @Path("/derivations")
+  @Operation(
+      operationId = "listMemoryDerivations",
+      summary = "List the memories entities were derived from",
+      description =
+          "For each given entity an AI agent derived from a memory the caller may see, returns that"
+              + " memory and the agent's evidence: its confidence and reasons.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The derivations of the entities",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = MemoryDerivationList.class))),
+        @ApiResponse(responseCode = "400", description = "Missing entity type or invalid ids")
+      })
+  public MemoryDerivationList listDerivations(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Entity type of the derived entities",
+              schema = @Schema(type = "string", example = Entity.GLOSSARY_TERM))
+          @QueryParam("entityType")
+          String derivedType,
+      @Parameter(
+              description =
+                  "Comma-separated ids of the derived entities, at most "
+                      + MemoryDerivations.MAX_ENTITIES)
+          @QueryParam("entityIds")
+          String entityIds) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
+    if (CommonUtil.nullOrEmpty(derivedType)) {
+      throw new BadRequestException("entityType is required");
+    }
+    return new MemoryDerivationList(
+        derivations.find(
+            derivedType,
+            parseDerivedIds(entityIds),
+            memories -> readableMemories(memories, securityContext)));
+  }
+
+  /**
+   * The memories the caller may read, as a read of each would decide: its sharing and anchor, then
+   * the caller's policies on the memory itself, such as a domain-only role or a deny rule.
+   */
+  private List<ContextMemory> readableMemories(
+      List<ContextMemory> memories, SecurityContext securityContext) {
+    return ContextMemoryVisibility.filterByVisibility(memories, securityContext).stream()
+        .filter(memory -> mayView(memory, securityContext))
+        .toList();
+  }
+
+  private boolean mayView(ContextMemory memory, SecurityContext securityContext) {
+    boolean allowed = true;
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+          getResourceContextById(memory.getId()));
+    } catch (AuthorizationException e) {
+      allowed = false;
+    }
+    return allowed;
+  }
+
+  static List<UUID> parseDerivedIds(String entityIds) {
+    List<UUID> ids = new ArrayList<>();
+    for (String value : CommonUtil.nullOrEmpty(entityIds) ? new String[0] : entityIds.split(",")) {
+      try {
+        ids.add(UUID.fromString(value.trim()));
+      } catch (IllegalArgumentException ex) {
+        throw new BadRequestException(
+            String.format("Invalid entityIds value '%s'. Expected comma-separated UUIDs.", value));
+      }
+    }
+    if (ids.isEmpty() || ids.size() > MemoryDerivations.MAX_ENTITIES) {
+      throw new BadRequestException(
+          "entityIds must name between 1 and " + MemoryDerivations.MAX_ENTITIES + " entities");
+    }
+    return List.copyOf(ids);
   }
 
   @GET
@@ -415,7 +608,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             ContextMemoryVisibility.guardFields(entityType, fieldsParam),
             include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
-    return memory;
+    return withVisibleEvidence(securityContext, memory);
   }
 
   @GET
@@ -453,7 +646,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             ContextMemoryVisibility.guardFields(entityType, fieldsParam),
             include);
     ContextMemoryVisibility.enforceVisibility(memory, securityContext);
-    return memory;
+    return withVisibleEvidence(securityContext, memory);
   }
 
   @GET
@@ -476,7 +669,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return listVersionsInternal(securityContext, id);
+    enforceCurrentVisibility(securityContext, id);
+    return ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        listVersionsInternal(securityContext, id), authorizer, securityContext);
   }
 
   @GET
@@ -502,7 +697,20 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Context memory version", schema = @Schema(type = "string"))
           @PathParam("version")
           String version) {
-    return getVersionInternal(securityContext, id, version);
+    enforceCurrentVisibility(securityContext, id);
+    return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
+  }
+
+  /** Current visibility governs every response containing a stored memory. */
+  private void enforceCurrentVisibility(SecurityContext securityContext, UUID id) {
+    ContextMemory current =
+        repository.get(
+            null,
+            id,
+            getFields(ContextMemoryVisibility.guardFields(entityType, "")),
+            Include.ALL,
+            false);
+    ContextMemoryVisibility.enforceVisibility(current, securityContext);
   }
 
   @POST
@@ -525,7 +733,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, memory);
+    return withVisibleEvidence(securityContext, create(uriInfo, securityContext, memory));
   }
 
   @PUT
@@ -548,7 +756,13 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Valid CreateContextMemory create) {
     ContextMemory memory =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, memory);
+    repository.setFullyQualifiedName(memory);
+    ContextMemory existing =
+        repository.findByNameOrNull(memory.getFullyQualifiedName(), Include.ALL);
+    if (existing != null) {
+      enforceCurrentVisibility(securityContext, existing.getId());
+    }
+    return withVisibleEvidence(securityContext, createOrUpdate(uriInfo, securityContext, memory));
   }
 
   @PATCH
@@ -576,7 +790,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       examples =
                           @ExampleObject("[{op:replace, path:/displayName, value: 'New name'}]")))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    // A PATCH answers with the whole memory, and Data Consumers may edit any entity's description
+    // and tags, so without this anyone holding a memory's id could read it by patching it.
+    enforceCurrentVisibility(securityContext, id);
+    return withVisibleEvidence(securityContext, patchInternal(uriInfo, securityContext, id, patch));
   }
 
   @PUT
@@ -600,7 +817,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return setPinned(uriInfo, securityContext, id, true);
+    return withVisibleEvidence(securityContext, setPinned(uriInfo, securityContext, id, true));
   }
 
   @DELETE
@@ -624,7 +841,62 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return setPinned(uriInfo, securityContext, id, false);
+    return withVisibleEvidence(securityContext, setPinned(uriInfo, securityContext, id, false));
+  }
+
+  @PUT
+  @Path("/{id}/outcomes")
+  @Operation(
+      operationId = "recordContextMemoryOutcomes",
+      summary = "Record a memory's outcome counters",
+      description =
+          "Set the outcome counters of a context memory to the values of one recount. Only admins"
+              + " and bots may write them; countedAt is required and may not be ahead of the"
+              + " server clock; the version and timestamps are unchanged, and a recount older than"
+              + " the stored one is rejected with 409.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The memory with its new counters",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextMemory.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "countedAt is missing or ahead of the server clock, or a count is negative"),
+        @ApiResponse(responseCode = "404", description = "Memory not found"),
+        @ApiResponse(responseCode = "409", description = "A later recount is already stored")
+      })
+  public ContextMemory recordOutcomes(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Valid @NotNull MemoryOutcomes outcomes) {
+    authorizer.authorizeAdminOrBot(securityContext);
+    requireRecountTime(outcomes, System.currentTimeMillis());
+    repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false);
+    if (!MemoryOutcomeWriter.write(id, outcomes)) {
+      throw new WebApplicationException(STALE_RECOUNT, Response.Status.CONFLICT);
+    }
+    return addHref(uriInfo, repository.get(uriInfo, id, getFields(""), Include.NON_DELETED, false));
+  }
+
+  /**
+   * The stored countedAt refuses every older recount, so a write must say when it counted, and a
+   * time ahead of this server would outrank every later recount and freeze the counts.
+   */
+  static void requireRecountTime(MemoryOutcomes outcomes, long now) {
+    Long countedAt = outcomes.getCountedAt();
+    if (countedAt == null) {
+      throw new BadRequestException(COUNTED_AT_REQUIRED);
+    }
+    if (countedAt > now + COUNTED_AT_CLOCK_SKEW.toMillis()) {
+      throw new BadRequestException(String.format(COUNTED_AT_AHEAD, countedAt));
+    }
   }
 
   private Response setPinned(
@@ -632,6 +904,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    enforceCurrentVisibility(securityContext, id);
 
     ContextMemory original =
         repository.get(uriInfo, id, getFields(PIN_UPDATE_FIELDS), Include.NON_DELETED, false);
@@ -667,7 +940,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       @Parameter(description = "Id of the context memory", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return delete(uriInfo, securityContext, id, recursive, hardDelete);
+    return withVisibleEvidence(
+        securityContext, delete(uriInfo, securityContext, id, recursive, hardDelete));
   }
 
   @DELETE
@@ -693,7 +967,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           boolean hardDelete,
       @Parameter(description = "Fully qualified name of the context memory") @PathParam("fqn")
           String fqn) {
-    return deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete);
+    return withVisibleEvidence(
+        securityContext, deleteByName(uriInfo, securityContext, fqn, recursive, hardDelete));
   }
 
   @PUT
@@ -721,6 +996,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                       mediaType = "application/json",
                       schema = @Schema(type = "string", format = "uuid")))
           RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return withVisibleEvidence(
+        securityContext, restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 }

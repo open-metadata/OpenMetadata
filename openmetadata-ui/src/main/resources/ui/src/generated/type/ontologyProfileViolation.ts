@@ -23,11 +23,16 @@ export interface OntologyProfileViolation {
 export enum Code {
     IllegalPunning = "ILLEGAL_PUNNING",
     InvalidAxiomShape = "INVALID_AXIOM_SHAPE",
+    InvalidClassKind = "INVALID_CLASS_KIND",
     InvalidExpressionShape = "INVALID_EXPRESSION_SHAPE",
     NonSimpleCardinality = "NON_SIMPLE_CARDINALITY",
+    NonSimpleProperty = "NON_SIMPLE_PROPERTY",
     PropertyChainRegularity = "PROPERTY_CHAIN_REGULARITY",
     ReservedSubjectIRI = "RESERVED_SUBJECT_IRI",
+    SubclassCycle = "SUBCLASS_CYCLE",
     TransitiveCardinality = "TRANSITIVE_CARDINALITY",
+    UndeclaredClass = "UNDECLARED_CLASS",
+    UndeclaredProperty = "UNDECLARED_PROPERTY",
 }
 
 export enum Severity {

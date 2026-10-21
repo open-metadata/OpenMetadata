@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
@@ -21,7 +21,6 @@ import { ServiceCategory } from '../../../enums/service.enum';
 
 export interface CategoryConfig {
   key: ServiceCategory;
-  titleKey: string;
   // Bespoke subtitle for the long-standing tabs. Tabs without one fall back to the
   // generic parameterized `connections-service-type-description` message.
   descriptionKey?: string;
@@ -30,55 +29,44 @@ export interface CategoryConfig {
 export const CATEGORY_CONFIGS = [
   {
     key: ServiceCategory.DATABASE_SERVICES,
-    titleKey: 'label.database-service',
     descriptionKey: 'message.connections-database-services-description',
   },
   {
     key: ServiceCategory.DASHBOARD_SERVICES,
-    titleKey: 'label.dashboard-service',
     descriptionKey: 'message.connections-dashboard-services-description',
   },
   {
     key: ServiceCategory.MESSAGING_SERVICES,
-    titleKey: 'label.messaging-service',
     descriptionKey: 'message.connections-messaging-services-description',
   },
   {
     key: ServiceCategory.PIPELINE_SERVICES,
-    titleKey: 'label.pipeline-service',
     descriptionKey: 'message.connections-pipeline-services-description',
   },
   {
     key: ServiceCategory.STORAGE_SERVICES,
-    titleKey: 'label.storage-service',
     descriptionKey: 'message.connections-storage-services-description',
   },
   {
     key: ServiceCategory.API_SERVICES,
-    titleKey: 'label.api-service',
     descriptionKey: 'message.connections-api-services-description',
   },
   {
     key: ServiceCategory.ML_MODEL_SERVICES,
-    titleKey: 'label.ml-model',
     descriptionKey: 'message.connections-ml-model-services-description',
   },
   {
     key: ServiceCategory.METADATA_SERVICES,
-    titleKey: 'label.metadata-service',
     descriptionKey: 'message.connections-metadata-services-description',
   },
   {
     key: ServiceCategory.SEARCH_SERVICES,
-    titleKey: 'label.search-service',
   },
   {
     key: ServiceCategory.DRIVE_SERVICES,
-    titleKey: 'label.drive',
   },
   {
     key: ServiceCategory.SECURITY_SERVICES,
-    titleKey: 'label.security-service',
   },
 ] satisfies CategoryConfig[];
 
@@ -173,7 +161,7 @@ export const ALL_SERVICES_SEARCH_INDEX = Object.values(
 // matches the "All Connections" entry in the tab rail (ConnectionsSecondaryNav's CATEGORY_ICONS
 // covers only the per-category tabs, not this one) rather than reusing a per-category icon.
 export const ALL_CONNECTIONS_EMPTY_STATE: ServiceEmptyStateConfig = {
-  icon: SearchLg,
+  icon: Search,
   titleKey: 'message.empty-all-connections-title',
   descriptionKey: 'message.empty-all-connections-description',
 };

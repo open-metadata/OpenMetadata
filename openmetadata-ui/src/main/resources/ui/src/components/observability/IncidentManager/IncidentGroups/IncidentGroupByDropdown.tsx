@@ -15,7 +15,7 @@ import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 // LayersTwo01 has no counterpart in the core-components icon barrel, which only
 // re-exports the design team's own SVG set.
-import { LayersTwo01 } from '@untitledui/icons';
+import { LayersTwo01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { INCIDENT_GROUP_BY_OPTIONS } from './IncidentGroups.constants';
@@ -40,14 +40,14 @@ const IncidentGroupByDropdown = ({
   return (
     <Dropdown.Root isOpen={isMenuOpen} onOpenChange={setIsMenuOpen}>
       <Button
+        className="tw:shrink-0"
         color="secondary"
         data-testid="incident-group-by-button"
         iconLeading={<LayersTwo01 className="tw:size-4" />}
         iconTrailing={<ChevronDown className="tw:size-4" />}
-        size="sm">
-        <span className="tw:font-normal tw:text-tertiary">
-          {`${t('label.group-by')} `}
-        </span>
+        size="lg">
+        {/* The field's name stays for screen readers; the icon stands for it. */}
+        <span className="tw:sr-only">{`${t('label.group-by')} `}</span>
         <span data-testid="incident-group-by-value">
           {t(selectedOption.labelKey)}
         </span>

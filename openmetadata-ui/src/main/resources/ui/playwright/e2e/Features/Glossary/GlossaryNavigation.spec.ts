@@ -15,6 +15,7 @@ import { SidebarItem } from '../../../constant/sidebar';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   selectActiveGlossary,
   selectActiveGlossaryTerm,
@@ -68,15 +69,7 @@ test.describe('Glossary Navigation', () => {
       await activityLoadResponse;
 
       // Wait for loader to disappear
-      await page
-        .getByTestId('loader')
-        .waitFor({
-          state: 'detached',
-          timeout: 5000,
-        })
-        .catch(() => {
-          // Loader may not appear if data loads quickly
-        });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify we're on the activity feed tab by checking the tab is active
       await expect(
@@ -136,15 +129,7 @@ test.describe('Glossary Navigation', () => {
       await assetsLoadResponse;
 
       // Wait for loader to disappear
-      await page
-        .getByTestId('loader')
-        .waitFor({
-          state: 'detached',
-          timeout: 5000,
-        })
-        .catch(() => {
-          // Loader may not appear if data loads quickly
-        });
+      await waitForAllLoadersToDisappear(page);
 
       // Verify we're on the Assets tab by checking the tab is active
       await expect(

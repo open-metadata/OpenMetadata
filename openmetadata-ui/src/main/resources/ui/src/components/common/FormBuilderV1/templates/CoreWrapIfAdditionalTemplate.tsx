@@ -12,11 +12,11 @@
  */
 
 import { Button, Input } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import {
   ADDITIONAL_PROPERTY_FLAG,
   WrapIfAdditionalTemplateProps,
 } from '@rjsf/utils';
-import { Trash01 } from '@untitledui/icons';
 import { FunctionComponent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -42,11 +42,12 @@ export const CoreWrapIfAdditionalTemplate: FunctionComponent<
 
   return (
     <div className="core-wrap-if-additional-template tw:w-full tw:min-w-0 tw:rounded-lg">
-      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_40px]">
+      <div className="core-wrap-if-additional-row tw:grid tw:w-full tw:min-w-0 tw:items-center tw:gap-2.5 tw:[grid-template-columns:minmax(0,1fr)_auto_minmax(0,1fr)_36px]">
         <div className="core-wrap-if-additional-key tw:min-w-0">
           <Input
+            aria-label={t('label.key')}
             id={`${id}-key`}
-            placeholder={t('label.option').toLowerCase()}
+            placeholder={t('label.key').toLowerCase()}
             value={keyValue}
             onBlur={() => onKeyChange(keyValue)}
             onChange={setKeyValue}

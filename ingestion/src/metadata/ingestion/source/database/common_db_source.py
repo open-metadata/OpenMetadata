@@ -73,7 +73,7 @@ from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandl
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
-from metadata.utils.constraints import get_relationship_type
+from metadata.utils.constraints import get_relationship_type, resolve_column_names
 from metadata.utils.filters import filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -499,6 +499,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         return False, None  # By default the table will be a Regular Table
 
+    def should_preserve_table_type_when_partitioned(self, table_type: TableType) -> bool:
+        return table_type in (TableType.View, TableType.MaterializedView)
+
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         We don't have a generic source implementation for handling tags.
@@ -626,12 +629,10 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
-            if is_partitioned and table_type not in (
-                TableType.View,
-                TableType.MaterializedView,
-            ):
-                table_request.tableType = TableType.Partitioned.value
             if is_partitioned:
+                if not self.should_preserve_table_type_when_partitioned(table_type):
+                    # Preserve the existing string value; direct assignment does not run Pydantic enum coercion.
+                    table_request.tableType = TableType.Partitioned.value  # pyright: ignore[reportAttributeAccessIssue]
                 table_request.tablePartition = partition_details
 
             yield Either(right=table_request)
@@ -659,25 +660,19 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         Method to prepare the foreign constraints
         """
-        referred_column_fqns = []
-        if supports_database:
-            database_name = column.get("referred_database")
-        else:
-            database_name = self.context.get().database
+        database_name = (column.get("referred_database") if supports_database else None) or self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
 
         referred_schema = column.get("referred_schema") or schema_name
         referred_table_fqn = (
             f"{self.context.get().database_service}.{database_name}.{referred_schema}.{column.get('referred_table')}"
         )
         referred_table = self.metadata.get_by_name(entity=Table, fqn=referred_table_fqn)
-        if referred_table:
-            for referred_column in column.get("referred_columns"):
-                col_fqn = fqn._build(  # pylint: disable=protected-access
-                    referred_table_fqn, referred_column, quote=False
-                )
-                if col_fqn:
-                    referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
-        else:
+        referred_columns = (
+            resolve_column_names(column["referred_columns"], referred_table.columns) if referred_table else None
+        )
+        if referred_table is None or referred_columns is None:
+            # The referred table, or a column added to it in this run, may only reach the
+            # server later in the run, so retry once every table has been ingested.
             if add_to_global:
                 column_and_referred_columns = ColumnAndReferredColumn(
                     table_name=table_name,
@@ -686,14 +681,27 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
                     column=column,
                 )
                 self.context.get_global().foreign_tables.append(column_and_referred_columns)
+            elif referred_table:
+                logger.warning(
+                    "Skipping foreign key of [%s.%s]: referred columns %s don't each match exactly one column of [%s]",
+                    schema_name,
+                    table_name,
+                    column["referred_columns"],
+                    referred_table_fqn,
+                )
             return None
-        relationship_type = None
-        if referred_table:
-            relationship_type = get_relationship_type(
-                column,  # sqlalchemy foreign column
-                referred_table.columns,  # referred table columns
-                columns,  # current table om columns
+        referred_column_fqns = []
+        for referred_column in referred_columns:
+            col_fqn = fqn._build(  # pylint: disable=protected-access
+                referred_table_fqn, referred_column, quote=False
             )
+            if col_fqn:
+                referred_column_fqns.append(FullyQualifiedEntityName(col_fqn))
+        relationship_type = get_relationship_type(
+            {**column, "referred_columns": referred_columns},
+            referred_table.columns,  # referred table columns
+            columns,  # current table om columns
+        )
         return TableConstraint(
             constraintType=ConstraintType.FOREIGN_KEY,
             columns=column.get("constrained_columns"),

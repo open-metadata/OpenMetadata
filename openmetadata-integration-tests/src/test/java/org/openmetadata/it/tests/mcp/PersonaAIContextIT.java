@@ -315,6 +315,76 @@ class PersonaAIContextIT extends McpTestBase {
     }
   }
 
+  /**
+   * The settings controls PUT only their own three fields, so a null prompt has to mean "leave it
+   * alone" — otherwise flipping the Enabled toggle would silently delete the admin's instructions.
+   */
+  @Test
+  void promptSurvivesASettingsOnlyUpdateAndClearsWhenBlank() throws Exception {
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_prompt_" + shortId())
+                .withDescription("Persona prompt integration test"),
+            Persona.class);
+    String ownedContextPath = "personas/" + owned.getId() + "/aiContext";
+    String documentPath = "personas/name/" + owned.getFullyQualifiedName() + "/context";
+    String prompt = "You assist finance analysts with quarterly revenue questions.";
+
+    try {
+      PersonaContextDefinition written =
+          put(
+              ownedContextPath,
+              settings(true).withPrompt("  " + prompt + "\n"),
+              PersonaContextDefinition.class);
+      assertThat(written.getPrompt()).isEqualTo(prompt);
+
+      PersonaContextDefinition afterSettingsOnly =
+          put(ownedContextPath, settings(true), PersonaContextDefinition.class);
+      assertThat(afterSettingsOnly.getPrompt()).isEqualTo(prompt);
+
+      JsonNode structured =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(structured.path("prompt").asText()).isEqualTo(prompt);
+      // Consumers read the markdown as reference data, never as instructions.
+      assertThat(getResponse(documentPath + "?refresh=true", authToken).body())
+          .doesNotContain(prompt);
+
+      // MCP clients get the prompt on part 1 under its own key, outside the paged document.
+      JsonNode toolResult =
+          executeMcp(
+                  McpTestUtils.createToolCallRequest(
+                      "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+                  authToken)
+              .path("result");
+      JsonNode page =
+          OBJECT_MAPPER.readTree(toolResult.path("content").get(0).path("text").asText());
+      assertThat(page.path("instructions").asText()).isEqualTo(prompt);
+      assertThat(page.path("content").asText()).doesNotContain(prompt);
+
+      put(ownedContextPath, settings(false), PersonaContextDefinition.class);
+      JsonNode disabled =
+          OBJECT_MAPPER.readTree(
+              getResponse(documentPath + "?format=json&refresh=true", authToken).body());
+      assertThat(disabled.hasNonNull("prompt")).isFalse();
+
+      PersonaContextDefinition cleared =
+          put(ownedContextPath, settings(true).withPrompt(""), PersonaContextDefinition.class);
+      assertThat(cleared.getPrompt()).isNull();
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  private static PersonaContextDefinition settings(boolean enabled) {
+    return new PersonaContextDefinition()
+        .withEnabled(enabled)
+        .withCharacterBudget(400_000)
+        .withCacheTtlMinutes(30);
+  }
+
   private static ContextRule ruleNamed(PersonaContextDefinition definition, String name) {
     return definition.getRules().stream()
         .filter(rule -> name.equals(rule.getName()))
@@ -600,6 +670,63 @@ class PersonaAIContextIT extends McpTestBase {
                             .readTree(getResponse(contextPath(), authToken).body())
                             .hasNonNull("cacheState"))
                     .isTrue());
+  }
+
+  @Test
+  void aiContextStatusListsCachedStateForEveryPersonaAndIsAdminOnly() throws Exception {
+    String statusPath = "personas/aiContext/status?limit=1000";
+    assertThat(getResponse(statusPath, nonMemberToken).statusCode()).isEqualTo(403);
+
+    // Polled for the same reason as above: a sibling test may invalidate the shared cache.
+    Awaitility.await("status reports the compiled document")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              assertThat(getResponse(contextPath() + "/document", authToken).statusCode())
+                  .isEqualTo(200);
+              HttpResponse<String> response = getResponse(statusPath, authToken);
+              assertThat(response.statusCode()).isEqualTo(200);
+              JsonNode status =
+                  statusOf(OBJECT_MAPPER.readTree(response.body()).path("data"), persona);
+              assertThat(status.path("cacheState").asText()).isEqualTo("FRESH");
+              assertThat(status.path("tokensEst").asInt()).isPositive();
+              assertThat(status.hasNonNull("lastGeneratedAt")).isTrue();
+            });
+  }
+
+  private static JsonNode statusOf(JsonNode statuses, Persona target) {
+    for (JsonNode status : statuses) {
+      if (target.getId().toString().equals(status.path("personaId").asText())) {
+        return status;
+      }
+    }
+    throw new AssertionError("No AI context status for persona " + target.getName());
+  }
+
+  @Test
+  void aiContextStatusPagesWithTheSameCursorAsThePersonaList() throws Exception {
+    JsonNode statusPage =
+        OBJECT_MAPPER.readTree(getResponse("personas/aiContext/status?limit=1", authToken).body());
+    JsonNode personaPage =
+        OBJECT_MAPPER.readTree(getResponse("personas?limit=1", authToken).body());
+    assertThat(statusPage.path("data")).hasSize(1);
+    assertThat(statusPage.path("data").get(0).path("personaId").asText())
+        .isEqualTo(personaPage.path("data").get(0).path("id").asText());
+    assertThat(statusPage.path("paging").path("total").asInt())
+        .isEqualTo(personaPage.path("paging").path("total").asInt());
+
+    String rawAfter = statusPage.path("paging").path("after").asText();
+    assertThat(rawAfter).isNotEmpty().isEqualTo(personaPage.path("paging").path("after").asText());
+    String after = URLEncoder.encode(rawAfter, StandardCharsets.UTF_8);
+    JsonNode nextStatus =
+        OBJECT_MAPPER.readTree(
+            getResponse("personas/aiContext/status?limit=1&after=" + after, authToken).body());
+    JsonNode nextPersona =
+        OBJECT_MAPPER.readTree(getResponse("personas?limit=1&after=" + after, authToken).body());
+    assertThat(nextStatus.path("data")).hasSize(1);
+    assertThat(nextStatus.path("data").get(0).path("personaId").asText())
+        .isEqualTo(nextPersona.path("data").get(0).path("id").asText());
   }
 
   private JsonNode executeMcp(Map<String, Object> requestBody, String token) throws Exception {

@@ -18,12 +18,16 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Column } from '../../../../../generated/entity/data/dashboardDataModel';
 import {
   DataType,
   PartitionIntervalTypes,
   PartitionIntervalUnit,
+  ProfileSampleType,
+  SampleConfigType,
   TableProfilerConfig,
 } from '../../../../../generated/entity/data/table';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -99,10 +103,6 @@ jest.mock('../../../SchemaEditor/SchemaEditor', () => {
         sql editor
       </button>
     ));
-});
-
-jest.mock('../../../../common/SliderWithInput/SliderWithInput', () => {
-  return jest.fn().mockReturnValue(<div data-testid="slider-input" />);
 });
 
 /**
@@ -358,5 +358,165 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
     });
 
     expect(payload.partitioning).toBeUndefined();
+  });
+
+  it('clears excluded columns without changing included metrics or partitioning', async () => {
+    const payload = await renderAndSave(mockTableProfilerConfig, () => {
+      fireEvent.click(screen.getByTestId('clear-excluded-columns'));
+    });
+
+    expect(
+      screen.queryByTestId('clear-excluded-columns')
+    ).not.toBeInTheDocument();
+    expect(payload.excludeColumns).toBeUndefined();
+    expect(payload.includeColumns).toEqual(
+      mockTableProfilerConfig.includeColumns
+    );
+    expect(payload.partitioning).toEqual(mockTableProfilerConfig.partitioning);
+  });
+});
+
+const buildStaticSampleConfig = (
+  profileSample: number,
+  profileSampleType = ProfileSampleType.Percentage
+): TableProfilerConfig => ({
+  sampleDataCount: 500,
+  profileSampleConfig: {
+    sampleConfigType: SampleConfigType.Static,
+    config: {
+      profileSample,
+      profileSampleType,
+    },
+  },
+});
+
+describe('ProfilerSettingsModal profile-sample round-trip', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  it('should preserve profileSampleConfig for a non-zero percentage (control)', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60));
+
+    expect(payload.profileSampleConfig).toEqual({
+      sampleConfigType: SampleConfigType.Static,
+      config: {
+        profileSample: 60,
+        profileSampleType: ProfileSampleType.Percentage,
+      },
+    });
+  });
+
+  it('should not allow a 0 percentage because ingestion would scan the full table', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: buildStaticSampleConfig(60),
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('slider-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1%');
+    expect(screen.getByRole('slider')).toHaveAttribute('min', '1');
+  });
+
+  it('should clamp a typed 0 percentage up to 1 on blur', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
+      const input = screen.getByTestId('slider-input');
+      fireEvent.change(input, { target: { value: '0' } });
+      fireEvent.blur(input);
+    });
+
+    expect(payload.profileSampleConfig?.config?.profileSample).toBe(1);
+  });
+
+  it('should not allow 0 rows', async () => {
+    (getTableProfilerConfig as jest.Mock).mockResolvedValueOnce({
+      ...MOCK_TABLE,
+      tableProfilerConfig: buildStaticSampleConfig(500, ProfileSampleType.Rows),
+    });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const input = await screen.findByTestId('metric-number-input');
+    await user.click(input);
+    await user.keyboard('{Home}{ArrowDown}');
+
+    expect(input).toHaveValue('1');
+  });
+
+  // Configs saved before the minimum existed may hold 0; saving the modal
+  // untouched must write back what is stored rather than a clamped value.
+  it.each([
+    [ProfileSampleType.Percentage, 0],
+    [ProfileSampleType.Rows, 500],
+    [ProfileSampleType.Rows, 0],
+  ])(
+    'should round-trip a stored %s sample of %d through reload and save',
+    async (profileSampleType, profileSample) => {
+      const payload = await renderAndSave(
+        buildStaticSampleConfig(profileSample, profileSampleType)
+      );
+
+      expect(payload.profileSampleConfig).toEqual({
+        sampleConfigType: SampleConfigType.Static,
+        config: { profileSample, profileSampleType },
+      });
+    }
+  );
+
+  it('should omit profileSampleConfig when the sample value is cleared', async () => {
+    const payload = await renderAndSave(buildStaticSampleConfig(60), () => {
+      fireEvent.click(screen.getByTestId('clear-slider-input'));
+    });
+
+    expect(payload.profileSampleConfig).toBeUndefined();
+  });
+});
+
+describe('ProfilerSettingsModal include-column dropdowns', () => {
+  // Two include rows turn the include-column container into a 160px scroll
+  // box (tw:max-h-40 tw:overflow-y-auto). A dropdown rendered inside it would
+  // be clipped, so the row pickers must open outside it (#35369).
+  it('opens the include-column list outside the scroll clip box', async () => {
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('include-column-select')).toBeInTheDocument()
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+
+    const container = screen.getByTestId('include-column-container');
+
+    await waitFor(() => {
+      expect(container).toHaveClass('tw:max-h-40', 'tw:overflow-y-auto');
+      expect(screen.getAllByTestId('include-column-select')).toHaveLength(2);
+    });
+
+    const [firstRow] = screen.getAllByTestId('include-column-select');
+    const [trigger] = within(firstRow).getAllByRole('button');
+
+    await act(async () => {
+      fireEvent.click(trigger);
+    });
+
+    const listbox = await screen.findByRole('listbox');
+
+    expect(container).not.toContainElement(listbox);
   });
 });

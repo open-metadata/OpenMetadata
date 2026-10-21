@@ -6,7 +6,6 @@ import static org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.app.App;
@@ -23,7 +22,6 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,8 +29,9 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppTriggerRetry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.UnhandledServerException;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -130,7 +129,6 @@ public class RunAppImpl {
   }
 
   // Internal App Logic
-  @SneakyThrows
   private boolean runApp(
       AppRepository repository,
       App app,
@@ -138,50 +136,19 @@ public class RunAppImpl {
       boolean waitForCompletion,
       long startTime,
       long timeoutMillis) {
-    int maxRetries = 5;
-    int attempt = 0;
-    long initialBackoffMillis = 10000; // 10 second
-    long maxBackoffMillis = 60000; // 60 seconds
-
-    while (attempt < maxRetries) {
-      try {
-        ApplicationHandler.getInstance()
-            .triggerApplicationOnDemand(
-                app, Entity.getCollectionDAO(), Entity.getSearchRepository(), config);
-        break;
-      } catch (JsonParsingException | UnhandledServerException e) {
-        if (e.getMessage().contains("Job is already running")) {
-          attempt++;
-          if (attempt >= maxRetries) {
-            LOG.error("Failed to run app after {} retries: {}", maxRetries, e.getMessage());
-            return false;
-          }
-
-          long backoffMillis =
-              Math.min(initialBackoffMillis * (long) Math.pow(2, attempt - 1), maxBackoffMillis);
-          LOG.warn(
-              "App is already running. Retrying in {} ms (attempt {}/{})",
-              backoffMillis,
-              attempt,
-              maxRetries);
-
-          try {
-            Thread.sleep(backoffMillis);
-          } catch (InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            throw new RuntimeException("Retry interrupted", ie);
-          }
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    if (waitForCompletion) {
-      return waitForCompletion(repository, app, startTime, timeoutMillis);
-    } else {
-      return true;
-    }
+    boolean triggered =
+        AppTriggerRetry.trigger(
+            app.getName(),
+            () ->
+                ApplicationHandler.getInstance()
+                    .triggerApplicationOnDemand(
+                        app,
+                        Entity.getCollectionDAO(),
+                        Entity.getSearchRepository(),
+                        config,
+                        WorkflowEventConsumer.GOVERNANCE_BOT));
+    return triggered
+        && (!waitForCompletion || waitForCompletion(repository, app, startTime, timeoutMillis));
   }
 
   private boolean waitForCompletion(

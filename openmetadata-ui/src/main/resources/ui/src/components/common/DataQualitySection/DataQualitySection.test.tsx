@@ -29,6 +29,7 @@ jest.mock('react-i18next', () => ({
 // Mock SectionWithEdit to expose props and render children
 interface SectionWithEditProps {
   title: React.ReactNode;
+  titleExtra?: React.ReactNode;
   children: React.ReactNode;
   showEditButton?: boolean;
   onEdit?: () => void;
@@ -38,13 +39,22 @@ jest.mock('../SectionWithEdit/SectionWithEdit', () => {
   return jest
     .fn()
     .mockImplementation(
-      ({ title, children, showEditButton, onEdit }: SectionWithEditProps) => (
+      ({
+        title,
+        titleExtra,
+        children,
+        showEditButton,
+        onEdit,
+      }: SectionWithEditProps) => (
         <div
           data-show-edit={String(showEditButton)}
           data-testid="section-with-edit"
           role="presentation"
           onClick={onEdit}>
-          <div data-testid="section-title">{title}</div>
+          <div data-testid="section-title">
+            {title}
+            {titleExtra}
+          </div>
           <div data-testid="section-children">{children}</div>
         </div>
       )

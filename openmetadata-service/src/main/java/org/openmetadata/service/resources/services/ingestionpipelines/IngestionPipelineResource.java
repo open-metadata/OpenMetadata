@@ -76,6 +76,7 @@ import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPi
 import org.openmetadata.schema.api.services.ingestionPipelines.RunIngestionPipelineForEntity;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AgentType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientPlatform;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -109,6 +110,7 @@ import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -139,6 +141,8 @@ public class IngestionPipelineResource
   private static final String NO_LOG_BACKEND =
       "No log backend is configured on this deployment, so ingestion logs cannot be streamed.";
   private static final String LOG_STREAM_FIELDS = "pipelineStatuses,ingestionRunner";
+  static final String UNAVAILABLE_STATUS_REASON =
+      "The pipeline service is not available. Ask an administrator to check its status.";
 
   @Inject private StreamableLogsMetrics streamableLogsMetrics;
   @Inject private IngestionProgressTracker progressTracker;
@@ -988,11 +992,26 @@ public class IngestionPipelineResource
   public PipelineServiceClientResponse getRESTStatus(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     if (pipelineServiceClient == null) {
+      // `platform` is required by the response schema, and on a 200 it is the only thing that tells
+      // the UI there is no client behind the deploy and run actions it offers.
       return new PipelineServiceClientResponse()
           .withCode(200)
+          .withPlatform(PipelineServiceClientPlatform.DISABLED.value())
           .withReason("Pipeline Client Disabled");
     }
-    return pipelineServiceClient.getServiceStatus();
+    PipelineServiceClientResponse status = pipelineServiceClient.getServiceStatus();
+    if (status.getCode() == null
+        || status.getCode() == 200
+        || DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return status;
+    }
+    // Every user's UI polls this endpoint, but failure reasons name the orchestrator's URL, its
+    // service account or the raw error body. Only an admin can act on those details.
+    return new PipelineServiceClientResponse()
+        .withCode(status.getCode())
+        .withPlatform(status.getPlatform())
+        .withVersion(status.getVersion())
+        .withReason(UNAVAILABLE_STATUS_REASON);
   }
 
   @DELETE
@@ -1397,6 +1416,9 @@ public class IngestionPipelineResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    // triggeredBy is an audit field recorded from the trigger request itself; whoever reports
+    // run progress must not be able to set it or change it.
+    pipelineStatus.setTriggeredBy(null);
     return repository.addPipelineStatus(uriInfo, fqn, pipelineStatus).toResponse();
   }
 
@@ -1442,6 +1464,9 @@ public class IngestionPipelineResource
           @Min(1)
           @QueryParam("limit")
           Integer limit) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.listPipelineStatus(fqn, startTs, endTs, limit);
   }
 

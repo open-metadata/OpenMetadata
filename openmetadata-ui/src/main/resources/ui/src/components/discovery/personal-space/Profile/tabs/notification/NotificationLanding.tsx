@@ -11,61 +11,124 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Card,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Bell01 } from '@untitledui/icons';
-import { FC } from 'react';
+import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { NotificationView } from './Notification.types';
-
-interface NotificationLandingProps {
-  onNavigate: (view: NotificationView) => void;
-}
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import {
+  EXTENSION_POINTS,
+  NotificationSectionContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
+import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
+import { NATIVE_NOTIFICATION_SECTIONS } from './nativeNotificationSections';
+import type {
+  NotificationLandingCard,
+  NotificationLandingProps,
+} from './Notification.types';
+import {
+  buildSectionCards,
+  getNotificationMenuItems,
+} from './Notification.utils';
 
 const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
+  const { getContributions } = useApplicationsProvider();
+
+  const cards = useMemo<NotificationLandingCard[]>(() => {
+    const alertsCard: NotificationLandingCard = {
+      id: 'alerts',
+      icon: Bell01,
+      title: t('label.alert-plural'),
+      description: t('message.alerts-description'),
+      view: { type: 'list' },
+    };
+
+    // Native sections, then those downstream builds (e.g. Collate) contribute;
+    // every card comes from the global-settings Notifications menu.
+    const contributions = [
+      ...NATIVE_NOTIFICATION_SECTIONS,
+      ...getContributions<NotificationSectionContribution>(
+        EXTENSION_POINTS.NOTIFICATION_LANDING_SECTIONS
+      ),
+    ];
+
+    return [
+      alertsCard,
+      ...buildSectionCards(
+        getNotificationMenuItems(permissions, Boolean(isAdminUser)),
+        contributions
+      ),
+    ];
+  }, [getContributions, permissions, isAdminUser, t]);
 
   return (
-    <Box
-      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
+    <div
+      className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:px-8 tw:pb-8"
       data-testid="notification-landing">
-      <Card size="md">
-        <Card.Content>
-          <Button
-            className="tw:w-full tw:text-left tw:no-underline"
-            color="link-color"
-            data-testid="notification-card-alerts"
-            onPress={() => onNavigate({ type: 'list' })}>
-            <Box align="start" direction="row" gap={4}>
+      {cards.map((card, index) => {
+        const Icon = card.icon;
+
+        return (
+          <Card
+            isClickable
+            key={card.id}
+            role="button"
+            size="md"
+            tabIndex={0}
+            variant="muted"
+            onClick={() => onNavigate(card.view)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onNavigate(card.view);
+              }
+            }}>
+            <Card.Content>
               <Box
-                align="center"
-                className="tw:shrink-0 tw:rounded-lg tw:bg-secondary tw:h-10 tw:w-10"
-                justify="center">
-                <Bell01 className="tw:size-6 tw:text-secondary" />
+                align="start"
+                data-testid={`notification-card-${card.id}`}
+                direction="row"
+                gap={4}>
+                <Box
+                  align="center"
+                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                    index
+                  )}`}
+                  justify="center">
+                  <Icon className="tw:size-6" />
+                </Box>
+                <Box className="tw:min-w-0" direction="col" gap={1}>
+                  <Box align="center" direction="row" gap={2}>
+                    <Typography
+                      className="tw:text-primary"
+                      size="text-sm"
+                      weight="semibold">
+                      {card.title}
+                    </Typography>
+                    {card.isBeta && (
+                      <Badge color="gray" size="sm" type="pill-color">
+                        {t('label.beta')}
+                      </Badge>
+                    )}
+                  </Box>
+                  <Typography
+                    className="tw:text-tertiary tw:line-clamp-2"
+                    size="text-sm"
+                    weight="regular">
+                    {card.description}
+                  </Typography>
+                </Box>
               </Box>
-              <Box className="tw:min-w-0" direction="col" gap={1}>
-                <Typography
-                  className="tw:text-primary"
-                  size="text-sm"
-                  weight="semibold">
-                  {t('label.alert-plural')}
-                </Typography>
-                <Typography
-                  className="tw:text-tertiary tw:line-clamp-2"
-                  size="text-sm"
-                  weight="regular">
-                  {t('message.alerts-description')}
-                </Typography>
-              </Box>
-            </Box>
-          </Button>
-        </Card.Content>
-      </Card>
-    </Box>
+            </Card.Content>
+          </Card>
+        );
+      })}
+    </div>
   );
 };
 

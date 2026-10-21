@@ -18,6 +18,7 @@ import {
   FeaturedIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import type { Key } from 'react';
 import React, { FC, useMemo } from 'react';
 
@@ -45,6 +46,10 @@ export interface ProfileContentHeaderProps {
   titleInput?: React.ReactNode;
   /** Node rendered inline right after the title text (e.g. a rename/edit icon button). */
   titleSuffix?: React.ReactNode;
+  /** Extra row rendered under the description (e.g. installed / developer details). */
+  meta?: React.ReactNode;
+  /** Tab strip rendered flush with the header's bottom border. */
+  tabs?: React.ReactNode;
 }
 
 /**
@@ -62,6 +67,8 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   actions,
   titleInput,
   titleSuffix,
+  meta,
+  tabs,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -75,10 +82,13 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
 
   return (
     <Box
-      className="ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:py-4 tw:mb-7"
+      className={classNames(
+        'ai-profile-page__content-header tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:pt-4 tw:mb-7',
+        tabs ? 'tw:pb-0' : 'tw:pb-4'
+      )}
       data-testid="profile-content-header"
       direction="col"
-      gap={3}>
+      gap={5}>
       <Breadcrumbs
         divider="chevron"
         items={resolvedBreadcrumbs}
@@ -101,7 +111,8 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           <Box align="center" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary-900"
+                className="tw:text-primary"
+                data-testid="profile-content-header-title"
                 size="text-lg"
                 weight="bold">
                 {title}
@@ -115,6 +126,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             weight="regular">
             {description}
           </Typography>
+          {meta}
         </Box>
         {actions && (
           <Box
@@ -124,6 +136,8 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
           </Box>
         )}
       </Box>
+      {/* -mb-px lays the tab strip's own baseline over the header border. */}
+      {tabs && <div className="tw:-mb-px">{tabs}</div>}
     </Box>
   );
 };

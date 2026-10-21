@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject, RefAttributes } from 'react';
 import { isValidElement, useContext, useMemo, useRef } from 'react';
-import { ChevronDown, SearchLg as SearchIcon } from '@untitledui/icons';
+import { ChevronDown, Search as SearchIcon, XClose } from '../../../icons';
 import type {
   ComboBoxProps as AriaComboBoxProps,
   GroupProps as AriaGroupProps,
@@ -11,12 +11,15 @@ import {
   ComboBox as AriaComboBox,
   Group as AriaGroup,
   Input as AriaInput,
-  ListBox as AriaListBox,
   ComboBoxStateContext,
 } from 'react-aria-components';
 import { Avatar } from '@/components/base/avatar/avatar';
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
+import {
+  SELECT_VIRTUALIZATION_THRESHOLD,
+  SelectListBox,
+} from './select-list-box';
 import { Popover } from '@/components/base/select/popover';
 import {
   type SelectCommonProps,
@@ -25,6 +28,7 @@ import {
   type SelectItemType,
   sizes,
 } from '@/components/base/select/select';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
@@ -38,6 +42,8 @@ interface ComboBoxProps
   popoverClassName?: string;
   shortcutClassName?: string;
   showSearchIcon?: boolean;
+  /** Shows a button that clears the typed text and the selection. */
+  allowClear?: boolean;
   children: AriaListBoxProps<SelectItemType>['children'];
 }
 
@@ -49,6 +55,7 @@ interface ComboBoxValueProps extends AriaGroupProps {
   triggerRef: RefObject<HTMLDivElement>;
   showSearchIcon: boolean;
   shortcut: boolean;
+  allowClear: boolean;
   placeholder?: string;
   shortcutClassName?: string;
 }
@@ -61,11 +68,13 @@ const ComboBoxValue = ({
   triggerRef,
   showSearchIcon,
   shortcut,
+  allowClear,
   placeholder,
   shortcutClassName,
   onPointerDown,
   ...otherProps
 }: ComboBoxValueProps) => {
+  const { t } = useCoreTranslation();
   const state = useContext(ComboBoxStateContext);
 
   const value = state?.selectedItem?.value || null;
@@ -74,9 +83,11 @@ const ComboBoxValue = ({
   const first = inputValue?.split(value?.supportingText)?.[0] || '';
   const last = inputValue?.split(first)[1];
   const Icon = value?.icon;
+  const showClear = allowClear && Boolean(inputValue) && !isDisabled;
   const inputPadding = cx(
     showSearchIcon ? 'tw:pl-10' : size === 'sm' ? 'tw:pl-3' : 'tw:pl-3.5',
-    shortcut ? 'tw:pr-16' : size === 'sm' ? 'tw:pr-9' : 'tw:pr-10'
+    shortcut ? 'tw:pr-16' : size === 'sm' ? 'tw:pr-9' : 'tw:pr-10',
+    showClear && (shortcut ? 'tw:pr-22' : 'tw:pr-16')
   );
 
   const handlePointerDown: AriaGroupProps['onPointerDown'] = (event) => {
@@ -118,7 +129,9 @@ const ComboBoxValue = ({
             aria-hidden="true"
             className={cx(
               'tw:pointer-events-none tw:z-0 tw:flex tw:w-full tw:items-center tw:gap-2 tw:truncate',
-              shortcut ? 'tw:pr-12' : 'tw:pr-5'
+              shortcut ? 'tw:pr-12' : 'tw:pr-5',
+              // Keep the visible text clear of the clear button.
+              showClear && (shortcut ? 'tw:pr-18' : 'tw:pr-12')
             )}>
             {showSearchIcon && (
               <SearchIcon className="tw:size-5 tw:shrink-0 tw:text-fg-quaternary" />
@@ -171,6 +184,29 @@ const ComboBoxValue = ({
             ref={inputRef}
           />
 
+          {showClear && (
+            <AriaButton
+              aria-label={t('label.clear')}
+              className={cx(
+                'tw:absolute tw:inset-y-0 tw:z-20 tw:flex tw:cursor-pointer tw:items-center tw:justify-center tw:px-1 tw:text-fg-quaternary tw:outline-focus-ring tw:hover:text-fg-quaternary_hover tw:focus-visible:outline-2',
+                shortcut
+                  ? 'tw:right-14'
+                  : size === 'sm'
+                  ? 'tw:right-8'
+                  : 'tw:right-9'
+              )}
+              data-testid="combobox-clear"
+              // Opt out of the ComboBox's ButtonContext so this is not the menu trigger.
+              slot={null}
+              onPress={() => {
+                state?.setSelectedKey(null);
+                state?.setInputValue('');
+                inputRef.current?.focus();
+              }}>
+              <XClose aria-hidden="true" className="tw:size-4" />
+            </AriaButton>
+          )}
+
           {shortcut ? (
             <div
               className={cx(
@@ -216,6 +252,7 @@ export const ComboBox = ({
   size = 'sm',
   fontSize = 'md',
   showSearchIcon = true,
+  allowClear = false,
   children,
   items,
   shortcutClassName,
@@ -229,6 +266,8 @@ export const ComboBox = ({
     () => ({ fontSize, size }),
     [fontSize, size]
   );
+
+  const isVirtualized = (items?.length ?? 0) > SELECT_VIRTUALIZATION_THRESHOLD;
 
   return (
     <SelectContext.Provider value={selectContextValue}>
@@ -251,6 +290,7 @@ export const ComboBox = ({
             )}
 
             <ComboBoxValue
+              allowClear={allowClear}
               fontSize={fontSize}
               inputRef={inputRef}
               isDisabled={otherProps.isDisabled}
@@ -263,16 +303,20 @@ export const ComboBox = ({
             />
 
             <Popover
-              className={otherProps.popoverClassName}
+              className={cx(
+                isVirtualized && 'tw:overflow-hidden tw:py-0',
+                otherProps.popoverClassName
+              )}
               size={size}
               triggerRef={triggerRef}>
-              <AriaListBox
-                className="tw:size-full tw:outline-hidden"
+              <SelectListBox
                 renderEmptyState={() => (
                   <SelectEmptyState emptyState={emptyState} />
-                )}>
+                )}
+                size={size}
+                virtualize={isVirtualized}>
                 {children}
-              </AriaListBox>
+              </SelectListBox>
             </Popover>
 
             {otherProps.hint && (

@@ -27,6 +27,7 @@ import {
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
 import {
   fillTagDetails,
   pressKeyXTimes,
@@ -291,14 +292,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     );
   }
 
-  // The detail page renders a compact asset trail built from the table FQN
-  // (service > ... > table > test case): the middle crumbs (database and
-  // schema) are collapsed into the "..." menu and labels use entity names.
+  // The detail page starts with Observability, so service/database/schema
+  // ancestors may be collapsed while the table remains an inline link.
   const breadcrumb = page.getByTestId('breadcrumb');
 
-  await expect(
-    breadcrumb.getByRole('link', { name: service.name })
-  ).toBeVisible();
+  await expectBreadcrumbToContainAncestor(page, service.name);
   await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
 
   await breadcrumb
@@ -864,7 +862,8 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -884,7 +883,8 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     await page
       .locator('.rdg-row')
       .nth(0)

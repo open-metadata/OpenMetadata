@@ -20,7 +20,7 @@ import {
   SelectItemType,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import React, {
   useCallback,
@@ -32,7 +32,6 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
 import { useWorkflowModeContext } from '../../../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../../../generated/type/workflowTriggerFields';
 import {
   fqnsToGlossaryTags,
   glossaryTagsToFqns,
@@ -63,10 +62,7 @@ interface ConditionBuilderValueControlProps {
 }
 
 // These fields hold glossary-term FQNs, so they get the tree picker.
-const GLOSSARY_TERM_CONDITION_FIELDS: string[] = [
-  WorkflowTriggerFields.Glossary,
-  WorkflowTriggerFields.RelatedTerms,
-];
+const GLOSSARY_TERM_CONDITION_FIELDS: string[] = ['glossary', 'relatedTerms'];
 
 const isGlossaryTermConditionField = (
   fieldDef: ConditionFieldDefinition | undefined
@@ -406,7 +402,7 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
       data-testid={dataTestId}>
       {showCondition && (
         <div
-          className="tw:flex tw:justify-center tw:mb-1"
+          className="tw:flex tw:justify-start tw:mb-1"
           data-testid={`${dataTestId}-condition-radio`}>
           <div className="tw:flex tw:border tw:border-border-secondary tw:rounded-lg tw:overflow-hidden">
             <Button
@@ -445,7 +441,8 @@ export const ConditionBuilder: React.FC<ConditionBuilderProps> = ({
             className="tw:flex tw:items-center tw:gap-4 tw:flex-nowrap"
             data-testid="advanced-search-field-select"
             key={row.id}>
-            <div className="tw:flex-1 tw:min-w-0">
+            {/* Fits the longest field label; the value control takes the rest. */}
+            <div className="tw:w-44 tw:shrink-0">
               <Select
                 data-testid={`${dataTestId}-row-${index}-field`}
                 isDisabled={isDisabled}

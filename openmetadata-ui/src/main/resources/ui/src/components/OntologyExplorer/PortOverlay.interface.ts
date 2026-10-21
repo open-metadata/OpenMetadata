@@ -12,6 +12,7 @@
  */
 
 import { RefObject } from 'react';
+import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export const ONTOLOGY_EDIT_CANCEL_EVENT = 'ontology-edit-cancel';
 export const ONTOLOGY_EDIT_NODE_CLICK_EVENT = 'ontology-edit-node-click';
@@ -34,4 +35,7 @@ export interface PortOverlayProps {
     toId: string,
     relationType: string
   ) => Promise<void>;
+  /** Relation choices for the picker; glossary relationship types when absent. */
+  relationTypeGroups?: RelationTypeOptionGroup[];
+  canCreateRelationType?: boolean;
 }

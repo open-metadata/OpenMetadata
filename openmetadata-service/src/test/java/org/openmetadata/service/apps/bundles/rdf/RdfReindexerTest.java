@@ -203,8 +203,8 @@ class RdfReindexerTest {
     }
 
     @Override
-    public ResultList<? extends EntityInterface> load(final List<String> page) {
-      final List<EntityInterface> entities = new ArrayList<>();
+    public ResultList<? extends EntityInterface<?>> load(final List<String> page) {
+      final List<EntityInterface<?>> entities = new ArrayList<>();
       final List<EntityError> errors = new ArrayList<>();
       for (final String row : page) {
         if (unreadable.contains(row)) {
@@ -242,8 +242,8 @@ class RdfReindexerTest {
 
     @Override
     public CompletableFuture<BatchProcessingResult> submit(
-        final String entityType, final List<? extends EntityInterface> entities) {
-      final List<String> names = entities.stream().map(EntityInterface::getName).toList();
+        final String entityType, final List<? extends EntityInterface<?>> entities) {
+      final List<String> names = entities.stream().map(EntityInterface<?>::getName).toList();
       return CompletableFuture.supplyAsync(
           () -> {
             if (rejectContaining != null && names.contains(rejectContaining)) {

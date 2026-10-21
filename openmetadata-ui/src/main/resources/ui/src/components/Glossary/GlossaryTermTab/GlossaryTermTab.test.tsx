@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   getByText,
   render,
@@ -19,10 +20,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { omit } from 'lodash';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import {
+  EntityStatus,
+  ProviderType,
+} from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
@@ -58,6 +63,16 @@ jest.mock('../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest
     .fn()
     .mockImplementation((...args) => mockSearchGlossaryTermsPaginated(...args)),
+}));
+
+jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
+  GLOSSARY_PROPOSALS_QUERY_KEY: ['governance', 'glossaryProposals'],
+  useTermDerivations: jest.fn(() => []),
+}));
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: jest.fn(() => ({ invalidateQueries: jest.fn() })),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -268,6 +283,7 @@ interface MockTableProps {
     onExpand?: (expanded: boolean, record: unknown) => void;
   };
   extraTableFilters?: ReactNode;
+  rowClassName?: (record: Record<string, unknown>, index: number) => string;
   'data-testid'?: string;
 }
 
@@ -280,6 +296,7 @@ jest.mock('../../common/Table/TableV2', () =>
       locale,
       expandable,
       extraTableFilters,
+      rowClassName,
     } = props;
 
     return (
@@ -290,6 +307,7 @@ jest.mock('../../common/Table/TableV2', () =>
           ? !loading && locale?.emptyText
           : dataSource.map((record, index) => (
               <div
+                className={rowClassName?.(record, index)}
                 data-testid={`glossary-row-${index}`}
                 key={record.fullyQualifiedName as string}>
                 {expandable?.expandIcon?.({
@@ -490,6 +508,43 @@ describe('Test GlossaryTermTab component', () => {
       });
     });
 
+    it('highlights a term an AI agent created until it is approved', async () => {
+      const [aiDraft, curated]: ModifiedGlossaryTerm[] =
+        mockedGlossaryTerms.map((term) => omit(term, 'children'));
+      mockUseGlossaryStore.glossaryChildTerms = [
+        {
+          ...aiDraft,
+          provider: ProviderType.Automation,
+          entityStatus: EntityStatus.Draft,
+        },
+        curated,
+      ];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      const marks = await screen.findAllByTestId('proposal-source-ai');
+
+      expect(marks).toHaveLength(1);
+      expect(screen.getByTestId('glossary-row-0')).toHaveClass(
+        'glossary-ai-draft-row'
+      );
+      expect(screen.getByTestId('glossary-row-1')).not.toHaveClass(
+        'glossary-ai-draft-row'
+      );
+      expect(
+        within(screen.getByTestId('glossary-row-0')).getByTestId(
+          'proposal-status-badge'
+        )
+      ).toHaveTextContent('label.proposed-by-ai');
+      expect(
+        within(screen.getByTestId('glossary-row-0')).queryByTestId(
+          `${aiDraft.fullyQualifiedName}-status`
+        )
+      ).not.toBeInTheDocument();
+    });
+
     it('should render status badges for each term', async () => {
       render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
@@ -497,12 +552,24 @@ describe('Test GlossaryTermTab component', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByTestId('Business Glossary.Clothing-status')
-        ).toBeInTheDocument();
-        expect(
           screen.getByTestId('Business Glossary.Sales-status')
         ).toBeInTheDocument();
       });
+
+      const proposedRow = screen.getByTestId('glossary-row-0');
+
+      expect(proposedRow).toHaveClass('glossary-person-proposal-row');
+
+      const workflowTrigger = within(proposedRow).getByRole('button', {
+        name: /label.proposed-by-name/,
+      });
+
+      expect(
+        within(workflowTrigger).getByTestId('proposal-status-badge')
+      ).toHaveTextContent('label.proposed-by-name');
+      expect(
+        within(proposedRow).queryByText('Draft', { exact: true })
+      ).not.toBeInTheDocument();
     });
 
     it('should render owner labels', async () => {
@@ -717,6 +784,43 @@ describe('Test GlossaryTermTab component', () => {
         undefined
       );
     });
+
+    it('should not let a first-level page in flight overwrite the expanded tree', async () => {
+      let resolveFirstLevel!: (value: unknown) => void;
+      mockGetFirstLevelGlossaryTermsPaginated.mockReturnValue(
+        new Promise((resolve) => {
+          resolveFirstLevel = resolve;
+        })
+      );
+      const staleFirstLevelPage = [mockedGlossaryTerms[1]];
+
+      render(<GlossaryTermTab isGlossary={false} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() =>
+        expect(mockGetFirstLevelGlossaryTermsPaginated).toHaveBeenCalled()
+      );
+
+      fireEvent.click(screen.getByTestId('expand-collapse-all-button'));
+
+      await waitFor(() =>
+        expect(mockSetGlossaryChildTerms).toHaveBeenLastCalledWith(
+          mockedGlossaryTerms
+        )
+      );
+
+      await act(async () => {
+        resolveFirstLevel({ data: staleFirstLevelPage, paging: {} });
+      });
+
+      expect(mockSetGlossaryChildTerms).not.toHaveBeenCalledWith(
+        staleFirstLevelPage
+      );
+      expect(
+        screen.getByTestId('expand-collapse-all-button')
+      ).toHaveTextContent('label.collapse-all');
+    });
   });
 
   describe('Actions', () => {
@@ -868,7 +972,7 @@ describe('Test GlossaryTermTab component', () => {
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
             limit: PAGE_SIZE_LARGE,
-            fields: 'about,assignees',
+            fields: 'about,assignees,createdBy',
           })
         );
       });
@@ -887,7 +991,7 @@ describe('Test GlossaryTermTab component', () => {
             type: 'RequestApproval',
             aboutEntity: mockedGlossaryTerms[0].fullyQualifiedName,
             limit: PAGE_SIZE_LARGE,
-            fields: 'about,assignees',
+            fields: 'about,assignees,createdBy',
           })
         );
       });
@@ -1199,14 +1303,19 @@ describe('Test GlossaryTermTab component', () => {
       expect(getStatusCheckbox(EntityStatus.Draft)).toBeChecked();
     });
 
-    it('should select every status when "all" is checked', async () => {
+    it('should select every general status when "all" is checked', async () => {
       await openStatusFilter();
+
+      expect(screen.queryByText('Superseded')).not.toBeInTheDocument();
+      expect(screen.queryByText('Invalidated')).not.toBeInTheDocument();
 
       fireEvent.click(getStatusCheckbox('all'));
 
-      Object.values(EntityStatus).forEach((status) => {
-        expect(getStatusCheckbox(status)).toBeChecked();
-      });
+      Object.values(EntityStatus)
+        .filter((status) => !['Superseded', 'Invalidated'].includes(status))
+        .forEach((status) => {
+          expect(getStatusCheckbox(status)).toBeChecked();
+        });
     });
   });
 

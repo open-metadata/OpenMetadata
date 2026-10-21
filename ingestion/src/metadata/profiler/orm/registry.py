@@ -18,11 +18,12 @@ import math
 from enum import Enum
 
 import sqlalchemy
-from sqlalchemy import Date, DateTime, Integer, Numeric, Time
+from sqlalchemy import Boolean, Date, DateTime, Integer, Numeric, Time
 from sqlalchemy.sql.sqltypes import Concatenable, LargeBinary, Text
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.ingestion.source import sqa_types
+from metadata.profiler.orm.types.bigquery_json import BigQueryJSON
 from metadata.profiler.orm.types.custom_array import CustomArray
 from metadata.profiler.orm.types.custom_datetimerange import CustomDateTimeRange
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
@@ -65,6 +66,7 @@ class PythonDialects(Enum):
     ClickHouse = "clickhouse"
     Clickzetta = "clickzetta"
     Cockroach = "cockroachdb"
+    Databend = "databend"
     Databricks = "databricks"
     Db2 = "db2"
     Doris = "pydoris"
@@ -127,6 +129,7 @@ NOT_COMPUTE = {
     sqlalchemy.types.NullType.__name__,
     sqlalchemy.ARRAY.__name__,
     sqlalchemy.JSON.__name__,
+    BigQueryJSON.__name__,
     sqa_types.SQAMap.__name__,
     sqa_types.SQAStruct.__name__,
     sqa_types.SQASet.__name__,
@@ -190,6 +193,13 @@ def is_date_time(_type) -> bool:
         or issubclass(_type.__class__, DateTime)
         or issubclass(_type.__class__, CustomTimestamp)
     )
+
+
+def is_boolean(_type) -> bool:
+    """
+    Check if _type is a boolean, as a sqlalchemy type or an OpenMetadata DataType
+    """
+    return _type == DataType.BOOLEAN if isinstance(_type, DataType) else isinstance(_type, Boolean)
 
 
 def is_quantifiable(_type) -> bool:

@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Tabs } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Skeleton } from 'antd';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
@@ -636,14 +635,11 @@ const APICollectionPage: FunctionComponent = () => {
       <Box direction="col" gap={3}>
         <div>
           {isCollectionDataFetching || !apiCollection ? (
-            <Skeleton
-              active
-              className="m-b-md"
-              paragraph={{
-                rows: 2,
-                width: ['20%', '80%'],
-              }}
-            />
+            <div className="tw:flex tw:flex-col tw:gap-3 m-b-md">
+              <Skeleton height={16} width="38%" />
+              <Skeleton height={16} width="20%" />
+              <Skeleton height={16} width="80%" />
+            </div>
           ) : (
             <DataAssetsHeader
               isRecursiveDelete

@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon, { InfoCircleOutlined } from '@ant-design/icons';
-import { Button, Col, Row, Tooltip, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,15 +28,12 @@ import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBre
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import {
-  GRAYED_OUT_COLOR,
-  NO_DATA_PLACEHOLDER,
-  ROUTES,
-} from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { PAGE_HEADERS } from '../../../constants/PageHeaders.constant';
 import { LoginConfiguration } from '../../../generated/configuration/loginConfiguration';
 import { getLoginConfig } from '../../../rest/settingConfigAPI';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -79,104 +82,117 @@ const LoginConfigurationPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={t('label.login-configuration')}>
-      <Row className="p-lg bg-white border-radius-sm" gutter={[0, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-lg bg-white border-radius-sm"
+        style={{ ...getLayoutGutter(0, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <TitleBreadcrumb titleLinks={breadcrumbs} />
-        </Col>
-        <Col span={24}>
-          <Row align="middle" justify="space-between">
-            <Col>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={24}>
+          <Box
+            align="center"
+            className="layout-row"
+            justify="between"
+            wrap="wrap">
+            <Box className="layout-column tw:block">
               <PageHeader
                 data={{
                   header: t(PAGE_HEADERS.LOGIN_CONFIGURATION.header),
                   subHeader: t(PAGE_HEADERS.LOGIN_CONFIGURATION.subHeader),
                 }}
               />
-            </Col>
-            <Col>
+            </Box>
+            <Box className="layout-column tw:block">
               <Button
+                color="secondary"
                 data-testid="edit-button"
-                icon={<Icon component={IconEdit} size={12} />}
+                iconLeading={<IconEdit className="tw:size-3 tw:shrink-0" />}
                 onClick={handleEditClick}>
                 {t('label.edit')}
               </Button>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+            </Box>
+          </Box>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.max-login-fail-attempt-plural')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.login-fail-attempt-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="max-login-fail-attampts-url-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="max-login-fail-attampts">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="max-login-fail-attampts">
                 {loginConfig?.maxLoginFailAttempts ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.access-block-time')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.access-block-time-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="access-block-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="access-block-time">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="access-block-time">
                 {loginConfig?.accessBlockTime ?? NO_DATA_PLACEHOLDER}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-        <Col span={12}>
-          <Row align="middle">
-            <Col span={24}>
-              <Typography.Text className="m-0 text-grey-muted">
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+        <Grid.Item className="layout-column" span={12}>
+          <Grid className="layout-row layout-grid tw:items-center">
+            <Grid.Item className="layout-column" span={24}>
+              <Typography className="m-0" color="secondary">
                 {t('label.jwt-token-expiry-time')}
                 <Tooltip
+                  arrow
+                  excludeTriggerFromTabOrder
                   placement="top"
                   title={t('message.jwt-token-expiry-time-message')}
-                  trigger="hover">
-                  <InfoCircleOutlined
-                    className="m-x-xss"
+                  triggerClassName="tw:inline-flex">
+                  <InfoCircle
+                    className="tw:mx-1 tw:shrink-0 tw:text-quaternary"
                     data-testid="jwt-token-expiry-time-info"
-                    style={{ color: GRAYED_OUT_COLOR }}
+                    size={14}
                   />
                 </Tooltip>
-              </Typography.Text>
-            </Col>
-            <Col span={24}>
-              <Typography.Text data-testid="jwt-token-expiry-time">
+              </Typography>
+            </Grid.Item>
+            <Grid.Item className="layout-column" span={24}>
+              <Typography data-testid="jwt-token-expiry-time">
                 {loginConfig?.jwtTokenExpiryTime ?? NO_DATA_PLACEHOLDER}{' '}
                 {t('label.second-plural')}
-              </Typography.Text>
-            </Col>
-          </Row>
-        </Col>
-      </Row>
+              </Typography>
+            </Grid.Item>
+          </Grid>
+        </Grid.Item>
+      </Grid>
     </PageLayoutV1>
   );
 };

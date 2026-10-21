@@ -15,12 +15,16 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Owner,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, Edit } from '@openmetadata/ui-core-components/icons';
-import { RefreshCw01 } from '@untitledui/icons';
+import {
+  Edit01,
+  RefreshCw01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy } from 'lodash';
@@ -105,7 +109,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:mb-2" direction="col">
+    <Box className="tw:mb-2" direction="col" gap={2}>
       <Box align="center" direction="row" gap={2}>
         <Typography className="tw:text-primary" weight="medium">
           {t('label.description')}
@@ -114,7 +118,7 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
           <ButtonUtility
             color="tertiary"
             data-testid="edit-description-btn"
-            icon={Edit}
+            icon={Edit01}
             size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
@@ -245,7 +249,7 @@ function buildHeaderActions({
         <ButtonUtility
           color="tertiary"
           data-testid="edit-alert-btn"
-          icon={Edit}
+          icon={Edit01}
           size="xs"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
@@ -255,7 +259,7 @@ function buildHeaderActions({
         <ButtonUtility
           color="tertiary"
           data-testid="delete-alert-btn"
-          icon={Delete}
+          icon={Trash01}
           isDisabled={isDeleting}
           size="xs"
           tooltip={String(t('label.delete'))}
@@ -520,30 +524,29 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
       />
 
       {/* Owners + event-stats summary row */}
-      <Box
-        align="center"
-        className="tw:border tw:border-secondary tw:mb-2 tw:rounded-lg tw:p-3"
-        direction="row"
-        gap={6}
-        wrap="wrap">
-        <Box align="center" direction="row" gap={2}>
-          <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
-            {`${t('label.owner-plural')}:`}
-          </Typography>
-          <Owner
-            hasPermission={editOwnersPermission}
-            owners={alert?.owners ?? []}
-            selectorContent={
-              <UserTeamSelectableList
-                hasPermission={editOwnersPermission}
-                owner={alert?.owners}
-                onUpdate={handleOwnerUpdate}
-              />
-            }
-          />
-        </Box>
-        {eventsRecord && <DiagnosticStatsSummary eventsRecord={eventsRecord} />}
-      </Box>
+      <Card className="tw:mb-2" size="sm" variant="muted">
+        <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
+          <Box align="center" direction="row" gap={2}>
+            <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
+              {`${t('label.owner-plural')}:`}
+            </Typography>
+            <Owner
+              hasPermission={editOwnersPermission}
+              owners={alert?.owners ?? []}
+              selectorContent={
+                <UserTeamSelectableList
+                  hasPermission={editOwnersPermission}
+                  owner={alert?.owners}
+                  onUpdate={handleOwnerUpdate}
+                />
+              }
+            />
+          </Box>
+          {eventsRecord && (
+            <DiagnosticStatsSummary eventsRecord={eventsRecord} />
+          )}
+        </Card.Content>
+      </Card>
 
       <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
         <Tabs.List size="sm" type="underline">

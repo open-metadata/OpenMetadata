@@ -36,14 +36,6 @@ const mockUseAlertDetailsData = jest.fn();
 const mockUseAlertFormData = jest.fn();
 const mockGetModifiedAlertDataForForm = jest.fn();
 
-jest.mock('./NotificationTemplateUtils', () => ({
-  getTemplateEntityRefObject: jest.fn((template) => ({
-    id: template.id,
-    name: template.name,
-    type: 'notificationTemplate',
-  })),
-}));
-
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
 }));
@@ -179,7 +171,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Edit03: () => null,
   RefreshCw04: () => null,
   Trash01: () => null,
@@ -234,17 +226,17 @@ jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
   default: ({
     mode,
+    selection,
     shouldShowActionsSection,
-    shouldShowTemplateSection,
-    supportedFilters,
-    supportedTriggers,
+    templateResourcePermission,
     value,
   }: {
     mode: string;
+    selection: {
+      support: { supportedFilters?: unknown[]; supportedTriggers?: unknown[] };
+    };
     shouldShowActionsSection?: boolean;
-    shouldShowTemplateSection?: boolean;
-    supportedFilters?: unknown[];
-    supportedTriggers?: unknown[];
+    templateResourcePermission?: Record<string, boolean>;
     value: ModifiedEventSubscription;
   }) => (
     <div data-testid="alert-ai-form">
@@ -252,12 +244,16 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-shows-triggers">
         {String(Boolean(shouldShowActionsSection))}
       </span>
-      <span data-testid="form-shows-templates">
-        {String(Boolean(shouldShowTemplateSection))}
+      <span data-testid="form-template-permission">
+        {JSON.stringify(templateResourcePermission ?? null)}
       </span>
       <span data-testid="form-name">{value.name}</span>
-      <span data-testid="filters-count">{supportedFilters?.length ?? 0}</span>
-      <span data-testid="triggers-count">{supportedTriggers?.length ?? 0}</span>
+      <span data-testid="filters-count">
+        {selection.support.supportedFilters?.length ?? 0}
+      </span>
+      <span data-testid="triggers-count">
+        {selection.support.supportedTriggers?.length ?? 0}
+      </span>
     </div>
   ),
 }));
@@ -409,14 +405,16 @@ const getDetailsState = (overrides = {}) => ({
   ...overrides,
 });
 
-const getFormState = () => ({
-  filterResources: [
-    {
-      name: 'table',
-      supportedActions: [{ name: 'action' }],
+const getFormState = (ready = true) => ({
+  loadingState: { alerts: false, templates: false },
+  // What the server says the alert's sources support.
+  selection: {
+    ready,
+    support: {
       supportedFilters: [{ name: 'filter' }],
+      supportedTriggers: [{ name: 'action' }],
     },
-  ],
+  },
   templates: [],
 });
 
@@ -486,6 +484,18 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-name')).toHaveTextContent('test-alert');
     expect(screen.getByTestId('filters-count')).toHaveTextContent('1');
     expect(screen.getByTestId('triggers-count')).toHaveTextContent('1');
+    // The configuration view asks about every source the alert watches.
+    expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sources: ['table'] })
+    );
+  });
+
+  it('waits for the server before it shows the configuration', () => {
+    mockUseAlertFormData.mockReturnValue(getFormState(false));
+    renderPage(<AlertDetailsPage />);
+
+    expect(screen.queryByTestId('form-mode')).not.toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('renders the header meta row with owner and event stats', () => {
@@ -659,15 +669,15 @@ describe('AlertDetailsPage', () => {
     expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent('true');
   });
 
-  it('shows the template section when a template widget is registered', () => {
+  it('passes the template permission to the configuration view', () => {
     mockUseAlertFormData.mockReturnValue({
       ...getFormState(),
-      extraFormWidgets: { NotificationTemplate: () => null },
+      templateResourcePermission: { ViewAll: true },
     });
     renderPage(<AlertDetailsPage />);
 
-    expect(screen.getByTestId('form-shows-templates')).toHaveTextContent(
-      'true'
+    expect(screen.getByTestId('form-template-permission')).toHaveTextContent(
+      '{"ViewAll":true}'
     );
   });
 });

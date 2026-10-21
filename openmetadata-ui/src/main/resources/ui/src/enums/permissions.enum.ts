@@ -78,4 +78,10 @@ export enum ResourceEntity {
   DATA_CONTRACT = 'dataContract',
   TASK = 'task',
   CONTEXT_MEMORY = 'contextMemory',
+  ONTOLOGY_CHANGE_SET = 'ontologyChangeSet',
+  ONTOLOGY = 'ontology',
+  ONTOLOGY_CONCEPT = 'ontologyConcept',
+  ONTOLOGY_PROPERTY = 'ontologyProperty',
+  ONTOLOGY_AXIOM = 'ontologyAxiom',
+  ONTOLOGY_RELEASE = 'ontologyRelease',
 }

@@ -47,7 +47,7 @@ def test_native_mapping_preserves_names_and_descriptions(name, value, expected):
 
 
 @pytest.fixture(params=[DatabricksSource, UnitycatalogSource], ids=["databricks", "unitycatalog"])
-def source(request):
+def source(request, existing_tag_lookup):
     instance = object.__new__(request.param)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.context = TopologyContextManager(instance.topology)
@@ -60,7 +60,7 @@ def source(request):
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.engine = MagicMock()
     instance._connection_map = {}
     instance._sql_connection_map = {}
@@ -172,10 +172,11 @@ def test_system_tags_resolve_at_every_level(source, level):
     assert fqns(source.get_tag_by_fqn(target)) == ["PII.Sensitive"]
 
 
-def test_invalid_tag_does_not_discard_later_tags_or_other_queries(source):
+def test_invalid_tag_does_not_discard_later_tags_or_other_queries(source, caplog):
     sql_rows(source, table=[row("Class", 'bad"name'), row("Class", "Valid")], column=[row("ColumnClass", "Valid")])
     records = database_stage(source) + schema_stage(source) + table_stage(source)
-    assert len([record for record in records if record.left]) == 1
+    assert [record for record in records if record.left] == []
+    assert "Skipped tag 'bad\"name' in classification 'Class'" in caplog.text
     assert len([record for record in records if record.right]) == 2
     assert fqns(source.get_tag_labels("table")) == ["Class.Valid"]
     assert fqns(source.get_column_tag_labels("table", {"name": "column"})) == ["ColumnClass.Valid"]

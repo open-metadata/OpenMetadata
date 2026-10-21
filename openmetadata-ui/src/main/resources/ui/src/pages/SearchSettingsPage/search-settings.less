@@ -57,79 +57,23 @@
   }
 }
 
-.boosts-section {
-  .ant-collapse {
-    .ant-collapse-item {
-      margin-bottom: var(--om-space-16);
-      border: 1px solid @grey-100;
-      border-radius: var(--om-radius-10);
-      overflow: hidden;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-
-      > .ant-collapse-header {
-        display: flex;
-        align-items: center;
-      }
-
-      .ant-collapse-content {
-        border-top: 1px solid @grey-100;
-      }
-    }
-  }
-  .ant-collapse-borderless > .ant-collapse-item > .ant-collapse-content {
-    background-color: @grey-100;
-  }
-}
-
-.field-value-boost-add-btn,
 .term-boost-add-btn,
 .term-boost-save-btn {
   background-color: @primary-heading-color;
   border: 1px solid @primary-heading-color;
   color: var(--tw-color-text-white);
   border-radius: var(--om-radius-lg);
-  &:hover {
-    background-color: @primary-heading-color;
-    border-color: @primary-heading-color;
-    color: var(--tw-color-text-white);
-  }
-  &:disabled {
-    background-color: @grey-100;
-    border-color: @grey-300;
-    color: @grey-400;
-  }
 }
 
 .search-settings-collapse {
   background-color: transparent;
-
-  .ant-collapse-item {
-    margin-bottom: var(--om-space-16);
-
-    &.term-boost-panel {
-      border: 1px solid @border-color-1;
-      background-color: @grey-50;
-      border-radius: var(--om-radius-lg);
-      overflow: hidden;
-    }
-
-    &.field-value-boost-panel {
-      border: 1px solid @border-color-1;
-      background-color: @grey-50;
-      border-radius: var(--om-radius-lg);
-      overflow: hidden;
-    }
-  }
 }
 
 .count-label {
   padding: var(--om-space-2) var(--om-space-8);
-  background-color: @primary-button-background;
+  background-color: var(--tw-color-utility-brand-50);
   border-radius: var(--om-radius-2xl);
-  color: @primary-heading-color;
+  color: var(--tw-color-utility-brand-700);
   font-size: var(--om-font-size-sm);
   font-weight: var(--om-font-weight-medium);
 }
@@ -172,8 +116,4 @@
       text-overflow: ellipsis;
     }
   }
-}
-
-.settings-term-boost-card {
-  min-width: 300px;
 }

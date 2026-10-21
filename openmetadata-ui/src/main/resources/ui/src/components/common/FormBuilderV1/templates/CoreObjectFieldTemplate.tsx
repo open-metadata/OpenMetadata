@@ -19,8 +19,12 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ObjectFieldTemplateProps } from '@rjsf/utils';
-import { ChevronDown, Hexagon01, Plus } from '@untitledui/icons';
+import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  getUiOptions,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -215,7 +219,7 @@ const getAddButton = (
   return (
     <Button
       aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
+      className="core-object-field-template-add-button tw:inline-flex tw:size-9 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       id={`${idSchema.$id}`}
@@ -324,9 +328,6 @@ const PropertiesContent: FunctionComponent<PropertiesContentProps> = ({
 
 const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
   flatPropertyLayout,
-  isSampleDataSection,
-  isSampleDataConfig,
-  isAwsS3StorageConfig,
   isGatedCredentialConfig,
   isGenericNestedConfig,
   schema,
@@ -339,9 +340,6 @@ const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
   <div
     className={getNonRootPanelClassName(
       flatPropertyLayout,
-      isSampleDataSection,
-      isSampleDataConfig,
-      isAwsS3StorageConfig,
       isGatedCredentialConfig,
       isGenericNestedConfig
     )}
@@ -349,33 +347,19 @@ const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
       schema.additionalProperties ? 'true' : undefined
     }
     data-field-id={idSchema.$id}>
-    <div
-      className={classNames(
-        'core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-4',
-        isSampleDataConfig && 'tw:hidden'
-      )}>
-      <div
-        className={classNames(
-          'tw:flex tw:min-w-0',
-          isAwsS3StorageConfig
-            ? 'tw:flex-row tw:items-center tw:gap-2.5'
-            : 'tw:flex-col tw:gap-0.5'
-        )}>
-        {isAwsS3StorageConfig && (
-          <Hexagon01
-            className="core-object-field-template-title-icon tw:shrink-0 tw:text-brand-secondary tw:[stroke-width:2]"
-            data-testid="storage-config-title-icon"
-            size={16}
-          />
+    <div className="core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-4">
+      <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
+        {/* A map entry's key is already shown beside its value. */}
+        {!(ADDITIONAL_PROPERTY_FLAG in schema) && (
+          <Typography
+            as="label"
+            className="core-object-field-template-title tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
         )}
-        <Typography
-          as="label"
-          className="core-object-field-template-title tw:text-primary"
-          id={`${idSchema.$id}__title`}
-          size="text-sm"
-          weight="semibold">
-          {title}
-        </Typography>
         {shouldShowDescription && (
           <Typography
             as="span"
@@ -404,15 +388,19 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   uiSchema,
 }) => {
   const { t } = useTranslation();
+
+  // A hidden object field is still mounted: CoreFieldTemplate only wraps it in `tw:hidden`,
+  // so the panel, its heading and every descendant widget stay in the DOM and keep taking
+  // part in focus and query traversal. A fieldless group has nothing to keep, so drop it.
+  if (uiSchema?.['ui:widget'] === 'hidden') {
+    return null;
+  }
+
   const {
     flatPropertyLayout,
     isRoot,
-    isSampleDataSection,
-    isSampleDataConfig,
-    isAwsS3StorageConfig,
     isGatedCredentialConfig,
     isGenericNestedConfig,
-    isNestedConfigGrid,
     isCredentialAdvancedDisclosure,
     isIamAuthEnabled,
     addEntityLabel,
@@ -439,13 +427,12 @@ export const CoreObjectFieldTemplate: FunctionComponent<
     properties,
     schema,
     isRoot,
-    isGatedCredentialConfig
+    isGatedCredentialConfig,
+    getUiOptions(uiSchema).advancedProperties as string[] | undefined
   );
 
   const orderedNormalProperties = getOrderedNormalProperties(
     normalProperties,
-    isSampleDataConfig,
-    isAwsS3StorageConfig,
     isGatedCredentialConfig,
     isGenericNestedConfig
   );
@@ -470,7 +457,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
 
   const bodyClassName = getBodyClassName(
     isGatedCredentialConfig,
-    isNestedConfigGrid
+    isGenericNestedConfig
   );
 
   const advancedPropertiesContent = (
@@ -526,11 +513,8 @@ export const CoreObjectFieldTemplate: FunctionComponent<
         description={description}
         flatPropertyLayout={flatPropertyLayout}
         idSchema={idSchema}
-        isAwsS3StorageConfig={isAwsS3StorageConfig}
         isGatedCredentialConfig={isGatedCredentialConfig}
         isGenericNestedConfig={isGenericNestedConfig}
-        isSampleDataConfig={isSampleDataConfig}
-        isSampleDataSection={isSampleDataSection}
         propertiesContent={propertiesContent}
         schema={schema}
         shouldShowDescription={shouldShowDescription}

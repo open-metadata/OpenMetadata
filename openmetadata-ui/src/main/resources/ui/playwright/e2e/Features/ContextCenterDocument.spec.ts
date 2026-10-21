@@ -17,6 +17,7 @@ import {
   expect,
   Response,
 } from '@playwright/test';
+import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { test as base } from '../../support/fixtures/base';
 import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { UserClass } from '../../support/user/UserClass';
@@ -98,7 +99,7 @@ const test = base.extend<object, { documentSession: DocumentSession }>({
         await user.create(adminContext);
         await installServerLoadReducers(context);
         const page = await context.newPage();
-        await user.login(page);
+        await user.signIn(page);
         const { apiContext, afterAction: disposeApiContext } =
           await getApiContext(page);
         try {
@@ -132,6 +133,7 @@ test.describe('Context Center - Documents Page', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
   test.beforeAll(async ({ documentSession }) => {
+    test.setTimeout(EXTENDED_TEST_TIMEOUT);
     contextFileIdsToCleanup.clear();
     contextFolderIdsToCleanup.clear();
     const { apiContext } = documentSession;
@@ -181,8 +183,8 @@ test.describe('Context Center - Documents Page', () => {
           })
         );
       const results = [
-        ...(await deleteIds('files', contextFileIdsToCleanup)),
         ...(await deleteIds('folders', contextFolderIdsToCleanup)),
+        ...(await deleteIds('files', contextFileIdsToCleanup)),
       ];
       const failures = results.filter(
         (result): result is PromiseRejectedResult =>
@@ -211,9 +213,7 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     await navigateToDocuments(page);
-    await page.getByTestId('document-row-skeleton').first().waitFor({
-      state: 'detached',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
     const view = page.getByTestId('documents-view');
     const rows = view.locator('[data-testid^="document-row-"]');
     const countBefore = await rows.count();
@@ -238,9 +238,7 @@ test.describe('Context Center - Documents Page', () => {
     const loadMoreRes = await loadMoreResPromise;
     expect(loadMoreRes.status()).toBe(200);
 
-    await page.getByTestId('document-row-skeleton').last().waitFor({
-      state: 'hidden',
-    });
+    await expect(page.getByTestId('document-row-skeleton')).toHaveCount(0);
 
     const countAfter = await rows.count();
     expect(countAfter).toBeGreaterThan(countBefore);
@@ -333,6 +331,7 @@ test.describe('Context Center - Documents Page', () => {
       res.request().method() === 'GET';
 
     test.beforeAll(async ({ documentSession }) => {
+      test.setTimeout(EXTENDED_TEST_TIMEOUT);
       const { apiContext } = documentSession;
       const suffix = uuid();
 
@@ -507,7 +506,7 @@ test.describe('Context Center - Documents Page', () => {
 
       // If the seed document was indexed, it appears; otherwise the empty state shows
       if (count > 0) {
-        await expect(rows.first()).toBeVisible();
+        await expect(rows.filter({ visible: true })).not.toHaveCount(0);
       } else {
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
           timeout: 8000,
@@ -570,8 +569,8 @@ test.describe('Context Center - Documents Page', () => {
         page
           .getByTestId('documents-view')
           .locator('[data-testid^="document-row-"]')
-          .first()
-      ).toBeVisible();
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
     });
   });
 
@@ -703,7 +702,7 @@ test.describe('Context Center - Documents Page', () => {
     const hint = modal.locator('[class*="hint"], p').filter({
       hasText: /supports all file types/i,
     });
-    await expect(hint.first()).toBeVisible();
+    await expect(hint.filter({ visible: true })).not.toHaveCount(0);
 
     const attachBtn = modal.getByRole('button', { name: /attach/i });
     await expect(attachBtn).toBeVisible();
@@ -732,7 +731,9 @@ test.describe('Context Center - Documents Page', () => {
       buffer: Buffer.from('context center upload test file'),
     });
 
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const uploadResPromise = page.waitForResponse(
       '/api/v1/contextCenter/drive/files/upload'
@@ -744,7 +745,9 @@ test.describe('Context Center - Documents Page', () => {
     contextFileIdsToCleanup.add(uploadedDocument.id);
 
     await expect(modal).not.toBeVisible();
-    await expect(page.getByText(fileName).first()).toBeVisible();
+    await expect(
+      page.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   // ─── Req 1: All card details (name, size, updatedBy, updatedAt, folder) ──
@@ -808,7 +811,11 @@ test.describe('Context Center - Documents Page', () => {
   }) => {
     const fileName = `card-menu-delete-${uuid()}.txt`;
     const { apiContext } = documentSession;
-    await uploadDocument(apiContext, fileName, Buffer.from('delete from menu'));
+    const doc = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from('delete from menu')
+    );
 
     await navigateToDocuments(page);
 
@@ -828,6 +835,7 @@ test.describe('Context Center - Documents Page', () => {
     await page.getByTestId('confirm-button').click();
     const deleteRes = await deleteResPromise;
     expect(deleteRes.status()).toBe(200);
+    contextFileIdsToCleanup.delete(doc.id);
 
     await expect(getDocumentRowByName(page, fileName)).not.toBeVisible();
   });
@@ -988,7 +996,9 @@ test.describe('Context Center - Documents Page', () => {
 
     const currentFolderItem = page.getByTestId(`move-to-folder-${folder.id}`);
     await expect(currentFolderItem).toBeVisible();
-    await expect(currentFolderItem.locator('svg').last()).toBeVisible();
+    await expect(
+      currentFolderItem.locator('svg').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const removeResPromise = page.waitForResponse(
       (res) =>
@@ -1224,6 +1234,8 @@ test.describe('Context Center - Documents Page', () => {
       doc1.id,
       doc2.id,
     ]);
+    contextFileIdsToCleanup.delete(doc1.id);
+    contextFileIdsToCleanup.delete(doc2.id);
 
     await expect(
       await searchAndGetDocumentRow(page, firstName)
@@ -1293,7 +1305,16 @@ test.describe('Context Center - Documents Page', () => {
     const tree = page.getByRole('treegrid', { name: 'Folders' });
     const folderRow = await revealFolderRow(page, folderName);
 
+    const folderFilesResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        res.url().includes(`folderId=${folder.id}`) &&
+        !res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
     await folderRow.getByRole('button', { name: 'Expand' }).click();
+    const folderFilesRes = await folderFilesResPromise;
+    expect(folderFilesRes.status()).toBe(200);
 
     await expect(folderRow).toHaveAttribute('aria-expanded', 'true');
     await expect(tree.getByText(fileName, { exact: true })).toBeVisible();
@@ -1349,15 +1370,24 @@ test.describe('Context Center - Documents Page', () => {
     await expect(documentsViewCount).toBeVisible();
     await expect(folderViewCount).toBeVisible();
 
-    const globalCountText = await documentsViewCount.textContent();
-    const globalCount = parseInt(globalCountText ?? '0', 10);
-    expect(globalCount).toBeGreaterThanOrEqual(2);
+    // Clear the search before comparing the two headers. While a search is
+    // active the DocumentsView count reports the *result* total, not the global
+    // one, so the two headers are measuring different things and comparing them
+    // is meaningless.
+    const browseResPromise = page.waitForResponse(
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/files') &&
+        !res.url().includes('search')
+    );
+    await getDocumentSearchInput(page).clear();
+    await browseResPromise;
+    await waitForAllLoadersToDisappear(page);
 
-    // The folder-view header should show the same global total.
+    // Unsearched and unfiltered, both headers show the same system-wide total.
     // Re-read both counts each attempt rather than comparing one to a value
-    // captured earlier. Both headers show a system-wide total that every other
-    // worker in the run is adding to and deleting from, so two reads taken a
-    // moment apart are not two views of the same number.
+    // captured earlier: every other worker in the run is adding to and deleting
+    // from that corpus, so two reads taken a moment apart are not two views of
+    // the same number.
     await expect
       .poll(async () => {
         const global = parseInt(
@@ -1369,17 +1399,9 @@ test.describe('Context Center - Documents Page', () => {
           10
         );
 
-        return folder >= global;
+        return global >= 2 && folder >= global;
       })
       .toBe(true);
-    const browseResPromise = page.waitForResponse(
-      (res) =>
-        res.url().includes('/api/v1/contextCenter/drive/files') &&
-        !res.url().includes('search')
-    );
-    await getDocumentSearchInput(page).clear();
-    await browseResPromise;
-    await waitForAllLoadersToDisappear(page);
 
     // Click the folder — triggers a server-side refetch scoped to that folder.
     await selectFolderInSidebar(page, folderName);
@@ -1389,7 +1411,8 @@ test.describe('Context Center - Documents Page', () => {
     await expect(getDocumentRowByName(page, docOutsideName)).not.toBeVisible();
 
     // DocumentsView header count updates to reflect the folder-scoped total.
-    await expect(documentsViewCount).toContainText('1');
+    // Anchored: toContainText('1') would also accept "21 files" or "100 files".
+    await expect(documentsViewCount).toHaveText(/^1\s+files?$/i);
 
     // DocumentFolderView header is not scoped by the sidebar selection, so it
     // still counts the document outside the folder as well as the one inside
@@ -1481,27 +1504,28 @@ test.describe('Context Center - Documents Page', () => {
     const dupRes = await dupResPromise;
     expect(dupRes.status()).toBe(400);
 
-    await expect(modal.getByText(/try again|failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/try again|failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     await modal.getByRole('button', { name: /cancel/i }).click();
     await expect(modal).not.toBeVisible();
 
-    let uploadedDocId: string;
-    {
-      const { apiContext: api2 } = documentSession;
-      const uploadedDoc = await uploadDocument(
-        api2,
-        sharedFileName,
-        Buffer.from('same filename in folder B'),
-        folderB.fullyQualifiedName
-      );
-      uploadedDocId = uploadedDoc.id;
-    }
+    const { id: uploadedDocId } = await uploadDocument(
+      apiContext,
+      sharedFileName,
+      Buffer.from('same filename in folder B'),
+      folderB.fullyQualifiedName
+    );
 
     await navigateToDocuments(page);
 
-    const uploadedRow = page.getByTestId(`document-row-${uploadedDocId}`);
+    const uploadedRow = await searchAndGetDocumentRow(
+      page,
+      sharedFileName,
+      uploadedDocId
+    );
     await expect(uploadedRow).toBeVisible();
     await uploadedRow.scrollIntoViewIfNeeded();
 
@@ -1592,7 +1616,9 @@ test.describe('Context Center - Documents Page', () => {
 
     expect(duplicateUploadRes.status(), duplicateUploadBody).toBe(400);
     expect(duplicateUploadBody).toContain(lowerCaseDuplicateName);
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
   });
 
@@ -1655,7 +1681,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: fileName,
     });
-    await expect(modal.getByText(fileName).first()).toBeVisible();
+    await expect(
+      modal.getByText(fileName).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Trigger the first (failing) upload.
     const failedResPromise = page.waitForResponse(
@@ -1666,7 +1694,9 @@ test.describe('Context Center - Documents Page', () => {
     expect(failedRes.status()).toBe(500);
 
     // File row should show "Failed" with a "Try again" button.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     const tryAgainBtn = modal.getByRole('button', { name: /try again/i });
     await expect(tryAgainBtn).toBeVisible();
 
@@ -1804,7 +1834,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: errorFile,
     });
-    await expect(modal.getByText(errorFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(errorFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     const firstFailRes = page.waitForResponse(
       '**/api/v1/contextCenter/drive/files/upload'
@@ -1813,7 +1845,9 @@ test.describe('Context Center - Documents Page', () => {
     await firstFailRes;
 
     // First file is now in error state; Attach button is disabled.
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
     await expect(modal.getByRole('button', { name: /attach/i })).toBeDisabled();
 
     // Add a second, valid file.
@@ -1823,7 +1857,9 @@ test.describe('Context Center - Documents Page', () => {
       mimeType: 'text/plain',
       name: newFile,
     });
-    await expect(modal.getByText(newFile).first()).toBeVisible();
+    await expect(
+      modal.getByText(newFile).filter({ visible: true })
+    ).not.toHaveCount(0);
 
     // Upload the new file — it succeeds.
     const secondSuccessRes = waitForResponseWithStatus(
@@ -1840,7 +1876,11 @@ test.describe('Context Center - Documents Page', () => {
 
     // Modal must stay open because the first file is still in error state.
     await expect(modal).toBeVisible();
-    await expect(modal.getByText(/failed/i).first()).toBeVisible();
-    await expect(modal.getByText(/complete/i).first()).toBeVisible();
+    await expect(
+      modal.getByText(/failed/i).filter({ visible: true })
+    ).not.toHaveCount(0);
+    await expect(
+      modal.getByText(/complete/i).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 });

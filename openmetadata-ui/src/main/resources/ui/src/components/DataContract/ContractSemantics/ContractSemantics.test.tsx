@@ -19,6 +19,11 @@ import {
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import ContractSemantics from './ContractSemantics.component';
 
+// Every SVG import maps to one mocked module; render a real <svg> so className sticks.
+jest.mock('../../../assets/svg/ic-task.svg', () => ({
+  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
+}));
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return function MockRichTextEditorPreviewerNew({
     markdown,
@@ -90,6 +95,22 @@ const mockLatestContractResults: DataContractResult = {
   },
 } as DataContractResult;
 
+jest.mock('../../../assets/svg/ic-fail.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-inherit.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-successful.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
+jest.mock('../../../assets/svg/ic-task.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
 describe('ContractSemantics', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -156,6 +177,25 @@ describe('ContractSemantics', () => {
       const icons = document.querySelectorAll('.rule-icon');
 
       expect(icons).toHaveLength(2);
+    });
+  });
+
+  describe('Disabled rules', () => {
+    it('shows a disabled rule as not run, not as passed', () => {
+      const { container } = render(
+        <ContractSemantics
+          latestContractResults={mockLatestContractResults}
+          semantics={[
+            mockSemantics[0],
+            { ...mockSemantics[1], enabled: false },
+          ]}
+        />
+      );
+
+      const ruleIcons = container.querySelectorAll('.rule-icon');
+
+      expect(ruleIcons[0]).not.toHaveClass('rule-icon-default');
+      expect(ruleIcons[1]).toHaveClass('rule-icon-default');
     });
   });
 

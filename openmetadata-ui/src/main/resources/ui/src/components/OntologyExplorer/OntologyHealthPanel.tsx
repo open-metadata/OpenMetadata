@@ -11,102 +11,317 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { ArrowRight, Check } from '@untitledui/icons';
+import {
+  Badge,
+  BadgeWithDot,
+  BadgeWithIcon,
+  Button,
+  ButtonUtility,
+  Card,
+  FeaturedIcon,
+  ProgressBarBase,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  AskCollateSparkle,
+  ChevronDown,
+  ChevronRight,
+  ChevronUp,
+  Expand01,
+  Link01,
+  Minus,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyNode } from './OntologyExplorer.interface';
 import { OntologyHealthSummary } from './OntologyStudio.utils';
 
+/** AI proposals parked here once the canvas proposal bar is closed. */
+export interface OntologyHealthAiProposals {
+  readonly total: number;
+  readonly title: string;
+  readonly summary: string;
+  readonly onReview: () => void;
+}
+
 interface OntologyHealthPanelProps {
+  readonly aiProposals?: OntologyHealthAiProposals;
+  readonly isRaised?: boolean;
   readonly health: OntologyHealthSummary;
   readonly isolatedTermCount?: number;
+  readonly placement?: 'floating' | 'sidebar';
   readonly onConnect: (node: OntologyNode) => void;
 }
 
+type HealthPanelView = 'minimized' | 'summary' | 'open';
+
+const PANEL_POSITION_CLASS = 'tw:absolute tw:bottom-4 tw:right-4 tw:z-6';
+// Clears the AI proposal bar centred along the canvas bottom on narrower screens.
+const RAISED_PANEL_CLASS = 'tw:max-2xl:bottom-18';
+
+function getHealthPanelLayout(
+  placement: NonNullable<OntologyHealthPanelProps['placement']>,
+  isRaised: boolean,
+  view: HealthPanelView
+) {
+  const isSidebar = placement === 'sidebar';
+  const positionClass = isSidebar
+    ? 'tw:relative tw:h-full tw:shrink-0'
+    : classNames(PANEL_POSITION_CLASS, isRaised && RAISED_PANEL_CLASS);
+
+  return {
+    cardClass: classNames(
+      positionClass,
+      'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden',
+      isSidebar
+        ? 'tw:max-h-full tw:max-w-none tw:rounded-none tw:border-y-0 tw:border-r-0 tw:shadow-none!'
+        : 'tw:max-h-[calc(100%-2rem)] tw:max-w-[calc(100%-2rem)]'
+    ),
+    isMinimized: !isSidebar && view === 'minimized',
+    isOpen: isSidebar || view === 'open',
+    isSidebar,
+    positionClass,
+  };
+}
+
 const OntologyHealthPanel = ({
+  aiProposals,
+  isRaised = false,
   health,
   isolatedTermCount,
+  placement = 'floating',
   onConnect,
 }: OntologyHealthPanelProps) => {
   const { t } = useTranslation();
+  const [view, setView] = useState<HealthPanelView>('summary');
+  const { cardClass, isMinimized, isOpen, isSidebar, positionClass } =
+    getHealthPanelLayout(placement, isRaised, view);
+  const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
+  const hasIsolated = isolatedCount > 0;
+  const isolatedLabel = `${isolatedCount} ${t(
+    'label.isolated'
+  ).toLocaleLowerCase()}`;
 
-  return (
-    <aside
-      className="tw:flex tw:w-[270px] tw:shrink-0 tw:flex-col tw:overflow-auto tw:border-l tw:border-secondary tw:bg-primary tw:p-[18px]"
-      data-testid="ontology-health-panel">
-      <h2 className="tw:mb-3 tw:font-body tw:text-[10px] tw:leading-normal tw:font-semibold tw:tracking-[0.08em] tw:text-quaternary tw:uppercase">
-        {t('label.ontology-health')}
-      </h2>
+  const connectedBar = (className: string) => (
+    <ProgressBarBase
+      className={`${className} tw:bg-utility-warning-300`}
+      progressClassName="tw:bg-fg-success-secondary"
+      value={health.connectedPercent}
+    />
+  );
 
-      <div className="tw:mb-3 tw:rounded-[10px] tw:border tw:border-secondary tw:bg-secondary tw:p-3.5">
-        <p
-          className="tw:m-0 tw:font-body tw:text-[28px] tw:leading-none tw:font-bold tw:text-warning-primary"
-          data-testid="ontology-isolated-count">
-          {isolatedTermCount ?? health.isolatedTerms.length}
-        </p>
-        <p className="tw:mt-1 tw:mb-0 tw:font-body tw:text-xs tw:leading-normal tw:font-normal tw:text-quaternary tw:lowercase">
-          {t('label.isolated-term-plural')}
-        </p>
-        <div className="tw:mt-3 tw:flex tw:items-center tw:gap-2">
-          <div className="tw:h-1.5 tw:flex-1 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
-            <div
-              className="tw:h-full tw:bg-success-primary0 tw:transition-[width]"
-              style={{ width: `${health.connectedPercent}%` }}
-            />
-          </div>
-          <span className="tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary">
+  const renderMinimized = () => (
+    <Card
+      className={classNames(positionClass, 'tw:rounded-lg')}
+      data-testid="ontology-health-panel"
+      variant="elevated">
+      <Button
+        aria-label={`${t('label.expand')} ${t('label.ontology-health')}`}
+        color="tertiary"
+        data-testid="ontology-health-restore"
+        iconTrailing={Expand01}
+        size="sm"
+        onPress={() => setView('summary')}>
+        <span className="tw:flex tw:items-center tw:gap-2.5">
+          {t('label.health')}
+          {connectedBar('tw:h-1.5 tw:w-11')}
+          <span className="tw:font-semibold tw:text-primary">
             {health.connectedPercent}%
           </span>
-        </div>
-        <p className="tw:mt-1 tw:mb-0 tw:font-body tw:text-xs tw:leading-normal tw:font-normal tw:text-quaternary tw:lowercase">
-          {t('label.connected')}
-        </p>
-      </div>
+          {aiProposals ? (
+            <BadgeWithIcon
+              color="purple"
+              iconLeading={AskCollateSparkle}
+              size="sm"
+              type="pill-color">
+              {aiProposals.total}
+            </BadgeWithIcon>
+          ) : null}
+          {hasIsolated ? (
+            <BadgeWithDot color="warning" size="sm" type="pill-color">
+              {isolatedLabel}
+            </BadgeWithDot>
+          ) : null}
+        </span>
+      </Button>
+    </Card>
+  );
 
-      <h3 className="tw:mb-2 tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-secondary">
-        {t('label.isolated-in-scope')}
-      </h3>
-      <div className="tw:flex tw:flex-col tw:gap-1.5">
-        {health.isolatedTerms.length === 0 ? (
-          <div
-            className={
-              'tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-success-200 ' +
-              'tw:bg-success-primary tw:p-3 tw:font-body tw:text-xs tw:leading-normal ' +
-              'tw:font-medium tw:text-success-primary'
-            }>
-            <Check aria-hidden="true" className="tw:size-4 tw:shrink-0" />
-            <span>{t('message.all-ontology-terms-connected')}</span>
-          </div>
-        ) : (
-          health.isolatedTerms.map((term) => (
-            <Button
-              noTextPadding
-              className={
-                'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-warning-200 ' +
-                'tw:bg-warning-primary tw:px-2.5 tw:py-2 tw:text-left tw:focus-visible:outline-2 ' +
-                'tw:focus-visible:outline-offset-1 tw:focus-visible:outline-warning-500 tw:*:data-text:flex ' +
-                'tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
-              }
-              color="tertiary"
-              data-testid={`ontology-connect-${term.id}`}
-              key={term.id}
-              onClick={() => onConnect(term)}>
-              <span
-                aria-hidden="true"
-                className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-warning-primary0"
-              />
-              <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:leading-normal tw:font-medium tw:text-primary">
-                {term.label}
-              </span>
-              <span className="tw:flex tw:shrink-0 tw:items-center tw:gap-0.5 tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-warning-primary">
-                {t('label.connect')}
-                <ArrowRight aria-hidden="true" className="tw:size-3" />
-              </span>
-            </Button>
-          ))
-        )}
+  const renderTitleRow = () => (
+    <div className="tw:flex tw:items-center tw:gap-2">
+      <Typography className="tw:text-primary" size="text-sm" weight="semibold">
+        {t('label.ontology-health')}
+      </Typography>
+      <Badge
+        color={hasIsolated ? 'warning' : 'success'}
+        size="sm"
+        type="pill-color">
+        {t(hasIsolated ? 'label.attention' : 'label.healthy')}
+      </Badge>
+      {isSidebar ? null : (
+        <>
+          <span className="tw:flex-1" />
+          <ButtonUtility
+            color="tertiary"
+            icon={Minus}
+            size="xs"
+            tooltip={t('label.minimize')}
+            onClick={() => setView('minimized')}
+          />
+          <ButtonUtility
+            color="tertiary"
+            icon={isOpen ? ChevronDown : ChevronUp}
+            size="xs"
+            tooltip={t(isOpen ? 'label.collapse' : 'label.expand')}
+            onClick={() => setView(isOpen ? 'summary' : 'open')}
+          />
+        </>
+      )}
+    </div>
+  );
+
+  const renderIsolatedSummary = () => (
+    <div className="tw:flex tw:items-center tw:gap-2">
+      <Typography className="tw:flex-1" size="text-xs">
+        <span
+          className="tw:font-semibold tw:text-primary"
+          data-testid="ontology-isolated-count">
+          {isolatedCount}
+        </span>{' '}
+        {t('label.isolated-term-plural').toLocaleLowerCase()}
+      </Typography>
+      {hasIsolated ? (
+        <Button
+          color="link-color"
+          data-testid="ontology-health-review"
+          iconTrailing={ChevronRight}
+          size="xs"
+          onPress={() => setView('open')}>
+          {t('label.review')}
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const renderIsolatedTerm = (term: OntologyNode) => (
+    <li
+      className="tw:flex tw:items-center tw:gap-2.5 tw:rounded-lg tw:px-2.5 tw:py-2"
+      data-testid={`ontology-isolated-term-${term.id}`}
+      key={term.id}>
+      <FeaturedIcon color="warning" icon={Link01} size="sm" theme="light" />
+      <div className="tw:min-w-0 tw:flex-1">
+        <Typography
+          ellipsis
+          as="p"
+          className="tw:m-0 tw:text-primary"
+          size="text-sm"
+          weight="medium">
+          {term.label}
+        </Typography>
+        <Typography as="p" className="tw:m-0" color="secondary" size="text-xs">
+          {t('message.no-relations-yet')}
+        </Typography>
       </div>
-    </aside>
+      <Button
+        aria-label={`${t('label.connect')} ${term.label}`}
+        color="secondary"
+        data-testid={`ontology-connect-${term.id}`}
+        iconLeading={Link01}
+        size="xs"
+        onPress={() => onConnect(term)}>
+        {t('label.connect')}
+      </Button>
+    </li>
+  );
+
+  const renderIsolatedList = () => (
+    <>
+      <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:border-t tw:border-secondary tw:bg-secondary tw:px-4 tw:py-2.5">
+        <Typography
+          className="tw:flex-1 tw:uppercase tw:tracking-wide"
+          color="secondary"
+          size="text-xs"
+          weight="semibold">
+          {t('label.isolated-term-plural')}
+        </Typography>
+        <Typography color="secondary" size="text-xs">
+          <span data-testid="ontology-isolated-count">{isolatedCount}</span>{' '}
+          {t('label.of-lowercase')} {health.totalTermCount}
+        </Typography>
+      </div>
+      <ul className="tw:m-0 tw:flex tw:min-h-0 tw:flex-1 tw:list-none tw:flex-col tw:overflow-auto tw:p-1.5">
+        {health.isolatedTerms.length === 0 ? (
+          <li className="tw:px-2.5 tw:py-4">
+            <Typography color="success" size="text-sm">
+              {t('message.all-ontology-terms-connected')}
+            </Typography>
+          </li>
+        ) : (
+          health.isolatedTerms.map(renderIsolatedTerm)
+        )}
+      </ul>
+    </>
+  );
+
+  if (isMinimized) {
+    return renderMinimized();
+  }
+
+  return (
+    <Card
+      className={cardClass}
+      data-testid="ontology-health-panel"
+      variant="elevated">
+      <div className="tw:flex tw:shrink-0 tw:flex-col tw:gap-3 tw:p-4">
+        {renderTitleRow()}
+        <div className="tw:flex tw:items-baseline tw:gap-2">
+          <Typography size="text-md" weight="semibold">
+            {health.connectedPercent}%
+          </Typography>
+          <Typography color="secondary" size="text-xs">
+            {t('message.count-of-total-terms-connected', {
+              count: health.connectedTermCount,
+              total: health.totalTermCount,
+            })}
+          </Typography>
+        </div>
+        {connectedBar('tw:h-1.5')}
+        {aiProposals ? (
+          <Button
+            noTextPadding
+            className={classNames(
+              'tw:w-full tw:justify-start tw:rounded-lg tw:border tw:border-utility-purple-200',
+              'tw:bg-utility-purple-50 tw:px-2.5 tw:py-2 tw:text-left tw:*:data-text:w-full tw:*:data-text:min-w-0'
+            )}
+            color="tertiary"
+            data-testid="ontology-health-ai-proposals"
+            onPress={aiProposals.onReview}>
+            <span className="tw:flex tw:w-full tw:items-center tw:gap-2">
+              <AskCollateSparkle
+                aria-hidden
+                className="tw:size-3.5 tw:shrink-0"
+              />
+              <Typography
+                as="span"
+                className="tw:min-w-0 tw:flex-1 tw:whitespace-normal"
+                size="text-xs">
+                <span className="tw:font-medium tw:text-primary">
+                  {aiProposals.title}
+                </span>{' '}
+                <span className="tw:text-secondary">{aiProposals.summary}</span>
+              </Typography>
+              <span className="tw:flex tw:items-center tw:text-xs tw:font-medium tw:text-utility-purple-700">
+                {t('label.review')}
+                <ChevronRight aria-hidden className="tw:size-3.5" />
+              </span>
+            </span>
+          </Button>
+        ) : null}
+        {isOpen ? null : renderIsolatedSummary()}
+      </div>
+      {isOpen ? renderIsolatedList() : null}
+    </Card>
   );
 };
 

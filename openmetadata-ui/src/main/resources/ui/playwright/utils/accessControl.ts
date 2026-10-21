@@ -58,6 +58,29 @@ export const openAccessControlSettings = async (page: Page): Promise<void> => {
   await waitForAllLoadersToDisappear(page);
 };
 
+/**
+ * Return to the Access Control landing from a sub-panel via the breadcrumb. Clicking the
+ * breadcrumb before it is interactive (mid-transition from the previous panel) is the flake:
+ * the click no-ops and the landing never re-shows. Assert the link is visible first, then wait
+ * for the landing to actually render its cards — not just the container wrapper.
+ */
+export const returnToAccessControlLanding = async (
+  page: Page
+): Promise<void> => {
+  const breadcrumbLink = page
+    .getByTestId('profile-content-header')
+    .getByLabel('Breadcrumb')
+    .getByRole('link', { name: 'Access Control', exact: true });
+
+  await expect(breadcrumbLink).toBeVisible();
+  await breadcrumbLink.click();
+  await page
+    .getByTestId('access-control-landing')
+    .waitFor({ state: 'visible' });
+  await expect(page.getByTestId('access-control-card-roles')).toBeVisible();
+  await waitForAllLoadersToDisappear(page);
+};
+
 export const navigateToRolesPanel = async (page: Page): Promise<void> => {
   await page.getByTestId('access-control-card-roles').click();
   await page.getByTestId('roles-list-container').waitFor({ state: 'visible' });

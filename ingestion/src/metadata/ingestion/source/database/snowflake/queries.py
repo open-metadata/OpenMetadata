@@ -30,6 +30,10 @@ SNOWFLAKE_GET_TABLE_NAMES = """
     AND {include_views}
 """
 
+# Incremental names queries: rank every row of a name with the alive one first, so the
+# dropped twin left by CREATE OR REPLACE (whose LAST_DDL is later) never wins. Alive rows
+# bypass the window filter so a replace straddling the cutoff still finds its live row;
+# the window is applied to the name's latest DDL instead.
 SNOWFLAKE_INCREMENTAL_GET_TABLE_NAMES = """
 select TABLE_NAME, DELETED, COMPUTED_TABLE_TYPE as TABLE_TYPE
 from (
@@ -43,16 +47,18 @@ from (
             ELSE TABLE_TYPE
         END as COMPUTED_TABLE_TYPE,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and {include_transient_tables}
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
     and {include_views}
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
@@ -133,15 +139,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
       and TABLE_SCHEMA = '{schema}'
       and TABLE_TYPE = 'EXTERNAL TABLE'
-      and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+      and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_WITHOUT_TRANSIENT_TABLE_NAMES = """
@@ -159,17 +167,19 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT != 'YES'
     AND IS_DYNAMIC != 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_VIEW_NAMES = """
@@ -184,15 +194,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_GET_MVIEW_NAMES = """
@@ -207,15 +219,17 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where  TABLE_CATALOG = :database
     and TABLE_SCHEMA = :schema
     and TABLE_TYPE = 'MATERIALIZED VIEW'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= :date
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= :date)
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= :date
 """
 
 SNOWFLAKE_GET_STREAM_NAMES = """
@@ -294,16 +308,18 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_TRANSIENT = 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_DYNAMIC_TABLE_NAMES = """
@@ -320,16 +336,18 @@ from (
         TABLE_NAME,
         DELETED,
         ROW_NUMBER() over (
-            partition by TABLE_NAME order by LAST_DDL desc
-        ) as ROW_NUMBER
+            partition by TABLE_NAME order by DELETED desc nulls first, LAST_DDL desc
+        ) as ROW_NUMBER,
+        max(DATE_PART(epoch_millisecond, LAST_DDL)) over (partition by TABLE_NAME) as NAME_LAST_DDL
     from {account_usage}.tables
     where TABLE_CATALOG = '{database}'
     and TABLE_SCHEMA = '{schema}'
     and TABLE_TYPE = 'BASE TABLE'
     and IS_DYNAMIC = 'YES'
-    and DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}'
+    and (DELETED is null or DATE_PART(epoch_millisecond, LAST_DDL) >= '{date}')
 )
 where ROW_NUMBER = 1
+and NAME_LAST_DDL >= '{date}'
 """
 
 SNOWFLAKE_GET_COMMENTS = textwrap.dedent(
@@ -478,6 +496,12 @@ SNOWFLAKE_DESC_STORED_PROCEDURE = "DESC PROCEDURE {database_name}.{schema_name}.
 
 SNOWFLAKE_DESC_FUNCTION = "DESC FUNCTION {database_name}.{schema_name}.{procedure_name}{procedure_signature}"
 
+# Both halves are bounded at both ends so the caller can re-read a narrower window when
+# Snowflake cancels the scan: unbounded, one statement reads QUERY_HISTORY twice end to
+# end. `query_end_date` reaches past `end_date` because a CALL that starts inside the
+# window keeps running past it, and its child queries have to stay joinable. There is
+# deliberately no ORDER BY: it sorts the entire join for nothing, since the rows are
+# processed by a thread pool and no consumer depends on the order.
 SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (
@@ -489,6 +513,7 @@ WITH SP_HISTORY AS (
     FROM {account_usage}.QUERY_HISTORY SP
     WHERE QUERY_TYPE = 'CALL'
       AND START_TIME >= '{start_date}'
+      AND START_TIME < '{end_date}'
       AND QUERY_TEXT <> ''
       AND QUERY_TEXT IS NOT NULL
 ),
@@ -508,6 +533,7 @@ Q_HISTORY AS (
       AND QUERY_TEXT NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
       AND QUERY_TEXT NOT LIKE '/* {{"app": "dbt", %%}} */%%'
       AND START_TIME >= '{start_date}'
+      AND START_TIME < '{query_end_date}'
       AND (
         QUERY_TYPE IN ('MERGE', 'UPDATE','CREATE_TABLE_AS_SELECT')
         OR (QUERY_TYPE = 'INSERT' and query_text ILIKE '%%insert%%into%%select%%')
@@ -531,7 +557,6 @@ JOIN Q_HISTORY Q
    Q.START_TIME BETWEEN SP.START_TIME AND SP.END_TIME
    OR Q.END_TIME BETWEEN SP.START_TIME AND SP.END_TIME
    )
-ORDER BY PROCEDURE_START_TIME DESC
     """
 )
 
