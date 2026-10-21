@@ -39,6 +39,17 @@ describe('EntitySummaryProgressBar component', () => {
     ).toStrictEqual(mockProps.entity);
   });
 
+  it('wraps the entity name at word boundaries instead of mid-word', async () => {
+    render(
+      <EntitySummaryProgressBar {...mockProps} entity="Database Schema" />
+    );
+
+    const entityName = await screen.findByTestId('entity-name');
+
+    expect(entityName).toHaveClass('tw:wrap-break-word');
+    expect(entityName).not.toHaveClass('break-all');
+  });
+
   it('Should render label if provided', async () => {
     render(<EntitySummaryProgressBar {...mockProps} label="test" />);
 

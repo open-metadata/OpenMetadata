@@ -108,6 +108,18 @@ describe('Test KPIChart Component', () => {
     expect(addButton).toBeInTheDocument();
   });
 
+  it('renders the empty KPI placeholder on the card surface, not a separate background', async () => {
+    await act(async () => {
+      render(<KPIChart {...mockProps} kpiList={[]} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.getByTestId(/^assign-error-placeholder/)).toHaveClass(
+      'tw:bg-transparent!'
+    );
+  });
+
   it('Should not render "Add KPI" button when no create permission', async () => {
     await act(async () => {
       render(

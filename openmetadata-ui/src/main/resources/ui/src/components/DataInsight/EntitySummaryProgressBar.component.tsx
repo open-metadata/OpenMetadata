@@ -51,7 +51,7 @@ const EntitySummaryProgressBar = ({
       <Grid.Item className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 d-flex justify-between items-center text-xs">
         <Typography
           as="p"
-          className="m-b-0 entity-summary-name break-all"
+          className="m-b-0 entity-summary-name tw:wrap-break-word"
           data-testid="entity-name">
           {pluralize ? pluralizeName(entity) : entity}
         </Typography>
