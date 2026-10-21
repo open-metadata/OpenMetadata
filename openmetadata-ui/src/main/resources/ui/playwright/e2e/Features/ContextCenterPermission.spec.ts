@@ -33,6 +33,7 @@ import {
   navigateToDashboard,
   navigateToDocuments,
   navigateToMemories,
+  patchMemory,
   scrollHierarchyToNode,
   scrollListingToCard,
   searchAndGetDocumentRow,
@@ -350,9 +351,10 @@ test.describe('Context Center Permissions', () => {
     // A dedicated user whose name sorts before "admin", used to author one
     // PATCH so a single memory in the suite has a distinct, verifiable
     // updatedBy value — every other fixture memory is stamped by admin.
+    // Its display name sorts after admin to distinguish the sort key from the label.
     earlyAlphabetUser = new UserClass({
-      firstName: 'aaa-sort-updatedby',
-      lastName: 'aaa-sort-updatedby',
+      firstName: 'Zed ',
+      lastName: 'Sort Author',
       email: `aaa-sort-updatedby.${uuid()}@example.com`,
       password: 'User@OMD123',
     });
@@ -366,7 +368,7 @@ test.describe('Context Center Permissions', () => {
     const earlyAlphabetMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_updatedby_${uuid()}`,
-        title: `CC Permission Memory Updated By ${uuid()}`,
+        title: `${ownerMemoryTitle} Updated By`,
         question: 'Updated-by sort fixture question',
         answer: 'Used only to verify Updated By sort ordering.',
         shareConfig: { visibility: 'Entity' },
@@ -387,7 +389,7 @@ test.describe('Context Center Permissions', () => {
           {
             op: 'replace',
             path: '/title',
-            value: `CC Permission Memory Updated By ${uuid()} (patched)`,
+            value: `${ownerMemoryTitle} Updated By (patched)`,
           },
         ],
         headers: { 'Content-Type': 'application/json-patch+json' },
@@ -396,6 +398,15 @@ test.describe('Context Center Permissions', () => {
     expect(earlyAlphabetPatchRes.ok()).toBeTruthy();
     await earlyAlphabetAfterAction();
     await earlyAlphabetPage.close();
+
+    // Recent updates must put the admin's row first so Updated By actually reverses it.
+    await patchMemory(apiContext, ownerMemoryId, [
+      {
+        op: 'replace',
+        path: '/answer',
+        value: 'Owned by admin for permission matrix tests (sort control)',
+      },
+    ]);
 
     await afterAction();
   });
@@ -2156,6 +2167,15 @@ test.describe('Context Center Permissions', () => {
       );
 
       await navigateToMemories(adminPage);
+      await searchAndGetMemoryRow(adminPage, ownerMemoryTitle, ownerMemoryId);
+
+      const rows = adminPage.locator('[data-testid^="memory-row-"]');
+      await expect(rows).toHaveCount(2);
+      await expect(rows).toContainText([
+        ownerMemoryTitle,
+        earlyAlphabetUser.responseData.displayName,
+      ]);
+
       await adminPage.getByRole('button', { name: /sort/i }).click();
 
       const listResPromise = adminPage.waitForResponse(
@@ -2167,21 +2187,18 @@ test.describe('Context Center Permissions', () => {
       await adminPage
         .getByRole('menuitemradio', { name: /updated by/i })
         .click();
-      await listResPromise;
+      const listRes = await listResPromise;
+      expect(listRes.status()).toBe(200);
       await waitForAllLoadersToDisappear(adminPage);
 
       await expect(
         adminPage.getByRole('button', { name: /updated by/i })
       ).toBeVisible();
 
-      // earlyAlphabetUser's username sorts before "admin" (every other
-      // memory here is updated by admin) — ascending Updated By sort must
-      // place the memory it updated first. Assert on the rendered
-      // "Updated By" text rather than the row's data-testid: several
-      // fixture memories share similar titles, so the id-based check was
-      // brittle — the updatedBy name is what the sort actually orders by.
-      const rows = adminPage.locator('[data-testid^="memory-row-"]');
-      await expect(rows.first()).toContainText('aaa-sort-updatedby.');
+      await expect(rows).toContainText([
+        earlyAlphabetUser.responseData.displayName,
+        ownerMemoryTitle,
+      ]);
 
       await afterAction();
     });

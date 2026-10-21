@@ -824,6 +824,7 @@
         "playwright/e2e/Features/DomainTierCertificationVoting.spec.ts",
         "playwright/e2e/Features/EntitySuggestions.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
@@ -2437,6 +2438,7 @@
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityFeedFieldPath.spec.ts",
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
@@ -2524,6 +2526,7 @@
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
@@ -2603,6 +2606,7 @@
         "playwright/e2e/Features/EntitySuggestions.spec.ts",
         "playwright/e2e/Features/ExploreFilterComposition.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
@@ -3348,6 +3352,8 @@
         "playwright/e2e/Features/DataQuality/ProfilerIngestionForm.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
         "playwright/e2e/Features/DomainFilterQueryFilter.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageContextCenter.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageCriticalAnnouncements.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageDataEstate.spec.ts",
@@ -3584,6 +3590,7 @@
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/GlobalSearchSuggestions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
@@ -4923,6 +4930,7 @@
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/TestSuitePipelineRedeploy.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
@@ -5365,6 +5373,7 @@
         "playwright/e2e/Features/EntitySuggestions.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermInverseRelation.spec.ts",
@@ -7463,6 +7472,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/GlossaryHeader.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
@@ -7485,6 +7495,7 @@
         "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/TeamsDragAndDrop.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
@@ -7552,6 +7563,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryTerms/tabs/WorkFlowTab/WorkflowHistory.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts"
       ]
     },
@@ -9897,6 +9909,7 @@
         "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
@@ -9907,6 +9920,7 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
@@ -9926,6 +9940,7 @@
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
@@ -9935,6 +9950,7 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
@@ -11345,6 +11361,49 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/PendingReviewPanel.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/PendingReviewSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalSourceMark.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalStatusBadge.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossarySettings.tsx"
       ],
       "specs": [
@@ -12457,6 +12516,7 @@
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
         "playwright/e2e/Features/GlobalSearchSuggestions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",

@@ -15,7 +15,6 @@ import {
   Box,
   Card,
   Input,
-  PaginationCardDefault,
 } from '@openmetadata/ui-core-components';
 import {
   Globe01,
@@ -48,11 +47,13 @@ import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResul
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import NextPrevious from '../common/NextPrevious/NextPrevious';
 import ViewToggle from '../common/ViewToggle/ViewToggle';
 import MarketplaceSearchInput from '../DataMarketplace/MarketplaceSearchInput/MarketplaceSearchInput.component';
 import PageLayoutV1 from '../PageLayoutV1/PageLayoutV1';
 import DomainTreeView from './components/DomainTreeView';
 import { DomainListPageProps } from './DomainListPage.interface';
+import { getDomainListCardStyle } from './DomainListPage.utils';
 import { useDomainCreateDrawer } from './hooks/useDomainCreateDrawer';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
@@ -157,6 +158,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const [selectedView, setView] = useState<PageViewMode>();
   const view = selectedView ?? personaView;
   const isTreeView = view === PageViewMode.Tree;
+  const listCardStyle = getDomainListCardStyle(isAiMode, isTreeView);
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
@@ -250,6 +252,22 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       );
     }
 
+    const pagination = domainListing.totalEntities > 0 && (
+      <Box
+        className="tw:border-t tw:border-secondary tw:p-3 tw:shrink-0"
+        justify="center">
+        <NextPrevious
+          isNumberBased
+          currentPage={domainListing.currentPage}
+          pageSize={domainListing.pageSize}
+          paging={{ total: domainListing.totalEntities }}
+          pagingHandler={({ currentPage }) =>
+            domainListing.handlePageChange(currentPage)
+          }
+        />
+      </Box>
+    );
+
     if (view === PageViewMode.Table) {
       return (
         <>
@@ -265,11 +283,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             onSelect={domainListing.handleSelect}
             onSelectAll={domainListing.handleSelectAll}
           />
-          <PaginationCardDefault
-            page={domainListing.currentPage}
-            total={domainListing.totalPages}
-            onPageChange={domainListing.handlePageChange}
-          />
+          {pagination}
         </>
       );
     }
@@ -283,11 +297,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           renderCard={renderDomainCard}
           onEntityClick={domainListing.actionHandlers.onEntityClick}
         />
-        <PaginationCardDefault
-          page={domainListing.currentPage}
-          total={domainListing.totalPages}
-          onPageChange={domainListing.handlePageChange}
-        />
+        {pagination}
       </>
     );
   }, [
@@ -299,7 +309,8 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.urlState.filters,
     domainListing.urlState.searchQuery,
     domainListing.currentPage,
-    domainListing.totalPages,
+    domainListing.pageSize,
+    domainListing.totalEntities,
     domainListing.handlePageChange,
     domainListing.handleClearAll,
     isSearchOrFilterActive,
@@ -331,13 +342,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
         : pageHeader}
 
       <Card
-        className={classNames('tw:flex tw:min-h-0 tw:flex-1 tw:flex-col', {
-          'tw:bg-canvas': isAiMode,
-          'tw:mb-5': !isAiMode,
-          // Compact layout pads 8px; AI content sits on the 16px gutter.
-          'tw:mx-2': isAiMode,
-        })}
-        variant={isAiMode ? 'ghost' : 'elevated'}>
+        className={classNames(
+          'tw:flex tw:min-h-0 tw:flex-1 tw:flex-col',
+          listCardStyle.className,
+          {
+            'tw:mb-5': !isAiMode,
+            // Compact layout pads 8px; AI content sits on the 16px gutter.
+            'tw:mx-2': isAiMode,
+          }
+        )}
+        variant={listCardStyle.variant}>
         <Box
           className="tw:px-6 tw:py-4 tw:border-b tw:border-secondary"
           direction="col"

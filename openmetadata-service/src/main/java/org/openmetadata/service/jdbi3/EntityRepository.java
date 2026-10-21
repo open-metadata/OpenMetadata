@@ -255,6 +255,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -1311,6 +1312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -1573,14 +1577,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    checkEntityStatusNotOwnedByWorkflow(current, change);
-    // A workflow's approval task already decided who may approve (reviewers, owners or named
-    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (isDecidedByPeople(current, change, from)) {
+      checkDecidedByAPerson(current, change);
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    } else {
+      checkEntityStatusNotOwnedByWorkflow(current, change);
+      checkReviewerLeavesReview(current, change, from, to);
+    }
+  }
+
+  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
+  private boolean isDecidedByPeople(T current, T change, String from) {
+    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
+  }
+
+  private void checkDecidedByAPerson(T current, T change) {
+    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve or reject %s '%s'; a bot cannot",
+              entityType, current.getFullyQualifiedName()));
+    }
+  }
+
+  // A workflow's approval task already decided who may approve (reviewers, owners or named
+  // candidates), so the reviewer rule only guards direct edits and imports.
+  private void checkReviewerLeavesReview(T current, T change, String from, String to) {
     if (EntityStatus.IN_REVIEW.value().equals(from)
         && (EntityStatus.APPROVED.value().equals(to) || EntityStatus.REJECTED.value().equals(to))
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
+  }
+
+  /**
+   * Whether people move this entity out of {@code from} directly, even while a workflow owns its
+   * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
+   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
+   * decides it.
+   */
+  protected boolean isStageDecidedByPeople(T current, String from) {
+    return false;
   }
 
   /**
@@ -1608,7 +1645,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
   // included, before checking who may move the entity out of review.
   private void loadReviewersForStageCheck(T original, String from) {
-    if (supportsReviewers && EntityStatus.IN_REVIEW.value().equals(from)) {
+    if (supportsReviewers
+        && (EntityStatus.IN_REVIEW.value().equals(from)
+            || isStageDecidedByPeople(original, from))) {
       T withReviewers =
           get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
       original.setReviewers(withReviewers.getReviewers());
@@ -4613,6 +4652,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")

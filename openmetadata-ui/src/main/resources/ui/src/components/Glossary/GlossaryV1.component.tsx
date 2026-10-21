@@ -26,6 +26,7 @@ import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
+import { refreshGlossaryProposals } from '../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { VERSION_VIEW_GLOSSARY_PERMISSION } from '../../mocks/Glossary.mock';
 import {
@@ -277,6 +278,7 @@ const GlossaryV1 = ({
         childrenCount: currentData.childrenCount,
       });
       setIsEditModalOpen(false);
+      refreshGlossaryProposals();
     }
   };
 
@@ -297,6 +299,7 @@ const GlossaryV1 = ({
       // Close modal and set loading to false
       setIsEditModalOpen(false);
       setTermsLoading(false);
+      refreshGlossaryProposals();
       // Refresh glossary list to update term count
       if (isGlossaryActive && refreshGlossaryList) {
         refreshGlossaryList();
