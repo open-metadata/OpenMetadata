@@ -55,6 +55,10 @@ export interface Page {
      */
     entityStatus?: EntityStatus;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * Statistics from the most recent knowledge-pill extraction run on this page's body.
      */
     extractionStats?: ExtractionStats;
