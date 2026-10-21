@@ -232,7 +232,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
   }, [errorMessage]);
 
   return (
-    <div className="text-base font-medium">
+    <div className="text-base font-medium tw:w-full">
       {type === ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA
         ? noRecordForES
         : elasticSearchError}

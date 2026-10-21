@@ -49,8 +49,10 @@ export interface EmptyPlaceholderShellProps
   /** Replaces the generated action buttons entirely */
   footer?: ReactNode;
   /**
-   * Content width. The root is absolutely positioned and fills its nearest
-   * positioned ancestor, so the host container MUST set `position: relative`.
+   * Maximum content width. The content fills the container up to this cap, so
+   * copy uses the space it has without overflowing narrow hosts. The root is
+   * absolutely positioned and fills its nearest positioned ancestor, so the
+   * host container MUST set `position: relative`.
    */
   width?: number | string;
   /** Vertical gap between the content items */
@@ -121,7 +123,14 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
       justify="center"
       style={style}
       {...otherProps}>
-      <Box align="center" direction="col" gap={gap} style={{ width }}>
+      <Box
+        align="center"
+        className="tw:text-center"
+        direction="col"
+        gap={gap}
+        style={
+          width === undefined ? undefined : { width: '100%', maxWidth: width }
+        }>
         {children}
         {footer ?? renderEmptyPlaceholderActions(actions)}
       </Box>

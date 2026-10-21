@@ -12,7 +12,6 @@
  */
 
 import {
-  Box,
   Button,
   Card,
   Grid,
@@ -298,32 +297,24 @@ const KPIChart: FC<Props> = ({
                 )}
               </Grid>
             ) : (
-              <Box
-                inline
-                align="center"
-                className="layout-space w-full justify-center"
-                direction="col"
-                gap={2}
-                itemClassName="layout-space-item">
-                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
-                  <NoDataPlaceholder
-                    data-testid="no-data-placeholder"
-                    {...(createKPIPermission && {
-                      description: t('message.no-kpi-available-add-new-one'),
-                      footer: (
-                        <Button
-                          color="primary"
-                          iconLeading={Plus}
-                          onClick={handleAddKpi}>
-                          {t('label.add-entity', {
-                            entity: t('label.kpi-uppercase'),
-                          })}
-                        </Button>
-                      ),
-                    })}
-                  />
-                </div>
-              </Box>
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  {...(createKPIPermission && {
+                    description: t('message.no-kpi-available-add-new-one'),
+                    footer: (
+                      <Button
+                        color="primary"
+                        iconLeading={Plus}
+                        onClick={handleAddKpi}>
+                        {t('label.add-entity', {
+                          entity: t('label.kpi-uppercase'),
+                        })}
+                      </Button>
+                    ),
+                  })}
+                />
+              </div>
             )}
           </>
         )}
