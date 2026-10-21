@@ -83,6 +83,22 @@
     height: 100%;
   }
 
+  // react-reflex's unlayered splitter rules (a 2px grey bar between two 1px
+  // borders, with a 1s colour transition) outrank Tailwind utilities, so the
+  // 1px divider and its brand hover are set here.
+  .kg-stage-main.reflex-container.horizontal > .kg-stage-splitter {
+    height: calc(var(--tw-spacing) / 4);
+    border: 0;
+    background-color: var(--tw-border-color-secondary);
+    transition: none;
+
+    &:hover,
+    &.active {
+      border: 0;
+      background-color: var(--tw-border-color-brand);
+    }
+  }
+
   .kg-toolbar-header > div {
     width: 100%;
     min-width: 0;
@@ -273,8 +289,7 @@
 
   .kg-inspector-statement {
     padding: var(--om-space-12);
-    background: var(--tw-background-color-secondary);
-    border: var(--om-space-1) solid var(--tw-border-color-secondary);
+    background: var(--tw-color-utility-gray-blue-50);
     border-radius: var(--om-radius-lg);
   }
 
@@ -337,10 +352,6 @@
     padding: var(--om-space-12) var(--om-space-14);
     background: var(--tw-background-color-surface);
     border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
-
-    > * {
-      flex: 1;
-    }
   }
 
   @media (max-width: 900px) {

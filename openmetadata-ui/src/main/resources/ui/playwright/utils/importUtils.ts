@@ -1241,12 +1241,14 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  // The grid cell opens its picker on Enter, and bulk edit stages the whole
-  // sheet, so there is no PATCH for this cell to wait on.
+  // Bulk edit stages the whole sheet, so there is no PATCH for this cell to
+  // wait on.
   await setDomain(page, row.domains, {
     trigger: async () => {
-      await page.keyboard.press('Enter');
-      await page.click('[data-testid="domain-selectable-tree-search"]');
+      const domainSearch = page.getByTestId('domain-selectable-tree-search');
+      // A forced cell click can select without focusing, so a bare Enter may not open it.
+      await openActiveCellPopover(page, domainSearch, undefined);
+      await domainSearch.click();
     },
     awaitPatch: false,
     verify: 'none',

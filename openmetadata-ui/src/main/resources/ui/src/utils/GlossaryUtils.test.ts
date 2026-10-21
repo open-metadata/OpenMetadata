@@ -467,7 +467,7 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
     const columnWidthObject = glossaryTermTableColumnsWidth();
 
     expect(columnWidthObject).toEqual({
-      descriptionMax: 600,
+      descriptionMax: 480,
       descriptionMin: 420,
       name: 250,
       owners: 220,
