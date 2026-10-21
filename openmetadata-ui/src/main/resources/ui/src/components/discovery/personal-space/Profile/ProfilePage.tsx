@@ -41,6 +41,7 @@ import {
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
+import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
@@ -58,7 +59,6 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { safeDecodeURIComponent } from './tabs/members/Members.utils';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();

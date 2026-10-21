@@ -13,10 +13,7 @@
 
 import { viewToSubPath as appsViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
 import { viewToSubPath as governanceViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/governance/Governance.utils';
-import {
-  safeDecodeURIComponent as decode,
-  viewToSubPath as membersViewToSubPath,
-} from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
+import { viewToSubPath as membersViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
 import { viewToSubPath as personasViewToSubPath } from '../components/discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { AI_APP_MODE } from '../constants/appMode.constants';
 import { ENTITY_PATH } from '../constants/constants';
@@ -27,24 +24,31 @@ import {
 import { useAppModeStore } from '../hooks/useAppMode';
 import { isAppModeSessionActive } from './appModeSession';
 import { isDev } from './EnvironmentUtils';
+import { safeDecodeURIComponent as decode } from './SettingsHashUtils';
 
 /**
  * In AI mode the classic `/settings/*`, `/marketplace*` and `/bots/*` pages are
  * not served; their content lives in the settings modal, opened by a
  * `#<tab>[/<subPath>]` hash over the current page (`useSettingsHash`). This maps
- * a classic path to that hash. Path FQN segments arrive URL-encoded
- * (`getEncodedFqn`) and are decoded before each panel's own `viewToSubPath`
- * re-encodes them the way its hash parser expects. Access-control, notification
- * and platform-settings sub-paths are spelled out here because importing their
- * panel utils would make the route builders import themselves (access control
- * links back to them) or pull in the settings menu and auth modules; the tests
- * pin all three against the panels' parsers.
+ * a classic path to that hash. Every name in a hash segment is URL-encoded
+ * exactly once and each panel's parser decodes it once
+ * (`safeDecodeURIComponent`). Path FQN segments arrive URL-encoded
+ * (`getEncodedFqn`), so they are decoded and handed to the panel's own
+ * `viewToSubPath`, or re-encoded with `reencode` where the sub-path is spelled
+ * out here. Access-control, notification, bots and platform-settings sub-paths
+ * are spelled out because importing their panel utils would make the route
+ * builders import themselves (access control links back to them) or pull in
+ * the settings menu and auth modules; the tests pin them against the panels'
+ * parsers.
  * ADR:2026-10-21-settings-pages-are-classic-only
  */
 type HashMapper = (
   rest: string[],
   query: URLSearchParams
 ) => string | undefined;
+
+// Normalise a URL-encoded path segment to the single encoding hashes carry.
+const reencode = (segment: string) => encodeURIComponent(decode(segment));
 
 const withSub = (tab: string, subPath?: string) =>
   subPath ? `${tab}/${subPath}` : tab;
@@ -125,7 +129,7 @@ const toPolicySubPath = (name: string, action?: string, rule?: string) => {
   }
 
   return action === 'edit-rule' && rule
-    ? `${name}/rules/${encodeURIComponent(decode(rule))}/edit`
+    ? `${name}/rules/${reencode(rule)}/edit`
     : name;
 };
 
@@ -138,7 +142,7 @@ const mapRolesOrPolicies = (
   if (!fqn || fqn === 'add-role' || fqn === 'add-policy') {
     return withSub(option, fqn && 'add');
   }
-  const name = decode(fqn);
+  const name = reencode(fqn);
 
   return `${option}/${
     option === ROLES ? name : toPolicySubPath(name, action, rule)
@@ -161,11 +165,11 @@ const mapNotifications: HashMapper = ([option, fqn, ...rest]) => {
     case undefined:
       return 'notification';
     case ALERTS:
-      return withSub('notification/alerts', fqn && decode(fqn));
+      return withSub('notification/alerts', fqn && reencode(fqn));
     case ADD_NOTIFICATION:
       return 'notification/alerts/add';
     case EDIT_NOTIFICATION:
-      return withSub('notification/alerts', fqn && `edit/${decode(fqn)}`);
+      return withSub('notification/alerts', fqn && `edit/${reencode(fqn)}`);
     default:
       // Every other option (announcements, Collate's weekly emails…) is a
       // contributed section keyed by the same id.
@@ -181,7 +185,8 @@ const mapPreferences: HashMapper = ([option, item]) => {
     return 'platform-settings';
   }
   const page = lookup(PREFERENCE_PAGES, option);
-  const itemId = option === SEARCH_SETTINGS ? item : undefined;
+  const itemId =
+    option === SEARCH_SETTINGS && item ? reencode(item) : undefined;
 
   return page && `platform-settings/${withSub(page, itemId)}`;
 };
@@ -255,7 +260,7 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
     ([category = '', ...rest], query) =>
       dispatchMapper(SETTINGS_HASH_MAPPERS, category, rest, query),
   ],
-  ['bots', ([name]) => (name ? `bots/${decode(name)}` : 'bots')],
+  ['bots', ([name]) => withSub('bots', name && reencode(name))],
   ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
   [
     'marketplace',

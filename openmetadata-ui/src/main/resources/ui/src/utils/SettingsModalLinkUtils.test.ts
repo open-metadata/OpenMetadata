@@ -11,27 +11,78 @@
  *  limitations under the License.
  */
 
-import { hashSubPathToView as accessHashToView } from '../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.utils';
-import { hashSubPathToView as appsHashToView } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
-import { hashSubPathToView as membersHashToView } from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
-import { hashSubPathToView as notificationHashToView } from '../components/discovery/personal-space/Profile/tabs/notification/Notification.utils';
+import {
+  parseCustomPropertiesHash,
+  viewToSubPath as customPropsViewToSubPath,
+} from '../components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
+import {
+  hashSubPathToView as accessHashToView,
+  viewToSubPath as accessViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.utils';
+import {
+  hashSubPathToView as appsHashToView,
+  viewToSubPath as appsViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
+import {
+  hashSubPathToView as governanceHashToView,
+  viewToSubPath as governanceViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/governance/Governance.utils';
+import {
+  hashSubPathToView as membersHashToView,
+  viewToSubPath as membersViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/members/Members.utils';
+import {
+  hashSubPathToView as notificationHashToView,
+  viewToSubPath as notificationViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/notification/Notification.utils';
+import {
+  hashSubPathToView as personasHashToView,
+  viewToSubPath as personasViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { PLATFORM_SETTINGS_PAGES } from '../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.constants';
-import { hashSubPathToView as platformHashToView } from '../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.utils';
+import {
+  hashSubPathToView as platformHashToView,
+  viewToSubPath as platformViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.utils';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import type { Type } from '../generated/entity/type';
+import type { CustomProperty } from '../generated/type/customProperty';
 import { useAppModeStore } from '../hooks/useAppMode';
+import { getAlertsFromName } from '../rest/alertsAPI';
+import { getApplicationByName } from '../rest/applicationAPI';
+import { getMarketPlaceApplicationByFqn } from '../rest/applicationMarketPlaceAPI';
+import axiosClient from '../rest/axiosClient';
+import { getBotByName } from '../rest/botsAPI';
+import { getPersonaByName } from '../rest/PersonaAPI';
+import { getPolicyByName, getRoleByName } from '../rest/rolesAPIV1';
+import { getTeamByName } from '../rest/teamsAPI';
 import { registerAppModeSessionPredicate } from './appModeSession';
 import {
+  getAppInstallPath,
+  getApplicationDetailsPath,
+  getBotsPath,
   getEditPolicyRulePath,
+  getMarketPlaceAppDetailsPath,
   getNotificationAlertDetailsPath,
+  getNotificationAlertsEditPath,
+  getPersonaDetailsPath,
+  getPolicyWithFqnPath,
+  getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
+import { safeDecodeURIComponent } from './SettingsHashUtils';
 import { getSettingsLink, settingsPathToHash } from './SettingsModalLinkUtils';
 
 const mockIsDev = jest.fn().mockReturnValue(false);
 
 jest.mock('./EnvironmentUtils', () => ({
   isDev: () => mockIsDev(),
+}));
+
+jest.mock('../rest/axiosClient', () => ({
+  __esModule: true,
+  default: { get: jest.fn().mockResolvedValue({ data: {} }) },
 }));
 
 jest.mock('./GlobalSettingsClassBase', () => ({
@@ -60,7 +111,7 @@ describe('settingsPathToHash', () => {
     ['/settings/billing/credits', 'billing/credits'],
     ['/settings/billing/plans', 'billing/plans'],
     ['/settings/persona', 'personas'],
-    ['/settings/persona/data%20steward', 'personas/data steward'],
+    ['/settings/persona/data%20steward', 'personas/data%20steward'],
     ['/settings/members', 'members'],
     ['/settings/members/users', 'members/users'],
     ['/settings/members/admins', 'members/admins'],
@@ -89,7 +140,7 @@ describe('settingsPathToHash', () => {
     ['/settings/notifications/alerts', 'notification/alerts'],
     [
       '/settings/notifications/alerts/my%20alert/configuration',
-      'notification/alerts/my alert',
+      'notification/alerts/my%20alert',
     ],
     ['/settings/notifications/add-notification', 'notification/alerts/add'],
     [
@@ -307,6 +358,277 @@ describe('getSettingsLink', () => {
       getSettingsLink('/settings/services/databases');
 
       expect(warn).not.toHaveBeenCalled();
+    });
+  });
+});
+
+/**
+ * The hash contract: every name in a hash segment is URL-encoded once by
+ * whoever builds the hash and decoded once by the panel's parser, which hands
+ * the original name to an API that encodes it once more for the request path.
+ */
+describe('settings hash name encoding', () => {
+  // Spaces, `%`, `/`, `#`, `?` and a quoted dotted FQN.
+  const NAMES = [
+    'data engineer',
+    '100% owner',
+    'Org/A',
+    'team#1',
+    'why?',
+    'svc.db."a.b"',
+  ];
+
+  const mockGet = axiosClient.get as jest.Mock;
+
+  // What the browser does with a followed link: it percent-encodes the URL and
+  // `useSettingsHash` reads the sub-path off the live `location.hash`.
+  const followLink = (link: string) =>
+    new URL(link, 'http://localhost/page?x=1').hash
+      .slice(1)
+      .split('?')[0]
+      .split('/')
+      .slice(1)
+      .join('/');
+
+  // The request path the API built: the name exactly once-encoded.
+  const expectRequestFor = (name: string) =>
+    expect(String(mockGet.mock.calls.at(-1)?.[0]).split('/name/')[1]).toBe(
+      encodeURIComponent(name)
+    );
+
+  beforeEach(() => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    mockGet.mockClear();
+  });
+
+  afterEach(() => useAppModeStore.getState().setMode(DEFAULT_APP_MODE));
+
+  describe.each(NAMES)('%s', (name) => {
+    it.each([
+      [
+        'persona',
+        getPersonaDetailsPath,
+        (sub: string) => {
+          const view = personasHashToView(sub);
+
+          return view.type === 'detail' ? view.fqn : '';
+        },
+        (fqn: string) => getPersonaByName(fqn),
+      ],
+      [
+        'role',
+        getRoleWithFqnPath,
+        (sub: string) => {
+          const view = accessHashToView(sub);
+
+          return view.type === 'roles-detail' ? view.fqn : '';
+        },
+        (fqn: string) => getRoleByName(fqn, ''),
+      ],
+      [
+        'policy',
+        getPolicyWithFqnPath,
+        (sub: string) => {
+          const view = accessHashToView(sub);
+
+          return view.type === 'policies-detail' ? view.fqn : '';
+        },
+        (fqn: string) => getPolicyByName(fqn, ''),
+      ],
+      [
+        'policy of a rule',
+        (fqn: string) => getEditPolicyRulePath(fqn, fqn),
+        (sub: string) => {
+          const view = accessHashToView(sub);
+
+          return view.type === 'policies-rule' && view.ruleName === name
+            ? view.fqn
+            : '';
+        },
+        (fqn: string) => getPolicyByName(fqn, ''),
+      ],
+      [
+        'notification alert',
+        getNotificationAlertDetailsPath,
+        (sub: string) => {
+          const view = notificationHashToView(sub);
+
+          return view.type === 'detail' ? view.fqn : '';
+        },
+        (fqn: string) => getAlertsFromName(fqn),
+      ],
+      [
+        'notification alert edit',
+        getNotificationAlertsEditPath,
+        (sub: string) => {
+          const view = notificationHashToView(sub);
+
+          return view.type === 'edit' ? view.fqn : '';
+        },
+        (fqn: string) => getAlertsFromName(fqn),
+      ],
+      [
+        'team',
+        getTeamsWithFqnPath,
+        (sub: string) => {
+          const view = membersHashToView(sub);
+
+          return view.type === 'team-detail' ? view.fqn : '';
+        },
+        (fqn: string) => getTeamByName(fqn),
+      ],
+      [
+        'application',
+        getApplicationDetailsPath,
+        (sub: string) => {
+          const view = appsHashToView(sub);
+
+          return view.type === 'detail' ? view.fqn : '';
+        },
+        (fqn: string) => getApplicationByName(fqn),
+      ],
+      [
+        'marketplace app',
+        getMarketPlaceAppDetailsPath,
+        (sub: string) => {
+          const view = appsHashToView(sub);
+
+          return view.type === 'marketplace-detail' ? view.fqn : '';
+        },
+        (fqn: string) => getMarketPlaceApplicationByFqn(fqn),
+      ],
+      [
+        'app install',
+        getAppInstallPath,
+        (sub: string) => {
+          const view = appsHashToView(sub);
+
+          return view.type === 'install' ? view.fqn : '';
+        },
+        (fqn: string) => getMarketPlaceApplicationByFqn(fqn),
+      ],
+      [
+        'bot',
+        getBotsPath,
+        // BotsPanel's parser: the whole sub-path is the bot name.
+        safeDecodeURIComponent,
+        (fqn: string) => getBotByName(fqn),
+      ],
+    ])(
+      'reaches the %s API with the name once-encoded',
+      async (_, buildPath, parse, fetch) => {
+        const parsed = parse(followLink(getSettingsLink(buildPath(name))));
+
+        expect(parsed).toBe(name);
+
+        await fetch(parsed);
+
+        expectRequestFor(name);
+      }
+    );
+
+    // In-modal navigation (`setHash(tab, viewToSubPath(view))`) writes the
+    // same encoding the panels parse.
+    it('round-trips in-modal navigation through every panel parser', () => {
+      const viaBrowser = (subPath = '') => followLink(`#tab/${subPath}`);
+      const entityType = { fullyQualifiedName: name } as Type;
+      const property = { name } as CustomProperty;
+
+      expect(
+        personasHashToView(
+          viaBrowser(
+            personasViewToSubPath({
+              type: 'customize',
+              fqn: name,
+              name,
+              category: 'governance/Domain',
+            })
+          )
+        )
+      ).toEqual({
+        type: 'customize',
+        fqn: name,
+        name,
+        category: 'governance/Domain',
+      });
+      expect(
+        accessHashToView(
+          viaBrowser(
+            accessViewToSubPath({
+              type: 'policies-rule',
+              fqn: name,
+              name,
+              ruleName: name,
+            })
+          )
+        )
+      ).toEqual({ type: 'policies-rule', fqn: name, name, ruleName: name });
+      expect(
+        accessHashToView(
+          viaBrowser(
+            accessViewToSubPath({ type: 'roles-detail', fqn: name, name })
+          )
+        )
+      ).toEqual({ type: 'roles-detail', fqn: name, name });
+      expect(
+        notificationHashToView(
+          viaBrowser(notificationViewToSubPath({ type: 'edit', fqn: name }))
+        )
+      ).toEqual({ type: 'edit', fqn: name });
+      expect(
+        membersHashToView(
+          viaBrowser(
+            membersViewToSubPath({
+              type: 'teams-import',
+              fqn: name,
+              importType: 'users',
+            })
+          )
+        )
+      ).toEqual({ type: 'teams-import', fqn: name, importType: 'users' });
+      expect(
+        appsHashToView(
+          viaBrowser(appsViewToSubPath({ type: 'install', fqn: name }))
+        )
+      ).toEqual({ type: 'install', fqn: name });
+      expect(
+        governanceHashToView(
+          viaBrowser(governanceViewToSubPath({ type: 'glossary-edit', name }))
+        )
+      ).toEqual({ type: 'glossary-edit', name });
+      expect(
+        parseCustomPropertiesHash(
+          viaBrowser(
+            customPropsViewToSubPath({ type: 'edit', entityType, property })
+          )
+        )
+      ).toEqual({ entityFqn: name, action: 'edit', propertyName: name });
+      expect(
+        platformHashToView(
+          viaBrowser(
+            platformViewToSubPath({
+              type: 'page',
+              page: 'search',
+              isEditing: false,
+              itemId: name,
+            })
+          ),
+          PLATFORM_SETTINGS_PAGES
+        )
+      ).toEqual({
+        type: 'page',
+        page: 'search',
+        isEditing: false,
+        itemId: name,
+      });
+    });
+  });
+
+  it('keeps a malformed escape instead of crashing the panel', () => {
+    expect(personasHashToView('100%ZZ')).toEqual({
+      type: 'detail',
+      fqn: '100%ZZ',
+      name: '100%ZZ',
     });
   });
 });

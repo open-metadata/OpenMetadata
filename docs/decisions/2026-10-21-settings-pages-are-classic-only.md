@@ -6,12 +6,14 @@
   v4 2026-10-21 (billing plans map to `#billing/plans`); v5 2026-10-21 (Members, Access Control
   and Bots are admin-only again; a hash naming a hidden tab keeps the no-access state); v6
   2026-10-21 (route builders stay pure paths; links resolve through `getSettingsLink` at the
-  call site)
+  call site); v7 2026-10-21 (names in hash segments are URL-encoded once and decoded once by
+  the panel's parser)
 - **Deciders:** Chirag Madlani
 - **Guard:** `AppModeRoutes.test.tsx` ("classic-only settings routes": the AI shell serves its
   not-found page for `/settings/*`, `/marketplace/*` and `/bots/*`, ahead of a plugin fallback);
   `SettingsModalLinkUtils.test.ts` (the path-to-hash table, its round-trip through each panel's
-  parser, classic vs AI output of `getSettingsLink`, the builders staying paths in AI mode, and the
+  parser, names with spaces, `%`, `/`, `#`, `?` and dots reaching each panel's API once-encoded,
+  classic vs AI output of `getSettingsLink`, the builders staying paths in AI mode, and the
   development warning for an unmapped path); `PersonaDetailsCard.test.tsx` (a `pathname:` caller
   in AI mode); `useSettingsHash.test.tsx` (a followed link keeps the query string, closing returns
   to the page entry, and a push is counted once per hook instance); `profileNavConfig.test.tsx`,
@@ -57,6 +59,12 @@ URLs alive as a second way in, and the redirect needed its own permission rules.
   page's `?activeTab=<key>` maps to `#members/teams/<fqn>?activeTab=<key>`, which the team
   detail opens on once that tab exists (built-in or contributed); build it with
   `getSettingsLink(getTeamsWithFqnPath(fqn, { activeTab }))`.
+- **A name in a hash segment is URL-encoded exactly once and decoded exactly once.** Whoever
+  builds a sub-path (`settingsPathToHash`, each panel's `viewToSubPath`, a panel's own `setHash`)
+  encodes every name or FQN with `encodeURIComponent`; each panel's parser decodes it once with
+  `safeDecodeURIComponent` (`utils/SettingsHashUtils`) and hands the original name to the API,
+  which encodes it for the request. A raw name breaks on the browser's own encoding: a space
+  arrives as `%20`, is never decoded, and the request asks for `data%2520engineer`.
 
 ## Consequences
 A new modal tab or sub-view that replaces a classic page adds a row to `settingsPathToHash` and its
