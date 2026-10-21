@@ -764,7 +764,8 @@
         "playwright/e2e/Features/ProfilePreferences.spec.ts",
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
-        "playwright/e2e/Pages/CustomProperties.spec.ts"
+        "playwright/e2e/Pages/CustomProperties.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
@@ -772,7 +773,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/Utils/theme.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
@@ -11333,6 +11335,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts"
       ]
     },
