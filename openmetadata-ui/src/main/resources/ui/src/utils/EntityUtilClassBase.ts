@@ -498,6 +498,7 @@ class EntityUtilClassBase {
     return { entityFqn: fqn, columnFqn: undefined };
   }
 
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
   public getManageExtraOptions(
     _entityType: EntityType,
     _fqn: string,

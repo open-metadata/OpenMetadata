@@ -97,6 +97,7 @@ class DataQualityClassBase {
     return DataQualityPageTabs.DASHBOARD;
   }
 
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
   public getExportDataQualityDashboardButton(
     _activeTab: DataQualityPageTabs,
     _showModal: (data: ExportData) => void
