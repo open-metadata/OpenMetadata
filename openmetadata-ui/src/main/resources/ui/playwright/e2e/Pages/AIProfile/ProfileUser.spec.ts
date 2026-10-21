@@ -215,44 +215,35 @@ test.describe('AI Profile Users', () => {
     await hardDelete;
   });
 
-  test('Should edit the display name from the edit user form', async ({
+  test("Should edit the display name on a user's page", async ({
     browser,
     page,
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
-    const newName = `${user.responseData.name}-edited`;
 
     await openUserEditView(page, user.responseData.name);
 
-    // Nothing changed yet, so there is nothing to save.
-    await expect(page.getByTestId('save-user')).toBeDisabled();
-    await expect(page.getByTestId('email').getByRole('textbox')).toBeDisabled();
-
-    await page.getByTestId('displayName').getByRole('textbox').fill(newName);
-    await expect(page.getByTestId('save-user')).toBeEnabled();
+    await page.getByTestId('preferred-name-edit').click();
+    await page
+      .getByTestId('preferred-name-input')
+      .getByRole('textbox')
+      .fill(`${user.responseData.name}-edited`);
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
-    await page.getByTestId('save-user').click();
-    const response = await patch;
-
-    expect(response.request().postDataJSON()).toEqual([
-      { op: 'replace', path: '/displayName', value: newName },
-    ]);
-    await expect(page.getByTestId('users-list-container')).toBeVisible();
+    await page.getByTestId('preferred-name-save').click();
+    await patch;
   });
 
-  test('Should add a persona from the edit user form', async ({
-    browser,
-    page,
-  }) => {
+  test("Should add a persona on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await openUserEditView(page, user.responseData.name);
 
+    await page.getByTestId('persona-edit').click();
     await chooseSelectOption(
-      page.getByTestId('personas-dropdown'),
+      page.getByTestId('persona-multiselect'),
       page.getByRole('option', {
         name: persona.responseData.displayName,
         exact: true,
@@ -260,29 +251,26 @@ test.describe('AI Profile Users', () => {
     );
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
-    await page.getByTestId('save-user').click();
-    const response = await patch;
+    await page.getByTestId('persona-save').click();
+    await patch;
 
-    expect(response.ok()).toBeTruthy();
-    expect((await response.json()).personas).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: persona.responseData.id }),
-      ])
+    await expect(page.getByTestId('persona')).toContainText(
+      persona.responseData.displayName
     );
   });
 
-  test('Should assign a domain from the edit user form', async ({
-    browser,
-    page,
-  }) => {
+  test("Should assign a domain on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
     await openUserEditView(page, user.responseData.name);
 
-    // The shared DomainSelect tree picker; searching keeps the fixture
-    // reachable even when it is outside the first page of domains.
-    const domainInput = page.getByTestId('domain-select').getByRole('combobox');
+    await page.getByTestId('domains-edit').click();
+    // The row uses the shared DomainSelect tree picker; searching keeps the
+    // fixture reachable even when it is outside the first page of domains.
+    const domainInput = page
+      .getByTestId('domains-multiselect')
+      .getByRole('combobox');
     await domainInput.click();
     await domainInput.fill(domain.responseData.displayName);
     const domainNode = getDomainNode(page, {
@@ -296,15 +284,63 @@ test.describe('AI Profile Users', () => {
     await expect(domainNode).toBeHidden();
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
-    await page.getByTestId('save-user').click();
+    await page.getByTestId('domains-save').click();
+    const response = await patch;
+    expect(response.ok()).toBeTruthy();
+    // The card also contains the draft chip until edit mode closes.
+    await expect(page.getByTestId('domains-save')).toBeHidden();
+    await expect(page.getByTestId('domains-edit')).toBeVisible();
+    await expect(page.getByTestId('domains')).toContainText(
+      domain.responseData.displayName
+    );
+  });
+
+  test("Should edit the description on a user's page", async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+    const description = `Description ${uuid()}`;
+
+    await openUserEditView(page, user.responseData.name);
+
+    await page.getByTestId('user-description-edit').click();
+    await expect(page.getByTestId('user-description-save')).toBeDisabled();
+    const editor = page
+      .getByTestId('user-description')
+      .locator('[contenteditable="true"]');
+    await editor.click();
+    await editor.fill(description);
+
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
+    await page.getByTestId('user-description-save').click();
     const response = await patch;
 
     expect(response.ok()).toBeTruthy();
-    expect((await response.json()).domains).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: domain.responseData.id }),
-      ])
+    await expect(page.getByTestId('user-description')).toContainText(
+      description
     );
+  });
+
+  test("Should grant admin from a user's page", async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await openUserEditView(page, user.responseData.name);
+
+    await page.getByTestId('user-admin-edit').click();
+    await expect(page.getByTestId('user-admin-save')).toBeDisabled();
+    await page.getByTestId('user-admin-toggle').click();
+
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
+    await page.getByTestId('user-admin-save').click();
+    const response = await patch;
+
+    expect(response.request().postDataJSON()).toEqual([
+      { op: 'replace', path: '/isAdmin', value: true },
+    ]);
+    await expect(page.getByTestId('user-admin')).toContainText('Yes');
   });
 
   test('Non-admin can edit own name but not persona', async ({

@@ -187,17 +187,6 @@ describe('MembersPanel', () => {
 describe('MembersPanel user edit view', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { EditAll: true } };
-  });
-
-  it('shows the lock placeholder instead of the edit form without user edit permission', () => {
-    mockPermissions = {};
-    renderAt('#members/user/jane');
-
-    expect(
-      screen.getByTestId('permission-error-placeholder')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('user-edit')).not.toBeInTheDocument();
   });
 
   it('deep-links #members/user/<name> to the edit view with a Users crumb and the display name', async () => {

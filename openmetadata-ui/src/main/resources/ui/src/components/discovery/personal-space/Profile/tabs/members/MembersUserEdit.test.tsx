@@ -11,14 +11,30 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
-import { User } from '../../../../../../generated/entity/teams/user';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import MembersUserEdit from './MembersUserEdit';
 
 const mockGetUserByName = jest.fn();
+const mockUseEntityPermissions = jest.fn();
+let mockIsAdminUser = false;
 
 jest.mock('../../../../../../rest/userAPI', () => ({
   getUserByName: (...args: unknown[]) => mockGetUserByName(...args),
   updateUserDetail: jest.fn(),
+}));
+
+jest.mock(
+  '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: (...args: unknown[]) =>
+      mockUseEntityPermissions(...args),
+  })
+);
+
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -30,80 +46,142 @@ jest.mock('../../../../../common/Loader/Loader', () => () => (
   <div data-testid="loader" />
 ));
 
-jest.mock(
-  './MembersCreateUserForm',
-  () =>
-    ({ user }: { user: User }) =>
-      <div data-testid="user-form">{user.email}</div>
+// Each row is stubbed to expose the edit flag it receives, which is what the
+// view decides; the rows' own behaviour has its own tests.
+function mockRow(testId: string) {
+  return (props: { canEdit?: boolean }) => (
+    <div data-can-edit={String(props.canEdit)} data-testid={testId} />
+  );
+}
+
+jest.mock('../../components/PreferredNameRow', () => mockRow('row-name'));
+jest.mock('../../components/UserDescriptionRow', () =>
+  mockRow('row-description')
 );
+jest.mock('../../components/UserAdminRow', () => mockRow('row-admin'));
+jest.mock('../../components/DomainsRow', () => mockRow('row-domains'));
+jest.mock('../../components/TeamsRow', () => mockRow('row-teams'));
+jest.mock('../../components/RolesRow', () => mockRow('row-roles'));
+jest.mock('../../components/PersonaRow', () => mockRow('row-persona'));
+
+const permissionsWith = (granted: Operation[], deleted = false) => {
+  const permissions = Object.fromEntries(
+    granted.map((operation) => [operation, true])
+  ) as unknown as OperationPermission;
+
+  return {
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, deleted),
+  };
+};
+
+const renderView = async () => {
+  await act(async () => {
+    render(<MembersUserEdit name="jane" onResolveName={jest.fn()} />);
+  });
+};
+
+const canEditOf = (testId: string) =>
+  screen.getByTestId(testId).getAttribute('data-can-edit');
 
 describe('MembersUserEdit', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-  });
-
-  it('opens the edit form for the named user and reports the display name', async () => {
+    mockIsAdminUser = false;
     mockGetUserByName.mockResolvedValue({
       id: 'u2',
       name: 'jane',
       displayName: 'Jane Doe',
       email: 'jane@acme.io',
     });
-    const onResolveName = jest.fn();
-
-    await act(async () => {
-      render(
-        <MembersUserEdit
-          name="jane"
-          onNavigate={jest.fn()}
-          onResolveName={onResolveName}
-        />
-      );
-    });
-
-    expect(mockGetUserByName).toHaveBeenCalledWith('jane', expect.any(Object));
-    expect(screen.getByTestId('user-form')).toHaveTextContent('jane@acme.io');
-    expect(onResolveName).toHaveBeenCalledWith('Jane Doe');
   });
 
-  it('shows a not-found placeholder for an unknown user', async () => {
-    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
+  it('shows every field as a card, editable for an admin with EditAll', async () => {
+    mockIsAdminUser = true;
+    mockUseEntityPermissions.mockReturnValue(
+      permissionsWith([Operation.ViewAll, Operation.EditAll])
+    );
 
-    await act(async () => {
-      render(
-        <MembersUserEdit
-          name="ghost"
-          onNavigate={jest.fn()}
-          onResolveName={jest.fn()}
-        />
-      );
-    });
+    await renderView();
 
-    expect(screen.getByTestId('user-not-found')).toBeInTheDocument();
-    expect(screen.queryByTestId('user-form')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-email')).toHaveTextContent('jane@acme.io');
+
+    [
+      'row-name',
+      'row-description',
+      'row-admin',
+      'row-domains',
+      'row-teams',
+      'row-roles',
+      'row-persona',
+    ].forEach((row) => expect(canEditOf(row)).toBe('true'));
   });
 
-  it('shows a restore hint instead of the form for a deleted user', async () => {
+  it('lets a non-admin with EditAll edit details but not admin status or roles', async () => {
+    mockUseEntityPermissions.mockReturnValue(
+      permissionsWith([Operation.ViewAll, Operation.EditAll])
+    );
+
+    await renderView();
+
+    expect(canEditOf('row-name')).toBe('true');
+    expect(canEditOf('row-teams')).toBe('true');
+    expect(canEditOf('row-admin')).toBe('false');
+    expect(canEditOf('row-roles')).toBe('false');
+  });
+
+  it('is read-only with view access only', async () => {
+    mockUseEntityPermissions.mockReturnValue(
+      permissionsWith([Operation.ViewBasic])
+    );
+
+    await renderView();
+
+    expect(canEditOf('row-name')).toBe('false');
+    expect(canEditOf('row-persona')).toBe('false');
+  });
+
+  it('shows a lock placeholder without view access', async () => {
+    mockUseEntityPermissions.mockReturnValue(permissionsWith([]));
+
+    await renderView();
+
+    expect(screen.getByTestId('user-no-access')).toBeInTheDocument();
+    expect(screen.queryByTestId('members-user-edit')).not.toBeInTheDocument();
+  });
+
+  it('keeps a soft-deleted user read-only, even for an admin', async () => {
+    mockIsAdminUser = true;
     mockGetUserByName.mockResolvedValue({
       id: 'u3',
       name: 'gone',
       email: 'gone@acme.io',
       deleted: true,
     });
-    const onNavigate = jest.fn();
+    mockUseEntityPermissions.mockImplementation(
+      (_resource: unknown, _name: unknown, options: { deleted?: boolean }) =>
+        permissionsWith(
+          [Operation.ViewAll, Operation.EditAll],
+          Boolean(options?.deleted)
+        )
+    );
 
-    await act(async () => {
-      render(
-        <MembersUserEdit
-          name="gone"
-          onNavigate={onNavigate}
-          onResolveName={jest.fn()}
-        />
-      );
-    });
+    await renderView();
 
-    expect(screen.getByTestId('deleted-user')).toBeInTheDocument();
-    expect(screen.queryByTestId('user-form')).not.toBeInTheDocument();
+    expect(canEditOf('row-name')).toBe('false');
+    expect(canEditOf('row-admin')).toBe('false');
+    expect(canEditOf('row-roles')).toBe('false');
+  });
+
+  it('shows a not-found placeholder for an unknown user', async () => {
+    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
+    mockUseEntityPermissions.mockReturnValue(permissionsWith([]));
+
+    await renderView();
+
+    expect(screen.getByTestId('user-not-found')).toBeInTheDocument();
   });
 });
-

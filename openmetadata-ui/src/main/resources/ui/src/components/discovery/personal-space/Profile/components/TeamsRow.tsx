@@ -41,12 +41,21 @@ const flattenTeams = (nodes: TeamHierarchy[]): TeamOption[] =>
 interface TeamsRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
 }
 
-const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
+const TeamsRow: React.FC<TeamsRowProps> = ({
+  userData,
+  updateUserDetails,
+  canEdit: canEditProp,
+  description,
+}) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
   const initialTeams = useMemo(
     () => getNonDeletedTeams(userData.teams ?? []),
@@ -121,7 +130,7 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.team-member-description')}
+      description={description ?? t('message.team-member-description')}
       isSaveDisabled={isEmpty(xor(draftTeamIds, initialTeamIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (

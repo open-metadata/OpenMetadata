@@ -224,4 +224,47 @@ describe('RolesRow', () => {
       expect(mockSearchRoles).toHaveBeenCalledWith('kjqhs', 50)
     );
   });
+
+  it('leaves admin status alone when the Admin pseudo-role is hidden', async () => {
+    const updateUserDetails = jest.fn().mockResolvedValue(undefined);
+
+    await act(async () => {
+      render(
+        <RolesRow
+          showAdminRole={false}
+          updateUserDetails={updateUserDetails}
+          userData={
+            {
+              name: 'harsh',
+              roles: [{ id: 'r', name: 'DataSteward' }],
+              isAdmin: true,
+            } as unknown as User
+          }
+        />
+      );
+    });
+
+    // Only the real role is listed; no synthetic Admin chip.
+    expect(screen.getByTestId('chip-list')).toHaveTextContent('1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-role'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save'));
+    });
+
+    await waitFor(() =>
+      expect(updateUserDetails).toHaveBeenCalledWith(
+        {
+          roles: [
+            { id: 'r', name: 'DataSteward' },
+            { id: 'r2', type: 'role' },
+          ],
+          isAdmin: true,
+        },
+        'roles'
+      )
+    );
+  });
 });

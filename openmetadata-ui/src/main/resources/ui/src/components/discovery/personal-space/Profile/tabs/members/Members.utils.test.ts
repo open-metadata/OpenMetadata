@@ -12,11 +12,11 @@
  */
 
 import {
-  buildUserEditPatch,
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
   hashSubPathToView,
+  mergeDomainEdits,
   viewToSubPath,
 } from './Members.utils';
 
@@ -189,65 +189,25 @@ describe('contributed section hash routing', () => {
   });
 });
 
-describe('buildUserEditPatch', () => {
-  const user = {
-    id: 'u1',
-    name: 'jane',
-    email: 'jane@acme.io',
-    displayName: 'Jane',
-    isAdmin: false,
-    teams: [{ id: 't1', type: 'team', name: 'Eng' }],
-    roles: [{ id: 'r1', type: 'role', name: 'DataSteward' }],
-    personas: [],
-    domains: [],
+describe('mergeDomainEdits', () => {
+  const inherited = {
+    id: 'd-team',
+    type: 'domain',
+    name: 'TeamDomain',
+    inherited: true,
   };
-  const unchanged = {
-    displayName: 'Jane',
-    description: '',
-    isAdmin: false,
-    teams: ['t1'],
-    roles: ['r1'],
-    personas: [],
-    domains: [],
-  };
+  const direct = { id: 'd1', type: 'domain', name: 'Sales' };
 
-  it('is empty when nothing changed', () => {
-    expect(buildUserEditPatch(user, unchanged)).toEqual([]);
+  it('returns the stored list unchanged when the direct ids are the same', () => {
+    const current = [inherited, direct];
+
+    expect(mergeDomainEdits(current, ['d1'])).toBe(current);
   });
 
-  it('patches only the changed fields and keeps stored refs for the rest', () => {
-    const patch = buildUserEditPatch(user, {
-      ...unchanged,
-      displayName: 'Jane Doe',
-      isAdmin: true,
-      roles: ['r1', 'r2'],
-    });
-
-    expect(patch).toEqual(
-      expect.arrayContaining([
-        { op: 'replace', path: '/displayName', value: 'Jane Doe' },
-        { op: 'replace', path: '/isAdmin', value: true },
-        { op: 'add', path: '/roles/1', value: { id: 'r2', type: 'role' } },
-      ])
-    );
-    expect(patch.some((op) => op.path.startsWith('/teams'))).toBe(false);
-  });
-
-  it('keeps inherited domains intact when the direct domains change', () => {
-    const inherited = {
-      id: 'd-team',
-      type: 'domain',
-      name: 'TeamDomain',
-      inherited: true,
-    };
-    const direct = { id: 'd1', type: 'domain', name: 'Sales' };
-
-    const patch = buildUserEditPatch(
-      { ...user, domains: [inherited, direct] },
-      { ...unchanged, domains: [] }
-    );
-
-    expect(patch).toEqual([{ op: 'remove', path: '/domains/1' }]);
+  it('replaces only the direct domains and keeps inherited refs untouched', () => {
+    expect(mergeDomainEdits([inherited, direct], ['d2'])).toEqual([
+      inherited,
+      { id: 'd2', type: 'domain' },
+    ]);
   });
 });
-

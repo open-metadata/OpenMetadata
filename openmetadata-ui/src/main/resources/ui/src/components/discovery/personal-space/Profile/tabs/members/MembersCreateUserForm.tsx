@@ -63,7 +63,7 @@ import { generateRandomPwd } from '../../../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
 import { searchRoles } from '../../../../../../rest/rolesAPIV1';
 import { getTeamsHierarchy } from '../../../../../../rest/teamsAPI';
-import { createUser, updateUserDetail } from '../../../../../../rest/userAPI';
+import { createUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
@@ -76,9 +76,7 @@ import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextE
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
 import type { MembersCreateUserFormProps, TeamNode } from './Members.types';
 import {
-  buildUserEditPatch,
   flattenTeamHierarchy,
-  getUserFormInitialState,
   mergeRoleItems,
   withoutId,
 } from './Members.utils';
@@ -96,11 +94,8 @@ interface FormValues {
 
 const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   isAdmin,
-  user,
   onNavigate,
 }) => {
-  const isEdit = Boolean(user);
-  const initial = getUserFormInitialState(user, isAdmin);
   const { t } = useTranslation();
   const { contains } = useFilter({ sensitivity: 'base' });
   const descEditorRef = useRef<EditorContentRef>(null);
@@ -117,25 +112,25 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const form = useForm<FormValues>({
     defaultValues: {
-      ...initial.values,
+      email: '',
+      displayName: '',
       passwordGenerator: CreatePasswordGenerator.AutomaticGenerate,
       password: '',
       confirmPassword: '',
+      teams: [],
+      roles: [],
+      personas: [],
     },
   });
   const { handleSubmit } = form;
 
-  const [isAdminUser, setIsAdminUser] = useState(initial.isAdmin);
-  const [description, setDescription] = useState(initial.description);
+  const [isAdminUser, setIsAdminUser] = useState(Boolean(isAdmin));
   const [isSaveLoading, setIsSaveLoading] = useState(false);
 
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
-  const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>(
-    initial.domains
-  );
-  const { backView } = initial;
+  const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
 
   const [teamItems, setTeamItems] = useState<SelectItemType[]>([]);
   const [roleItems, setRoleItems] = useState<SelectItemType[]>([]);
@@ -151,21 +146,16 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       type: FieldTypes.TEXT,
       required: true,
       placeholder: t('label.email'),
-      // The email is the user's identity; it can't be changed once created.
-      props: { 'data-testid': 'email', isDisabled: isEdit },
-      // Locked and never sent in the edit patch, so validating it could only
-      // block Save (e.g. an existing `user@localhost` fails EMAIL_REG_EX).
-      rules: isEdit
-        ? undefined
-        : {
-            required: t('label.field-required', { field: t('label.email') }),
-            pattern: {
-              value: EMAIL_REG_EX,
-              message: t('message.field-text-is-invalid', {
-                fieldText: t('label.email'),
-              }),
-            },
-          },
+      props: { 'data-testid': 'email' },
+      rules: {
+        required: t('label.field-required', { field: t('label.email') }),
+        pattern: {
+          value: EMAIL_REG_EX,
+          message: t('message.field-text-is-invalid', {
+            fieldText: t('label.email'),
+          }),
+        },
+      },
     },
     {
       name: 'displayName',
@@ -285,15 +275,11 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   }, [t]);
 
   useEffect(() => {
-    if (!isEdit) {
-      void generateRandomPassword();
-    }
-  }, [generateRandomPassword, isEdit]);
-
-  const showMembershipFields = !isAdmin || isEdit;
+    void generateRandomPassword();
+  }, [generateRandomPassword]);
 
   useEffect(() => {
-    if (showMembershipFields) {
+    if (!isAdmin) {
       void fetchTeams();
       void fetchRoleOptions();
       void fetchPersonaOptions();
@@ -303,63 +289,19 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       debouncedFetchRoleOptions.cancel();
     };
   }, [
-    showMembershipFields,
+    isAdmin,
     fetchTeams,
     fetchRoleOptions,
     fetchPersonaOptions,
     debouncedFetchRoleOptions,
   ]);
 
-  // The user's current refs label their chips until the option lists load
-  // (and for roles beyond the first search page).
-  const currentRefs = useMemo(
-    () => [
-      ...(user?.teams ?? []),
-      ...(user?.roles ?? []),
-      ...(user?.personas ?? []),
-    ],
-    [user]
-  );
-
   const selectedItems = (ids: string[], items: SelectItemType[]) =>
     ids.map((id) => {
       const match = items.find((item) => String(item.id) === id);
-      const ref = currentRefs.find((current) => current.id === id);
 
-      return { id, label: match?.label ?? (ref ? getEntityName(ref) : id) };
+      return { id, label: match?.label ?? id };
     });
-
-  const watchedValues = form.watch();
-  const editPatch = useMemo(
-    () =>
-      user
-        ? buildUserEditPatch(user, {
-            ...watchedValues,
-            description,
-            isAdmin: isAdminUser,
-            domains: selectedDomains,
-          })
-        : [],
-    [user, watchedValues, description, isAdminUser, selectedDomains]
-  );
-
-  const onEditSubmit = async () => {
-    if (!user || editPatch.length === 0) {
-      return;
-    }
-    setIsSaveLoading(true);
-    try {
-      await updateUserDetail(user.id, editPatch);
-      showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.user') })
-      );
-      onNavigate({ type: backView });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsSaveLoading(false);
-    }
-  };
 
   const onSubmit = async (data: FormValues) => {
     const description = descEditorRef.current?.getEditorContent() ?? '';
@@ -409,7 +351,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.user') })
       );
-      onNavigate({ type: backView });
+      onNavigate({ type: isAdmin ? 'admins' : 'users' });
     } catch (error) {
       // The Members tree never renders the app store's inlineAlert, so a toast is
       // the only visible feedback for 409 duplicate email / password rejection.
@@ -476,7 +418,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <div className="tw:overflow-y-auto">
           <Box
             className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
-            data-testid={isEdit ? 'edit-user-container' : 'create-user-container'}
+            data-testid="create-user-container"
             direction="col"
             gap={5}>
             <FormFields fields={nameFields} />
@@ -491,14 +433,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
               <RichTextEditor
                 className="new-form-style"
                 data-testid="description"
-                initialValue={user?.description}
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
-                onTextChange={setDescription}
               />
             </Box>
 
-            {isAuthProviderBasic && !isEdit && (
+            {isAuthProviderBasic && (
               <FormField control={form.control} name="passwordGenerator">
                 {({ field }) => (
                   <Box direction="col" gap={3}>
@@ -610,7 +550,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
               />
             </Box>
 
-            {showMembershipFields && (
+            {!isAdmin && (
               <>
                 {renderMultiSelect(
                   'teams',
@@ -648,16 +588,15 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-user"
-          onPress={() => onNavigate({ type: backView })}>
+          onPress={() => onNavigate({ type: isAdmin ? 'admins' : 'users' })}>
           {t('label.cancel')}
         </Button>
         <Button
           color="primary"
           data-testid="save-user"
-          isDisabled={isEdit && editPatch.length === 0}
           isLoading={isSaveLoading}
-          onPress={() => handleSubmit(isEdit ? onEditSubmit : onSubmit)()}>
-          {isEdit ? t('label.save') : t('label.create')}
+          onPress={() => handleSubmit(onSubmit)()}>
+          {t('label.create')}
         </Button>
       </Box>
     </Box>

@@ -210,8 +210,8 @@ export const addUserToTeam = async (
 };
 
 /**
- * Open a user's Edit User view (`#members/user/<name>`) by clicking their name
- * in the Users list.
+ * Open a user's page (`#members/user/<name>`) by clicking their name in the
+ * Users list.
  */
 export const openUserEditView = async (
   page: Page,
@@ -229,7 +229,7 @@ export const openUserEditView = async (
   await userCell.click();
   await userResponse;
 
-  await expect(page.getByTestId('edit-user-container')).toBeVisible();
+  await expect(page.getByTestId('members-user-edit')).toBeVisible();
   expect(new URL(page.url()).hash).toBe(
     `#members/user/${encodeURIComponent(userName)}`
   );

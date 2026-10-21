@@ -27,15 +27,21 @@ import InlineEditCard from './InlineEditCard';
 interface DomainsRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
 }
 
 const DomainsRow: React.FC<DomainsRowProps> = ({
   userData,
   updateUserDetails,
+  canEdit: canEditProp,
+  description,
 }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
   const [draft, setDraft] = useState<EntityReference[]>(
     getDirectDomains(userData.domains)
   );
@@ -56,7 +62,7 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.domain-belong-description')}
+      description={description ?? t('message.domain-belong-description')}
       isSaveDisabled={
         mergeDomainEdits(
           userData.domains,
