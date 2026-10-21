@@ -484,7 +484,7 @@ def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None
     assert 'echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"' in prepare_job
     assert prepare_job.index("name: Load ingestion image") < prepare_job.index("name: Prepare seeded environment")
     planner = workflow.split("  plan-playwright:", 1)[1].split("  restore-playwright-fixture:", 1)[0]
-    assert "    needs: [detect-changes]\n" in planner
+    assert "    needs: [check-changes, detect-changes]\n" in planner
     assert "${{ env.DISTRIBUTION_CACHE_DIR }}/openmetadata-*.tar.gz" in workflow
     assert workflow.count("npx playwright test --project=bundle-smoke --reporter=line") == 2
 

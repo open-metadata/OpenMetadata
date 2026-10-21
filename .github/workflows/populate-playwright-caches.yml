@@ -40,8 +40,8 @@
 #                shards. The commit was already tested by the queue entry that
 #                produced it; re-running the suite on main proves nothing.
 #   warm-venv    the ingestion Python venv, one per py-tests matrix version.
-#                py-tests-shared.yml, playwright-visual.yml and the knowledge-
-#                graph e2e all restore it, but none of them run on push, so
+#                py-tests-shared.yml and the Playwright RDF lane
+#                restore it, but none of them run on push, so
 #                until 2026-09-29 main never held a copy: every PR built its
 #                own ~300 MB entry under its PR ref, and merge_group always
 #                built cold. Calls the composite exactly as py-tests does.

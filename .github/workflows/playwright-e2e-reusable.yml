@@ -193,6 +193,10 @@ jobs:
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
+      # The visual and RDF lanes run whole projects, switched on by these
+      # filters rather than by spec impact; manual and nightly runs take both.
+      visual: ${{ contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual }}
+      rdf: ${{ contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -260,6 +264,65 @@ jobs:
             docker-compose:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
+            visual:
+              - 'openmetadata-ui/pom.xml'
+              - 'openmetadata-ui/src/main/resources/ui/src/**'
+              - 'openmetadata-ui/src/main/resources/ui/public/**'
+              - 'openmetadata-ui/src/main/resources/ui/index.html'
+              - 'openmetadata-ui/src/main/resources/ui/package.json'
+              - 'openmetadata-ui/src/main/resources/ui/yarn.lock'
+              - 'openmetadata-ui/src/main/resources/ui/vite.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/vite/**'
+              - 'openmetadata-ui/src/main/resources/ui/postcss.config.js'
+              - 'openmetadata-ui/src/main/resources/ui/babel.config.json'
+              - 'openmetadata-ui/src/main/resources/ui/tsconfig.json'
+              - 'openmetadata-ui/src/main/resources/ui/.npmrc'
+              - 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui-core-components/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/entity-data.setup.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/support/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/utils/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
+              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+            rdf:
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/workflows/playwright-e2e-reusable.yml'
+              - 'docker/run_local_docker.sh'
+              - 'docker/run_local_docker_common.sh'
+              - 'docker/run_local_docker_rdf.sh'
+              - 'docker/validate_compose.py'
+              - 'docker/development/docker-compose-fuseki.yml'
+              - 'docker/development/docker-compose-postgres-fuseki.yml'
+              - 'docs/rdf-local-development.md'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/rdf/**'
+              - 'openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/api/data/createGlossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/configuration/glossaryTermRelationSettings.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossary.json'
+              - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json'
+              - 'openmetadata-spec/src/main/resources/rdf/**'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Ontology*Rdf.spec.ts'
+              - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph3D/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts'
+              - 'openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx'
 
   cache-keys:
     needs: check-changes
@@ -565,7 +628,7 @@ jobs:
   plan-playwright:
     # Planning reads no build output, so it runs alongside `build` instead of
     # adding its ~4 min after it on the path to the shards.
-    needs: [detect-changes]
+    needs: [check-changes, detect-changes]
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
@@ -828,6 +891,9 @@ jobs:
             --project=IntakeForm \
             --project=AdvancedSearch \
             --project=search-nightly \
+            --project=visual-regression \
+            --project="Knowledge Graph" \
+            --project="Ontology RDF" \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
       - name: Fetch auto-refreshed timing baseline
@@ -849,6 +915,9 @@ jobs:
 
       - name: Build duration-aware shard plans
         id: plan
+        env:
+          VISUAL_LANE: ${{ needs.check-changes.outputs.visual }}
+          RDF_LANE: ${{ needs.check-changes.outputs.rdf }}
         run: |
           history_args=()
           while IFS= read -r history_file; do
@@ -860,10 +929,15 @@ jobs:
             history_args=(--history .github/playwright/timing-baseline.json)
           fi
 
+          lane_args=()
+          [[ "$VISUAL_LANE" == "true" ]] && lane_args+=(--enable-lane visual)
+          [[ "$RDF_LANE" == "true" ]] && lane_args+=(--enable-lane rdf)
+
           python3 .github/scripts/build_playwright_shards.py \
             --test-list "$RUNNER_TEMP/playwright-test-list.json" \
             --selection "$RUNNER_TEMP/playwright-selection/selection.json" \
             "${history_args[@]}" \
+            ${lane_args[@]+"${lane_args[@]}"} \
             --output-dir "$RUNNER_TEMP/playwright-plans" \
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
@@ -1421,7 +1495,10 @@ jobs:
       PW_DIRECT_CHANGED_SPECS: ${{ needs.detect-changes.outputs.direct_changed_specs }}
       PW_PROTOCOL: ${{ matrix.requiresAirflow && 'http' || inputs.protocol }}
       PW_SHARD_ID: ${{ matrix.shardId }}
-      PW_PRESEEDED_STATE: "true"
+      PW_SHARD_LANE: ${{ matrix.lane }}
+      # The RDF lane seeds its own RDF-enabled environment, so its setup
+      # projects run for real instead of reading the shared fixture's state.
+      PW_PRESEEDED_STATE: ${{ matrix.lane != 'rdf' }}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.plan-playwright.outputs.matrix) }}
@@ -1453,6 +1530,7 @@ jobs:
 
       - name: Download seeded fixture
         id: download-fixture
+        if: ${{ matrix.lane != 'rdf' }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-seeded-fixture
@@ -1460,7 +1538,7 @@ jobs:
 
       - name: Download ingestion image
         id: download-ingestion-image
-        if: ${{ matrix.requiresAirflow }}
+        if: ${{ matrix.requiresAirflow || matrix.lane == 'rdf' }}
         uses: actions/download-artifact@v7
         with:
           name: playwright-ingestion-image
@@ -1477,17 +1555,20 @@ jobs:
         id: fast-inputs
         env:
           PLAN_NAME: ${{ matrix.plan }}
-          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow }}
+          REQUIRES_AIRFLOW: ${{ matrix.requiresAirflow || matrix.lane == 'rdf' }}
+          NEEDS_FIXTURE: ${{ matrix.lane != 'rdf' }}
         run: |
           distribution=$(find "$RUNNER_TEMP/openmetadata-distribution" -maxdepth 2 -type f -name 'openmetadata-*.tar.gz' -print -quit)
-          fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit)
+          fixture=$(find "$RUNNER_TEMP/playwright-fixture" -maxdepth 2 -type f -name 'playwright-fixture.tar.zst' -print -quit 2>/dev/null || true)
           plan="$RUNNER_TEMP/playwright-plans/$PLAN_NAME"
           ingestion_image=""
           if [[ "$REQUIRES_AIRFLOW" == "true" ]]; then
             ingestion_image=$(find "$RUNNER_TEMP/playwright-ingestion-image" -maxdepth 2 -type f -name 'playwright-ingestion-image.tar.zst' -print -quit)
           fi
 
-          for input in "$distribution" "$fixture" "$plan"; do
+          required=("$distribution" "$plan")
+          [[ "$NEEDS_FIXTURE" == "true" ]] && required+=("$fixture")
+          for input in "${required[@]}"; do
             if [[ -z "$input" || ! -f "$input" ]]; then
               echo "Missing fast-environment input: $input" >&2
               exit 1
@@ -1500,7 +1581,7 @@ jobs:
 
           {
             echo "distribution=$(realpath "$distribution")"
-            echo "fixture=$(realpath "$fixture")"
+            echo "fixture=${fixture:+$(realpath "$fixture")}"
             echo "plan=$(realpath "$plan")"
             echo "ingestion_image=${ingestion_image:+$(realpath "$ingestion_image")}"
           } >> "$GITHUB_OUTPUT"
@@ -1510,6 +1591,7 @@ jobs:
 
       - name: Setup Openmetadata Test Environment
         id: setup-environment
+        if: ${{ matrix.lane != 'rdf' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: "3.10"
@@ -1518,6 +1600,50 @@ jobs:
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
           install-test-dependencies: "false"
+
+      # The RDF lane needs Fuseki and an RDF-enabled server seeded from
+      # scratch, so it cannot use the shared fixture. It still reuses the
+      # shared distribution (no Maven build) and ingestion image (no image build).
+      - name: Prepare the RDF environment inputs
+        if: ${{ matrix.lane == 'rdf' }}
+        env:
+          COMPOSE_FILE: docker/development/docker-compose-postgres.yml
+          DISTRIBUTION: ${{ steps.fast-inputs.outputs.distribution }}
+          INGESTION_IMAGE: ${{ steps.fast-inputs.outputs.ingestion_image }}
+        run: |
+          mkdir -p openmetadata-dist/target
+          cp "$DISTRIBUTION" openmetadata-dist/target/
+          if ! command -v zstd >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y zstd
+          fi
+          zstd -dc "$INGESTION_IMAGE" | docker load
+          compose_image=$(docker compose -f "$COMPOSE_FILE" config --format json | jq -r '.services.ingestion.image // (.name + "-ingestion")')
+          docker image tag "$(jq -r .image "${INGESTION_IMAGE%.tar.zst}.manifest.json")" "$compose_image"
+          echo "OM_INGESTION_IMAGE_PRELOADED=true" >> "$GITHUB_ENV"
+
+      - name: Setup the RDF environment
+        id: setup-rdf-environment
+        if: ${{ matrix.lane == 'rdf' }}
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -s true"
+          startup-script: "./docker/run_local_docker_rdf.sh"
+          ingestion_dependency: "playwright"
+          install-test-dependencies: "false"
+
+      - name: Wait for Fuseki to be healthy
+        if: ${{ matrix.lane == 'rdf' }}
+        run: |
+          for _ in $(seq 1 30); do
+            if curl -sf "http://localhost:3030/\$/ping" >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 10
+          done
+          docker logs openmetadata-fuseki --tail 100
+          exit 1
 
       - name: Setup Node.js
         id: setup-node
@@ -1653,6 +1779,7 @@ jobs:
 
       - name: Verify the restored authenticated application bundle
         id: verify-bundle
+        if: ${{ matrix.lane != 'rdf' }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           PLAYWRIGHT_IS_OSS: "true"
@@ -1727,8 +1854,27 @@ jobs:
           # over time budget" via the `Signal Playwright budget breaches`
           # step. Alert there, do not kill here.
           set +e
+          runner=(npx)
+          if [[ "$PW_SHARD_LANE" == "visual" ]]; then
+            # Baselines were captured in this image; host fonts render
+            # differently. Workspace, plans and /dev/shm (seeded state links)
+            # are mounted at their own paths so every absolute path resolves.
+            env_args=()
+            while IFS= read -r name; do
+              env_args+=(-e "$name")
+            done < <(compgen -e | grep -E '^(PLAYWRIGHT_|PW_)')
+            runner=(docker run --rm --network host --ipc host
+              --user "$(id -u):$(id -g)" -e CI=true -e HOME=/tmp
+              "${env_args[@]}"
+              -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$RUNNER_TEMP:$RUNNER_TEMP"
+              -w "$PWD" mcr.microsoft.com/playwright:v1.57.0-jammy npx)
+            if ! "${runner[@]:0:${#runner[@]}-1}" test -r playwright/.auth/admin.json; then
+              echo "The seeded auth state is not readable inside the visual container" >&2
+              exit 1
+            fi
+          fi
           timeout --signal=TERM --kill-after=30s 60m \
-            npx playwright test "${project_args[@]}" "${files[@]}"
+            "${runner[@]}" playwright test "${project_args[@]}" "${files[@]}"
           test_exit=$?
           set -e
           finished_at=$(date +%s)
@@ -1885,7 +2031,7 @@ jobs:
           DOWNLOAD_INGESTION_IMAGE_OUTCOME: ${{ steps.download-ingestion-image.outcome }}
           DOWNLOAD_PLANS_OUTCOME: ${{ steps.download-plans.outcome }}
           FAST_INPUTS_OUTCOME: ${{ steps.fast-inputs.outcome }}
-          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome }}
+          SETUP_ENVIRONMENT_OUTCOME: ${{ steps.setup-environment.outcome != 'skipped' && steps.setup-environment.outcome || steps.setup-rdf-environment.outcome }}
           SETUP_NODE_OUTCOME: ${{ steps.setup-node.outcome }}
           INSTALL_DEPENDENCIES_OUTCOME: ${{ steps.install-dependencies.outcome }}
           RESTORE_BROWSER_OUTCOME: ${{ steps.restore-browser.outcome }}

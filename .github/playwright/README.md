@@ -36,6 +36,15 @@ The `Basic` and `chromium` projects share that common 24-runner cap and are bala
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
 
+## Visual and RDF lanes
+
+Two lanes run a whole project on one shard and are switched on by their own path filters in `check-changes` (always on for manual and nightly runs), not by spec impact:
+
+- `visual` runs `visual-regression` on the shared fixture, inside `mcr.microsoft.com/playwright:v1.57.0-jammy` because its baselines were captured there.
+- `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
+
+Both are shards of the same run, so they count toward `playwright-summary`.
+
 ## Entity matrix
 
 Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
