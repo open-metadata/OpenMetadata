@@ -207,4 +207,3 @@ describe('MembersUserEdit', () => {
     expect(canEditOf('row-roles')).toBe('true');
   });
 });
-

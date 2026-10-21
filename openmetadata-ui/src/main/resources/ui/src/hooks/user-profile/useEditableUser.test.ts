@@ -121,4 +121,3 @@ describe('useEditableUser', () => {
     expect(result.current.userData?.email).toBe('harsh@acme.io');
   });
 });
-
