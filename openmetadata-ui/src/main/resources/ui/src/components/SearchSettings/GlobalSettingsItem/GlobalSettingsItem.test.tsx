@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { GlobalSettingItem } from './GlobalSettingsItem';
 
 const mockProps = {
@@ -38,6 +39,19 @@ describe('GlobalSettingItem', () => {
       `global-setting-edit-icon-${mockProps.label}`
     );
     fireEvent.click(editIcon);
+
+    expect(screen.getByTestId('value-input')).toBeInTheDocument();
+  });
+
+  it('opens the editor from a labelled, keyboard-reachable edit button', async () => {
+    const user = userEvent.setup({ delay: null });
+    render(<GlobalSettingItem {...mockProps} />);
+
+    const editButton = screen.getByRole('button', {
+      name: /label\.edit-entity/,
+    });
+    editButton.focus();
+    await user.keyboard('{Enter}');
 
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
   });

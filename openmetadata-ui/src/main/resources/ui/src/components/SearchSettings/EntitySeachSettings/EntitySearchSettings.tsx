@@ -690,6 +690,7 @@ const EntitySearchSettings = () => {
           color="gray"
           key={field}
           size="md"
+          tooltip={field}
           type="color">
           {field}
         </Badge>
@@ -758,7 +759,7 @@ const EntitySearchSettings = () => {
               {matchType}
             </Typography>
           </Grid.Item>
-          <Grid.Item className="layout-column" span={12}>
+          <Grid.Item className="layout-column" span={24}>
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.field-plural')}
             </Typography>
@@ -875,7 +876,7 @@ const EntitySearchSettings = () => {
                   }
                 />
               </Grid.Item>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item className="layout-column" span={24}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.field-plural')}
                 </Typography>
@@ -948,7 +949,7 @@ const EntitySearchSettings = () => {
                 </Typography>
               </AccordionHeader>
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
+                <div className="bg-white border-radius-card configuration-container ranking-configuration-container">
                   {renderRankingSettings()}
                 </div>
               </AccordionPanel>
@@ -1055,7 +1056,7 @@ const EntitySearchSettings = () => {
                 }
               />
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container">
+                <div className="bg-white border-radius-card configuration-container">
                   <TermBoostList
                     className="flex-column justify-center"
                     handleDeleteTermBoost={handleDeleteTermBoost}
@@ -1077,7 +1078,7 @@ const EntitySearchSettings = () => {
                 }
               />
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container">
+                <div className="bg-white border-radius-card configuration-container">
                   <FieldValueBoostList
                     entitySearchSettingsPage
                     dataTestId="entity-field-value-boost-table"

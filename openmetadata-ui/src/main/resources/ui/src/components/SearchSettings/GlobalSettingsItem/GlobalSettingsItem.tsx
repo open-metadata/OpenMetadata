@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { clamp } from 'lodash';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
 import InlineEdit from '../../common/InlineEdit/InlineEdit.component';
@@ -35,6 +40,7 @@ export const GlobalSettingItem = ({
   step,
   onUpdate,
 }: GlobalSettingItemProps) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
@@ -81,7 +87,7 @@ export const GlobalSettingItem = ({
               id="value"
               inputDataTestId="value-input"
               isDisabled={isUpdating}
-              placeholder="value"
+              placeholder={t('label.value')}
               step={step}
               type="number"
               value={Number.isNaN(updatedValue) ? '' : String(updatedValue)}
@@ -92,15 +98,19 @@ export const GlobalSettingItem = ({
           </InlineEdit>
         </div>
       ) : (
-        <div className="d-flex items-center justify-end flex-wrap value-container">
+        <div className="d-flex items-center justify-end tw:shrink-0">
           <span
-            className="m-l-xlg font-semibold p-x-xss global-settings-item-value"
+            className="m-l-md font-semibold p-x-xss global-settings-item-value"
             data-testid={`global-setting-value-${label}`}>
             {value}
           </span>
-          <EditIcon
-            className="tw:ml-3 tw:shrink-0 tw:size-3.5"
+          <ButtonUtility
+            className="tw:ml-1"
+            color="tertiary"
             data-testid={`global-setting-edit-icon-${label}`}
+            icon={<EditIcon className="tw:size-3.5" />}
+            size="xs"
+            tooltip={t('label.edit-entity', { entity: label })}
             onClick={() => setIsEditing(true)}
           />
         </div>
