@@ -127,7 +127,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       {trailing(
         <Chevron
           aria-hidden
-          className="tw:size-4 tw:shrink-0 tw:text-fg-tertiary tw:[&_path]:stroke-2"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-tertiary"
         />
       )}
     </button>

@@ -29,18 +29,14 @@ export interface FilterButtonProps {
   testId?: string;
 }
 
-// Core `Select` stops at `sm`; widget controls match the core Button's `xs`
-// (the My Connections "Configure" action), so the trigger is tightened here.
-const COMPACT_TRIGGER_CLASSES =
-  'tw:[&>button]:rounded-md tw:[&>button>span]:px-2 tw:[&>button>span]:py-1.25 tw:[&>button>span]:gap-1.5 tw:[&_[data-icon]]:size-4';
-
 /**
- * A topic card's filter: the core `Select` at a compact size — a neutral
- * trigger showing the current choice, and a check on the selected option.
- * Every card filter is single-choice and always holds a value, so the trigger
- * does not need a "something is selected" state.
- * The trigger fits its choice rather than a fixed width, so a label with a
- * leading icon ("Last 7 days") is never cut short.
+ * A topic card's filter: the core `Select` at its `xs` size, the same height
+ * as the `xs` Button the widgets' actions use — a neutral trigger showing the
+ * current choice, and a check on the selected option. Every card filter is
+ * single-choice and always holds a value, so the trigger does not need a
+ * "something is selected" state. The trigger fits its choice rather than a
+ * fixed width, so a label with a leading icon ("Last 7 days") is never cut
+ * short.
  */
 export const FilterButton: React.FC<FilterButtonProps> = ({
   label,
@@ -52,13 +48,13 @@ export const FilterButton: React.FC<FilterButtonProps> = ({
 }) => (
   <Select
     aria-label={label}
-    className={`tw:w-fit tw:min-w-32 ${COMPACT_TRIGGER_CLASSES}`}
+    className="tw:w-fit tw:min-w-32"
     data-testid={testId}
     fontSize="xs"
     icon={iconLeading}
     items={options.map((option) => ({ id: option.value, label: option.label }))}
     selectedKey={value}
-    size="sm"
+    size="xs"
     onSelectionChange={(key) => {
       if (key !== null) {
         onChange(String(key));
