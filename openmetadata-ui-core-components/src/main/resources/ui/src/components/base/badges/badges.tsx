@@ -250,7 +250,14 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
 
   if (tooltip) {
     return (
-      <Tooltip placement={tooltipPlacement} title={tooltip}>
+      // A badge is decorative: a span trigger keeps it out of the tab order and
+      // never nests a button inside a clickable parent. min-w-0/max-w-full let
+      // the trigger shrink with the row so a long label still truncates.
+      <Tooltip
+        excludeTriggerFromTabOrder
+        placement={tooltipPlacement}
+        title={tooltip}
+        triggerClassName="tw:inline-flex tw:min-w-0 tw:max-w-full">
         {badge}
       </Tooltip>
     );
