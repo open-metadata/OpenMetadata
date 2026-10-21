@@ -15,7 +15,7 @@ import {
   Breadcrumbs,
   Button,
   ButtonUtility,
-  Card,
+  PageHeader,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -188,28 +188,9 @@ export const CustomizablePageHeader = ({
             />
           </Box>
         )}
-        <Card
-          className="customize-page-header m-b-lg tw:p-6"
-          data-testid="customize-landing-page-header">
-          <Box align="center" direction="row" justify="between">
-            <Box direction="col" gap={1}>
-              <Typography
-                as="h5"
-                className="tw:m-0 tw:text-primary"
-                data-testid="customize-page-title"
-                size="text-md"
-                weight="semibold">
-                {t('label.customize-entity', { entity: pageEntityLabel })}
-              </Typography>
-              <Typography as="p" className="tw:m-0 tw:text-tertiary">
-                <Transi18next
-                  i18nKey={subTitle}
-                  renderElement={personaLink}
-                  values={i18Values}
-                />
-              </Typography>
-            </Box>
-            <Box align="center" direction="row" gap={2}>
+        <PageHeader
+          actions={
+            <>
               {showWidgetActions && onAddWidget && (
                 <Button
                   color="primary"
@@ -243,9 +224,30 @@ export const CustomizablePageHeader = ({
                 isDisabled={saving}
                 onPress={handleClose}
               />
-            </Box>
-          </Box>
-        </Card>
+            </>
+          }
+          className="m-b-lg"
+          data-testid="customize-landing-page-header"
+          subtitle={
+            <Typography className="tw:text-secondary" size="text-sm">
+              <Transi18next
+                i18nKey={subTitle}
+                renderElement={personaLink}
+                values={i18Values}
+              />
+            </Typography>
+          }
+          title={
+            <Typography
+              as="h3"
+              data-testid="customize-page-title"
+              size="text-xl"
+              weight="semibold">
+              {t('label.customize-entity', { entity: pageEntityLabel })}
+            </Typography>
+          }
+          variant="gradient"
+        />
       </Box>
 
       <UnsavedChangesModal
