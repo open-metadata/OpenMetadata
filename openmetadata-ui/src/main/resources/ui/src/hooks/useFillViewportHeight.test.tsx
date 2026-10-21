@@ -49,10 +49,10 @@ describe('useFillViewportHeight', () => {
   });
 
   it('never shrinks below the minimum height', () => {
-    window.innerHeight = 500;
+    window.innerHeight = 400;
     setTop(286);
     render(<Panel />);
 
-    expect(screen.getByTestId('panel')).toHaveAttribute('data-height', '400');
+    expect(screen.getByTestId('panel')).toHaveAttribute('data-height', '240');
   });
 });

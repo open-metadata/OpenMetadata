@@ -12,7 +12,7 @@
  */
 import { useLayoutEffect, useRef, useState } from 'react';
 
-const MIN_HEIGHT = 400;
+const MIN_HEIGHT = 240;
 
 /**
  * Sizes an element to the viewport space left below its top edge. A fixed
