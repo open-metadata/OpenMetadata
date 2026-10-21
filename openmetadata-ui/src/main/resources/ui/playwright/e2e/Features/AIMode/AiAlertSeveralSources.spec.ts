@@ -93,10 +93,12 @@ const addTrigger = async (
   await dismissPopover(dialog);
 };
 
+// One chip per chosen source, in the order chosen. The picker's whole text would let
+// 'Ingestion Pipeline' stand in for 'Pipeline'.
 const expectSources = async (picker: Locator, labels: string[]) => {
-  for (const label of labels) {
-    await expect(picker).toContainText(label);
-  }
+  await expect(picker.getByTestId('autocomplete-selected-item')).toHaveText(
+    labels
+  );
 };
 
 test('An observability alert in the drawer takes several sources, with a trigger for each', async ({
