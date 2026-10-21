@@ -427,7 +427,10 @@ export const addEntityFQNFilter = async ({
   await searchResult.click();
 
   await expect(
-    page.getByTestId('fqn-list-select').getByTitle(entityFQN)
+    page
+      .getByTestId('fqn-list-select')
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: entityFQN })
   ).toBeAttached();
 
   if (exclude) {
