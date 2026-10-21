@@ -40,12 +40,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Resolves {@code kafka://host:port} datasets to topics, finding the messaging service whose
- * bootstrapServers lists that broker. Services on the exact host:port are the only candidates; any
- * other listener port of the same host is considered only when no service lists the exact address
- * (e.g. a TLS 9093 event against a 9092 service). Falling back past an exact-address service that
- * simply has not ingested the topic yet would attach the edge to another cluster's same-named topic.
- * The topic must exist in exactly one candidate service, so services sharing a broker never resolve
- * by guesswork. Topics are never created.
+ * bootstrapServers lists that broker. Services on the exact host:port are the only candidates. When
+ * no service lists the exact address, another listener port of the same host is accepted only if a
+ * single service sits on that host (e.g. a TLS 9093 event against the one 9092 service). Falling back
+ * past an exact-address service that has not ingested the topic yet, or picking among several
+ * clusters behind one gateway host, would attach the edge to another cluster's same-named topic. The
+ * topic must exist in exactly one candidate service, so services sharing a broker never resolve by
+ * guesswork. Topics are never created.
  */
 @Slf4j
 final class OpenLineageTopicResolver {
@@ -80,12 +81,29 @@ final class OpenLineageTopicResolver {
 
   private OpenLineageResolution resolveOnBroker(BrokerAddress broker, String topicName) {
     List<String> exactServices = servicesMatching(broker::equals);
-    List<String> candidateServices =
-        exactServices.isEmpty() ? servicesMatching(broker::hasSameHost) : exactServices;
+    List<String> hostServices = servicesMatching(broker::hasSameHost);
+    return exactServices.isEmpty() && hostServices.size() > 1
+        ? unresolvedOtherPort(broker, hostServices)
+        : resolveInServices(
+            broker, topicName, exactServices.isEmpty() ? hostServices : exactServices);
+  }
+
+  private static OpenLineageResolution resolveInServices(
+      BrokerAddress broker, String topicName, List<String> candidateServices) {
     List<EntityReference> topics = findTopics(candidateServices, topicName);
     return topics.size() == 1
         ? resolved(topics.getFirst())
         : unresolvedTopic(broker, topicName, candidateServices, topics);
+  }
+
+  private static OpenLineageResolution unresolvedOtherPort(
+      BrokerAddress broker, List<String> hostServices) {
+    return unresolved(
+        SERVICE_NOT_FOUND,
+        String.format(
+            "No messaging service lists this exact broker address, and services %s list other "
+                + "ports of host '%s'; dropping the edge rather than guessing which cluster it is",
+            hostServices, broker.host()));
   }
 
   private static OpenLineageResolution unresolvedTopic(

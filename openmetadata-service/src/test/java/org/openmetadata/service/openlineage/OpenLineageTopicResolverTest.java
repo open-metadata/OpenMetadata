@@ -122,6 +122,21 @@ class OpenLineageTopicResolverTest {
     }
   }
 
+  /** 9093 could be either cluster's listener, so the one holding the topic is not proof. */
+  @Test
+  void otherPortOfAHostServingSeveralServices_isNotGuessed() {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubServices(entity, service("prod", "gateway:9092"), service("staging", "gateway:9192"));
+      stubTopics(entity, Set.of("staging.orders"));
+
+      OpenLineageResolution.Unresolved unresolved =
+          assertUnresolved(
+              resolve("kafka://gateway:9093", "orders"), UnresolvedReason.SERVICE_NOT_FOUND);
+
+      assertTrue(unresolved.message().contains("staging"), unresolved.message());
+    }
+  }
+
   @Test
   void servicesSharingABroker_resolveToTheOnlyOneHoldingTheTopic() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
