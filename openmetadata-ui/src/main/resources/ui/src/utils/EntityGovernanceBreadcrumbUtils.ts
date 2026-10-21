@@ -53,6 +53,7 @@ import {
   getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const getBreadcrumbForGlossaryOrTerm = (entity: GlossaryTerm) => {
   const glossary = entity.glossary;
@@ -179,7 +180,7 @@ export const getBreadcrumbForEventSubscription = (
     url:
       entity.alertType === AlertType.Observability
         ? ROUTES.OBSERVABILITY_ALERTS
-        : ROUTES.NOTIFICATION_ALERT_LIST,
+        : getSettingsLink(ROUTES.NOTIFICATION_ALERT_LIST),
   },
   {
     name: entity.name,

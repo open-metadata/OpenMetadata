@@ -268,7 +268,7 @@ export const settingsPathToHash = (path: string): string | undefined => {
 };
 
 /** Same condition `AppRouter` uses to render the AI shell. */
-const isAiShell = (): boolean =>
+export const isAiShell = (): boolean =>
   useAppModeStore.getState().currentMode === AI_APP_MODE ||
   isAppModeSessionActive();
 

@@ -12,6 +12,7 @@
  */
 
 import type { ServiceTypes } from 'Models';
+import { CONNECTIONS_ROUTES } from '../components/integration/connections.constants';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../enums/service.enum';
@@ -23,6 +24,7 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
+import { isAiShell } from './SettingsModalLinkUtils';
 import {
   getCountLabel,
   getServiceRouteFromServiceType,
@@ -49,7 +51,13 @@ class ConnectionsRouterClassBase {
     return false;
   }
 
+  /** The AI shell serves no settings pages; its Connections listing is the services page. */
   public getSettingsServicesPath(serviceCategory?: string): string {
+    if (isAiShell()) {
+      return serviceCategory
+        ? `${CONNECTIONS_ROUTES.CONNECTIONS}?category=${serviceCategory}`
+        : CONNECTIONS_ROUTES.CONNECTIONS;
+    }
     if (serviceCategory) {
       return getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
