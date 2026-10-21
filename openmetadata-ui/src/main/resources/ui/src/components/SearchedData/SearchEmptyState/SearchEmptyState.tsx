@@ -93,7 +93,11 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
       return (
         <div className="text-center tw:w-full" data-testid="no-search-results">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            <NoSearchResultsPlaceholder
+              data-testid="search-error-placeholder"
+              description={t('message.try-adjusting-filter')}
+              title={t('label.no-result-found')}
+            />
           </div>
         </div>
       );
