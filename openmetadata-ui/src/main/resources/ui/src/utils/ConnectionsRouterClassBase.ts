@@ -12,7 +12,9 @@
  */
 
 import type { ServiceTypes } from 'Models';
+import { getCategoryListPath } from '../components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils';
 import { CONNECTIONS_ROUTES } from '../components/integration/connections.constants';
+import { ConnectionsServiceCategory } from '../components/integration/ConnectionsPage/ConnectionsPage.constants';
 import { PLACEHOLDER_SETTING_CATEGORY, ROUTES } from '../constants/constants';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { ServiceCategory } from '../enums/service.enum';
@@ -55,7 +57,7 @@ class ConnectionsRouterClassBase {
   public getSettingsServicesPath(serviceCategory?: string): string {
     if (isAiShell()) {
       return serviceCategory
-        ? `${CONNECTIONS_ROUTES.CONNECTIONS}?category=${serviceCategory}`
+        ? getCategoryListPath(serviceCategory as ConnectionsServiceCategory)
         : CONNECTIONS_ROUTES.CONNECTIONS;
     }
     if (serviceCategory) {
