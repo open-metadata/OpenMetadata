@@ -12,7 +12,12 @@
  */
 
 import type { NodeData } from '@antv/g6';
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   BookClosed,
   CheckCircle,
@@ -29,7 +34,10 @@ import {
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import type { CustomNodeProps } from '../../../../interface/discovery/knowledge-graph.interface';
+import type {
+  CustomNodeProps,
+  GraphNode,
+} from '../../../../interface/discovery/knowledge-graph.interface';
 import {
   getGraphNodeLabel,
   getGroupMemberLabelKey,
@@ -98,6 +106,42 @@ const getNodeView = (nodeData: NodeData) => {
   };
 };
 
+/** Leading visual for a bundled member: people get an avatar, entities their type icon. */
+const MemberVisual = ({ member }: { member: GraphNode }) => {
+  const type = member.type.toLowerCase();
+  if (type === 'user') {
+    const name = getGraphNodeLabel(member);
+
+    return (
+      <Avatar
+        alt={name}
+        className="tw:shrink-0"
+        initials={name.trim().charAt(0).toUpperCase()}
+        size="xxs"
+      />
+    );
+  }
+  if (type === 'team') {
+    return (
+      <Avatar
+        className="tw:shrink-0"
+        colorVariant="neutral"
+        placeholderIcon={Users01}
+        size="xxs"
+      />
+    );
+  }
+  const Icon = getNodeIcon(member.type);
+
+  return (
+    <Icon
+      aria-hidden="true"
+      className="tw:shrink-0 tw:text-fg-quaternary"
+      size={12}
+    />
+  );
+};
+
 function CustomNode({
   nodeData,
   onSelect,
@@ -123,10 +167,22 @@ function CustomNode({
     return key ? t(key) : getPluralizeEntityName(getSharedMemberType(bundled));
   };
   const label = members ? groupLabel(members) : rawLabel;
+  // Design: the subject card carries a soft brand halo so it reads as the
+  // centre of the graph at any zoom; a highlighted path drops it for emphasis.
+  const getNodeShadow = () => {
+    if (data.highlighted) {
+      return 'tw:shadow-md';
+    }
+    if (isRoot) {
+      return 'tw:shadow-md tw:outline-4 tw:outline-utility-brand-100';
+    }
+
+    return members ? 'tw:shadow-sm' : 'tw:shadow-xs';
+  };
 
   return (
     <Box
-      className={classNames('knowledge-graph-custom-node', {
+      className={classNames('knowledge-graph-custom-node', getNodeShadow(), {
         highlighted: data.highlighted,
         dimmed: data.dimmed,
         'kg-node-root': isRoot,
@@ -153,7 +209,10 @@ function CustomNode({
         <Box align="center" className="tw:w-full tw:min-w-0" gap={2}>
           <Box
             align="center"
-            className="node-icon tw:rounded-md"
+            className={classNames(
+              'tw:shrink-0 tw:rounded-md tw:text-tertiary',
+              isRoot ? 'tw:size-8' : 'tw:size-7'
+            )}
             justify="center"
             style={{
               color,
@@ -185,17 +244,13 @@ function CustomNode({
             </Typography>
           </Box>
           {members && (
-            <span
-              className="tw:shrink-0 tw:rounded-full tw:border tw:px-1.5"
-              style={{
-                color,
-                backgroundColor: data.colorLight as string | undefined,
-                borderColor: color,
-              }}>
-              <Typography size="text-xs" weight="semibold">
-                {members.length}
-              </Typography>
-            </span>
+            <Avatar
+              className="tw:shrink-0"
+              colorVariant="neutral"
+              data-testid="kg-node-member-count"
+              initials={String(members.length)}
+              size="xs"
+            />
           )}
         </Box>
       </Button>
@@ -216,12 +271,14 @@ function CustomNode({
           direction="col"
           gap={0}>
           {members.slice(0, 3).map((member) => (
-            <Typography
-              className="tw:block tw:truncate tw:text-secondary"
-              key={member.id}
-              size="text-xs">
-              {getGraphNodeLabel(member)}
-            </Typography>
+            <Box align="center" className="tw:min-w-0" gap={2} key={member.id}>
+              <MemberVisual member={member} />
+              <Typography
+                className="tw:min-w-0 tw:truncate tw:text-secondary"
+                size="text-xs">
+                {getGraphNodeLabel(member)}
+              </Typography>
+            </Box>
           ))}
           <Box align="center" className="tw:mt-1" justify="between">
             <Button
