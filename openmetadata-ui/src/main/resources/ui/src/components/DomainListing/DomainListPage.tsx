@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  Input,
-} from '@openmetadata/ui-core-components';
+import { Box, Card, Input } from '@openmetadata/ui-core-components';
 import {
   Globe01,
   NoSearch,
