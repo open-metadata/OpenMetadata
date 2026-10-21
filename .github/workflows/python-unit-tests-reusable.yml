@@ -53,12 +53,11 @@ jobs:
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
-      - name: Validate Python policy and CI helpers
+      - name: Run Nox argument regressions
         if: ${{ matrix.py-version == inputs.coverage-python }}
         run: |
           source env/bin/activate
-          python .github/scripts/python_ci.py check-policy
-          python -m pytest .github/scripts/tests/test_python_ci.py .github/scripts/tests/test_nox_cli.py -q
+          python -m pytest .github/scripts/tests/test_nox_cli.py -q
         shell: bash
       - name: Run offline E2E framework tests
         if: ${{ matrix.py-version == inputs.coverage-python }}

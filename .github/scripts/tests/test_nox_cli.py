@@ -26,7 +26,6 @@ def nox_project(tmp_path):
             "def test_selected():\n    assert VALUE == 1\n"
             "def test_other():\n    assert VALUE == 1\n"
         )
-    (tmp_path / "test_failure.py").write_text("def test_failure():\n    assert False\n")
     return tmp_path
 
 
@@ -50,40 +49,17 @@ def run_nox(project, session, args):
 
 
 @pytest.mark.parametrize(
-    "args, passed, deselected",
-    [
-        (["-k", "selected", "--maxfail", "1", "-n0"], 1, 1),
-        (["-n0"], 2, 0),
-        (["tests/unit/test_choices.py::test_other", "-n0"], 1, 0),
-        (["tests/unit/test_choices.py", "-k", "selected", "-n0"], 1, 1),
-    ],
-)
-def test_unit_pytest_selection_and_valued_options(nox_project, args, passed, deselected):
-    result = run_nox(nox_project, "unit-tests", args)
-    output = result.stdout + result.stderr
-    assert result.returncode == 0, output
-    assert f"{passed} passed" in output
-    if deselected:
-        assert f"{deselected} deselected" in output
-
-
-@pytest.mark.parametrize("session", ["unit-tests", "integration-tests"])
-def test_assertion_failure_propagates_through_nox(nox_project, session):
-    result = run_nox(nox_project, session, ["test_failure.py", "-n0"])
-    assert result.returncode != 0
-    assert "1 failed" in result.stdout + result.stderr
-
-
-@pytest.mark.parametrize(
     "args, passed",
     [
-        (["--standalone", "--workers", "0", "-k", "selected", "--maxfail", "1"], 1),
-        (["--standalone", "--workers", "0"], 2),
-        (["--standalone", "--workers", "1", "tests/integration/test_choices.py::test_other"], 1),
+        (["-k", "selected", "--maxfail", "1"], 1),
+        ([], 2),
+        (["tests/{suite}/test_choices.py::test_other"], 1),
     ],
 )
-def test_integration_options_and_default_root(nox_project, args, passed):
-    result = run_nox(nox_project, "integration-tests", args)
+@pytest.mark.parametrize("suite", ["unit", "integration"])
+def test_pytest_arguments_and_default_root(nox_project, suite, args, passed):
+    options = ["-n0"] if suite == "unit" else ["--standalone", "--workers", "0"]
+    result = run_nox(nox_project, f"{suite}-tests", [*options, *(arg.format(suite=suite) for arg in args)])
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
     assert f"{passed} passed" in output

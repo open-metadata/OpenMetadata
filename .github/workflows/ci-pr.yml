@@ -11,7 +11,7 @@
 
 name: CI — Pull Request
 'on':
-  workflow_dispatch:
+  workflow_dispatch: null
   pull_request_target:
     branches:
       - main
@@ -33,20 +33,17 @@ env:
   SPACY_MODEL_SHA256: 5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310
 jobs:
   changes:
-    name: Select work and authorize
+    name: Authorize & Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 15
     outputs:
-      plan: ${{ steps.plan.outputs.plan }}
-      run_style: ${{ steps.plan.outputs.run_style }}
-      run_static: ${{ steps.plan.outputs.run_static }}
-      run_unit: ${{ steps.plan.outputs.run_unit }}
-      run_integration: ${{ steps.plan.outputs.run_integration }}
-      prepare_spacy_model: ${{ steps.plan.outputs.prepare_spacy_model }}
-      build_backend: ${{ steps.plan.outputs.build_backend }}
-      minimum: ${{ steps.plan.outputs.minimum }}
-      image: ${{ steps.plan.outputs.image }}
-      versions: ${{ steps.plan.outputs.versions }}
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.ci == 'true' || steps.filter.outputs.python == 'true') && 'true' ||
+        'false' }}
+      style: ${{ github.event_name == 'workflow_dispatch' && 'true' || (steps.filter.outputs.ci == 'true' || steps.filter.outputs.style == 'true') && 'true' || 'false'
+        }}
+      minimum: ${{ steps.versions.outputs.minimum }}
+      image: ${{ steps.versions.outputs.image }}
+      versions: ${{ steps.versions.outputs.versions }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -55,25 +52,67 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
           filter: blob:none
-      - name: Changed files
+      - name: Detect changed paths
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           ref: ${{ github.sha }}
-          list-files: json
           filters: |
-            all:
-              - '**'
-      - name: Select Python work
-        id: plan
+            ci:
+            - .github/workflows/ci-*.yml
+            - .github/workflows/backend-build-reusable.yml
+            - .github/workflows/python-unit-tests-reusable.yml
+            - .github/workflows/python-integration-tests-reusable.yml
+            - .github/workflows/py-tests*.yml
+            - .github/workflows/py-checkstyle.yml
+            - .github/workflows/py-sonarcloud-nightly.yml
+            - .github/workflows/populate-playwright-caches.yml
+            - .github/actions/setup-openmetadata-test-environment/**
+            - .github/actions/python-checkstyle/**
+            - .github/scripts/tests/test_nox_cli.py
+            - Makefile
+            python:
+            - ingestion/**
+            - openmetadata-spec/**
+            - .github/workflows/py-cli-e2e-tests.yml
+            - .github/workflows/py-cli-e2e-tests-v2.yml
+            - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
+            - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
+            - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
+            - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
+            style:
+            - ingestion/**
+            - openmetadata-airflow-apis/**
+            - openmetadata-spec/**
+      - name: Validate change detection
+        if: ${{ github.event_name != 'workflow_dispatch' }}
         env:
-          CHANGED_FILES: ${{ steps.filter.outputs.all_files }}
-        run: python3 .github/scripts/python_ci.py plan
+          CI_CHANGED: ${{ steps.filter.outputs.ci }}
+          PYTHON_CHANGED: ${{ steps.filter.outputs.python }}
+          STYLE_CHANGED: ${{ steps.filter.outputs.style }}
+        run: |
+          for changed in "$CI_CHANGED" "$PYTHON_CHANGED" "$STYLE_CHANGED"; do
+            case "$changed" in
+              true|false) ;;
+              *) echo "Missing or invalid change-filter output: $changed"; exit 1 ;;
+            esac
+          done
+        shell: bash
+      - name: Read Python versions
+        id: versions
+        run: |
+          jq -er '
+            .image as $image | select(.tested | index($image)) |
+            "minimum=\(.tested[0])", "image=\(.image)",
+            "versions=\([.image] | tojson)"
+          ' ingestion/python-versions.json >> "$GITHUB_OUTPUT"
+        shell: bash
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994
-        if: ${{ github.event_name == 'pull_request_target' && (steps.plan.outputs.run_unit == 'true' || steps.plan.outputs.run_style == 'true') }}
+        if: ${{ github.event_name == 'pull_request_target' && (steps.filter.outputs.ci == 'true' || steps.filter.outputs.python == 'true' || steps.filter.outputs.style
+          == 'true') }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           check-name: Team Label
@@ -81,7 +120,8 @@ jobs:
           wait-interval: 30
       - name: Verify PR labels
         uses: jesusvasquez333/verify-pr-label-action@657d111bbbe13e22bbd55870f1813c699bde1401
-        if: ${{ github.event_name == 'pull_request_target' && (steps.plan.outputs.run_unit == 'true' || steps.plan.outputs.run_style == 'true') }}
+        if: ${{ github.event_name == 'pull_request_target' && (steps.filter.outputs.ci == 'true' || steps.filter.outputs.python == 'true' || steps.filter.outputs.style
+          == 'true') }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           valid-labels: safe to test
@@ -100,25 +140,26 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
       - name: Validate selection
         env:
-          NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python3 .github/scripts/python_ci.py verify --check style
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          STYLE_CHANGED: ${{ needs.changes.outputs.style }}
+        run: |
+          case "$CHANGES_RESULT:$STYLE_CHANGED" in
+            success:true|success:false) ;;
+            *) echo "Python checkstyle selection did not succeed"; exit 1 ;;
+          esac
+        shell: bash
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
           allow-unsafe-pr-checkout: true
-        if: ${{ needs.changes.outputs.run_style == 'true' }}
+        if: ${{ needs.changes.outputs.style == 'true' }}
       - name: Python checkstyle
         id: style
-        if: ${{ needs.changes.outputs.run_style == 'true' }}
+        if: ${{ needs.changes.outputs.style == 'true' }}
         uses: ./.github/actions/python-checkstyle
         with:
           python-version: ${{ needs.changes.outputs.minimum }}
@@ -137,7 +178,7 @@ jobs:
   static:
     name: Python static checks
     needs: changes
-    if: ${{ needs.changes.outputs.run_static == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -162,7 +203,7 @@ jobs:
   prepare-spacy-model:
     name: Prepare spaCy model
     needs: changes
-    if: ${{ needs.changes.outputs.prepare_spacy_model == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
@@ -203,7 +244,7 @@ jobs:
         continue-on-error: true
   backend:
     needs: changes
-    if: ${{ needs.changes.outputs.build_backend == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/backend-build-reusable.yml
     with:
       checkout-ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
@@ -211,7 +252,7 @@ jobs:
     needs:
       - changes
       - prepare-spacy-model
-    if: ${{ needs.changes.outputs.run_unit == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/python-unit-tests-reusable.yml
     with:
       checkout-ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
@@ -222,7 +263,7 @@ jobs:
       - changes
       - prepare-spacy-model
       - backend
-    if: ${{ needs.changes.outputs.run_integration == 'true' }}
+    if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/python-integration-tests-reusable.yml
     with:
       checkout-ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
@@ -242,15 +283,24 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
       - name: Verify expected Python jobs
         env:
-          NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python3 .github/scripts/python_ci.py verify --check tests
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          UNIT_RESULT: ${{ needs.unit.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+          BACKEND_RESULT: ${{ needs.backend.result }}
+          MODEL_RESULT: ${{ needs.prepare-spacy-model.result }}
+        run: |
+          test "$CHANGES_RESULT" = success
+          for result in "$STATIC_RESULT" "$UNIT_RESULT" "$INTEGRATION_RESULT" "$BACKEND_RESULT" "$MODEL_RESULT"; do
+            case "$PYTHON_CHANGED:$result" in
+              true:success|false:skipped) ;;
+              *) echo "Unexpected Python job result: selected=$PYTHON_CHANGED result=$result"; exit 1 ;;
+            esac
+          done
+        shell: bash
   coverage:
     needs:
       - changes
@@ -287,7 +337,17 @@ jobs:
           pattern: py-coverage-*
           path: ingestion/coverage-data/
       - name: Prepare coverage files
-        run: python3 .github/scripts/python_ci.py prepare-coverage
+        run: |
+          cd ingestion
+          shopt -s globstar nullglob
+          files=(coverage-data/**/.coverage)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Python coverage data downloaded"
+            exit 1
+          fi
+          for index in "${!files[@]}"; do
+            mv "${files[$index]}" ".coverage.ci-$index"
+          done
         shell: bash
       - name: Combine coverage
         run: |

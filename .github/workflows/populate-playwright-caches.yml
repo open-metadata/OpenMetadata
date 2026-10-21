@@ -261,7 +261,9 @@ jobs:
         with:
           persist-credentials: false
       - id: policy
-        run: python3 .github/scripts/python_ci.py policy
+        run: |
+          tested=$(jq -ce '.tested | select(length > 0)' ingestion/python-versions.json)
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
 
   warm-venv:
     needs: python-policy
