@@ -160,6 +160,31 @@ export const WithoutSearchIcon: Story = {
   ),
 };
 
+/** `allowClear` shows an "x" once there is text; it clears the input and the selection. */
+export const AllowClear: Story = {
+  render: () => (
+    <div style={{ width: 320, display: 'grid', gap: 16 }}>
+      <ComboBox
+        allowClear
+        defaultSelectedKey="2"
+        items={ITEMS}
+        label="Asset type"
+        placeholder="Search..."
+        shortcut={false}>
+        {renderItem}
+      </ComboBox>
+      <ComboBox
+        allowClear
+        defaultSelectedKey="3"
+        items={ITEMS}
+        label="With shortcut"
+        placeholder="Search...">
+        {renderItem}
+      </ComboBox>
+    </div>
+  ),
+};
+
 export const Disabled: Story = {
   render: () => (
     <div style={{ width: 320 }}>

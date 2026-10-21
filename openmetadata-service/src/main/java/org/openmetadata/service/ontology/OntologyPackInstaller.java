@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.InstallOntologyPack;
 import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.data.OntologyPackInstallResult;
@@ -66,25 +65,17 @@ public final class OntologyPackInstaller {
 
   private OntologyPackInstallResult installPack(
       final String packId, final InstallOntologyPack request, final InstallationContext context) {
-    final OntologyPackManifest manifest = requireInstallable(packId);
     final String targetGlossary = validatedTargetGlossary(request);
-    final List<OntologyPackModule> modules = catalog.select(manifest, request.getModuleIds());
-    final String format = requireSingleFormat(modules);
-    final String rdf = joinContent(modules);
+    final var selected = contentLoader.loadSelected(catalog, packId, request.getModuleIds());
     final OntologyImportResult importResult =
         importerFactory
             .create(context)
-            .importRdf(rdf, format, targetGlossary, Boolean.TRUE.equals(request.getDryRun()));
-    return result(manifest, modules, request, importResult);
-  }
-
-  private OntologyPackManifest requireInstallable(final String packId) {
-    final OntologyPackManifest manifest = catalog.require(packId);
-    if (!Boolean.TRUE.equals(manifest.getBundled())) {
-      throw new IllegalArgumentException(
-          "Ontology pack '%s' requires an independently licensed payload".formatted(packId));
-    }
-    return manifest;
+            .importRdf(
+                selected.body(),
+                selected.format(),
+                targetGlossary,
+                Boolean.TRUE.equals(request.getDryRun()));
+    return result(selected.manifest(), selected.modules(), request, importResult);
   }
 
   public static String validatedTargetGlossary(final InstallOntologyPack request) {
@@ -94,23 +85,6 @@ public final class OntologyPackInstaller {
       throw new IllegalArgumentException("Target glossary name is required");
     }
     return target;
-  }
-
-  private static String requireSingleFormat(final List<OntologyPackModule> modules) {
-    final List<String> formats =
-        modules.stream().map(module -> module.getFormat().value()).distinct().toList();
-    if (formats.size() != 1) {
-      throw new IllegalArgumentException("Selected ontology pack modules must use one RDF format");
-    }
-    return formats.getFirst();
-  }
-
-  private String joinContent(final List<OntologyPackModule> modules) {
-    return modules.stream()
-        .map(OntologyPackModule::getResourcePath)
-        .map(contentLoader::load)
-        .map(OntologyPackContentLoader.PackContent::body)
-        .collect(Collectors.joining(System.lineSeparator()));
   }
 
   private static OntologyPackInstallResult result(

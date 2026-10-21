@@ -17,7 +17,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { Table } from '../../../generated/entity/data/table';
 import { getSampleDataByTableId } from '../../../rest/tableAPI';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import SampleDataTable from './SampleDataTable.component';
 
 const mockProps = {
@@ -66,7 +66,7 @@ jest.mock('../../common/DeleteModal/DeleteModal', () => {
 });
 
 jest.mock('../../../utils/Export/ExportUtils', () => ({
-  downloadFile: jest.fn(),
+  downloadCsv: jest.fn(),
 }));
 
 describe('SampleDataTable with duplicate column names', () => {
@@ -100,7 +100,7 @@ describe('SampleDataTable with duplicate column names', () => {
     const cellTexts = Array.from(
       container.querySelectorAll('tbody tr[data-row-key] td')
     ).map((cell) => cell.textContent);
-    const csvContent = (downloadFile as jest.Mock).mock.calls[0][0] as string;
+    const csvContent = (downloadCsv as jest.Mock).mock.calls[0][0] as string;
     const [header, firstDataLine] = csvContent.split('\n');
 
     expect(header).toBe(SAMPLE_COLUMNS.join(','));

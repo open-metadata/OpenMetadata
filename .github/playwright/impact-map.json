@@ -317,7 +317,11 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -394,6 +398,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AppRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/SearchResource.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java"
@@ -403,7 +408,8 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
-        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {

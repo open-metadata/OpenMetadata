@@ -44,7 +44,7 @@ const AssignErrorPlaceHolder = ({
     <div
       className={classNames(
         className,
-        'h-full flex-center border-default border-radius-sm bg-white'
+        'h-full flex-center border-default border-radius-sm tw:bg-surface'
       )}
       data-testid={`assign-error-placeholder-${heading}`}>
       <Box

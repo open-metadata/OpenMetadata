@@ -87,9 +87,8 @@ public final class SeveralSources {
               "Filter '%s' is not supported by: %s. A filter applies to every event, so every source of the alert must support it.",
               chosen.getName(), String.join(", ", without)));
     }
-    EventFilterRule definition =
-        definitionOf(chosen, catalog.getFirst().getSupportedFilters()).orElseThrow();
-    return AlertConditions.ruleOf(definition, chosen);
+    // Stored with its own name: each source may call it after its own assets.
+    return AlertConditions.ruleOf(EventsSubscriptionRegistry.definition(chosen.getName()), chosen);
   }
 
   private static EventFilterRule triggersGroupedBySource(

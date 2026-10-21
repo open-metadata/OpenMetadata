@@ -255,6 +255,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -1311,6 +1312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -1573,14 +1577,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    checkEntityStatusNotOwnedByWorkflow(current, change);
-    // A workflow's approval task already decided who may approve (reviewers, owners or named
-    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (isDecidedByPeople(current, change, from)) {
+      checkDecidedByAPerson(current, change);
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    } else {
+      checkEntityStatusNotOwnedByWorkflow(current, change);
+      checkReviewerLeavesReview(current, change, from, to);
+    }
+  }
+
+  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
+  private boolean isDecidedByPeople(T current, T change, String from) {
+    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
+  }
+
+  private void checkDecidedByAPerson(T current, T change) {
+    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve or reject %s '%s'; a bot cannot",
+              entityType, current.getFullyQualifiedName()));
+    }
+  }
+
+  // A workflow's approval task already decided who may approve (reviewers, owners or named
+  // candidates), so the reviewer rule only guards direct edits and imports.
+  private void checkReviewerLeavesReview(T current, T change, String from, String to) {
     if (EntityStatus.IN_REVIEW.value().equals(from)
         && (EntityStatus.APPROVED.value().equals(to) || EntityStatus.REJECTED.value().equals(to))
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
+  }
+
+  /**
+   * Whether people move this entity out of {@code from} directly, even while a workflow owns its
+   * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
+   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
+   * decides it.
+   */
+  protected boolean isStageDecidedByPeople(T current, String from) {
+    return false;
   }
 
   /**
@@ -1608,7 +1645,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
   // included, before checking who may move the entity out of review.
   private void loadReviewersForStageCheck(T original, String from) {
-    if (supportsReviewers && EntityStatus.IN_REVIEW.value().equals(from)) {
+    if (supportsReviewers
+        && (EntityStatus.IN_REVIEW.value().equals(from)
+            || isStageDecidedByPeople(original, from))) {
       T withReviewers =
           get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
       original.setReviewers(withReviewers.getReviewers());
@@ -3913,13 +3952,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * keys leave Redis in one DEL: evicted one entity at a time, a restored database read fresh while
    * its schemas still served their soft-deleted copies. The write epochs move before that DEL so a
    * loader holding the pre-commit row cannot write it back afterwards, and L1 is evicted after it
-   * because a reader in the window re-populated L1 from the stale Redis entry. The repair is
-   * re-armed once the transaction ends: the one armed inside it may already have fired.
+   * because a reader in the window re-populated L1 from the stale Redis entry. They move again
+   * before the L1 eviction: a reader that took its epoch after the first move and fetched the stale
+   * entry before the DEL would otherwise pass its re-check after putting that entry into L1. The
+   * repair is re-armed once the transaction ends: the one armed inside it may already have fired.
    */
   private static void evictTransactionWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
+      bumpWriteEpoch(write.entityType, write.id, write.fqn);
       evictLocalCopies(write.entityType, write.id, write.fqn);
       invalidateDerivedRedisL2(write.entityType, write.id);
       publishRefChange(write.entityType, write.id, write.fqn);
@@ -4610,6 +4652,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")
@@ -12017,26 +12070,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * order those copies: a same-session revert moves both back. Evictions commute, so the order in
      * which writers finish no longer matters.
      */
-    private void invalidateCachesAfterStore() {
+    @VisibleForTesting
+    void invalidateCachesAfterStore() {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
       // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
       // when it does its end-of-load check. Pair with the loader-side race guard in
       // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
-      bumpWriteEpoch(entityType, id, fqn);
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        bumpWriteEpoch(entityType, null, originalFqn);
-      }
-
-      // Evict the Guava L1 so future reads reload from Redis/DB.
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
-      // getByName(oldFqn) misses and falls through to a 404 from DB.
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-      }
+      bumpWriteEpochs(id, fqn);
 
       // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
       // row. A stale base hash field would otherwise serve old values, including old owners and
@@ -12070,6 +12112,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         cachedLineage.invalidate(id);
       }
 
+      // Evict L1 only once Redis has dropped the old JSON. Evicting it first let a concurrent
+      // read, in the gap before the Redis delete above, reload the pre-commit copy from Redis
+      // into L1, where it outlived this write until EntityCacheRepair ran. A read that fetched
+      // that copy before the delete can still put it after this eviction, and it took its epoch
+      // after the first bump, so bump again: its re-check after the put then drops the copy.
+      bumpWriteEpochs(id, fqn);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
+      // getByName(oldFqn) misses and falls through to a 404 from DB.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
+      }
       RequestEntityCache.invalidate(entityType, id, fqn);
       deferCacheBundleInvalidation(entityType, id, fqn);
 
@@ -12081,6 +12136,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (originalFqn != null && !originalFqn.equals(fqn)) {
           pubsub.publish(entityType, id, originalFqn, "rename-old");
         }
+      }
+    }
+
+    private void bumpWriteEpochs(UUID id, String fqn) {
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
       }
     }
 
