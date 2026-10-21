@@ -191,6 +191,22 @@ describe('TotalDataAssetsWidget', () => {
     );
   });
 
+  // The chip shares the header line with the title, so a large change is
+  // compacted there; the row keeps the exact figure.
+  it('compacts a large change in the status chip but not in its row', () => {
+    renderWidget({
+      assetTypes: [{ ...TABLE, delta: 115264 } as never],
+      totalDelta: 115266,
+    } as never);
+
+    expect(
+      screen.getByTestId('topic-status-totalDataAssets')
+    ).toHaveTextContent('"value":"+115.3K"');
+    expect(screen.getByTestId('asset-type-delta')).toHaveTextContent(
+      '+115,264'
+    );
+  });
+
   it('asks the hook for the selected window', () => {
     renderWidget();
 
