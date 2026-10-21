@@ -64,7 +64,7 @@ const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { permissions } = usePermissionProvider();
-  const { extensionRegistry } = useApplicationsProvider();
+  const { getContributions, contributionsReady } = useApplicationsProvider();
   // Seed userData from the application store so the page chrome renders
   // immediately on tab switch. The getUserByName fetch below refreshes
   // fields in the background.
@@ -225,7 +225,10 @@ const ProfilePage: React.FC = () => {
   );
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
-  // tabs through the `profile.tabs` extension point. Map each surviving
+  // tabs through the `profile.tabs` extension point. Read them through
+  // `getContributions`, whose identity changes once plugins have registered —
+  // the registry itself never changes identity, so a refresh on a contributed
+  // tab's hash would otherwise never see it. Map each surviving
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
   // pick the app-mode variant of a tab it also contributes to classic pages.
   const navItems: ProfileNavItem[] = useMemo(() => {
@@ -242,8 +245,9 @@ const ProfilePage: React.FC = () => {
       isLoggedInUser: true,
       isAiMode: true,
     };
-    const contributed: ProfileNavItem[] = extensionRegistry
-      .getContributions<TabContribution>(EXTENSION_POINTS.PROFILE_TABS)
+    const contributed: ProfileNavItem[] = getContributions<TabContribution>(
+      EXTENSION_POINTS.PROFILE_TABS
+    )
       .filter(
         (tab) => !tab.isHidden && (!tab.condition || tab.condition(context))
       )
@@ -274,7 +278,7 @@ const ProfilePage: React.FC = () => {
     );
 
     return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
-  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
+  }, [currentUser?.isAdmin, getContributions, permissions, userData]);
 
   // Clear header override whenever the user switches nav items. The profile tab
   // carries the current user's name as its sub-path (`#profile/<username>`) so
@@ -343,9 +347,10 @@ const ProfilePage: React.FC = () => {
       return <Loader />;
     }
 
-    // Permissions load after the page mounts; until then every permission-gated
-    // tab reads as hidden, so wait instead of flashing no-access.
-    if (!selectedItem && isEmpty(permissions)) {
+    // Permissions and plugin contributions load after the page mounts; until
+    // both are in, a permission-gated or contributed tab (e.g. `#billing`)
+    // reads as missing, so wait instead of flashing no-access.
+    if (!selectedItem && (isEmpty(permissions) || !contributionsReady)) {
       return <Loader />;
     }
 

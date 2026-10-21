@@ -97,13 +97,17 @@ jest.mock('./tabs/notification/NotificationPanel', () => ({
 // "My Connections" is no longer built in — a plugin contributes it through the
 // `profile.tabs` extension point, so the page is exercised with one such tab.
 const mockGetContributions = jest.fn();
+// The provider hands out a new `getContributions` each time plugins register
+// (its `contributionsVersion` bump); tests replace this to simulate that.
+let mockApplicationsProvider = {
+  getContributions: (id: string) => mockGetContributions(id),
+  contributionsReady: true,
+};
 
 jest.mock(
   '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
-    useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
-    }),
+    useApplicationsProvider: () => mockApplicationsProvider,
   })
 );
 
@@ -156,6 +160,10 @@ describe('ProfilePage', () => {
     mockPermissions = {};
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: true,
+    };
   });
 
   it('renders the built-in and contributed nav items with the default profile content', async () => {
@@ -343,5 +351,56 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('content-members')).not.toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
     expect(screen.queryByTestId('profile-nav-members')).not.toBeInTheDocument();
+  });
+
+  it('waits on the loader while permissions are still empty', async () => {
+    mockHashState = { tab: 'members', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  // A refresh on `#my-connections` (or Collate's `#billing/...`) resolves the
+  // hash before plugins have registered their tabs.
+  it('shows the loader, not no-access, until a deep-linked contributed tab is registered', async () => {
+    mockPermissions = { table: { ViewBasic: true } };
+    mockHashState = { tab: 'my-connections', subPath: '', params: {} };
+    mockGetContributions.mockReturnValue([]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: false,
+    };
+    const { rerender } = render(<ProfilePage />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+
+    // Plugins register: the provider bumps its version, so `getContributions`
+    // gets a new identity and the flag turns ready.
+    mockGetContributions.mockReturnValue([myConnectionsContribution]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: true,
+    };
+    await act(async () => {
+      rerender(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('content-my-connections')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('profile-nav-my-connections')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 });
