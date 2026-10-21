@@ -429,21 +429,39 @@ class UnitycatalogLineageSource(Source):
             self._table_cache[entity_fqn] = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
         return self._table_cache[entity_fqn]
 
-    def _report_unresolved_upstream(self, source_table_full_name: str, databricks_table_fqn: str) -> None:
+    def _resolve_upstream(self, source_table_full_name: str, databricks_table_fqn: str) -> Table | None:
         """
-        An edge into an ingested table whose upstream no searched service holds is lost
-        lineage, not noise, so it reaches the run status rather than the debug log.
-        It is reported once per upstream: a hot upstream feeds many targets.
+        Resolve an upstream across the searched services, reporting it when it cannot be.
+
+        An edge into an ingested table that loses its upstream is lost lineage, not
+        noise, whether no service holds the table or the lookup failed, so either
+        reaches the run status rather than the debug log.
         """
-        logger.debug("Unable to find upstream entity: %s -> %s", source_table_full_name, databricks_table_fqn)
-        if source_table_full_name not in self._unresolved_reported:
-            self._unresolved_reported.add(source_table_full_name)
-            self.status.warning(
+        try:
+            from_entity = self._find_table(source_table_full_name, self._upstream_service_names)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            self._report_skipped_upstream(
+                source_table_full_name,
+                f"Failed to look up upstream table: {exc}; lineage to {databricks_table_fqn} skipped.",
+            )
+            return None
+
+        if not from_entity:
+            self._report_skipped_upstream(
                 source_table_full_name,
                 f"Upstream table not found in services {self._upstream_service_names};"
                 f" lineage to {databricks_table_fqn} skipped. Ingest the table, or add its"
                 " service to Cross Database Service Names with Process Cross Database Lineage on.",
             )
+        return from_entity
+
+    def _report_skipped_upstream(self, source_table_full_name: str, reason: str) -> None:
+        """Warn once per upstream: a hot upstream feeds many targets."""
+        logger.debug("Skipping upstream %s: %s", source_table_full_name, reason)
+        if source_table_full_name not in self._unresolved_reported:
+            self._unresolved_reported.add(source_table_full_name)
+            self.status.warning(source_table_full_name, reason)
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> str | None:
         if not data_model_entity:
@@ -614,9 +632,8 @@ class UnitycatalogLineageSource(Source):
             if source_table_full_name == databricks_table_fqn:
                 continue
             try:
-                from_entity = self._find_table(source_table_full_name, self._upstream_service_names)
+                from_entity = self._resolve_upstream(source_table_full_name, databricks_table_fqn)
                 if not from_entity:
-                    self._report_unresolved_upstream(source_table_full_name, databricks_table_fqn)
                     continue
 
                 lineage_details = self._get_column_lineage_details(

@@ -19,7 +19,11 @@ pipeline config but the Unity Catalog source never read them.
   each of `crossDatabaseServiceNames` in the configured order; the first match wins.
 - A **target** is resolved in this service only. An edge is emitted by the run of the service that
   owns its target, so an A → B edge needs B's run to list A — not the reverse.
-- An upstream no searched service holds is a run-status warning, once per upstream name.
+- Only a confirmed miss moves on to the next service. A failed lookup stops the search, since the
+  table may exist in the service that failed and a same-named table later in the list must not
+  take its edge.
+- An upstream no searched service holds, or whose lookup failed, is a run-status warning, once
+  per upstream name.
 
 For this source the two fields mean "where else to look for an upstream". In the SQL-parser
 lineage path (`lineage_source.py`) they drive `yield_cross_database_lineage`; the names are shared,

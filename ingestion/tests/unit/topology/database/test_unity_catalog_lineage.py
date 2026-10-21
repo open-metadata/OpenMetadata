@@ -544,6 +544,8 @@ class TestCrossServiceLineage:
 
         assert list(source._iter()) == []
         assert "local_unitycatalog.cat.schema.src" not in source._table_cache
+        assert [list(warning) for warning in source.status.warnings] == [["cat.schema.src"]]
+        assert "connection reset" in source.status.warnings[0]["cat.schema.src"]
 
 
 class TestSqlEnrichment:
