@@ -158,21 +158,20 @@ describe('profileNavConfig', () => {
     expect(applications?.isVisible?.({} as UIPermission, false)).toBeFalsy();
   });
 
-  // Classic served these pages to non-admins holding the matching view
-  // permission (SettingsRouter); the modal tabs follow the same gates.
+  // The settings surfaces behind these tabs are admin-only, whatever view
+  // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).
   it.each([
     ['members', ResourceEntity.TEAM],
     ['members', ResourceEntity.USER],
     ['access-control', ResourceEntity.ROLE],
     ['access-control', ResourceEntity.POLICY],
     ['bots', ResourceEntity.BOT],
-  ])('shows %s to a non-admin with %s view permission', (id, resource) => {
+  ])('hides %s from a non-admin even with %s view permission', (id, resource) => {
     const item = getProfileNavItem(id as never);
-    const canView = { [resource]: { ViewBasic: true } } as UIPermission;
+    const canView = { [resource]: { ViewAll: true } } as unknown as UIPermission;
 
     expect(item.id).toBe(id);
-    expect(item.isVisible?.(canView, false)).toBe(true);
-    expect(item.isVisible?.({} as UIPermission, false)).toBe(false);
+    expect(item.isVisible?.(canView, false)).toBe(false);
     expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
   });
 });

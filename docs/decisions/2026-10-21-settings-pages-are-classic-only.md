@@ -3,15 +3,16 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-21 (initial); v2 2026-10-21 (links keep the page query string; modal
   tabs and views follow classic's view permissions); v3 2026-10-21 (a team link carries its tab);
-  v4 2026-10-21 (billing plans map to `#billing/plans`)
+  v4 2026-10-21 (billing plans map to `#billing/plans`); v5 2026-10-21 (Members, Access Control
+  and Bots are admin-only again; a hash naming a hidden tab keeps the no-access state)
 - **Deciders:** Chirag Madlani
 - **Guard:** `AppModeRoutes.test.tsx` ("classic-only settings routes": the AI shell serves its
   not-found page for `/settings/*`, `/marketplace/*` and `/bots/*`, ahead of a plugin fallback);
   `SettingsModalLinkUtils.test.ts` (the path-to-hash table, its round-trip through each panel's
   parser, and classic vs AI output of the route builders); `useSettingsHash.test.tsx` (a followed
   link keeps the query string and closing returns to the page entry); `profileNavConfig.test.tsx`,
-  `ProfilePage.test.tsx`, `MembersPanel.test.tsx`, `AccessControlPanel.test.tsx` (view-permission
-  gates and the no-access state)
+  `ProfilePage.test.tsx` (admin-only tabs and the no-access state); `ProfileOnlineUser.spec.ts`
+  ("Non-admin users cannot access the Members surface")
 - **Related:** `src/utils/SettingsModalLinkUtils.ts`, `hooks/useSettingsHash.ts`
 
 ## Context
@@ -36,13 +37,11 @@ URLs alive as a second way in, and the redirect needed its own permission rules.
   `getNotificationAlertDetailsPath`…) return through it, so their callers are unchanged. The
   services listing maps to `/connections` instead, and a path with no equivalent is returned
   unchanged, so in AI mode it lands on not-found.
-- **The modal shows what classic showed.** A tab that replaces classic pages is visible to an
-  admin or to anyone holding the view permission classic's `SettingsRouter` gated those pages on:
-  Members on TEAM or USER, Access Control on ROLE or POLICY, Bots on BOT. Inside a tab each view
-  keeps its own classic gate (team list on TEAM, user list on USER, roles on ROLE, policies on
-  POLICY, audit logs on `AuditLogs`, the permission debugger admin-only), and edit actions follow
-  the entity's own permissions. A hash naming a tab or view the user cannot open shows the
-  permission placeholder, never another tab.
+- **The settings tabs are admin-only.** Members, Access Control and Bots show to admins only,
+  whatever view permissions a non-admin holds on TEAM, USER, ROLE, POLICY or BOT; edit actions
+  inside them follow the entity's own permissions. A hash naming a tab the user cannot see (a
+  settings link to a team, role or policy, followed by a non-admin) shows that tab's header with
+  the permission placeholder, never another tab such as the user's own Profile.
 - **`settingsPathToHash` is the contract.** Classic path segments map to modal tabs and to the
   sub-paths each panel's own parser reads. A downstream distribution's settings pages join only
   by matching it. Collate's `/settings/billing/<page>` maps to `#billing/<page>`, so its billing

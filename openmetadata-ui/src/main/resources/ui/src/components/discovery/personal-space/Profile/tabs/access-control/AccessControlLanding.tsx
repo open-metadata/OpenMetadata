@@ -18,14 +18,11 @@ import {
   Policy as PolicyIcon,
   Role as RoleIcon,
 } from '@openmetadata/ui-core-components/icons';
-import { FC, useMemo } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import type { AccessControlView, LandingCard } from './AccessControl.types';
-import { canOpenAccessControlView } from './AccessControl.utils';
 
 const LANDING_CARDS: LandingCard[] = [
   {
@@ -66,22 +63,12 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
-  // Only the views the user can open; the panel would show no-access for the rest.
-  const cards = useMemo(
-    () =>
-      LANDING_CARDS.filter((card) =>
-        canOpenAccessControlView(card.view.type, permissions, isAdminUser)
-      ),
-    [permissions, isAdminUser]
-  );
 
   return (
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
       data-testid="access-control-landing">
-      {cards.map((card, index) => {
+      {LANDING_CARDS.map((card, index) => {
         const Icon = card.icon;
 
         return (

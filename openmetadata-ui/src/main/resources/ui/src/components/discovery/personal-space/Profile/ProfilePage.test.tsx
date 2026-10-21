@@ -315,26 +315,10 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
   });
 
-  // A settings link to a team opens `#members/teams/<fqn>`. Classic served the
-  // team pages to anyone with team view permission, not only admins.
-  it('opens the members tab for a non-admin with team view permission', async () => {
-    mockPermissions = { team: { ViewBasic: true } };
-    mockHashState = {
-      tab: 'members',
-      subPath: 'teams/Engineering',
-      params: {},
-    };
-
-    await act(async () => {
-      render(<ProfilePage />);
-    });
-
-    expect(screen.getByTestId('content-members')).toBeInTheDocument();
-    expect(screen.getByTestId('profile-nav-members')).toBeInTheDocument();
-  });
-
+  // A settings link to a team opens `#members/teams/<fqn>`; Members is
+  // admin-only, so a non-admin gets no-access even with team view permission.
   it('shows no-access, not the profile, for a tab the user cannot see', async () => {
-    mockPermissions = { table: { ViewBasic: true } };
+    mockPermissions = { team: { ViewAll: true }, user: { ViewAll: true } };
     mockHashState = {
       tab: 'members',
       subPath: 'teams/Engineering',

@@ -29,7 +29,6 @@ import { useApplicationsProvider } from '../../../../../Settings/Applications/Ap
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
-  canViewMembersView,
   hashSubPathToView,
   isTeamsOrDetailView,
   makeBreadcrumbAction,
@@ -102,9 +101,9 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     ).find((contribution) => contribution.key === view.key);
   }, [view, getContributions]);
 
-  // A view reached without the matching permission (e.g. via a deep link or a
-  // settings link) renders the lock placeholder instead of the view.
-  const isDeniedView = useMemo(() => {
+  // A form view reached without the matching create permission (e.g. via a deep
+  // link) renders the lock placeholder instead of the form.
+  const isDeniedFormView = useMemo(() => {
     if (view.type === TEAMS_ADD) {
       return !canCreateTeam;
     }
@@ -115,8 +114,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return !canCreateUser;
     }
 
-    return !canViewMembersView(view.type, permissions, isAdminUser);
-  }, [view, canCreateTeam, canCreateUser, permissions, isAdminUser]);
+    return false;
+  }, [view, canCreateTeam, canCreateUser]);
 
   // Stable no-op for the Organization view (its name isn't editable) so the
   // team-detail's fetch effect, which depends on onRename, can't re-fire.
@@ -351,7 +350,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     return renderSecondaryView();
   };
 
-  const content = isDeniedView ? permissionPlaceholder : renderView();
+  const content = isDeniedFormView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>

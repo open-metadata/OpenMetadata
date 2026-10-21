@@ -24,17 +24,13 @@ import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../../enums/common.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
 import {
-  canOpenAccessControlView,
   getDetailHeaderNames,
   hashSubPathToView,
   viewToSubPath,
@@ -82,7 +78,6 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { isAdminUser } = useAuth();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<AccessControlView>(
@@ -344,16 +339,6 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     detailHeaderTitleSuffix,
     resolvedDetailName,
   ]);
-
-  if (!canOpenAccessControlView(view.type, permissions, isAdminUser)) {
-    return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
-    );
-  }
 
   // Audit logs manages its own height/scroll and injects its own header actions.
   if (isAuditLogsView) {

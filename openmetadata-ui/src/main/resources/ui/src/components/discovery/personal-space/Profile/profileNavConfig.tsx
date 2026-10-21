@@ -143,16 +143,6 @@ export interface ProfileNavItem {
 
 export const DEFAULT_PROFILE_NAV_ID: ProfileNavId = 'profile';
 
-// Admin, or any of the view permissions classic `SettingsRouter` gated the
-// tab's pages on, so a non-admin viewer reaches what classic showed them.
-const canViewAny =
-  (...resources: ResourceEntity[]) =>
-  (permissions: UIPermission, isAdmin: boolean) =>
-    isAdmin ||
-    resources.some((resource) =>
-      userPermissions.hasViewPermissions(resource, permissions)
-    );
-
 export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'profile',
@@ -203,7 +193,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,
-    isVisible: canViewAny(ResourceEntity.ROLE, ResourceEntity.POLICY),
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <AccessControlPanel onHeaderChange={onHeaderChange} />
@@ -215,7 +205,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.bot-plural',
     description: 'message.page-sub-header-for-bots',
     icon: BotIcon as FC<{ className?: string }>,
-    isVisible: canViewAny(ResourceEntity.BOT),
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <BotsPanel onHeaderChange={onHeaderChange} />
@@ -269,7 +259,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    isVisible: canViewAny(ResourceEntity.TEAM, ResourceEntity.USER),
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />

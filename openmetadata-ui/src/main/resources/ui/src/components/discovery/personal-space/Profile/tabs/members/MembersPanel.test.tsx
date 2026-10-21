@@ -22,9 +22,7 @@ import type { MembersView } from './Members.types';
 
 // react-i18next is mocked globally in setupTests.js — no per-file mock needed.
 
-let mockPermissions: Record<string, unknown> = {
-  all: { Create: true, ViewAll: true },
-};
+let mockPermissions: Record<string, unknown> = { all: { Create: true } };
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
@@ -139,7 +137,7 @@ const renderAt = (hash: string) => {
 describe('MembersPanel', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true, ViewAll: true } };
+    mockPermissions = { all: { Create: true } };
   });
 
   it('renders landing view by default', () => {
@@ -175,7 +173,7 @@ describe('MembersPanel', () => {
 describe('MembersPanel hash navigation', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true, ViewAll: true } };
+    mockPermissions = { all: { Create: true } };
   });
 
   it('landing -> teams updates the view', () => {
@@ -258,47 +256,5 @@ describe('MembersPanel hash navigation', () => {
       screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('create-user')).not.toBeInTheDocument();
-  });
-
-  // Non-admin viewers: classic gated the team list on TEAM view and the user
-  // list on USER view, so each list keeps its own gate inside the tab.
-  it('shows a team to a non-admin with team view permission only', () => {
-    mockPermissions = { team: { ViewBasic: true } };
-    renderAt('#members/teams/Engineering');
-
-    expect(screen.getByTestId('members-team-detail')).toHaveAttribute(
-      'data-fqn',
-      'Engineering'
-    );
-  });
-
-  it('shows no-access for a team to a non-admin without team view permission', () => {
-    mockPermissions = { user: { ViewBasic: true } };
-    renderAt('#members/teams/Engineering');
-
-    expect(
-      screen.getByTestId('permission-error-placeholder')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('members-team-detail')).not.toBeInTheDocument();
-  });
-
-  it('shows no-access for the user list to a non-admin without user view permission', () => {
-    mockPermissions = { team: { ViewBasic: true } };
-    renderAt('#members/users');
-
-    expect(
-      screen.getByTestId('permission-error-placeholder')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('users-panel')).not.toBeInTheDocument();
-  });
-
-  it('keeps online users open to a non-admin without team or user view permission', () => {
-    mockPermissions = { table: { ViewBasic: true } };
-    renderAt('#members/online-users');
-
-    expect(screen.getByTestId('online-users')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('permission-error-placeholder')
-    ).not.toBeInTheDocument();
   });
 });

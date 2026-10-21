@@ -34,21 +34,9 @@ jest.mock(
   })
 );
 
-let mockPermissions: Record<string, unknown> = {};
-let mockIsAdmin = true;
-jest.mock(
-  '../../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
-);
-jest.mock('../../../../../../hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: mockIsAdmin }),
-}));
-
 describe('MembersLanding', () => {
   beforeEach(() => {
     mockGetContributions.mockReturnValue([]);
-    mockPermissions = {};
-    mockIsAdmin = true;
   });
 
   it('renders 4 landing cards', () => {
@@ -104,19 +92,5 @@ describe('MembersLanding', () => {
       type: 'section',
       key: 'provisioning',
     });
-  });
-
-  // Each card opens a view the panel gates; a card the user cannot open would
-  // only lead to no-access.
-  it('shows a non-admin only the lists their view permissions open', () => {
-    mockIsAdmin = false;
-    mockPermissions = { team: { ViewBasic: true } };
-
-    render(<MembersLanding onNavigate={jest.fn()} />);
-
-    expect(screen.getByTestId('members-card-teams')).toBeInTheDocument();
-    expect(screen.getByTestId('members-card-online-users')).toBeInTheDocument();
-    expect(screen.queryByTestId('members-card-users')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('members-card-admins')).not.toBeInTheDocument();
   });
 });
