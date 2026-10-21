@@ -38,6 +38,7 @@ from metadata.pii.algorithms.presidio_utils import (
     load_nlp_engine,
 )
 from metadata.pii.algorithms.tags import PIITag
+from metadata.pii.constants import PII
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -54,8 +55,10 @@ _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
 # DATE_TIME entity types that require column-name corroboration before a content hit
 # is accepted as PII.  A DateRecognizer scores any parseable date at ≥0.6, so
 # event_timestamp / created_at would otherwise always be tagged PII.NonSensitive.
-# We suppress the hit unless the column name matches a personal-date allowlist
-# (birth_date, dob, hire_date, …) defined in column_patterns.py.
+# For tags in the PII classification we suppress the hit unless the column name is
+# confirmed as a personal date, either by the tag's own column-name recognizers or by
+# the built-in allowlist (birth_date, dob, hire_date, …) in column_patterns.py.
+# Tags in other classifications (e.g. a custom General.Date) keep their content hits.
 _CORROBORATION_REQUIRED_ENTITY_TYPES: frozenset[str] = frozenset({"DATE_TIME"})
 
 
@@ -193,6 +196,18 @@ class TagAnalyzer:
     def _column_name(self) -> str:
         return self._column.name.root
 
+    @property
+    def _is_pii_tag(self) -> bool:
+        classification = self.tag.classification
+        return classification is not None and classification.name == PII
+
+    def _is_personal_date_column(self) -> bool:
+        column_recognizers = self.column_recognizers
+        if column_recognizers and self._analyze_with(self._column_name, column_recognizers):
+            return True
+        date_time_column_patterns = get_pii_column_name_patterns().get(PIITag.DATE_TIME, [])
+        return any(p.match(self._column_name) for p in date_time_column_patterns)
+
     def _normalize_recognizer_language(
         self, recognizer_obj: EntityRecognizer, effective_language: str
     ) -> EntityRecognizer:
@@ -296,17 +311,15 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
                 )
-                corroborated = _corroborated_content_results(content_evidence)
-                # Suppress content hits for entity types that require column-name
-                # corroboration (e.g. DATE_TIME) when the column name does not signal
-                # a personal-date meaning.  Keep the hit when the column name allowlist
-                # in column_patterns.py confirms the column is a personal date.
-                date_time_column_patterns = get_pii_column_name_patterns().get(PIITag.DATE_TIME, [])
-                is_personal_date_column = any(p.match(self._column_name) for p in date_time_column_patterns)
-                content_results = [
-                    r for r in corroborated
-                    if r.entity_type not in _CORROBORATION_REQUIRED_ENTITY_TYPES or is_personal_date_column
-                ]
+                content_results = _corroborated_content_results(content_evidence)
+                if (
+                    self._is_pii_tag
+                    and any(r.entity_type in _CORROBORATION_REQUIRED_ENTITY_TYPES for r in content_results)
+                    and not self._is_personal_date_column()
+                ):
+                    content_results = [
+                        r for r in content_results if r.entity_type not in _CORROBORATION_REQUIRED_ENTITY_TYPES
+                    ]
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
                 # number among 50 sampled rows would score 0.85 / 50 = 0.017 — far below any

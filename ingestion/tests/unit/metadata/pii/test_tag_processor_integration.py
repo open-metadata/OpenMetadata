@@ -359,7 +359,7 @@ def test_luhn_valid_operational_lookalike_receives_conservative_sensitive_tag(sh
         ("ftp://10.0.0.1/123", {"IP_ADDRESS": "10.0.0.1"}, []),
         ("smb://10.0.0.1/123", {"IP_ADDRESS": "10.0.0.1"}, []),
         ("10.0.0.1/24foo", {"IP_ADDRESS": "10.0.0.1"}, []),
-        ("10.0.0.1/2025.json", {"IP_ADDRESS": "10.0.0.1"}, ["PII.NonSensitive"]),
+        ("10.0.0.1/2025.json", {"IP_ADDRESS": "10.0.0.1"}, []),
         ("10.0.0.1/8.1", {"IP_ADDRESS": "10.0.0.1"}, []),
         ("http://app.internal.local/path", {}, []),
     ],
