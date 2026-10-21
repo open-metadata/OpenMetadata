@@ -436,6 +436,34 @@ describe('OntologyExplorerPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('keeps an explicitly chosen empty All ontologies view and links back to glossaries', async () => {
+    mockUseRealRouter = true;
+    renderWithQueryClient(
+      <MemoryRouter initialEntries={['/?scope=glossary:all']}>
+        <OntologyExplorerPage />
+        <Location />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(await screen.findByTestId('ontology-scope-all-ontologies'));
+
+    expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      'scope=ontology%3Aall'
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.view-all-entity' })
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'scope=glossary%3Aall'
+      )
+    );
+  });
+
   it('shows the empty native catalog without glossary controls', async () => {
     mockSearchParams = new URLSearchParams('scope=ontology:all');
     render(<OntologyExplorerPage />);

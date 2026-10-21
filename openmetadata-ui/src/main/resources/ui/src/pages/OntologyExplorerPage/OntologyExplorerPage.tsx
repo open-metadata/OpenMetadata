@@ -1589,30 +1589,32 @@ const OntologyExplorerPage: React.FC = () => {
     if (availableOntologies.length === 0) {
       return (
         <Box
-          align="center"
-          className="tw:flex-1 tw:p-6"
-          data-testid="all-ontologies-empty"
-          justify="center">
+          className="tw:relative tw:min-h-80 tw:flex-1"
+          data-testid="all-ontologies-empty">
           <EmptyPlaceholder
+            actions={[
+              {
+                color: 'secondary',
+                key: 'glossaries',
+                label: t('label.view-all-entity', {
+                  entity: t('label.glossary-plural'),
+                }),
+                onPress: () => handleScopeChange(ALL_GLOSSARIES_SCOPE),
+              },
+              ...(canCreateOntology
+                ? [
+                    {
+                      iconLeading: Plus,
+                      key: 'create',
+                      label: t('label.new-entity', {
+                        entity: t('label.ontology'),
+                      }),
+                      onPress: () => setIsCreatingOntology(true),
+                    },
+                  ]
+                : []),
+            ]}
             description={t('message.ontology-empty-description')}
-            footer={
-              <Box gap={3}>
-                <Button
-                  color="secondary"
-                  onPress={() => handleScopeChange(ALL_GLOSSARIES_SCOPE)}>
-                  {t('label.view-all-entity', {
-                    entity: t('label.glossary-plural'),
-                  })}
-                </Button>
-                {canCreateOntology ? (
-                  <Button
-                    iconLeading={Plus}
-                    onPress={() => setIsCreatingOntology(true)}>
-                    {t('label.new-entity', { entity: t('label.ontology') })}
-                  </Button>
-                ) : null}
-              </Box>
-            }
             title={t('message.ontology-empty-title')}
             variant="blank"
           />

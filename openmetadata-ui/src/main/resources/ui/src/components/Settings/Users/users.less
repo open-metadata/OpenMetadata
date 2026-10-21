@@ -55,7 +55,7 @@
     }
 
     .profile-details-email {
-      color: var(--tw-text-color-brand-secondary);
+      color: @primary-heading-color;
       text-align: center;
       font-size: var(--om-font-size-sm);
       line-height: 20px;
@@ -130,15 +130,15 @@
 }
 
 .chip-text {
-  color: var(--tw-text-color-brand-secondary);
+  color: @primary-heading-color;
   border: none;
   font-size: var(--om-font-size-xs);
-  background-color: transparent;
+  background-color: white;
 }
 
 .default-persona-text {
   .chip-tag-link {
-    color: var(--tw-text-color-brand-secondary);
+    color: @primary-heading-color;
   }
 
   .no-data-chip-placeholder {
@@ -218,7 +218,7 @@
   font-style: normal;
   font-weight: var(--om-font-weight-regular);
   line-height: 22px;
-  color: var(--tw-text-color-brand-secondary);
+  color: @primary-heading-color;
 }
 
 .ant-select-selection-item:has(.max-tag-text) {
@@ -292,7 +292,7 @@
     font-weight: var(--om-font-weight-regular);
 
     &:hover {
-      color: var(--tw-text-color-brand-secondary);
+      color: @primary-heading-color;
     }
   }
 }
@@ -314,5 +314,23 @@
   margin-top: @size-xxs;
   &.inherit-icon {
     color: @primary-color;
+  }
+}
+
+// Brand/link colours and the chip fill above are fixed light values; flip them
+// only in dark mode so the light theme keeps its exact shade.
+.dark-mode {
+  .profile-section .profile-section-user-details-card .profile-details-email,
+  .default-persona-text .chip-tag-link,
+  .max-tag-text,
+  .domain-link .domain-link-name:hover,
+  .chip-container .chip-tag-link:hover,
+  .chip-container .chip-text,
+  .chip-text {
+    color: var(--tw-text-color-brand-secondary);
+  }
+
+  .chip-text {
+    background-color: transparent;
   }
 }
