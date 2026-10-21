@@ -81,6 +81,17 @@ SELECT ?conceptFqn WHERE {
 }
 LIMIT 100`;
 
+// A native ontology's endpoint reads only its active release, which holds OWL classes, not glossary terms.
+export const NEW_NATIVE_ONTOLOGY_QUERY = `PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT ?concept ?label WHERE {
+  ?concept a owl:Class .
+  OPTIONAL { ?concept rdfs:label ?label }
+}
+ORDER BY ?concept
+LIMIT 100`;
+
 const ONTOLOGY_NAMESPACE = 'https://open-metadata.org/ontology/';
 const RDF_NAMESPACES: Record<string, string> = {
   om: ONTOLOGY_NAMESPACE,

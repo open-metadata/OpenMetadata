@@ -25,6 +25,7 @@ import {
   generateOntologySparql,
   getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
+  getOntologyByName,
   getOntologyChangeSet,
   getOntologyRelease,
   getRdfEntityDiff,
@@ -61,6 +62,20 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 describe('ontologyAPI', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  it('recovers a native ontology by its frozen encoded name', async () => {
+    const ontology = {
+      id: 'ontology-id',
+      name: 'library name',
+      iri: 'urn:library',
+    };
+    mockedApiClient.get.mockResolvedValue({ data: ontology });
+
+    expect(await getOntologyByName('library name')).toEqual(ontology);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/ontologies/name/library%20name'
+    );
   });
 
   it('creates native ontology definitions and patches by identity', async () => {
