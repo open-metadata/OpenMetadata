@@ -12,7 +12,7 @@
  */
 
 import type { FieldProp } from '@openmetadata/ui-core-components';
-import { FieldTypes, FormFields } from '@openmetadata/ui-core-components';
+import { Box, FieldTypes, FormFields } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -29,6 +29,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import {
   fetchLineageSettings,
   LINEAGE_LAYER_LABELS,
@@ -64,7 +65,11 @@ const LineageSettingsForm = ({
   const setAppPreferences = useApplicationStore(
     (state) => state.setAppPreferences
   );
-  const { data: config, isLoading } = useSettingsFetch(fetchLineageSettings);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchLineageSettings);
   const [isSaving, setIsSaving] = useState(false);
   const form = useForm<LineageFormValues>({
     defaultValues: {
@@ -194,6 +199,16 @@ const LineageSettingsForm = ({
       <div className="tw:p-8 tw:pt-0">
         <SettingsSkeleton rows={4} />
       </div>
+    );
+  }
+
+  // The settings PUT replaces the whole value, so saving a form that never
+  // loaded the stored settings would wipe the ones it does not edit.
+  if (!config) {
+    return (
+      <Box className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder onReload={reload} />
+      </Box>
     );
   }
 

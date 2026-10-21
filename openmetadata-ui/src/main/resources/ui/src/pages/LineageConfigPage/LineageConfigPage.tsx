@@ -25,6 +25,7 @@ import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../components/common/ServiceDocPanel/ServiceDocPanel';
@@ -201,6 +202,16 @@ const LineageConfigPage = () => {
 
   if (isLoading) {
     return <Loader />;
+  }
+
+  // The settings PUT replaces the whole value, so saving a form that never
+  // loaded the stored settings would wipe the ones it does not edit.
+  if (!storedConfig) {
+    return (
+      <Box className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder onReload={fetchSearchConfig} />
+      </Box>
+    );
   }
 
   return (

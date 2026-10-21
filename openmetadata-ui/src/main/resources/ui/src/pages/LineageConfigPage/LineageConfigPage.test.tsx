@@ -109,6 +109,25 @@ describe('LineageConfigPage', () => {
     });
   });
 
+  it('does not offer saving until the settings load', async () => {
+    (getSettingsByType as jest.Mock)
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(savedConfig);
+
+    await act(async () => {
+      render(<LineageConfigPage pageTitle="lineage" />);
+    });
+
+    expect(screen.queryByTestId('save-button')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(screen.getByTestId('field-upstream')).toHaveValue(2);
+    expect(screen.getByTestId('save-button')).toBeInTheDocument();
+  });
+
   it('rejects a negative depth', async () => {
     await act(async () => {
       render(<LineageConfigPage pageTitle="lineage" />);
