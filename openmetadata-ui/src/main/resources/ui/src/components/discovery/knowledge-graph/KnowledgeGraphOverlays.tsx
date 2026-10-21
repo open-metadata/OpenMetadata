@@ -17,8 +17,20 @@ import {
   SlideoutMenu,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Link01, XClose } from '@openmetadata/ui-core-components/icons';
-import { lazy, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChevronLeft,
+  Link01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import {
+  lazy,
+  ReactNode,
+  RefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENTITY_UUID_REGEX,
@@ -54,6 +66,11 @@ import {
   InspectorSection,
   relationTile,
 } from './KnowledgeGraphInspectorParts';
+import {
+  INLINE_RELATIONSHIPS,
+  PREVIEW_RELATIONSHIPS,
+} from './KnowledgeGraphOverlays.constants';
+import { getBackTarget, InspectorBack } from './KnowledgeGraphOverlays.utils';
 import KnowledgeGraphRelationship from './KnowledgeGraphRelationship';
 
 const EntitySummaryPanel = withSuspenseFallback(
@@ -113,14 +130,18 @@ interface InspectorProps {
   coverage?: Map<string, MappingCoverage>;
   onSelectionChange: (selection: GraphSelection) => void;
   onExpandGroup?: (id: string) => void;
-  onViewRelationships?: (groupId?: string) => void;
+  /**
+   * Opens the paged relationships table, scoped to a group's bundle
+   * (`groupId`) or to an explicit set of edges (`scope`).
+   */
+  onViewRelationships?: (
+    groupId?: string,
+    scope?: { label: string; edgeIds: string[] }
+  ) => void;
 }
 
 interface NodeInspectorProps
-  extends Pick<
-    InspectorProps,
-    'onSelectionChange' | 'onExpandGroup' | 'onViewRelationships'
-  > {
+  extends Pick<InspectorProps, 'onExpandGroup' | 'onViewRelationships'> {
   node: GraphNode;
   root?: GraphNode;
   connections: KnowledgeGraphG6Edge[];
@@ -128,6 +149,9 @@ interface NodeInspectorProps
   nodeHref: string;
   coverage?: MappingCoverage;
   onDetails: (node: GraphNode) => void;
+  onSelectRelationship: (id: string) => void;
+  showAllRelationships: boolean;
+  onShowAllRelationshipsChange: (showAll: boolean) => void;
 }
 
 /** Entity types that render as "USERNAME" / "FQN" instead of "FULL PATH". */
@@ -165,19 +189,26 @@ interface RelationshipsSectionProps {
   node: GraphNode;
   connections: KnowledgeGraphG6Edge[];
   nodeMap: Map<string, GraphNode>;
-  onSelectionChange: (selection: GraphSelection) => void;
-  onViewRelationships?: (groupId?: string) => void;
+  onSelectRelationship: (id: string) => void;
+  onViewRelationships?: InspectorProps['onViewRelationships'];
+  showAll: boolean;
+  onShowAllChange: (showAll: boolean) => void;
 }
 
 const RelationshipsSection = ({
   node,
   connections,
   nodeMap,
-  onSelectionChange,
+  onSelectRelationship,
   onViewRelationships,
+  showAll,
+  onShowAllChange,
 }: RelationshipsSectionProps) => {
   const { t } = useTranslation();
-  const previewSlice = connections.slice(0, 3);
+  const previewSlice = connections.slice(
+    0,
+    showAll ? INLINE_RELATIONSHIPS : PREVIEW_RELATIONSHIPS
+  );
   if (connections.length === 0) {
     return null;
   }
@@ -203,19 +234,38 @@ const RelationshipsSection = ({
             predicate={String(edge.data?.label ?? '')}
             subject={subject}
             tile={entityTile(other?.type ?? node.type, 'sm')}
-            onPress={() =>
-              onSelectionChange({ kind: 'edge', id: String(edge.id) })
-            }
+            onPress={() => onSelectRelationship(String(edge.id))}
           />
         );
       })}
-      <Button
-        className="tw:self-start"
-        color="link-color"
-        size="sm"
-        onPress={() => onViewRelationships?.()}>
-        {t('label.kg-view-all-relationships', { count: connections.length })}
-      </Button>
+      {connections.length > PREVIEW_RELATIONSHIPS && (
+        <Button
+          aria-expanded={showAll}
+          className="tw:self-start"
+          color="link-color"
+          size="sm"
+          onPress={() => onShowAllChange(!showAll)}>
+          {showAll
+            ? t('label.view-less')
+            : t('label.kg-view-all-relationships', {
+                count: connections.length,
+              })}
+        </Button>
+      )}
+      {showAll && connections.length > INLINE_RELATIONSHIPS && (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          size="sm"
+          onPress={() =>
+            onViewRelationships?.(undefined, {
+              label: node.label,
+              edgeIds: connections.map((edge) => String(edge.id)),
+            })
+          }>
+          {t('label.kg-view-in-list')}
+        </Button>
+      )}
     </InspectorSection>
   );
 };
@@ -316,7 +366,7 @@ const InspectorActions = ({
   }
 
   return (
-    <Box className="kg-inspector-actions" gap={2}>
+    <Box className="kg-inspector-actions" gap={2} justify="end">
       {previewable && (
         <Button color="secondary" size="md" onPress={() => onDetails(node)}>
           {t('label.preview')}
@@ -343,8 +393,10 @@ const GraphNodeInspector = ({
   nodeHref,
   coverage,
   onDetails,
-  onSelectionChange,
+  onSelectRelationship,
   onViewRelationships,
+  showAllRelationships,
+  onShowAllRelationshipsChange,
 }: NodeInspectorProps) => {
   const canShowGapNotes = hasMappingCoverageSignal(node.type);
   const bodyDescription = node.description ?? null;
@@ -375,12 +427,71 @@ const GraphNodeInspector = ({
           connections={connections}
           node={node}
           nodeMap={nodeMap}
-          onSelectionChange={onSelectionChange}
+          showAll={showAllRelationships}
+          onSelectRelationship={onSelectRelationship}
+          onShowAllChange={onShowAllRelationshipsChange}
           onViewRelationships={onViewRelationships}
         />
       </Box>
       <InspectorActions node={node} nodeHref={nodeHref} onDetails={onDetails} />
     </>
+  );
+};
+
+interface InspectorHeaderProps {
+  tile: ReactNode;
+  title?: string;
+  subtitle: string;
+  headingRef: RefObject<HTMLHeadingElement>;
+  onBack?: () => void;
+  onClose: () => void;
+}
+
+const InspectorHeader = ({
+  tile,
+  title,
+  subtitle,
+  headingRef,
+  onBack,
+  onClose,
+}: InspectorHeaderProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="start" className="kg-inspector-header" gap={2}>
+      {onBack && (
+        <Button
+          aria-label={t('label.back')}
+          color="tertiary"
+          data-testid="inspector-back"
+          iconLeading={ChevronLeft}
+          size="sm"
+          onPress={onBack}
+        />
+      )}
+      {tile}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
+        <Typography
+          as="h3"
+          className="tw:m-0! tw:break-words tw:text-sm! tw:leading-5! tw:text-primary"
+          ref={headingRef}
+          size="text-sm"
+          tabIndex={-1}
+          weight="semibold">
+          {title ?? t('label.relationship')}
+        </Typography>
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {subtitle}
+        </Typography>
+      </Box>
+      <Button
+        aria-label={t('label.close')}
+        color="tertiary"
+        iconLeading={XClose}
+        size="sm"
+        onPress={onClose}
+      />
+    </Box>
   );
 };
 
@@ -396,6 +507,12 @@ const KnowledgeGraphOverlays = ({
 }: InspectorProps) => {
   const { t } = useTranslation();
   const [detailsNode, setDetailsNode] = useState<GraphNode | null>(null);
+  // Where the inspector came from when it drilled into a relationship, so the
+  // header can offer a way back. Only valid while that relationship is shown.
+  const [back, setBack] = useState<InspectorBack | null>(null);
+  // Lives here, not in the section, so "back" from a relationship returns to
+  // the list as the user left it rather than collapsed to three rows.
+  const [expandedNodeId, setExpandedNodeId] = useState<string | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -443,6 +560,13 @@ const KnowledgeGraphOverlays = ({
       returnFocusRef.current = document.activeElement as HTMLElement | null;
     }
   }, [inspectorOpen]);
+  // Leaving the drilled-into relationship (canvas click, close, another row)
+  // ends the trip, so a later direct selection of that edge offers no "back".
+  useEffect(() => {
+    if (back && !getBackTarget(back, selection)) {
+      setBack(null);
+    }
+  }, [back, selection]);
   const nodeLink = (node?: GraphNode) => {
     const href = getGraphNodeHref(node);
 
@@ -460,15 +584,19 @@ const KnowledgeGraphOverlays = ({
       <Typography size="text-sm">{node?.label ?? ''}</Typography>
     );
   };
-  const inspectorTitle =
-    getInspectorTitle(selectedNode, selectedEdge) ?? t('label.relationship');
-  const inspectorSubtitle = getInspectorSubtitle(
-    t,
-    selectedNode,
-    selectedEdge,
-    edges
-  );
-  const inspectorTile = getInspectorTile(selectedNode, selectedEdge);
+  // Drilling in or going back unmounts the control that had focus (the row,
+  // the Back button); land keyboard users on the inspector heading instead of
+  // letting focus fall to the page.
+  const focusHeadingAfterRender = () =>
+    requestAnimationFrame(() =>
+      headingRef.current?.focus({ preventScroll: true })
+    );
+  const openRelationship = (id: string) => {
+    setBack({ from: selection, to: id });
+    onSelectionChange({ kind: 'edge', id });
+    focusHeadingAfterRender();
+  };
+  const backTarget = getBackTarget(back, selection);
 
   return (
     <>
@@ -532,27 +660,27 @@ const KnowledgeGraphOverlays = ({
               closeInspector();
             }
           }}>
-          <Box align="start" className="kg-inspector-header" gap={2}>
-            {inspectorTile}
-            <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={0}>
-              <h3
-                className="tw:m-0! tw:text-md! tw:leading-6! tw:font-semibold tw:text-primary tw:break-words"
-                ref={headingRef}
-                tabIndex={-1}>
-                {inspectorTitle}
-              </h3>
-              <Typography className="tw:text-tertiary" size="text-xs">
-                {inspectorSubtitle}
-              </Typography>
-            </Box>
-            <Button
-              aria-label={t('label.close')}
-              color="tertiary"
-              iconLeading={XClose}
-              size="sm"
-              onPress={closeInspector}
-            />
-          </Box>
+          <InspectorHeader
+            headingRef={headingRef}
+            subtitle={getInspectorSubtitle(
+              t,
+              selectedNode,
+              selectedEdge,
+              edges
+            )}
+            tile={getInspectorTile(selectedNode, selectedEdge)}
+            title={getInspectorTitle(selectedNode, selectedEdge)}
+            onBack={
+              backTarget
+                ? () => {
+                    setBack(null);
+                    onSelectionChange(backTarget);
+                    focusHeadingAfterRender();
+                  }
+                : undefined
+            }
+            onClose={closeInspector}
+          />
           {selectedEdge && (
             <KnowledgeGraphRelationship
               edge={selectedEdge}
@@ -569,9 +697,7 @@ const KnowledgeGraphOverlays = ({
               node={selectedNode}
               nodes={nodeMap}
               onExpand={() => onExpandGroup?.(selectedNode.id)}
-              onSelectRelationship={(id) =>
-                onSelectionChange({ kind: 'edge', id })
-              }
+              onSelectRelationship={openRelationship}
               onViewRelationships={() => onViewRelationships?.(selectedNode.id)}
             />
           ) : (
@@ -579,12 +705,17 @@ const KnowledgeGraphOverlays = ({
               <GraphNodeInspector
                 connections={connections}
                 coverage={coverage?.get(selectedNode.id)}
+                key={selectedNode.id}
                 node={selectedNode}
                 nodeHref={getGraphNodeHref(selectedNode)}
                 nodeMap={nodeMap}
+                showAllRelationships={expandedNodeId === selectedNode.id}
                 onDetails={setDetailsNode}
                 onExpandGroup={onExpandGroup}
-                onSelectionChange={onSelectionChange}
+                onSelectRelationship={openRelationship}
+                onShowAllRelationshipsChange={(showAll) =>
+                  setExpandedNodeId(showAll ? selectedNode.id : null)
+                }
                 onViewRelationships={onViewRelationships}
               />
             )

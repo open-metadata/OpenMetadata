@@ -11,17 +11,18 @@
  *  limitations under the License.
  */
 import { Tooltip } from '@openmetadata/ui-core-components';
-import { ReactComponent as IconDistribution } from '../../../assets/svg/icon-distribution.svg';
-import { ReactComponent as IconKey } from '../../../assets/svg/icon-key.svg';
-import { ReactComponent as IconSort } from '../../../assets/svg/icon-sort.svg';
-import { ReactComponent as IconUnique } from '../../../assets/svg/icon-unique.svg';
-
-import { ReactComponent as SectionLine } from '../../../assets/svg/section-line-medium.svg';
+import {
+  ConstraintDistribution,
+  ConstraintKey,
+  ConstraintSort,
+  ConstraintUnique,
+  SectionLineDashed,
+} from '@openmetadata/ui-core-components/icons';
 
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ConstraintType } from '../../../generated/entity/data/table';
+import { ConstraintType } from '../../../../generated/entity/data/table';
 
 interface ConstraintIconProps {
   constraintType: ConstraintType;
@@ -38,26 +39,26 @@ const ConstraintIcon = ({
     switch (constraintType) {
       case ConstraintType.PrimaryKey:
         return {
-          icon: IconKey,
+          icon: ConstraintKey,
           title: t('label.entity-key', {
             entity: t('label.primary'),
           }),
         };
       case ConstraintType.Unique:
         return {
-          icon: IconUnique,
+          icon: ConstraintUnique,
           title: t('label.unique'),
         };
       case ConstraintType.DistKey:
         return {
-          icon: IconDistribution,
+          icon: ConstraintDistribution,
           title: t('label.entity-key', {
             entity: t('label.dist'),
           }),
         };
       case ConstraintType.ClusterKey:
         return {
-          icon: IconDistribution,
+          icon: ConstraintDistribution,
           title: t('label.entity-key', {
             entity: t('label.cluster'),
           }),
@@ -65,13 +66,13 @@ const ConstraintIcon = ({
       case ConstraintType.SortKey:
       default:
         return {
-          icon: IconSort,
+          icon: ConstraintSort,
           title: t('label.entity-key', {
             entity: t('label.sort'),
           }),
         };
     }
-  }, [constraintType]);
+  }, [constraintType, t]);
 
   return (
     <div
@@ -80,13 +81,15 @@ const ConstraintIcon = ({
       })}
       data-testid={`${constraintType}-icon`}>
       {!showOnlyIcon && (
-        <SectionLine
-          aria-hidden
-          className="primary-key-section-line tw:text-black tw:dark:text-fg-quaternary tw:[&_path]:stroke-current"
+        <SectionLineDashed
+          className="primary-key-section-line tw:text-black tw:dark:text-fg-quaternary"
+          height={40}
+          width={19}
         />
       )}
       <Tooltip placement="bottom" title={title}>
         <IconComponent
+          aria-hidden={false}
           aria-label={constraintType}
           className="primary-key-icon tw:bg-surface tw:size-3.5 tw:shrink-0"
           role="img"

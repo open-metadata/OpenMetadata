@@ -26,7 +26,8 @@ export interface AlertCatalogSource {
     kind:     SourceKind;
     /**
      * Labels by filter or trigger name, where this source calls one differently from its
-     * definition.
+     * definition. A label applies when an alert watches this source alone: a filter several
+     * sources share keeps the name its definition gives it.
      */
     labels?: { [key: string]: any };
     /**

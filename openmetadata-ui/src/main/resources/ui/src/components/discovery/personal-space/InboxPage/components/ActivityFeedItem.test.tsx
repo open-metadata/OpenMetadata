@@ -270,7 +270,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
     ].map((name) => [name, () => <span data-testid={name} />])
   ),
   ChevronDown: () => <span />,
+  ChevronRight: () => <span />,
   ChevronUp: () => <span />,
+  Column: () => <span />,
   Edit05: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
@@ -418,7 +420,34 @@ describe('ActivityFeedItem', () => {
       />
     );
 
-    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
+  it('names and links the column a conversation was started on', () => {
+    render(
+      <ActivityFeedItem
+        feed={{
+          ...baseFeed,
+          about: '<#E::table::svc.db.sch.dim::columns::email::description>',
+          entityRef: {
+            ...baseFeed.entityRef,
+            fullyQualifiedName: 'svc.db.sch.dim',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
     expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
       'href',
       '/table/svc.db.sch.dim.email'

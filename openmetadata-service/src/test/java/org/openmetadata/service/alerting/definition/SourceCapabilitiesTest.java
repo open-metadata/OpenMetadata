@@ -23,6 +23,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 
 /** What the form is told about a selection: the same rules the save applies, before the save. */
@@ -87,6 +88,37 @@ class SourceCapabilitiesTest {
     assertEquals(
         List.of("testCase"), trigger(capabilities, "GetTestCaseStatusUpdates").getSources());
     assertTrue(capabilities.getContainerEntities().contains("databaseService"));
+  }
+
+  // Each source names the name filter after its own assets; together they share no such name.
+  @Test
+  void filterTheSourcesNameDifferentlyTakesTheCatalogsOwnName() {
+    for (List<String> picked : bothOrders("pipeline", "ingestionPipeline")) {
+      EventFilterRule byName = filter(of(AlertType.OBSERVABILITY, picked, null), "filterByFqn");
+
+      assertEquals("Entity FQN", byName.getDisplayName(), picked.toString());
+      assertEquals("Event Filtering By Entity FQN", byName.getDescription(), picked.toString());
+    }
+  }
+
+  @Test
+  void oneSourceKeepsItsOwnNames() {
+    assertEquals(
+        "Pipeline Name",
+        filter(of(AlertType.OBSERVABILITY, List.of("pipeline"), null), "filterByFqn")
+            .getDisplayName());
+  }
+
+  // No source renames it, so it reads the same alone, shared, and in either kind of alert.
+  @Test
+  void botFilterHasOneName() {
+    for (AlertCapabilities capabilities :
+        List.of(
+            of(AlertType.OBSERVABILITY, List.of("pipeline"), null),
+            of(AlertType.OBSERVABILITY, List.of("pipeline", "ingestionPipeline"), null),
+            of(AlertType.NOTIFICATION, List.of("table"), null))) {
+      assertEquals("Update is Bot", filter(capabilities, "filterByUpdaterIsBot").getDisplayName());
+    }
   }
 
   // An alert saved with a source the catalog retired still opens and shows what it holds.
@@ -183,6 +215,18 @@ class SourceCapabilitiesTest {
             .withAlertType(alertType)
             .withSources(sources)
             .withInput(input));
+  }
+
+  private static List<List<String>> bothOrders(String first, String second) {
+    return List.of(List.of(first, second), List.of(second, first));
+  }
+
+  private static EventFilterRule filter(AlertCapabilities capabilities, String name) {
+    return capabilities.getFilters().stream()
+        .map(AlertConditionCapability::getCondition)
+        .filter(filter -> name.equals(filter.getName()))
+        .findFirst()
+        .orElseThrow();
   }
 
   private static AlertSourceCapability source(AlertCapabilities capabilities, String name) {

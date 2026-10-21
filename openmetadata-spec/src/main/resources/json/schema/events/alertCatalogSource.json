@@ -64,7 +64,7 @@
       }
     },
     "labels": {
-      "description": "Labels by filter or trigger name, where this source calls one differently from its definition.",
+      "description": "Labels by filter or trigger name, where this source calls one differently from its definition. A label applies when an alert watches this source alone: a filter several sources share keeps the name its definition gives it.",
       "type": "object",
       "existingJavaType": "java.util.Map<String, org.openmetadata.schema.entity.events.AlertCatalogLabels>"
     },
