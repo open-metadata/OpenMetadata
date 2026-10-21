@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/**
- * Queue glossary-term suggestions grounded in published context memories.
- */
-export interface OntologyMemoryDerivationRequest {
-    glossary?: string;
-    memoryIds: string[];
-}
+import { ProposalFilter } from '../../../../utils/GlossaryReview/GlossaryReview.types';
+
+export const FILTERS: ProposalFilter[] = ['all', 'ai', 'person'];
+
+export const FILTER_LABELS: Record<ProposalFilter, string> = {
+  all: 'label.filter-all-count',
+  ai: 'label.filter-ai-count',
+  person: 'label.filter-people-count',
+};

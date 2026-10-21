@@ -23,7 +23,6 @@ import {
   createOntologyConcept,
   generateOntologyDomainDraft,
   generateOntologySparql,
-  getMemoryOntologyProposalStatus,
   getOntologyBulkTemplate,
   getOntologyByName,
   getOntologyChangeSet,
@@ -40,7 +39,6 @@ import {
   listRelationshipTypes,
   materializeInferenceRules,
   patchOntologyConcept,
-  proposeTermFromMemory,
   releaseOntologyEditLock,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
@@ -219,16 +217,6 @@ describe('ontologyAPI', () => {
     expect(result).toEqual(response.data);
   });
 
-  it('reads the proposal status for a memory', async () => {
-    const status = { enabled: true, proposals: [], queued: true };
-    mockedApiClient.get.mockResolvedValue({ data: status });
-
-    expect(await getMemoryOntologyProposalStatus('memory-id')).toEqual(status);
-    expect(mockedApiClient.get).toHaveBeenCalledWith(
-      '/ontology/ai/memories/memory-id/proposals'
-    );
-  });
-
   it('lists memory drafts across several states in one request', async () => {
     mockedApiClient.get.mockResolvedValue({ data: { data: [], paging: {} } });
 
@@ -256,19 +244,6 @@ describe('ontologyAPI', () => {
       '/ontologyChangeSets/draft-id',
       { params: { fields: 'operations' } }
     );
-  });
-
-  it('queues an ontology proposal from a memory', async () => {
-    const response = { data: { id: 42, status: 'PENDING' } };
-    mockedApiClient.post.mockResolvedValue(response);
-
-    const result = await proposeTermFromMemory('memory-id');
-
-    expect(mockedApiClient.post).toHaveBeenCalledWith(
-      '/ontology/ai/memories/jobs',
-      { memoryIds: ['memory-id'] }
-    );
-    expect(result).toEqual(response.data);
   });
 
   it('routes typed draft commands to the requested change set', async () => {

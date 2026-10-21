@@ -11,21 +11,13 @@
  *  limitations under the License.
  */
 
-import { OntologyMemoryProposalStatus } from '../../../../generated/api/data/ontologyMemoryProposalStatus';
-import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
+import { EntityType } from '../../../../enums/entity.enum';
+import {
+  ContextMemory,
+  EntityReference,
+} from '../../../../generated/entity/context/contextMemory';
 
-export interface MemoryDerivedOntologyProps {
-  memory: ContextMemory;
-  status?: OntologyMemoryProposalStatus;
-  canPropose: boolean;
-  isProposing: boolean;
-  proposeError?: string;
-  onNavigate: () => void;
-  onPropose: () => void;
-}
-
-export interface ProposeAccess {
-  isOwner: boolean;
-  canCreateDrafts: boolean;
-  isViewOnly: boolean;
-}
+export const getDerivedTerms = (memory: ContextMemory): EntityReference[] =>
+  memory.derivedEntities?.filter(
+    (entity) => entity.type === EntityType.GLOSSARY_TERM
+  ) ?? [];

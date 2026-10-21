@@ -11,63 +11,33 @@
  *  limitations under the License.
  */
 /**
- * Active ontology drafts and queued derivation work for a context memory.
+ * An entity an AI agent derived from a context memory, with the evidence a reviewer reads
+ * before approving it.
  */
-export interface OntologyMemoryProposalStatus {
+export interface MemoryDerivation {
     /**
-     * Whether this deployment can derive ontology drafts from memories.
+     * The derived entity.
      */
-    enabled:  boolean;
-    lastJob?: JobOutcome;
+    entity: EntityReference;
     /**
-     * Open Studio drafts derived from this memory.
+     * Why the agent derived the entity. Absent when the deriver recorded none.
      */
-    proposals: Proposal[];
+    evidence?: DerivationEvidence;
     /**
-     * Whether a derivation job for this memory is pending or running.
+     * The memory the entity was derived from.
      */
-    queued: boolean;
+    memory: EntityReference;
 }
 
 /**
- * Outcome of the most recent finished derivation job that included the memory.
- */
-export interface JobOutcome {
-    completedAt?: number;
-    /**
-     * Failure reason when the job failed.
-     */
-    message?: string;
-    result:   Result;
-}
-
-export enum Result {
-    Failed = "FAILED",
-    NoNewTerms = "NO_NEW_TERMS",
-    Proposed = "PROPOSED",
-}
-
-/**
- * An open Studio draft derived from the memory.
- */
-export interface Proposal {
-    /**
-     * The Studio draft awaiting review.
-     */
-    changeSet: EntityReference;
-    /**
-     * Display names of the glossaries and terms the draft proposes from this memory.
-     */
-    terms: string[];
-}
-
-/**
- * The Studio draft awaiting review.
+ * The derived entity.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * The memory the entity was derived from.
  */
 export interface EntityReference {
     /**
@@ -110,4 +80,29 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Why the agent derived the entity. Absent when the deriver recorded none.
+ *
+ * Why an agent derived an entity from a memory. Stored on the entity's DERIVED_FROM edge to
+ * the memory.
+ */
+export interface DerivationEvidence {
+    /**
+     * Display name of the agent that proposed the entity.
+     */
+    agent?: string;
+    /**
+     * The agent's confidence in the proposal, from 0 to 1.
+     */
+    confidence?: number;
+    /**
+     * When the agent derived the entity.
+     */
+    derivedAt?: number;
+    /**
+     * Short statements of why the agent proposed the entity.
+     */
+    reasons?: string[];
 }
