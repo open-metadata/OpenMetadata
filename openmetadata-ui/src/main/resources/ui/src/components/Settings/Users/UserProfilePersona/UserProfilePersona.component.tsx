@@ -106,8 +106,11 @@ const UserProfilePersonas = ({
           </div>
         </div>
         <div
-          className="user-profile-card-body default-persona-text ml-8 d-flex items-center gap-2"
+          className="user-profile-card-body default-persona-text d-flex justify-start gap-2"
           data-testid="default-persona-chip">
+          <div className="d-flex flex-center user-page-icon">
+            <Divider className="tw:mx-2 tw:h-full" orientation="vertical" />
+          </div>
           <Chip
             showNoDataPlaceholder
             data={activeDefaultPersona ? [activeDefaultPersona] : []}

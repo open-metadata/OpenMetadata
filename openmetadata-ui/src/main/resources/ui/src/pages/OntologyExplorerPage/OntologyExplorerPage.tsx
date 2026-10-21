@@ -1165,7 +1165,7 @@ const OntologyExplorerPage: React.FC = () => {
         onCreateOntology={
           canCreateOntology
             ? () => {
-                selectOntology(undefined);
+                selectOntology();
                 setIsCreatingOntology(true);
               }
             : undefined
