@@ -13,27 +13,37 @@ name: Workflows and Data Access Request E2E tests
 
 on:
   workflow_dispatch:
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Only for fork and Dependabot PRs, which skipped the PR-time run (see the job's `if:`).
+  merge_group:
 
 permissions:
   contents: read
   pull-requests: read
-  checks: write
 
 concurrency:
   group: data-access-request-e2e-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   check-changes:
     runs-on: ubuntu-latest
     outputs:
       dar: ${{ steps.filter.outputs.dar }}
+      queued_pr_skipped: ${{ steps.queued-pr.outputs.skipped }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        if: ${{ github.event_name == 'merge_group' }}
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             dar:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
@@ -46,33 +56,37 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/src/interface/WorkflowBuilder.interface.ts'
               - 'openmetadata-ui/src/main/resources/ui/src/utils/WorkflowBuilderUtils.ts'
               - 'openmetadata-ui/src/main/resources/ui/src/generated/governance/workflows/**'
+      # The merge group's ref names the PR at its tip: gh-readonly-queue/<base>/pr-<number>-<sha>.
+      # Fork and Dependabot PRs got no COLLATE_PAT at PR time, so their Collate run happens here.
+      - name: Check whether the queued PR skipped its PR-time Collate run
+        id: queued-pr
+        if: ${{ github.event_name == 'merge_group' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.merge_group.head_ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          pr=$(sed -nE 's#.*/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<<"$HEAD_REF")
+          if [ -z "$pr" ]; then
+            echo "::warning::No PR number in merge group ref $HEAD_REF"
+            echo "skipped=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          skipped=$(gh api "repos/$REPO/pulls/$pr" \
+            --jq '.head.repo.full_name != .base.repo.full_name or .user.login == "dependabot[bot]"')
+          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
 
   data-access-request-e2e:
     needs: check-changes
     runs-on: ubuntu-latest
+    # Fork and Dependabot PRs get no COLLATE_PAT to dispatch the Collate run with, so they skip it
+    # at PR time and run it in the merge queue instead; every other PR runs it at PR time only.
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.dar == 'true') &&
-      (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) &&
+      (github.event_name != 'merge_group' || needs.check-changes.outputs.queued_pr_skipped == 'true')
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       # Dispatched by file name straight to the REST endpoint, not through
       # benc-uk/workflow-dispatch: that action finds the workflow by paging through the list of
       # every Collate workflow, GitHub serves those pages in two different orders at random, and
