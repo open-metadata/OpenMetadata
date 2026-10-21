@@ -199,6 +199,9 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ChangeSummaryMap;
@@ -350,7 +353,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * deadlock window so a large ingestion batch can't pin one connection for thousands of rows.
    * Atomicity is per-chunk, which is far better than today's per-DAO-call autocommit.
    */
-  private static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
+  static final int BULK_CREATE_TXN_CHUNK_SIZE = 100;
 
   /**
    * Max entities hydrated + purged per chunk in {@link #bulkHardDeleteSubtree(List, String)}. The
@@ -3415,11 +3418,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return decodedCursor;
   }
 
+  /** Returns newly created entities, skipping conflicts and rejecting validation errors. */
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
-    for (T e : entities) {
-      prepareInternal(e, false);
-    }
-    return createManyEntities(entities);
+    final BulkCreateResult result =
+        new BulkEntityCreator<>(
+                this, this::createManyEntities, BulkCreateConflictPolicy.SKIP, false)
+            .create(entities, Function.identity());
+    return result.getResults().stream()
+        .filter(item -> item.getStatus() == BulkCreateItemResult.Status.CREATED)
+        .map(item -> entities.get(item.getIndex()))
+        .toList();
+  }
+
+  /** Applies the conflict policy per input; valid non-conflicting inputs continue. */
+  public final <C> BulkCreateResult createMany(
+      List<C> requests, Function<C, T> mapper, BulkCreateConflictPolicy onConflict) {
+    return new BulkEntityCreator<>(this, this::createManyEntities, onConflict, true)
+        .create(requests, mapper);
   }
 
   public final T create(UriInfo uriInfo, T entity) {
@@ -15364,7 +15379,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return result;
   }
 
-  private static boolean isDuplicateKeyException(Exception e) {
+  static boolean isDuplicateKeyException(Exception e) {
     Throwable cause = e.getCause();
     if (cause instanceof SQLException sqlEx) {
       // MySQL: error code 1062 = ER_DUP_ENTRY
