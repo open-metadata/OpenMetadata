@@ -173,14 +173,18 @@ export const usePaging = (
     : resolvedPageSize;
 
   // Keep pagination in sync when filters or other controls update paging params directly in the URL.
-  useEffect(() => {
-    setCurrentPage((currentPage) =>
-      currentPage === urlCurrentPage ? currentPage : urlCurrentPage
-    );
-    setStoredPageSize((pageSize) =>
-      pageSize === resolvedPageSize ? pageSize : resolvedPageSize
-    );
-  }, [resolvedPageSize, urlCurrentPage]);
+  const [syncedUrlPaging, setSyncedUrlPaging] = useState({
+    page: urlCurrentPage,
+    size: resolvedPageSize,
+  });
+  if (
+    syncedUrlPaging.page !== urlCurrentPage ||
+    syncedUrlPaging.size !== resolvedPageSize
+  ) {
+    setSyncedUrlPaging({ page: urlCurrentPage, size: resolvedPageSize });
+    setCurrentPage(urlCurrentPage);
+    setStoredPageSize(resolvedPageSize);
+  }
 
   const pagingCursorUrlParams: PagingUrlParams = useMemo(
     () => ({

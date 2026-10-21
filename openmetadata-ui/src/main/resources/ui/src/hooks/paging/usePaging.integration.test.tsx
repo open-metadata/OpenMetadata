@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RouteVisibilityProvider } from '../../context/RouteVisibilityProvider/RouteVisibilityProvider';
 import { usePersistentStorage } from '../currentUserStore/useCurrentUserStore';
@@ -267,6 +267,33 @@ describe('usePaging (integration)', () => {
       expect(result.current.paging.pagingCursor.currentPage).toBe('1');
       expect(result.current.location.search).toBe('');
       expect(seen).not.toContainEqual([3, 50]);
+    });
+
+    it('hands out the new size in the same render as pagingCursor', () => {
+      saveListSize(15);
+      const fetches: number[] = [];
+      const mismatches: Array<[number, number | undefined]> = [];
+      renderHook(
+        () => {
+          const paging = usePaging();
+          useEffect(() => {
+            if (paging.pageSize !== paging.pagingCursor.pageSize) {
+              mismatches.push([paging.pageSize, paging.pagingCursor.pageSize]);
+            }
+          });
+          useEffect(() => {
+            fetches.push(paging.pageSize);
+          }, [paging.pagingCursor]);
+
+          return paging;
+        },
+        { wrapper: wrapperAt('/service') }
+      );
+
+      saveListSize(50);
+
+      expect(mismatches).toEqual([]);
+      expect(fetches[fetches.length - 1]).toBe(50);
     });
 
     it('keeps the page when the URL carries its own size', () => {
