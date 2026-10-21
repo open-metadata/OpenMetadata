@@ -139,7 +139,12 @@ jest.mock('../appModeExtensions', () => ({
 }));
 
 jest.mock('../AppShell', () => ({
-  AppShell: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AppShell: ({ children }: { children: React.ReactNode }) => (
+    <>
+      <nav data-testid="ask-sidebar" />
+      {children}
+    </>
+  ),
 }));
 
 const mockUsePermissionProvider = usePermissionProvider as jest.Mock;
@@ -259,6 +264,14 @@ describe('AppModeRoutes — classic-only settings routes', () => {
 
     expect(await screen.findByTestId('ai-not-found-page')).toBeInTheDocument();
     expect(screen.queryByTestId('classic-route-table')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('ask-sidebar')).not.toBeInTheDocument();
+  });
+
+  it('serves the AI not-found page at /404 full page, without the shell sidebar', async () => {
+    renderAt('/404');
+
+    expect(await screen.findByTestId('ai-not-found-page')).toBeInTheDocument();
+    expect(screen.queryByTestId('ask-sidebar')).not.toBeInTheDocument();
   });
 
   it('wins over a plugin fallback router mounted at the catch-all', async () => {
@@ -278,6 +291,7 @@ describe('AppModeRoutes — classic-only settings routes', () => {
         await screen.findByTestId('classic-route-table')
       ).toBeInTheDocument();
       expect(screen.queryByTestId('ai-not-found-page')).not.toBeInTheDocument();
+      expect(screen.getByTestId('ask-sidebar')).toBeInTheDocument();
     }
   );
 });

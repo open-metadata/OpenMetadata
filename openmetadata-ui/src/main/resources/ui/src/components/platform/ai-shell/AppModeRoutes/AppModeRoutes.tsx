@@ -12,7 +12,7 @@
  */
 
 import { lazy, useMemo } from 'react';
-import { Route } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import applicationRoutesClass from '../../../../utils/ApplicationRoutesClassBase';
 import { withPageSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
@@ -27,7 +27,9 @@ import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 
 // The app-mode shell owns its own /404 so an unknown URL lands on the branded
 // AI not-found page (testid `ai-not-found-page`) instead of the fallback
-// router's `Navigate → /404` resolving to nothing and going blank.
+// router's `Navigate → /404` resolving to nothing and going blank. Like the
+// classic `PageNotFound` (mounted outside `AppContainer`), it renders full
+// page, outside the `AppShell` chrome — no sidebar.
 const AINotFoundPage = withPageSuspenseFallback(
   lazy(() => import('../AINotFoundPage/AINotFoundPage'))
 );
@@ -113,23 +115,30 @@ export const AppModeRoutes = () => {
   );
 
   return (
-    <AppShell>
-      {isApplicationsLoading ? (
-        <Loader />
-      ) : (
-        <KeepAliveRoutes routes={routes}>
-          <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
-          {CLASSIC_ONLY_ROUTE_PATHS.map((path) => (
-            <Route element={<AINotFoundPage />} key={path} path={path} />
-          ))}
-          {fallback ? (
-            <Route element={fallback.element} path="/*" />
-          ) : (
-            <Route element={<RouteElements />} path="/*" />
-          )}
-        </KeepAliveRoutes>
-      )}
-    </AppShell>
+    <Routes>
+      <Route element={<AINotFoundPage />} path={ROUTES.NOT_FOUND} />
+      {CLASSIC_ONLY_ROUTE_PATHS.map((path) => (
+        <Route element={<AINotFoundPage />} key={path} path={path} />
+      ))}
+      <Route
+        element={
+          <AppShell>
+            {isApplicationsLoading ? (
+              <Loader />
+            ) : (
+              <KeepAliveRoutes routes={routes}>
+                {fallback ? (
+                  <Route element={fallback.element} path="/*" />
+                ) : (
+                  <Route element={<RouteElements />} path="/*" />
+                )}
+              </KeepAliveRoutes>
+            )}
+          </AppShell>
+        }
+        path="/*"
+      />
+    </Routes>
   );
 };
 

@@ -54,6 +54,8 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     await test.step('AI not-found page is rendered (not an infinite redirect loop)', async () => {
       await expect(page).toHaveURL(/\/404$/);
       await expect(page.getByTestId('ai-not-found-page')).toBeVisible();
+      // Full page like the classic 404: no AI shell sidebar.
+      await expect(page.getByTestId('ask-sidebar')).not.toBeAttached();
     });
   });
 

@@ -70,7 +70,7 @@ const AINotFoundPage: FC = () => {
   return (
     <Box
       align="center"
-      className="tw:relative tw:w-full tw:h-full tw:overflow-hidden tw:px-6"
+      className="tw:relative tw:w-full tw:min-h-screen tw:overflow-hidden tw:bg-primary tw:px-6"
       data-testid="ai-not-found-page"
       direction="col"
       justify="center">
