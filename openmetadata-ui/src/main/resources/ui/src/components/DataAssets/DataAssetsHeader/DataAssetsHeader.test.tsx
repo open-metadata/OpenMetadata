@@ -1275,14 +1275,14 @@ describe('DataAssetsHeader component', () => {
       const button = screen.getByTestId('data-contract-latest-result-btn');
 
       expect(button).toHaveTextContent('label.entity-failed');
-      // Core Badge error palette: meets contrast in both themes.
+      // Badge error palette on the button: meets contrast in both themes.
       expect(button).toHaveClass(
-        'tw:bg-utility-error-50',
-        'tw:text-utility-error-700'
+        'tw:bg-utility-error-50!',
+        'tw:text-utility-error-700!'
       );
     });
 
-    it('should tint the aborted contract badge with the orange badge palette', async () => {
+    it('should tint the aborted contract badge with the orange badge palette on the button', async () => {
       mockUseCustomPages.mockReturnValue({
         customizedPage: { tabs: [{ id: EntityTabs.CONTRACT }] },
       });
@@ -1299,8 +1299,8 @@ describe('DataAssetsHeader component', () => {
       });
 
       expect(screen.getByTestId('data-contract-latest-result-btn')).toHaveClass(
-        'tw:bg-utility-orange-50',
-        'tw:text-utility-orange-700'
+        'tw:bg-utility-orange-50!',
+        'tw:text-utility-orange-700!'
       );
     });
 

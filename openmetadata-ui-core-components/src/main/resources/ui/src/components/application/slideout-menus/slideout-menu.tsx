@@ -134,7 +134,8 @@ const Content = ({ role = 'main', ...props }: ComponentPropsWithRef<'div'>) => {
       role={role}
       {...props}
       className={cx(
-        'tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
+        // `relative` clips absolute descendants (hidden inputs) here, not in the scrolling dialog.
+        'tw:relative tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
         props.className
       )}
     />

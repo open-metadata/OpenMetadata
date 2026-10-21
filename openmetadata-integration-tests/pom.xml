@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -465,6 +465,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -522,6 +524,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -609,6 +613,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -666,6 +672,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -754,6 +762,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -812,6 +822,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -900,6 +912,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -957,6 +971,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1044,6 +1060,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1101,6 +1119,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1187,6 +1207,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1245,6 +1267,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1348,6 +1372,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1407,6 +1433,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1500,6 +1528,8 @@
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
+                    <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1558,6 +1588,8 @@
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>

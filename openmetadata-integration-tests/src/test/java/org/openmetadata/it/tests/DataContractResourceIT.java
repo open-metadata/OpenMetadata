@@ -348,6 +348,25 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testTableInheritsApprovedSchemaContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    DataContract schemaContract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("schema_contract"))
+                .withEntity(table.getDatabaseSchema())
+                .withEntityStatus(EntityStatus.APPROVED));
+
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertEquals(schemaContract.getName(), effective.getName());
+    assertEquals(table.getId(), effective.getEntity().getId());
+    assertTrue(effective.getInherited());
+  }
+
+  @Test
   void testGetDataContractByEntityId_containerEntity_slimEntityLoad(TestNamespace ns) {
     // Pins the perf contract on `GET /v1/dataContracts/entity?entityType=container`.
     //

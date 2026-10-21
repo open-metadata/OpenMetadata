@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  BadgeWithIcon,
   Box,
   Button,
   Card,
@@ -22,60 +23,52 @@ import {
 import {
   ArrowRight,
   ArrowUpRight,
+  Check,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { ReactNode, useState } from 'react';
 import { ToggleButton, ToggleButtonGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
+import { PACK_PRESENTATION } from './OntologyLibraryCatalogue.constants';
 
 interface OntologyLibraryCatalogueProps {
   packs: OntologyPackManifest[];
+  installedPackIds?: string[];
   onSelect: (pack: OntologyPackManifest) => void;
 }
 
 const ALL_FILTER_ID = 'all';
-const PACK_CARD_SPAN = 12;
-const DEFAULT_PACK_ICON_CLASS = 'tw:bg-utility-gray-blue-600';
-const PACK_ICON_CLASSES: Record<string, string> = {
-  epcis: 'tw:bg-utility-indigo-600',
-  fhir: 'tw:bg-utility-green-600',
-  fibo: 'tw:bg-brand-solid',
-  gs1: 'tw:bg-utility-pink-600',
-  'hr-open': 'tw:bg-utility-purple-600',
-  'isa-95': 'tw:bg-utility-orange-600',
-};
+const DEFAULT_PACK_ICON_CLASS =
+  'tw:bg-utility-gray-blue-700 tw:text-utility-gray-blue-50';
 
 export const OntologyPackIcon = ({ pack }: { pack: OntologyPackManifest }) => (
-  <Box
-    align="center"
-    className={classNames(
-      'tw:size-10 tw:shrink-0 tw:rounded-lg tw:px-1 tw:text-center',
-      PACK_ICON_CLASSES[pack.id] ?? DEFAULT_PACK_ICON_CLASS
-    )}
-    data-testid={`ontology-pack-abbreviation-${pack.id}`}
-    justify="center">
-    <Typography
-      className="tw:text-primary_on-brand"
-      size="text-xs"
-      weight="bold">
-      {pack.abbreviation}
-    </Typography>
-  </Box>
+  <span
+    className={`tw:inline-flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:text-center tw:text-xs tw:font-bold tw:whitespace-nowrap ${
+      PACK_PRESENTATION[pack.id]?.iconClass ?? DEFAULT_PACK_ICON_CLASS
+    }`}
+    data-testid={`ontology-pack-abbreviation-${pack.id}`}>
+    {PACK_PRESENTATION[pack.id]?.mark ?? pack.abbreviation}
+  </span>
 );
 
 interface OntologyPackCardProps {
   pack: OntologyPackManifest;
+  installed?: boolean;
   onSelect: (pack: OntologyPackManifest) => void;
 }
 
-const OntologyPackCard = ({ pack, onSelect }: OntologyPackCardProps) => {
+const OntologyPackCard = ({
+  pack,
+  installed,
+  onSelect,
+}: OntologyPackCardProps) => {
   const { t } = useTranslation();
   const totals = selectedModuleTotals(
     pack,
     pack.modules.map((module) => module.id)
   );
+  const presentation = PACK_PRESENTATION[pack.id];
 
   let action: ReactNode = null;
   if (pack.bundled) {
@@ -86,7 +79,7 @@ const OntologyPackCard = ({ pack, onSelect }: OntologyPackCardProps) => {
         iconTrailing={ArrowRight}
         size="sm"
         onPress={() => onSelect(pack)}>
-        {t('label.install')}
+        {t(installed ? 'label.view' : 'label.install')}
       </Button>
     );
   } else {
@@ -106,59 +99,84 @@ const OntologyPackCard = ({ pack, onSelect }: OntologyPackCardProps) => {
 
   return (
     <Card
-      className="tw:flex tw:h-full tw:flex-col tw:gap-3 tw:p-4"
-      data-testid={`ontology-pack-${pack.id}`}>
-      <Box align="center" gap={3}>
-        <OntologyPackIcon pack={pack} />
-        <Box className="tw:min-w-0" direction="col">
-          <Typography
-            ellipsis
-            aria-level={3}
-            className="tw:text-primary"
-            role="heading"
-            size="text-md"
-            weight="medium">
-            {pack.name}
+      className="tw:h-full"
+      data-testid={`ontology-pack-${pack.id}`}
+      size="md"
+      variant="elevated">
+      <Card.Content className="tw:h-full">
+        <Box className="tw:h-full" direction="col" gap={3}>
+          <Box align="center" gap={3}>
+            <OntologyPackIcon pack={pack} />
+            <Box className="tw:min-w-0 tw:flex-1" direction="col">
+              <Box align="center" gap={2} justify="between" wrap="wrap">
+                <Typography
+                  aria-level={3}
+                  role="heading"
+                  size="text-md"
+                  weight="semibold">
+                  {presentation ? t(presentation.titleKey) : pack.name}
+                </Typography>
+                {installed && (
+                  <BadgeWithIcon
+                    color="success"
+                    iconLeading={Check}
+                    size="sm"
+                    type="pill-color">
+                    {t('label.installed')}
+                  </BadgeWithIcon>
+                )}
+              </Box>
+              <Typography ellipsis color="secondary" size="text-sm">
+                {pack.standard}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Typography color="secondary" size="text-sm">
+            {pack.description}
           </Typography>
-          <Typography ellipsis className="tw:text-tertiary" size="text-sm">
-            {pack.standard}
-          </Typography>
+
+          <Box align="center" className="tw:mt-auto" gap={2} justify="between">
+            <Typography color="secondary" size="text-sm">
+              {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()}{' '}
+              · {totals.relationships}{' '}
+              {t('label.relation-plural').toLocaleLowerCase()}
+            </Typography>
+            {action}
+          </Box>
         </Box>
-      </Box>
-
-      <Typography
-        className="tw:text-secondary"
-        ellipsis={{ rows: 2 }}
-        size="text-sm">
-        {pack.description}
-      </Typography>
-
-      <Box align="center" className="tw:mt-auto" gap={2} justify="between">
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {totals.concepts} {t('label.concept-plural').toLocaleLowerCase()} ·{' '}
-          {totals.relationships}{' '}
-          {t('label.relation-plural').toLocaleLowerCase()}
-        </Typography>
-        {action}
-      </Box>
+      </Card.Content>
     </Card>
   );
 };
 
 const OntologyLibraryCatalogue = ({
   packs,
+  installedPackIds = [],
   onSelect,
 }: OntologyLibraryCatalogueProps) => {
   const { t } = useTranslation();
   const [selectedFilterId, setSelectedFilterId] = useState(ALL_FILTER_ID);
+  const orderedPacks = [...packs].sort(
+    (a, b) =>
+      (PACK_PRESENTATION[a.id]?.order ?? Number.MAX_SAFE_INTEGER) -
+      (PACK_PRESENTATION[b.id]?.order ?? Number.MAX_SAFE_INTEGER)
+  );
   const filters = [
     { id: ALL_FILTER_ID, label: t('label.all') },
-    ...packs.map((pack) => ({ id: pack.id, label: pack.name })),
+    ...orderedPacks.map((pack) => {
+      const presentation = PACK_PRESENTATION[pack.id];
+
+      return {
+        id: pack.id,
+        label: presentation ? t(presentation.filterKey) : pack.name,
+      };
+    }),
   ];
   const visiblePacks =
     selectedFilterId === ALL_FILTER_ID
-      ? packs
-      : packs.filter((pack) => pack.id === selectedFilterId);
+      ? orderedPacks
+      : orderedPacks.filter((pack) => pack.id === selectedFilterId);
 
   return (
     <Box data-testid="ontology-pack-catalogue" direction="col" gap={4}>
@@ -180,18 +198,24 @@ const OntologyLibraryCatalogue = ({
             key={filter.id}>
             <Badge
               color={filter.id === selectedFilterId ? 'blue' : 'gray'}
-              size="md"
-              type="color">
+              size="lg"
+              type="pill-color">
               {filter.label}
             </Badge>
           </ToggleButton>
         ))}
       </ToggleButtonGroup>
 
-      <Grid gap="4">
+      <Grid className="tw:md:gap-x-4" colGap="0" rowGap="4">
         {visiblePacks.map((pack) => (
-          <Grid.Item key={pack.id} span={PACK_CARD_SPAN}>
-            <OntologyPackCard pack={pack} onSelect={onSelect} />
+          <Grid.Item
+            className="tw:md:col-span-12 tw:lg:col-span-8"
+            key={pack.id}>
+            <OntologyPackCard
+              installed={installedPackIds.includes(pack.id)}
+              pack={pack}
+              onSelect={onSelect}
+            />
           </Grid.Item>
         ))}
       </Grid>

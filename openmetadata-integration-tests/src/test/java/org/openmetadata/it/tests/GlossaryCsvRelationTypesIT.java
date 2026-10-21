@@ -411,6 +411,45 @@ public class GlossaryCsvRelationTypesIT {
   }
 
   @Test
+  void testDryRunReimportWithRelatedTermsInSameCsv(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm term1 = GlossaryTermTestFactory.createWithName(ns, glossary, "termA");
+    GlossaryTerm term2 = GlossaryTermTestFactory.createWithName(ns, glossary, "termB");
+    addTermRelation(term1.getId().toString(), term2.getId().toString(), "relatedTo");
+
+    String exportedCsv = exportGlossaryCsv(glossary.getName());
+    String result = importGlossaryCsv(glossary.getName(), exportedCsv, true);
+
+    JsonNode importResult = OBJECT_MAPPER.readTree(result);
+    assertEquals("success", importResult.path("status").asText(), "Result: " + result);
+    assertEquals(0, importResult.path("numberOfRowsFailed").asInt(), "Result: " + result);
+  }
+
+  @Test
+  void testImportNewTermsRelatedToEarlierRowInSameCsv(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String termA = ns.prefix("termA");
+    String csv =
+        String.format(
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,,Term A,,,,,,,,,,,%n"
+                + ",%s,,Term B,,%s.%s,,,,,,,,,",
+            termA, ns.prefix("termB"), glossary.getName(), termA);
+
+    for (boolean dryRun : List.of(true, false)) {
+      String result = importGlossaryCsv(glossary.getName(), csv, dryRun);
+      JsonNode importResult = OBJECT_MAPPER.readTree(result);
+      assertEquals("success", importResult.path("status").asText(), dryRun + ": " + result);
+      assertEquals(0, importResult.path("numberOfRowsFailed").asInt(), dryRun + ": " + result);
+    }
+    GlossaryTerm termB =
+        getGlossaryTerm(glossary.getName() + "." + ns.prefix("termB"), "relatedTerms");
+    assertEquals(
+        glossary.getName() + "." + termA,
+        termB.getRelatedTerms().get(0).getTerm().getFullyQualifiedName());
+  }
+
+  @Test
   void testFqnWithColonIsNotMisinterpreted(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm existingTerm =

@@ -353,6 +353,22 @@ describe('OntologyStudioQueryConsole', () => {
     expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
   });
 
+  it('opens a native ontology on a class query its active release can answer', () => {
+    render(
+      <OntologyStudioQueryConsole
+        graphData={null}
+        relationTypes={[]}
+        selectedGlossaryIds={[]}
+        selectedOntologyId="native"
+      />
+    );
+
+    const editor = screen.getByTestId('schema-editor') as HTMLTextAreaElement;
+
+    expect(editor.value).toContain('?concept a owl:Class .');
+    expect(editor.value).not.toContain('om:GlossaryTerm');
+  });
+
   it('toggles triple-shaped query results from a table to a subgraph', async () => {
     mockRunGlossarySparqlQuery.mockResolvedValueOnce({
       body: '',
