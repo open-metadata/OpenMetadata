@@ -227,9 +227,7 @@ function AlertEditModal({
             inlineAlert={inlineAlertDetails}
             mode={mode}
             recipientCategories={selection.support.recipientCategories}
-            shouldShowActionsSection={
-              kind.hasTriggers && shouldShowActionsSection
-            }
+            shouldShowActionsSection={shouldShowActionsSection}
             shouldShowFiltersSection={shouldShowFiltersSection}
             showHint={showHint}
             supportedFilters={selection.support.supportedFilters}

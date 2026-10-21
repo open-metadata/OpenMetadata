@@ -32,7 +32,7 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { INITIAL_RULE } from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.constants';
 import AccessControlRuleForm from '../../../components/discovery/personal-space/Profile/tabs/access-control/AccessControlRuleForm';
-import { ADD_POLICY_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
+import { getAddPolicyPageBreadcrumb } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
@@ -111,7 +111,7 @@ const AddPolicyPage = () => {
 
   const translatedAddPolicyBreadcrumb = useMemo(
     () =>
-      ADD_POLICY_PAGE_BREADCRUMB.map((option) => ({
+      getAddPolicyPageBreadcrumb().map((option) => ({
         ...option,
         name: translateWithNestedKeys(option.name, option.nameData),
       })),

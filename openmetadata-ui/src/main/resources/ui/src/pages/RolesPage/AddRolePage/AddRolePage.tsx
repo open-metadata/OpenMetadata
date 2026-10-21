@@ -32,7 +32,7 @@ import { useNavigate } from 'react-router-dom';
 import ResizablePanels from '../../../components/common/ResizablePanels/ResizablePanels';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { ADD_ROLE_PAGE_BREADCRUMB } from '../../../constants/Breadcrumb.constants';
+import { getAddRolePageBreadcrumb } from '../../../constants/Breadcrumb.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
 import { NAME_FIELD_REGISTER_RULES } from '../../../constants/Form.constants';
 import { GlobalSettingOptions } from '../../../constants/GlobalSettings.constants';
@@ -126,7 +126,7 @@ const AddRolePage = () => {
 
   const translatedRoleBreadcrumb = useMemo(
     () =>
-      ADD_ROLE_PAGE_BREADCRUMB.map((option) => ({
+      getAddRolePageBreadcrumb().map((option) => ({
         ...option,
         name: translateWithNestedKeys(option.name, option.nameData),
       })),
