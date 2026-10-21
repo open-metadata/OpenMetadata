@@ -19,7 +19,10 @@ import {
   Button,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ObjectFieldTemplateProps } from '@rjsf/utils';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
 import { ChevronDown, Hexagon01, Plus } from '@untitledui/icons';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, useState } from 'react';
@@ -236,7 +239,7 @@ export const CoreObjectFieldTemplate: FunctionComponent<
   const addButton = schema.additionalProperties ? (
     <Button
       aria-label={t('label.add-entity', { entity: addEntityLabel })}
-      className="core-object-field-template-add-button tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-md tw:p-0 tw:leading-none"
+      className="core-object-field-template-add-button tw:inline-flex tw:size-9 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
       color="primary"
       data-testid={`add-item-${addEntityLabel}`}
       id={`${idSchema.$id}`}
@@ -438,14 +441,17 @@ export const CoreObjectFieldTemplate: FunctionComponent<
                 size={16}
               />
             )}
-            <Typography
-              as="label"
-              className="core-object-field-template-title tw:text-primary"
-              id={`${idSchema.$id}__title`}
-              size="text-sm"
-              weight="semibold">
-              {title}
-            </Typography>
+            {/* A map entry's key is already shown beside its value. */}
+            {!(ADDITIONAL_PROPERTY_FLAG in schema) && (
+              <Typography
+                as="label"
+                className="core-object-field-template-title tw:text-primary"
+                id={`${idSchema.$id}__title`}
+                size="text-sm"
+                weight="semibold">
+                {title}
+              </Typography>
+            )}
             {shouldShowDescription && (
               <Typography
                 as="span"

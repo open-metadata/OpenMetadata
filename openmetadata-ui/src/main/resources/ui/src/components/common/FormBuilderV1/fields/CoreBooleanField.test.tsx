@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Toggle } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { fireEvent, render, screen } from '@testing-library/react';
 import CoreBooleanField from './CoreBooleanField';
@@ -55,6 +56,24 @@ const baseProps = {
 describe('CoreBooleanField', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('names a map entry toggle by its key instead of repeating it as a label', () => {
+    render(
+      <CoreBooleanField
+        {...baseProps}
+        name="verifyCerts"
+        schema={{ type: 'boolean', __additional_property: true }}
+      />
+    );
+
+    expect(Toggle).toHaveBeenCalledWith(
+      expect.objectContaining({
+        label: undefined,
+        'aria-label': 'verifyCerts',
+      }),
+      expect.anything()
+    );
   });
 
   it('renders with schema title as label', () => {

@@ -14,7 +14,11 @@
 import { PasswordInput } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
 import { useTranslation } from 'react-i18next';
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 const CorePasswordWidget = (props: WidgetProps) => {
   const {
@@ -38,7 +42,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
   const isInputTypeFile = schema.uiFieldType === 'file';
   const isInputTypeFileOrInput = schema.uiFieldType === 'fileOrInput';
 
-  const displayLabel = getWidgetLabel({ hideLabel, label });
+  const displayLabel = getWidgetLabel({ hideLabel, label, schema });
   const hint = getWidgetHint({ rawErrors, schema, options });
   const isInvalid = !!rawErrors?.length;
 
@@ -71,6 +75,7 @@ const CorePasswordWidget = (props: WidgetProps) => {
 
   return (
     <PasswordInput
+      {...getWidgetAriaProps({ label, schema })}
       acceptedFileTypes={
         isInputTypeFileOrInput
           ? (schema.accept as string[] | undefined)
