@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { CheckCircleFilled } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -89,13 +89,10 @@ const WidgetCard = ({
           />
         )}
         {isSelected && (
-          <Box
-            align="center"
-            className="tw:absolute tw:top-2 tw:right-2 tw:rounded-full tw:bg-brand-solid tw:p-1 tw:text-white tw:shadow-sm"
+          <CheckCircleFilled
+            className="tw:absolute tw:top-2 tw:right-2 tw:size-6 tw:text-fg-brand-primary"
             data-testid="widget-selected-check"
-            justify="center">
-            <Check className="tw:size-4" />
-          </Box>
+          />
         )}
       </Box>
       <Box

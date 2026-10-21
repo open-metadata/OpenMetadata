@@ -255,7 +255,9 @@ const CustomiseHomeModal = ({
               className={classNames(
                 'sidebar-option border-radius-xs cursor-pointer d-flex items-center tw:gap-1.5',
                 isWidgetItem && 'sidebar-widget-item tw:hover:bg-primary_hover',
-                selectedKey === item.key && 'active tw:bg-brand-primary'
+                selectedKey === item.key
+                  ? 'active tw:bg-brand-primary tw:text-brand-primary'
+                  : 'tw:text-secondary'
               )}
               data-testid={`sidebar-option-${item.key}`}
               key={item.key}
@@ -266,13 +268,9 @@ const CustomiseHomeModal = ({
                 handleSidebarClick(item.key)
               )}>
               <Typography
-                className={classNames({
-                  'tw:text-brand-primary': selectedKey === item.key,
-                  'tw:text-secondary':
-                    (selectedKey !== item.key && !isWidgetItem) ||
-                    isSelectedWidget,
-                  'tw:text-tertiary': isWidgetItem && !isSelectedWidget,
-                })}
+                color={
+                  isWidgetItem && !isSelectedWidget ? 'secondary' : undefined
+                }
                 size="text-md"
                 weight={labelWeight}>
                 {item.label}
