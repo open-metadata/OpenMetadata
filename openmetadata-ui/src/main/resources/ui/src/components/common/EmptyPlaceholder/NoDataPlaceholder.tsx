@@ -32,10 +32,12 @@ const NoDataPlaceholder = ({
   const { t } = useTranslation();
 
   return (
+    // Without a title the message is the headline, styled like the sibling
+    // placeholders' titles rather than as secondary description text.
     <EmptyPlaceholder
-      description={description ?? t('message.no-data-available')}
+      description={title ? description : undefined}
       icon={icon ?? <Database01 />}
-      title={title}
+      title={title ?? description ?? t('message.no-data-available')}
       variant="blank"
       {...props}
     />
