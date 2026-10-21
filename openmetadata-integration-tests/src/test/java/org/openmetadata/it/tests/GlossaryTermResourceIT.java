@@ -83,6 +83,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.fluent.GlossaryTerms;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -505,10 +506,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withRelatedTerms(List.of(ns.prefix("missing_term")))
             .withDescription("Invalid reference");
 
-    final BulkCreateResult result =
-        SdkClients.adminClient()
-            .glossaryTerms()
-            .createMany(List.of(invalid, fresh), BulkCreateConflictPolicy.SKIP);
+    final BulkCreateResult result = GlossaryTerms.createMany(List.of(invalid, fresh)).execute();
     assertEquals(1, result.getCreatedCount());
     assertEquals(1, result.getFailedCount());
     assertEquals(0, result.getResults().getFirst().getIndex());
@@ -539,9 +537,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withGlossary(glossary.getFullyQualifiedName())
             .withDescription("New");
     final BulkCreateResult result =
-        SdkClients.adminClient()
-            .glossaryTerms()
-            .createMany(List.of(existingRequest, fresh, fresh), BulkCreateConflictPolicy.FAIL);
+        GlossaryTerms.createMany(List.of(existingRequest, fresh, fresh))
+            .onConflict(BulkCreateConflictPolicy.FAIL)
+            .execute();
 
     assertEquals(1, result.getCreatedCount());
     assertEquals(0, result.getSkippedCount());

@@ -90,6 +90,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -988,14 +989,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         rowCountRequest(table, ns.prefix("invalid_outcome")).withParameterValues(List.of());
 
     final BulkCreateResult result =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.POST,
-                "/v1/dataQuality/testCases/createMany",
-                List.of(fresh, existingRequest, fresh, invalid),
-                BulkCreateResult.class,
-                RequestOptions.builder().queryParam("onConflict", "skip").build());
+        TestCases.createMany(List.of(fresh, existingRequest, fresh, invalid)).execute();
 
     assertEquals(1, result.getCreatedCount());
     assertEquals(2, result.getSkippedCount());
@@ -1045,9 +1039,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     createEntity(existingRequest);
     final CreateTestCase fresh = rowCountRequest(table, ns.prefix("fresh_fail"));
     final BulkCreateResult result =
-        SdkClients.adminClient()
-            .testCases()
-            .createMany(List.of(existingRequest, fresh, fresh), BulkCreateConflictPolicy.FAIL);
+        TestCases.createMany(List.of(existingRequest, fresh, fresh))
+            .onConflict(BulkCreateConflictPolicy.FAIL)
+            .execute();
 
     assertEquals(1, result.getCreatedCount());
     assertEquals(0, result.getSkippedCount());
