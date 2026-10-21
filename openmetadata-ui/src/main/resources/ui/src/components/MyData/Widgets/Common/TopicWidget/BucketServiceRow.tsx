@@ -55,12 +55,12 @@ const BucketServiceRow: React.FC<BucketServiceRowProps> = ({
         onClick={() => onOpen(service)}>
         <img
           alt=""
-          className="tw:size-8 tw:shrink-0 tw:rounded-md tw:object-contain"
-          height={32}
+          className="tw:size-7 tw:shrink-0 tw:rounded-md tw:object-contain"
+          height={28}
           src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
-          width={32}
+          width={28}
         />
-        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
           {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
@@ -68,7 +68,7 @@ const BucketServiceRow: React.FC<BucketServiceRowProps> = ({
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
             size="text-xs"
-            weight="medium">
+            weight="semibold">
             {service.displayName}
           </Typography>
           <Typography

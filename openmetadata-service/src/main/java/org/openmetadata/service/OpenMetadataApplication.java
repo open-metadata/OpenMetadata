@@ -114,6 +114,7 @@ import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
@@ -152,7 +153,6 @@ import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationJobHandler;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -559,7 +559,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
     registry.register(new ContextMemoryExtractionJobHandler());
-    registry.register(OntologyMemoryDerivationJobHandler.createDefault());
+    registry.register(new MemoryGlossaryDerivationJobHandler());
     return registry;
   }
 

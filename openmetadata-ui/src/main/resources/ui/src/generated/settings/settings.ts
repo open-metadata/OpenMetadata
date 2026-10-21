@@ -3030,6 +3030,7 @@ export interface SampleDataIngestionConfig {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }
