@@ -443,6 +443,36 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         created.getFirst().getFullyQualifiedName(), created.getLast().getFullyQualifiedName());
   }
 
+  @Test
+  void createMany_sameNameUnderDifferentParentStillFailsValidation(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createWithName(ns, "different_parent");
+    final CreateGlossaryTerm parentRequest =
+        new CreateGlossaryTerm()
+            .withName("parent")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Parent term");
+    final GlossaryTerm parent = createEntity(parentRequest);
+    final CreateGlossaryTerm existingRequest =
+        new CreateGlossaryTerm()
+            .withName("shared")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Existing root term");
+    createEntity(existingRequest);
+    existingRequest.setParent(parent.getFullyQualifiedName());
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Fresh term");
+
+    final InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class, () -> createManyTerms(List.of(fresh, existingRequest)));
+
+    assertEquals(400, error.getStatusCode());
+    assertEquals(fresh.getName(), createEntity(fresh).getName());
+  }
+
   private List<GlossaryTerm> createManyTerms(List<CreateGlossaryTerm> requests) {
     return List.of(
         SdkClients.adminClient()

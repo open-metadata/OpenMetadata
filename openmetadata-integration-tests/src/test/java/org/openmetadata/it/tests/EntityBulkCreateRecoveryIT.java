@@ -56,6 +56,7 @@ import org.openmetadata.service.monitoring.RequestLatencyContext;
 class EntityBulkCreateRecoveryIT {
   private static final String INSERT_TEST_CASE = "insert into test_case (";
   private static final String INSERT_GLOSSARY_TERM = "insert into glossary_term_entity (";
+  private static final String CHECK_GLOSSARY_NAME = "and lower(name) = lower(";
   private static final String CREATE_MANY_TERMS = "/v1/glossaryTerms/createMany";
 
   @ParameterizedTest
@@ -74,7 +75,7 @@ class EntityBulkCreateRecoveryIT {
 
     List<TestCase> created;
     jdbi.setSqlLogger(
-        concurrentInsertLogger(
+        concurrentCreateLogger(
             previous,
             INSERT_TEST_CASE,
             1,
@@ -125,21 +126,59 @@ class EntityBulkCreateRecoveryIT {
         "Only the seed, concurrent winner and any new test have relationships");
   }
 
-  private SqlLogger concurrentInsertLogger(
+  @Test
+  void duplicateDuringPreparationSkipsWinnerAndCreatesRemainingTerms(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final List<CreateGlossaryTerm> requests = termRequests(glossary, 2);
+    final AtomicReference<GlossaryTerm> winner = new AtomicReference<>();
+    final var jdbi = Entity.getJdbi();
+    final SqlLogger previous = jdbi.getConfig(SqlStatements.class).getSqlLogger();
+    jdbi.setSqlLogger(
+        concurrentCreateLogger(
+            previous,
+            CHECK_GLOSSARY_NAME,
+            1,
+            () -> winner.set(client.glossaryTerms().create(requests.getFirst())),
+            new AtomicInteger()));
+    List<GlossaryTerm> created;
+    try {
+      created =
+          List.of(
+              client
+                  .getHttpClient()
+                  .execute(HttpMethod.POST, CREATE_MANY_TERMS, requests, GlossaryTerm[].class));
+    } finally {
+      jdbi.setSqlLogger(previous);
+    }
+
+    assertNotNull(winner.get(), "The competing request must commit before preparation");
+    assertEquals(
+        List.of(requests.getLast().getName()),
+        created.stream().map(GlossaryTerm::getName).toList());
+    assertEquals(
+        winner.get().getId(),
+        client.glossaryTerms().getByName(winner.get().getFullyQualifiedName()).getId());
+    assertEquals(
+        created.getFirst().getId(),
+        client.glossaryTerms().getByName(created.getFirst().getFullyQualifiedName()).getId());
+  }
+
+  private SqlLogger concurrentCreateLogger(
       SqlLogger delegate,
-      String insertSql,
-      int insertNumber,
+      String sqlFragment,
+      int statementNumber,
       Runnable concurrentCreate,
       AtomicInteger conflicts) {
-    final AtomicInteger inserts = new AtomicInteger();
+    final AtomicInteger statements = new AtomicInteger();
     return new SqlLogger() {
       @Override
       public void logBeforeExecution(StatementContext context) {
         delegate.logBeforeExecution(context);
         if (RequestLatencyContext.getContext() != null
-            && context.getRenderedSql().toLowerCase(Locale.ROOT).contains(insertSql)
-            && inserts.incrementAndGet() == insertNumber) {
-          // Commit on another request after the preflight lookup but before the batch INSERT.
+            && context.getRenderedSql().toLowerCase(Locale.ROOT).contains(sqlFragment)
+            && statements.incrementAndGet() == statementNumber) {
+          // Commit on another request to make the race deterministic.
           concurrentCreate.run();
         }
       }
@@ -170,7 +209,7 @@ class EntityBulkCreateRecoveryIT {
     final var jdbi = Entity.getJdbi();
     final SqlLogger previous = jdbi.getConfig(SqlStatements.class).getSqlLogger();
     jdbi.setSqlLogger(
-        concurrentInsertLogger(
+        concurrentCreateLogger(
             previous,
             INSERT_GLOSSARY_TERM,
             2,

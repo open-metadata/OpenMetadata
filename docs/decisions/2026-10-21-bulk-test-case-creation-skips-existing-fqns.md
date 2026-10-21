@@ -1,7 +1,7 @@
 # Bulk test-case creation skips existing fully qualified names
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial), v2 2026-10-21 (shared bulk-create recovery)
+- **Revisions:** v1 2026-10-21 (initial), v2 2026-10-21 (shared bulk-create recovery), v3 2026-10-21 (preparation races)
 - **Deciders:** Harsha
 - **Guard:** `TestCaseResourceIT`, `GlossaryTermResourceIT`, `EntityBulkCreateRecoveryIT`
 - **Related:** `POST /api/v1/dataQuality/testCases/createMany`
@@ -45,3 +45,10 @@ our own rows committed still propagates. Previously committed chunks remain comm
 This supersedes the v1 limitation to test cases. Single-entity creation and bulk create-or-update
 retain their existing contracts; updates are not converted into skips. API responses still contain
 only newly created entities, so clients must not assume one result per submitted item.
+
+## Amendment v3: concurrent creation during preparation
+
+A concurrent request can create an FQN after the initial lookup but before validation. When
+preparation rejects an entry, recovery rechecks that exact FQN and skips it only if another ID now
+exists. Otherwise, the original validation error propagates before any batch writes. This preserves
+glossary name validation for different parents, whose FQNs differ even when their names match.

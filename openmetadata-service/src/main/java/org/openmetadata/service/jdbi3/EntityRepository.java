@@ -3413,7 +3413,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Creates distinct new FQNs in request order, leaving existing entities unchanged. */
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
     final List<T> pending = findNewEntities(entities);
-    pending.forEach(entity -> prepareInternal(entity, false));
+    prepareNewEntities(pending);
     final List<T> created = new ArrayList<>();
     for (int start = 0; start < pending.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       final int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, pending.size());
@@ -3437,6 +3437,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
     return pending;
+  }
+
+  private void prepareNewEntities(List<T> entities) {
+    for (final Iterator<T> iterator = entities.iterator(); iterator.hasNext(); ) {
+      final T entity = iterator.next();
+      try {
+        prepareInternal(entity, false);
+      } catch (IllegalArgumentException exception) {
+        if (!removeConcurrentDuplicates(new ArrayList<>(List.of(entity)))) {
+          throw exception;
+        }
+        iterator.remove();
+        LOG.warn(
+            "Skipped existing {} entity {} during bulk-create preparation",
+            entityType,
+            entity.getFullyQualifiedName());
+      }
+    }
   }
 
   private List<T> createManyChunk(List<T> pending) {
