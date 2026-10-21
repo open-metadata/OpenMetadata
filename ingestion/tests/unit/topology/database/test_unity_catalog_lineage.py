@@ -525,6 +525,26 @@ class TestCrossServiceLineage:
 
         assert [result.right.edge.fromEntity.id for result in results] == [tables["other_service.cat.schema.mid"].id]
 
+    def test_a_failed_own_service_lookup_does_not_fall_through_to_another_service(self):
+        """The own-service table may exist; a same-named one elsewhere must not take its edge"""
+        source = cross_service_source()
+        tables = {
+            "local_unitycatalog.cat.schema.src": a_table("src"),
+            "other_service.cat.schema.src": a_table("src"),
+            "local_unitycatalog.cat.schema.tgt": a_table("tgt"),
+        }
+        stub_rows(source, [table_row("cat.schema.src", "cat.schema.tgt")])
+
+        def get_by_name(entity=None, fqn=None, **_):
+            if str(fqn) == "local_unitycatalog.cat.schema.src":
+                raise RuntimeError("connection reset")
+            return tables.get(str(fqn))
+
+        source.metadata.get_by_name.side_effect = get_by_name
+
+        assert list(source._iter()) == []
+        assert "local_unitycatalog.cat.schema.src" not in source._table_cache
+
 
 class TestSqlEnrichment:
     """The statement that wrote an edge, joined in the same query as the edge itself."""
@@ -1128,7 +1148,7 @@ class TestLineageDrivenIteration:
         lineage_source.metadata.get_by_name.side_effect = RuntimeError("connection reset")
 
         assert lineage_source._get_table_entity("cat.schema.tgt") is None
-        assert "cat.schema.tgt" not in lineage_source._table_cache
+        assert len(lineage_source._table_cache) == 0
 
     def test_filters_apply_to_the_names_the_system_tables_report(self, lineage_source):
         tables = {
