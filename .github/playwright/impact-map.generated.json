@@ -10596,22 +10596,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/DomainsRow.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/PersonaRow.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesAddPage.tsx"
       ],
       "specs": [
@@ -11027,14 +11011,6 @@
       "specs": [
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersUserEdit.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
       ]
     },
     {
