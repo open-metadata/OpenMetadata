@@ -157,4 +157,22 @@ describe('profileNavConfig', () => {
     expect(applications?.isVisible?.(canView, false)).toBe(true);
     expect(applications?.isVisible?.({} as UIPermission, false)).toBeFalsy();
   });
+
+  // Classic served these pages to non-admins holding the matching view
+  // permission (SettingsRouter); the modal tabs follow the same gates.
+  it.each([
+    ['members', ResourceEntity.TEAM],
+    ['members', ResourceEntity.USER],
+    ['access-control', ResourceEntity.ROLE],
+    ['access-control', ResourceEntity.POLICY],
+    ['bots', ResourceEntity.BOT],
+  ])('shows %s to a non-admin with %s view permission', (id, resource) => {
+    const item = getProfileNavItem(id as never);
+    const canView = { [resource]: { ViewBasic: true } } as UIPermission;
+
+    expect(item.id).toBe(id);
+    expect(item.isVisible?.(canView, false)).toBe(true);
+    expect(item.isVisible?.({} as UIPermission, false)).toBe(false);
+    expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
+  });
 });

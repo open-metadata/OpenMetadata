@@ -15,7 +15,7 @@ import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { isEmpty, isUndefined, omitBy } from 'lodash';
 import React, {
   FC,
   useCallback,
@@ -25,8 +25,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import ErrorPlaceHolder from '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -46,6 +48,7 @@ import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
+  getProfileNavItem,
   ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
@@ -300,8 +303,11 @@ const ProfilePage: React.FC = () => {
     [selectedId, setHash, currentUser?.name]
   );
 
-  const activeItem =
-    navItems.find((item) => item.id === selectedId) ?? navItems[0];
+  // A tab the user cannot see (e.g. a settings link to a team for a user
+  // without team view permission) keeps its header and shows no-access rather
+  // than silently opening another tab.
+  const selectedItem = navItems.find((item) => item.id === selectedId);
+  const activeItem = selectedItem ?? getProfileNavItem(selectedId);
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
@@ -337,12 +343,26 @@ const ProfilePage: React.FC = () => {
       return <Loader />;
     }
 
-    const panel = activeItem.render({
-      userData,
-      isProfileLoading,
-      updateUserDetails,
-      onHeaderChange: setHeaderOverride,
-    });
+    // Permissions load after the page mounts; until then every permission-gated
+    // tab reads as hidden, so wait instead of flashing no-access.
+    if (!selectedItem && isEmpty(permissions)) {
+      return <Loader />;
+    }
+
+    const panel = selectedItem ? (
+      activeItem.render({
+        userData,
+        isProfileLoading,
+        updateUserDetails,
+        onHeaderChange: setHeaderOverride,
+      })
+    ) : (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
 
     return (
       <>

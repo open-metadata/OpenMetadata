@@ -76,6 +76,20 @@ jest.mock('./tabs/PermissionsTab', () => ({
   __esModule: true,
   default: () => <div data-testid="content-permissions" />,
 }));
+jest.mock('./tabs/members/MembersPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="content-members" />,
+}));
+jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+  __esModule: true,
+  default: () => <div data-testid="permission-error-placeholder" />,
+}));
+
+let mockPermissions: Record<string, unknown> = {};
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: mockPermissions }),
+}));
+
 jest.mock('./tabs/notification/NotificationPanel', () => ({
   __esModule: true,
   default: () => <div data-testid="content-notification" />,
@@ -139,6 +153,7 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
+    mockPermissions = {};
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
@@ -290,5 +305,43 @@ describe('ProfilePage', () => {
 
     expect(screen.getByTestId('content-permissions')).toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+  });
+
+  // A settings link to a team opens `#members/teams/<fqn>`. Classic served the
+  // team pages to anyone with team view permission, not only admins.
+  it('opens the members tab for a non-admin with team view permission', async () => {
+    mockPermissions = { team: { ViewBasic: true } };
+    mockHashState = {
+      tab: 'members',
+      subPath: 'teams/Engineering',
+      params: {},
+    };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('content-members')).toBeInTheDocument();
+    expect(screen.getByTestId('profile-nav-members')).toBeInTheDocument();
+  });
+
+  it('shows no-access, not the profile, for a tab the user cannot see', async () => {
+    mockPermissions = { table: { ViewBasic: true } };
+    mockHashState = {
+      tab: 'members',
+      subPath: 'teams/Engineering',
+      params: {},
+    };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('content-members')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('profile-nav-members')).not.toBeInTheDocument();
   });
 });

@@ -24,10 +24,17 @@ import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../../../enums/common.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  userPermissions,
+} from '../../../../../../utils/PermissionsUtils';
+import ErrorPlaceHolder from '../../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
 import {
@@ -69,6 +76,34 @@ const SIMPLE_VIEWS: Partial<
   [POLICIES_ADD]: AccessControlAddPolicyForm,
 };
 
+const canViewRoles = (permissions: UIPermission) =>
+  userPermissions.hasViewPermissions(ResourceEntity.ROLE, permissions);
+const canViewPolicies = (permissions: UIPermission) =>
+  userPermissions.hasViewPermissions(ResourceEntity.POLICY, permissions);
+
+// What a non-admin needs to open each view: the gates classic `SettingsRouter`
+// put on the matching page (the debugger was admin-only there).
+const VIEW_GATES: Partial<
+  Record<AccessControlView['type'], (permissions: UIPermission) => boolean>
+> = {
+  roles: canViewRoles,
+  'roles-add': canViewRoles,
+  [ROLES_DETAIL]: canViewRoles,
+  policies: canViewPolicies,
+  [POLICIES_ADD]: canViewPolicies,
+  [POLICIES_DETAIL]: canViewPolicies,
+  [POLICIES_RULE]: canViewPolicies,
+  'permission-debugger': () => false,
+  'audit-logs': (permissions) =>
+    Boolean(
+      checkPermission(
+        Operation.AuditLogs,
+        ResourceEntity.AUDIT_LOG,
+        permissions
+      )
+    ),
+};
+
 interface AccessControlPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
@@ -78,6 +113,7 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 }) => {
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
   const { state: hashState, setHash } = useSettingsHash();
 
   const view = useMemo<AccessControlView>(
@@ -339,6 +375,17 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
     detailHeaderTitleSuffix,
     resolvedDetailName,
   ]);
+
+  const viewGate = VIEW_GATES[view.type];
+  if (!isAdminUser && viewGate && !viewGate(permissions)) {
+    return (
+      <ErrorPlaceHolder
+        className="border-none"
+        permissionValue={t('label.view')}
+        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
+      />
+    );
+  }
 
   // Audit logs manages its own height/scroll and injects its own header actions.
   if (isAuditLogsView) {

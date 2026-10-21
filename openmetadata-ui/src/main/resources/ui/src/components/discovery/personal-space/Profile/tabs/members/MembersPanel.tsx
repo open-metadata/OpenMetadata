@@ -23,7 +23,10 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
-import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  userPermissions,
+} from '../../../../../../utils/PermissionsUtils';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { MembersPanelProps, MembersView } from './Members.types';
@@ -101,9 +104,24 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     ).find((contribution) => contribution.key === view.key);
   }, [view, getContributions]);
 
-  // A form view reached without the matching create permission (e.g. via a deep
-  // link) renders the lock placeholder instead of the form.
-  const isDeniedFormView = useMemo(() => {
+  // Classic gated the team and user lists on view permission; the tab itself is
+  // open to either, so each list keeps its own gate here.
+  const canViewTeams =
+    isAdminUser ||
+    userPermissions.hasViewPermissions(ResourceEntity.TEAM, permissions);
+  const canViewUsers =
+    isAdminUser ||
+    userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
+
+  // A view reached without the matching permission (e.g. via a deep link or a
+  // settings link) renders the lock placeholder instead of the view.
+  const isDeniedView = useMemo(() => {
+    if (view.type === 'teams' || view.type === TEAM_DETAIL) {
+      return !canViewTeams;
+    }
+    if (view.type === 'users' || view.type === 'admins') {
+      return !canViewUsers;
+    }
     if (view.type === TEAMS_ADD) {
       return !canCreateTeam;
     }
@@ -115,7 +133,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     }
 
     return false;
-  }, [view, canCreateTeam, canCreateUser]);
+  }, [view, canCreateTeam, canCreateUser, canViewTeams, canViewUsers]);
 
   // Stable no-op for the Organization view (its name isn't editable) so the
   // team-detail's fetch effect, which depends on onRename, can't re-fire.
@@ -350,7 +368,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     return renderSecondaryView();
   };
 
-  const content = isDeniedFormView ? permissionPlaceholder : renderView();
+  const content = isDeniedView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>
