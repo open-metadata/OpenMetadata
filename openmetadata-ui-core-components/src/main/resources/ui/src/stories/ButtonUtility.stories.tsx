@@ -98,6 +98,43 @@ export const WithTooltip: StoryObj = {
   ),
 };
 
+// A toggle, off and on: `isSelected` paints the on state in brand and sets
+// `aria-pressed`.
+export const Selected: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 8 }}>
+      <ButtonUtility
+        color="tertiary"
+        icon={Edit01}
+        isSelected={false}
+        size="lg"
+        tooltip="Tertiary, off"
+      />
+      <ButtonUtility
+        isSelected
+        color="tertiary"
+        icon={Edit01}
+        size="lg"
+        tooltip="Tertiary, on"
+      />
+      <ButtonUtility
+        color="secondary"
+        icon={Edit01}
+        isSelected={false}
+        size="lg"
+        tooltip="Secondary, off"
+      />
+      <ButtonUtility
+        isSelected
+        color="secondary"
+        icon={Edit01}
+        size="lg"
+        tooltip="Secondary, on"
+      />
+    </div>
+  ),
+};
+
 export const Disabled: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 8 }}>

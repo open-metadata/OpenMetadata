@@ -11,12 +11,27 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
   Box,
   ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ConstraintDistribution,
+  ConstraintDistributionRemoved,
+  ConstraintForeignKey,
+  ConstraintForeignKeyRemoved,
+  ConstraintKey,
+  ConstraintKeyRemoved,
+  ConstraintNotNull,
+  ConstraintNotNullRemoved,
+  ConstraintSort,
+  ConstraintSortRemoved,
+  ConstraintUnique,
+  ConstraintUniqueRemoved,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
 import { FC, Fragment } from 'react';
@@ -51,28 +66,16 @@ import { ReactComponent as IconVarchar } from '../assets/svg/data-type-icon/varc
 import { ReactComponent as IconVariant } from '../assets/svg/data-type-icon/variant.svg';
 import { ReactComponent as IconXML } from '../assets/svg/data-type-icon/xml.svg';
 import { ReactComponent as IconDrag } from '../assets/svg/drag.svg';
-import { ReactComponent as IconForeignKeyLineThrough } from '../assets/svg/foreign-key-line-through.svg';
-import { ReactComponent as IconForeignKey } from '../assets/svg/foreign-key.svg';
 import { ReactComponent as IconDown } from '../assets/svg/ic-arrow-down.svg';
 import { ReactComponent as IconRight } from '../assets/svg/ic-arrow-right.svg';
-import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
-import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
-import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
-import { ReactComponent as IconKey } from '../assets/svg/icon-key.svg';
-import { ReactComponent as IconNotNullLineThrough } from '../assets/svg/icon-not-null-line-through.svg';
-import { ReactComponent as IconNotNull } from '../assets/svg/icon-not-null.svg';
-import { ReactComponent as IconSortLineThrough } from '../assets/svg/icon-sort-line-through.svg';
-import { ReactComponent as IconSortKey } from '../assets/svg/icon-sort.svg';
-import { ReactComponent as IconUniqueLineThrough } from '../assets/svg/icon-unique-line-through.svg';
-import { ReactComponent as IconUnique } from '../assets/svg/icon-unique.svg';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
+import ConstraintIcon from '../components/discovery/database/ConstraintIcon/ConstraintIcon';
 import { ConstraintTypes } from '../enums/table.enum';
 import {
   ConstraintType,
   DataType,
   TableConstraint,
 } from '../generated/entity/data/table';
-import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { t } from './i18next/LocalUtil';
 
 // These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
@@ -96,44 +99,44 @@ interface ConstraintIconConfig {
 const CONSTRAINT_ICON_CONFIG: Record<string, ConstraintIconConfig> = {
   [ConstraintTypes.PRIMARY_KEY]: {
     getTitle: () => t('label.primary-key'),
-    icon: IconKey,
-    deletedIcon: IconKeyLineThrough,
+    icon: ConstraintKey,
+    deletedIcon: ConstraintKeyRemoved,
     dataTestId: 'primary-key',
   },
   [ConstraintTypes.UNIQUE]: {
     getTitle: () => t('label.unique'),
-    icon: IconUnique,
-    deletedIcon: IconUniqueLineThrough,
+    icon: ConstraintUnique,
+    deletedIcon: ConstraintUniqueRemoved,
     dataTestId: 'unique',
   },
   [ConstraintTypes.NOT_NULL]: {
     getTitle: () => t('label.not-null'),
-    icon: IconNotNull,
-    deletedIcon: IconNotNullLineThrough,
+    icon: ConstraintNotNull,
+    deletedIcon: ConstraintNotNullRemoved,
     dataTestId: 'not-null',
   },
   [ConstraintTypes.FOREIGN_KEY]: {
     getTitle: () => t('label.foreign-key'),
-    icon: IconForeignKey,
-    deletedIcon: IconForeignKeyLineThrough,
+    icon: ConstraintForeignKey,
+    deletedIcon: ConstraintForeignKeyRemoved,
     dataTestId: 'foreign-key',
   },
   [ConstraintType.DistKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.dist') }),
-    icon: IconDistKey,
-    deletedIcon: IconDistLineThrough,
+    icon: ConstraintDistribution,
+    deletedIcon: ConstraintDistributionRemoved,
     dataTestId: 'dist-key',
   },
   [ConstraintType.SortKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.sort') }),
-    icon: IconSortKey,
-    deletedIcon: IconSortLineThrough,
+    icon: ConstraintSort,
+    deletedIcon: ConstraintSortRemoved,
     dataTestId: 'sort-key',
   },
   [ConstraintType.ClusterKey]: {
     getTitle: () => t('label.entity-key', { entity: t('label.cluster') }),
-    icon: IconDistKey,
-    deletedIcon: IconDistLineThrough,
+    icon: ConstraintDistribution,
+    deletedIcon: ConstraintDistributionRemoved,
     dataTestId: 'cluster-key',
   },
 };
@@ -170,6 +173,8 @@ export const getConstraintIcon = ({
       title={title}
       triggerClassName={classNames('tw:inline-flex', className)}>
       <ConstraintIcon
+        // The core icons default to aria-hidden; this one carries the label.
+        aria-hidden={false}
         aria-label={title}
         className={classNames('tw:shrink-0', {
           'diff-added': isConstraintAdded,
@@ -408,3 +413,86 @@ export const tableConstraintRendererBasedOnType = (
     </div>
   );
 };
+
+const DATA_TYPE_FAMILIES: Array<[BadgeColors, DataType[]]> = [
+  [
+    'blue',
+    [
+      DataType.Char,
+      DataType.Varchar,
+      DataType.Text,
+      DataType.Mediumtext,
+      DataType.Ntext,
+      DataType.String,
+      DataType.Clob,
+      DataType.UUID,
+      DataType.Enum,
+    ],
+  ],
+  [
+    'success',
+    [
+      DataType.Bigint,
+      DataType.Byteint,
+      DataType.Decimal,
+      DataType.Double,
+      DataType.Float,
+      DataType.Int,
+      DataType.Largeint,
+      DataType.Long,
+      DataType.Money,
+      DataType.Number,
+      DataType.Numeric,
+      DataType.Smallint,
+      DataType.Tinyint,
+      DataType.Uint,
+    ],
+  ],
+  [
+    'orange',
+    [
+      DataType.Date,
+      DataType.Datetime,
+      DataType.Datetimerange,
+      DataType.Interval,
+      DataType.Time,
+      DataType.Timestamp,
+      DataType.Timestampz,
+      DataType.Year,
+    ],
+  ],
+  ['purple', [DataType.Boolean, DataType.Bit]],
+  [
+    'pink',
+    [
+      DataType.Array,
+      DataType.JSON,
+      DataType.Map,
+      DataType.Record,
+      DataType.Set,
+      DataType.Struct,
+      DataType.Super,
+      DataType.Tuple,
+      DataType.Union,
+      DataType.Variant,
+      DataType.XML,
+    ],
+  ],
+];
+
+/** Badge colour per data-type family, so every surface colours types alike. */
+const DATA_TYPE_BADGE_COLORS = new Map<string, BadgeColors>(
+  DATA_TYPE_FAMILIES.flatMap(([color, types]) =>
+    types.map((type) => [type, color] as const)
+  )
+);
+
+/**
+ * Colour for a column data-type badge: text, numeric, temporal, boolean and
+ * complex types each get one colour; anything else (binary, spatial, …) is
+ * gray. Accepts the `DataType` value or a display string such as
+ * `varchar(50)`, whose leading word is the type.
+ */
+export const getDataTypeBadgeColor = (dataType = ''): BadgeColors =>
+  DATA_TYPE_BADGE_COLORS.get(dataType.toUpperCase().split(/[^A-Z0-9_]/)[0]) ??
+  'gray';

@@ -61,6 +61,7 @@ import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyQueryResults from './OntologyQueryResults';
 import {
   buildOntologyQuerySuggestions,
+  NEW_NATIVE_ONTOLOGY_QUERY,
   NEW_ONTOLOGY_QUERY,
   OntologyQuerySuggestion,
 } from './OntologyStudio.utils';
@@ -625,8 +626,11 @@ const OntologyStudioQueryConsole = ({
     [graphData, relationTypes, selectedGlossaryIds]
   );
   const defaultSuggestion = querySuggestions[0];
+  const newQuery = selectedOntologyId
+    ? NEW_NATIVE_ONTOLOGY_QUERY
+    : NEW_ONTOLOGY_QUERY;
   const [query, setQuery] = useState(
-    initialQuery ?? defaultSuggestion?.query ?? NEW_ONTOLOGY_QUERY
+    initialQuery ?? defaultSuggestion?.query ?? newQuery
   );
   // The text the active query was opened with, so edits can be flagged and discarded.
   const [openedQuery, setOpenedQuery] = useState(query);
@@ -749,16 +753,16 @@ const OntologyStudioQueryConsole = ({
     const created = await upsertSavedQuery({
       id,
       name: t('label.untitled-query'),
-      query: NEW_ONTOLOGY_QUERY,
+      query: newQuery,
       format: 'json',
       inference: 'none',
       savedAt: Date.now(),
     });
-    openQuery(created ? `saved-${id}` : 'draft', NEW_ONTOLOGY_QUERY);
+    openQuery(created ? `saved-${id}` : 'draft', newQuery);
     setRenameValue(undefined);
     setResult(null);
     setErrorMessage(null);
-  }, [openQuery, t, upsertSavedQuery]);
+  }, [newQuery, openQuery, t, upsertSavedQuery]);
 
   useEffect(() => {
     // The ref keeps a re-run (React strict mode) from creating a second query.

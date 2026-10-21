@@ -468,3 +468,55 @@ describe('ButtonUtility — icon size and color', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 });
+
+describe('ButtonUtility — toggle', () => {
+  it('shows a toggle that is on in brand and as pressed', () => {
+    render(
+      <ButtonUtility isSelected color="tertiary" icon={Edit01} tooltip="Bar" />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).toHaveClass(
+      'tw:bg-brand-primary',
+      'tw:text-brand-secondary'
+    );
+  });
+
+  // Secondary hovers to bg-raised in dark mode; on, it must stay brand.
+  it('keeps a secondary toggle that is on in brand when hovered in dark mode', () => {
+    render(
+      <ButtonUtility isSelected color="secondary" icon={Edit01} tooltip="Bar" />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveClass('tw:dark:hover:bg-brand-primary');
+    expect(button).not.toHaveClass('tw:dark:hover:bg-raised');
+  });
+
+  it('shows a toggle that is off in its resting colour, as not pressed', () => {
+    render(
+      <ButtonUtility
+        color="tertiary"
+        icon={Edit01}
+        isSelected={false}
+        tooltip="Bar"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'Bar' });
+
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    expect(button).not.toHaveClass('tw:bg-brand-primary');
+  });
+
+  it('is a plain action, with no pressed state, when isSelected is unset', () => {
+    render(<ButtonUtility icon={Edit01} tooltip="Edit" />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveAttribute(
+      'aria-pressed'
+    );
+  });
+});

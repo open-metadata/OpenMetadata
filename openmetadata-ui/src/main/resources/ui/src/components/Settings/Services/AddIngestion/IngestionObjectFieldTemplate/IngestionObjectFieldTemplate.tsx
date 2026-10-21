@@ -407,6 +407,7 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
           <ButtonUtility
             color="primary"
             icon={Plus}
+            size="lg"
             tooltip={t('label.add-entity', { entity: t('label.property') })}
             onClick={() => onAddClick(schema)()}
           />

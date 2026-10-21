@@ -317,7 +317,11 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -394,6 +398,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AppRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/SearchResource.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java"
@@ -403,7 +408,8 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
-        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {
@@ -700,6 +706,21 @@
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts"
+      ]
+    },
+    {
+      "_comment": "What reaches an entity's activity feed is decided server-side: the ActivityFeedAlert seed filter and the repository that builds and lists activity events (an asset's feed includes its data contract's).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ActivityStreamRepository.java",
+        "openmetadata-service/src/main/resources/json/data/eventsubscription/ActivityFeedEvents.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/ActivityAPI.spec.ts",
+        "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts"
       ]
     },
     {
@@ -1051,11 +1072,15 @@
       "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
-        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataContractRedirectPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contractAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContractRepository.java"
       ],
       "projects": ["chromium", "ImportExport"],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",

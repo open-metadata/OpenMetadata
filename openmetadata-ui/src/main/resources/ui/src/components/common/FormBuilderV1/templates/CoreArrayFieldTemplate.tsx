@@ -13,25 +13,29 @@
 
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { ArrayFieldTemplateProps } from '@rjsf/utils';
+import { ADDITIONAL_PROPERTY_FLAG, ArrayFieldTemplateProps } from '@rjsf/utils';
 import { Fragment, FunctionComponent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export const CoreArrayFieldTemplate: FunctionComponent<
   ArrayFieldTemplateProps
-> = ({ title, canAdd, onAddClick, items, idSchema }) => {
+> = ({ title, canAdd, onAddClick, items, idSchema, schema }) => {
   const { t } = useTranslation();
+  // A map entry's key is already shown beside its value.
+  const isMapEntry = ADDITIONAL_PROPERTY_FLAG in schema;
 
   return (
     <Fragment>
       <div className="tw:flex tw:items-center tw:justify-between tw:bg-utility-gray-blue-50">
-        <Typography
-          as="label"
-          className="tw:text-primary"
-          size="text-sm"
-          weight="medium">
-          {title}
-        </Typography>
+        {!isMapEntry && (
+          <Typography
+            as="label"
+            className="tw:text-primary"
+            size="text-sm"
+            weight="medium">
+            {title}
+          </Typography>
+        )}
         {canAdd && (
           <ButtonUtility
             color="primary"

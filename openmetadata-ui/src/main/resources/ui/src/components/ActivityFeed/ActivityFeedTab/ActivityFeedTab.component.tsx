@@ -156,7 +156,11 @@ const startFeedCountRequests = ({
           userId,
           limit: 1,
         }
-      : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 }
+      : {
+          entityLink: getEntityFeedLink(entityType, fqn),
+          includeFields: true,
+          limit: 1,
+        }
   ),
   mentions: isUserEntity
     ? listConversations({

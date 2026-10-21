@@ -54,11 +54,15 @@ Parts: **overlay/scrim** (`ModalOverlay`), **positioner** (`Modal`), **panel**
 
 | Member / prop | Purpose |
 | --- | --- |
-| `ModalOverlay` | Scrim + scroll container (`AriaModalOverlayProps`: `isDismissable`, `isOpen`) |
+| `ModalOverlay` | Scrim + scroll container (`AriaModalOverlayProps`: `isDismissable`, `isOpen`); `presentation`: `dialog` (default) or `fullscreen` |
 | `Modal` | Positioner / animated panel wrapper |
 | `Dialog` | Panel; `title`, `showCloseButton`, `width` (688), `onClose`, `panelClassName`, `dividers` (`always` \| `scroll`) |
 | `Dialog.Header` / `Dialog.Content` / `Dialog.Footer` | Title, body, footer slots |
 | `DialogTrigger` | Wraps a trigger element + the modal |
+
+### Fullscreen workflows
+
+`<ModalOverlay presentation="fullscreen">` fills the viewport. Its header stays visible, the body scrolls independently on the page surface, and the panel has no width cap or rounded corners. Focus trapping and keyboard dismissal still use React Aria. Use this for the native ontology library; normal dialogs retain their default presentation. The Fullscreen story includes a theme toggle and supports narrow viewports.
 
 ### Dividers
 

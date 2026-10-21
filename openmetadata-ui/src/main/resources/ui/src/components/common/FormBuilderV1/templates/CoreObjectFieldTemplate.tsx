@@ -21,7 +21,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, Plus } from '@openmetadata/ui-core-components/icons';
-import { getUiOptions, ObjectFieldTemplateProps } from '@rjsf/utils';
+import {
+  ADDITIONAL_PROPERTY_FLAG,
+  getUiOptions,
+  ObjectFieldTemplateProps,
+} from '@rjsf/utils';
 import classNames from 'classnames';
 import { Fragment, FunctionComponent, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -219,6 +223,7 @@ const getAddButton = (
       data-testid={`add-item-${addEntityLabel}`}
       icon={Plus}
       id={`${idSchema.$id}`}
+      size="lg"
       tooltip={t('label.add-entity', { entity: addEntityLabel })}
       onClick={() => onAddClick(schema)()}
     />
@@ -344,14 +349,17 @@ const NonRootTitledView: FunctionComponent<NonRootTitledViewProps> = ({
     data-field-id={idSchema.$id}>
     <div className="core-object-field-template-header tw:flex tw:items-start tw:justify-between tw:gap-4">
       <div className="tw:flex tw:min-w-0 tw:flex-col tw:gap-0.5">
-        <Typography
-          as="label"
-          className="core-object-field-template-title tw:text-primary"
-          id={`${idSchema.$id}__title`}
-          size="text-sm"
-          weight="semibold">
-          {title}
-        </Typography>
+        {/* A map entry's key is already shown beside its value. */}
+        {!(ADDITIONAL_PROPERTY_FLAG in schema) && (
+          <Typography
+            as="label"
+            className="core-object-field-template-title tw:text-primary"
+            id={`${idSchema.$id}__title`}
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+        )}
         {shouldShowDescription && (
           <Typography
             as="span"

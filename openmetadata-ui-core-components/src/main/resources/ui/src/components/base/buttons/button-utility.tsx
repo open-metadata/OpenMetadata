@@ -52,6 +52,12 @@ export const styles = {
   'tertiary-destructive': buttonStyles.colors['tertiary-destructive'].root,
 };
 
+// A toggle that is on (the panel it opens is showing) reads in brand, over
+// whichever colour it rests in, hovered too: secondary's dark hover is its
+// own variant, so it is overridden by name.
+const selectedStyles =
+  'tw:bg-brand-primary tw:hover:bg-brand-primary tw:dark:hover:bg-brand-primary tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-current';
+
 // Icon-only sizes from the Figma "Icons in buttons" spec: box size, icon frame,
 // padding, radius. The svg padding keeps the glyph at frame − 4px (see the note
 // in button.tsx); `before:` matches the primary variant's inner border to the radius.
@@ -88,6 +94,12 @@ export interface CommonProps {
   tooltip?: string;
   /** The placement of the tooltip */
   tooltipPlacement?: Placement;
+  /**
+   * Makes the button a toggle and shows whether it is on, e.g. while the
+   * panel it opens is showing. Sets `aria-pressed`; leave it unset for a
+   * plain action.
+   */
+  isSelected?: boolean;
 }
 
 /**
@@ -134,6 +146,7 @@ export const ButtonUtility = forwardRef<
     size = 'sm',
     color = 'tertiary',
     tooltipPlacement = 'top',
+    isSelected,
     ...otherProps
   },
   ref
@@ -167,6 +180,7 @@ export const ButtonUtility = forwardRef<
       ...(softDisabled
         ? { 'aria-disabled': true, onClick: undefined, onPress: undefined }
         : {}),
+      ...(isSelected === undefined ? {} : { 'aria-pressed': isSelected }),
     };
   }
 
@@ -179,6 +193,7 @@ export const ButtonUtility = forwardRef<
         'tw:aria-disabled:cursor-not-allowed tw:aria-disabled:*:data-icon:text-fg-disabled_subtle',
         sizes[size],
         styles[(size === 'xs' && borderless[color]) || color],
+        isSelected && selectedStyles,
 
         // Icon styles
         'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',

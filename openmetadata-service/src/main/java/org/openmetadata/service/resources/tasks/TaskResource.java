@@ -244,6 +244,11 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID createdById,
       @Parameter(description = "Filter by entity FQN the task is about") @QueryParam("aboutEntity")
           String aboutEntity,
+      @Parameter(
+              description =
+                  "Comma-separated entity UUIDs; matches those entities exactly, excluding descendants")
+          @QueryParam("aboutEntityIds")
+          String aboutEntityIds,
       @Parameter(description = "Filter by parent service FQN of the entity the task is about")
           @QueryParam("aboutService")
           String aboutService,
@@ -304,6 +309,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     if (aboutEntity != null) {
       filter.addQueryParam("aboutEntity", aboutEntity);
+    }
+    if (aboutEntityIds != null) {
+      filter.addQueryParam(
+          "aboutEntityIds",
+          Arrays.stream(aboutEntityIds.split(","))
+              .map(String::trim)
+              .map(UUID::fromString)
+              .map(UUID::toString)
+              .collect(Collectors.joining(",")));
     }
     if (aboutService != null) {
       filter.addQueryParam("aboutService", aboutService);
