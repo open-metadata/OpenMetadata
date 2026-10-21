@@ -14,13 +14,14 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../components/Customization/GenericProvider/GenericContext';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { useTestCaseStore } from '../../components/DataQuality/IncidentManager/useTestCase.store';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { mockDatasetData } from '../../constants/mockTourData.constants';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
@@ -336,23 +337,6 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
   GenericTab: jest.fn().mockImplementation(() => <>GenericTab</>),
 }));
 
-// Real provider, wrapped so a test can read the activeTab the page hands it.
-jest.mock(
-  '../../components/Customization/GenericProvider/GenericProvider',
-  () => {
-    const actual = jest.requireActual(
-      '../../components/Customization/GenericProvider/GenericProvider'
-    );
-
-    return {
-      ...actual,
-      GenericProvider: jest
-        .fn()
-        .mockImplementation((props) => actual.GenericProvider(props)),
-    };
-  }
-);
-
 jest.mock(
   '../../context/RuleEnforcementProvider/RuleEnforcementProvider',
   () => ({
@@ -624,15 +608,25 @@ describe('TestDetailsPageV1 component', () => {
     });
   });
 
-  // Regression for #35838 follow-up: a hidden tab in the URL (Knowledge Graph
-  // while RDF is off) selected Schema but left the widget layout on the hidden
-  // tab, so the panel rendered empty.
-  it('falls back to the first tab for both the tab bar and the layout when the URL tab is hidden', async () => {
+  // Regression for #35848: a hidden tab in the URL (Knowledge Graph while RDF is
+  // off) selected Schema but the provider built its layout from the hidden tab,
+  // which has no widgets, so the panel rendered empty.
+  it('renders the Schema layout when the URL tab is hidden', async () => {
     setMockPermissions({ ViewBasic: true });
     (useParams as jest.Mock).mockImplementation(() => ({
       fqn: 'fqn',
       tab: EntityTabs.KNOWLEDGE_GRAPH,
     }));
+    // Read the layout the real GenericProvider computed, instead of fixed text.
+    (GenericTab as jest.Mock).mockImplementation(() => {
+      const { layout } = useGenericContext();
+
+      return (
+        <div data-testid="generic-tab-layout">
+          {layout.map((widget) => widget.i).join(',')}
+        </div>
+      );
+    });
 
     try {
       await act(async () => {
@@ -646,18 +640,18 @@ describe('TestDetailsPageV1 component', () => {
       expect(
         await screen.findByText('testDataAssetsHeader')
       ).toBeInTheDocument();
-      expect(GenericProvider).toHaveBeenLastCalledWith(
-        expect.objectContaining({ activeTab: EntityTabs.SCHEMA }),
-        expect.anything()
-      );
       expect(screen.getByRole('tab', { selected: true })).toHaveTextContent(
         'label.column-plural'
+      );
+      expect(await screen.findByTestId('generic-tab-layout')).toHaveTextContent(
+        DetailPageWidgetKeys.LEFT_PANEL
       );
     } finally {
       (useParams as jest.Mock).mockImplementation(() => ({
         fqn: 'fqn',
         tab: 'schema',
       }));
+      (GenericTab as jest.Mock).mockImplementation(() => <>GenericTab</>);
     }
   });
 

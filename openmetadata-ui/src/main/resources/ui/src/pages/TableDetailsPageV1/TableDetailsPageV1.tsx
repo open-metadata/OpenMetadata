@@ -651,10 +651,11 @@ const TableDetailsPageV1: React.FC = () => {
     [tabs, isTourDataset, activeTabForTourDatasetPage, activeTab]
   );
 
+  const firstTab = tabs[0];
   const isExpandViewSupported = useMemo(
     () =>
-      checkIfExpandViewSupported(tabs[0], renderedActiveTab, PageType.Table),
-    [tabs[0], renderedActiveTab]
+      checkIfExpandViewSupported(firstTab, renderedActiveTab, PageType.Table),
+    [firstTab, renderedActiveTab]
   );
 
   // {@code setTableDetails} is a closure over {@code tableCacheKey}, which itself depends on
