@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Accordion,
   AccordionHeader,
@@ -22,6 +21,7 @@ import {
   NumberInput,
   Select,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -686,14 +686,17 @@ const EntitySearchSettings = () => {
   const renderRankingFields = (fields: string[] = []) => (
     <div className="ranking-field-list">
       {fields.map((field) => (
-        <Badge
-          className="tw:block tw:max-w-full tw:truncate"
-          color="gray"
-          key={field}
-          size="md"
-          type="color">
-          {field}
-        </Badge>
+        // The tooltip trigger is capped too, or its max-content width lets a
+        // long field name overflow the card instead of truncating.
+        <Tooltip key={field} title={field} triggerClassName="tw:max-w-full">
+          <Badge
+            className="tw:block tw:max-w-full tw:truncate"
+            color="gray"
+            size="md"
+            type="color">
+            {field}
+          </Badge>
+        </Tooltip>
       ))}
     </div>
   );
@@ -759,7 +762,7 @@ const EntitySearchSettings = () => {
               {matchType}
             </Typography>
           </Grid.Item>
-          <Grid.Item className="layout-column" span={12}>
+          <Grid.Item className="layout-column" span={24}>
             <Typography className="text-xs font-normal" color="secondary">
               {t('label.field-plural')}
             </Typography>
@@ -876,7 +879,7 @@ const EntitySearchSettings = () => {
                   }
                 />
               </Grid.Item>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item className="layout-column" span={24}>
                 <Typography className="text-xs font-normal" color="secondary">
                   {t('label.field-plural')}
                 </Typography>
@@ -888,6 +891,8 @@ const EntitySearchSettings = () => {
       </div>
     );
   };
+
+  const EntityIcon = entityData?.icon;
 
   return (
     <PageLayoutV1
@@ -902,7 +907,9 @@ const EntitySearchSettings = () => {
           <TitleBreadcrumb titleLinks={breadcrumbs} />
         </Grid.Item>
         <Grid.Item className="layout-column flex items-center gap-4" span={24}>
-          <Icon className="entity-icon" component={entityData?.icon} />
+          {EntityIcon && (
+            <EntityIcon className="entity-icon tw:size-[55px] tw:shrink-0" />
+          )}
           <div
             className="page-header-container"
             data-testid="page-header-container">
@@ -945,7 +952,7 @@ const EntitySearchSettings = () => {
                 </Typography>
               </AccordionHeader>
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
+                <div className="bg-white border-radius-card configuration-container ranking-configuration-container">
                   {renderRankingSettings()}
                 </div>
               </AccordionPanel>
@@ -1052,7 +1059,7 @@ const EntitySearchSettings = () => {
                 }
               />
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container">
+                <div className="bg-white border-radius-card configuration-container">
                   <TermBoostList
                     className="flex-column justify-center"
                     handleDeleteTermBoost={handleDeleteTermBoost}
@@ -1074,7 +1081,7 @@ const EntitySearchSettings = () => {
                 }
               />
               <AccordionPanel>
-                <div className="bg-white border-radius-card p-box configuration-container">
+                <div className="bg-white border-radius-card configuration-container">
                   <FieldValueBoostList
                     entitySearchSettingsPage
                     dataTestId="entity-field-value-boost-table"

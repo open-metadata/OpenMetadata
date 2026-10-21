@@ -37,7 +37,7 @@ COCKROACH_GET_VIEW_NAMES = """
         pg_namespace n ON n.oid = c.relnamespace
     WHERE 
         n.nspname = :schema 
-        AND c.relkind IN ('v')
+        AND c.relkind IN ('v', 'm')
     ORDER BY 
         c.relname
 """  # noqa: W291
@@ -54,8 +54,8 @@ LEFT JOIN
     pg_description d 
 ON 
     n.oid = d.objoid
-WHERE 
-    d.objsubid = 0;
+    AND d.classoid = 'pg_namespace'::regclass
+    AND d.objsubid = 0;
 """  # noqa: W291
 
 

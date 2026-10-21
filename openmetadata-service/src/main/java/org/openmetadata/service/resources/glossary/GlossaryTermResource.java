@@ -73,11 +73,10 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationshipTypeUsage;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -88,6 +87,7 @@ import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermRepository.TermSearch;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -97,6 +97,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -124,8 +125,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
   private final GlossaryMapper glossaryMapper = new GlossaryMapper();
   public static final String COLLECTION_PATH = "/v1/glossaryTerms/";
   static final String FIELDS =
-      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount,"
-          + "effectiveAttributes,realizedIn";
+      "children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount";
   // 100 keeps the query-string-encoded ids list (~37 chars per UUID +
   // separators) well below Jetty's default 8 KB request-header limit
   // and matches the client's BATCH_SIZE in useOntologyExplorer.ts.
@@ -386,7 +386,15 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
               description =
                   "Filter by entity status (comma-separated: Approved,Draft,In Review,Rejected,Deprecated,Unprocessed)")
           @QueryParam("entityStatus")
-          String entityStatus) {
+          String entityStatus,
+      @Parameter(
+              description =
+                  "Only terms from this provider, such as `automation` for the terms an AI agent proposed")
+          @QueryParam("provider")
+          String provider,
+      @Parameter(description = "Leave out the terms from this provider")
+          @QueryParam("excludeProvider")
+          String excludeProvider) {
 
     Fields fields = getFields(fieldsParam);
     ResourceContextInterface glossaryResourceContext = new ResourceContext<>(GLOSSARY);
@@ -402,32 +410,37 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
             new AuthRequest(glossaryTermOperationContext, glossaryTermResourceContext));
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
 
+    TermSearch search =
+        new TermSearch(
+            query,
+            limitParam,
+            offsetParam,
+            fieldsParam,
+            include,
+            entityStatus,
+            providerValue(provider),
+            providerValue(excludeProvider));
     ResultList<GlossaryTerm> result;
     if (glossaryId != null) {
-      result =
-          repository.searchGlossaryTermsById(
-              glossaryId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsById(glossaryId, search);
     } else if (glossaryFqn != null) {
-      result =
-          repository.searchGlossaryTermsByFQN(
-              glossaryFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByFQN(glossaryFqn, search);
     } else if (parentId != null) {
-      result =
-          repository.searchGlossaryTermsByParentId(
-              parentId, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentId(parentId, search);
     } else if (parentFqn != null) {
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              parentFqn, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(parentFqn, search);
     } else {
       // Search across all glossary terms without parent filter
       // Uses efficient database-level search and pagination
-      result =
-          repository.searchGlossaryTermsByParentFQN(
-              null, query, limitParam, offsetParam, fieldsParam, include, entityStatus);
+      result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
 
     return addHref(uriInfo, result);
+  }
+
+  // An unknown provider is a bad request rather than a filter that silently matches nothing.
+  private static String providerValue(String provider) {
+    return nullOrEmpty(provider) ? null : ProviderType.fromValue(provider).value();
   }
 
   @GET
@@ -997,9 +1010,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @PUT
@@ -1024,20 +1035,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    authorizeBulkAssetsPermission(
-        securityContext,
-        permissionAssets(request.getAssets()),
-        MetadataOperation.EDIT_GLOSSARY_TERMS);
-    TagLabel label = glossaryLabel(id);
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            Boolean.TRUE.equals(request.getDryRun()),
-            asset -> asset.setTags(ApprovalGate.withTag(asset.getTags(), label)));
     return ApprovalGate.bulkResponse(
-        ApprovalGate.withHeld(repository.bulkAddAndValidateGlossaryToAssets(id, request), held),
+        repository.bulkAddAndValidateGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -1063,6 +1063,17 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid ValidateGlossaryTagsRequest request) {
+    // Validation lists the term's tagged assets, so it is for callers who may change its tags.
+    ResourceContext<GlossaryTerm> termContext = getResourceContextById(id);
+    authorizer.authorizeRequests(
+        securityContext,
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_TAGS), termContext),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
+                termContext)),
+        AuthorizationLogic.ANY);
     return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
   }
 
@@ -1088,52 +1099,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddGlossaryToAssetsRequest request) {
-    authorizeBulkAssetsPermission(
-        securityContext,
-        permissionAssets(request.getAssets()),
-        MetadataOperation.EDIT_GLOSSARY_TERMS);
-    String termFqn = glossaryLabel(id).getTagFQN();
-    List<BulkResponse> held =
-        ApprovalGate.holdGatedAssets(
-            request.getAssets(),
-            Entity.FIELD_TAGS,
-            securityContext.getUserPrincipal().getName(),
-            Boolean.TRUE.equals(request.getDryRun()),
-            asset -> asset.setTags(ApprovalGate.withoutTag(asset.getTags(), termFqn)));
     return ApprovalGate.bulkResponse(
-        ApprovalGate.withHeld(repository.bulkRemoveGlossaryToAssets(id, request), held),
+        repository.bulkRemoveGlossaryToAssets(
+            id, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
-  }
-
-  private static TagLabel glossaryLabel(UUID termId) {
-    return new TagLabel()
-        .withTagFQN(
-            Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, termId, Include.NON_DELETED)
-                .getFullyQualifiedName())
-        .withSource(TagLabel.TagSource.GLOSSARY)
-        .withLabelType(TagLabel.LabelType.MANUAL);
-  }
-
-  /**
-   * Table columns are surfaced as {@code tableColumn} assets (e.g. on a glossary term's Assets page)
-   * but are edited through their parent table — they are not a resource with their own permissions.
-   * Present them as tables for the type-level permission check so a caller who may edit the table's
-   * glossary terms may edit its columns' too. The original references reach the repository unchanged,
-   * so the tag is still applied to / removed from the column itself. Package-private for unit tests.
-   */
-  List<EntityReference> permissionAssets(List<EntityReference> assets) {
-    if (nullOrEmpty(assets)) {
-      return assets;
-    }
-    return assets.stream()
-        .map(
-            asset ->
-                Entity.TABLE_COLUMN.equals(asset.getType())
-                    ? new EntityReference()
-                        .withType(Entity.TABLE)
-                        .withFullyQualifiedName(asset.getFullyQualifiedName())
-                    : asset)
-        .toList();
   }
 
   @GET
@@ -1173,7 +1142,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextById(id));
+    return Response.ok(
+            repository.getGlossaryTermAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1215,7 +1191,14 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
           @Min(0)
           @QueryParam("offset")
           int offset) {
-    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn));
+    return Response.ok(
+            repository.getGlossaryTermAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @PUT

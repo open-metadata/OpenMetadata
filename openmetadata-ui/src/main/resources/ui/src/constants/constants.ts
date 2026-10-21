@@ -122,7 +122,6 @@ export const PLACEHOLDER_SETTING_CATEGORY = ':settingCategory';
 export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
-export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
@@ -314,7 +313,6 @@ export const ROUTES = {
 
   CUSTOMIZE_PAGE: `/customize-page/${PLACEHOLDER_ROUTE_FQN}/:pageFqn`,
 
-  ADD_CUSTOM_METRIC: `/add-custom-metric/${PLACEHOLDER_DASHBOARD_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS: `/chart/${PLACEHOLDER_ROUTE_FQN}`,
   CHART_DETAILS_WITH_TAB: `/chart/${PLACEHOLDER_ROUTE_FQN}/${PLACEHOLDER_ROUTE_TAB}`,
 
@@ -475,38 +473,6 @@ export const ENTITY_REFERENCE_OPTIONS = [
     value: 'glossaryTerm',
   },
 ];
-
-export const VALIDATION_MESSAGES = {
-  required: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  types: {
-    email: i18n.t('message.entity-is-not-valid', {
-      entity: '${label}',
-    }),
-  },
-  whitespace: i18n.t('message.field-text-is-required', {
-    fieldText: '${label}',
-  }),
-  string: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-  },
-  number: {
-    range: i18n.t('message.entity-size-in-between', {
-      entity: '${label}',
-      min: '${min}',
-      max: '${max}',
-    }),
-    min: i18n.t('message.entity-size-less-than', {
-      entity: '${label}',
-      min: '${min}',
-    }),
-  },
-};
 
 export const ERROR_MESSAGE = {
   alreadyExist: 'already exists',

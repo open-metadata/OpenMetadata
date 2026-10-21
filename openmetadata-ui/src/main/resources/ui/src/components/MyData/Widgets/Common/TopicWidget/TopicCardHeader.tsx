@@ -68,7 +68,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
         <ToneIcon size={20} />
       </div>
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
         <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
           {/* `!` on the colour: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
@@ -77,7 +77,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
             size="text-sm"
-            weight="medium">
+            weight="semibold">
             {title}
           </Typography>
         </div>
@@ -87,17 +87,20 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
   );
 
   // The status sits on the right, beside the chevron, so every card's title
-  // starts on the same line regardless of how long its badge is.
+  // starts on the same line regardless of how long its badge is. It takes at
+  // most half the strip and truncates past that, with the full text on hover,
+  // so a long status never squeezes the title and summary into a sliver.
   const trailing = (chevron?: React.ReactNode) => (
-    <div className="tw:mt-1 tw:flex tw:shrink-0 tw:items-center tw:gap-3">
+    <div className="tw:mt-1 tw:flex tw:min-w-0 tw:max-w-1/2 tw:items-center tw:gap-3">
       {status && !isLoading && (
         <Badge
-          className="tw:font-medium"
+          className="tw:min-w-0 tw:max-w-full tw:font-medium"
           color={status.color}
           data-testid={`topic-status-${topicKey}`}
           size="sm"
+          title={status.label}
           type="pill-color">
-          {status.label}
+          <span className="tw:truncate">{status.label}</span>
         </Badge>
       )}
       {chevron}
@@ -122,7 +125,10 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       onClick={onToggle}>
       {content}
       {trailing(
-        <Chevron aria-hidden className="tw:size-4 tw:text-fg-tertiary" />
+        <Chevron
+          aria-hidden
+          className="tw:size-4 tw:shrink-0 tw:text-fg-tertiary"
+        />
       )}
     </button>
   );

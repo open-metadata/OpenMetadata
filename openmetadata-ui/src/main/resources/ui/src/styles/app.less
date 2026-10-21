@@ -38,7 +38,7 @@ body {
 
 // Login video panel and card. Fixed brand illustration colours (sampled from
 // the login videos) with no semantic token, named once so LoginClassBase uses
-// one class per surface. The dark panel matches the form side; the dark card
+// one class per surface. The dark panel matches Collate's (gray-modern-800); the dark card
 // matches the dark video's frames, shown until it paints. Collate overrides
 // these through LoginClassCollate.
 :root {
@@ -60,8 +60,8 @@ body {
 
 :root.dark-mode {
   --login-panel-bg: linear-gradient(
-    var(--tw-color-bg-primary),
-    var(--tw-color-bg-primary)
+    var(--tw-color-gray-modern-800),
+    var(--tw-color-gray-modern-800)
   );
   --login-card-bg: linear-gradient(
     180deg,
@@ -70,6 +70,17 @@ body {
     #754ddb 100%
   );
   --login-card-shadow: none;
+}
+
+// Widget previews in the customize pickers are light-theme screenshots. Dark
+// mode inverts them; hue-rotate turns brand and status colours back to their
+// own hue.
+:root {
+  --widget-preview-filter: none;
+}
+
+:root.dark-mode {
+  --widget-preview-filter: invert(1) hue-rotate(180deg);
 }
 
 .main-container {
@@ -907,7 +918,7 @@ a[href].link-text-grey,
 // AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
 // #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark;
 // #1570ef is only ~3.3:1 as text).
-// UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
+// UntitledUIThemeProvider + useThemeCssVariables inject the configured brand
 // primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
 // same element that carries `.dark-mode` — so the token layer's dark flip can't
 // override them (inline wins on that element). Re-point the brand *accent* vars
@@ -942,7 +953,7 @@ a[href].link-text-grey,
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
-// (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
+// (= var(--ant-primary-color)), injected by useThemeCssVariables as #1570ef and
 // never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
@@ -1189,18 +1200,6 @@ a[href].link-text-grey,
   line-height: normal;
   letter-spacing: 0.25px;
   width: 350px;
-}
-
-// Pagination styles
-
-.pagination-next-icon {
-  font-size: var(--om-font-size-xs);
-}
-
-.pagination-prev-icon {
-  font-size: var(--om-font-size-xs);
-  margin-top: calc(-1 * var(--om-space-3));
-  transform: rotate(180deg);
 }
 
 // transition

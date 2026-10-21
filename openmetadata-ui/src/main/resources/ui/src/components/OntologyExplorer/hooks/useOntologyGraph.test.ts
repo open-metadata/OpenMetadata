@@ -12,12 +12,28 @@
  */
 import type { Graph, GraphData } from '@antv/g6';
 import {
+  buildStudioNodeStyle,
+  canEndRelationship,
   findBadgeIndex,
   isDataModeAssetBadgeShape,
   isDataModeLoadMoreBadgeShape,
   isGraphTopologySynced,
   stripNodePositionsForDataMode,
 } from './useOntologyGraph';
+
+describe('selected studio node canvas colors', () => {
+  it('passes resolved brand colors to the canvas stroke and halo', () => {
+    const style = buildStudioNodeStyle(
+      { id: 'concept' },
+      { isSelected: true },
+      undefined
+    );
+
+    expect(style.stroke).not.toContain('var(');
+    expect(style.haloStroke).toBe(style.stroke);
+    expect(style.haloFill).not.toContain('var(');
+  });
+});
 
 jest.mock('@antv/g6', () => ({
   Circle: class {},
@@ -200,5 +216,20 @@ describe('isDataModeLoadMoreBadgeShape', () => {
     expect(isDataModeLoadMoreBadgeShape({ className: 'badge-1' })).toBe(true);
     expect(isDataModeLoadMoreBadgeShape({ className: 'badge-0' })).toBe(false);
     expect(isDataModeLoadMoreBadgeShape(null)).toBe(false);
+  });
+});
+
+describe('canEndRelationship', () => {
+  it('lets a concept end a drawn relationship but not an AI proposal', () => {
+    const concept = { id: 'term-1', label: 'Account', type: 'glossaryTerm' };
+
+    expect(canEndRelationship(concept)).toBe(true);
+    expect(
+      canEndRelationship({
+        ...concept,
+        id: 'proposed-op-1',
+        proposal: { changeSetId: 'cs-1', operationId: 'op-1' },
+      })
+    ).toBe(false);
   });
 });

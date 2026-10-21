@@ -842,6 +842,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * Name lookup for an authentication flow that updates the account it finds. Reads it fresh, with
+   * the {@link #getAuthUpdateFields} a PUT of the result writes back.
+   */
+  public User getUserByNameForAuthUpdate(String name) {
+    return getByName(null, name, getAuthUpdateFields(), NON_DELETED, false);
+  }
+
+  /**
    * Streams the accounts whose email sits in {@code domain}, ordered by name, in pages. The
    * {@code change-email} ops flow uses this to find accounts still holding a
    * {@code user@principalDomain} address that the legacy identity flow synthesized rather than the
@@ -957,6 +965,12 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
+    return getUserAssets(userId, limit, offset, null);
+  }
+
+  /** The assets, left out where {@code caller}'s search access policies deny them. */
+  public ResultList<EntityReference> getUserAssets(
+      UUID userId, int limit, int offset, SubjectContext caller) {
     User user = get(null, userId, getFields("id,teams"));
 
     if (inheritedFieldEntitySearch == null) {
@@ -971,7 +985,7 @@ public class UserRepository extends EntityRepository<User> {
             : new ArrayList<>();
 
     InheritedFieldQuery query =
-        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit);
+        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit).forCaller(caller);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(
@@ -985,8 +999,13 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
+    return getUserAssetsByName(userName, limit, offset, null);
+  }
+
+  public ResultList<EntityReference> getUserAssetsByName(
+      String userName, int limit, int offset, SubjectContext caller) {
     User user = getByName(null, userName, getFields("id"));
-    return getUserAssets(user.getId(), limit, offset);
+    return getUserAssets(user.getId(), limit, offset, caller);
   }
 
   // Bulk fetch methods for User-specific fields
@@ -1200,35 +1219,9 @@ public class UserRepository extends EntityRepository<User> {
                       Include.ALL);
     }
 
-    // Map user to owned entities
-    Map<UUID, List<EntityReference>> userToOwns = new HashMap<>();
-
-    // Add directly owned entities
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID userId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        userToOwns.computeIfAbsent(userId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
-
-    // Add team-owned entities
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : teamOwnsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for team-owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> userToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
+    Map<UUID, List<EntityReference>> teamToOwns =
+        resolveTargetsBySource(teamOwnsRecords, Include.ALL);
 
     // Combine user and team owned entities
     for (User user : users) {
@@ -1518,8 +1511,32 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
+      rejectEmailOutsideSignInDomains(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
+      }
+    }
+
+    /**
+     * Rows that create a user get the sign-in email-domain check the REST create paths apply.
+     * Rows that update an existing user don't, because an update never changes the stored email.
+     * Runs before the write, so a dry run reports the row as well.
+     * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+     */
+    private void rejectEmailOutsideSignInDomains(CSVPrinter printer, CSVRecord csvRecord, User user)
+        throws IOException {
+      if (!processRecord
+          || ((UserRepository) Entity.getEntityRepository(USER)).isUpdateForImport(user)) {
+        return;
+      }
+      Optional<String> rejection =
+          UserUtil.emailDomainRejection(
+              user,
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
+      if (rejection.isPresent()) {
+        importFailure(printer, rejection.get(), csvRecord);
+        processRecord = false;
       }
     }
 

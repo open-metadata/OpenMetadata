@@ -64,6 +64,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
@@ -469,8 +470,7 @@ public class DataRetentionAppIT {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               Apps.trigger(APP_NAME).run();

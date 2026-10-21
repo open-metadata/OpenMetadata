@@ -198,6 +198,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Iomete,
   DatabaseServiceType.Clickzetta,
   DatabaseServiceType.Databend,
+  DatabaseServiceType.Neo4J,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE =
@@ -225,6 +226,7 @@ export const ADVANCED_PROPERTIES = [
   'computeColumnMetrics',
   'includeViews',
   'useStatistics',
+  'enableAutoPartitionDetection',
   'confidence',
   'profileSampleConfig',
   'randomizedSample',

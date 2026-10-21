@@ -80,7 +80,6 @@ const SchemaEditor = ({
       {showCopyButton && (
         <div className={classNames('query-editor-button', copyButtonClassName)}>
           <ButtonUtility
-            className="query-editor-copy-button"
             data-testid="query-copy-button"
             icon={<CopyIcon height={16} width={16} />}
             tooltip={

@@ -610,6 +610,11 @@ WHERE name = 'KnowledgeCenter' AND entityType = 'KnowledgePanel';
 -- Retired: their seed files are gone and no component resolves their key, so the renderer would
 -- answer with a render-nothing component and leave an empty cell. The UI already filters them out
 -- of both the grid and the picker; this stops the rows accumulating.
+--
+-- MyTask and TotalAssets are the exception: their keys now hold the My Tasks and Total Data Assets
+-- topic cards and their seed files are back. Deleting the old rows is still right, because the
+-- loader re-inserts any seeded row it cannot find on the next boot, so they come back with the
+-- topic cards' name and description rather than the retired widgets'.
 DELETE FROM doc_store
 WHERE entityType = 'KnowledgePanel'
   AND name IN ('DataAssets', 'Following', 'MyData', 'MyTask', 'TotalAssets');
@@ -642,3 +647,44 @@ SET json = JSON_ARRAY_APPEND(
 WHERE name = 'tableDiff'
   AND JSON_TYPE(JSON_EXTRACT(json, '$.parameterDefinition')) = 'ARRAY'
   AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'parallelQueries'), '$.parameterDefinition');
+
+-- Auto-classification sampleDataCount gained a schema maximum of 1000, the most rows a run reads.
+-- Clamp saved pipelines above it so they still validate after upgrade instead of failing on edit.
+UPDATE ingestion_pipeline_entity
+SET json = JSON_SET(json, '$.sourceConfig.config.sampleDataCount', 1000)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.sourceConfig.config.type')) = 'AutoClassification'
+  AND JSON_TYPE(JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount')) = 'INTEGER'
+  AND JSON_EXTRACT(json, '$.sourceConfig.config.sampleDataCount') > 1000;
+
+-- Say how to choose tableCustomSQLQuery.strategy and what columnValuesToBeInSet.matchEnum changes,
+-- so users and test generation read it from the definition. Seed data only creates missing definitions.
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'strategy', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'How the query result is compared to the threshold. ROWS (default): the query returns the rows that break the rule, such as `SELECT * FROM t WHERE amount < 0`, and the number of rows returned is compared. COUNT: the query returns a single integer, such as `SELECT COUNT(*) FROM t WHERE amount < 0`, and that number is compared. Under ROWS a `SELECT COUNT(*)` query always returns one row. Do not use COUNT with a query that can return NULL or a non-integer, such as SUM or AVG.'
+)
+WHERE name = 'tableCustomSQLQuery'
+  AND JSON_SEARCH(json, 'one', 'strategy', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'matchEnum', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'If true, every observed value must be allowed. If false or omitted, the test passes when at least one allowed value occurs, even if other values are outside the set.'
+)
+WHERE name = 'columnValuesToBeInSet'
+  AND JSON_SEARCH(json, 'one', 'matchEnum', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'allowedValues', NULL, '$.parameterDefinition[*].name')), '.name', '.description'),
+    'Values used for matching. Neither mode requires every allowed value to occur in the column.'
+)
+WHERE name = 'columnValuesToBeInSet'
+  AND JSON_SEARCH(json, 'one', 'allowedValues', NULL, '$.parameterDefinition[*].name') IS NOT NULL;
+
+UPDATE test_definition
+SET json = JSON_SET(json, '$.description', 'Checks column values against an allowed set according to the matchEnum mode.')
+WHERE name = 'columnValuesToBeInSet';

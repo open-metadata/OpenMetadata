@@ -255,6 +255,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
@@ -276,6 +277,8 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -588,7 +591,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected final boolean supportsExtension;
   protected final boolean supportsVotes;
   @Getter protected final boolean supportsDomains;
-  protected final boolean supportsDataProducts;
+  @Getter protected final boolean supportsDataProducts;
   protected final boolean supportsDataContract;
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
@@ -688,6 +691,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // Static setter for lock manager initialization
   public static void setLockManager(HierarchicalLockManager manager) {
     lockManager = manager;
+  }
+
+  protected final void checkModificationsAllowed(final List<T> entities) {
+    if (lockManager != null) {
+      lockManager.checkModificationsAllowed(entities);
+    }
   }
 
   public boolean isSupportsOwners() {
@@ -1303,6 +1312,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) return;
     if (fields.contains(FIELD_OWNERS)) fetchAndSetOwners(entities, fields);
     fetchAndSetDomains(entities, fields);
+    // Reviewers are relationships too, so a listed glossary term would otherwise inherit none of
+    // its glossary's while a single read of the same term inherits them all.
+    fetchAndSetReviewers(entities, fields);
     // An ancestor loaded for inheritance comes from find(), which reads the entity JSON only --
     // tags live in tag_usage and so arrive null. Leaving them that way makes each hop contribute
     // nothing but what it inherited in turn, and a tag set on a service never reaches a table.
@@ -1529,6 +1541,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity.getEntityStatus() == null ? defaultEntityStatus : entity.getEntityStatus();
   }
 
+  /** A published lifecycle playbook enrols every new entity it applies to at its first stage. */
+  protected boolean playbookOwnsStage(T entity) {
+    return workflowsOwnEntityStatus && stageOwnership.playbookOwnsStageOf(entityType, entity);
+  }
+
   /** Puts a new entity in the stage it starts in; every create path calls it before storing. */
   void assignInitialEntityStatus(T entity) {
     if (supportsEntityStatus) {
@@ -1560,14 +1577,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
-    checkEntityStatusNotOwnedByWorkflow(current, change);
-    // A workflow's approval task already decided who may approve (reviewers, owners or named
-    // candidates), so the reviewer rule only guards direct edits and imports.
+    if (isDecidedByPeople(current, change, from)) {
+      checkDecidedByAPerson(current, change);
+      checkUpdatedByReviewer(current, change.getUpdatedBy());
+    } else {
+      checkEntityStatusNotOwnedByWorkflow(current, change);
+      checkReviewerLeavesReview(current, change, from, to);
+    }
+  }
+
+  // A workflow still moves the stages it opens on its own; only a direct change is left to people.
+  private boolean isDecidedByPeople(T current, T change, String from) {
+    return isStageDecidedByPeople(current, from) && !EntityStatusWorkflows.isWorkflowChange(change);
+  }
+
+  private void checkDecidedByAPerson(T current, T change) {
+    if (WorkflowEventConsumer.isBotChange(change.getUpdatedBy(), change.getImpersonatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve or reject %s '%s'; a bot cannot",
+              entityType, current.getFullyQualifiedName()));
+    }
+  }
+
+  // A workflow's approval task already decided who may approve (reviewers, owners or named
+  // candidates), so the reviewer rule only guards direct edits and imports.
+  private void checkReviewerLeavesReview(T current, T change, String from, String to) {
     if (EntityStatus.IN_REVIEW.value().equals(from)
         && (EntityStatus.APPROVED.value().equals(to) || EntityStatus.REJECTED.value().equals(to))
         && !EntityStatusWorkflows.isWorkflowChange(change)) {
       checkUpdatedByReviewer(current, change.getUpdatedBy());
     }
+  }
+
+  /**
+   * Whether people move this entity out of {@code from} directly, even while a workflow owns its
+   * stage, because no workflow will ever pick it up. Its reviewers decide when it has any; anyone
+   * allowed to edit it decides otherwise. A workflow's own writes still move it, and a bot never
+   * decides it.
+   */
+  protected boolean isStageDecidedByPeople(T current, String from) {
+    return false;
   }
 
   /**
@@ -1595,7 +1645,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // rule would see an entity without reviewers. Load them the way a PATCH does, inherited ones
   // included, before checking who may move the entity out of review.
   private void loadReviewersForStageCheck(T original, String from) {
-    if (supportsReviewers && EntityStatus.IN_REVIEW.value().equals(from)) {
+    if (supportsReviewers
+        && (EntityStatus.IN_REVIEW.value().equals(from)
+            || isStageDecidedByPeople(original, from))) {
       T withReviewers =
           get(null, original.getId(), getFields(FIELD_REVIEWERS), Include.NON_DELETED, false);
       original.setReviewers(withReviewers.getReviewers());
@@ -3800,7 +3852,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
     // invalidateCacheForEntity so the Guava-L1 eviction stays inline (cheap) while the Redis-L2
-    // round trip is deferred to the post-commit drain when a flush scope is open — never issued
+    // round trip is deferred to the drain that runs once the transaction commits or rolls back
+    // when a flush scope is open — never issued
     // while the pooled connection is held. The previous per-row pub/sub reason label was
     // informational only (remote listeners evict L1 regardless), so the unified path is equivalent.
     for (EntityDAO.EntityIdFqnPair row : affected) {
@@ -3813,8 +3866,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * records the Redis-L2 invalidation key here instead of issuing the (blocking, syncCommands)
    * Redis round trip inline. The flush opens a scope before its DB transaction so no Redis call
    * runs while a pooled connection is held — only the cheap local Guava-L1 invalidate stays inline
-   * — then drains the de-duplicated keys after commit, on the request thread, preserving
-   * read-your-write. {@code null} means "no scope active" and the Redis-L2 work runs inline.
+   * — then drains the de-duplicated keys once the transaction commits or rolls back, on the request
+   * thread, preserving read-your-write. {@code null} means "no scope active" and the Redis-L2 work
+   * runs inline.
    */
   private static final ThreadLocal<Map<CacheInvalidationKey, CacheInvalidationKey>>
       DEFERRED_CACHE_INVALIDATIONS = new ThreadLocal<>();
@@ -3834,7 +3888,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
-   * post-commit invalidation; the {@code fqn} is carried along (best non-null wins) so the by-name
+   * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
+   * the by-name
    * Redis variant is evicted when any caller knew the FQN.
    */
   private static final class CacheInvalidationKey {
@@ -3872,8 +3927,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #invalidateCacheForEntity} records keys instead of issuing the blocking Redis round trip.
    * Returns {@code true} if this call opened the scope (caller owns draining/closing it), {@code
    * false} if a scope was already open (nested call — the outer owner stays responsible). Pair a
-   * {@code true} result with {@link #drainCacheInvalidations()} after commit and {@link
-   * #clearCacheInvalidations()} on failure.
+   * {@code true} result with {@link #drainCacheInvalidations()} once the transaction ends, whether
+   * it committed or rolled back.
    */
   static boolean beginCacheInvalidationDeferral() {
     boolean opened = DEFERRED_CACHE_INVALIDATIONS.get() == null;
@@ -3888,22 +3943,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     Map<CacheInvalidationKey, CacheInvalidationKey> deferred = DEFERRED_CACHE_INVALIDATIONS.get();
     DEFERRED_CACHE_INVALIDATIONS.remove();
     if (deferred != null) {
-      evictCommittedWrites(List.copyOf(deferred.values()));
+      evictTransactionWrites(List.copyOf(deferred.values()));
     }
   }
 
   /**
-   * Post-commit eviction of everything the transaction wrote. The entity keys leave Redis in one
-   * DEL: evicted one entity at a time, a restored database read fresh while its schemas still served
-   * their soft-deleted copies. The write epochs move before that DEL so a loader holding the
-   * pre-commit row cannot write it back afterwards, and L1 is evicted after it because a reader in
-   * the window re-populated L1 from the stale Redis entry. The repair is re-armed from the commit:
-   * the one armed inside the transaction may already have fired.
+   * Eviction of everything the transaction wrote, once it has committed or rolled back. The entity
+   * keys leave Redis in one DEL: evicted one entity at a time, a restored database read fresh while
+   * its schemas still served their soft-deleted copies. The write epochs move before that DEL so a
+   * loader holding the pre-commit row cannot write it back afterwards, and L1 is evicted after it
+   * because a reader in the window re-populated L1 from the stale Redis entry. They move again
+   * before the L1 eviction: a reader that took its epoch after the first move and fetched the stale
+   * entry before the DEL would otherwise pass its re-check after putting that entry into L1. The
+   * repair is re-armed once the transaction ends: the one armed inside it may already have fired.
    */
-  private static void evictCommittedWrites(List<CacheInvalidationKey> writes) {
+  private static void evictTransactionWrites(List<CacheInvalidationKey> writes) {
     writes.forEach(write -> bumpWriteEpoch(write.entityType, write.id, write.fqn));
     evictRedisEntityKeys(writes.stream().map(CacheInvalidationKey::toEntityKey).toList());
     for (CacheInvalidationKey write : writes) {
+      bumpWriteEpoch(write.entityType, write.id, write.fqn);
       evictLocalCopies(write.entityType, write.id, write.fqn);
       invalidateDerivedRedisL2(write.entityType, write.id);
       publishRefChange(write.entityType, write.id, write.fqn);
@@ -3911,7 +3969,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  /** Discard captured keys and close the scope without running them (failed transaction). */
+  /**
+   * Close the scope without evicting its keys. Only tests reset a scope this way: a transaction that
+   * fails still evicts the keys its writes recorded, see
+   * ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote.
+   */
+  @VisibleForTesting
   static void clearCacheInvalidations() {
     DEFERRED_CACHE_INVALIDATIONS.remove();
   }
@@ -3926,7 +3989,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * <p>The Guava-L1 eviction always runs inline (local, cheap). The Redis-L2 portion (base/by-name
    * hash, relationship, bundle, lineage, pub/sub) issues a blocking {@code syncCommands} round
    * trip, so when a deferral scope is active (a flush is holding a pooled DB connection) it is
-   * recorded and replayed post-commit on the request thread instead — never inside the handle.
+   * recorded and replayed on the request thread once the transaction commits or rolls back instead
+   * — never inside the handle.
    */
   public static void invalidateCacheForEntity(String entityType, UUID id, String fqn) {
     if (entityType == null || id == null) {
@@ -4015,8 +4079,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Issue the Redis-L2 eviction now, or record it for the post-commit drain when a deferral scope is
-   * open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
+   * Issue the Redis-L2 eviction now, or record it for the drain that runs once the transaction
+   * commits or rolls back, when a deferral scope is open. Every writer must go through here rather than calling the cache DAOs directly: a {@code
    * DEL} sent while the writer's transaction is still open is undone by any concurrent reader, which
    * takes the resulting miss, reads the not-yet-committed row, and re-populates the key with the
    * pre-write value. That stale entry then outlives the commit (until TTL), which is how a restored
@@ -4224,7 +4288,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void invalidateCache(T entity) {
     try {
       // Guava L1 is a local map eviction, so it stays inline. The Redis L2 round trip does not:
-      // deferOrInvalidateRedisL2 holds it until the transaction commits when a scope is open.
+      // deferOrInvalidateRedisL2 holds it until the transaction ends when a scope is open.
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
       deferOrInvalidateRedisL2(entityType, entity.getId(), entity.getFullyQualifiedName());
@@ -4271,8 +4335,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * use this overload with the edited field name — routing such a partial entity through {@link
    * #createOrUpdate(UriInfo, Object, String)} runs the whole-entity PUT diff with {@code
    * patchedFields == null}, which compares nulled-out relationship collections against the stored
-   * values and unconditionally deletes them (e.g. glossary-term attribute edits wiping
-   * reviewers/relatedTerms/realizedIn).
+   * values and unconditionally deletes them (e.g. glossary-term mapping edits wiping
+   * reviewers/relatedTerms).
    *
    * @param patchedFields field names to compare and persist; {@code null} diffs every field
    *     (whole-entity PUT semantics, identical to {@link #createOrUpdate(UriInfo, Object, String)})
@@ -4392,9 +4456,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // 1. Batch lock manager check
-    if (lockManager != null) {
-      lockManager.checkModificationsAllowed(entities);
-    }
+    checkModificationsAllowed(entities);
 
     // 2. Set impersonatedBy and the creation audit for each entity
     for (T entity : entities) {
@@ -4404,10 +4466,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entities.forEach(this::assignInitialEntityStatus);
 
     // 3. Store entities and relationships in one atomic transaction. Cache invalidations issued by
-    // storeRelationshipsInternal are recorded and drained post-commit (no Redis round trip while
-    // the
-    // handle is held).
+    // storeRelationshipsInternal are recorded and drained once the transaction ends (no Redis round
+    // trip while the handle is held).
     flushInOneTransaction(
+        entities,
         () -> {
           storeEntities(entities);
           storeExtensions(entities);
@@ -4433,9 +4495,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // 1. Batch lock manager check
-    if (lockManager != null) {
-      lockManager.checkModificationsAllowed(updates);
-    }
+    checkModificationsAllowed(updates);
 
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
@@ -4453,8 +4513,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
-    // invalidations issued here are recorded and drained post-commit so no Redis round trip runs
-    // while the handle is held.
+    // invalidations issued here are recorded and drained once the transaction ends so no Redis
+    // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
           updateMany(updatedEntities);
@@ -4592,6 +4652,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    invalidateListCountsOnStageChange(original, updated);
+  }
+
+  // Listing totals are cached per filter and dropped only on create or delete, but a stage change
+  // moves the entity between stage-filtered listings, such as a glossary's terms awaiting review.
+  private void invalidateListCountsOnStageChange(T original, T updated) {
+    if (supportsEntityStatus
+        && !Objects.equals(
+            entityLifecycle.adapter().read(original), entityLifecycle.adapter().read(updated))) {
+      ListCountCache.invalidate(entityType);
+    }
   }
 
   @SuppressWarnings("unused")
@@ -4686,6 +4757,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private PutResponse<T> putAndStore(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      boolean requireCurrentVersion,
+      Set<String> patchedFields) {
+    Supplier<PutResponse<T>> write =
+        () -> applyPut(uriInfo, original, updated, requireCurrentVersion, patchedFields);
+    return Boolean.TRUE.equals(original.getDeleted())
+        ? executeEntityWrite(List.of(original), write)
+        : write.get();
+  }
+
+  private PutResponse<T> applyPut(
       UriInfo uriInfo,
       T original,
       T updated,
@@ -4908,11 +4992,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       boolean useOptimisticLocking,
       String impersonatedBy,
       ApprovedApplication approval) {
-    T updated = preparePatched(original, patch, user);
-    // Always set impersonatedBy to the passed value (which can be null)
-    // This ensures that when regular users make changes (impersonatedBy=null),
-    // any existing impersonatedBy value is cleared, preventing it from persisting
-    updated.setImpersonatedBy(impersonatedBy);
+    T updated = preparePatched(original, patch, user, impersonatedBy);
     Optional<StagedChange> staged =
         admitOrVerify(original, updated, user, impersonatedBy, approval, patchedFieldNames);
     return staged
@@ -4930,14 +5010,42 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * PATCH of an entity the caller has already loaded with the patch fields: the same steps as the
+   * PATCH endpoint, without the load. Bulk edits load their entities in groups and save each one
+   * through here ({@link EntityPatchBatch}), so a single edit and a bulk one run the same code,
+   * approval gating included.
+   */
+  final PatchResponse<T> patch(T original, JsonPatch patch, ChangeActor actor) {
+    return patchCommonWithOptimisticLocking(
+        original,
+        patch,
+        JsonUtils.extractPatchedFields(patch),
+        actor.userName(),
+        null,
+        null,
+        false,
+        actor.impersonatedBy(),
+        null);
+  }
+
+  /**
    * What approval gating would decide for a PATCH by {@code user}, computed on the same prepared
    * entity a real PATCH admits, without storing anything.
    */
   public final Optional<StagedChange> previewPatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
+    return previewPatch(original, patch, user);
+  }
+
+  /**
+   * {@link #previewPatch(UUID, String, JsonPatch)} of an entity the caller has already loaded with
+   * the patch fields. It runs every check {@link #patch(EntityInterface, JsonPatch, ChangeActor)}
+   * runs, and saves nothing.
+   */
+  final Optional<StagedChange> previewPatch(T original, JsonPatch patch, String user) {
     return ApprovalGate.preview(
         original,
-        preparePatched(original, patch, user),
+        preparePatched(original, patch, user, null),
         user,
         Edit.patch(JsonUtils.extractPatchedFields(patch)));
   }
@@ -4945,10 +5053,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
-    preparePatched(original, patch, user);
+    preparePatched(original, patch, user, null);
   }
 
-  private T preparePatched(T original, JsonPatch patch, String user) {
+  private T preparePatched(T original, JsonPatch patch, String user, String impersonatedBy) {
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -4960,6 +5068,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
+    // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
+    // before prepare, so validation sees who makes this change rather than who made the last one.
+    updated.setImpersonatedBy(impersonatedBy);
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
@@ -5061,11 +5172,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    if (entityUpdater.fieldsChanged()) {
-      try (var ignored = phase("patchSetInheritedFields")) {
-        setInheritedFields(updated, patchFields);
-      }
-    }
     updated.setChangeDescription(entityUpdater.getIncrementalChangeDescription());
     return new PatchResponse<>(
         Status.OK, withHref(uriInfo, updated), entityUpdater.getChangeType());
@@ -5396,6 +5502,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Transaction
   private DeleteResponse<T> delete(
       String deletedBy, T original, boolean recursive, boolean hardDelete) {
+    return executeEntityWrite(
+        List.of(original), () -> deleteContents(deletedBy, original, recursive, hardDelete));
+  }
+
+  private DeleteResponse<T> deleteContents(
+      String deletedBy, T original, boolean recursive, boolean hardDelete) {
     checkSystemEntityDeletion(original);
     try (DeleteLifecycle ignored = beginDeleteLifecycle(original, deletedBy)) {
       setFieldsForDelete(original);
@@ -5614,7 +5726,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected final void cleanup(String deletedBy, T entityInterface) {
     AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
-    flushInOneTransaction(() -> holders.set(cleanupFlushBody(deletedBy, entityInterface)));
+    flushInOneTransaction(
+        List.of(entityInterface), () -> holders.set(cleanupFlushBody(deletedBy, entityInterface)));
     removeCustomPropertyReferencesFromSearch(holders.get(), List.of(entityInterface.getId()));
     // Flowable commits on its own connection, so cancel only once the owning entity transaction
     // has committed: a rolled-back delete must not leave a live entity without its workflow. An
@@ -5803,9 +5916,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * connection and starve the pool. The domain/data-product lineage-ES leaf is deferred via {@link
    * LineageUtil#beginLineageDeferral()}, and the Redis-L2 cache invalidation issued by {@code
    * addRelationship}/{@code deleteRelationship}/{@code invalidateCacheForEntity} via {@link
-   * #beginCacheInvalidationDeferral()} — both drained post-commit on the request thread. Only the
-   * cheap local Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens
-   * post-commit on the request thread (read-your-write safe).
+   * #beginCacheInvalidationDeferral()} — the lineage writes drained post-commit on the request
+   * thread, the cache keys once the transaction commits or rolls back. Only the cheap local
+   * Guava-L1 eviction stays inline. The writer's Redis eviction likewise happens on the request
+   * thread after the transaction ends (read-your-write safe).
    *
    * <p>The {@link RdfTagUpdater#beginDeferral()} scope opened/drained alongside these is now
    * vestigial: it used to defer inline tag-RDF SPARQL writes, but that writer was removed (#33474)
@@ -5878,7 +5992,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void createNewEntityFlush(T entity) {
     assignInitialEntityStatus(entity);
-    flushInOneTransaction(() -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
@@ -5897,11 +6011,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Run {@code flushBody} as one wrapped DB transaction with the post-commit side-effect collectors
-   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + Redis-L2 cache) opened fresh
-   * for each deadlock-retry attempt and drained exactly once, synchronously on the request thread,
-   * after the final successful commit — so search/lineage stay read-your-write visible by the time
-   * the request returns. A rolled-back attempt clears its collector so a replay never double-enqueues.
-   * The collectors are (re-)opened inside the transactional runnable so each replay starts empty.
+   * (tag RDF + domain/data-product lineage-ES + rename-cascade search + post-commit actions) opened
+   * fresh for each deadlock-retry attempt and drained exactly once, synchronously on the request
+   * thread, after the final successful commit — so search/lineage stay read-your-write visible by
+   * the time the request returns. A rolled-back attempt clears them so a replay never
+   * double-enqueues, and they are (re-)opened inside the transactional runnable so each replay
+   * starts empty. The Redis-L2 cache collector instead keeps every attempt's keys and is drained
+   * whether the transaction commits or rolls back (see {@link DeferralScope}).
    */
   protected void flushInOneTransaction(Runnable flushBody) {
     DeferralScope scope = new DeferralScope();
@@ -5916,6 +6032,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     } finally {
       scope.finish(committed);
     }
+  }
+
+  /** Adds entity-specific locking around a complete mutation, including cascades and imports. */
+  protected <R> R executeEntityWrite(List<T> entities, Supplier<R> work) {
+    return work.get();
+  }
+
+  protected void flushInOneTransaction(List<T> entities, Runnable work) {
+    executeEntityWrite(
+        entities,
+        () -> {
+          flushInOneTransaction(work);
+          return null;
+        });
   }
 
   /**
@@ -5961,13 +6091,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Holds the per-thread RDF + lineage-ES + Redis-L2-cache deferral collectors for one flush. {@link
-   * #reopenForAttempt()} resets all three collectors at the start of every deadlock-retry attempt so
-   * a replayed body never inherits closures/keys captured by a rolled-back attempt. {@link
-   * #finish(boolean)} drains all three once on success (running the captured work post-commit on the
-   * request thread) or clears all three on failure. A scope only owns (and therefore drains) the
-   * collectors it actually opened — an inner flush nested under an outer scope leaves draining to the
-   * outer owner, so a retried inner flush never double-enqueues into the outer collector.
+   * Holds the per-thread deferral collectors for one flush: RDF, lineage-ES, rename-cascade search,
+   * post-commit actions and the Redis-L2 cache. {@link #reopenForAttempt()} resets the closure
+   * collectors at the start of every deadlock-retry attempt so a replayed body never inherits
+   * closures captured by a rolled-back attempt. {@link #finish(boolean)} drains every collector once
+   * on success (running the captured work post-commit on the request thread) or clears the closure
+   * collectors on failure. The cache collector is the exception: it keeps a
+   * rolled-back attempt's keys and evicts them even when the transaction fails, because a read inside
+   * the transaction may have cached the row the rollback undid
+   * (ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote). A scope only owns (and
+   * therefore drains) the collectors it actually opened — an inner flush nested under an outer scope
+   * leaves draining to the outer owner, so a retried inner flush never double-enqueues into the outer
+   * collector.
    */
   private final class DeferralScope {
     private boolean opened;
@@ -6008,7 +6143,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * scope only roll back this flush's own contributions (back to the entry checkpoint) so the
      * inner replay never double-enqueues into the outer owner's collector. The cache collector
      * de-duplicates by (type, id), so re-recording a key on replay is idempotent and needs no
-     * checkpoint.
+     * checkpoint; it keeps the abandoned attempt's keys, which are evicted with the final attempt's.
      */
     private void resetForReplay() {
       if (ownsRdf) {
@@ -6028,10 +6163,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         SearchRepository.beginSearchWriteDeferral();
       } else {
         SearchRepository.rollbackSearchWriteToCheckpoint(searchWriteCheckpoint);
-      }
-      if (ownsCache) {
-        clearCacheInvalidations();
-        beginCacheInvalidationDeferral();
       }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
@@ -6085,11 +6216,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (ownsSearchWrite) {
         SearchRepository.clearSearchWriteDeferred();
       }
-      if (ownsCache) {
-        clearCacheInvalidations();
-      }
       if (ownsPostCommitActions) {
         PostCommitActionQueue.clear();
+      }
+      if (ownsCache) {
+        runGuarded(EntityRepository::drainCacheInvalidations);
       }
     }
   }
@@ -6098,7 +6229,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try {
       drainStep.run();
     } catch (Exception e) {
-      LOG.error("Post-commit deferral drain step failed", e);
+      LOG.error("Deferral drain step failed", e);
     }
   }
 
@@ -6180,7 +6311,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(() -> createManyEntitiesFlushBody(chunk));
+      flushInOneTransaction(chunk, () -> createManyEntitiesFlushBody(chunk));
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
@@ -7554,7 +7685,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
+    return executeEntityWrite(
+        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+  }
 
+  private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
     // If an entity being restored contains other **deleted** children entities, restore them
     restoreChildren(id, updatedBy);
 
@@ -7661,6 +7796,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) {
       return;
     }
+    executeEntityWrite(
+        entities,
+        () -> {
+          restoreSubtreeContents(entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void restoreSubtreeContents(List<T> entities, String updatedBy) {
     dispatchToContainedChildren(
         entities,
         "bulkRestoreFindChildren",
@@ -7841,6 +7985,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     List<T> entities =
         allEntities.stream().filter(e -> !Boolean.TRUE.equals(e.getDeleted())).toList();
+    executeEntityWrite(
+        allEntities,
+        () -> {
+          softDeleteSubtreeContents(allEntities, entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void softDeleteSubtreeContents(List<T> allEntities, List<T> entities, String updatedBy) {
     for (T entity : entities) {
       checkSystemEntityDeletion(entity);
     }
@@ -7959,6 +8112,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (entities.isEmpty()) {
       return;
     }
+    executeEntityWrite(
+        entities,
+        () -> {
+          hardDeleteSubtreeContents(entities, updatedBy);
+          return null;
+        });
+  }
+
+  private void hardDeleteSubtreeContents(List<T> entities, String updatedBy) {
     Runnable exitHardDeleteCascade = enterBulkHardDeleteCascade(entities);
     // Restored rather than cleared: this method recurses through dispatchToContainedChildren, so
     // an inner frame must not un-flag the outer cascade on its way out.
@@ -9449,7 +9611,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (nullOrEmpty(request.getAssets())) {
       // Nothing to Validate — schema marks assets optional, so a request without it is valid
       return result.withSuccessRequest(
-          List.of(new BulkResponse().withMessage("Nothing to Validate.")));
+          List.of(new BulkResponse().withMessage(AssetEditService.NOTHING_TO_VALIDATE)));
     }
 
     // Validate Assets
@@ -9490,17 +9652,47 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // Create a Change Event on successful addition/removal of assets (skip when dryRun)
     if (!dryRun && result.getStatus().equals(ApiStatus.SUCCESS)) {
-      EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
-      ChangeDescription change =
-          addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
-      String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
-      ChangeEvent changeEvent =
-          getChangeEvent(
-              entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      recordBulkAssetsChange(fromEntity, entityId, isAdd, request.getAssets(), userName);
     }
 
+    return result;
+  }
+
+  /** Records assets added to or removed from an entity as one change event on that entity. */
+  protected void recordBulkAssetsChange(
+      String fromEntity,
+      UUID entityId,
+      boolean isAdd,
+      List<EntityReference> assets,
+      String userName) {
+    EntityInterface<?> entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+    ChangeDescription change =
+        addBulkAddRemoveChangeDescription(entityInterface.getVersion(), isAdd, assets, null);
+    String eventUserName = userName != null ? userName : entityInterface.getUpdatedBy();
+    ChangeEvent changeEvent =
+        getChangeEvent(
+            entityInterface, change, fromEntity, entityInterface.getVersion(), eventUserName);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  /**
+   * Applies an edit made on this entity's Assets tab to each selected asset, as that asset's own
+   * PATCH, then records the assets it changed as one "assets" change on this entity.
+   */
+  protected final BulkOperationResult applyAssetEdit(
+      UUID entityId,
+      BulkAssets request,
+      boolean isAdd,
+      AssetEditService.AssetEdit edit,
+      PatchRequester requester) {
+    boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
+    BulkOperationResult result =
+        AssetEditService.apply(
+            new AssetEditService.Request(request.getAssets(), dryRun, requester), edit);
+    List<EntityReference> changed = AssetEditService.succeededAssets(result);
+    if (!dryRun && !changed.isEmpty()) {
+      recordBulkAssetsChange(entityType, entityId, isAdd, changed, requester.actor().userName());
+    }
     return result;
   }
 
@@ -9845,12 +10037,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public BulkOperationResult bulkAddAndValidateTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
     throw new UnsupportedOperationException("Bulk Add tags to Asset operation not supported");
   }
 
   public BulkOperationResult bulkRemoveAndValidateTagsToAssets(
-      UUID glossaryTermId, BulkAssetsRequestInterface request) {
+      UUID entityId, BulkAssetsRequestInterface request, PatchRequester requester) {
     throw new UnsupportedOperationException("Bulk Remove tags to Asset operation not supported");
   }
 
@@ -10129,10 +10321,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
+          List.of(original),
           () -> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
-            flushUpdateBody(useOptimisticStore, importMode);
+            flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {
@@ -10315,6 +10508,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // needs to be reconciled in ES even when the consolidated version doesn't change.
       if (!versionChanged && !entityChanged && !incrementalFieldsChanged()) {
         return;
+      }
+      // A PATCH's post-update work, search included, sees the entity as a read returns it: one
+      // that drops its own domain is indexed, and hands down to its children, the domain it now
+      // inherits. A PUT fills inherited fields once it returns, as before.
+      if (operation.isPatch()) {
+        try (var ignored = phase("patchSetInheritedFields")) {
+          setInheritedFields(updated, patchFields);
+        }
       }
       try (var ignored = phase("entityUpdatePostUpdate")) {
         postUpdate(original, updated);
@@ -10906,6 +11107,39 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       daoCollection.tagUsageDAO().deleteTagsBatch(nonDerivedTags, targetFqn);
     }
 
+    /**
+     * Whether a bot PUT must keep the stored extension. Without overrideMetadata a bot never
+     * replaces it, so a scheduled re-sync cannot clobber custom properties a user curated in the
+     * UI. With overrideMetadata - an explicit bulk force-sync - a connector-supplied extension may
+     * replace it, but an empty one must not blank it: a connector that is not collecting custom
+     * properties sends no extension, and that absence is not "delete the stored ones". Matches the
+     * guard on description, displayName, tags and certification.
+     */
+    private boolean keepsStoredExtension(Object incomingExtension) {
+      return !overrideMetadata || nullOrEmpty(JsonUtils.valueToTree(incomingExtension));
+    }
+
+    /**
+     * The force-sync view of an incoming extension: the properties the connector sends win, and
+     * stored properties it does not mention are kept. Ingestion only ever sends the properties its
+     * own source produces, and the server records no ownership for a custom property, so reading an
+     * absent key as a deletion would drop the ones a user curated in the UI - the very loss the bot
+     * guard exists to prevent. A property removed at the source therefore lingers until someone
+     * deletes it; that needs per-key provenance, which is tracked separately. Do not turn this into
+     * a wholesale replace to match tags - see
+     * ADR:2026-10-16-a-force-sync-merges-connector-supplied-custom-properties.
+     */
+    private Object mergedOverStoredExtension(Object storedExtension, Object incomingExtension) {
+      JsonNode stored = JsonUtils.valueToTree(storedExtension);
+      JsonNode incoming = JsonUtils.valueToTree(incomingExtension);
+      if (!stored.isObject() || !incoming.isObject()) {
+        return incomingExtension;
+      }
+      ObjectNode merged = stored.deepCopy();
+      merged.setAll((ObjectNode) incoming);
+      return JsonUtils.treeToValue(merged, Object.class);
+    }
+
     private void updateExtension(boolean consolidatingChanges) {
       Object origExtension = original.getExtension();
       Object updatedExtension = updated.getExtension();
@@ -10913,10 +11147,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
       if (updatedByBot() && operation == Operation.PUT) {
-        // Revert extension field, if being updated by a bot with a PUT request to avoid overwriting
-        // custom extension
-        updated.setExtension(origExtension);
-        return;
+        if (keepsStoredExtension(updatedExtension)) {
+          // Revert extension field, if being updated by a bot with a PUT request to avoid
+          // overwriting custom extension
+          updated.setExtension(origExtension);
+          return;
+        }
+        updatedExtension = mergedOverStoredExtension(origExtension, updatedExtension);
+        updated.setExtension(updatedExtension);
       }
 
       if (operation == Operation.PUT && updatedExtension == null) {
@@ -11832,26 +12070,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * order those copies: a same-session revert moves both back. Evictions commute, so the order in
      * which writers finish no longer matters.
      */
-    private void invalidateCachesAfterStore() {
+    @VisibleForTesting
+    void invalidateCachesAfterStore() {
       UUID id = updated.getId();
       String fqn = updated.getFullyQualifiedName();
 
       // Bump the write-epoch BEFORE invalidating so any in-flight loader sees the new epoch
       // when it does its end-of-load check. Pair with the loader-side race guard in
       // EntityLoaderWithId / EntityLoaderWithName. Cheap (per-entity AtomicLong increment).
-      bumpWriteEpoch(entityType, id, fqn);
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        bumpWriteEpoch(entityType, null, originalFqn);
-      }
-
-      // Evict the Guava L1 so future reads reload from Redis/DB.
-      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
-      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
-      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
-      // getByName(oldFqn) misses and falls through to a 404 from DB.
-      if (originalFqn != null && !originalFqn.equals(fqn)) {
-        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
-      }
+      bumpWriteEpochs(id, fqn);
 
       // Drop the Redis entries so the next read misses, goes to the DB, and loads the committed
       // row. A stale base hash field would otherwise serve old values, including old owners and
@@ -11885,6 +12112,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         cachedLineage.invalidate(id);
       }
 
+      // Evict L1 only once Redis has dropped the old JSON. Evicting it first let a concurrent
+      // read, in the gap before the Redis delete above, reload the pre-commit copy from Redis
+      // into L1, where it outlived this write until EntityCacheRepair ran. A read that fetched
+      // that copy before the delete can still put it after this eviction, and it took its epoch
+      // after the first bump, so bump again: its re-check after the put then drops the copy.
+      bumpWriteEpochs(id, fqn);
+      CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
+      CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
+      // A rename leaves the old FQN pointing at the now-stale entity; drop that key too so
+      // getByName(oldFqn) misses and falls through to a 404 from DB.
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, originalFqn));
+      }
       RequestEntityCache.invalidate(entityType, id, fqn);
       deferCacheBundleInvalidation(entityType, id, fqn);
 
@@ -11896,6 +12136,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (originalFqn != null && !originalFqn.equals(fqn)) {
           pubsub.publish(entityType, id, originalFqn, "rename-old");
         }
+      }
+    }
+
+    private void bumpWriteEpochs(UUID id, String fqn) {
+      bumpWriteEpoch(entityType, id, fqn);
+      if (originalFqn != null && !originalFqn.equals(fqn)) {
+        bumpWriteEpoch(entityType, null, originalFqn);
       }
     }
 
@@ -12675,9 +12922,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 .findToBatchWithRelations(entityIds, entityType, outgoingRelations, ALL);
 
     Map<String, Map<UUID, EntityReference>> incomingRefsByType =
-        resolveRelationshipEntityReferencesByType(incomingRecords, true);
+        resolveRelationshipEntityReferencesByType(incomingRecords, true, NON_DELETED);
     Map<String, Map<UUID, EntityReference>> outgoingRefsByType =
-        resolveRelationshipEntityReferencesByType(outgoingRecords, false);
+        resolveRelationshipEntityReferencesByType(outgoingRecords, false, NON_DELETED);
 
     Map<UUID, List<EntityReference>> ownersByEntity = loadOwners ? new HashMap<>() : null;
     Map<UUID, List<EntityReference>> followersByEntity = loadFollowers ? new HashMap<>() : null;
@@ -12857,8 +13104,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return handledFields;
   }
 
+  /**
+   * Groups the target references of {@code records} under their source ids, keeping row order.
+   * Targets are resolved with one batched lookup per entity type rather than one read per row, so
+   * a page of teams owning thousands of assets costs a query per asset type. Rows whose target no
+   * longer exists are dropped.
+   */
+  protected Map<UUID, List<EntityReference>> resolveTargetsBySource(
+      List<CollectionDAO.EntityRelationshipObject> records, Include include) {
+    Map<String, Map<UUID, EntityReference>> refsByType =
+        resolveRelationshipEntityReferencesByType(records, false, include);
+    Map<UUID, List<EntityReference>> targetsBySource = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference target =
+          lookupRelationshipRef(
+              refsByType, record.getToEntity(), UUID.fromString(record.getToId()));
+      if (target != null) {
+        targetsBySource
+            .computeIfAbsent(UUID.fromString(record.getFromId()), k -> new ArrayList<>())
+            .add(target);
+      }
+    }
+    return targetsBySource;
+  }
+
   private Map<String, Map<UUID, EntityReference>> resolveRelationshipEntityReferencesByType(
-      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide) {
+      List<CollectionDAO.EntityRelationshipObject> records, boolean fromSide, Include include) {
     if (records == null || records.isEmpty()) {
       return Collections.emptyMap();
     }
@@ -12885,7 +13156,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (Entry<String, Set<UUID>> entry : idsByType.entrySet()) {
       List<EntityReference> refs =
           Entity.getEntityReferencesByIds(
-              entry.getKey(), new ArrayList<>(entry.getValue()), NON_DELETED);
+              entry.getKey(), new ArrayList<>(entry.getValue()), include);
       refsByType.put(
           entry.getKey(),
           refs.stream()

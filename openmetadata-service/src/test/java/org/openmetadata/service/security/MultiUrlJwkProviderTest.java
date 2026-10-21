@@ -13,11 +13,18 @@ import com.auth0.jwk.Jwk;
 import com.auth0.jwk.SigningKeyNotFoundException;
 import com.auth0.jwk.UrlJwkProvider;
 import java.lang.reflect.Field;
+import java.math.BigInteger;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPublicKey;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.security.jwt.JWKSKey;
@@ -252,5 +259,53 @@ class MultiUrlJwkProviderTest {
       assertNotNull(result);
       assertEquals(EXTERNAL_KID, result.getId());
     }
+  }
+
+  /**
+   * A deployment configured only through the environment never had the provider's key set written
+   * into publicKeyUrls, yet its users now present the provider's ID tokens.
+   */
+  @Test
+  void providerKeySetIsTriedWhenNoConfiguredUrlHasTheKey(@TempDir Path directory) throws Exception {
+    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+    generator.initialize(2048);
+    RSAPublicKey providerKey = (RSAPublicKey) generator.generateKeyPair().getPublic();
+    Path keySet =
+        Files.writeString(directory.resolve("jwks.json"), keySetJson("provider-key", providerKey));
+    URL keySetUrl = keySet.toUri().toURL();
+
+    try (MockedStatic<JWTTokenGenerator> mockedStatic = mockStatic(JWTTokenGenerator.class)) {
+      mockLocalSigningKey(mockedStatic);
+      MultiUrlJwkProvider provider = new MultiUrlJwkProvider(List.of(), () -> List.of(keySetUrl));
+
+      RSAPublicKey resolved = (RSAPublicKey) provider.get("provider-key").getPublicKey();
+      assertEquals(providerKey.getModulus(), resolved.getModulus());
+    }
+  }
+
+  private static void mockLocalSigningKey(MockedStatic<JWTTokenGenerator> mockedStatic) {
+    JWKSKey localKey = mock(JWKSKey.class);
+    when(localKey.getKid()).thenReturn(LOCAL_KID);
+    when(localKey.getKty()).thenReturn("RSA");
+    when(localKey.getN()).thenReturn("test-n");
+    when(localKey.getE()).thenReturn("AQAB");
+    JWKSResponse localKeySet = mock(JWKSResponse.class);
+    when(localKeySet.getJwsKeys()).thenReturn(List.of(localKey));
+    JWTTokenGenerator localGenerator = mock(JWTTokenGenerator.class);
+    when(localGenerator.getJWKSResponse()).thenReturn(localKeySet);
+    mockedStatic.when(JWTTokenGenerator::getInstance).thenReturn(localGenerator);
+  }
+
+  private static String keySetJson(String keyId, RSAPublicKey key) {
+    return String.format(
+        "{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"%s\",\"use\":\"sig\",\"alg\":\"RS256\","
+            + "\"n\":\"%s\",\"e\":\"%s\"}]}",
+        keyId, base64Url(key.getModulus()), base64Url(key.getPublicExponent()));
+  }
+
+  private static String base64Url(BigInteger value) {
+    byte[] bytes = value.toByteArray();
+    byte[] unsigned = bytes[0] == 0 ? Arrays.copyOfRange(bytes, 1, bytes.length) : bytes;
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(unsigned);
   }
 }

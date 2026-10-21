@@ -19,9 +19,12 @@
  * switch, a soft-deleted service's children, the list after a restore and after a search is
  * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
  * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets),
- * each counted in its label before it is opened, and the service's data products in metadata
- * details that open expanded. A service name too long for the header ends in an ellipsis, with
- * the full name on hover.
+ * each counted in its label before it is opened, and the service's data products in its right
+ * panel. A service name too long for the header ends in an ellipsis, with the full name on hover.
+ *
+ * Its header carries the current version, which opens the version history as Context Center
+ * articles do, and, for a database service, Follow; the service's active announcement shows under
+ * the header on every tab; and deleting the service lands on its list.
  *
  * Metadata and security services, which have no child assets, get no data-assets tab, as in
  * classic.
@@ -77,6 +80,7 @@ test.describe(
       // Three live databases, so a two-row page has a second page, and one soft-deleted one.
       let databases: string[] = [];
       let deletedDatabase = '';
+      const announcementTitle = `pw-ai-announcement-${uuid()}`;
 
       test.beforeAll(async ({ browser }) => {
         test.setTimeout(EXTENDED_TEST_TIMEOUT);
@@ -122,6 +126,24 @@ test.describe(
           'database_search_index'
         );
 
+        // A second version for the version history, and an active announcement for the banner.
+        await service.patch(apiContext, [
+          { op: 'add', path: '/description', value: 'Orders and payments' },
+        ]);
+        const now = Date.now();
+        await okJson(
+          await apiContext.post('/api/v1/announcements', {
+            data: {
+              displayName: announcementTitle,
+              description: 'Read-only during the migration',
+              entityLink: `<#E::databaseService::${serviceFqn}>`,
+              startTime: now - 60_000,
+              endTime: now + 24 * 60 * 60 * 1000,
+            },
+          }),
+          'Create announcement'
+        );
+
         await afterAction();
       });
 
@@ -145,6 +167,94 @@ test.describe(
 
         await expect(ownedRow).toContainText(owner.getUserDisplayName());
         await expect(ownedRow).toContainText('Personal');
+      });
+
+      test('opens the version history from the current version in the header', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const history = page.getByTestId('versions-list-container');
+        const versions = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/') &&
+            response.url().endsWith('/versions'),
+          'ok'
+        );
+
+        await page.getByTestId('version-btn').click();
+        await versions;
+
+        // As Context Center articles: the version's own route, beside the version history.
+        await expect(page).toHaveURL(
+          new RegExp(`/service/databaseServices/${serviceFqn}/versions/0\\.2$`)
+        );
+        await expect(history).toContainText('v0.2');
+        await expect(history).toContainText('v0.1');
+      });
+
+      test('follows the service, and unfollows it', async ({ page }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await test.step('follow', async () => {
+          const followed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'PUT',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Follow', exact: true })
+            .click();
+          await followed;
+
+          await expect(
+            page.getByRole('button', { name: 'Unfollow', exact: true })
+          ).toBeVisible();
+        });
+
+        await test.step('unfollow', async () => {
+          const unfollowed = waitForResponseWithStatus(
+            page,
+            (response) =>
+              response.url().includes('/followers') &&
+              response.request().method() === 'DELETE',
+            'ok'
+          );
+          await page
+            .getByRole('button', { name: 'Unfollow', exact: true })
+            .click();
+          await unfollowed;
+
+          await expect(
+            page.getByRole('button', { name: 'Follow', exact: true })
+          ).toBeVisible();
+        });
+      });
+
+      test('shows its active announcement under the header on every tab', async ({
+        page,
+      }) => {
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+        const banner = page.getByTestId('entity-header-announcements');
+
+        await expect(banner).toContainText(announcementTitle);
+
+        await page
+          .getByRole('tab', { name: 'Connection', exact: true })
+          .click();
+
+        await expect(banner).toContainText(announcementTitle);
       });
 
       test('pages through the databases and keeps the page across a reload', async ({
@@ -347,6 +457,52 @@ test.describe(
           ).not.toBeChecked();
           await expect(page.getByTestId('deleted-badge')).toBeHidden();
         });
+      });
+    });
+
+    test.describe('deleting a service', () => {
+      let service: DatabaseServiceClass;
+
+      test.beforeAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        service = new DatabaseServiceClass();
+        await service.create(apiContext);
+        await afterAction();
+      });
+
+      test.afterAll(async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
+        await service.delete(apiContext);
+        await afterAction();
+      });
+
+      test("lands on the service's list once it is deleted", async ({
+        page,
+      }) => {
+        const serviceFqn = service.entityResponseData.fullyQualifiedName;
+        await enableAiAppMode(page);
+        await visitAiModeServiceDetailsPage(page, {
+          category: 'databaseServices',
+          fqn: serviceFqn,
+        });
+
+        await page.getByRole('button', { name: 'Settings' }).click();
+        await page.getByRole('menuitemradio', { name: 'Delete' }).click();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
+
+        const deleted = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.url().includes('/services/databaseServices/async/') &&
+            response.request().method() === 'DELETE',
+          'ok'
+        );
+        await page.getByTestId('confirm-button').click();
+        await deleted;
+
+        await expect(page).toHaveURL(
+          /\/connections\?category=databaseServices$/
+        );
       });
     });
 
@@ -649,26 +805,24 @@ test.describe(
         await afterAction();
       });
 
-      test('assigns a data product to the service from its metadata details', async ({
+      test('assigns a data product to the service from its right panel', async ({
         page,
       }) => {
         const serviceFqn = service.entityResponseData.fullyQualifiedName;
         const dataProductFqn =
           dataProduct.responseData.fullyQualifiedName ?? '';
-        const section = page.getByTestId('service-data-products');
+        const section = page
+          .getByTestId('service-right-panel')
+          .getByTestId('data-products-container');
         expect(dataProductFqn).not.toBe('');
         await enableAiAppMode(page);
         await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
         });
-        // Open from the start; clicking it here would close it.
-        await expect(
-          page.getByRole('button', { name: 'Metadata Details' })
-        ).toHaveAttribute('aria-expanded', 'true');
 
         await test.step('pick it and apply', async () => {
-          await section.getByTestId('edit-data-products').click();
+          await section.getByTestId('add-data-product').click();
           const picker = page.getByTestId('drop-down-menu');
           const option = picker.getByTestId(dataProductFqn);
           await expect(option).toBeVisible();
@@ -698,7 +852,6 @@ test.describe(
             category: 'databaseServices',
             fqn: serviceFqn,
           });
-          await page.getByRole('button', { name: 'Metadata Details' }).click();
 
           await expect(section).toContainText(
             dataProduct.responseData.displayName

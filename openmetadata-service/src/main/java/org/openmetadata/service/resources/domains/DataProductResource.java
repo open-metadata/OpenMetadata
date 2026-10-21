@@ -74,6 +74,8 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.ODPSConverter;
 
@@ -417,7 +419,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return buildBulkAssetsResponse(
-        repository.bulkAddAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkAddAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -455,7 +458,8 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     return buildBulkAssetsResponse(
-        repository.bulkRemoveAssets(name, request, securityContext.getUserPrincipal().getName()),
+        repository.bulkRemoveAssets(
+            name, request, PatchRequester.fromRequest(securityContext, authorizer)),
         Boolean.TRUE.equals(request.getDryRun()));
   }
 
@@ -910,9 +914,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid org.openmetadata.schema.api.VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -1078,7 +1080,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return Response.ok(repository.getDataProductAssets(id, limit, offset)).build();
+    return Response.ok(
+            repository.getDataProductAssets(
+                id, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1125,7 +1130,10 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return Response.ok(repository.getDataProductAssetsByName(fqn, limit, offset)).build();
+    return Response.ok(
+            repository.getDataProductAssetsByName(
+                fqn, limit, offset, DefaultAuthorizer.getSubjectContext(securityContext)))
+        .build();
   }
 
   @GET
@@ -1143,7 +1151,12 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       })
   public Response getAllDataProductsWithAssetsCount(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    java.util.Map<String, Integer> result = repository.getAllDataProductsWithAssetsCount();
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContext());
+    java.util.Map<String, Integer> result =
+        repository.getAllDataProductsWithAssetsCount(securityContext);
     return Response.ok(result).build();
   }
 
