@@ -8,6 +8,22 @@
   "properties": {
     "expectedWorkingRevision": {
       "$ref": "../../type/ontologyState.json#/properties/workingRevision"
+    },
+    "expectedActivationRevision": {
+      "description": "Optional activation revision observed with the working diff.",
+      "$ref": "../../type/ontologyState.json#/properties/activationRevision"
+    },
+    "expectedLatestReleaseRevision": {
+      "description": "Latest release revision observed by the caller. Required when versionBump is supplied.",
+      "$ref": "../../type/ontologyState.json#/properties/lastReleaseRevision"
+    },
+    "versionBump": {
+      "description": "Allocate the next semantic version from the latest versioned candidate, including rejected candidates. The unversioned base is 0.0.0.",
+      "type": "string",
+      "enum": ["major", "minor", "patch"]
+    },
+    "releaseNotes": {
+      "$ref": "../../entity/data/ontologyRelease.json#/properties/releaseNotes"
     }
   },
   "required": [

@@ -78,8 +78,6 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
       variant="elevated"
       onClick={handleClick}>
       <span className="tw:flex tw:w-full tw:min-w-0 tw:items-start tw:gap-2.5">
-        {/* Neutral rather than brand: the connector logos carry their own colours, and a
-            brand-tinted tile behind them reads as a selected state. */}
         <FeaturedIcon
           color="gray"
           icon={
@@ -94,6 +92,7 @@ const ServiceConnectionCard: React.FC<ServiceConnectionCardProps> = ({
           radius="lg"
           shape="square"
           size="md"
+          theme="modern"
         />
         <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
           {/* The card title truncates hard at this width, so the full name has to be

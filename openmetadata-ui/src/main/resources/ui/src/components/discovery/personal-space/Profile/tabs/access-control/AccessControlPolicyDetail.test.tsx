@@ -50,8 +50,10 @@ const mockPolicy = {
 };
 
 jest.mock('../../../../../../rest/rolesAPIV1', () => ({
-  getPolicyByName: jest.fn().mockResolvedValue(mockPolicy),
-  patchPolicy: jest.fn().mockResolvedValue(mockPolicy),
+  getPolicyByName: jest
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockPolicy)),
+  patchPolicy: jest.fn().mockImplementation(() => Promise.resolve(mockPolicy)),
 }));
 
 jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
