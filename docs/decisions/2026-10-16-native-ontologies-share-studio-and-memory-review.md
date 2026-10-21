@@ -1,7 +1,7 @@
 # Native ontologies share Studio and memory review
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-10-20 (Context Center no longer links Studio drafts)
 - **Deciders:** Product owner
 - **Guard:** IndependentOntologyReleaseIT, IndependentOntologyActivationIT, ontology change-set integration tests, OntologyReview browser specs
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage; ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
@@ -42,3 +42,10 @@ must not hold native working edits: the release is their publication approval un
 labels, data exploration through those labels, library installation, import, AI generation and
 visual query generation require explicit native adapters; preserving their glossary workflows does
 not claim those adapters are complete. The capability matrix records their delivery status.
+
+## Amendment
+
+v2, 2026-10-20: memories now become Draft glossary terms through the AI provider, so Context Center
+no longer opens memory-sourced Studio drafts through `?draft=` links; native memory drafts are
+reviewed from Ontology Studio's memory review panel. See
+ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider.

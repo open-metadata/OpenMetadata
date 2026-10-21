@@ -11,7 +11,6 @@ public final class LLMClientHolder {
   private static volatile LLMCompletionClient instance;
   private static volatile boolean enabled;
   private static volatile boolean memoryExtractionEnabled;
-  private static volatile boolean ontologyMemoryDerivationEnabled;
 
   private LLMClientHolder() {}
 
@@ -19,8 +18,6 @@ public final class LLMClientHolder {
     enabled = config != null && Boolean.TRUE.equals(config.getEnabled());
     memoryExtractionEnabled =
         config != null && Boolean.TRUE.equals(config.getMemoryExtractionEnabled());
-    ontologyMemoryDerivationEnabled =
-        config != null && Boolean.TRUE.equals(config.getOntologyMemoryDerivationEnabled());
     instance = enabled ? LLMCompletionClientFactory.create(config) : new NoopCompletionClient();
   }
 
@@ -46,15 +43,10 @@ public final class LLMClientHolder {
     return enabled && memoryExtractionEnabled;
   }
 
-  public static boolean isOntologyMemoryDerivationEnabled() {
-    return enabled && ontologyMemoryDerivationEnabled;
-  }
-
   /** Test seam: inject a deterministic completion client (and force-enable) for integration tests. */
   public static synchronized void setForTesting(LLMCompletionClient client) {
     instance = client;
     enabled = client != null;
     memoryExtractionEnabled = client != null;
-    ontologyMemoryDerivationEnabled = client != null;
   }
 }
