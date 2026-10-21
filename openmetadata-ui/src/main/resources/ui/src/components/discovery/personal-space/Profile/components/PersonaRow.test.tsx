@@ -224,6 +224,10 @@ describe('PersonaRow', () => {
 
     expect(screen.getByTestId('save')).toBeDisabled();
 
+    fireEvent.click(screen.getByTestId('save'));
+
+    expect(updateUserDetails).not.toHaveBeenCalled();
+
     await act(async () => {
       fireEvent.click(screen.getByTestId('add-persona'));
     });

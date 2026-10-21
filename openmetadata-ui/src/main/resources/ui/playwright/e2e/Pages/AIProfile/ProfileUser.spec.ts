@@ -26,6 +26,7 @@ import {
   waitForUserPatch,
 } from '../../../utils/aiProfile';
 import { chooseSelectOption, uuid } from '../../../utils/common';
+import { getDomainNode } from '../../../utils/domainPicker';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -269,19 +270,22 @@ test.describe('AI Profile Users', () => {
     await openUserProfile(page, user.responseData.name);
 
     await page.getByTestId('domains-edit').click();
-    // The fixture may be outside the first page of domains. The selection helper
-    // also reopens the popup if scrolling the profile panel dismisses it.
-    await page
+    // The row uses the shared DomainSelect tree picker; searching keeps the
+    // fixture reachable even when it is outside the first page of domains.
+    const domainInput = page
       .getByTestId('domains-multiselect')
-      .getByRole('combobox')
-      .fill(domain.responseData.displayName);
-    await chooseSelectOption(
-      page.getByTestId('domains-multiselect'),
-      page.getByRole('option', {
-        name: domain.responseData.displayName,
-        exact: true,
-      })
-    );
+      .getByRole('combobox');
+    await domainInput.click();
+    await domainInput.fill(domain.responseData.displayName);
+    const domainNode = getDomainNode(page, {
+      name: domain.responseData.name,
+      fullyQualifiedName: domain.responseData.fullyQualifiedName,
+    });
+    await expect(domainNode).toBeVisible();
+    await domainNode.click();
+    // Multi-select commits each toggle immediately; close the tree before Save.
+    await page.keyboard.press('Escape');
+    await expect(domainNode).toBeHidden();
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('domains-save').click();
