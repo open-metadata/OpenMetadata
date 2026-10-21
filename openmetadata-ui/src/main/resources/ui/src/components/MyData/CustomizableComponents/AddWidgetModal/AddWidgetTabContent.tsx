@@ -95,7 +95,7 @@ function AddWidgetTabContent({
         justify="center">
         <img
           alt={widget.name}
-          className="tw:py-4"
+          className="tw:py-4 tw:dark:invert tw:dark:hue-rotate-180"
           data-testid="widget-image"
           src={widgetImage}
         />
