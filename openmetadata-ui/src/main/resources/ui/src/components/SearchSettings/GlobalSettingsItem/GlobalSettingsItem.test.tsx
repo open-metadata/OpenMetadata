@@ -43,7 +43,7 @@ describe('GlobalSettingItem', () => {
     expect(screen.getByTestId('value-input')).toBeInTheDocument();
   });
 
-  it('opens the editor from a labelled, keyboard-reachable edit button', async () => {
+  it('moves focus into the editor and back to the edit button when it closes', async () => {
     const user = userEvent.setup({ delay: null });
     render(<GlobalSettingItem {...mockProps} />);
 
@@ -53,7 +53,13 @@ describe('GlobalSettingItem', () => {
     editButton.focus();
     await user.keyboard('{Enter}');
 
-    expect(screen.getByTestId('value-input')).toBeInTheDocument();
+    expect(screen.getByTestId('value-input')).toHaveFocus();
+
+    await user.click(screen.getByTestId('inline-cancel-btn'));
+
+    expect(
+      screen.getByRole('button', { name: /label\.edit-entity/ })
+    ).toHaveFocus();
   });
 
   it('Should update value when input changes', () => {

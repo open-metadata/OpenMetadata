@@ -21,6 +21,7 @@ import {
   NumberInput,
   Select,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -685,15 +686,17 @@ const EntitySearchSettings = () => {
   const renderRankingFields = (fields: string[] = []) => (
     <div className="ranking-field-list">
       {fields.map((field) => (
-        <Badge
-          className="tw:block tw:max-w-full tw:truncate"
-          color="gray"
-          key={field}
-          size="md"
-          tooltip={field}
-          type="color">
-          {field}
-        </Badge>
+        // The tooltip trigger is capped too, or its max-content width lets a
+        // long field name overflow the card instead of truncating.
+        <Tooltip key={field} title={field} triggerClassName="tw:max-w-full">
+          <Badge
+            className="tw:block tw:max-w-full tw:truncate"
+            color="gray"
+            size="md"
+            type="color">
+            {field}
+          </Badge>
+        </Tooltip>
       ))}
     </div>
   );

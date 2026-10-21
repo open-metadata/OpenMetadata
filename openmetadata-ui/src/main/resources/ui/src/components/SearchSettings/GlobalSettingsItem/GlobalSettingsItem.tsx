@@ -16,7 +16,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { clamp } from 'lodash';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import '../../../pages/SearchSettingsPage/search-settings.less';
@@ -44,10 +44,28 @@ export const GlobalSettingItem = ({
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [updatedValue, setUpdatedValue] = useState<number>(value);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+  const valueContainerRef = useRef<HTMLDivElement>(null);
+  const restoreFocusRef = useRef(false);
+
+  // Closing the editor removes the input that held focus; hand focus back to
+  // the edit button instead of letting it fall to <body>.
+  const closeEditor = () => {
+    restoreFocusRef.current = true;
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    if (!isEditing && restoreFocusRef.current) {
+      restoreFocusRef.current = false;
+      valueContainerRef.current
+        ?.querySelector<HTMLButtonElement>('button')
+        ?.focus();
+    }
+  }, [isEditing]);
 
   const handleCancel = () => {
     setUpdatedValue(value);
-    setIsEditing(false);
+    closeEditor();
   };
 
   const handleSave = async () => {
@@ -68,7 +86,7 @@ export const GlobalSettingItem = ({
       throw error;
     } finally {
       setIsUpdating(false);
-      setIsEditing(false);
+      closeEditor();
     }
   };
 
@@ -83,6 +101,7 @@ export const GlobalSettingItem = ({
             onCancel={handleCancel}
             onSave={handleSave}>
             <Input
+              autoFocus
               aria-label={label}
               id="value"
               inputDataTestId="value-input"
@@ -98,7 +117,9 @@ export const GlobalSettingItem = ({
           </InlineEdit>
         </div>
       ) : (
-        <div className="d-flex items-center justify-end tw:shrink-0">
+        <div
+          className="d-flex items-center justify-end tw:shrink-0"
+          ref={valueContainerRef}>
           <span
             className="m-l-md font-semibold p-x-xss global-settings-item-value"
             data-testid={`global-setting-value-${label}`}>
