@@ -66,7 +66,7 @@ const AssetTypeRows: React.FC<AssetTypeRowsProps> = ({
           className="tw:min-w-10 tw:shrink-0 tw:text-right tw:tabular-nums tw:text-text-primary!"
           data-testid="asset-type-count"
           size="text-sm"
-          weight="semibold">
+          weight="medium">
           {formatCount(type.count)}
         </Typography>
         {/* A fixed slot, so counts line up whether or not a row has moved. */}

@@ -68,7 +68,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
         <ToneIcon size={20} />
       </div>
 
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
         <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
           {/* `!` on the colour: Typography renders `.prose`, whose unlayered
             `color` rule is emitted after the Tailwind utilities and would
@@ -77,7 +77,7 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
             size="text-sm"
-            weight="medium">
+            weight="semibold">
             {title}
           </Typography>
         </div>
@@ -122,7 +122,10 @@ const TopicCardHeader: React.FC<TopicCardHeaderProps> = ({
       onClick={onToggle}>
       {content}
       {trailing(
-        <Chevron aria-hidden className="tw:size-4 tw:text-fg-tertiary" />
+        <Chevron
+          aria-hidden
+          className="tw:size-4 tw:text-fg-tertiary tw:[&_path]:stroke-2"
+        />
       )}
     </button>
   );
