@@ -102,6 +102,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.UncheckedExecutionException;
 import com.networknt.schema.Error;
 import com.networknt.schema.Schema;
@@ -3412,48 +3413,34 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /** Creates distinct new FQNs in request order, leaving existing entities unchanged. */
   public final List<T> createMany(UriInfo uriInfo, List<T> entities) {
-    final List<T> pending = findNewEntities(entities);
-    prepareNewEntities(pending);
+    entities.forEach(this::setFullyQualifiedName);
+    final Set<String> seen = new HashSet<>(existingIdsByFqn(entities).keySet());
+    final List<T> pending =
+        entities.stream()
+            .filter(
+                entity -> seen.add(FullyQualifiedName.buildHash(entity.getFullyQualifiedName())))
+            .filter(this::prepareForBulkCreate)
+            .toList();
     final List<T> created = new ArrayList<>();
-    for (int start = 0; start < pending.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
-      final int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, pending.size());
-      created.addAll(createManyChunk(new ArrayList<>(pending.subList(start, end))));
+    for (List<T> chunk : Lists.partition(pending, BULK_CREATE_TXN_CHUNK_SIZE)) {
+      created.addAll(createManyChunk(new ArrayList<>(chunk)));
     }
     return List.copyOf(created);
   }
 
-  private List<T> findNewEntities(List<T> entities) {
-    entities.forEach(this::setFullyQualifiedName);
-    final Set<String> seen =
-        dao
-            .findReferencesByFqns(entities.stream().map(T::getFullyQualifiedName).toList(), ALL)
-            .stream()
-            .map(reference -> FullyQualifiedName.buildHash(reference.getFullyQualifiedName()))
-            .collect(Collectors.toCollection(HashSet::new));
-    final List<T> pending = new ArrayList<>();
-    for (T entity : entities) {
-      if (seen.add(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()))) {
-        pending.add(entity);
+  private boolean prepareForBulkCreate(T entity) {
+    try {
+      prepareInternal(entity, false);
+      return true;
+    } catch (IllegalArgumentException exception) {
+      final UUID storedId =
+          existingIdsByFqn(List.of(entity))
+              .get(FullyQualifiedName.buildHash(entity.getFullyQualifiedName()));
+      if (storedId == null || storedId.equals(entity.getId())) {
+        throw exception;
       }
-    }
-    return pending;
-  }
-
-  private void prepareNewEntities(List<T> entities) {
-    for (final Iterator<T> iterator = entities.iterator(); iterator.hasNext(); ) {
-      final T entity = iterator.next();
-      try {
-        prepareInternal(entity, false);
-      } catch (IllegalArgumentException exception) {
-        if (!removeConcurrentDuplicates(new ArrayList<>(List.of(entity)))) {
-          throw exception;
-        }
-        iterator.remove();
-        LOG.warn(
-            "Skipped existing {} entity {} during bulk-create preparation",
-            entityType,
-            entity.getFullyQualifiedName());
-      }
+      LOG.warn("Skipping existing {}: {}", entityType, entity.getFullyQualifiedName());
+      return false;
     }
   }
 
@@ -3466,24 +3453,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (!isDuplicateKeyException(exception) || !removeConcurrentDuplicates(pending)) {
           throw exception;
         }
-        LOG.warn(
-            "Skipped existing {} entities after a duplicate-key conflict; {} left in chunk",
-            entityType,
-            pending.size());
+        LOG.warn("Skipping duplicate {}; {} remaining in chunk", entityType, pending.size());
       }
     }
     return List.of();
   }
 
   private boolean removeConcurrentDuplicates(List<T> entities) {
-    final Map<String, UUID> existing =
-        dao
-            .findReferencesByFqns(entities.stream().map(T::getFullyQualifiedName).toList(), ALL)
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    reference -> FullyQualifiedName.buildHash(reference.getFullyQualifiedName()),
-                    EntityReference::getId));
+    final Map<String, UUID> existing = existingIdsByFqn(entities);
     return entities.removeIf(
         entity -> {
           final UUID storedId =
@@ -3491,6 +3468,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           // Our own committed IDs must not hide a failure in postCreate as a duplicate.
           return storedId != null && !storedId.equals(entity.getId());
         });
+  }
+
+  private Map<String, UUID> existingIdsByFqn(List<T> entities) {
+    final List<String> fqns = entities.stream().map(T::getFullyQualifiedName).toList();
+    final Map<String, UUID> existing = new HashMap<>();
+    for (EntityReference reference : dao.findReferencesByFqns(fqns, ALL)) {
+      existing.put(
+          FullyQualifiedName.buildHash(reference.getFullyQualifiedName()), reference.getId());
+    }
+    return existing;
   }
 
   public final T create(UriInfo uriInfo, T entity) {
