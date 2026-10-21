@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { Page } from '@playwright/test';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { TableClass } from '../../../support/entity/TableClass';
+import { TeamClass } from '../../../support/team/TeamClass';
+import { createNewPage } from '../../../utils/common';
+import {
+  getEncodedFqn,
+  waitForAllLoadersToDisappear,
+} from '../../../utils/entity';
 import { enableAiAppMode } from '../../Utils/appMode';
 import { expect, test } from './fixtures';
 
@@ -81,6 +87,81 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
       await expect(page).toHaveURL(/\/my-data$/);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
     });
+  });
+
+  // In AI mode a settings link opens the settings modal over the current page
+  // (ADR:2026-10-21-settings-pages-are-classic-only). It must keep the page's
+  // query string: react-router resolves a bare `#hash` target with an empty one.
+  test('a team owner link opens the team in the settings modal and keeps the query string', async ({
+    page,
+    browser,
+  }) => {
+    const table = new TableClass();
+    const team = new TeamClass();
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    try {
+      await test.step('Create a table owned by a team', async () => {
+        await team.create(apiContext);
+        await table.create(apiContext);
+        await table.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/owners',
+              value: [{ id: team.responseData.id, type: 'team' }],
+            },
+          ],
+        });
+      });
+
+      const teamName = team.responseData.name;
+      let pageUrl = new URL('http://placeholder');
+
+      await test.step('Open the table page with a query string in AI mode', async () => {
+        await enableAiAppMode(page);
+        await page.goto(
+          `/table/${getEncodedFqn(
+            table.entityResponseData.fullyQualifiedName ?? ''
+          )}?pwKeep=1`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        await waitForAllLoadersToDisappear(page);
+        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+
+        pageUrl = new URL(page.url());
+
+        expect(pageUrl.searchParams.get('pwKeep')).toBe('1');
+      });
+
+      await test.step('Click the team in the owner popover', async () => {
+        await page.getByTestId('owner-link').getByTestId(teamName).hover();
+        const popover = page.getByTestId('user-popover-card');
+        await expect(popover).toBeVisible();
+        await popover.getByTestId('team-name').click();
+      });
+
+      await test.step('The modal opens on the team over the same page and query', async () => {
+        await expect
+          .poll(() => {
+            const url = new URL(page.url());
+
+            return `${url.pathname}${url.search}${url.hash}`;
+          })
+          .toBe(
+            `${pageUrl.pathname}${
+              pageUrl.search
+            }#members/teams/${encodeURIComponent(teamName)}`
+          );
+        await expect(page.getByTestId('ai-profile-page')).toBeVisible();
+        await expect(page.getByTestId('team-detail')).toBeVisible();
+      });
+    } finally {
+      await table.delete(apiContext);
+      await team.delete(apiContext);
+      await afterAction();
+    }
   });
 
   /**

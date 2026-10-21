@@ -976,6 +976,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/**",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/PermissionsTab.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage*",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/SettingsSection.tsx",
         "openmetadata-ui/src/main/resources/ui/src/constants/Profile.constants.ts"
       ],
@@ -1192,6 +1193,7 @@
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
@@ -1199,6 +1201,42 @@
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Settings-modal Members and Access Control panels, including the per-view permission gates that mirror classic SettingsRouter (ADR:2026-10-21-settings-pages-are-classic-only).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
+        "playwright/e2e/Pages/AIProfile/**/*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AI-mode observability alert pages (list, details, add/edit drawer) and the alert kind they serve.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/Observability.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Breadcrumbs of the classic Add KPI, Add Role and Add Policy pages.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/constants/Breadcrumb.constants.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
       ]
     },
     {
