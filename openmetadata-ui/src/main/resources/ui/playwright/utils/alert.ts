@@ -31,6 +31,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getApiContext,
@@ -962,8 +963,10 @@ export const inputBasicAlertInformation = async ({
 
   // The source picker is open to several sources from the start; this alert gets one.
   const sourceSelect = page.getByTestId('source-select');
-  await sourceSelect.getByRole('combobox').click();
-  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await chooseSelectOption(
+    sourceSelect,
+    page.getByRole('listbox').getByTestId(`${sourceName}-option`)
+  );
   await page.keyboard.press('Escape');
   await expect(page.getByRole('listbox')).toBeHidden();
 

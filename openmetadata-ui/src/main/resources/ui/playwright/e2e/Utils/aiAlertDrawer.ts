@@ -14,6 +14,7 @@
 import { expect, Locator, Page } from '@playwright/test';
 import { waitForCapabilitiesOf } from '../../utils/alert';
 import {
+  chooseSelectOption,
   scrollIntoViewAndSettle,
   selectOptionWithRetry,
 } from '../../utils/common';
@@ -106,8 +107,10 @@ export const selectAlertSource = async (
 ) => {
   const name = sourceNameOf(source);
   const answered = waitForCapabilitiesOf(page, [...chosenSources, name]);
-  await page.getByTestId('source-select').getByRole('combobox').click();
-  await page.getByRole('listbox').getByTestId(`${name}-option`).click();
+  await chooseSelectOption(
+    page.getByTestId('source-select'),
+    page.getByRole('listbox').getByTestId(`${name}-option`)
+  );
   await answered;
   await dismissPopover(
     page.getByRole('dialog').filter({ has: page.getByTestId('source-select') })

@@ -571,10 +571,10 @@ export const inputAlertInformation = async ({
 
   // The source picker takes several sources; this alert gets one. It is closed by clicking the
   // header: Escape would also close the profile panel, and Tab would add the highlighted source.
-  const sourceSelect = page.getByTestId('source-select');
-  await expect(sourceSelect).toBeVisible();
-  await sourceSelect.getByRole('combobox').click();
-  await page.getByRole('listbox').getByTestId(`${sourceName}-option`).click();
+  await chooseSelectOption(
+    page.getByTestId('source-select'),
+    page.getByRole('listbox').getByTestId(`${sourceName}-option`)
+  );
   await closeSourcePicker(page);
 };
 
