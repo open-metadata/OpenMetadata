@@ -3,6 +3,7 @@ package org.openmetadata.it.util;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.awaitility.pollinterval.IterativePollInterval;
@@ -21,12 +22,9 @@ import org.slf4j.LoggerFactory;
  * databases/schemas/tables/columns with it), so only roots are tracked and deleted. Best-effort:
  * failures are logged, never thrown, so cleanup never fails a green test.
  *
- * <p>Deletes go through the <b>async</b> endpoint and then block until the root is really gone. The
- * synchronous path holds the request open for the whole cascade, which a 100k-table service runs
- * clean past the client's read timeout — that surfaced as {@code Cleanup delete failed: Network
- * error: timeout}, {@code deleted 0/1}, and an entire tree left behind for the next test in the JVM
- * to seed on top of. Waiting for the cascade is the point: these suites share one cluster, so a
- * cleanup that returns early does not save time, it just moves the cost onto the next test's seed.
+ * <p>Hierarchical roots use asynchronous deletion so a large cascade cannot outlive the client's
+ * read timeout. Leaf resources without that endpoint use their root DELETE route. Both paths
+ * wait for the root, including a soft-deleted record, to disappear before the next test seeds.
  */
 public final class NamespaceCleanup {
 
@@ -77,7 +75,15 @@ public final class NamespaceCleanup {
           Map.entry(Entity.ROLE, "roles"),
           Map.entry(Entity.POLICY, "policies"),
           Map.entry(Entity.PERSONA, "personas"),
+          Map.entry(Entity.PAGE, "contextCenter/pages"),
+          Map.entry(Entity.CONTEXT_MEMORY, "contextCenter/memories"),
+          Map.entry(Entity.CONTEXT_FILE, "contextCenter/drive/files"),
+          Map.entry(Entity.ONTOLOGY_CHANGE_SET, "ontologyChangeSets"),
           Map.entry(Entity.TEST_SUITE, "dataQuality/testSuites"));
+
+  // These leaf resources do not expose the asynchronous deletion endpoint.
+  private static final Set<String> DIRECT_DELETE_TYPES =
+      Set.of(Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ONTOLOGY_CHANGE_SET);
 
   private NamespaceCleanup() {}
 
@@ -94,8 +100,9 @@ public final class NamespaceCleanup {
             "No cleanup collection mapping for entity type '{}' — skipping", root.entityType());
         continue;
       }
+      final String deletionPath = DIRECT_DELETE_TYPES.contains(root.entityType()) ? "/" : "/async/";
       final String path =
-          "/v1/" + collection + "/async/" + root.id() + "?hardDelete=true&recursive=true";
+          "/v1/" + collection + deletionPath + root.id() + "?hardDelete=true&recursive=true";
       try {
         http.execute(HttpMethod.DELETE, path, null, Object.class);
         if (awaitGone(http, collection, root)) {
@@ -120,7 +127,7 @@ public final class NamespaceCleanup {
    */
   private static boolean awaitGone(
       final HttpClient http, final String collection, final EntityRoot root) {
-    final String path = "/v1/" + collection + "/" + root.id();
+    final String path = "/v1/" + collection + "/" + root.id() + "?include=all";
     boolean gone = true;
     try {
       Awaitility.await("cleanup cascade for " + root.entityType() + " " + root.id())

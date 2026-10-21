@@ -34,6 +34,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import reactor.core.publisher.Mono;
 
 class HttpServletStatelessServerTransportTest {
@@ -268,6 +270,28 @@ class HttpServletStatelessServerTransportTest {
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     assertThat(body.toString()).contains("\"code\":-32603");
+  }
+
+  @Test
+  void doPost_underBasePath_reachesTheHandler() throws Exception {
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContextPath()).thenReturn("/data-catalog");
+    when(request.getRequestURI()).thenReturn("/data-catalog" + MCP_ENDPOINT);
+
+    transportRejectingWith(methodNotFound("server/discover")).doPost(request, response);
+
+    verify(response, never()).sendError(HttpServletResponse.SC_NOT_FOUND);
+    verify(response).setStatus(HttpServletResponse.SC_OK);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"/data-catalog, /data-catalog/mcp/token, /mcp/token", "'', /mcp/token, /mcp/token"})
+  void pathInContext_stripsOnlyTheContextPath(String contextPath, String uri, String expected) {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn(contextPath);
+    when(request.getRequestURI()).thenReturn(uri);
+
+    assertThat(HttpServletStatelessServerTransport.pathInContext(request)).isEqualTo(expected);
   }
 
   private static HttpServletStatelessServerTransport transportWith(

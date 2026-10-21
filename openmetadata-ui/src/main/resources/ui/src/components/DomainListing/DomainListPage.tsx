@@ -64,6 +64,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
   const { quickFilters, defaultFilters } = useDomainFilters({
+    baseFilter: domainListing.baseFilter,
     aggregations: domainListing.aggregations || undefined,
     parsedFilters: domainListing.parsedFilters,
     onFilterChange: domainListing.handleFilterChange,
@@ -159,6 +160,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
     useDomainTableColumns({
+      entities: domainListing.entities,
       onEntityClick: domainListing.actionHandlers.onEntityClick,
     });
 
