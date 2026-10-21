@@ -63,9 +63,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
         {/* `!` on the colour: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
-        <Typography
-          className="tw:mt-1.5 tw:block tw:text-text-tertiary!"
-          size="text-sm">
+        <Typography className="tw:block tw:text-text-tertiary!" size="text-xs">
           {t('message.topics-to-catch-up-on-subtitle')}
         </Typography>
       </div>

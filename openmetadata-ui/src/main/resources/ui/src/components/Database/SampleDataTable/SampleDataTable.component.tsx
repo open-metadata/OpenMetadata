@@ -36,7 +36,7 @@ import {
   getSampleDataByTableId,
 } from '../../../rest/tableAPI';
 import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -131,11 +131,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       rowLimit
     );
 
-    downloadFile(
-      csvContent,
-      `sample_data_${rowLimit}_rows.csv`,
-      'text/csv;charset=utf-8;'
-    );
+    downloadCsv(csvContent, `sample_data_${rowLimit}_rows.csv`);
   }, [sampleData, rowLimit]);
 
   const getSampleDataWithType = (entity: Table | Container) => {
