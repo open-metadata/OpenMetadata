@@ -441,11 +441,11 @@ describe('ExportUtils', () => {
     it('applies viewport transformation when provided', async () => {
       const exportDataWithViewport = {
         ...mockExportData,
-        getViewport: () => ({
+        viewport: {
           x: 100,
           y: 200,
           zoom: 1.5,
-        }),
+        },
       };
 
       await exportPNGImageFromElement(exportDataWithViewport);
@@ -455,6 +455,23 @@ describe('ExportUtils', () => {
         expect.objectContaining({
           style: expect.objectContaining({
             transform: 'translate(100px, 200px) scale(1.5)',
+          }),
+        })
+      );
+    });
+
+    it('prefers getViewport over a preset viewport', async () => {
+      await exportPNGImageFromElement({
+        ...mockExportData,
+        viewport: { x: 100, y: 200, zoom: 1.5 },
+        getViewport: () => ({ x: 4, y: 8, zoom: 0.9 }),
+      });
+
+      expect(toCanvas).toHaveBeenCalledWith(
+        mockElement,
+        expect.objectContaining({
+          style: expect.objectContaining({
+            transform: 'translate(4px, 8px) scale(0.9)',
           }),
         })
       );
@@ -521,7 +538,7 @@ describe('ExportUtils', () => {
           900, // imageHeight
           20, // padding
           2, // pixelRatio — small graph so no cap, uses DESIRED_PIXEL_RATIO
-          undefined // no getViewport, so no frame
+          undefined // no viewport, so no frame
         );
       });
 

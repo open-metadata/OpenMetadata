@@ -54,6 +54,8 @@ export type ExportData = {
   title?: string;
   documentSelector?: string;
   exportTypes: ExportTypes[];
+  /** Frames the content of a PNG capture. `getViewport` takes precedence. */
+  viewport?: ExportViewport;
   /**
    * Frames the content of a PNG capture. Called after `beforeCapture` with the
    * size the capture renders at, so the frame covers what `beforeCapture`

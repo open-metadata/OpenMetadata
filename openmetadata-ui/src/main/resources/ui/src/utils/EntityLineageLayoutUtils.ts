@@ -147,7 +147,7 @@ export const getViewportForBoundsReactFlow = (
   return { x: translateX, y: translateY, zoom: scale };
 };
 
-export const getViewportForLineageExport = (
+export const getExportViewportForNodes = (
   nodes: Node[],
   imageWidth: number,
   imageHeight: number
@@ -158,3 +158,21 @@ export const getViewportForLineageExport = (
     imageHeight,
     0.9
   );
+
+/**
+ * Fits the nodes to the element's size now, so it suits only canvases that
+ * already render every node. A capture whose `beforeCapture` mounts more nodes
+ * grows the element; frame it with `ExportData.getViewport` instead.
+ */
+export const getViewportForLineageExport = (
+  nodes: Node[],
+  documentSelector: string
+): ExportViewport => {
+  const exportElement = document.querySelector(documentSelector) as HTMLElement;
+
+  return getExportViewportForNodes(
+    nodes,
+    exportElement.scrollWidth,
+    exportElement.scrollHeight
+  );
+};

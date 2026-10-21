@@ -108,7 +108,7 @@ import {
 } from '../../../utils/EntityLineageEdgeUtils';
 import {
   centerNodePosition,
-  getViewportForLineageExport,
+  getExportViewportForNodes,
 } from '../../../utils/EntityLineageLayoutUtils';
 import {
   createNodes,
@@ -1051,7 +1051,7 @@ export const Lineage = ({
         documentSelector: LINEAGE_EXPORT_SELECTOR,
         ...(includePNG && {
           getViewport: (imageWidth: number, imageHeight: number) =>
-            getViewportForLineageExport(exportNodes, imageWidth, imageHeight),
+            getExportViewportForNodes(exportNodes, imageWidth, imageHeight),
           renderEdgesOverlay: (
             imageWidth: number,
             imageHeight: number,

@@ -21,7 +21,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { drawEdgesForExport } from '../../../utils/CanvasUtils';
-import { getViewportForLineageExport } from '../../../utils/EntityLineageLayoutUtils';
+import { getExportViewportForNodes } from '../../../utils/EntityLineageLayoutUtils';
 import { Lineage } from './Lineage';
 import { useLineageHandlers } from './LineageHandlersContext';
 
@@ -38,13 +38,6 @@ jest.mock(
     useEntityExportModalProvider: () => ({ showModal: mockShowModal }),
   })
 );
-
-// The real helper measures the export element in the DOM, which jsdom does
-// not lay out.
-jest.mock('../../../utils/EntityLineageLayoutUtils', () => ({
-  ...jest.requireActual('../../../utils/EntityLineageLayoutUtils'),
-  getViewportForLineageExport: jest.fn(() => ({ x: 4, y: 8, zoom: 0.5 })),
-}));
 
 jest.mock('../../../utils/CanvasUtils', () => ({
   ...jest.requireActual('../../../utils/CanvasUtils'),
@@ -223,11 +216,8 @@ describe('Lineage', () => {
       );
       // The capture asks for the frame once every node is mounted, with the
       // size it renders at.
-      expect(options.getViewport(8000, 12000)).toEqual(EXPORT_VIEWPORT);
-      expect(getViewportForLineageExport).toHaveBeenCalledWith(
-        MAP_NODES,
-        8000,
-        12000
+      expect(options.getViewport(8000, 12000)).toEqual(
+        getExportViewportForNodes(MAP_NODES, 8000, 12000)
       );
 
       options.renderEdgesOverlay(800, 600, 20, 2, EXPORT_VIEWPORT);
