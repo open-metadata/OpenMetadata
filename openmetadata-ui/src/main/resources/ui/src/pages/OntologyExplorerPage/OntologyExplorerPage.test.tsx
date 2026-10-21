@@ -436,6 +436,43 @@ describe('OntologyExplorerPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('waits for the native ontology list before falling back to glossaries', async () => {
+    const loadingScopes = {
+      glossaries: [],
+      isError: false,
+      isLoading: true,
+      isOntologyError: false,
+      isOntologyLoading: true,
+      ontologies: [],
+      refetch: jest.fn(),
+      refetchOntologies: jest.fn(),
+    };
+    const studio = () => (
+      <MemoryRouter initialEntries={['/']}>
+        <OntologyExplorerPage />
+        <Location />
+      </MemoryRouter>
+    );
+    mockUseRealRouter = true;
+    mockUseOntologyStudioScopes.mockReturnValue(loadingScopes);
+    const view = renderWithQueryClient(studio());
+
+    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
+
+    mockUseOntologyStudioScopes.mockReturnValue({
+      ...loadingScopes,
+      isLoading: false,
+      isOntologyLoading: false,
+    });
+    view.rerender(studio());
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'scope=glossary%3Aall'
+      )
+    );
+  });
+
   it('keeps an explicitly chosen empty All ontologies view and links back to glossaries', async () => {
     mockUseRealRouter = true;
     renderWithQueryClient(
