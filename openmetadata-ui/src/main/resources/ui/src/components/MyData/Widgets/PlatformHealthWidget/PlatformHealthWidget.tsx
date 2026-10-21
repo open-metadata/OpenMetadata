@@ -213,7 +213,7 @@ const BucketServicesList: React.FC<BucketServicesListProps> = ({
     <>
       {services.length > 0 && (
         <ul
-          className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
           data-testid="platform-health-rows">
           {services.map((service) => (
             <BucketServiceRow
@@ -253,7 +253,7 @@ const FailingServicesList: React.FC<FailingServicesListProps> = ({
     <>
       {failingServices.length > 0 && (
         <ul
-          className="tw:mt-4 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
           data-testid="platform-health-rows">
           {failingServices.slice(0, MAX_VISIBLE_ROWS).map((service) => (
             <FailingServiceRow
@@ -482,6 +482,7 @@ const PlatformHealthCard: React.FC<PlatformHealthWidgetProps> = ({
         onPress: () =>
           navigate(connectionsRouterClassBase.getSettingsServicesPath()),
       }}
+      bodyClassName="tw:py-3"
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
