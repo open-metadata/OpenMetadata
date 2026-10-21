@@ -21,6 +21,7 @@ import {
   BundleSuiteBulkAddRequestClass,
   Mode as BundleSuiteBulkAddMode,
 } from '../generated/api/tests/bundleSuiteBulkAddRequest';
+import type { BundleSuiteBulkRemoveRequest } from '../generated/api/tests/bundleSuiteBulkRemoveRequest';
 import { CreateTestCase } from '../generated/api/tests/createTestCase';
 import { CreateTestDefinition } from '../generated/api/tests/createTestDefinition';
 import { CreateTestSuite } from '../generated/api/tests/createTestSuite';
@@ -92,6 +93,27 @@ export type ListTestCaseParamsBySearch = Omit<
   includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
+
+/**
+ * The test case list filters that `/name/{name}/export` and `/exportAsync`
+ * accept, so an export selects the rows the user filtered the list to.
+ */
+export type TestCaseExportFilters = Pick<
+  ListTestCaseParamsBySearch,
+  | 'testCaseStatus'
+  | 'testCaseType'
+  | 'entityLink'
+  | 'tags'
+  | 'tier'
+  | 'owner'
+  | 'q'
+  | 'testPlatforms'
+  | 'dataQualityDimension'
+  | 'serviceName'
+  | 'dataProductFqn'
+  | 'startTimestamp'
+  | 'endTimestamp'
+>;
 
 export type ListTestDefinitionsParams = ListParams & {
   entityType?: EntityType;
@@ -301,6 +323,19 @@ export const removeTestCaseFromTestSuite = async (
     AddTestCaseToLogicalTestSuiteType,
     AxiosResponse<TestCase>
   >(`${testCaseUrl}/logicalTestCases/${testSuiteId}/${testCaseId}`);
+
+  return response.data;
+};
+
+export const removeTestCasesFromTestSuiteBulk = async (
+  testSuiteId: string,
+  testCaseIds: string[]
+): Promise<TestSuite> => {
+  const request: BundleSuiteBulkRemoveRequest = { testSuiteId, testCaseIds };
+  const response = await APIClient.post<
+    BundleSuiteBulkRemoveRequest,
+    AxiosResponse<TestSuite>
+  >(`${testCaseUrl}/logicalTestCases/bulk/remove`, request);
 
   return response.data;
 };
@@ -535,7 +570,7 @@ export const listTestCases = async (params: ListTestCasesParams) => {
 
 export const exportTestCasesInCSV = async (
   name: string,
-  params?: { recursive?: boolean }
+  params?: { recursive?: boolean } & TestCaseExportFilters
 ): Promise<CSVImportAsyncResponse> => {
   const response = await APIClient.get(
     `/dataQuality/testCases/name/${getEncodedFqn(name)}/exportAsync`,

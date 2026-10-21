@@ -1,11 +1,10 @@
 package org.openmetadata.service.apps.bundles.insights;
 
-import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.EMAIL;
 import static org.openmetadata.service.Entity.KPI;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFIG;
-import static org.openmetadata.service.util.SubscriptionUtil.getAdminsData;
+import static org.openmetadata.service.util.UserUtil.getAdminEmails;
 import static org.openmetadata.service.util.Utilities.getMonthAndDateFromEpoch;
 import static org.openmetadata.service.util.email.TemplateConstants.DATA_INSIGHT_REPORT_TEMPLATE;
 
@@ -35,11 +34,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.bundles.insights.template.DataInsightDescriptionAndOwnerTemplate;
+import org.openmetadata.service.apps.bundles.insights.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
-import org.openmetadata.service.events.scheduled.template.DataInsightDescriptionAndOwnerTemplate;
-import org.openmetadata.service.events.scheduled.template.DataInsightTotalAssetTemplate;
 import org.openmetadata.service.exception.AppException;
-import org.openmetadata.service.exception.EventSubscriptionJobException;
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
@@ -178,7 +176,7 @@ public class DataInsightsReportApp extends AbstractNativeApplication {
 
   private void sendToAdmins(SearchClient searchClient, TimeConfig timeConfig) {
     // Get Admins
-    Set<String> emailList = getAdminsData(EMAIL);
+    Set<String> emailList = getAdminEmails();
     Map<String, Object> contextData = new HashMap<>();
 
     try {

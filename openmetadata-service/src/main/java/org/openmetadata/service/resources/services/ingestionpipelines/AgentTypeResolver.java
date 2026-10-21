@@ -28,7 +28,8 @@ public final class AgentTypeResolver {
               PipelineType.PROFILER,
               PipelineType.AUTO_CLASSIFICATION,
               PipelineType.DBT,
-              PipelineType.POLICY_AGENT),
+              PipelineType.POLICY_AGENT,
+              PipelineType.REVERSE_METADATA),
           AgentType.APPLICATION,
           EnumSet.of(PipelineType.APPLICATION));
 

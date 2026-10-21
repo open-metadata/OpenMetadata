@@ -20,6 +20,7 @@ import traceback
 from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
+from functools import cached_property
 from typing import Any
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
@@ -178,6 +179,32 @@ class DbtSource(DbtServiceSource):
         # project and reset per project in yield_data_models.
         self.reported_unresolved_upstreams: set[str] = set()
         self._load_omd_custom_properties()
+
+    @cached_property
+    def catalog_mapping(self) -> dict[str, str]:
+        # Trino lowercases catalog names, so the manifest may not keep the case the user typed
+        return {
+            catalog.casefold(): database
+            for catalog, database in (self.source_config.catalogMapping or {}).items()
+            if catalog and database
+        }
+
+    def _map_catalogs_in_sql(self, sql: str) -> str:
+        """
+        Swap each mapped catalog in the three-part table names of compiled SQL for the database
+        it is ingested under, so query lineage looks the tables up where they really are.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        if not self.catalog_mapping:
+            return sql
+        # one pass over all catalogs, so a mapped database that is also a key is not mapped again
+        catalogs = "|".join(re.escape(catalog) for catalog in sorted(self.catalog_mapping, key=len, reverse=True))
+        return re.sub(
+            rf'(?<![\w."`])("?)({catalogs})\1(?=\s*\.\s*(?:"[^"]+"|[\w$]+)\s*\.)',
+            lambda match: f'"{self.catalog_mapping[match.group(2).casefold()]}"',
+            sql,
+            flags=re.IGNORECASE,
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -826,25 +853,64 @@ class DbtSource(DbtServiceSource):
         # instead of sniffing the parsed object downstream
         self.context.get().dbt_tests[key + "_freshness"][DbtCommonEnum.IS_FRESHNESS.value] = True
 
-    def _get_table_entity(self, table_fqn) -> Table | None:
-        def search_table(fqn_search_string: str) -> Table | None:
-            table_entities = get_entity_from_es_result(
-                entity_list=self.metadata.es_search_from_fqn(
+    def _search_table(self, fqn_search_string: str | None) -> Table | None:
+        if not fqn_search_string:
+            return None
+        table_entities = get_entity_from_es_result(
+            entity_list=self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=fqn_search_string,
+                fields="sourceHash",
+            ),
+            fetch_multiple_entities=True,
+        )
+
+        if not table_entities:
+            return None
+
+        logger.debug("Found table entities from %s: %d entities", fqn_search_string, len(table_entities))
+        return next(iter(filter(None, table_entities)), None) if table_entities else None
+
+    def _get_table_entity_in_mapped_database(self, table_fqn: str) -> Table | None:
+        """
+        The manifest names a node's database the way the dbt adapter sees it: dbt-trino
+        writes the Trino catalog, while the BigQuery connector ingests the same table under
+        the GCP project id. catalogMapping states the ingested name, and the table is looked
+        up under it in the configured service first, then in any service, since the mapped
+        database usually belongs to a different service than the engine dbt ran on.
+        See ADR:2026-10-14-dbt-catalog-mapping-resolves-engine-database-names.
+        """
+        _, database_name, schema_name, table_name = fqn.split(table_fqn)
+        mapped_database = self.catalog_mapping.get(database_name.casefold()) if database_name else None
+        if not mapped_database:
+            return None
+        for service_name in (self.config.serviceName, "*"):
+            table_entity = self._search_table(
+                fqn.build(
+                    self.metadata,
                     entity_type=Table,
-                    fqn_search_string=fqn_search_string,
-                    fields="sourceHash",
-                ),
-                fetch_multiple_entities=True,
+                    service_name=service_name,
+                    database_name=mapped_database,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    skip_es_search=True,
+                )
             )
+            if table_entity:
+                return table_entity
+        logger.warning(
+            "Table '%s.%s' not found under the database '%s' that catalogMapping sets for '%s', "
+            "falling back to the database in the dbt manifest",
+            schema_name,
+            table_name,
+            mapped_database,
+            database_name,
+        )
+        return None
 
-            if not table_entities:
-                return None
-
-            logger.debug(f"Found table entities from {fqn_search_string}: {len(table_entities)} entities")
-            return next(iter(filter(None, table_entities)), None) if table_entities else None
-
+    def _get_table_entity(self, table_fqn) -> Table | None:
         try:
-            table_entity = search_table(table_fqn)
+            table_entity = self._get_table_entity_in_mapped_database(table_fqn) or self._search_table(table_fqn)
             if table_entity:
                 logger.debug(f"Using Table Entity: {table_entity.fullyQualifiedName.root}with id {table_entity.id}")
                 return table_entity
@@ -863,7 +929,7 @@ class DbtSource(DbtServiceSource):
                     schema_name=schema_name,
                     table_name=table_name,
                 )
-                table_entity = search_table(table_fqn)
+                table_entity = self._search_table(table_fqn)
                 if table_entity:
                     return table_entity
 
@@ -1001,9 +1067,6 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
-                    if manifest_node.meta:
-                        dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
-
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
@@ -1012,9 +1075,17 @@ class DbtSource(DbtServiceSource):
                             f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
                             f"with id {table_entity.id}"
                         )
+                        # catalogMapping and searchAcrossDatabases can resolve the table under another
+                        # database or service, and the domain, data products and custom properties
+                        # read from meta are applied by the FQN of the table that was found
+                        table_fqn = model_str(table_entity.fullyQualifiedName)
+                        if manifest_node.meta:
+                            dbt_table_tags_list.extend(self.process_dbt_meta(manifest_node.meta, table_fqn) or [])
 
+                        upstream_nodes = self.parse_upstream_nodes_with_names(manifest_entities, manifest_node)
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
+                            upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -1023,7 +1094,7 @@ class DbtSource(DbtServiceSource):
                                 rawSql=SqlQuery(dbt_raw_query) if dbt_raw_query else None,
                                 sql=SqlQuery(dbt_compiled_query) if dbt_compiled_query else None,
                                 columns=self.parse_data_model_columns(manifest_node, catalog_node),
-                                upstream=self.parse_upstream_nodes(manifest_entities, manifest_node),
+                                upstream=[node.fqn for node in upstream_nodes],
                                 owners=self.get_dbt_owner(
                                     manifest_node=manifest_node,
                                     catalog_node=catalog_node,
@@ -1128,8 +1199,17 @@ class DbtSource(DbtServiceSource):
                         )
 
                         # check if the parent table exists in OM before adding it to the upstream list
-                        if parent_fqn and self._get_table_entity(table_fqn=parent_fqn):
-                            upstream_nodes.append(build_upstream_node(parent_node, parent_fqn))
+                        table_entity = self._get_table_entity(table_fqn=parent_fqn) if parent_fqn else None
+                        # catalogMapping and searchAcrossDatabases can resolve the parent under another
+                        # database or service, so lineage and tests follow the table that was found
+                        if parent_fqn and table_entity:
+                            upstream_nodes.append(
+                                build_upstream_node(
+                                    parent_node,
+                                    model_str(table_entity.fullyQualifiedName),
+                                    table_entity.id.root,
+                                )
+                            )
                 except Exception as exc:  # pylint: disable=broad-except
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to parse the DBT node {node} to get upstream nodes: {exc}")
@@ -1283,14 +1363,18 @@ class DbtSource(DbtServiceSource):
         to_entity: Table = data_model_link.table_entity
         logger.debug(f"Processing DBT lineage for: {to_entity.fullyQualifiedName.root}")
 
-        for upstream_node in data_model_link.datamodel.upstream:
+        resolved = data_model_link.upstream_table_ids
+        for upstream_node in data_model_link.datamodel.upstream or []:
             try:
-                from_entity: Table | None = self._get_table_entity(table_fqn=upstream_node)
-                if from_entity and to_entity:
+                from_id = resolved.get(upstream_node)
+                if from_id is None:
+                    from_entity = self._get_table_entity(table_fqn=upstream_node)
+                    from_id = from_entity.id.root if from_entity else None
+                if from_id and to_entity:
                     lineage_request = AddLineageRequest(
                         edge=EntitiesEdge(
                             fromEntity=EntityReference(
-                                id=Uuid(from_entity.id.root),
+                                id=Uuid(from_id),
                                 type="table",
                             ),
                             toEntity=EntityReference(
@@ -1342,7 +1426,7 @@ class DbtSource(DbtServiceSource):
                     *source_elements[-3:]
                 )
                 query_fqn = ".".join([f'"{i}"' for i in query_fqn.split(".")])
-                query = f"create table {query_fqn} as {data_model_link.datamodel.sql.root}"
+                query = f"create table {query_fqn} as {self._map_catalogs_in_sql(data_model_link.datamodel.sql.root)}"
                 connection_type = str(self.config.serviceConnection.root.config.type.value)
                 dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
                 lineages = get_lineage_by_query(

@@ -175,6 +175,58 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "statusReason": {
+        "type": "text",
+        "analyzer": "om_analyzer"
+      },
+      "supersededBy": {
+        "properties": {
+          "id": {
+            "type": "keyword"
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          },
+          "fullyQualifiedName": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer"
+          }
+        }
+      },
+      "disputes": {
+        "properties": {
+          "memory": {
+            "properties": {
+              "id": {
+                "type": "keyword"
+              },
+              "type": {
+                "type": "keyword"
+              },
+              "name": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              },
+              "fullyQualifiedName": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer"
+              }
+            }
+          },
+          "reason": {
+            "type": "text",
+            "analyzer": "om_analyzer"
+          },
+          "detectedAt": {
+            "type": "date",
+            "format": "epoch_millis"
+          }
+        }
+      },
       "pinned": {
         "type": "boolean"
       },
@@ -196,6 +248,9 @@
         "normalizer": "lowercase_normalizer"
       },
       "sharedWithIds": {
+        "type": "keyword"
+      },
+      "anchorId": {
         "type": "keyword"
       },
       "primaryEntity": {
@@ -343,9 +398,45 @@
         "type": "long",
         "null_value": 0
       },
+      "lastReviewedAt": {
+        "type": "date",
+        "format": "epoch_millis||epoch_second||strict_date_optional_time"
+      },
       "lastUsedAt": {
         "type": "date",
         "format": "epoch_millis||epoch_second||strict_date_optional_time"
+      },
+      "outcomes": {
+        "properties": {
+          "appliedCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "positiveCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "negativeCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "correctedCount": {
+            "type": "long",
+            "null_value": 0
+          },
+          "lastAppliedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          },
+          "lastCorrectedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          },
+          "countedAt": {
+            "type": "date",
+            "format": "epoch_millis||epoch_second||strict_date_optional_time"
+          }
+        }
       },
       "version": {
         "type": "float"

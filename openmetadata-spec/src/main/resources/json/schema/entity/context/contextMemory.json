@@ -6,19 +6,20 @@
   "description": "Reusable context memory for Context Center and AI-assisted retrieval.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.context.ContextMemory",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.entity.context.ContextMemoryStatus>"],
   "definitions": {
     "memoryType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemoryType",
-      "description": "High-level type of reusable memory.",
+      "description": "High-level type of reusable memory. Learning is something the agent had to discover in a conversation, e.g. a failed query and its fix.",
       "type": "string",
-      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"],
+      "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq", "Learning"],
       "javaEnums": [
         { "name": "PREFERENCE" },
         { "name": "USE_CASE" },
         { "name": "NOTE" },
         { "name": "RUNBOOK" },
-        { "name": "FAQ" }
+        { "name": "FAQ" },
+        { "name": "LEARNING" }
       ],
       "default": "Note"
     },
@@ -35,15 +36,16 @@
     },
     "sourceType": {
       "javaType": "org.openmetadata.schema.entity.context.ContextMemorySourceType",
-      "description": "How the memory was created.",
+      "description": "How the memory was created. ConversationExtraction is captured automatically at the end of a chat turn; it is ground truth, not regenerable like a file or page pill.",
       "type": "string",
-      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction"],
+      "enum": ["Manual", "ChatPromotion", "RememberRequest", "FileExtraction", "PageExtraction", "ConversationExtraction"],
       "javaEnums": [
         { "name": "MANUAL" },
         { "name": "CHAT_PROMOTION" },
         { "name": "REMEMBER_REQUEST" },
         { "name": "FILE_EXTRACTION" },
-        { "name": "PAGE_EXTRACTION" }
+        { "name": "PAGE_EXTRACTION" },
+        { "name": "CONVERSATION_EXTRACTION" }
       ],
       "default": "Manual"
     },
@@ -182,6 +184,71 @@
         "lastRunAt": { "$ref": "../../type/basic.json#/definitions/timestamp" }
       },
       "additionalProperties": false
+    },
+    "memoryDispute": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryDispute",
+      "description": "An Approved memory whose claim contradicts the Draft memory that records the dispute.",
+      "type": "object",
+      "properties": {
+        "memory": {
+          "description": "The contradicting context memory.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "reason": {
+          "description": "Why the two memories contradict each other.",
+          "type": "string"
+        },
+        "detectedAt": {
+          "description": "When the contradiction was detected. Defaults to the time of the write that records the dispute.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["memory", "reason"],
+      "additionalProperties": false
+    },
+    "memoryOutcomes": {
+      "javaType": "org.openmetadata.schema.entity.context.MemoryOutcomes",
+      "description": "What happened to the answers this memory was applied to, recounted from their outcomes by the service that records them. Server telemetry: only the outcome write sets it, metadata writes preserve it, and it never changes the version.",
+      "type": "object",
+      "properties": {
+        "appliedCount": {
+          "description": "Saved answers this memory was applied to.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "positiveCount": {
+          "description": "Answers it was applied to whose voters' latest vote is helpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "negativeCount": {
+          "description": "Answers it was applied to whose voters' latest vote is unhelpful, one per voter and answer.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "correctedCount": {
+          "description": "Memories captured from answers it was applied to that correct it.",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        },
+        "lastAppliedAt": {
+          "description": "When it was last applied to a saved answer.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "lastCorrectedAt": {
+          "description": "When a captured memory last corrected it.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        },
+        "countedAt": {
+          "description": "When these counts were computed.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -228,8 +295,33 @@
       "$ref": "#/definitions/memoryScope"
     },
     "entityStatus": {
-      "description": "Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be set at creation, for example when importing an already-archived memory; the Draft -> Approved -> Archived transition rules are enforced on later updates. When omitted at creation, the memory starts Approved.",
-      "$ref": "../../type/status.json"
+      "description": "Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and Rejected remain supported legacy retirement stages. Superseded and Deprecated memories require supersededBy. When omitted at creation, the memory starts Unprocessed. Only Approved memories ground new memories and agent responses.",
+      "$ref": "./contextMemoryStatus.json"
+    },
+    "statusReason": {
+      "description": "Why the memory reached its current status, e.g. the reconciliation verdict or the missing anchor. Cleared by a status change that brings no reason of its own.",
+      "type": "string"
+    },
+    "lastReviewedAt": {
+      "description": "When this memory was last confirmed to hold: set whenever it becomes Approved, and each time Memory Reconciliation revalidates it. An Approved memory with no value predates the field.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "lastContentUpdatedAt": {
+      "description": "Server-owned timestamp of the latest change to memory content or its subject. Review, lifecycle, pin, tag, share, usage and outcome writes preserve it. Legacy memories fall back to updatedAt until their next write. Used for knowledge recency independently of the audit timestamp.",
+      "$ref": "../../type/basic.json#/definitions/timestamp",
+      "readOnly": true
+    },
+    "supersededBy": {
+      "description": "The memory that replaced this one. Set if and only if entityStatus is Superseded or the legacy Deprecated stage.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "disputes": {
+      "description": "Unresolved conflicts that hold this Draft memory in review, one per contradicting memory. Only a Draft memory records disputes, and leaving Draft clears them; version history keeps them. A memory that enters Draft with disputes opens a memory conflict review task.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/memoryDispute"
+      },
+      "default": null
     },
     "pinned": {
       "description": "Whether this memory is globally pinned in Context Center.",
@@ -300,6 +392,11 @@
     "lastUsedAt": {
       "description": "Last time the memory was used by AI-assisted retrieval.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "outcomes": {
+      "description": "Outcome counters of the answers this memory was applied to. Only the outcome write sets them; metadata writes keep the stored values.",
+      "$ref": "#/definitions/memoryOutcomes",
+      "readOnly": true
     },
     "owners": {
       "description": "Owners of this memory.",

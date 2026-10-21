@@ -40,16 +40,23 @@ export interface ContextMemory {
      */
     displayName?: string;
     /**
+     * Unresolved conflicts that hold this Draft memory in review, one per contradicting memory.
+     * Only a Draft memory records disputes, and leaving Draft clears them; version history
+     * keeps them. A memory that enters Draft with disputes opens a memory conflict review task.
+     */
+    disputes?: MemoryDispute[];
+    /**
      * Domains this memory belongs to.
      */
     domains?: EntityReference[];
     /**
-     * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
-     * set at creation, for example when importing an already-archived memory; the Draft ->
-     * Approved -> Archived transition rules are enforced on later updates. When omitted at
-     * creation, the memory starts Approved.
+     * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
+     * use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and
+     * Rejected remain supported legacy retirement stages. Superseded and Deprecated memories
+     * require supersededBy. When omitted at creation, the memory starts Unprocessed. Only
+     * Approved memories ground new memories and agent responses.
      */
-    entityStatus?: EntityStatus;
+    entityStatus?: ContextMemoryStatus;
     /**
      * Fully qualified name of the memory.
      */
@@ -71,6 +78,19 @@ export interface ContextMemory {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Server-owned timestamp of the latest change to memory content or its subject. Review,
+     * lifecycle, pin, tag, share, usage and outcome writes preserve it. Legacy memories fall
+     * back to updatedAt until their next write. Used for knowledge recency independently of the
+     * audit timestamp.
+     */
+    lastContentUpdatedAt?: number;
+    /**
+     * When this memory was last confirmed to hold: set whenever it becomes Approved, and each
+     * time Memory Reconciliation revalidates it. An Approved memory with no value predates the
+     * field.
+     */
+    lastReviewedAt?: number;
+    /**
      * Last time the memory was used by AI-assisted retrieval.
      */
     lastUsedAt?:            number;
@@ -82,6 +102,11 @@ export interface ContextMemory {
      * Stable system name for the memory.
      */
     name: string;
+    /**
+     * Outcome counters of the answers this memory was applied to. Only the outcome write sets
+     * them; metadata writes keep the stored values.
+     */
+    outcomes?: MemoryOutcomes;
     /**
      * Owners of this memory.
      */
@@ -138,9 +163,19 @@ export interface ContextMemory {
     sourceHumanMessage?: string;
     sourceType?:         SourceType;
     /**
+     * Why the memory reached its current status, e.g. the reconciliation verdict or the missing
+     * anchor. Cleared by a status change that brings no reason of its own.
+     */
+    statusReason?: string;
+    /**
      * Optional summary of the memory.
      */
     summary?: string;
+    /**
+     * The memory that replaced this one. Set if and only if entityStatus is Superseded or the
+     * legacy Deprecated stage.
+     */
+    supersededBy?: EntityReference;
     /**
      * Tags associated with this memory.
      */
@@ -248,6 +283,8 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * The contradicting context memory.
+ *
  * Immediate parent memory in an append-style thread.
  *
  * Primary entity this memory should attach to for reuse.
@@ -259,6 +296,9 @@ export interface FieldChange {
  * The Context Center entity (file or page) this memory was extracted from.
  *
  * Deprecated: use sourceEntity. The Context Center file this memory was extracted from.
+ *
+ * The memory that replaced this one. Set if and only if entityStatus is Superseded or the
+ * legacy Deprecated stage.
  */
 export interface EntityReference {
     /**
@@ -304,22 +344,43 @@ export interface EntityReference {
 }
 
 /**
- * Lifecycle stage of the memory: Draft, Approved (in use) or Archived. Any of these may be
- * set at creation, for example when importing an already-archived memory; the Draft ->
- * Approved -> Archived transition rules are enforced on later updates. When omitted at
- * creation, the memory starts Approved.
- *
- * Lifecycle stage of an entity, shared by every entity type that declares an `entityStatus`
- * property. Entity types without that property have no lifecycle. When a create request
- * omits the stage, the server assigns the entity type's initial stage.
+ * An Approved memory whose claim contradicts the Draft memory that records the dispute.
  */
-export enum EntityStatus {
+export interface MemoryDispute {
+    /**
+     * When the contradiction was detected. Defaults to the time of the write that records the
+     * dispute.
+     */
+    detectedAt?: number;
+    /**
+     * The contradicting context memory.
+     */
+    memory: EntityReference;
+    /**
+     * Why the two memories contradict each other.
+     */
+    reason: string;
+}
+
+/**
+ * Lifecycle stage of the memory: Unprocessed (awaiting reconciliation), Draft, Approved (in
+ * use), Superseded (replaced), Invalidated (found incorrect) or Archived. Deprecated and
+ * Rejected remain supported legacy retirement stages. Superseded and Deprecated memories
+ * require supersededBy. When omitted at creation, the memory starts Unprocessed. Only
+ * Approved memories ground new memories and agent responses.
+ *
+ * Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved
+ * memories ground new memories and agent responses. Deprecated and Rejected remain readable
+ * legacy retirement stages.
+ */
+export enum ContextMemoryStatus {
     Approved = "Approved",
     Archived = "Archived",
     Deprecated = "Deprecated",
     Draft = "Draft",
-    InReview = "In Review",
+    Invalidated = "Invalidated",
     Rejected = "Rejected",
+    Superseded = "Superseded",
     Unprocessed = "Unprocessed",
 }
 
@@ -403,14 +464,56 @@ export enum MemoryProcessingStatus {
 }
 
 /**
- * High-level type of reusable memory.
+ * High-level type of reusable memory. Learning is something the agent had to discover in a
+ * conversation, e.g. a failed query and its fix.
  */
 export enum MemoryType {
     FAQ = "Faq",
+    Learning = "Learning",
     Note = "Note",
     Preference = "Preference",
     Runbook = "Runbook",
     UseCase = "UseCase",
+}
+
+/**
+ * Outcome counters of the answers this memory was applied to. Only the outcome write sets
+ * them; metadata writes keep the stored values.
+ *
+ * What happened to the answers this memory was applied to, recounted from their outcomes by
+ * the service that records them. Server telemetry: only the outcome write sets it, metadata
+ * writes preserve it, and it never changes the version.
+ */
+export interface MemoryOutcomes {
+    /**
+     * Saved answers this memory was applied to.
+     */
+    appliedCount?: number;
+    /**
+     * Memories captured from answers it was applied to that correct it.
+     */
+    correctedCount?: number;
+    /**
+     * When these counts were computed.
+     */
+    countedAt?: number;
+    /**
+     * When it was last applied to a saved answer.
+     */
+    lastAppliedAt?: number;
+    /**
+     * When a captured memory last corrected it.
+     */
+    lastCorrectedAt?: number;
+    /**
+     * Answers it was applied to whose voters' latest vote is unhelpful, one per voter and
+     * answer.
+     */
+    negativeCount?: number;
+    /**
+     * Answers it was applied to whose voters' latest vote is helpful, one per voter and answer.
+     */
+    positiveCount?: number;
 }
 
 /**
@@ -459,10 +562,12 @@ export enum ShareVisibility {
 }
 
 /**
- * How the memory was created.
+ * How the memory was created. ConversationExtraction is captured automatically at the end
+ * of a chat turn; it is ground truth, not regenerable like a file or page pill.
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
+    ConversationExtraction = "ConversationExtraction",
     FileExtraction = "FileExtraction",
     Manual = "Manual",
     PageExtraction = "PageExtraction",

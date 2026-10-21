@@ -35,13 +35,18 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
   listTasks,
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../inbox.constants';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import InboxTaskListToolbar, {
@@ -59,10 +64,14 @@ import {
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
+import {
+  filterTasksByTitleSearch,
+  splitTaskTitleSearch,
+} from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
-import { INBOX_COUNTS_QUERY_KEY } from '../useInboxCounts';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
+import { useLinkedTaskId } from '../useLinkedTaskId';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
@@ -72,14 +81,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
-// React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
-const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
@@ -334,8 +336,10 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
   });
 
+  // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
+  // long unbreakable title would widen the list and push the detail off-screen.
   return (
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
@@ -383,7 +387,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedTaskId, setSelectedTaskId] = useState<string>();
+  // A link from outside the inbox opens on its task. The task may sit past the
+  // loaded page, so the selection keeps it rather than falling back to the
+  // top row; the detail panel fetches it by id.
+  const linkedTaskId = useLinkedTaskId();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
+    linkedTaskId
+  );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -453,6 +463,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [commitSearch]
   );
 
+  // A search that opens with a task type's title words ("Request TestCase") is
+  // matched against the title shown here; only the rest goes to the server,
+  // which never stores the composed title.
+  const titleSearch = useMemo(
+    () => splitTaskTitleSearch(searchQuery, t),
+    [searchQuery, t]
+  );
+
   const fetchPage = useCallback(
     (after?: string) => {
       const params = {
@@ -460,7 +478,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         fields: TASK_FIELDS,
         limit: TASK_LIMIT,
         after,
-        q: searchQuery || undefined,
+        q: titleSearch.text || undefined,
       };
 
       // aboutEntity = entity-page mode (all tasks about that entity); otherwise
@@ -469,12 +487,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? listTasks({ ...params, aboutEntity })
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, searchQuery]
+    [status, aboutEntity, titleSearch.text]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
   // through the user's whole history; stop after a bounded scan.
-  const isClientNarrowed = typeFilter.length > 0 || statusFilter.length > 0;
+  const isClientNarrowed =
+    typeFilter.length > 0 ||
+    statusFilter.length > 0 ||
+    Boolean(titleSearch.titleWords);
   // "Load more" on a capped no-match raises the cap by another scan, for that
   // narrowing only: the raise is keyed to the inputs it was made under, so any
   // change of tab, search or filter falls back to the base cap.
@@ -511,7 +532,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, searchQuery],
+    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
     fetchPage,
     canLoadMore
   );
@@ -547,11 +568,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const visibleTasks = useMemo(
     () =>
       filterTasksByStatus(
-        filterTasksByTypes(tasks, typeFilter),
+        filterTasksByTitleSearch(
+          filterTasksByTypes(tasks, typeFilter),
+          titleSearch,
+          t
+        ),
         statusFilter,
         currentUserIds
       ),
-    [tasks, typeFilter, statusFilter, currentUserIds]
+    [tasks, typeFilter, titleSearch, t, statusFilter, currentUserIds]
   );
 
   // Grouped once here so the list and the default selection agree on order.
@@ -569,19 +594,23 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
+      prev &&
+      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+        ? prev
+        : firstTaskId
     );
-  }, [visibleTasks, firstTaskId]);
+  }, [visibleTasks, firstTaskId, linkedTaskId]);
 
-  // The Activity/Tasks tab badges and the sidebar inbox bubble are separate
-  // react-query fetches under their own keys, so a mutation here would otherwise
-  // sit behind their stale windows — and the sidebar never unmounts, so it would
-  // not refetch at all until a navigation or a tab refocus.
-  const syncInboxCountBadge = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [INBOX_COUNTS_QUERY_KEY] });
+  // The Triage tab badge and the sidebar inbox bubble read one open-task query,
+  // so a mutation here would otherwise sit behind its stale window — and the
+  // sidebar never unmounts, so it would not refetch until a navigation or a tab
+  // refocus. The home page's My Tasks card caches the same open tasks, so a
+  // return home within its TTL would still offer actions on a resolved one.
+  const syncOpenTaskReaders = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -605,7 +634,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
       refreshStatusCounts();
-      syncInboxCountBadge();
+      syncOpenTaskReaders();
     },
     [
       status,
@@ -613,7 +642,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       setTotal,
       invalidateTaskLists,
       refreshStatusCounts,
-      syncInboxCountBadge,
+      syncOpenTaskReaders,
     ]
   );
 
@@ -623,8 +652,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
     refreshStatusCounts();
-    syncInboxCountBadge();
-  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
+    syncOpenTaskReaders();
+  }, [invalidateTaskLists, refreshStatusCounts, syncOpenTaskReaders]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.
@@ -638,38 +667,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
     [setItems, invalidateTaskLists]
   );
 
-  // A segmented control on a gray track: the selected option is a raised white
-  // chip with no outline, and its total takes the brand colour.
   const statusTabs = (
     <Tabs
       className="tw:w-fit"
       selectedKey={status}
       onSelectionChange={(key) => handleStatusChange(key as TaskStatusFilter)}>
-      <Tabs.List
-        className="tw:rounded-lg tw:bg-tertiary tw:p-1 tw:outline-0"
-        size="sm"
-        type="button-border">
+      <Tabs.List size="sm" type="button-border">
         {STATUS_FILTERS.map(({ id, labelKey }) => (
-          <Tabs.Item
-            className={({ isSelected }) =>
-              classNames(
-                'tw:gap-1.5 tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold',
-                isSelected ? 'tw:text-primary' : 'tw:text-tertiary'
-              )
-            }
-            id={id}
-            key={id}>
-            {({ isSelected }) => (
-              <>
-                {t(labelKey)}
-                <span
-                  className={
-                    isSelected ? 'tw:text-brand-secondary' : 'tw:text-tertiary'
-                  }>
-                  {statusCounts[id]}
-                </span>
-              </>
-            )}
+          <Tabs.Item badge={statusCounts[id]} id={id} key={id}>
+            {t(labelKey)}
           </Tabs.Item>
         ))}
       </Tabs.List>

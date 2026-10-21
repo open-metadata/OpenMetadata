@@ -8,10 +8,13 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -21,6 +24,7 @@ import org.openmetadata.schema.governance.workflows.elements.triggers.EventBased
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -38,26 +42,24 @@ public final class EntityStatusWorkflows implements StageOwnership {
   public static final EntityStatusWorkflows ACTIVE = new EntityStatusWorkflows();
 
   private static final String SET_ENTITY_ATTRIBUTE_NODE = "setEntityAttributeTask";
+  private static final String SET_GLOSSARY_TERM_STATUS_NODE = "setGlossaryTermStatusTask";
   private static final Set<String> STAGE_SETTING_NODES =
-      Set.of("userApprovalTask", "rollbackEntityTask", "setGlossaryTermStatusTask");
+      Set.of("userApprovalTask", "rollbackEntityTask", SET_GLOSSARY_TERM_STATUS_NODE);
   // The field names a Set Action resolves to the entity's lifecycle stage.
   private static final Set<String> STAGE_FIELD_NAMES = Set.of("status", Entity.FIELD_ENTITY_STATUS);
   private static final String FIELD_NAME_CONFIG = "fieldName";
-  private static final Boolean ACTIVE_STAGE_WORKFLOWS_KEY = Boolean.TRUE;
 
-  // Holds one entry: the active workflows that own a stage. A workflow change on this server
-  // invalidates it at once; the expiry bounds how long another server acts on a stale copy.
-  private static final LoadingCache<Boolean, List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
-      Caffeine.newBuilder()
-          .maximumSize(1)
-          .expireAfterWrite(Duration.ofSeconds(30))
-          .build(ignored -> loadActiveStageWorkflows());
+  // The active workflows that own a stage. A workflow change on this server invalidates it at
+  // once; the expiry bounds how long another server acts on a stale copy.
+  private static final InvalidatingCache<List<WorkflowDefinition>> ACTIVE_STAGE_WORKFLOWS =
+      new InvalidatingCache<>(
+          Duration.ofSeconds(30), EntityStatusWorkflows::loadActiveStageWorkflows);
 
   private EntityStatusWorkflows() {}
 
   @Override
   public List<String> owningStageOf(String entityType) {
-    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
         .filter(workflow -> startsOn(workflow, entityType))
         .map(WorkflowDefinition::getName)
         .sorted()
@@ -65,28 +67,83 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   @Override
-  public Optional<String> owningStageOf(String entityType, EntityInterface entity) {
-    return ACTIVE_STAGE_WORKFLOWS.get(ACTIVE_STAGE_WORKFLOWS_KEY).stream()
+  public Optional<String> owningStageOf(String entityType, EntityInterface<?> entity) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
         .filter(workflow -> appliesTo(workflow, entityType, entity))
         .map(WorkflowDefinition::getName)
         .sorted()
         .findFirst();
   }
 
+  @Override
+  public boolean playbookOwnsStageOf(String entityType, EntityInterface<?> entity) {
+    return playbookOwnsStage(ACTIVE_STAGE_WORKFLOWS.get(), entityType, entity);
+  }
+
+  /** The owner is the first applicable workflow by name, as in {@link #owningStageOf}. */
+  static boolean playbookOwnsStage(
+      List<WorkflowDefinition> stageWorkflows, String entityType, EntityInterface<?> entity) {
+    return stageWorkflows.stream()
+        .filter(workflow -> appliesTo(workflow, entityType, entity))
+        .min(Comparator.comparing(WorkflowDefinition::getName))
+        .map(EntityStatusWorkflows::isLifecyclePlaybook)
+        .orElse(false);
+  }
+
+  private static boolean isLifecyclePlaybook(WorkflowDefinition workflow) {
+    return workflow.getConfig() != null && workflow.getConfig().getLifecycle() != null;
+  }
+
   /** Workflows change entities as, or impersonating, the governance bot. */
-  public static boolean isWorkflowChange(EntityInterface entity) {
+  public static boolean isWorkflowChange(EntityInterface<?> entity) {
     return GOVERNANCE_BOT.equals(entity.getUpdatedBy())
         || GOVERNANCE_BOT.equals(entity.getImpersonatedBy());
   }
 
   public static void invalidate() {
-    ACTIVE_STAGE_WORKFLOWS.invalidateAll();
+    ACTIVE_STAGE_WORKFLOWS.invalidate();
   }
 
-  /** Whether the workflow, once deployed, owns a stage: it is not suspended and sets the stage. */
+  /**
+   * One cached value that no load begun before an {@link #invalidate()} can be served after it.
+   * Caffeine leaves an entry still loading during {@code invalidateAll()} undefined, so a load that
+   * read the workflows just before a suspend or resume could otherwise cache the old list for the
+   * whole expiry. Keying by a generation that invalidation moves on strands such a load under a key
+   * no lookup reads again.
+   */
+  static final class InvalidatingCache<T> {
+    private final AtomicLong generation = new AtomicLong();
+    private final LoadingCache<Long, T> cache;
+
+    InvalidatingCache(Duration expiry, Supplier<T> loader) {
+      cache =
+          Caffeine.newBuilder()
+              .maximumSize(1)
+              .expireAfterWrite(expiry)
+              .build(ignored -> loader.get());
+    }
+
+    T get() {
+      return cache.get(generation.get());
+    }
+
+    void invalidate() {
+      generation.incrementAndGet();
+      cache.invalidateAll();
+    }
+  }
+
+  /**
+   * Whether the workflow, once deployed, owns a stage: it is not suspended and sets the stage. An
+   * Enforce workflow's approval publishes the held change it reviewed, so only a node of its own
+   * that writes the stage makes it an owner.
+   */
   static boolean ownsStage(WorkflowDefinition workflow) {
-    return !Boolean.TRUE.equals(workflow.getSuspended())
-        && listOrEmpty(workflow.getNodes()).stream().anyMatch(EntityStatusWorkflows::setsStage);
+    final boolean setsStage =
+        GovernanceApprovalRegistry.holdsChanges(workflow)
+            ? writesStageInANode(workflow)
+            : listOrEmpty(workflow.getNodes()).stream().anyMatch(EntityStatusWorkflows::setsStage);
+    return !Boolean.TRUE.equals(workflow.getSuspended()) && setsStage;
   }
 
   static boolean startsOn(WorkflowDefinition workflow, String entityType) {
@@ -95,16 +152,25 @@ public final class EntityStatusWorkflows implements StageOwnership {
         && triggerEntityTypes(trigger.getConfig()).contains(entityType);
   }
 
-  static boolean appliesTo(WorkflowDefinition workflow, String entityType, EntityInterface entity) {
+  static boolean appliesTo(
+      WorkflowDefinition workflow, String entityType, EntityInterface<?> entity) {
     return startsOn(workflow, entityType) && !excludedByTriggerFilter(workflow, entityType, entity);
   }
 
   private static boolean excludedByTriggerFilter(
-      WorkflowDefinition workflow, String entityType, EntityInterface entity) {
+      WorkflowDefinition workflow, String entityType, EntityInterface<?> entity) {
     Object filter =
         ((EventBasedEntityTriggerDefinition) workflow.getTrigger()).getConfig().getFilter();
     return TriggerEntityFilter.excludes(
         TriggerEntityFilter.forEntityType(filter, entityType), entity);
+  }
+
+  /** Whether one of the workflow's own nodes writes the stage, rather than its approval tasks. */
+  public static boolean writesStageInANode(WorkflowDefinition workflow) {
+    return listOrEmpty(workflow.getNodes()).stream()
+        .anyMatch(
+            node ->
+                setsStageField(node) || SET_GLOSSARY_TERM_STATUS_NODE.equals(node.getSubType()));
   }
 
   private static boolean setsStage(WorkflowNodeDefinitionInterface node) {

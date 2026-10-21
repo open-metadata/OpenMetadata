@@ -57,6 +57,7 @@ RELKIND_MAP = {
     "HIVE": TableType.External,
     "JDBC": TableType.External,
     "ICEBERG": TableType.Iceberg,
+    "DELTALAKE": TableType.DeltaLake,
     "HUDI": TableType.External,
 }
 

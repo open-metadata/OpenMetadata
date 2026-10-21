@@ -30,6 +30,15 @@ const CONNECTIONS_ROUTE = CONNECTIONS_ROUTES.CONNECTIONS;
  * mirroring the Observability / AI dashboard pattern: the module icon replaces
  * the generic home crumb and links back to the Connections listing.
  */
+const findCategoryConfig = (serviceCategory?: string) =>
+  CATEGORY_CONFIGS.find(
+    (category) =>
+      category.key === (serviceCategory as ConnectionsServiceCategory)
+  );
+
+const getCategoryListPath = (category: ConnectionsServiceCategory) =>
+  `${CONNECTIONS_ROUTE}?${CATEGORY_PARAM}=${category}`;
+
 export const getConnectionsRootBreadcrumb = (
   t: TFunction
 ): Omit<BreadcrumbItemType, 'id'> => ({
@@ -51,10 +60,7 @@ export const getServiceCategoryBreadcrumb = (
   t: TFunction,
   serviceCategory?: string
 ): Omit<BreadcrumbItemType, 'id'> | null => {
-  const config = CATEGORY_CONFIGS.find(
-    (category) =>
-      category.key === (serviceCategory as ConnectionsServiceCategory)
-  );
+  const config = findCategoryConfig(serviceCategory);
 
   const label = config
     ? String(t(SERVICE_CATEGORY_TITLE_KEYS[config.key]))
@@ -64,7 +70,17 @@ export const getServiceCategoryBreadcrumb = (
     ? {
         label,
         ariaLabel: label,
-        href: `${CONNECTIONS_ROUTE}?${CATEGORY_PARAM}=${config.key}`,
+        href: getCategoryListPath(config.key),
       }
     : null;
+};
+
+/**
+ * Where to send the user once the service is gone: its category's tab on the Connections
+ * listing, or the listing itself for a category it does not tab.
+ */
+export const getServiceListPath = (serviceCategory?: string): string => {
+  const config = findCategoryConfig(serviceCategory);
+
+  return config ? getCategoryListPath(config.key) : CONNECTIONS_ROUTE;
 };

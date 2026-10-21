@@ -30,10 +30,15 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../../../../../generated/entity/events/notificationTemplate';
+import { AlertType as CapabilitiesAlertType } from '../../../../../../generated/events/api/alertCapabilitiesRequest';
 import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../../../../generated/events/eventFilterRule';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../../../../../hooks/useAlertSelection';
 import { getResourceFunctions } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
@@ -63,7 +68,7 @@ function ReadOnlyTriggerDisplay({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>
@@ -257,6 +262,17 @@ function NotificationAlertConfigView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The destinations reach who the server says the alert's sources reach, as in every alert view.
+  const viewedSources = useMemo(
+    () => extractAlertViewData(alertDetails, modifiedAlertData).alertResources,
+    [alertDetails, modifiedAlertData]
+  );
+  const selection = useAlertSelection({
+    alertType: CapabilitiesAlertType.Notification,
+    sources: viewedSources,
+    catalog: filterResources,
+  });
+
   const isLoading = useMemo(
     () => Object.values(loadingState).some(Boolean),
     [loadingState]
@@ -311,17 +327,19 @@ function NotificationAlertConfigView({
 
       <Box className="tw:border-t tw:border-secondary" />
 
-      <NotificationDestinationBridge
-        isViewMode
-        renderValidationField={() => null}
-        values={{
-          destinations,
-          readTimeout: alertReadTimeout,
-          resources: alertResources,
-          timeout: alertTimeout,
-        }}
-        onChange={() => {}}
-      />
+      <AlertSelectionProvider value={selection}>
+        <NotificationDestinationBridge
+          isViewMode
+          renderValidationField={() => null}
+          values={{
+            destinations,
+            readTimeout: alertReadTimeout,
+            resources: alertResources,
+            timeout: alertTimeout,
+          }}
+          onChange={() => {}}
+        />
+      </AlertSelectionProvider>
 
       {TemplateSection && (
         <>

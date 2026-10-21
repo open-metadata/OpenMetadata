@@ -1,5 +1,15 @@
 [
   {
+    "type": "task",
+    "fields": {
+      "ontologyReview": {
+        "entityId": "00000000-0000-0000-0000-000000000001",
+        "contentDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "author": "author"
+      }
+    }
+  },
+  {
     "type": "table",
     "fields": {
       "name": "orders",
@@ -26,7 +36,7 @@
       "columns": [
         {"name": "id", "fullyQualifiedName": "service.db.schema.orders.id", "dataType": "BIGINT", "constraint": "PRIMARY_KEY", "ordinalPosition": 1},
         {"name": "accountId", "fullyQualifiedName": "service.db.schema.orders.accountId", "dataType": "BIGINT", "constraint": "UNIQUE"},
-        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "dataType": "DOUBLE"}]}
+        {"name": "details", "fullyQualifiedName": "service.db.schema.orders.details", "dataType": "STRUCT", "children": [{"name": "amount", "fullyQualifiedName": "service.db.schema.orders.details.amount", "dataType": "DOUBLE"}]}
       ],
       "tableConstraints": [
         {"constraintType": "PRIMARY_KEY", "columns": ["id"]},

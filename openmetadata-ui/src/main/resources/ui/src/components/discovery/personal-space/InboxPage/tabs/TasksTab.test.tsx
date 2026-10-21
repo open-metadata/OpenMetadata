@@ -13,7 +13,10 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
+import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
 const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
@@ -47,10 +50,6 @@ jest.mock('../useCurrentUserIds', () => ({
   useCurrentUserIds: () => mockCurrentUserIds,
 }));
 
-jest.mock('../useInboxCounts', () => ({
-  INBOX_COUNTS_QUERY_KEY: 'inbox-counts',
-}));
-
 jest.mock('../useInboxInfiniteList', () => ({
   useInboxInfiniteList: (
     queryKey: unknown[],
@@ -79,6 +78,8 @@ jest.mock('rest/tasksAPI', () => ({
   listTasks: (...a: unknown[]) => mockListTasks(...a),
   listMyVisibleTasks: (...a: unknown[]) => mockListVisibleTasks(...a),
   TaskStatusGroup: { Open: 'open', Closed: 'closed' },
+  // The task-type titles are keyed by it (constants/Task.constant).
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
 }));
 
 // The toolbar has its own suite; here it only has to report what the user
@@ -112,6 +113,11 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
         data-testid="toolbar-status-pending"
         onClick={() => onStatusFilterChange(['pending-approval'])}>
         pending approval
+      </button>
+      <button
+        data-testid="toolbar-search-title"
+        onClick={() => onSearchChange('Request TestCase orders')}>
+        search title
       </button>
       <button
         data-testid="toolbar-search"
@@ -268,14 +274,27 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+// One task type's title prefix is translated, so a title search can name it.
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({
+    t: (key: string) =>
+      key === 'message.request-test-case-failure-resolution-message'
+        ? 'Request TestCase Failure Resolution for'
+        : key,
+  }),
 }));
 
 import TasksTab, { TasksTabProps } from './TasksTab';
 
-const renderTab = (props: Partial<TasksTabProps> = {}) =>
-  render(<TasksTab {...props} />);
+const renderTab = (
+  props: Partial<TasksTabProps> = {},
+  initialEntry = '/inbox/tasks'
+) =>
+  render(
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <TasksTab {...props} />
+    </MemoryRouter>
+  );
 
 describe('TasksTab', () => {
   beforeEach(() => {
@@ -488,6 +507,24 @@ describe('TasksTab', () => {
     expect(screen.getByTestId('detail')).toHaveTextContent('t1');
   });
 
+  // The landing page's My Tasks card links here; its task may sit past the
+  // loaded page, so the selection must not fall back to the top row.
+  it('opens on the task a link names, even past the loaded page', () => {
+    hookState = {
+      items: [{ id: 't1' }, { id: 't2' }] as unknown as Task[],
+      isLoading: false,
+      total: 30,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t-elsewhere');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t-elsewhere');
+
+    fireEvent.click(screen.getByTestId('task-t2'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+  });
+
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
     hookState = {
       items: [{ id: 't1' }] as unknown as Task[],
@@ -537,10 +574,10 @@ describe('TasksTab', () => {
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
-    // Both the tab-badge and the All/Open/Closed status-count caches are
-    // invalidated so their React Query fetches re-run.
+    // Both the open-task badge and the All/Open/Closed status-count caches
+    // are invalidated so their React Query fetches re-run.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
@@ -563,9 +600,9 @@ describe('TasksTab', () => {
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
       queryKey: ['inbox-task-status-counts'],
     });
-    // ...and the tab-badge react-query cache.
+    // ...and the open-task badge the Triage tab and sidebar share.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-counts'],
+      queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
     // The other status lists may now hold or miss this task; they re-read on
     // their next visit while the showing list keeps its in-place edit.
@@ -602,6 +639,27 @@ describe('TasksTab', () => {
       queryKey: ['inbox-open-task-count'],
     });
   });
+
+  it.each(['resolve', 'update'])(
+    'marks the home page My Tasks card stale after a task %s',
+    (action) => {
+      // The card caches the same open tasks for its TTL, so without this a
+      // return home would still offer actions on the task just handled here.
+      hookState = {
+        items: [{ id: 't1' }] as unknown as Task[],
+        isLoading: false,
+        total: 1,
+      };
+
+      renderTab();
+
+      fireEvent.click(screen.getByTestId(action));
+
+      expect(mockInvalidateQueries).toHaveBeenCalledWith({
+        queryKey: MY_TASKS_QUERY_KEY,
+      });
+    }
+  );
 
   describe('shaping the queue', () => {
     const TAG_TASK = {
@@ -677,6 +735,50 @@ describe('TasksTab', () => {
         expect(mockListVisibleTasks).toHaveBeenCalledWith(
           expect.objectContaining({ q: 'customer' })
         );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    // The composed title's type words are matched against the shown title;
+    // the server only gets the rest, since it never stores the title.
+    it('matches a search that opens with a type title against the shown title', () => {
+      jest.useFakeTimers();
+      try {
+        hookState = {
+          items: [
+            {
+              id: 'inc',
+              type: 'TestCaseResolution',
+              about: { id: 'tc', type: 'testCase', name: 'orders_rows' },
+            },
+            { id: 'tag', type: 'TagUpdate', displayName: 'Tag the table' },
+            // An authored title sharing the words matches whatever its type.
+            {
+              id: 'doc',
+              type: 'DescriptionUpdate',
+              displayName: 'Request TestCase docs',
+            },
+          ] as unknown as Task[],
+          isLoading: false,
+          total: 2,
+        };
+        renderTab();
+
+        act(() => {
+          fireEvent.click(screen.getByTestId('toolbar-search-title'));
+        });
+        act(() => {
+          jest.advanceTimersByTime(300);
+        });
+        capturedFetchPage();
+
+        expect(mockListVisibleTasks).toHaveBeenCalledWith(
+          expect.objectContaining({ q: 'orders' })
+        );
+        expect(screen.getByTestId('task-inc')).toBeInTheDocument();
+        expect(screen.getByTestId('task-doc')).toBeInTheDocument();
+        expect(screen.queryByTestId('task-tag')).not.toBeInTheDocument();
       } finally {
         jest.useRealTimers();
       }

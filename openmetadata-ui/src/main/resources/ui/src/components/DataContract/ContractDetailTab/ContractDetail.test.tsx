@@ -317,15 +317,13 @@ jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
   return function MockContractViewSwitchTab({
     handleModeChange,
   }: {
-    handleModeChange: (e: { target: { value: DataContractMode } }) => void;
+    handleModeChange: (mode: DataContractMode) => void;
   }) {
     return (
       <div data-testid="contract-view-switch-tab">
         <button
           data-testid="switch-to-yaml"
-          onClick={() =>
-            handleModeChange({ target: { value: DataContractMode.YAML } })
-          }>
+          onClick={() => handleModeChange(DataContractMode.YAML)}>
           YAML
         </button>
       </div>

@@ -17,25 +17,28 @@ import {
   Dialog,
   FeaturedIcon,
   FormField,
-  HintText,
   HookForm,
   Input,
   Label,
   Modal,
   ModalOverlay,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Announcement02,
-  Calendar,
-} from '@openmetadata/ui-core-components/icons';
+import { Announcement02 } from '@openmetadata/ui-core-components/icons';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
-import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
-import { fromDateInputValue, toDateInputValue } from './announcementFormUtils';
+import {
+  AnnouncementDateField,
+  AnnouncementFieldError,
+} from './AnnouncementDateField';
+import {
+  ANNOUNCEMENT_TITLE_MAX_LENGTH,
+  ANNOUNCEMENT_TITLE_MIN_LENGTH,
+} from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
   AnnouncementColorSelect,
@@ -53,93 +56,6 @@ interface AnnouncementFormProps {
   onCancel: () => void;
   onSubmit: (values: AnnouncementFormValues) => void;
 }
-
-/**
- * A native date input rather than a component: core's `Input` is a react-aria
- * TextField, which has no `date` type, and its `DatePicker` is typed against
- * `@internationalized/date` from the design system's own node_modules, so the
- * `DateValue` it expects is a different type identity from the one this app
- * resolves. The native control is localized, keyboard-accessible and needs
- * neither a cast nor a dependency.
- *
- * The frame puts the calendar on the left. The native picker indicator is
- * stretched invisibly over the whole control instead of hidden, so a click
- * anywhere still opens the picker rather than only on the icon.
- */
-// Kept as whole literals so Tailwind still sees each class.
-const DATE_INPUT_CLASS = [
-  'tw:relative tw:w-full tw:rounded-lg tw:bg-primary tw:py-2 tw:pr-3 tw:pl-9',
-  'tw:text-sm tw:text-primary tw:shadow-xs',
-  'tw:outline-1 tw:-outline-offset-1 tw:outline-primary',
-  'tw:focus-visible:outline-2 tw:focus-visible:outline-brand',
-  'tw:[&::-webkit-calendar-picker-indicator]:absolute',
-  'tw:[&::-webkit-calendar-picker-indicator]:inset-0',
-  'tw:[&::-webkit-calendar-picker-indicator]:size-full',
-  'tw:[&::-webkit-calendar-picker-indicator]:cursor-pointer',
-  'tw:[&::-webkit-calendar-picker-indicator]:opacity-0',
-].join(' ');
-
-const DateField = ({
-  boundary = 'start',
-  id,
-  label,
-  value,
-  onChange,
-}: {
-  /** `end` anchors the value to 23:59:59.999 so the chosen day is included. */
-  boundary?: 'start' | 'end';
-  id: string;
-  label: string;
-  value?: number | null;
-  onChange: (value: number | null) => void;
-}) => (
-  <Box className="tw:min-w-0 tw:flex-1 tw:gap-1.5" direction="col">
-    <Label isRequired htmlFor={id}>
-      {label}
-    </Label>
-    <div className="tw:relative">
-      {/* `z-1` because the input below is itself positioned (it has to be, so
-          the picker indicator can stretch over it) and carries an opaque
-          background — at `z-index: auto` paint order is DOM order, so the
-          input would cover this icon. `pointer-events-none` keeps the click
-          falling through to the indicator. */}
-      <Calendar
-        aria-hidden
-        className="tw:pointer-events-none tw:absolute tw:top-1/2 tw:left-3 tw:z-1 tw:size-4 tw:-translate-y-1/2 tw:text-fg-quaternary"
-      />
-      <input
-        aria-label={label}
-        className={DATE_INPUT_CLASS}
-        data-testid={id}
-        id={id}
-        type="date"
-        value={toDateInputValue(value)}
-        onChange={(e) => onChange(fromDateInputValue(e.target.value, boundary))}
-      />
-    </div>
-  </Box>
-);
-
-/**
- * The error line under a field that is not an `Input` — an `Input` takes the
- * message as its own `hint`, which also wires `aria-describedby` to it. Core's
- * `HintText` is the same element either way, so the two read alike.
- */
-const FieldError = ({
-  message,
-  testId,
-}: {
-  message?: string;
-  testId: string;
-}) =>
-  message ? (
-    <HintText isInvalid data-testid={testId}>
-      {message}
-    </HintText>
-  ) : null;
-
-const TITLE_MIN_LENGTH = 5;
-const TITLE_MAX_LENGTH = 124;
 
 /**
  * The add and edit dialogs differ only in their title, submit label and where
@@ -277,7 +193,7 @@ const AnnouncementForm = ({
                           value={field.value}
                           onChange={field.onChange}
                         />
-                        <FieldError
+                        <AnnouncementFieldError
                           message={fieldState.error?.message}
                           testId="color-error"
                         />
@@ -292,8 +208,8 @@ const AnnouncementForm = ({
                 name="title"
                 rules={{
                   required: true,
-                  minLength: TITLE_MIN_LENGTH,
-                  maxLength: TITLE_MAX_LENGTH,
+                  minLength: ANNOUNCEMENT_TITLE_MIN_LENGTH,
+                  maxLength: ANNOUNCEMENT_TITLE_MAX_LENGTH,
                 }}>
                 {({ field, fieldState }) => (
                   <Input
@@ -303,9 +219,7 @@ const AnnouncementForm = ({
                     id="title"
                     isInvalid={Boolean(fieldState.error)}
                     label={t('label.title')}
-                    placeholder={t('label.enter-entity', {
-                      entity: t('label.title'),
-                    })}
+                    placeholder={t('message.enter-title-here')}
                     value={field.value}
                     onChange={field.onChange}
                   />
@@ -320,12 +234,24 @@ const AnnouncementForm = ({
                     validate: (value) =>
                       value != null || requiredMessage(t('label.start-date')),
                   }}>
-                  {({ field }) => (
-                    <DateField
+                  {({ field, fieldState }) => (
+                    <AnnouncementDateField
+                      error={fieldState.error?.message}
                       id="startTime"
                       label={t('label.start-date')}
                       value={field.value}
-                      onChange={field.onChange}
+                      onChange={(next) => {
+                        field.onChange(next);
+                        // Moving the start can invalidate an end that was fine
+                        // against the old one — but only re-judge an end that
+                        // exists. A blanket `deps` would also fire the end's
+                        // required rule the moment a start is picked, printing
+                        // "End Date is required" under a field the user has
+                        // not reached yet.
+                        if (form.getValues('endTime') != null) {
+                          form.trigger('endTime');
+                        }
+                      }}
                     />
                   )}
                 </FormField>
@@ -334,12 +260,26 @@ const AnnouncementForm = ({
                   control={form.control}
                   name="endTime"
                   rules={{
-                    validate: (value) =>
-                      value != null || requiredMessage(t('label.end-date')),
+                    // The ordering rule lives on the field the user can fix.
+                    // Both modals still refuse an inverted window on submit,
+                    // but that arrives as a toast after the fact; stated here
+                    // it keeps submit disabled and names the problem in place.
+                    validate: (value, { startTime }) => {
+                      if (value == null) {
+                        return requiredMessage(t('label.end-date'));
+                      }
+
+                      return (
+                        startTime == null ||
+                        value > startTime ||
+                        t('message.announcement-invalid-start-time')
+                      );
+                    },
                   }}>
-                  {({ field }) => (
-                    <DateField
+                  {({ field, fieldState }) => (
+                    <AnnouncementDateField
                       boundary="end"
+                      error={fieldState.error?.message}
                       id="endTime"
                       label={t('label.end-date')}
                       value={field.value}
@@ -353,32 +293,33 @@ const AnnouncementForm = ({
                 control={form.control}
                 name="description"
                 rules={{
-                  // The editor emits markup even when blank, so emptiness is
-                  // judged on content rather than on the raw string.
+                  // Judged on content, not on the raw string: an announcement
+                  // written before this field was a `TextArea` can still hold
+                  // the block editor's empty `<p></p>`, which is not a
+                  // description.
                   validate: (value) =>
                     !isDescriptionContentEmpty(value) ||
                     requiredMessage(t('label.description')),
                 }}>
                 {({ field, fieldState }) => (
-                  <Box className="tw:gap-1.5" direction="col">
-                    <Label isRequired>{t('label.description')}</Label>
-                    {/* The block editor, not core's DESCRIPTION field: that one
-                        renders a plain TextArea, and an announcement's
-                        description is markdown that the banner and drawer both
-                        render through RichTextEditorPreviewerV1. */}
-                    <RichTextEditor
-                      data-testid="description"
-                      initialValue={field.value}
-                      placeHolder={t('label.enter-entity-description', {
-                        entity: t('label.announcement'),
-                      })}
-                      onTextChange={field.onChange}
-                    />
-                    <FieldError
-                      message={fieldState.error?.message}
-                      testId="description-error"
-                    />
-                  </Box>
+                  // Core's `TextArea`, not the block editor: the announcement
+                  // body is a short notice, and this keeps the field's label,
+                  // placeholder, hint and invalid border identical to the Title
+                  // input above it. `description` stays a markdown field on the
+                  // wire — plain text is valid markdown, so the banner and the
+                  // drawer keep rendering it through RichTextEditorPreviewerV1.
+                  <TextArea
+                    isRequired
+                    autoSize={{ minRows: 5, maxRows: 12 }}
+                    data-testid="description"
+                    hint={fieldState.error?.message}
+                    id="description"
+                    isInvalid={Boolean(fieldState.error)}
+                    label={t('label.description')}
+                    placeholder={t('message.enter-a-description')}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
                 )}
               </FormField>
             </HookForm>

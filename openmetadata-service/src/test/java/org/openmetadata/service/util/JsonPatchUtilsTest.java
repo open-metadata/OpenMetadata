@@ -1,8 +1,9 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 
 import jakarta.json.Json;
@@ -10,6 +11,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import java.io.StringReader;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.jetbrains.annotations.NotNull;
@@ -17,9 +19,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
@@ -66,7 +70,7 @@ class JsonPatchUtilsTest {
 
     originalTable.setColumns(listOf(column));
 
-    when(resourceContextMock.getEntity()).thenReturn(originalTable);
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity()).thenReturn(originalTable);
   }
 
   @Test
@@ -75,6 +79,8 @@ class JsonPatchUtilsTest {
       {"/" + Entity.FIELD_DESCRIPTION, MetadataOperation.EDIT_DESCRIPTION},
       {"/" + Entity.FIELD_DISPLAY_NAME, MetadataOperation.EDIT_DISPLAY_NAME},
       {"/" + Entity.FIELD_TAGS, MetadataOperation.EDIT_TAGS},
+      {"/" + Entity.FIELD_DOMAINS, MetadataOperation.EDIT_DOMAINS},
+      {"/" + Entity.FIELD_DOMAINS + "/0/id", MetadataOperation.EDIT_DOMAINS},
       {"/Unknown", MetadataOperation.EDIT_ALL} // Unknown fields map to EDIT_ALL
     };
     for (Object[] patchPathToOperation : patchPathToOperations) {
@@ -340,6 +346,152 @@ class JsonPatchUtilsTest {
     // Assertions
     assertTrue(operations.contains(MetadataOperation.EDIT_CERTIFICATION));
     assertEquals(1, operations.size());
+  }
+
+  /** The write path turns this replace into an add, so the check must see the tag it adds. */
+  @Test
+  void replaceTagsOnEntityWithoutTagsMapsToTagOperation() {
+    Mockito.<EntityInterface<?>>when(resourceContextMock.getEntity())
+        .thenReturn(new Table().withName("untagged_table").withTags(null));
+    String patch =
+        """
+        [{"op": "replace", "path": "/tags", "value": [
+          {"tagFQN": "PII.Sensitive", "source": "Classification",
+           "labelType": "Manual", "state": "Confirmed"}]}]
+        """;
+
+    Set<MetadataOperation> operations =
+        JsonPatchUtils.getMetadataOperations(resourceContextMock, jsonPatch(patch));
+
+    assertEquals(Set.of(MetadataOperation.EDIT_TAGS), operations);
+  }
+
+  @Test
+  void testGetPatchedDomainsIgnoresAPatchThatLeavesDomainsAlone() {
+    JsonPatch patch =
+        toPatch("[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
+    assertNull(JsonPatchUtils.getPatchedDomains(resourceContextMock, patch));
+  }
+
+  @Test
+  void testGetPatchedDomainsReadsTheDomainAnAssetIsMovingInto() {
+    UUID sourceDomain = UUID.randomUUID();
+    UUID targetDomain = UUID.randomUUID();
+    originalTable.setDomains(listOf(domainRef(sourceDomain)));
+
+    JsonPatch patch =
+        toPatch(
+            "[{\"op\": \"replace\", \"path\": \"/domains/0/id\", \"value\": \""
+                + targetDomain
+                + "\"}]");
+
+    List<EntityReference> patched = JsonPatchUtils.getPatchedDomains(resourceContextMock, patch);
+    assertEquals(1, patched.size());
+    assertEquals(targetDomain, patched.get(0).getId());
+  }
+
+  @Test
+  void testGetPatchedDomainsReadsTheDomainAssignedToAnAssetThatHadNone() {
+    UUID targetDomain = UUID.randomUUID();
+    originalTable.setDomains(null);
+
+    JsonPatch patch =
+        toPatch(
+            "[{\"op\": \"add\", \"path\": \"/domains\", \"value\": [{\"id\": \""
+                + targetDomain
+                + "\", \"type\": \"domain\"}]}]");
+
+    List<EntityReference> patched = JsonPatchUtils.getPatchedDomains(resourceContextMock, patch);
+    assertEquals(1, patched.size());
+    assertEquals(targetDomain, patched.get(0).getId());
+  }
+
+  @Test
+  void testGetPatchedDomainsIsEmptyWhenTheAssignmentIsCleared() {
+    originalTable.setDomains(listOf(domainRef(UUID.randomUUID())));
+
+    JsonPatch patch = toPatch("[{\"op\": \"remove\", \"path\": \"/domains\"}]");
+
+    assertEquals(List.of(), JsonPatchUtils.getPatchedDomains(resourceContextMock, patch));
+  }
+
+  /**
+   * The exact patch the UI sends when a domain is reassigned: fast-json-patch diffs the client's
+   * copy of the entity, which carries server-added read-only fields the stored projection does not.
+   * Applying it strictly threw and turned every UI domain change into a 400.
+   */
+  @Test
+  void testGetPatchedDomainsAppliesTheDiffTheUiSends() {
+    UUID source = UUID.randomUUID();
+    UUID target = UUID.randomUUID();
+    originalTable.setDomains(listOf(domainRef(source)));
+
+    JsonPatch patch =
+        toPatch(
+            "["
+                + "{\"op\": \"remove\", \"path\": \"/domains/0/href\"},"
+                + "{\"op\": \"remove\", \"path\": \"/domains/0/deleted\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/displayName\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/fullyQualifiedName\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/name\", \"value\": \"Marketing\"},"
+                + "{\"op\": \"replace\", \"path\": \"/domains/0/id\", \"value\": \""
+                + target
+                + "\"}]");
+
+    List<EntityReference> patched = JsonPatchUtils.getPatchedDomains(resourceContextMock, patch);
+
+    assertEquals(1, patched.size());
+    assertEquals(target, patched.get(0).getId());
+    assertEquals("Marketing", patched.get(0).getFullyQualifiedName());
+  }
+
+  /** Mirrors a stored domain reference: {@code deleted} is persisted, {@code href} is not. */
+  private static EntityReference domainRef(UUID id) {
+    return new EntityReference().withId(id).withType(Entity.DOMAIN).withDeleted(false);
+  }
+
+  private static JsonPatch toPatch(String patchString) {
+    try (JsonReader jsonReader = Json.createReader(new StringReader(patchString))) {
+      return Json.createPatch(jsonReader.readArray());
+    }
+  }
+
+  @Test
+  void copyAndMoveReadFromAnotherPath() {
+    String tokenPath = "/nodes/1/config/sinkConfig/credentials/token";
+    String copy =
+        """
+        [{"op": "copy", "from": "%s", "path": "/description"}]
+        """
+            .formatted(tokenPath);
+    String move =
+        """
+        [{"op": "replace", "path": "/displayName", "value": "renamed"},
+         {"op": "move", "from": "%s", "path": "/description"}]
+        """
+            .formatted(tokenPath);
+
+    assertTrue(JsonPatchUtils.readsFromAnotherPath(jsonPatch(copy)));
+    assertTrue(JsonPatchUtils.readsFromAnotherPath(jsonPatch(move)));
+  }
+
+  @Test
+  void addReplaceRemoveAndTestDoNotReadFromAnotherPath() {
+    String patch =
+        """
+        [{"op": "add", "path": "/displayName", "value": "name"},
+         {"op": "replace", "path": "/description", "value": "from"},
+         {"op": "remove", "path": "/tags/0"},
+         {"op": "test", "path": "/name", "value": "from"}]
+        """;
+
+    assertFalse(JsonPatchUtils.readsFromAnotherPath(jsonPatch(patch)));
+  }
+
+  private static JsonPatch jsonPatch(String patch) {
+    try (JsonReader reader = Json.createReader(new StringReader(patch))) {
+      return Json.createPatch(reader.readArray());
+    }
   }
 
   private static @NotNull String getPatchString(long currentTime, String operationString) {

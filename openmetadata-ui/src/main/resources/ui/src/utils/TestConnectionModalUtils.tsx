@@ -29,7 +29,12 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
-import { useMemo, type Dispatch, type SetStateAction } from 'react';
+import {
+  useMemo,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 import { ReactComponent as IcCheckCircle } from '../assets/svg/ic-check-circle.svg';
 import { ReactComponent as IcTcFail } from '../assets/svg/ic-tc-fail.svg';
 import { ReactComponent as IcTcQueued } from '../assets/svg/ic-tc-queued.svg';
@@ -47,7 +52,9 @@ import {
 } from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
 
+const TEXT_UTILITY_SUCCESS_300_CLASS = 'tw:text-utility-success-300';
 const TEXT_UTILITY_ERROR_300_CLASS = 'tw:text-utility-error-300';
+const TEXT_UTILITY_WARNING_300_CLASS = 'tw:text-utility-warning-300';
 
 const STEP_LABEL_KEYS: Record<string, string> = {
   CheckAccess: 'message.test-connection-step-check-access',
@@ -292,6 +299,15 @@ export function getConnectionStepIcon(state: ConnectionStepState) {
   );
 }
 
+// A failed step's summary line is the definition's `errorMessage`, not a success
+// summary — `resultSummary` is the success channel. Painting it green reads as
+// "this step passed", so a failed step gets the advisory colour instead.
+function getSummaryColorClass(passed: boolean | undefined): string {
+  return passed
+    ? TEXT_UTILITY_SUCCESS_300_CLASS
+    : TEXT_UTILITY_WARNING_300_CLASS;
+}
+
 function renderColoredLines(
   text: string,
   colorClass: string,
@@ -307,6 +323,7 @@ function renderColoredLines(
 
 export function ConnectionStatusBanner(
   props: Readonly<{
+    action?: ReactNode;
     gateResult: TestConnectionStepResult | undefined;
     isFailed: boolean;
     isSuccessful: boolean;
@@ -319,6 +336,7 @@ export function ConnectionStatusBanner(
   }>
 ) {
   const {
+    action,
     gateResult,
     isFailed,
     isSuccessful,
@@ -364,9 +382,10 @@ export function ConnectionStatusBanner(
           height={18}
           width={18}
         />
-        <span className="tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
+        <span className="tw:flex-1 tw:text-sm tw:font-semibold tw:leading-5 tw:text-fg-warning-primary">
           {statusText}
         </span>
+        {action}
       </div>
     );
   }
@@ -405,6 +424,7 @@ export function ConnectionStatusBanner(
             {`${progressPercent}%`}
           </span>
         )}
+        {isFailed && !isTestingConnection && action}
       </div>
     </div>
   );
@@ -453,11 +473,11 @@ function getGatePillClass(
     'tw:inline-flex tw:h-6 tw:items-center tw:rounded-full tw:border tw:px-2',
     'tw:text-xs tw:font-semibold tw:leading-4',
     {
-      'tw:border-utility-brand-200 tw:bg-white tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         !gateResult && !isFailed,
-      'tw:border-utility-success-200 tw:bg-white tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         gateResult?.passed,
-      'tw:border-utility-error-200 tw:bg-white tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         gateFailed,
     }
   );
@@ -578,15 +598,16 @@ export function ConnectionGateCard(
   );
 
   const pillClass = classNames(
-    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:bg-white tw:px-2.5 tw:text-xs tw:font-medium',
+    'tw:inline-flex tw:h-6 tw:items-center tw:gap-1.5 tw:rounded-full tw:border tw:px-2.5 tw:text-xs tw:font-medium',
     {
-      'tw:border-utility-success-200 tw:text-utility-success-700':
+      'tw:border-utility-success-200 tw:bg-success-primary tw:text-utility-success-700':
         pillState === 'pass',
-      'tw:border-utility-error-200 tw:text-utility-error-700':
+      'tw:border-utility-error-200 tw:bg-error-primary tw:text-utility-error-700':
         pillState === 'fail',
-      'tw:border-utility-brand-200 tw:text-utility-brand-700':
+      'tw:border-utility-brand-200 tw:bg-brand-primary tw:text-utility-brand-700':
         pillState === 'running',
-      'tw:border-gray-300 tw:text-secondary': pillState === 'queued',
+      'tw:border-primary tw:bg-secondary tw:text-secondary':
+        pillState === 'queued',
     }
   );
 
@@ -645,7 +666,7 @@ function renderCapabilityStepLog(
 ): JSX.Element {
   return (
     <div className="tw:border-t tw:border-border-secondary">
-      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold">
+      <pre className="tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:text-utility-gray-300 tw:whitespace-pre-wrap tw:m-3.5 tw:ml-[46px] tw:font-semibold tw:max-h-[220px]">
         {result.executedCommand &&
           renderColoredLines(
             `> ${result.executedCommand}`,
@@ -657,7 +678,7 @@ function renderCapabilityStepLog(
             `  ${result.resultSummary || result.message}${
               result.durationMs ? ` (${result.durationMs} ms)` : ''
             }`,
-            'tw:text-utility-success-300',
+            getSummaryColorClass(result.passed),
             'sum-'
           )}
         {result.errorLog &&
@@ -675,7 +696,7 @@ function renderCapabilityStepLog(
             ]
               .filter(Boolean)
               .join('\n'),
-            'tw:text-utility-warning-300',
+            TEXT_UTILITY_WARNING_300_CLASS,
             'diag-'
           )}
       </pre>
@@ -940,7 +961,7 @@ export function ConnectionRawLogSection(
               parts.push(
                 ...renderColoredLines(
                   `  ${summary}${timing}`,
-                  'tw:text-utility-success-300',
+                  getSummaryColorClass(result.passed),
                   `${stepIdx}-sum-`
                 )
               );
@@ -964,7 +985,7 @@ export function ConnectionRawLogSection(
                   ]
                     .filter(Boolean)
                     .join('\n'),
-                  'tw:text-utility-warning-300',
+                  TEXT_UTILITY_WARNING_300_CLASS,
                   `${stepIdx}-diag-`
                 )
               );
@@ -1148,7 +1169,7 @@ export function ConnectionRemediationCard(
     getConnectionStepResult
   );
 
-  if (!errorContent) {
+  if (!errorContent && !diagnosis) {
     return null;
   }
 
@@ -1188,7 +1209,7 @@ export function ConnectionRemediationCard(
         </div>
       )}
       {!diagnosis && errorContent && (
-        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold">
+        <pre className="tw:m-0 tw:w-full tw:overflow-auto tw:rounded-lg tw:bg-gray-900 tw:p-3 tw:text-xs tw:whitespace-pre-wrap tw:font-semibold tw:max-h-[220px]">
           {renderColoredLines(
             errorContent,
             TEXT_UTILITY_ERROR_300_CLASS,

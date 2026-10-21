@@ -456,7 +456,10 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
             weight="medium">
             {t('label.condition')}
           </Typography>
+          {/* A condition is free text; without allowsCustomValue the combobox
+              would reset the typed expression on blur. */}
           <Select.ComboBox
+            allowsCustomValue
             allowsEmptyCollection
             data-testid="condition"
             inputValue={form.watch('condition') ?? ''}

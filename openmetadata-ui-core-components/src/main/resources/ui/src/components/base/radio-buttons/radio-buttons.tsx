@@ -1,4 +1,10 @@
-import { type ReactNode, type Ref, createContext, useContext } from 'react';
+import {
+  createContext,
+  forwardRef,
+  type ReactNode,
+  type Ref,
+  useContext,
+} from 'react';
 import {
   Radio as AriaRadio,
   RadioGroup as AriaRadioGroup,
@@ -63,19 +69,30 @@ interface RadioButtonProps extends AriaRadioProps {
   size?: 'sm' | 'md';
   label?: ReactNode;
   hint?: ReactNode;
+  variant?: 'default' | 'card';
+  /** Noninteractive content shown after the label and hint. */
+  trailing?: ReactNode;
   ref?: Ref<HTMLLabelElement>;
   /** Extra classes for the circular indicator (e.g. a brand-coloured ring). */
   indicatorClassName?: string;
 }
 
-export const RadioButton = ({
-  label,
-  hint,
-  className,
-  indicatorClassName,
-  size = 'sm',
-  ...ariaRadioProps
-}: RadioButtonProps) => {
+export const RadioButton = forwardRef<
+  HTMLLabelElement,
+  Omit<RadioButtonProps, 'ref'>
+>(function RadioButton(
+  {
+    label,
+    hint,
+    className,
+    indicatorClassName,
+    size = 'sm',
+    variant = 'default',
+    trailing,
+    ...ariaRadioProps
+  },
+  ref
+) {
   const context = useContext(RadioGroupContext);
 
   size = context?.size ?? size;
@@ -101,17 +118,31 @@ export const RadioButton = ({
       className={(renderProps) =>
         cx(
           'tw:flex tw:items-start',
-          renderProps.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
+          variant === 'card' && [
+            `tw:relative tw:w-full tw:cursor-pointer tw:rounded-lg tw:bg-surface tw:p-3 tw:transition ${borderAfter} tw:after:outline-primary`,
+            renderProps.isHovered &&
+              !renderProps.isDisabled &&
+              'tw:bg-primary_hover tw:after:outline-hover',
+            renderProps.isSelected &&
+              !renderProps.isDisabled &&
+              'tw:bg-brand-primary tw:after:outline-brand',
+            renderProps.isDisabled &&
+              'tw:bg-disabled_subtle tw:after:outline-disabled',
+            renderProps.isFocusVisible &&
+              'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
+          ],
+          renderProps.isDisabled && 'tw:cursor-not-allowed',
           typeof className === 'function' ? className(renderProps) : className
         )
-      }>
+      }
+      ref={ref}>
       {({ isSelected, isDisabled, isFocusVisible }) => (
         <>
           <RadioButtonBase
             className={cx((label || hint) && 'tw:mt-0.5', indicatorClassName)}
             isDisabled={isDisabled}
-            isFocusVisible={isFocusVisible}
+            isFocusVisible={variant === 'default' && isFocusVisible}
             isSelected={isSelected}
             size={size}
           />
@@ -119,31 +150,50 @@ export const RadioButton = ({
             <div
               className={cx(
                 'tw:inline-flex tw:flex-col',
-                sizes[size].textWrapper
+                sizes[size].textWrapper,
+                variant === 'card' && 'tw:min-w-0 tw:flex-1 tw:break-words'
               )}>
               {label && (
                 <p
                   className={cx(
                     'tw:text-secondary tw:select-none',
-                    sizes[size].label
+                    sizes[size].label,
+                    variant === 'card' && isDisabled && 'tw:text-disabled'
                   )}>
                   {label}
                 </p>
               )}
               {hint && (
                 <span
-                  className={cx('tw:text-tertiary', sizes[size].hint)}
-                  onClick={(event) => event.stopPropagation()}>
+                  className={cx(
+                    'tw:text-tertiary',
+                    sizes[size].hint,
+                    variant === 'card' && isDisabled && 'tw:text-disabled'
+                  )}
+                  onClick={
+                    variant === 'default'
+                      ? (event) => event.stopPropagation()
+                      : undefined
+                  }>
                   {hint}
                 </span>
               )}
             </div>
           )}
+          {trailing && (
+            <span
+              className={cx(
+                'tw:shrink-0 tw:text-xs tw:text-tertiary',
+                isDisabled && 'tw:text-disabled'
+              )}>
+              {trailing}
+            </span>
+          )}
         </>
       )}
     </AriaRadio>
   );
-};
+});
 RadioButton.displayName = 'RadioButton';
 
 interface RadioGroupProps extends RadioGroupContextType, AriaRadioGroupProps {

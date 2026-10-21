@@ -22,15 +22,18 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
@@ -61,6 +64,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
+import org.openmetadata.schema.type.aicontext.ConceptContext;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
@@ -99,6 +103,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
+
+  /** Bounds the batch of attached pills loaded to find {@link #MAX_ARTICLES} usable ones. */
+  private static final int MAX_PILLS_SCANNED = 100;
+
   private static final int MAX_JOIN_HINTS = 25;
   static final int MAX_SAMPLE_ROWS = 10;
   static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
@@ -182,12 +190,12 @@ public class AIContextBuilder {
   }
 
   public AIContext build() {
-    EntityInterface entity =
+    EntityInterface<?> entity =
         Entity.getEntityByName(entityType, fqn, fieldsFor(entityType), Include.NON_DELETED);
     return buildForEntity(entity);
   }
 
-  AIContext buildForEntity(EntityInterface entity) {
+  AIContext buildForEntity(EntityInterface<?> entity) {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
     List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
@@ -215,9 +223,10 @@ public class AIContextBuilder {
             .withUpstreamEdges(upstreamEdges)
             .withDownstream(edgeFqns(downstreamEdges))
             .withDownstreamEdges(downstreamEdges)
-            .withAssetContext(buildAssetContext(entity))
             .withObservability(resolveObservability(entity, dataQuality))
             .withGeneratedAt(System.currentTimeMillis());
+    context.withAssetContext(
+        buildAssetContext(entity, context.getMetrics(), context.getArticles()));
     applyKnowledgeBudget(context);
     return context;
   }
@@ -233,6 +242,11 @@ public class AIContextBuilder {
   void applyKnowledgeBudget(AIContext context) {
     int remaining = knowledgeBudgetChars;
     remaining = fitItems(context.getGlossaryTerms(), remaining);
+    if (context.getAssetContext() != null && context.getAssetContext().getTable() != null) {
+      for (FieldContext field : listOrEmpty(context.getAssetContext().getTable().getColumns())) {
+        remaining = fitItems(field.getGlossaryTerms(), remaining);
+      }
+    }
     remaining = fitItems(context.getMetrics(), remaining);
     remaining = fitItems(context.getArticles(), remaining);
     logDegradation(context);
@@ -423,11 +437,11 @@ public class AIContextBuilder {
    * the right service without re-fetching the entity. Tables only for now — the type that backs the
    * analytics/SQL-generation path.
    */
-  static EntityReference serviceRef(EntityInterface entity) {
+  static EntityReference serviceRef(EntityInterface<?> entity) {
     return entity instanceof Table table ? table.getService() : null;
   }
 
-  static String serviceType(EntityInterface entity) {
+  static String serviceType(EntityInterface<?> entity) {
     String serviceType = null;
     if (entity instanceof Table table && table.getServiceType() != null) {
       serviceType = table.getServiceType().value();
@@ -435,7 +449,7 @@ public class AIContextBuilder {
     return serviceType;
   }
 
-  private Observability resolveObservability(EntityInterface entity, DataQuality dataQuality) {
+  private Observability resolveObservability(EntityInterface<?> entity, DataQuality dataQuality) {
     Observability observability = null;
     if (entity instanceof Table) {
       observability = new Observability().withDataQuality(dataQuality);
@@ -453,11 +467,16 @@ public class AIContextBuilder {
         && nullOrEmpty(observability.getColumnProfiles());
   }
 
-  private void applyProfile(Observability observability, EntityInterface entity) {
-    if (authorizer != null && securityContext != null) {
+  private void applyProfile(Observability observability, EntityInterface<?> entity) {
+    if (authorizer != null
+        && securityContext != null
+        && canViewKnowledge(
+            Entity.TABLE, entity.getFullyQualifiedName(), MetadataOperation.VIEW_DATA_PROFILE)) {
       try {
         TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
-        Table profiled = repository.getLatestTableProfile(fqn, true, authorizer, securityContext);
+        Table profiled =
+            repository.getLatestTableProfile(
+                entity.getFullyQualifiedName(), true, authorizer, securityContext);
         populateProfile(observability, profiled);
       } catch (Exception e) {
         LOG.warn("AIContext: failed to load profile for {}: {}", fqn, e.getMessage());
@@ -501,7 +520,7 @@ public class AIContextBuilder {
         .withCardinalityDistribution(columnProfile.getCardinalityDistribution());
   }
 
-  private DataQuality resolveDataQuality(EntityInterface entity) {
+  private DataQuality resolveDataQuality(EntityInterface<?> entity) {
     DataQuality dataQuality = null;
     if (entity instanceof Table table) {
       EntityReference testSuiteRef = table.getTestSuite();
@@ -633,7 +652,7 @@ public class AIContextBuilder {
     return value == null ? null : String.valueOf(value);
   }
 
-  private EntityLineage fetchLineage(EntityInterface entity) {
+  private EntityLineage fetchLineage(EntityInterface<?> entity) {
     EntityLineage lineage = null;
     try {
       lineage = Entity.getLineageRepository().get(entityType, entity.getId().toString(), 1, 1);
@@ -691,11 +710,13 @@ public class AIContextBuilder {
 
   private static String fieldsFor(String entityType) {
     String result;
-    if (Entity.TABLE.equals(entityType)) {
-      result = TABLE_FIELDS;
-    } else {
-      result = supportsTags(entityType) ? DEFAULT_FIELDS : "";
-    }
+    result =
+        switch (entityType) {
+          case Entity.TABLE -> TABLE_FIELDS;
+          case Entity.GLOSSARY_TERM -> "tags,relatedTerms,synonyms";
+          case Entity.METRIC -> "tags,relatedMetrics";
+          default -> supportsTags(entityType) ? DEFAULT_FIELDS : "";
+        };
     return result;
   }
 
@@ -714,9 +735,9 @@ public class AIContextBuilder {
     return supported;
   }
 
-  private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface entity) {
+  private List<KnowledgeItem> resolveGlossaryTerms(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
-    for (String termFqn : capped(collectGlossaryFqns(entity), MAX_KNOWLEDGE_ITEMS)) {
+    for (String termFqn : capped(collectAssetGlossaryFqns(entity), MAX_KNOWLEDGE_ITEMS)) {
       KnowledgeItem item = toGlossaryKnowledgeItem(termFqn);
       if (item != null) {
         items.add(item);
@@ -725,16 +746,36 @@ public class AIContextBuilder {
     return items;
   }
 
-  static Set<String> collectGlossaryFqns(EntityInterface entity) {
+  /**
+   * Asset-level terms only: the single-asset envelope carries column terms on their fields
+   * instead.
+   */
+  static Set<String> collectAssetGlossaryFqns(EntityInterface<?> entity) {
     Set<String> fqns = new LinkedHashSet<>();
     addGlossaryFqns(entity.getTags(), fqns);
+    return fqns;
+  }
+
+  /**
+   * Asset and (nested) column terms, for the attached-knowledge batch, whose flat item list has no
+   * per-field slot to carry column terms separately.
+   */
+  static Set<String> collectGlossaryFqns(EntityInterface<?> entity) {
+    Set<String> fqns = collectAssetGlossaryFqns(entity);
     if (entity instanceof Table table) {
       collectColumnGlossary(table.getColumns(), fqns);
     }
     return fqns;
   }
 
-  static List<String> extractClassificationTags(EntityInterface entity) {
+  private static void collectColumnGlossary(List<Column> columns, Set<String> into) {
+    for (Column column : listOrEmpty(columns)) {
+      addGlossaryFqns(column.getTags(), into);
+      collectColumnGlossary(column.getChildren(), into);
+    }
+  }
+
+  static List<String> extractClassificationTags(EntityInterface<?> entity) {
     List<String> tags = new ArrayList<>();
     for (TagLabel tag : listOrEmpty(entity.getTags())) {
       if (tag.getSource() != TagLabel.TagSource.GLOSSARY) {
@@ -749,13 +790,6 @@ public class AIContextBuilder {
       if (tag.getSource() == TagLabel.TagSource.GLOSSARY) {
         into.add(tag.getTagFQN());
       }
-    }
-  }
-
-  private static void collectColumnGlossary(List<Column> columns, Set<String> into) {
-    for (Column column : listOrEmpty(columns)) {
-      addGlossaryFqns(column.getTags(), into);
-      collectColumnGlossary(column.getChildren(), into);
     }
   }
 
@@ -818,30 +852,34 @@ public class AIContextBuilder {
     return visible;
   }
 
-  private boolean canViewPill(ContextMemory pill) {
-    return securityContext == null
-        || !ContextMemoryVisibility.filterByVisibility(List.of(pill), securityContext).isEmpty();
+  private KnowledgeItem toGlossaryKnowledgeItem(String termFqn) {
+    GlossaryTerm term = loadVisibleGlossaryTerm(termFqn);
+    return term == null ? null : glossaryKnowledgeItem(term);
   }
 
-  private KnowledgeItem toGlossaryKnowledgeItem(String termFqn) {
-    KnowledgeItem item = null;
+  /** Approved terms the caller may view; null for any other term or a failed lookup. */
+  private GlossaryTerm loadVisibleGlossaryTerm(String termFqn) {
+    GlossaryTerm visible = null;
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
       if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
-        item =
-            new KnowledgeItem()
-                .withId(term.getId())
-                .withType(KnowledgeItem.Type.GLOSSARY_TERM)
-                .withName(term.getName())
-                .withDisplayName(term.getDisplayName())
-                .withFullyQualifiedName(term.getFullyQualifiedName())
-                .withContent(unescapeRichText(term.getDescription()));
+        visible = term;
       }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to resolve glossary term {}: {}", termFqn, e.getMessage());
     }
-    return item;
+    return visible;
+  }
+
+  private static KnowledgeItem glossaryKnowledgeItem(GlossaryTerm term) {
+    return new KnowledgeItem()
+        .withId(term.getId())
+        .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+        .withName(term.getName())
+        .withDisplayName(term.getDisplayName())
+        .withFullyQualifiedName(term.getFullyQualifiedName())
+        .withContent(unescapeRichText(term.getDescription()));
   }
 
   private static boolean isApproved(GlossaryTerm term) {
@@ -849,17 +887,46 @@ public class AIContextBuilder {
     return status == null || status == EntityStatus.APPROVED;
   }
 
-  private List<KnowledgeItem> resolveArticles(EntityInterface entity) {
+  private List<KnowledgeItem> resolveArticles(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
     addItems(
         items,
         capWithLog(findAttachedPages(entity), MAX_ARTICLES, "articles"),
         this::toArticleKnowledgeItem);
-    addItems(
-        items,
-        capWithLog(findAttachedPills(entity), MAX_ARTICLES, "pills"),
-        this::toPillKnowledgeItem);
+    pillsForContext(loadPills(findAttachedPills(entity)), this::visibleToCaller)
+        .forEach(pill -> items.add(toPillKnowledgeItem(pill)));
     return items;
+  }
+
+  /**
+   * Retired and hidden pills stay attached to their asset, so they are dropped before the cap
+   * rather than using up the slots of pills that would reach the context.
+   */
+  static List<ContextMemory> pillsForContext(
+      List<ContextMemory> attached, UnaryOperator<List<ContextMemory>> visibleToCaller) {
+    List<ContextMemory> approved =
+        attached.stream().filter(AIContextBuilder::isActivePill).toList();
+    return capList(visibleToCaller.apply(approved), MAX_ARTICLES);
+  }
+
+  private List<ContextMemory> loadPills(List<EntityReference> refs) {
+    List<ContextMemory> pills = new ArrayList<>();
+    try {
+      pills =
+          Entity.getEntities(
+              capWithLog(refs, MAX_PILLS_SCANNED, "attached pills"),
+              ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, ""),
+              Include.NON_DELETED);
+    } catch (Exception e) {
+      LOG.warn("AIContext: failed to fetch knowledge pills for {}: {}", fqn, e.getMessage());
+    }
+    return pills;
+  }
+
+  private List<ContextMemory> visibleToCaller(List<ContextMemory> pills) {
+    return securityContext == null
+        ? pills
+        : ContextMemoryVisibility.filterByVisibility(pills, securityContext);
   }
 
   private void addItems(
@@ -874,7 +941,7 @@ public class AIContextBuilder {
     }
   }
 
-  private List<EntityReference> findAttachedPills(EntityInterface entity) {
+  private List<EntityReference> findAttachedPills(EntityInterface<?> entity) {
     // Edge direction: primaryEntity --APPLIED_TO--> contextMemory (see ContextMemoryRepository).
     // The asset is the FROM side, so the pills are resolved as the TO side via findTo.
     List<EntityReference> pills = new ArrayList<>();
@@ -888,37 +955,26 @@ public class AIContextBuilder {
     return pills;
   }
 
-  private KnowledgeItem toPillKnowledgeItem(EntityReference ref) {
-    KnowledgeItem item = null;
-    try {
-      ContextMemory pill = Entity.getEntity(ref, "", Include.NON_DELETED);
-      // Mirror the glossary path's approval gating: Draft/Archived memories are not settled
-      // knowledge and must not reach agents as current context (issue #32260).
-      if (isActivePill(pill) && canViewPill(pill)) {
-        item =
-            new KnowledgeItem()
-                .withId(pill.getId())
-                .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
-                .withName(pill.getName())
-                .withDisplayName(pill.getDisplayName())
-                .withFullyQualifiedName(pill.getFullyQualifiedName())
-                .withContent(pillContent(pill));
-        stampStaleness(
-            item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
-      }
-    } catch (Exception e) {
-      LOG.warn("AIContext: failed to fetch knowledge pill {}: {}", ref.getName(), e.getMessage());
-    }
+  private KnowledgeItem toPillKnowledgeItem(ContextMemory pill) {
+    KnowledgeItem item =
+        new KnowledgeItem()
+            .withId(pill.getId())
+            .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
+            .withName(pill.getName())
+            .withDisplayName(pill.getDisplayName())
+            .withFullyQualifiedName(pill.getFullyQualifiedName())
+            .withContent(pillContent(pill));
+    stampStaleness(
+        item, pill.getUpdatedAt(), assetUpdatedAt, assetDataQuality, upstreamDataQuality());
     return item;
   }
 
   /**
-   * Pills with no lifecycle status (pre-lifecycle memories) are treated as active, matching how
-   * {@link #isApproved(GlossaryTerm)} treats a missing glossary review status.
+   * Mirrors the glossary path's approval gating: only Approved memories are settled knowledge that
+   * may reach agents as current context (issue #32260).
    */
   static boolean isActivePill(ContextMemory pill) {
-    EntityStatus status = pill.getEntityStatus();
-    return status == null || status == EntityStatus.APPROVED;
+    return pill.getEntityStatus() == ContextMemoryStatus.APPROVED;
   }
 
   private static String pillContent(ContextMemory pill) {
@@ -931,16 +987,20 @@ public class AIContextBuilder {
     return unescapeRichText(content);
   }
 
-  private List<KnowledgeItem> resolveMetrics(EntityInterface entity) {
+  private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
     List<KnowledgeItem> items = new ArrayList<>();
+    List<EntityReference> references = new ArrayList<>(findAttachedMetrics(entity));
+    if (entity instanceof Metric metric) {
+      references.addAll(listOrEmpty(metric.getRelatedMetrics()));
+    }
     addItems(
         items,
-        capList(findAttachedMetrics(entity), MAX_KNOWLEDGE_ITEMS),
+        capList(references.stream().distinct().toList(), MAX_KNOWLEDGE_ITEMS),
         this::toMetricKnowledgeItem);
     return items;
   }
 
-  private List<EntityReference> findAttachedMetrics(EntityInterface entity) {
+  private List<EntityReference> findAttachedMetrics(EntityInterface<?> entity) {
     List<EntityReference> metrics = new ArrayList<>();
     try {
       metrics =
@@ -977,7 +1037,7 @@ public class AIContextBuilder {
    * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
    * in one place so it matches what the bundle excerpts.
    */
-  public static String fullContentOf(EntityInterface entity) {
+  public static String fullContentOf(EntityInterface<?> entity) {
     String content;
     if (entity instanceof Metric metric) {
       content = metricContent(metric);
@@ -1013,7 +1073,7 @@ public class AIContextBuilder {
     return content.toString();
   }
 
-  private List<EntityReference> findAttachedPages(EntityInterface entity) {
+  private List<EntityReference> findAttachedPages(EntityInterface<?> entity) {
     List<EntityReference> pages = new ArrayList<>();
     try {
       pages =
@@ -1046,15 +1106,52 @@ public class AIContextBuilder {
     return item;
   }
 
-  private AssetContext buildAssetContext(EntityInterface entity) {
+  private AssetContext buildAssetContext(
+      EntityInterface<?> entity, List<KnowledgeItem> metrics, List<KnowledgeItem> articles) {
     AssetContext context = new AssetContext();
     if (entity instanceof Table table) {
-      context.withTable(buildTableContext(table).withSampleData(resolveSampleData(table)));
+      TableContext tableContext = buildTableContext(table).withSampleData(resolveSampleData(table));
+      resolveColumnGlossary(tableContext.getColumns(), this::loadVisibleGlossaryTerm);
+      context.withTable(tableContext);
     }
-    if (entity instanceof Metric metric) {
-      context.withGeneric(buildMetricContext(metric));
+    if (entity instanceof GlossaryTerm || entity instanceof Metric) {
+      ConceptContext concept =
+          new ConceptContextBuilder(
+                  new ConceptContextCatalog(
+                      authorizer,
+                      securityContext,
+                      table -> resolveObservability(table, null),
+                      this::resolveSampleData))
+              .build(entity, metrics, articles);
+      context.withConceptContext(concept);
+      if (entity instanceof Metric metric) {
+        context.withGeneric(buildMetricContext(metric, concept));
+      }
     }
     return context;
+  }
+
+  /**
+   * Wide tables repeat the same term across many columns, so each distinct term is loaded and
+   * authorized once. Every column still gets its own item because the knowledge budget trims items
+   * in place.
+   */
+  static void resolveColumnGlossary(
+      List<FieldContext> fields, Function<String, GlossaryTerm> loadVisibleTerm) {
+    Map<String, GlossaryTerm> visibleTerms = new HashMap<>();
+    fields.stream()
+        .flatMap(field -> listOrEmpty(field.getGlossaryTerms()).stream())
+        .map(KnowledgeItem::getFullyQualifiedName)
+        .distinct()
+        .forEach(termFqn -> visibleTerms.put(termFqn, loadVisibleTerm.apply(termFqn)));
+    fields.forEach(
+        field ->
+            field.withGlossaryTerms(
+                listOrEmpty(field.getGlossaryTerms()).stream()
+                    .map(reference -> visibleTerms.get(reference.getFullyQualifiedName()))
+                    .filter(Objects::nonNull)
+                    .map(AIContextBuilder::glossaryKnowledgeItem)
+                    .toList()));
   }
 
   private TableData resolveSampleData(Table table) {
@@ -1102,13 +1199,16 @@ public class AIContextBuilder {
    * get_asset_context about a metric returned only its description, while the same expression was
    * already reachable through get_knowledge_content and as attached knowledge of a table.
    */
-  private static GenericAssetContext buildMetricContext(Metric metric) {
+  private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();
-    GenericAssetContext context = null;
-    if (expression != null && !nullOrEmpty(expression.getCode())) {
-      context = new GenericAssetContext().withDefinition(expression.getCode());
-    }
-    return context;
+    return new GenericAssetContext()
+        .withDefinition(expression == null ? null : expression.getCode())
+        .withSourceAssets(
+            listOrEmpty(concept.getBindings()).stream()
+                .filter(binding -> Entity.TABLE.equals(binding.getAssetType()))
+                .map(binding -> binding.getAssetFqn())
+                .distinct()
+                .toList());
   }
 
   /**
@@ -1117,7 +1217,7 @@ public class AIContextBuilder {
    * {@code aiContextForeignKeyTargets} keyword list of the columns this table's foreign keys
    * reference. Only tables carry structural context today; other entity types are a no-op.
    */
-  public static void applySearchFields(Map<String, Object> doc, EntityInterface entity) {
+  public static void applySearchFields(Map<String, Object> doc, EntityInterface<?> entity) {
     if (entity instanceof Table table) {
       TableContext context = buildTableContext(table);
       doc.put("aiContext", Map.of("table", JsonUtils.getMap(context)));
@@ -1192,21 +1292,37 @@ public class AIContextBuilder {
   }
 
   static List<FieldContext> toFieldContexts(List<Column> columns) {
+    return toFieldContexts(columns, "");
+  }
+
+  private static List<FieldContext> toFieldContexts(List<Column> columns, String parentName) {
     List<FieldContext> fields = new ArrayList<>();
     for (Column column : listOrEmpty(columns)) {
+      String name = parentName.isEmpty() ? column.getName() : parentName + "." + column.getName();
+      Set<String> terms = new LinkedHashSet<>();
+      addGlossaryFqns(column.getTags(), terms);
       fields.add(
           new FieldContext()
-              .withName(column.getName())
+              .withName(name)
               .withDataType(columnType(column))
               .withDataTypeEnum(column.getDataType() == null ? null : column.getDataType().value())
               .withConstraint(
                   column.getConstraint() == null ? null : column.getConstraint().value())
-              .withDescription(unescapeRichText(column.getDescription())));
+              .withDescription(unescapeRichText(column.getDescription()))
+              .withGlossaryTerms(
+                  capped(terms, MAX_KNOWLEDGE_ITEMS).stream()
+                      .map(
+                          term ->
+                              new KnowledgeItem()
+                                  .withType(KnowledgeItem.Type.GLOSSARY_TERM)
+                                  .withFullyQualifiedName(term))
+                      .toList()));
+      fields.addAll(toFieldContexts(column.getChildren(), name));
     }
     return fields;
   }
 
-  private static String columnType(Column column) {
+  static String columnType(Column column) {
     String display = column.getDataTypeDisplay();
     return !nullOrEmpty(display)
         ? display

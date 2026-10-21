@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 
-import { Input, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
@@ -110,49 +117,50 @@ const TestDefinitionList = () => {
 
   return (
     <>
-      <Row className="p-b-md" gutter={[16, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-b-md"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Row justify="space-between">
-              <Col>
-                <div className="flex gap-2 items-center m-b-xss">
-                  <Typography
-                    as="h5"
-                    className="m-b-0"
-                    size="text-md"
-                    weight="semibold">
-                    {t('label.data-quality-rule-plural')}
+            <Card.Content>
+              <Box className="layout-row" justify="between" wrap="wrap">
+                <Box className="layout-column tw:block">
+                  <div className="flex gap-2 items-center m-b-xss">
+                    <Typography
+                      as="h5"
+                      className="m-b-0"
+                      size="text-md"
+                      weight="semibold">
+                      {t('label.data-quality-rule-plural')}
+                    </Typography>
+                    <LearningIcon
+                      pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
+                      title={t('label.data-quality-rule-plural')}
+                    />
+                  </div>
+                  <Typography color="secondary">
+                    {t('message.page-sub-header-for-test-definitions')}
                   </Typography>
-                  <LearningIcon
-                    pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                    title={t('label.data-quality-rule-plural')}
-                  />
-                </div>
-                <Typography color="secondary">
-                  {t('message.page-sub-header-for-test-definitions')}
-                </Typography>
-              </Col>
-              {createPermission && (
-                <Col>
-                  <Button
-                    data-testid="add-test-definition-button"
-                    type="primary"
-                    onClick={openCreateForm}>
-                    {t('label.add-entity', {
-                      entity: t('label.test-definition'),
-                    })}
-                  </Button>
-                </Col>
-              )}
-            </Row>
+                </Box>
+                {createPermission && (
+                  <Box className="layout-column tw:block">
+                    <Button
+                      color="primary"
+                      data-testid="add-test-definition-button"
+                      onClick={openCreateForm}>
+                      {t('label.add-entity', {
+                        entity: t('label.test-definition'),
+                      })}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Card.Content>
           </Card>
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Card
-            bodyStyle={{
-              padding: 0,
-            }}>
+        <Grid.Item className="layout-column" span={24}>
+          <Card>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
                 <Input
@@ -185,8 +193,8 @@ const TestDefinitionList = () => {
               onSortChange={handleSortChange}
             />
           </Card>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {isFormVisible && (
         <TestDefinitionForm

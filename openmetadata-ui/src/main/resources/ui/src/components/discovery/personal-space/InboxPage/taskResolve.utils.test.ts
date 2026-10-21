@@ -23,6 +23,7 @@ jest.mock('../../../../rest/axiosClient', () => ({
   },
 }));
 
+import { TFunction } from 'i18next';
 import {
   Task,
   TaskAvailableTransition,
@@ -35,6 +36,7 @@ import { getDefaultTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils'
 import {
   applyActionLabels,
   buildResolveBody,
+  getReassignBlocker,
   getTaskActionInput,
   getTaskResolveActions,
   LEGACY_APPROVE_ACTION_ID,
@@ -109,6 +111,20 @@ describe('applyActionLabels', () => {
 });
 
 describe('getTaskResolveActions', () => {
+  it('waits for workflow transitions for a release review', () => {
+    expect(
+      getTaskResolveActions(
+        makeTask({
+          type: TaskType.RequestApproval,
+          category: TaskCategory.Approval,
+          about: { id: 'release-id', type: 'ontologyRelease' },
+          availableTransitions: [],
+        }),
+        LABELS
+      )
+    ).toEqual([]);
+  });
+
   // /close and the expiry timer leave the workflow transitions on the task; a
   // task closed that way must not keep offering them.
   it.each([
@@ -287,6 +303,27 @@ describe('getTaskResolveActions', () => {
 describe('buildResolveBody', () => {
   const firstAction = (task: Task, schema?: TaskFormSchema) =>
     getTaskResolveActions(task, LABELS, schema);
+
+  it('sends an ontology review decision without an editable entity payload', () => {
+    const task = makeTask({
+      type: TaskType.RequestApproval,
+      category: TaskCategory.Approval,
+      about: { id: 'concept-id', type: 'ontologyRelease' },
+      availableTransitions: [DAR_REJECT],
+      payload: { proposedChanges: { description: 'captured definition' } },
+    });
+
+    expect(
+      buildResolveBody(firstAction(task)[0], task, {
+        comment: 'The definition needs a narrower scope',
+        payload: { proposedChanges: { description: 'edited during review' } },
+      })
+    ).toStrictEqual({
+      transitionId: 'reject',
+      resolutionType: 'Rejected',
+      comment: 'The definition needs a narrower scope',
+    });
+  });
 
   it('names the transition of a workflow action and omits a resolutionType the transition does not declare', () => {
     const task = makeTask({
@@ -560,5 +597,39 @@ describe('splitTaskActions', () => {
       secondary: undefined,
       overflow: [],
     });
+  });
+});
+
+describe('getReassignBlocker', () => {
+  const t = ((key: string, options?: { name?: string }) =>
+    options?.name ? `${key}:${options.name}` : key) as unknown as TFunction;
+  const aisha = {
+    id: 'u1',
+    type: 'user',
+    name: 'aisha.khan',
+    displayName: 'Aisha Khan',
+  };
+  const bob = { id: 'u2', type: 'user', name: 'bob', displayName: 'Bob' };
+
+  it.each([
+    ['picks the same assignee again', [aisha], [aisha]],
+    ['clears the current assignee', [aisha], []],
+  ])(
+    'names who is already assigned when the reassign %s',
+    (_, current, next) => {
+      expect(getReassignBlocker(current, next, t)).toBe(
+        'message.already-assigned-to-task:Aisha Khan'
+      );
+    }
+  );
+
+  it('lets a reassign to someone else through', () => {
+    expect(getReassignBlocker([aisha], [bob], t)).toBeUndefined();
+  });
+
+  it('asks for an assignee when a task with none gets an empty pick', () => {
+    expect(getReassignBlocker([], [], t)).toBe(
+      'message.field-text-is-required'
+    );
   });
 });

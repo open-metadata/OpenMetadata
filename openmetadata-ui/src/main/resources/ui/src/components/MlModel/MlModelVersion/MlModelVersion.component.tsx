@@ -13,11 +13,12 @@
 
 import {
   Box,
+  Card,
   Divider,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Card, Space } from 'antd';
+
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -179,109 +180,130 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                       {mlFeaturesData?.map((feature: MlFeature) => (
                         <div key={feature.fullyQualifiedName}>
                           <Card
-                            bordered
                             className="m-b-xlg"
                             data-testid={`feature-card-${feature.name ?? ''}`}
                             key={feature.fullyQualifiedName}>
-                            <Box direction="col">
-                              <div className="m-b-xs">
-                                <Typography className="font-semibold">
-                                  {feature.name}
-                                </Typography>
-                              </div>
-                              <div className="m-b-xs">
-                                <Space align="start">
-                                  <Space>
-                                    <Typography color="secondary">
-                                      {`${t('label.type')}:`}
-                                    </Typography>{' '}
-                                    <Typography>
-                                      {feature.dataType || '--'}
-                                    </Typography>
-                                  </Space>
-                                  <Divider
-                                    className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
-                                    orientation="vertical"
-                                  />
-                                  <Space>
-                                    <Typography color="secondary">
-                                      {`${t('label.algorithm')}:`}
-                                    </Typography>{' '}
-                                    <Typography>
-                                      {feature.featureAlgorithm || '--'}
-                                    </Typography>
-                                  </Space>
-                                </Space>
-                              </div>
-                              <div className="m-b-xs">
-                                <Box gap={2}>
-                                  <div className="tw:flex-[0_0_130px]">
-                                    <Typography color="secondary">
-                                      {`${t('label.glossary-term-plural')} :`}
-                                    </Typography>
-                                  </div>
-
-                                  <div className="tw:min-w-0 tw:flex-auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Glossary
-                                      }
+                            <Card.Content>
+                              <Box direction="col">
+                                <div className="m-b-xs">
+                                  <Typography className="font-semibold">
+                                    {feature.name}
+                                  </Typography>
+                                </div>
+                                <div className="m-b-xs">
+                                  <Box
+                                    inline
+                                    align="start"
+                                    className="layout-space layout-space-horizontal"
+                                    gap={2}
+                                    itemClassName="layout-space-item">
+                                    <Box
+                                      inline
+                                      align="center"
+                                      className="layout-space layout-space-horizontal"
+                                      gap={2}
+                                      itemClassName="layout-space-item">
+                                      <Typography color="secondary">
+                                        {`${t('label.type')}:`}
+                                      </Typography>{' '}
+                                      <Typography>
+                                        {feature.dataType || '--'}
+                                      </Typography>
+                                    </Box>
+                                    <Divider
+                                      className="tw:mx-2 tw:mt-1 tw:h-[0.9em] tw:min-h-0"
+                                      orientation="vertical"
                                     />
-                                  </div>
-                                </Box>
-                              </div>
+                                    <Box
+                                      inline
+                                      align="center"
+                                      className="layout-space layout-space-horizontal"
+                                      gap={2}
+                                      itemClassName="layout-space-item">
+                                      <Typography color="secondary">
+                                        {`${t('label.algorithm')}:`}
+                                      </Typography>{' '}
+                                      <Typography>
+                                        {feature.featureAlgorithm || '--'}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                </div>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_130px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.glossary-term-plural')} :`}
+                                      </Typography>
+                                    </div>
 
-                              <div className="m-b-xs">
-                                <Box gap={2}>
-                                  <div className="tw:flex-[0_0_130px]">
-                                    <Typography color="secondary">
-                                      {`${t('label.tag-plural')} :`}
-                                    </Typography>
-                                  </div>
-                                  <div className="tw:min-w-0 tw:flex-auto">
-                                    <TagsViewer
-                                      sizeCap={-1}
-                                      tags={
-                                        getFilterTags(feature.tags ?? [])
-                                          .Classification
-                                      }
-                                    />
-                                  </div>
-                                </Box>
-                              </div>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <TagsViewer
+                                        sizeCap={-1}
+                                        tags={
+                                          getFilterTags(feature.tags ?? [])
+                                            .Glossary
+                                        }
+                                      />
+                                    </div>
+                                  </Box>
+                                </div>
 
-                              <div className="m-b-xs">
-                                <Box gap={2}>
-                                  <div className="tw:flex-[0_0_120px]">
-                                    <Typography color="secondary">
-                                      {`${t('label.description')} :`}
-                                    </Typography>
-                                  </div>
-                                  <div className="tw:min-w-0 tw:flex-auto">
-                                    <Space align="start">
-                                      {feature.description ? (
-                                        <RichTextEditorPreviewerV1
-                                          enableSeeMoreVariant={false}
-                                          markdown={feature.description}
-                                        />
-                                      ) : (
-                                        <Typography color="secondary">
-                                          {t('label.no-entity', {
-                                            entity: t('label.description'),
-                                          })}
-                                        </Typography>
-                                      )}
-                                    </Space>
-                                  </div>
-                                </Box>
-                              </div>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_130px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.tag-plural')} :`}
+                                      </Typography>
+                                    </div>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <TagsViewer
+                                        sizeCap={-1}
+                                        tags={
+                                          getFilterTags(feature.tags ?? [])
+                                            .Classification
+                                        }
+                                      />
+                                    </div>
+                                  </Box>
+                                </div>
 
-                              <div>
-                                <SourceList feature={feature} />
-                              </div>
-                            </Box>
+                                <div className="m-b-xs">
+                                  <Box gap={2}>
+                                    <div className="tw:flex-[0_0_120px]">
+                                      <Typography color="secondary">
+                                        {`${t('label.description')} :`}
+                                      </Typography>
+                                    </div>
+                                    <div className="tw:min-w-0 tw:flex-auto">
+                                      <Box
+                                        inline
+                                        align="start"
+                                        className="layout-space layout-space-horizontal"
+                                        gap={2}
+                                        itemClassName="layout-space-item">
+                                        {feature.description ? (
+                                          <RichTextEditorPreviewerV1
+                                            enableSeeMoreVariant={false}
+                                            markdown={feature.description}
+                                          />
+                                        ) : (
+                                          <Typography color="secondary">
+                                            {t('label.no-entity', {
+                                              entity: t('label.description'),
+                                            })}
+                                          </Typography>
+                                        )}
+                                      </Box>
+                                    </div>
+                                  </Box>
+                                </div>
+
+                                <div>
+                                  <SourceList feature={feature} />
+                                </div>
+                              </Box>
+                            </Card.Content>
                           </Card>
                         </div>
                       ))}
@@ -295,7 +317,13 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -312,7 +340,7 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),

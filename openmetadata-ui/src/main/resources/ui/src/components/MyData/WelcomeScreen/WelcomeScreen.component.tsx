@@ -10,19 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Space } from 'antd';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ArrowRight, XClose } from '@openmetadata/ui-core-components/icons';
 import { split } from 'lodash';
-import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
-import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow-right.svg';
+import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../constants/constants';
+import { useTheme } from '../../../context/UntitledUIThemeProvider/theme-provider';
+import { ServiceCategory } from '../../../enums/service.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import './welcome-screen.style.less';
+import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
+import {
+  WELCOME_GLOW_DARK,
+  WELCOME_GLOW_LIGHT,
+} from './WelcomeScreen.constants';
 
 interface WelcomeScreenProps {
   onClose: () => void;
@@ -30,73 +40,107 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { theme } = useTheme();
   const { currentUser } = useApplicationStore();
+  // AI mode's Connections opens on every connector; classic keeps its
+  // database-services entry point. The hook also owns the create-permission
+  // check, so the button is absent for users who could not save a service.
+  const { addService, canAddService } = useAddServiceAction(
+    useIsAiMode() ? 'all' : ServiceCategory.DATABASE_SERVICES
+  );
+  const greeting = t('label.welcome', {
+    name: split(getEntityName(currentUser), ' ')[0] || t('label.user'),
+  });
 
-  const userName = useMemo(() => {
-    return split(getEntityName(currentUser), ' ')[0];
-  }, [currentUser]);
+  // Close before leaving: the AI-mode home is kept alive, so without this the
+  // welcome screen would still be there when the user comes back.
+  const handleConnect = () => {
+    onClose();
+    addService();
+  };
 
-  const { title, welcomeScreenImg } = useMemo(() => {
-    return {
-      title: t('label.brand-name'),
-      welcomeScreenImg: brandClassBase.getWelcomeScreenImg(),
-    };
-  }, [t]);
+  const handleTour = () => {
+    onClose();
+    navigate(ROUTES.TOUR);
+  };
 
   return (
-    <Card
-      className="welcome-screen-container card-body-border-none card-padding-0"
-      data-testid="welcome-screen"
-      extra={
-        <Button
-          className="flex-center welcome-screen-close-btn"
-          data-testid="welcome-screen-close-btn"
-          icon={<CloseIcon height={12} width={12} />}
-          type="text"
-          onClick={onClose}
+    <div
+      className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
+      data-testid="welcome-screen">
+      <div
+        aria-hidden
+        className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"
+        style={{
+          backgroundImage:
+            theme === 'dark' ? WELCOME_GLOW_DARK : WELCOME_GLOW_LIGHT,
+        }}
+      />
+      <ButtonUtility
+        className="tw:absolute tw:top-4 tw:right-4 tw:z-10"
+        color="tertiary"
+        data-testid="welcome-screen-close-btn"
+        icon={XClose}
+        tooltip={t('label.close')}
+        onClick={onClose}
+      />
+      <Box
+        align="center"
+        className="tw:relative tw:h-full tw:gap-22.5 tw:overflow-y-auto tw:px-6 tw:py-12 tw:text-center"
+        direction="col"
+        justify="center">
+        <img
+          alt={greeting}
+          className="tw:w-full tw:max-w-130"
+          data-testid="welcome-screen-img"
+          src={brandClassBase.getWelcomeScreenImg(theme)}
         />
-      }>
-      <Row className="p-md welcome-screen-full-height">
-        <Col className="flex-center" span={12}>
-          <img
-            alt="welcome screen"
-            className="welcome-screen-img"
-            data-testid="welcome-screen-img"
-            loading="lazy"
-            src={welcomeScreenImg}
-          />
-        </Col>
-        <Col span={12}>
-          <Space className="m-y-xlg" direction="vertical">
-            <div>
-              <Typography
-                as="p"
-                className="welcome-screen-header-first-line m-b-0">
-                {t('message.hi-user-welcome-to', {
-                  user: userName || t('label.user'),
-                })}
-              </Typography>
-              <Typography
-                as="p"
-                className="welcome-screen-header-second-line m-b-0">
-                {`${title}! 🎉`}
-              </Typography>
+        <Box align="center" direction="col" gap={12}>
+          <Box align="center" direction="col" gap={6}>
+            <div className="tw:text-display-md tw:text-primary">
+              <p className="tw:m-0">{`${greeting} 👋`}</p>
+              <h1 className="tw:m-0 tw:mt-2.5 tw:text-display-md tw:font-bold tw:text-primary">
+                <Transi18next
+                  i18nKey="message.your-platform-is-ready"
+                  renderElement={<span className="tw:text-utility-brand-600" />}
+                  values={{ platform: brandClassBase.getPlatformName() }}
+                />
+              </h1>
             </div>
-            <Divider className="welcome-screen-header-divider" />
-
-            <Typography as="p" className="m-b-0 text-base">
+            <Typography as="p" className="tw:text-tertiary" size="text-xl">
               {t('message.welcome-screen-message')}
             </Typography>
-            <Link className="flex items-center gap-2 p-0" to={ROUTES.TOUR}>
-              <Typography className="welcome-screen-button-text">
-                {t('message.take-quick-product-tour')}
-              </Typography>
-              <LineArrowRight className="text-primary" height={14} width={18} />
-            </Link>
-          </Space>
-        </Col>
-      </Row>
-    </Card>
+          </Box>
+          <Box
+            align="center"
+            className="tw:flex-wrap"
+            direction="row"
+            gap={5}
+            justify="center">
+            {canAddService && (
+              <Button
+                className="tw:h-14 tw:px-7.5 tw:text-lg"
+                color="primary"
+                data-testid="welcome-screen-connect-btn"
+                iconTrailing={ArrowRight}
+                size="xl"
+                onPress={handleConnect}>
+                {t('label.connect-a-data-source')}
+              </Button>
+            )}
+            <Button
+              className="tw:h-14 tw:px-7.5 tw:text-lg"
+              color="secondary"
+              data-testid="welcome-screen-tour-btn"
+              size="xl"
+              onPress={handleTour}>
+              {t('message.take-quick-product-tour')}
+            </Button>
+          </Box>
+        </Box>
+      </Box>
+    </div>
   );
 };
 

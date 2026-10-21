@@ -14,6 +14,7 @@
 package org.openmetadata.service.exception;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -24,9 +25,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 public final class CatalogExceptionMessage {
   public static final String REINDEXING_ALREADY_RUNNING = "REINDEXING_ALREADY_RUNNING";
@@ -204,6 +203,12 @@ public final class CatalogExceptionMessage {
         parentId, glossaryId);
   }
 
+  public static String invalidEmailDomain(String emailDomain, Collection<String> allowedDomains) {
+    return String.format(
+        "Email domain '%s' is not allowed. Allowed email domains: %s",
+        emailDomain, String.join(", ", allowedDomains));
+  }
+
   public static String notAdmin(String name) {
     return String.format("Principal: CatalogPrincipal{name='%s'} is not admin", name);
   }
@@ -235,7 +240,9 @@ public final class CatalogExceptionMessage {
   }
 
   public static String notTaskAssignee(String name) {
-    return String.format("User '%s' is not an assignee of the pending approval task", name);
+    return String.format(
+        "User '%s' is not an assignee of this approval, so they cannot approve or reject it.",
+        name);
   }
 
   public static String pendingApprovalTaskExists(String entityFqn) {
@@ -277,8 +284,25 @@ public final class CatalogExceptionMessage {
     return String.format(
         "Principal: CatalogPrincipal{name='%s'} does not belong to domains [%s] to perform the %s operations.",
         user,
-        domains.stream().map(EntityReference::getName).collect(Collectors.joining(", ")),
+        domains.stream()
+            .map(CatalogExceptionMessage::domainLabel)
+            .collect(Collectors.joining(", ")),
         operations);
+  }
+
+  /**
+   * A domain reference reaching this message may come straight from a JSON Patch, which carries only
+   * the id and type — so name alone renders as "null" exactly when the caller most needs to know
+   * which domain was refused.
+   */
+  private static String domainLabel(EntityReference domain) {
+    if (domain.getFullyQualifiedName() != null) {
+      return domain.getFullyQualifiedName();
+    }
+    if (domain.getName() != null) {
+      return domain.getName();
+    }
+    return String.valueOf(domain.getId());
   }
 
   public static String taskOperationNotAllowed(String user, String operations) {
@@ -446,16 +470,6 @@ public final class CatalogExceptionMessage {
       SubscriptionDestination.SubscriptionType type, String message) {
     return String.format(
         "Failed to publish event of destination type %s due to %s ", type.value(), message);
-  }
-
-  public static String invalidTaskField(EntityLink entityLink, TaskType taskType) {
-    return String.format(
-        "The Entity link with no field name - %s is not supported for %s task.",
-        entityLink, taskType);
-  }
-
-  public static String invalidFieldForTask(String fieldName, TaskType type) {
-    return String.format("The field name %s is not supported for %s task.", fieldName, type);
   }
 
   public static String invalidReviewerType(String type) {

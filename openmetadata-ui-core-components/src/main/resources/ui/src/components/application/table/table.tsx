@@ -6,7 +6,7 @@ import type {
   TdHTMLAttributes,
   ThHTMLAttributes,
 } from 'react';
-import { createContext, isValidElement, useContext } from 'react';
+import { createContext, forwardRef, isValidElement, useContext } from 'react';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import {
   ArrowDown,
@@ -156,7 +156,7 @@ const TableCardRoot = ({
       <div
         {...props}
         className={cx(
-          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:outline-subtle',
+          'tw:overflow-hidden tw:rounded-xl tw:bg-surface tw:shadow-card tw:outline-1 tw:-outline-offset-1 tw:outline-subtle',
           className
         )}>
         {children}
@@ -297,6 +297,9 @@ const TableHeader = <T extends object>({
           // Row border—using an "after" pseudo-element to avoid the border taking up space.
           bordered &&
             'tw:[&>tr>th]:after:pointer-events-none tw:[&>tr>th]:after:absolute tw:[&>tr>th]:after:inset-x-0 tw:[&>tr>th]:after:bottom-0 tw:[&>tr>th]:after:h-px tw:[&>tr>th]:after:bg-border-secondary tw:[&>tr>th]:focus-visible:after:bg-transparent',
+          // Dark: the 8% white divider resolves to the body-row surface under the darker
+          // header band, so the edge vanishes; border-primary keeps it visible.
+          bordered && 'tw:dark:[&>tr>th]:after:bg-border-primary',
 
           typeof className === 'function' ? className(state) : className
         )
@@ -518,27 +521,30 @@ interface TableCellProps
   ref?: Ref<HTMLTableCellElement>;
 }
 
-const TableCell = ({ className, children, ...props }: TableCellProps) => {
-  const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
-  const { selectionBehavior } = useTableOptions();
+const TableCell = forwardRef<HTMLTableCellElement, Omit<TableCellProps, 'ref'>>(
+  function TableCell({ className, children, ...props }, ref) {
+    const { size } = useContext(TableContext) ?? { size: DEFAULT_TABLE_SIZE };
+    const { selectionBehavior } = useTableOptions();
 
-  return (
-    <AriaCell
-      {...props}
-      className={(state) =>
-        cx(
-          'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
-          TABLE_SIZES[size].cellPadding,
+    return (
+      <AriaCell
+        {...props}
+        className={(state) =>
+          cx(
+            'tw:relative tw:text-sm tw:text-tertiary tw:outline-focus-ring tw:focus-visible:z-1 tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
+            TABLE_SIZES[size].cellPadding,
 
-          selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
+            selectionBehavior === 'toggle' && 'tw:nth-2:pl-3',
 
-          typeof className === 'function' ? className(state) : className
-        )
-      }>
-      {children}
-    </AriaCell>
-  );
-};
+            typeof className === 'function' ? className(state) : className
+          )
+        }
+        ref={ref}>
+        {children}
+      </AriaCell>
+    );
+  }
+);
 TableCell.displayName = 'TableCell';
 
 const TableCard = {

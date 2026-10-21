@@ -10,6 +10,7 @@ import {
   type ReactNode,
   type Ref,
   createContext,
+  forwardRef,
   useContext,
 } from 'react';
 import type {
@@ -39,6 +40,8 @@ export interface InputBaseProps extends TextFieldProps {
   placeholder?: string;
   /** Increment used by numeric inputs. */
   step?: AriaInputProps['step'];
+  'aria-valuemin'?: number;
+  'aria-valuemax'?: number;
   /** Class name for the icon. */
   iconClassName?: string;
   /** Class name for the input. */
@@ -59,34 +62,49 @@ export interface InputBaseProps extends TextFieldProps {
   trailingSlot?: ReactNode;
   /** Passes `data-testid` directly to the inner `<input>` element (not the wrapper). */
   inputDataTestId?: string;
+  /**
+   * Drop the field's own surface, border and focus outline, for an input that
+   * sits inside a container which already draws them (e.g. a search bar).
+   */
+  borderless?: boolean;
 }
 
 const TextFieldContext = createContext<TextFieldProps>({});
 
-export const InputBase = ({
-  ref,
-  tooltip,
-  shortcut,
-  groupRef,
-  trailingSlot,
-  inputDataTestId,
-  size = 'sm',
-  fontSize = 'sm',
-  isInvalid,
-  isDisabled,
-  icon: Icon,
-  placeholder,
-  step,
-  wrapperClassName,
-  tooltipClassName,
-  inputClassName,
-  iconClassName,
-  // Omit this prop to avoid invalid HTML attribute warning
-  isRequired: _isRequired,
-  ...inputProps
-}: Omit<InputBaseProps, 'label' | 'hint'>) => {
+// forwardRef rather than a `ref` prop: under React 18 a function component never
+// receives `ref`, so a prop of that name is always undefined.
+export const InputBase = forwardRef<
+  HTMLInputElement,
+  Omit<InputBaseProps, 'label' | 'hint' | 'ref'>
+>(function InputBase(
+  {
+    tooltip,
+    shortcut,
+    groupRef,
+    trailingSlot,
+    inputDataTestId,
+    borderless,
+    size = 'sm',
+    fontSize = 'sm',
+    isInvalid,
+    isDisabled,
+    icon: Icon,
+    placeholder,
+    step,
+    wrapperClassName,
+    tooltipClassName,
+    inputClassName,
+    iconClassName,
+    // Omit this prop to avoid invalid HTML attribute warning
+    isRequired: _isRequired,
+    ...inputProps
+  },
+  ref
+) {
   // Check if the input has a leading icon or tooltip
   const hasTrailingIcon = tooltip || isInvalid;
+  // Help tooltip and invalid marker both shown: the tooltip moves one slot left.
+  const hasBothTrailingIcons = Boolean(tooltip && isInvalid);
   const hasLeadingIcon = Icon;
 
   // If the input is inside a `TextFieldContext`, use its context to simplify applying styles
@@ -99,20 +117,24 @@ export const InputBase = ({
       root: cx(
         'tw:px-3 tw:py-2',
         hasTrailingIcon && 'tw:pr-9',
+        hasBothTrailingIcons && 'tw:pr-15',
         hasLeadingIcon && 'tw:pl-10'
       ),
       iconLeading: 'tw:left-3',
       iconTrailing: 'tw:right-3',
+      tooltipBesideInvalid: 'tw:right-9',
       shortcut: 'tw:pr-2.5',
     },
     md: {
       root: cx(
         'tw:px-3.5 tw:py-2.5',
         hasTrailingIcon && 'tw:pr-9.5',
+        hasBothTrailingIcons && 'tw:pr-16',
         hasLeadingIcon && 'tw:pl-10.5'
       ),
       iconLeading: 'tw:left-3.5',
       iconTrailing: 'tw:right-3.5',
+      tooltipBesideInvalid: 'tw:right-9.5',
       shortcut: 'tw:pr-3',
     },
   });
@@ -120,7 +142,7 @@ export const InputBase = ({
   return (
     <AriaGroup
       {...{ isDisabled, isInvalid }}
-      className={({ isFocusWithin, isDisabled, isInvalid }) =>
+      className={({ isFocusWithin, isFocusVisible, isDisabled, isInvalid }) =>
         cx(
           // Border is drawn with outline, not a ring: WebKit does not pixel-snap
           // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
@@ -145,6 +167,11 @@ export const InputBase = ({
             'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
           isFocusWithin &&
             'tw:group-invalid:outline-2 tw:group-invalid:-outline-offset-2 tw:group-invalid:outline-error',
+
+          // Like a borderless Select: no surface at rest, but keyboard focus
+          // keeps its outline so the field never loses its focus indicator.
+          borderless && 'tw:bg-transparent tw:shadow-none',
+          borderless && !isFocusVisible && 'tw:outline-0',
 
           context?.wrapperClassName,
           wrapperClassName
@@ -186,14 +213,16 @@ export const InputBase = ({
       {/* Custom trailing slot (e.g. password reveal button) */}
       {trailingSlot}
 
-      {/* Tooltip and help icon */}
-      {tooltip && !isInvalid && (
+      {/* Help tooltip; kept when invalid too, so the help text stays reachable. */}
+      {tooltip && (
         <Tooltip
           placement="top"
           title={tooltip}
           triggerClassName={cx(
             'tw:absolute tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover',
-            sizes[inputSize].iconTrailing,
+            isInvalid
+              ? sizes[inputSize].tooltipBesideInvalid
+              : sizes[inputSize].iconTrailing,
             context?.tooltipClassName,
             tooltipClassName
           )}>
@@ -232,7 +261,7 @@ export const InputBase = ({
       )}
     </AriaGroup>
   );
-};
+});
 
 InputBase.displayName = 'InputBase';
 
@@ -281,74 +310,88 @@ export interface InputProps extends InputBaseProps, BaseProps {
   hideRequiredIndicator?: boolean;
 }
 
-export const Input = ({
-  size = 'sm',
-  fontSize = 'sm',
-  placeholder,
-  step,
-  icon: Icon,
-  label,
-  hint,
-  shortcut,
-  trailingSlot,
-  inputDataTestId,
-  hideRequiredIndicator,
-  className,
-  ref,
-  groupRef,
-  tooltip,
-  iconClassName,
-  inputClassName,
-  wrapperClassName,
-  tooltipClassName,
-  hintClassName,
-  ...props
-}: InputProps) => {
-  return (
-    <TextField
-      aria-label={label ? undefined : placeholder}
-      {...props}
-      className={className}>
-      {({ isRequired, isInvalid }) => (
-        <>
-          {label && (
-            <Label
-              isRequired={
-                hideRequiredIndicator ? !hideRequiredIndicator : isRequired
-              }>
-              {label}
-            </Label>
-          )}
+export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
+  function Input(
+    {
+      size = 'sm',
+      fontSize = 'sm',
+      'aria-valuemin': ariaValueMin,
+      'aria-valuemax': ariaValueMax,
+      placeholder,
+      step,
+      icon: Icon,
+      label,
+      hint,
+      shortcut,
+      trailingSlot,
+      inputDataTestId,
+      borderless,
+      hideRequiredIndicator,
+      className,
+      groupRef,
+      tooltip,
+      iconClassName,
+      inputClassName,
+      wrapperClassName,
+      tooltipClassName,
+      hintClassName,
+      ...props
+    },
+    ref
+  ) {
+    return (
+      <TextField
+        aria-label={label ? undefined : placeholder}
+        {...props}
+        className={className}>
+        {({ isRequired, isInvalid, isDisabled }) => (
+          <>
+            {label && (
+              <Label
+                isRequired={
+                  hideRequiredIndicator ? !hideRequiredIndicator : isRequired
+                }>
+                {label}
+              </Label>
+            )}
 
-          <InputBase
-            {...{
-              ref,
-              groupRef,
-              size,
-              fontSize,
-              placeholder,
-              step,
-              icon: Icon,
-              shortcut,
-              trailingSlot,
-              inputDataTestId,
-              iconClassName,
-              inputClassName,
-              wrapperClassName,
-              tooltipClassName,
-              tooltip,
-            }}
-          />
+            <InputBase
+              aria-valuemax={ariaValueMax}
+              aria-valuemin={ariaValueMin}
+              ref={ref}
+              {...{
+                // The group only restyles the outline; the input text, leading
+                // icon and trailing invalid marker read the field state here.
+                isDisabled,
+                isInvalid,
+                groupRef,
+                size,
+                fontSize,
+                placeholder,
+                step,
+                icon: Icon,
+                shortcut,
+                trailingSlot,
+                inputDataTestId,
+                borderless,
+                iconClassName,
+                inputClassName,
+                wrapperClassName,
+                tooltipClassName,
+                tooltip,
+              }}
+            />
 
-          {hint && (
-            <HintText className={hintClassName} isInvalid={isInvalid}>
-              {hint}
-            </HintText>
-          )}
-        </>
-      )}
-    </TextField>
-  );
-};
+            {hint && (
+              <HintText className={hintClassName} isInvalid={isInvalid}>
+                {hint}
+              </HintText>
+            )}
+          </>
+        )}
+      </TextField>
+    );
+  }
+);
 
 Input.displayName = 'Input';

@@ -15,44 +15,37 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import type { InboxDateRange } from './inbox.utils';
 
-let mockIsAdmin: boolean | undefined;
-
-jest.mock('hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: mockIsAdmin }),
-}));
+let mockActivityCount = { total: 5, isCapped: false };
 
 jest.mock('./useInboxCounts', () => ({
-  useInboxCounts: () => ({ activityCount: 5, taskCount: 2, isLoading: false }),
+  useInboxCounts: () => ({
+    activityCount: mockActivityCount,
+    taskCount: 2,
+    isLoading: false,
+  }),
 }));
 
-interface CapturedDateFilterProps {
+interface CapturedActivityTabProps {
   dateRange?: InboxDateRange;
-  onDateRangeChange: (range: InboxDateRange) => void;
+  isFiltered?: boolean;
+  onDatePresetChange: (key: string) => void;
 }
 
-let dateFilterProps: CapturedDateFilterProps;
+let mockActivityTabProps: CapturedActivityTabProps;
 
-jest.mock('./components/InboxDateFilter', () => ({
-  __esModule: true,
-  default: (props: CapturedDateFilterProps) => {
-    dateFilterProps = props;
-
-    return <div data-testid="inbox-date-filter" />;
-  },
-}));
-
+// The Activity toolbar owns the date filter; the shell holds the window.
 jest.mock('./tabs/ActivityTab', () => ({
   __esModule: true,
-  default: ({ scope }: { scope?: string }) => (
-    <div data-testid="activity">{`scope:${scope}`}</div>
-  ),
+  default: (props: CapturedActivityTabProps) => {
+    mockActivityTabProps = props;
+
+    return <div data-testid="activity" />;
+  },
 }));
 
 jest.mock('./tabs/TasksTab', () => ({
   __esModule: true,
-  default: ({ scope }: { scope?: string }) => (
-    <div data-testid="tasks">{`scope:${scope}`}</div>
-  ),
+  default: () => <div data-testid="tasks" />,
 }));
 
 // The shell is presentational; render its two slots so the tabs and the active
@@ -90,27 +83,28 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
   const TabsItem = ({
     id,
+    badge,
     children,
   }: {
     id: string;
-    children: (state: { isSelected: boolean }) => ReactNode;
+    badge?: string;
+    children: ReactNode;
   }) => (
     <button
+      data-selected={id === tabsSelectedKey}
       data-testid={`tab-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
-      {children({ isSelected: id === tabsSelectedKey })}
+      {children}
+      {badge !== undefined && (
+        <span data-testid="tab-count">{`:${badge}`}</span>
+      )}
     </button>
   );
 
   const Tabs = Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
 
   return {
-    Badge: ({ children, color }: { children?: ReactNode; color?: string }) => (
-      <span data-color={color} data-testid="tab-count">
-        {`:${children}`}
-      </span>
-    ),
     Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -120,7 +114,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('constants/profiler.constant', () => ({
-  PROFILER_FILTER_RANGE: { last30days: { days: 30 } },
+  PROFILER_FILTER_RANGE: {
+    last7days: { days: 7 },
+    last30days: { days: 30 },
+  },
 }));
 
 jest.mock('utils/date-time/DateTimeUtils', () => ({
@@ -147,8 +144,8 @@ import InboxContent from './InboxContent';
 describe('InboxContent', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockIsAdmin = true;
     mockPathname = '/inbox';
+    mockActivityCount = { total: 5, isCapped: false };
   });
 
   it('renders the Activity tab by default', () => {
@@ -188,20 +185,6 @@ describe('InboxContent', () => {
     expect(screen.getByTestId('activity')).toBeInTheDocument();
   });
 
-  it('widens the conversation scope to "all" for admins', () => {
-    mockIsAdmin = true;
-    render(<InboxContent />);
-
-    expect(screen.getByTestId('activity')).toHaveTextContent('scope:all');
-  });
-
-  it('scopes to "me" for non-admins', () => {
-    mockIsAdmin = false;
-    render(<InboxContent />);
-
-    expect(screen.getByTestId('activity')).toHaveTextContent('scope:me');
-  });
-
   it('shows the activity and task counts on the tab badges', () => {
     render(<InboxContent />);
 
@@ -211,31 +194,45 @@ describe('InboxContent', () => {
     expect(screen.getByTestId('tab-tasks')).toHaveTextContent('label.triage:2');
   });
 
-  // The selected tab's count is brand-tinted; the other stays gray.
-  it('tints the selected tab count', () => {
+  // The activity lists are capped, so a full page reads as a floor.
+  it('caps a full activity count at 99+', () => {
+    mockActivityCount = { total: 300, isCapped: true };
+    render(<InboxContent />);
+
+    expect(screen.getByTestId('tab-activity')).toHaveTextContent(
+      'label.activity:99+'
+    );
+  });
+
+  // The route picks the tab; the tab draws its own count.
+  it('selects the Triage tab on its route', () => {
     mockPathname = '/inbox/tasks';
     render(<InboxContent />);
 
-    const [activityCount, tasksCount] = screen.getAllByTestId('tab-count');
-
-    expect(activityCount).toHaveAttribute('data-color', 'gray');
-    expect(tasksCount).toHaveAttribute('data-color', 'brand');
+    expect(screen.getByTestId('tab-tasks')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getAllByTestId('tab-count')).toHaveLength(2);
   });
 
-  it('keeps the selected custom range (with its label) as the live filter range', () => {
+  it('starts on the default window, unfiltered', () => {
+    render(<InboxContent />);
+
+    expect(mockActivityTabProps.dateRange?.key).toBe('last30days');
+    expect(mockActivityTabProps.isFiltered).toBe(false);
+  });
+
+  it('narrows the window to the preset the toolbar picks', () => {
     render(<InboxContent />);
 
     act(() => {
-      dateFilterProps.onDateRangeChange({
-        startTs: 1,
-        endTs: 2,
-        key: 'customRange',
-        title: 'Custom Range',
-      });
+      mockActivityTabProps.onDatePresetChange('last7days');
     });
 
-    expect(dateFilterProps.dateRange).toEqual(
-      expect.objectContaining({ key: 'customRange', title: 'Custom Range' })
+    expect(mockActivityTabProps.dateRange).toEqual(
+      expect.objectContaining({ key: 'last7days' })
     );
+    expect(mockActivityTabProps.isFiltered).toBe(true);
   });
 });

@@ -23,9 +23,6 @@ from metadata.generated.schema.entity.data.table import (
     Table,
     TableData,
 )
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
-)
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     ProfileSampleType,
@@ -35,6 +32,7 @@ from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
+from metadata.utils.constants import SAMPLE_DATA_MAX_STORED_COUNT
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -46,7 +44,7 @@ class BaseProfileConfig(ConfigModel):
     profileSample: float | int | None = None  # noqa: N815
     profileSampleType: ProfileSampleType | None = None  # noqa: N815
     samplingMethodType: SamplingMethodType | None = None  # noqa: N815
-    sampleDataCount: int | None = 100  # noqa: N815
+    sampleDataCount: int | None = None  # noqa: N815
     randomizedSample: bool | None = True  # noqa: N815
     profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
 
@@ -82,14 +80,17 @@ class TableConfig(BaseProfileConfig):
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
 
-    sampleDataStorageConfig: SampleDataStorageConfig | None = None  # noqa: N815
-
 
 class SampleData(BaseModel):
     """TableData wrapper to handle ephemeral SampleData"""
 
     data: Annotated[TableData, Field(None, description="Table Sample Data")]
     store: Annotated[bool, Field(False, description="Is the sample data should be stored or not")]
+
+
+def limit_stored_rows(table_data: TableData) -> TableData:
+    """Classification can read more rows than are persisted; trim to the stored cap before persisting."""
+    return table_data.model_copy(update={"rows": (table_data.rows or [])[:SAMPLE_DATA_MAX_STORED_COUNT]})
 
 
 class SamplerResponse(ConfigModel):
