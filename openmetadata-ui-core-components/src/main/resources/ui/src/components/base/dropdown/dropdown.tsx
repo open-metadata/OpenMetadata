@@ -156,7 +156,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:py-1 tw:outline-hidden tw:select-none',
+          'tw:max-h-[min(24rem,40vh)] tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
