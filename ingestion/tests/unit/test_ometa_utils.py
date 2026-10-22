@@ -19,6 +19,7 @@ from unittest import TestCase
 
 import pytest
 
+from metadata.generated.schema.api.data.createPage import CreatePage
 from metadata.generated.schema.entity.ai.aiApplication import AIApplication
 from metadata.generated.schema.entity.ai.llmModel import LLMModel
 from metadata.generated.schema.entity.ai.mcpServer import McpServer
@@ -60,6 +61,7 @@ from metadata.ingestion.models.topology import (
     get_entity_hierarchy,
     get_entity_hierarchy_depth,
 )
+from metadata.ingestion.ometa.routes import ROUTES
 from metadata.ingestion.ometa.utils import (
     build_entity_reference,
     decode_jwt_token,
@@ -126,6 +128,10 @@ class OMetaUtilsTest(TestCase):
     def test_entity_reference_class_map_page(self):
         self.assertIs(ENTITY_REFERENCE_CLASS_MAP["page"], Page)
         self.assertEqual(get_entity_type(Page), "page")
+
+    def test_routes_page(self):
+        self.assertEqual(ROUTES[Page.__name__], "/contextCenter/pages")
+        self.assertEqual(ROUTES[CreatePage.__name__], "/contextCenter/pages")
 
     def test_get_entity_type_camel_case_consistency(self):
         """
