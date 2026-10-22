@@ -280,7 +280,9 @@ public class IndependentOntologyClassModelIT extends BaseOntologyApprovalIT {
 
   private static void assertRefused(int status, String message, Executable call) {
     final var failure = assertThrows(OpenMetadataException.class, call);
-    assertEquals(status, failure.getStatusCode());
+    final var cause =
+        failure.getCause() instanceof OpenMetadataException wrapped ? wrapped : failure;
+    assertEquals(status, cause.getStatusCode());
     assertTrue(failure.getMessage().contains(message), failure.getMessage());
   }
 
