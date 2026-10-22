@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,TokenRevocationRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
@@ -459,6 +459,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -517,6 +518,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -607,6 +609,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -665,6 +668,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -756,6 +760,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -815,6 +820,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -906,6 +912,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -964,6 +971,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1054,6 +1062,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1112,6 +1121,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1201,6 +1211,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1260,6 +1271,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1366,6 +1378,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1426,6 +1439,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1522,6 +1536,7 @@
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/DataContractValidationAppIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/Sso*IT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1581,6 +1596,7 @@
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/Sso*IT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>

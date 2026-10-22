@@ -23,7 +23,6 @@ import {
   Dialog,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   FeaturedIcon,
   Input,
   Modal,
@@ -72,6 +71,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import DomainTags from '../../../components/common/DomainTags/DomainTags';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   CSV_JOBS_REFRESH_EVENT,
@@ -636,7 +637,11 @@ const MetricListPage = () => {
     tags.length ? (
       <Box align="center" gap={1} wrap={wrap}>
         {tags.slice(0, MAX_VISIBLE_BADGES).map((tag) => (
-          <Badge color="blue" key={tag.tagFQN} size="sm">
+          <Badge
+            color="blue"
+            key={tag.tagFQN}
+            size="sm"
+            tooltip={tag.name ?? tag.tagFQN}>
             {tag.name ?? tag.tagFQN}
           </Badge>
         ))}
@@ -1096,16 +1101,15 @@ const MetricListPage = () => {
     const isUnfiltered = !searchText && !statusFilter;
 
     return (
-      // Anchors the absolute EmptyPlaceholder and gives it room to lay out.
+      // Anchors the absolutely positioned placeholder and gives it room to lay out.
       <Box
         className="tw:relative tw:flex-1 tw:min-h-110 tw:p-4"
         justify="center">
-        {searchText ? (
-          <NoSearchResultsPlaceholder />
-        ) : (
-          <EmptyPlaceholder
+        {searchText && <NoSearchResultsPlaceholder />}
+        {!searchText && isUnfiltered && (
+          <FeaturesPlaceholder
             actions={
-              isUnfiltered && permission.Create
+              permission.Create
                 ? [
                     {
                       key: 'new-metric',
@@ -1117,47 +1121,34 @@ const MetricListPage = () => {
                   ]
                 : undefined
             }
-            description={
-              isUnfiltered
-                ? t('message.metric-empty-state-description')
-                : t('message.no-results-for-filters-description')
-            }
-            features={
-              isUnfiltered
-                ? [
-                    {
-                      key: 'define',
-                      icon: (
-                        <FileCheck03 className="tw:text-fg-brand-primary" />
-                      ),
-                      title: t('label.define-it'),
-                      description: t('message.metric-define-it-description'),
-                    },
-                    {
-                      key: 'action',
-                      icon: (
-                        <CursorClick01 className="tw:text-fg-warning-primary" />
-                      ),
-                      title: t('label.define-the-action'),
-                      description: t(
-                        'message.metric-define-action-description'
-                      ),
-                    },
-                    {
-                      key: 'owner',
-                      icon: <User01 className="tw:text-fg-success-primary" />,
-                      title: t('label.assign-an-owner'),
-                      description: t('message.metric-assign-owner-description'),
-                    },
-                  ]
-                : undefined
-            }
-            title={
-              isUnfiltered
-                ? t('message.metric-empty-state-title')
-                : t('label.no-data')
-            }
-            variant={isUnfiltered ? 'features' : 'blank'}
+            description={t('message.metric-empty-state-description')}
+            features={[
+              {
+                key: 'define',
+                icon: <FileCheck03 className="tw:text-fg-brand-primary" />,
+                title: t('label.define-it'),
+                description: t('message.metric-define-it-description'),
+              },
+              {
+                key: 'action',
+                icon: <CursorClick01 className="tw:text-fg-warning-primary" />,
+                title: t('label.define-the-action'),
+                description: t('message.metric-define-action-description'),
+              },
+              {
+                key: 'owner',
+                icon: <User01 className="tw:text-fg-success-primary" />,
+                title: t('label.assign-an-owner'),
+                description: t('message.metric-assign-owner-description'),
+              },
+            ]}
+            title={t('message.metric-empty-state-title')}
+          />
+        )}
+        {!searchText && !isUnfiltered && (
+          <NoFilteredResultsPlaceholder
+            description={t('message.no-results-for-filters-description')}
+            title={t('label.no-data')}
           />
         )}
       </Box>

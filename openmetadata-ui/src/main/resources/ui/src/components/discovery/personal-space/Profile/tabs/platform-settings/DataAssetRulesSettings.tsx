@@ -13,7 +13,6 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Table,
   TableCard,
   Toggle,
@@ -23,6 +22,7 @@ import { FileCheck02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SemanticsRule } from '../../../../../../generated/settings/settings';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerNew from '../../../../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { useSemanticsRulesState } from '../../../../../DataAssetRules/DataAssetRules.component';
 import { SettingsSkeleton } from './SettingsFormLayout';
@@ -82,9 +82,9 @@ const DataAssetRulesSettings = () => {
     return (
       // The placeholder centres itself in its nearest positioned ancestor.
       <div className="tw:relative tw:min-h-90">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="data-asset-rules-empty"
-          icon={<FileCheck02 className="tw:text-quaternary" />}
+          icon={<FileCheck02 />}
           title={t('label.no-entity', { entity: t('label.data-asset-rules') })}
         />
       </div>

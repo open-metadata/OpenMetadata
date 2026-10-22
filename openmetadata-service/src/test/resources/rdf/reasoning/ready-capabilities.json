@@ -2,6 +2,13 @@
   "protocolVersion": "1",
   "readiness": "READY",
   "reasons": [],
+  "operations": [
+    { "operation": "REFRESH", "availability": "AVAILABLE" },
+    { "operation": "CHECK", "availability": "AVAILABLE" },
+    { "operation": "EXPLAIN", "availability": "AVAILABLE" },
+    { "operation": "RESULTS", "availability": "AVAILABLE" },
+    { "operation": "QUERY", "availability": "AVAILABLE" }
+  ],
   "engines": [
     { "name": "HermiT", "version": "1.4.6.519-om.1", "profile": "OWL 2 DL" },
     { "name": "ELK", "version": "0.6.0", "profile": "OWL 2 EL" },

@@ -40,8 +40,8 @@ import { getVersionPath } from '../../../utils/RouterUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -309,7 +309,9 @@ const MlModelVersion: FC<MlModelVersionProp> = ({
                       ))}
                     </Box>
                   ) : (
-                    <ErrorPlaceHolder />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoDataPlaceholder data-testid="no-data-placeholder" />
+                    </div>
                   )}
                 </div>
               </Box>

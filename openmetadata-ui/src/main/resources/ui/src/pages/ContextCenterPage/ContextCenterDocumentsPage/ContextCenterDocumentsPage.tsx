@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  PageLayout,
-} from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import { Stars01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -37,6 +33,7 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import '../../../components/common/ResizablePanels/resizable-panels.less';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
@@ -156,7 +153,7 @@ const ContextCenterDocumentsEmptyState: FC<
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           hasCreatePermission
             ? [
@@ -197,7 +194,6 @@ const ContextCenterDocumentsEmptyState: FC<
           },
         ]}
         title={t('label.your-files-ready-for-ai-retrieval')}
-        variant="features"
       />
     </div>
   );
