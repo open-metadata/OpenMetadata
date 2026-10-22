@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -33,6 +34,7 @@ import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -265,6 +267,11 @@ public class GetEntityTool implements McpTool {
     // a second time for that would be the same fetch twice in one request.
     EntityInterface<?> entity =
         CommonUtils.readEntityForCaller(entityType, fqn, "*", null, securityContext);
+    if (entity instanceof User user) {
+      // The email is hidden from callers without PII access, as UserResource does. The user is
+      // the copy maskSecrets made, so this does not touch the repository's entity.
+      PIIMasker.maskUser(authorizer, securityContext, user);
+    }
     Map<String, Object> entityData = JsonUtils.getMap(entity);
 
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
