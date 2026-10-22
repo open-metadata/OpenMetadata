@@ -141,8 +141,9 @@ Use the prefilled variants from `src/components/common/EmptyPlaceholder/`, not t
 `EmptyPlaceholder`: `NoDataPlaceholder`, `CreatePlaceholder` (falls back to
 `PermissionPlaceholder` when `permission={false}`), `PermissionPlaceholder`,
 `NoSearchResultsPlaceholder`, `NoFilteredResultsPlaceholder` (`onClearFilters`),
-`SomethingWentWrongPlaceholder` (`onReload`), `FeaturesPlaceholder`. The placeholder is absolutely
-positioned, so give the host `tw:relative` and a height. Keep the default icon, and pass plain copy
+`SomethingWentWrongPlaceholder` (`onReload`) carry a default icon and copy. `FeaturesPlaceholder`
+(onboarding) has no defaults: pass `title`, `description` and `features`. The placeholder is
+absolutely positioned, so give the host `tw:relative` and a height. Keep the default icon, and pass plain copy
 (a `Transi18next` link is fine) — a `Tooltip` around `title`/`description` pins it to `w-max` and
 the text overflows instead of wrapping.
 
