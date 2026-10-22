@@ -132,7 +132,9 @@ function useClipboardHandlers(
       }
       // Tab-separated, like spreadsheets, so it parses back the same way.
       const text = cells.map((rowValues) => rowValues.join('\t')).join('\n');
-      copiedCells.current = { text, cells };
+      // Stored with the line endings paste normalises, so a cell holding a
+      // CRLF still matches and pastes back cell for cell.
+      copiedCells.current = { text: text.replaceAll('\r\n', '\n'), cells };
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text);
 
