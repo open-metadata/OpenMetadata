@@ -1185,7 +1185,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+      {pagingData && showPagination && pagingData.paging.total > 0 && (
+        <NextPrevious {...pagingData} />
+      )}
       {renderTestCaseModals()}
     </div>
   );
