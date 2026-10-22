@@ -31,8 +31,8 @@ public class MigrationFile implements Comparable<MigrationFile> {
   public final String dbPackageName;
 
   protected final MigrationDAO migrationDAO;
-  protected final List<String> schemaChanges;
-  protected final List<String> postDDLScripts;
+  protected final List<SqlUnit> schemaChanges;
+  protected final List<SqlUnit> postDDLScripts;
   private boolean reprocessing;
   public static final String DEFAULT_MIGRATION_PROCESS_CLASS =
       "org.openmetadata.service.migration.api.MigrationProcessImpl";
@@ -80,9 +80,9 @@ public class MigrationFile implements Comparable<MigrationFile> {
 
     if (new File(getSchemaChangesFile()).isFile()) {
       try {
-        for (String sqlStatement : parseSQLFile(new File(getSchemaChangesFile()), connectionType)) {
-          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
-            schemaChanges.add(sqlStatement);
+        for (SqlUnit unit : parseSqlUnits(new File(getSchemaChangesFile()), connectionType)) {
+          if (!isApplied(unit)) {
+            schemaChanges.add(unit);
           }
         }
       } catch (Exception e) {
@@ -92,9 +92,9 @@ public class MigrationFile implements Comparable<MigrationFile> {
     }
     if (new File(getPostDDLScriptFile()).isFile()) {
       try {
-        for (String sqlStatement : parseSQLFile(new File(getPostDDLScriptFile()), connectionType)) {
-          if (!checkIfQueryPreviouslyRan(sqlStatement)) {
-            postDDLScripts.add(sqlStatement);
+        for (SqlUnit unit : parseSqlUnits(new File(getPostDDLScriptFile()), connectionType)) {
+          if (!isApplied(unit)) {
+            postDDLScripts.add(unit);
           }
         }
       } catch (Exception e) {
@@ -102,6 +102,14 @@ public class MigrationFile implements Comparable<MigrationFile> {
             "Failed to parse post DDL script file: " + getPostDDLScriptFile(), e);
       }
     }
+  }
+
+  /** The file's statements as the units the runner executes: MySQL guarded blocks are grouped. */
+  public static List<SqlUnit> parseSqlUnits(File sqlFile, ConnectionType connectionType) {
+    List<String> statements = parseSQLFile(sqlFile, connectionType);
+    return connectionType == ConnectionType.MYSQL
+        ? GuardedBlockGrouper.group(statements, sqlFile.getPath())
+        : statements.stream().map(SqlUnit::of).toList();
   }
 
   public static List<String> parseSQLFile(File sqlFile, ConnectionType connectionType) {
@@ -172,11 +180,11 @@ public class MigrationFile implements Comparable<MigrationFile> {
     }
   }
 
-  public List<String> getSchemaChanges() {
+  public List<SqlUnit> getSchemaChanges() {
     return schemaChanges;
   }
 
-  public List<String> getPostDDLScripts() {
+  public List<SqlUnit> getPostDDLScripts() {
     return postDDLScripts;
   }
 
@@ -227,15 +235,31 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return !schemaChanges.isEmpty() || !postDDLScripts.isEmpty();
   }
 
-  private boolean checkIfQueryPreviouslyRan(String query) {
-    String executedInVersion = null;
+  /**
+   * A unit is applied once its own checksum is recorded. Runners before units recorded a guarded
+   * block's statements one by one, so a block of a version they completed, which is only seen again
+   * when the version is reprocessed, also counts as applied when every statement is recorded. A
+   * block interrupted part way has a statement missing and runs again as a whole.
+   */
+  protected boolean isApplied(SqlUnit unit) {
+    String executedInVersion = executedInVersion(unit.checksum());
+    warnIfExecutedByAnotherVersion(executedInVersion, unit.text());
+    return executedInVersion != null
+        || (reprocessing && unit.isBlock() && isRecordedOneByOne(unit));
+  }
+
+  private boolean isRecordedOneByOne(SqlUnit unit) {
+    return unit.statements().stream()
+        .allMatch(statement -> executedInVersion(EntityUtil.hash(statement)) != null);
+  }
+
+  private String executedInVersion(String checksum) {
     try {
-      executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(EntityUtil.hash(query));
+      return migrationDAO.checkIfQueryPreviouslyRan(checksum);
     } catch (Exception e) {
       // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+      return null;
     }
-    warnIfExecutedByAnotherVersion(executedInVersion, query);
-    return executedInVersion != null;
   }
 
   // A reprocessed version is parsed on every start; its skips were reported when it was applied.

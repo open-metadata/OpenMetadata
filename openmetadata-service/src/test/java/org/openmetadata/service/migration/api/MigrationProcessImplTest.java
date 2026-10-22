@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,14 +23,23 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.mockito.InOrder;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.SqlUnit;
 
 class MigrationProcessImplTest {
+  private static final String SET_DDL =
+      "SET @c_ddl = (SELECT IF(1 = 0, 'SELECT 1', 'ALTER TABLE t ADD COLUMN c INT'))";
+  private static final String PREPARE = "PREPARE c_stmt FROM @c_ddl";
+  private static final String EXECUTE = "EXECUTE c_stmt";
+  private static final String DEALLOCATE = "DEALLOCATE PREPARE c_stmt";
+  private static final String BLOCK_FILE =
+      String.join(";\n", SET_DDL, PREPARE, EXECUTE, DEALLOCATE) + ";";
 
   @TempDir Path tempDir;
 
@@ -94,7 +105,7 @@ class MigrationProcessImplTest {
 
     Map<String, QueryStatus> statuses =
         MigrationProcessImpl.performSqlExecutionAndUpdate(
-            handle, migrationDAO, List.of(sql), "2.1.0", false);
+            handle, migrationDAO, List.of(SqlUnit.of(sql)), "2.1.0", false);
 
     assertEquals(QueryStatus.Status.SKIPPED, statuses.get(sql).getStatus());
     verify(handle, never()).execute(sql);
@@ -108,7 +119,7 @@ class MigrationProcessImplTest {
 
     Map<String, QueryStatus> statuses =
         MigrationProcessImpl.performSqlExecutionAndUpdate(
-            handle, migrationDAO, List.of(sql), "2.1.0", false);
+            handle, migrationDAO, List.of(SqlUnit.of(sql)), "2.1.0", false);
 
     assertEquals(QueryStatus.Status.SUCCESS, statuses.get(sql).getStatus());
     verify(handle).execute(sql);
@@ -122,6 +133,86 @@ class MigrationProcessImplTest {
     file.parseSQLFiles();
 
     assertFalse(file.hasNewStatements());
+  }
+
+  @Test
+  void runsAGuardedBlockOnOneHandleAndRecordsItOnce() {
+    Handle handle = mock(Handle.class);
+    SqlUnit block = new SqlUnit(List.of(SET_DDL, PREPARE, EXECUTE, DEALLOCATE));
+
+    MigrationProcessImpl.performSqlExecutionAndUpdate(
+        handle, migrationDAO, List.of(block), "2.1.0", false);
+
+    InOrder order = inOrder(handle);
+    order.verify(handle).execute(SET_DDL);
+    order.verify(handle).execute(PREPARE);
+    order.verify(handle).execute(EXECUTE);
+    order.verify(handle).execute(DEALLOCATE);
+    verify(migrationDAO).upsertServerMigrationSQL("2.1.0", block.text(), block.checksum());
+  }
+
+  @Test
+  void recordsNothingWhenAStatementOfABlockFails() {
+    Handle handle = mock(Handle.class);
+    when(handle.execute(EXECUTE)).thenThrow(new IllegalStateException("killed"));
+    SqlUnit block = new SqlUnit(List.of(SET_DDL, PREPARE, EXECUTE, DEALLOCATE));
+
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            MigrationProcessImpl.performSqlExecutionAndUpdate(
+                handle, migrationDAO, List.of(block), "2.1.0", false));
+
+    verify(handle, never()).execute(DEALLOCATE);
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void rerunsTheWholeBlockWhenOnlyItsSetAndPrepareWereRecorded() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(hash(SET_DDL))).thenReturn("2.1.0");
+    when(migrationDAO.checkIfQueryPreviouslyRan(hash(PREPARE))).thenReturn("2.1.0");
+    MigrationFile file = createMigrationDir("2.1.0", BLOCK_FILE, "");
+
+    file.parseSQLFiles();
+
+    assertEquals(1, file.getSchemaChanges().size());
+    assertEquals(4, file.getSchemaChanges().get(0).statements().size());
+  }
+
+  @Test
+  void aBlockRecordedStatementByStatementIsAppliedOnlyWhenReprocessed() throws IOException {
+    for (String statement : List.of(SET_DDL, PREPARE, EXECUTE, DEALLOCATE)) {
+      when(migrationDAO.checkIfQueryPreviouslyRan(hash(statement))).thenReturn("2.1.0");
+    }
+    MigrationFile reprocessed = createMigrationDir("2.1.0", BLOCK_FILE, "");
+    reprocessed.setReprocessing(true);
+    MigrationFile pending = createMigrationDir("2.1.0-pending", BLOCK_FILE, "");
+
+    reprocessed.parseSQLFiles();
+    pending.parseSQLFiles();
+
+    assertFalse(reprocessed.hasNewStatements());
+    assertTrue(pending.hasNewStatements());
+  }
+
+  @Test
+  void aBlockRecordedAsAUnitIsApplied() throws IOException {
+    SqlUnit block = new SqlUnit(List.of(SET_DDL, PREPARE, EXECUTE, DEALLOCATE));
+    when(migrationDAO.checkIfQueryPreviouslyRan(block.checksum())).thenReturn("2.1.0");
+    MigrationFile file = createMigrationDir("2.1.0", BLOCK_FILE, "");
+
+    file.parseSQLFiles();
+
+    assertFalse(file.hasNewStatements());
+  }
+
+  @Test
+  void cutsTheRecordedTextToTheColumnLength() {
+    assertEquals(10000, MigrationProcessImpl.truncateToLoggedLength("x".repeat(10001)).length());
+    assertEquals(
+        9999,
+        MigrationProcessImpl.truncateToLoggedLength("x".repeat(9999) + "\uD83D\uDE00").length());
+    assertEquals("short", MigrationProcessImpl.truncateToLoggedLength("short"));
   }
 
   @Test
