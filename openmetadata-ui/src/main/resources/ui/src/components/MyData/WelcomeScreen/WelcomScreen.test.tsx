@@ -60,8 +60,8 @@ describe('WelcomeScreen', () => {
     expect(
       root.style.getPropertyValue('--tw-background-color-brand-solid')
     ).toBe('var(--tw-color-purple-600)');
-    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe(
-      'var(--tw-color-purple-500)'
+    expect(root.style.getPropertyValue('--tw-color-brand-600')).toBe(
+      'var(--tw-color-purple-600)'
     );
   });
 

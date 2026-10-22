@@ -13,6 +13,8 @@
 import {
   getWelcomeAccentStyle,
   isThemeDefaultPrimary,
+  WELCOME_GLOW_DARK,
+  WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
 
 describe('getWelcomeAccentStyle', () => {
@@ -22,7 +24,7 @@ describe('getWelcomeAccentStyle', () => {
 
   it('should point the glow and button variables at the accent family', () => {
     expect(getWelcomeAccentStyle('purple')).toEqual({
-      '--tw-color-brand-500': 'var(--tw-color-purple-500)',
+      '--tw-color-brand-600': 'var(--tw-color-purple-600)',
       '--tw-background-color-brand-solid': 'var(--tw-color-purple-600)',
       '--tw-background-color-brand-solid_hover': 'var(--tw-color-purple-700)',
     });
@@ -38,4 +40,16 @@ describe('isThemeDefaultPrimary', () => {
   ])('should treat %s as default: %s', (color, expected) => {
     expect(isThemeDefaultPrimary(color)).toBe(expected);
   });
+});
+
+describe('welcome glow', () => {
+  // A custom theme overrides brand-600 (not brand-500), so the glow must read
+  // brand-600 to follow an admin-configured primary colour.
+  it.each([WELCOME_GLOW_LIGHT, WELCOME_GLOW_DARK])(
+    'should follow the themed primary colour',
+    (glow) => {
+      expect(glow).toContain('var(--tw-color-brand-600)');
+      expect(glow).not.toContain('brand-500');
+    }
+  );
 });

@@ -18,7 +18,9 @@ import { CSSProperties } from 'react';
 import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
 
 const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
-const BRAND = 'var(--tw-color-brand-500)';
+// brand-600 is the primary colour a custom theme overrides (applyBrandCssVars);
+// brand-500 is not, so a glow on it would stay the default blue.
+const BRAND = 'var(--tw-color-brand-600)';
 
 const brandMix = (percent: number) =>
   `color-mix(in srgb, ${BRAND} ${percent}%, transparent)`;
@@ -49,7 +51,7 @@ export const getWelcomeAccentStyle = (
 ): CSSProperties | undefined =>
   accent
     ? ({
-        '--tw-color-brand-500': `var(--tw-color-${accent}-500)`,
+        '--tw-color-brand-600': `var(--tw-color-${accent}-600)`,
         '--tw-background-color-brand-solid': `var(--tw-color-${accent}-600)`,
         '--tw-background-color-brand-solid_hover': `var(--tw-color-${accent}-700)`,
       } as CSSProperties)
