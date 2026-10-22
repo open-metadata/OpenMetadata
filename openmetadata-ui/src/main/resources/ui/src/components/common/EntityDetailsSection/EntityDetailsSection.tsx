@@ -13,7 +13,6 @@
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
 import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../Loader/Loader';
@@ -75,7 +74,6 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
           description={t('message.no-schema-message')}
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
         />
       </div>
     </div>
