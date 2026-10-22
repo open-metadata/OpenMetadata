@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-21T03:24:30Z",
+  "generatedAt": "2026-10-22T03:22:50Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38106742725",
-      "sourceSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "recordedAt": "2026-10-11T03:28:34Z"
-    },
     {
       "runId": "38198274479",
       "sourceSha": "d316054fe4808dce3e3d5c90bee2a821e5e8f39e",
@@ -53,6 +48,11 @@
       "runId": "39534846171",
       "sourceSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "recordedAt": "2026-10-21T03:24:30Z"
+    },
+    {
+      "runId": "39713219915",
+      "sourceSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
+      "recordedAt": "2026-10-22T03:22:50Z"
     }
   ],
   "entries": {
@@ -74,6 +74,16 @@
       "file": "Features/DescriptionSuggestion.spec.ts",
       "title": "Description Task Workflows \u203a should add and accept a requested table description",
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "hardFailure": false
+    },
+    "Basic :: Features/LandingPageWidgets/LandingPageContextCenter.spec.ts :: Landing page Context Center \u203a says how many pages changed this week": {
+      "observations": [
+        "39713219915"
+      ],
+      "project": "Basic",
+      "file": "Features/LandingPageWidgets/LandingPageContextCenter.spec.ts",
+      "title": "Landing page Context Center \u203a says how many pages changed this week",
+      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "hardFailure": false
     },
     "Basic :: Features/LandingPageWidgets/LandingPageDataEstate.spec.ts :: Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen": {
@@ -127,14 +137,14 @@
       "lastSeenSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
       "hardFailure": false
     },
-    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved": {
+    "chromium :: Features/ClassificationTagUsage.spec.ts :: Classification tag usage counts \u203a opens the tagged assets from the usage count": {
       "observations": [
-        "38106742725"
+        "39713219915"
       ],
       "project": "chromium",
-      "file": "Features/AIMode/PersonaSettings.spec.ts",
-      "title": "Persona settings \u2014 customize saves \u203a Data Assets \u2192 Table: a new tab is saved",
-      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
+      "file": "Features/ClassificationTagUsage.spec.ts",
+      "title": "Classification tag usage counts \u203a opens the tagged assets from the usage count",
+      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "hardFailure": false
     },
     "chromium :: Features/CuratedAssets.spec.ts :: Curated Assets Widget \u203a Test Stored Procedures with display name filter": {
@@ -149,12 +159,13 @@
     },
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
       "observations": [
-        "39091104477"
+        "39091104477",
+        "39713219915"
       ],
       "project": "chromium",
       "file": "Features/DataQuality/TestLibrary.spec.ts",
       "title": "Test Library \u203a should display test platform badges correctly",
-      "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
+      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeStudio.spec.ts :: Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell": {
@@ -217,16 +228,6 @@
       "lastSeenSha": "38286a8af62e39573727bf879248f413ddca1b10",
       "hardFailure": true
     },
-    "chromium :: Pages/AppStopRunModal.spec.ts :: App Stop Run Modal \u203a should open stop modal when stop button is clicked and call stop API with runId": {
-      "observations": [
-        "38106742725"
-      ],
-      "project": "chromium",
-      "file": "Pages/AppStopRunModal.spec.ts",
-      "title": "App Stop Run Modal \u203a should open stop modal when stop button is clicked and call stop API with runId",
-      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "hardFailure": false
-    },
     "chromium :: Pages/DataContracts.spec.ts :: Data Contracts \u203a Create Data Contract and validate for Database Schema": {
       "observations": [
         "38996045093"
@@ -239,7 +240,6 @@
     },
     "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set": {
       "observations": [
-        "38106742725",
         "38339539850"
       ],
       "project": "chromium",
@@ -519,16 +519,6 @@
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "hardFailure": false
     },
-    "chromium :: Pages/ServiceEntity.spec.ts :: Delete Storage Service": {
-      "observations": [
-        "38106742725"
-      ],
-      "project": "chromium",
-      "file": "Pages/ServiceEntity.spec.ts",
-      "title": "Delete Storage Service",
-      "lastSeenSha": "12f9e16ed2693af671179c81ce847438d44d3ceb",
-      "hardFailure": false
-    },
     "chromium :: Pages/ServiceEntity.spec.ts :: Drive Service \u203a Inactive Announcement create & delete": {
       "observations": [
         "38842001693",
@@ -608,7 +598,7 @@
   },
   "stableIds": [
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service",
-    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set",
+    "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly",
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete",
     "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete",
     "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete",
@@ -638,7 +628,6 @@
     "chromium :: Pages/ServiceEntity.spec.ts :: Storage Service \u203a Inactive Announcement create & delete"
   ],
   "hardFailureStableIds": [
-    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set",
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete",
     "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete",
     "chromium :: Pages/Entity.spec.ts :: Container \u203a Inactive Announcement create & delete",
