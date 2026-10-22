@@ -23,6 +23,10 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
 import { DomainUpdatePayload } from '../../../../generated/type/domainUpdatePayload';
+import {
+  GlossaryApprovalPayload,
+  ProviderType,
+} from '../../../../generated/type/glossaryApprovalPayload';
 import { OwnershipUpdatePayload } from '../../../../generated/type/ownershipUpdatePayload';
 import { SuggestionPayload } from '../../../../generated/type/suggestionPayload';
 import { TagLabel } from '../../../../generated/type/tagLabel';
@@ -323,6 +327,34 @@ const TAG_SOURCE_OVERRIDES: Record<string, string> = {
   Agent: 'label.auto-classifier',
 };
 
+/**
+ * The AI agent that proposed what the task decides, when an automation did: its name, or a
+ * generic one when it recorded none. A person reads it instead of the bot the agent writes as.
+ */
+export const getProposingAgent = (task: Task, t: Translate) => {
+  const { proposal } = getPayload<GlossaryApprovalPayload>(task);
+
+  return proposal?.provider === ProviderType.Automation
+    ? proposal.agent ?? t('label.ai-agent')
+    : undefined;
+};
+
+const createdByRow = (task: Task, t: Translate): TaskDetailRow[] => {
+  const agent = getProposingAgent(task, t);
+  const creators = task.createdBy ? [task.createdBy] : [];
+
+  return agent
+    ? [
+        {
+          key: 'createdBy',
+          icon: 'owner',
+          label: t('label.created-by'),
+          value: { kind: 'agent', name: agent },
+        },
+      ]
+    : usersRow('createdBy', 'owner', t('label.created-by'), creators);
+};
+
 /** Assignee / requester / opened-on, which every task type shows. */
 const getCommonRows = (
   task: Task,
@@ -336,12 +368,7 @@ const getCommonRows = (
     task.assignees,
     t('label.assignee-plural')
   ),
-  ...usersRow(
-    'createdBy',
-    'owner',
-    t('label.created-by'),
-    task.createdBy ? [task.createdBy] : []
-  ),
+  ...createdByRow(task, t),
   ...dateRow('createdAt', t(dateLabelKey), task.createdAt),
 ];
 

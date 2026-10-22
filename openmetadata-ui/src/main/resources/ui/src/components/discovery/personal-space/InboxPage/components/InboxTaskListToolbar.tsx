@@ -112,7 +112,8 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
       data-testid="inbox-tasks-toolbar"
       direction="col">
-      <Box align="center" className="tw:justify-between tw:gap-2">
+      {/* Each row wraps rather than spill into the detail pane when the list column is narrow. */}
+      <Box align="center" className="tw:justify-between tw:gap-2" wrap="wrap">
         {statusTabs}
         {/* A grouping always has a value, so it is a menu, not a filter whose
             "active" tint would never go away. */}
@@ -131,9 +132,9 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
           onChange={(value) => onGroupingChange(value as InboxTaskGrouping)}
         />
       </Box>
-      <Box align="center" className="tw:gap-2">
+      <Box align="center" className="tw:gap-2" wrap="wrap">
         <Input
-          className="tw:min-w-0 tw:flex-1"
+          className="tw:min-w-40 tw:flex-1"
           icon={SearchInputIcon}
           inputDataTestId="inbox-tasks-search"
           placeholder={t('label.search-this-queue')}

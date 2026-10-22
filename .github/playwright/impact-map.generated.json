@@ -11362,7 +11362,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalStatusBadge.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryWorkflow.spec.ts"
       ]

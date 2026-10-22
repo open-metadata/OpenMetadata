@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentProps, ComponentType, ReactNode } from 'react';
 import APIClient from '../../../../../rest/axiosClient';
 import {
@@ -549,6 +549,29 @@ describe('TaskDetailPanel', () => {
     await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
     expect(screen.getByText('message.task-outcome-by-on')).toBeInTheDocument();
+  });
+
+  // An AI agent's proposal reads as opened by the agent, not by the bot it writes as.
+  it('names the AI agent that opened a proposal in the byline', async () => {
+    mockGetTaskById.mockResolvedValue({
+      data: {
+        ...TASK,
+        type: 'RequestApproval',
+        createdBy: { id: 'bot', name: 'aiautomationapplicationbot' },
+        payload: {
+          proposal: { provider: 'automation', agent: 'Glossary Agent' },
+        },
+      },
+    });
+
+    await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+    const byline = screen.getByTestId('task-byline');
+
+    expect(within(byline).getByTestId('agent-badge')).toHaveTextContent(
+      'Glossary Agent'
+    );
+    expect(byline).toHaveTextContent('message.task-opened-by');
   });
 
   it('falls back to the description when the name is only the taskId', async () => {

@@ -18,10 +18,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  AskCollateSparkle,
-  Check,
-} from '@openmetadata/ui-core-components/icons';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useState } from 'react';
@@ -41,6 +38,7 @@ import {
   getProposalAuthor,
 } from '../../../../utils/GlossaryReview/GlossaryReview.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import AgentBadge from '../../../common/AgentBadge/AgentBadge';
 
 /** Heads a proposed term's own page, which already shows its name and definition. */
 export interface ProposalCardProps {
@@ -56,10 +54,9 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   return (
     <Box align="center" gap={2} wrap="wrap">
       {proposal.source === 'ai' ? (
-        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700">
-          <AskCollateSparkle aria-hidden className="tw:size-3" />
-          {proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
-        </span>
+        <AgentBadge
+          name={proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
+        />
       ) : (
         <Box align="center" gap={2}>
           <Avatar
