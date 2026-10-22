@@ -386,6 +386,10 @@ class BaseTestValidator(ABC):
         sentences = []
         if failed_groups and test_result.testCaseStatus is TestCaseStatus.Success:
             test_result.testCaseStatus = TestCaseStatus.Failed
+            if test_result.result:
+                test_result.result = test_result.result.replace(
+                    result_messages.verdict(True), "so the aggregate passed", 1
+                )
             sentences.append(result_messages.dimension_rollup_sentence(failed_groups))
         if excluded_failed_groups:
             sentences.append(
@@ -893,6 +897,7 @@ class BaseTestValidator(ABC):
         effective_bounds: tuple[float | None, float | None],
         matched: bool,
         dimension_info: DimensionInfo | None = None,
+        noun: str = "metric units",
     ) -> str:
         """Message for a deviation test against bounds: statistic, bounds, widening, verdict
 
@@ -902,6 +907,7 @@ class BaseTestValidator(ABC):
             effective_bounds: the bounds the value was evaluated against, threshold included
             matched: the verdict
             dimension_info: dimension details, for a dimensional row
+            noun: units of an absolute deviation
 
         Returns:
             str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
@@ -914,6 +920,7 @@ class BaseTestValidator(ABC):
             effective_bounds,
             self.get_failure_threshold(),
             matched,
+            noun,
         )
 
     def format_expected_value_message(

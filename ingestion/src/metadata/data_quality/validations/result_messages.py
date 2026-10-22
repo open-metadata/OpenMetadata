@@ -181,6 +181,7 @@ def statistic_sentence(
     effective_bounds: tuple[float | None, float | None],
     threshold: FailureThreshold,
     passed: bool,
+    noun: str = "metric units",
 ) -> str:
     """A deviation verdict against bounds: the observed statistic, the bounds, the widening, the verdict.
 
@@ -191,6 +192,7 @@ def statistic_sentence(
         effective_bounds: those bounds once the threshold widened them
         threshold: the tolerance that was applied
         passed: the verdict
+        noun: units of an absolute deviation, e.g. "metric units" or "rows"
 
     Returns:
         str: e.g. "Mean of `amount` is 87.4. Expected between 90 and 110, widened by a 5%
@@ -201,13 +203,11 @@ def statistic_sentence(
     if not threshold.value:
         tolerance = ", with no tolerance applied"
     elif effective_bounds != configured_bounds:
-        tolerance = (
-            f", widened by a {format_threshold(threshold)} tolerance to {bounds_phrase(*effective_bounds, lead=False)}"
-        )
+        tolerance = f", widened by a {format_threshold(threshold, noun)} tolerance to {bounds_phrase(*effective_bounds, lead=False)}"
     else:
         # A threshold that widened nothing: no finite bound to widen, or bounds a numeric
         # tolerance does not apply to, such as the datetime window of a between test.
-        tolerance = f", which a {format_threshold(threshold)} tolerance did not widen"
+        tolerance = f", which a {format_threshold(threshold, noun)} tolerance did not widen"
 
     return f"{statistic} is {format_value(value)}. {expected}{tolerance}, {verdict(passed)}."
 
@@ -356,9 +356,6 @@ def _threshold_caveat(threshold: FailureThreshold | None) -> str | None:
 
 def dimension_rollup_sentence(failed_groups: list[str], listed: int = 5) -> str:
     """Why a test case whose aggregate passed is reported as failed under `ANY_DIMENSION`.
-
-    The aggregate verdict earlier in the message still says the test passed, so without this the
-    message contradicts the status it is attached to.
 
     Args:
         failed_groups: dimension keys of the failing groups, e.g. "country=Spain"
