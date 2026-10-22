@@ -75,6 +75,7 @@ class TestSwitchParsing:
             (REPORTED_SWITCH, "target_table", "source_table"),
             ("ALTER TABLE dbo.stage SWITCH TO dbo.archive", "dbo.stage", "dbo.archive"),
             (WAIT_OPTION_SWITCH, "dbo.stage_table", "dbo.archive_table"),
+            ("ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old]", "dbo.stage", "dbo.archive]old"),
             (
                 "alter table sales.[orders 2024] switch partition $PARTITION.pf_year(2024) "
                 "to sales.orders_archive partition $PARTITION.pf_year(2024)",
@@ -138,6 +139,21 @@ BEGIN
 END"""
 
         assert mssql_lineage.extract_switch_statements(body) == []
+
+    def test_switch_inside_a_string_is_ignored(self):
+        body = "CREATE PROCEDURE dbo.p AS PRINT N'ALTER TABLE dbo.a SWITCH TO dbo.b';"
+
+        assert mssql_lineage.extract_switch_statements(body) == []
+
+    def test_comment_marker_inside_a_string_keeps_the_switch_after_it(self):
+        body = "CREATE PROCEDURE dbo.p AS BEGIN PRINT '--'; ALTER TABLE dbo.a SWITCH TO dbo.b; END"
+
+        assert mssql_lineage.extract_switch_statements(body) == ["ALTER TABLE dbo.a SWITCH TO dbo.b"]
+
+    def test_escaped_bracket_name_is_kept_whole(self):
+        body = "CREATE PROCEDURE dbo.p AS ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old];"
+
+        assert mssql_lineage.extract_switch_statements(body) == ["ALTER TABLE dbo.stage SWITCH TO dbo.[archive]]old]"]
 
     def test_repeated_switch_is_returned_once(self):
         body = "BEGIN ALTER TABLE a SWITCH TO b; ALTER TABLE a SWITCH TO b; ALTER TABLE b SWITCH TO c; END"

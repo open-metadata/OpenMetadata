@@ -30,5 +30,6 @@ that it ran. No SQL parser we use understands `SWITCH` either.
 
 A `SWITCH` is attributed to the procedure's last execution only, since the procedure stats keep
 no per-run history, and a procedure evicted from the plan cache before the run is missed. A
-`SWITCH` built in dynamic SQL is not in the definition and stays invisible. Revisit if SQL Server
-starts recording DDL statements in Query Store.
+`SWITCH` in a branch the run did not take still yields its edge, since only the definition is
+known, and a `SWITCH` built in dynamic SQL is not in the definition and stays invisible.
+Revisit if SQL Server starts recording DDL statements in Query Store.

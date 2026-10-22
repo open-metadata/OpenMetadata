@@ -65,7 +65,7 @@ LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
-_TSQL_NAME_PART = r'(?:\[[^\]]+\]|"[^"]+"|[\w@#$]+)'
+_TSQL_NAME_PART = r'(?:\[(?:[^\]]|\]\])+\]|"(?:[^"]|"")+"|[\w@#$]+)'
 _TSQL_TABLE_NAME = rf"{_TSQL_NAME_PART}(?:\s*\.\s*{_TSQL_NAME_PART}){{0,3}}"
 _TSQL_PARTITION = r"PARTITION\s+(?:\$PARTITION\s*\.\s*[\w\[\]]+\s*\([^()]*\)|[\w@]+)"
 # T-SQL `ALTER TABLE source SWITCH [PARTITION p] TO target [PARTITION p] [WITH (...)]`, which

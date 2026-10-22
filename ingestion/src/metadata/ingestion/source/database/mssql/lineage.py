@@ -46,15 +46,25 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_SQL_COMMENT = re.compile(r"/\*.*?\*/|--[^\n]*", re.DOTALL)
+# Quoted names, string literals and comments, matched left to right so that a quote or a
+# comment marker inside one of them is not read as the start of another.
+_SQL_QUOTED_OR_COMMENT = re.compile(
+    r"""\[(?:[^\]]|\]\])*\]|"(?:[^"]|"")*"|'(?:[^']|'')*'|/\*.*?\*/|--[^\n]*""",
+    re.DOTALL,
+)
+
+
+def _blank_strings_and_comments(code: str) -> str:
+    return _SQL_QUOTED_OR_COMMENT.sub(lambda match: match.group(0) if match.group(0)[0] in '["' else " ", code)
 
 
 def extract_switch_statements(definition: str | None) -> list[str]:
     """
     The ALTER TABLE ... SWITCH statements of a procedure body, in order and each once.
-    Comments are dropped first so a commented-out SWITCH yields no lineage.
+    String literals and comments are blanked first, so a SWITCH that is printed or
+    commented out yields no lineage.
     """
-    code = _SQL_COMMENT.sub(" ", definition or "")
+    code = _blank_strings_and_comments(definition or "")
     return list(dict.fromkeys(match.group(0) for match in TSQL_SWITCH_STATEMENT.finditer(code)))
 
 
