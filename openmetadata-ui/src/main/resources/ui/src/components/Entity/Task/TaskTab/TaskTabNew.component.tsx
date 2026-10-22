@@ -637,7 +637,7 @@ export const TaskTabNew = ({
       : entityName;
 
     return [taskTypeLabel, taskScope].filter(Boolean).join(' ').trim();
-  }, [entityFQN, task.about, task.type, taskColumnLabel, t]);
+  }, [entityFQN, task, taskColumnLabel, t]);
   const shouldRenderTaskPayload = useMemo(() => {
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
@@ -733,7 +733,7 @@ export const TaskTabNew = ({
       entityType,
       handleTaskLinkClick,
       isEntityDetailsAvailable,
-      task.type,
+      task,
       taskColumnName,
       taskDisplayId,
       t,

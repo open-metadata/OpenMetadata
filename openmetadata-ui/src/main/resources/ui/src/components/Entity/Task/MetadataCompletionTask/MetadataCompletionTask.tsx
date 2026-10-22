@@ -14,7 +14,10 @@ import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Revision } from '../../../../generated/type/metadataCompletionPayload';
+import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import { Task, TaskEntityStatus } from '../../../../rest/tasksAPI';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -24,6 +27,28 @@ import {
 interface MetadataCompletionTaskProps {
   task: Task;
 }
+
+/** Who rejected the approval, by display name, with their profile on hover. */
+const RevisionRequester = ({ userName }: { userName: string }) => {
+  const { t } = useTranslation();
+  const [, , user] = useUserProfile({ permission: true, name: userName });
+
+  return (
+    <Box
+      align="center"
+      data-testid="metadata-completion-revision-requested-by"
+      gap={2}>
+      <Typography as="span" color="secondary" size="text-xs" weight="medium">
+        {t('label.requested-by')}
+      </Typography>
+      <UserPopOverCard
+        showUserName
+        displayName={user ? getEntityName(user) : userName}
+        userName={userName}
+      />
+    </Box>
+  );
+};
 
 /** The reviewer's comment on a rejected approval, and who rejected it. */
 const RevisionNote = ({ revision }: { revision: Revision }) => {
@@ -35,26 +60,27 @@ const RevisionNote = ({ revision }: { revision: Revision }) => {
       data-testid="metadata-completion-revision"
       size="sm">
       <Card.Content>
-        <Box direction="col" gap={1}>
-          <Typography
-            as="span"
-            color="secondary"
-            size="text-xs"
-            weight="medium">
-            {revision.requestedBy
-              ? `${t('label.comment')} · ${t('label.requested-by')}: ${
-                  revision.requestedBy
-                }`
-              : t('label.comment')}
-          </Typography>
-          <Typography
-            as="p"
-            color={revision.comment ? undefined : 'secondary'}
-            data-testid="metadata-completion-revision-comment"
-            size="text-sm">
-            {revision.comment ??
-              t('message.metadata-completion-revision-no-comment')}
-          </Typography>
+        <Box direction="col" gap={2}>
+          <Box direction="col" gap={1}>
+            <Typography
+              as="span"
+              color="secondary"
+              size="text-xs"
+              weight="medium">
+              {t('label.comment')}
+            </Typography>
+            <Typography
+              as="p"
+              color={revision.comment ? undefined : 'secondary'}
+              data-testid="metadata-completion-revision-comment"
+              size="text-sm">
+              {revision.comment ??
+                t('message.metadata-completion-revision-no-comment')}
+            </Typography>
+          </Box>
+          {revision.requestedBy && (
+            <RevisionRequester userName={revision.requestedBy} />
+          )}
         </Box>
       </Card.Content>
     </Card>

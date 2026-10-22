@@ -68,6 +68,14 @@ const ASSIGNEE_LABEL_KEYS: Record<TaskAssignees, string> = {
   [TaskAssignees.Candidates]: 'label.specific-users-and-teams',
 };
 
+/** Whether the node asks specific users or teams; a step closing a revision request asks nobody. */
+const asksCandidates = (
+  config: MetadataCollectionConfiguration,
+  taskAssignees: TaskAssignees
+) =>
+  config.revision !== Revision.Resubmit &&
+  taskAssignees === TaskAssignees.Candidates;
+
 /** What a revision step does: ask the stage's people to revise, or close that request. */
 const RevisionHint = ({
   revision,
@@ -187,8 +195,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
         config: {
           ...config,
           taskAssignees,
-          candidates:
-            taskAssignees === TaskAssignees.Candidates ? candidates : [],
+          candidates: asksCandidates(config, taskAssignees) ? candidates : [],
         },
       })
     );
@@ -272,7 +279,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
           onChange={setTaskAssignees}
         />
 
-        {taskAssignees === TaskAssignees.Candidates && (
+        {asksCandidates(config, taskAssignees) && (
           <FormField label={t('label.specific-users-and-teams')}>
             <ModeAwareFormField>
               <UserTeamSelectableList
@@ -309,8 +316,7 @@ export const CollectMetadataForm: React.FC<CollectMetadataFormProps> = ({
         showDelete
         isDisabled={
           !isValidString(displayName) ||
-          (taskAssignees === TaskAssignees.Candidates &&
-            candidates.length === 0)
+          (asksCandidates(config, taskAssignees) && candidates.length === 0)
         }
         onCancel={onClose}
         onDelete={handleDelete}

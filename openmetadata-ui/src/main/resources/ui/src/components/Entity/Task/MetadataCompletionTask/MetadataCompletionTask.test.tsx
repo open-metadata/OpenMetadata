@@ -19,6 +19,23 @@ import {
 import MetadataCompletionTask from './MetadataCompletionTask';
 import { getTaskTypeMessageKey } from './MetadataCompletionTask.utils';
 
+jest.mock('../../../../hooks/user-profile/useUserProfile', () => ({
+  useUserProfile: jest
+    .fn()
+    .mockReturnValue([
+      null,
+      false,
+      { name: 'karan', displayName: 'Karan Hotchandani' },
+    ]),
+}));
+
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () => ({
+  __esModule: true,
+  default: ({ displayName }: { displayName?: string }) => (
+    <span>{displayName}</span>
+  ),
+}));
+
 const task = (
   status: TaskEntityStatus,
   outstanding: {
@@ -134,8 +151,11 @@ describe('MetadataCompletionTask', () => {
       screen.getByTestId('metadata-completion-revision-comment')
     ).toHaveTextContent('Name a business owner');
     expect(
-      screen.getByTestId('metadata-completion-revision')
-    ).toHaveTextContent('karan');
+      screen.getByTestId('metadata-completion-revision-requested-by')
+    ).toHaveTextContent('label.requested-by');
+    expect(
+      screen.getByTestId('metadata-completion-revision-requested-by')
+    ).toHaveTextContent('Karan Hotchandani');
     expect(
       screen.queryByText('message.metadata-completion-hint')
     ).not.toBeInTheDocument();

@@ -233,4 +233,29 @@ describe('CollectMetadataForm', () => {
       screen.queryByTestId('collect-metadata-assignees')
     ).not.toBeInTheDocument();
   });
+
+  it('neither offers nor requires specific users on a resubmit step', () => {
+    const onSave = jest.fn();
+    const resubmit = revisionNode('resubmit');
+    renderForm(onSave, {
+      ...resubmit,
+      data: {
+        ...resubmit.data,
+        config: { ...resubmit.data.config, taskAssignees: 'candidates' },
+      },
+    });
+
+    expect(
+      screen.queryByTestId('collect-metadata-candidates-trigger')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledWith(
+      'Revision_resubmit',
+      expect.objectContaining({
+        config: expect.objectContaining({ candidates: [] }),
+      })
+    );
+  });
 });

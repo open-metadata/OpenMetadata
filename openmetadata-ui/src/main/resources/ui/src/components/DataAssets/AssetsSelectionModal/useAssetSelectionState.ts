@@ -638,6 +638,7 @@ export const useAssetSelectionState = ({
   }, [socket, handleTerminalActivity]);
 
   return {
+    assetsFilter: assetsFilterFor(type),
     search,
     setSearch,
     items,
