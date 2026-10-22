@@ -21,8 +21,8 @@ import { useNavigate } from 'react-router-dom';
 
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
 import { ClientErrors } from '../../../enums/Axios.enum';
