@@ -42,10 +42,13 @@ waiting for one offers no decision, only an edit, which opens it.
 
 ## Consequences
 
-Rejecting an AI proposal asks for a reason, as rejecting a person's always has. An AI term's
+Rejecting a single AI proposal asks for a reason, as rejecting a person's always has; a bulk
+rejection sends none, since the server requires one only for data access requests. An AI term's
 requester is the agent's bot, so every assignee may decide it. A proposal whose request was closed
-or terminated without a decision opens a new one on its next edit, with the editor kept off its
-assignees; an admin who is the only one then needs another reviewer, owner or admin.
+or terminated without a decision opens a new one on its next edit. As for any term, the editor is
+left off its assignees while another reviewer or owner remains, and a sole reviewer or owner keeps
+it; the admin fallback never includes the editor, so a sole admin then needs another reviewer,
+owner or admin.
 
 AI terms created between ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 and this change have no request: the next edit sends them to review, or deleting them lets the

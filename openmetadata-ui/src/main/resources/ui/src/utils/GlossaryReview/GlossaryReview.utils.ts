@@ -187,12 +187,12 @@ export const canDecideProposal = (
   ).permission;
 };
 
-/** The people a proposal waits on, named to everyone who cannot decide it. */
-export const getDeciders = (proposal: GlossaryProposal): EntityReference[] => {
-  const assignees = proposal.approvalTask?.assignees ?? [];
-
-  return assignees.length > 0 ? assignees : proposal.term.reviewers ?? [];
-};
+/**
+ * The people a proposal waits on, named to everyone who cannot decide it: its approval request's
+ * assignees, and no one before the request opens, since a reviewer cannot decide it either.
+ */
+export const getDeciders = (proposal: GlossaryProposal): EntityReference[] =>
+  proposal.approvalTask?.assignees ?? [];
 
 /** Where a proposed term would sit: its glossary and parent terms, outermost first. */
 export const getProposalLocation = (

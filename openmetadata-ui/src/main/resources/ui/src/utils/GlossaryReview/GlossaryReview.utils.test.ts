@@ -192,7 +192,7 @@ describe('GlossaryReview utils', () => {
 
     expect(canDecideProposal(ai, user('reviewer-id'))).toBe(false);
     expect(canDecideProposal(ai, user('admin'))).toBe(false);
-    expect(getDeciders(ai)).toEqual([reviewer]);
+    expect(getDeciders(ai)).toEqual([]);
   });
 
   it('lets only the assignees of its approval request decide an AI proposal', () => {

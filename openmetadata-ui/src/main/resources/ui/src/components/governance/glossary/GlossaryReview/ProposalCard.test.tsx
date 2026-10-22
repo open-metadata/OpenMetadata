@@ -141,7 +141,7 @@ describe('ProposalCard', () => {
   });
 
   it('names who decides when the viewer cannot', () => {
-    renderCard({ canDecide: false });
+    renderCard({ canDecide: false, proposal: personProposal });
 
     expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
     expect(screen.getByText('message.waiting-on-deciders')).toBeInTheDocument();
@@ -149,11 +149,8 @@ describe('ProposalCard', () => {
 
   it('lets an editor edit an AI proposal still waiting for its approval request', () => {
     const onEdit = jest.fn();
-    renderCard({
-      canDecide: false,
-      onEdit,
-      proposal: { ...aiProposal, term: { ...term, reviewers: [] } },
-    });
+    // Its reviewers cannot decide it before the request opens, so it names no one.
+    renderCard({ canDecide: false, onEdit });
 
     fireEvent.click(screen.getByTestId('edit-proposal'));
 

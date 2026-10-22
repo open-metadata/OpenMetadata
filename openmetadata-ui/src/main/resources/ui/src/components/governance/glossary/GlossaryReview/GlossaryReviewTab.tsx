@@ -492,7 +492,10 @@ const GlossaryReviewTab = () => {
   const current =
     proposals.find(({ term }) => term.id === selectedProposalId) ??
     proposals[0];
-  const checked = proposals.filter(({ term }) => checkedIds.has(term.id));
+  // A proposal's request can close after it is ticked; only those still open to the user count.
+  const checked = proposals.filter(
+    (proposal) => checkedIds.has(proposal.term.id) && canDecide(proposal)
+  );
 
   const settle = async (
     proposal: GlossaryProposal,

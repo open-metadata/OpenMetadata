@@ -134,11 +134,13 @@ public class Migration extends MigrationProcessImpl {
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys a workflow.
-    initializeWorkflowHandler();
     runOnce(
         migrationDAO,
         getVersion(),
         GlossaryAutomationProposalMigration.STEP_NAME,
-        GlossaryAutomationProposalMigration::addAutomationProposalBranch);
+        () -> {
+          initializeWorkflowHandler();
+          GlossaryAutomationProposalMigration.addAutomationProposalBranch();
+        });
   }
 }

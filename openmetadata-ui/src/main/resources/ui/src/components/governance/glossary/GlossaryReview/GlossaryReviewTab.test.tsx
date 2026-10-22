@@ -12,6 +12,7 @@
  */
 import { QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -336,6 +337,40 @@ describe('GlossaryReviewTab', () => {
       'task-Net Retention',
       expect.objectContaining({ newValue: 'approved' })
     );
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('decides only the ticked proposals whose requests are still open', async () => {
+    terms = [aiInReview, sureAiInReview];
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [
+        approvalRequestFor(aiInReview),
+        approvalRequestFor(sureAiInReview),
+      ],
+    });
+    renderTab();
+    await screen.findByTestId('proposal-detail');
+    await waitFor(() => expect(getEntityPermissionByFqn).toHaveBeenCalled());
+    fireEvent.click(await screen.findByTestId('select-all-shown'));
+
+    // Someone else decides Churn Risk meanwhile, which closes its request.
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [approvalRequestFor(sureAiInReview)],
+    });
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+    await waitFor(() =>
+      expect(
+        screen.getByRole('checkbox', { name: 'Churn Risk' })
+      ).toBeDisabled()
+    );
+    fireEvent.click(screen.getByTestId('bulk-approve'));
+
+    expect(
+      await screen.findByText('Net Retention · label.approved-by-you')
+    ).toBeInTheDocument();
+    expect(resolveTask).toHaveBeenCalledTimes(1);
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 
