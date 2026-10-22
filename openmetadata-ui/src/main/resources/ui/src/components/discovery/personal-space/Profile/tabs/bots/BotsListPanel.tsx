@@ -507,7 +507,6 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
           description={t('label.no-bots-yet-description')}
           icon={<CpuChip01 className="tw:text-fg-brand-primary" />}
           title={t('label.no-bots-yet')}
-          variant="blank"
         />
       </div>
     );
