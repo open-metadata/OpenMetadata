@@ -52,7 +52,7 @@ describe('WelcomeScreen', () => {
     });
   });
 
-  it('should scope the brand accent to the welcome screen', () => {
+  it('should pin the mock colours on the welcome screen', () => {
     renderScreen();
 
     const root = screen.getByTestId('welcome-screen');
@@ -65,37 +65,32 @@ describe('WelcomeScreen', () => {
     );
   });
 
-  it('should keep an admin-configured brand colour over the accent', () => {
+  it('should ignore a custom theme colour', () => {
     useApplicationStore.setState({
       applicationConfig: { customTheme: { primaryColor: '#E11D48' } },
     } as never);
 
     renderScreen();
 
-    const root = screen.getByTestId('welcome-screen');
-
-    // No purple accent: the button keeps the configured colour, and the glow
-    // follows it through brand-600.
     expect(
-      root.style.getPropertyValue('--tw-background-color-brand-solid')
-    ).toBe('');
-    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe(
-      'var(--tw-color-brand-600)'
-    );
+      screen
+        .getByTestId('welcome-screen')
+        .style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('var(--tw-color-purple-600)');
 
     useApplicationStore.setState({ applicationConfig: undefined } as never);
   });
 
-  it('should keep the theme colour when the brand has no welcome accent', () => {
-    const getAccent = jest
-      .spyOn(brandClassBase, 'getWelcomeAccentColor')
-      .mockReturnValue(undefined);
+  it('should keep the theme colours when the brand has no welcome theme', () => {
+    const getWelcomeTheme = jest
+      .spyOn(brandClassBase, 'getWelcomeTheme')
+      .mockReturnValue(undefined as never);
 
     renderScreen();
 
     expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
 
-    getAccent.mockRestore();
+    getWelcomeTheme.mockRestore();
   });
 
   it('should render the heading without a highlighted word', () => {

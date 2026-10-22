@@ -13,8 +13,13 @@
 import brandClassBase from './BrandClassBase';
 
 describe('BrandClassBase', () => {
-  it('should give the welcome screen the OpenMetadata purple accent', () => {
-    expect(brandClassBase.getWelcomeAccentColor()).toBe('purple');
+  it('should give the welcome screen the OpenMetadata purple from its mock', () => {
+    expect(brandClassBase.getWelcomeTheme()).toEqual({
+      glow: 'purple-500',
+      button: 'purple-600',
+      buttonHover: 'purple-700',
+      darkGlowMix: '100%',
+    });
   });
 
   it.each(['light', 'dark'] as const)(

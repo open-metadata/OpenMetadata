@@ -12,7 +12,7 @@
  */
 
 import { CSSProperties } from 'react';
-import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
+import { WelcomeTheme } from '../../../utils/BrandData/BrandClassBase';
 
 // Figma "Harsha approved version (option - 2)", Rectangle 8: a radial glow
 // rising into the glow colour along the bottom 65% of the panel. `--tw-*` is
@@ -24,10 +24,10 @@ import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
 // range; they match its PNG export of the approved frames within a few RGB
 // steps (a single CSS stop pair renders about twice as strong).
 const GLOW_CENTER = 'at 55.79% -31.38%';
-// brand-500 is Figma's fg-brand-secondary-500. getWelcomeThemeStyle re-points
-// it when a product accent or an admin-configured primary colour applies.
+// brand-500 is Figma's fg-brand-secondary-500; getWelcomeThemeStyle pins it to
+// the product's glow shade.
 const GLOW = 'var(--tw-color-brand-500)';
-// Dark-mode end strength of the glow colour (Figma: 20%); an accent raises it.
+// Dark-mode end strength of the glow colour, set per product.
 const DARK_GLOW_MIX = 'var(--welcome-glow-dark-mix, 20%)';
 const QUARTERS = [0, 0.25, 0.5, 0.75, 1];
 
@@ -53,35 +53,19 @@ export const WELCOME_GLOW_DARK = `radial-gradient(220.28% 218.41% ${GLOW_CENTER}
 )})`;
 
 /**
- * Scoped theme for the welcome screen. A product accent (a core `<accent>-*`
- * palette family, which keeps its shade in dark mode so white button text
- * stays readable) re-points the glow and the primary button's
- * `bg-brand-solid`; OpenMetadata's dark mock shows that accent at full
- * strength. Without an accent, a configured primary colour still has to reach
- * the glow: a custom theme overrides brand-600, not brand-500.
+ * Pins the brand variables the welcome screen reads (the glow above and the
+ * primary button's `bg-brand-solid`) to the product's fixed welcome colours,
+ * so a custom theme does not change them. `undefined` (a downstream brand
+ * class without getWelcomeTheme) leaves the theme colours.
  */
-export const getWelcomeThemeStyle = ({
-  accent,
-  hasCustomPrimary,
-}: {
-  accent?: string;
-  hasCustomPrimary: boolean;
-}): CSSProperties | undefined => {
-  if (accent) {
-    return {
-      '--tw-color-brand-500': `var(--tw-color-${accent}-500)`,
-      '--tw-background-color-brand-solid': `var(--tw-color-${accent}-600)`,
-      '--tw-background-color-brand-solid_hover': `var(--tw-color-${accent}-700)`,
-      '--welcome-glow-dark-mix': '100%',
-    } as CSSProperties;
-  }
-
-  return hasCustomPrimary
-    ? ({ '--tw-color-brand-500': 'var(--tw-color-brand-600)' } as CSSProperties)
+export const getWelcomeThemeStyle = (
+  welcomeTheme?: WelcomeTheme
+): CSSProperties | undefined =>
+  welcomeTheme
+    ? ({
+        '--tw-color-brand-500': `var(--tw-color-${welcomeTheme.glow})`,
+        '--tw-background-color-brand-solid': `var(--tw-color-${welcomeTheme.button})`,
+        '--tw-background-color-brand-solid_hover': `var(--tw-color-${welcomeTheme.buttonHover})`,
+        '--welcome-glow-dark-mix': welcomeTheme.darkGlowMix,
+      } as CSSProperties)
     : undefined;
-};
-
-/** True when the theme's primary colour is unset or still the default. */
-export const isThemeDefaultPrimary = (primaryColor?: string) =>
-  !primaryColor ||
-  primaryColor.toLowerCase() === DEFAULT_THEME.primaryColor.toLowerCase();

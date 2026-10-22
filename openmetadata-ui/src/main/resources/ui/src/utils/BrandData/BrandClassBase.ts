@@ -21,6 +21,17 @@ import LogoSrc, { ReactComponent as Logo } from '../../assets/svg/logo.svg';
 import { Theme } from '../../context/UntitledUIThemeProvider/theme-provider.interface';
 import { t } from '../i18next/LocalUtil';
 
+/**
+ * Core palette shades (`--tw-color-<shade>`) for the welcome screen's glow and
+ * primary button, and how strongly the glow shows in dark mode.
+ */
+export interface WelcomeTheme {
+  glow: string;
+  button: string;
+  buttonHover: string;
+  darkGlowMix: string;
+}
+
 class BrandClassBase {
   public getMonogram() {
     return { src: MonogramSrc, svg: Monogram };
@@ -69,12 +80,16 @@ class BrandClassBase {
   }
 
   /**
-   * Core `<name>-*` palette family for the welcome screen's primary
-   * button and glow, in place of the theme's brand colour. OpenMetadata's
-   * welcome design is purple; return `undefined` to follow the theme.
+   * The welcome screen's fixed colours from its Figma mock. It shows the
+   * product's own style and deliberately ignores a custom theme.
    */
-  public getWelcomeAccentColor(): string | undefined {
-    return 'purple';
+  public getWelcomeTheme(): WelcomeTheme {
+    return {
+      glow: 'purple-500',
+      button: 'purple-600',
+      buttonHover: 'purple-700',
+      darkGlowMix: '100%',
+    };
   }
 
   /** Product name in the welcome screen's "Your {{platform}} is ready". */

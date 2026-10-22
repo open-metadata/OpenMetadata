@@ -12,32 +12,28 @@
  */
 import {
   getWelcomeThemeStyle,
-  isThemeDefaultPrimary,
   WELCOME_GLOW_DARK,
   WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
 
 describe('getWelcomeThemeStyle', () => {
-  it('should keep the theme colour with no accent and a default primary', () => {
-    expect(getWelcomeThemeStyle({ hasCustomPrimary: false })).toBeUndefined();
+  it('should leave the theme colours without a welcome theme', () => {
+    expect(getWelcomeThemeStyle()).toBeUndefined();
   });
 
-  it('should point the glow, button and dark strength at the accent family', () => {
+  it('should pin the glow, button and dark strength to the welcome theme', () => {
     expect(
-      getWelcomeThemeStyle({ accent: 'purple', hasCustomPrimary: false })
+      getWelcomeThemeStyle({
+        glow: 'blue-500',
+        button: 'blue-700',
+        buttonHover: 'blue-800',
+        darkGlowMix: '20%',
+      })
     ).toEqual({
-      '--tw-color-brand-500': 'var(--tw-color-purple-500)',
-      '--tw-background-color-brand-solid': 'var(--tw-color-purple-600)',
-      '--tw-background-color-brand-solid_hover': 'var(--tw-color-purple-700)',
-      '--welcome-glow-dark-mix': '100%',
-    });
-  });
-
-  // A custom theme overrides brand-600, not brand-500, so the glow is
-  // re-pointed at it.
-  it('should send a configured primary colour to the glow', () => {
-    expect(getWelcomeThemeStyle({ hasCustomPrimary: true })).toEqual({
-      '--tw-color-brand-500': 'var(--tw-color-brand-600)',
+      '--tw-color-brand-500': 'var(--tw-color-blue-500)',
+      '--tw-background-color-brand-solid': 'var(--tw-color-blue-700)',
+      '--tw-background-color-brand-solid_hover': 'var(--tw-color-blue-800)',
+      '--welcome-glow-dark-mix': '20%',
     });
   });
 });
@@ -65,16 +61,5 @@ describe('welcome glow', () => {
     expect(WELCOME_GLOW_DARK).toContain(
       'calc(100% - (100% - var(--welcome-glow-dark-mix, 20%)) * 1), transparent) 100%'
     );
-  });
-});
-
-describe('isThemeDefaultPrimary', () => {
-  it.each([
-    [undefined, true],
-    ['', true],
-    ['#1570EF', true],
-    ['#E11D48', false],
-  ])('should treat %s as default: %s', (color, expected) => {
-    expect(isThemeDefaultPrimary(color)).toBe(expected);
   });
 });

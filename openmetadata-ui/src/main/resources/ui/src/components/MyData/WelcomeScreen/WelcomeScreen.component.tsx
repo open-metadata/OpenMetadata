@@ -31,7 +31,6 @@ import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
 import {
   getWelcomeThemeStyle,
-  isThemeDefaultPrimary,
   WELCOME_GLOW_DARK,
   WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
@@ -44,17 +43,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { currentUser, applicationConfig } = useApplicationStore();
-  // An admin-configured brand colour wins over the product accent; the store
-  // fills an unset colour with the default, so "configured" means "changed".
-  // The call is optional: a downstream build that swaps in its own brand
-  // class may not define it, and then the theme colour applies.
-  const hasCustomPrimary = !isThemeDefaultPrimary(
-    applicationConfig?.customTheme?.primaryColor
-  );
-  const accent = hasCustomPrimary
-    ? undefined
-    : brandClassBase.getWelcomeAccentColor?.();
+  const { currentUser } = useApplicationStore();
   // AI mode's Connections opens on every connector; classic keeps its
   // database-services entry point. The hook also owns the create-permission
   // check, so the button is absent for users who could not save a service.
@@ -81,7 +70,8 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     <div
       className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
       data-testid="welcome-screen"
-      style={getWelcomeThemeStyle({ accent, hasCustomPrimary })}>
+      // Optional call: a downstream brand class may not define it yet.
+      style={getWelcomeThemeStyle(brandClassBase.getWelcomeTheme?.())}>
       <div
         aria-hidden
         className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"
