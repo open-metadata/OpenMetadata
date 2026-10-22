@@ -14,7 +14,6 @@
 import {
   Button,
   Card,
-  EmptyPlaceholder,
   Input,
   Tabs,
   Typography,
@@ -55,6 +54,10 @@ import {
 import { ALL_ONTOLOGIES_SCOPE_KEY } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import FeaturesPlaceholder from '../common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -146,7 +149,7 @@ function OntologyOnboardingEmptyState() {
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:overflow-hidden tw:rounded-lg tw:bg-primary"
       data-testid="ontology-graph-onboarding">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         description={t('message.ontology-empty-description')}
         features={[
           {
@@ -179,7 +182,6 @@ function OntologyOnboardingEmptyState() {
           </Button>
         }
         title={t('message.ontology-empty-title')}
-        variant="features"
       />
     </div>
   );
@@ -198,11 +200,10 @@ function FilteredGraphEmptyState({
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid={testId}>
-      <EmptyPlaceholder
+      <NoFilteredResultsPlaceholder
         description={description}
-        icon={<NoFilterFunnel className="tw:text-secondary" />}
+        icon={<NoFilterFunnel />}
         title={t('label.no-result-for-these-filter-plural')}
-        variant="blank"
       />
     </div>
   );
@@ -215,11 +216,10 @@ function SearchGraphEmptyState() {
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
       data-testid="ontology-graph-search-empty">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-shorter-term')}
-        icon={<NoSearch className="tw:text-secondary" />}
+        icon={<NoSearch />}
         title={t('label.no-matching-result-plural')}
-        variant="blank"
       />
     </div>
   );
@@ -302,7 +302,7 @@ function NoTermsGraphEmptyState() {
     <div
       className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
       data-testid="ontology-graph-empty">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={t('message.no-glossary-terms-found')}
         icon={<Cube02 className="tw:text-fg-brand-primary" />}
         title={t('message.ontology-empty-title')}

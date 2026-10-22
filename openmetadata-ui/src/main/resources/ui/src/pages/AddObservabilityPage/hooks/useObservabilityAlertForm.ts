@@ -42,7 +42,6 @@ export type ObservabilityAlertFormFieldsProps = Pick<
   ObservabilityAlertFormProps,
   | 'alert'
   | 'extraFormWidgets'
-  | 'filterResources'
   | 'form'
   | 'isLoading'
   | 'shouldShowActionsSection'

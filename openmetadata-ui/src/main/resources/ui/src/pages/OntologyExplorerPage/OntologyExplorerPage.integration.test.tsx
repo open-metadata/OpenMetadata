@@ -236,6 +236,47 @@ describe('Ontology Studio mode-switch integration', () => {
     });
   });
 
+  it.each(['/', '/?ontology=retail'])(
+    'only offers ontology scopes in the native menu at %s',
+    async (route) => {
+      const ontology: Ontology = {
+        id: 'retail',
+        name: 'Retail',
+        fullyQualifiedName: 'Retail',
+        iri: 'urn:retail',
+        namespace: 'urn:retail:',
+      };
+      mockGetOntology.mockResolvedValue(ontology);
+      mockListOntologies.mockResolvedValue({
+        data: [ontology],
+        paging: { total: 1 },
+      });
+      render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[route]}>
+            <OntologyExplorerPage />
+          </MemoryRouter>
+        </QueryClientProvider>
+      );
+
+      fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+      const menu = within(await screen.findByRole('menu'));
+
+      expect(
+        await menu.findByRole('menuitemradio', { name: /Retail/ })
+      ).toBeVisible();
+      expect(menu.getByTestId('ontology-scope-all-ontologies')).toBeVisible();
+      expect(menu.getByTestId('ontology-create')).toBeVisible();
+      expect(
+        menu.queryByTestId('ontology-scope-all-glossaries')
+      ).not.toBeInTheDocument();
+      expect(
+        menu.queryByRole('menuitemradio', { name: /Finance/ })
+      ).not.toBeInTheDocument();
+      expect(mockGetGlossariesList).not.toHaveBeenCalled();
+    }
+  );
+
   it('keeps the native inspector and selection across aggregate tree, owner Edit, and Query', async () => {
     const ontology: Ontology = {
       id: 'retail',

@@ -165,10 +165,6 @@ jest.mock('../../Entity/Task/TaskTab/TaskTabNew.component', () => ({
   TaskTabNew: jest.fn().mockReturnValue(<div data-testid="task-tab-new" />),
 }));
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () =>
-  jest.fn().mockReturnValue(<div data-testid="error-placeholder" />)
-);
-
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockReturnValue(<div data-testid="loader" />)
 );
