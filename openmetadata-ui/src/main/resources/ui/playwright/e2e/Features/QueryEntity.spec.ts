@@ -20,6 +20,7 @@ import {
   descriptionBox,
   fillDescriptionBox,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
   selectOptionWithRetry,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -453,17 +454,21 @@ test('Verify Query Pagination', async ({ page, browser }) => {
     '/api/v1/search/query?q=*&index=query&from=0&size=25&deleted=false&query_filter=**'
   );
   // The size list is a non-modal react-aria popover that closes when the
-  // pagination row scrolls, so a one-shot open can show nothing. Open with
-  // retry, and check the list offers exactly 15, 25 and 50 before picking 25.
+  // pagination row scrolls, so a one-shot open can show nothing. Reopen until
+  // the list shows, and assert it on every attempt so a wrong list cannot be
+  // skipped by a retry that finds the menu already open.
+  await expect(async () => {
+    if ((await records.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(records);
+      await records.click({ timeout: 5_000 });
+    }
+    await expect(pageSizeOptions).toHaveText(['15', '25', '50'], {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 15_000 });
   await selectOptionWithRetry(
     records,
-    page.getByTestId('rows-per-page-option-25'),
-    async () => {
-      await records.click({ timeout: 5_000 });
-      await expect(pageSizeOptions).toHaveText(['15', '25', '50'], {
-        timeout: 2_000,
-      });
-    }
+    page.getByTestId('rows-per-page-option-25')
   );
   const pageSizeResult = await pageSizeResponse;
 
