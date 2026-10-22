@@ -112,7 +112,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
         <Box align="center" direction="col" gap={10}>
           <Box align="center" direction="col" gap={3}>
             <div className="tw:text-primary">
-              <p className="tw:m-0 tw:text-(length:--om-font-size-26) tw:leading-12.5 tw:font-medium">{`${greeting} 👋`}</p>
+              <p className="tw:m-0 tw:text-display-xs tw:leading-12.5 tw:font-medium">{`${greeting} 👋`}</p>
               <h1 className="tw:m-0 tw:mt-5 tw:text-display-sm tw:font-normal tw:text-primary">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
