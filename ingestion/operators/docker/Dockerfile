@@ -65,7 +65,7 @@ RUN dpkg --configure -a \
     && apt-get -qq install -y --only-upgrade \
          libgnutls30 libcap2 libcap2-bin openssh-client rsync sudo \
          libpam0g libpam-modules libpam-modules-bin libpam-runtime \
-         curl libcurl4 libcurl3-gnutls libmariadb3 wget \
+         curl libcurl4 libcurl3-gnutls wget \
          perl perl-base libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
@@ -171,21 +171,20 @@ RUN [ $(uname -m) = "x86_64" ] \
 # because the psycopg2-binary generates a architecture specific error
 # while authenticating connection with the airflow, psycopg2 solves this error
 RUN pip uninstall psycopg2-binary -y
-RUN pip install psycopg2 mysqlclient==2.1.1
+RUN pip install psycopg2
+# pydoris declares mysqlclient, but the Doris connector runs pydoris on PyMySQL
+# (metadata/ingestion/source/database/doris/connection.py), so nothing imports the
+# C extension. Removing it lets the root layer below purge the MariaDB client libraries.
+RUN pip uninstall -y mysqlclient
 
-# Drop build-only packages that leaked into the runtime image. libmariadb-dev
-# and libmariadb-dev-compat are only needed to compile mysqlclient (done above);
+# Drop build-only packages that leaked into the runtime image. The MariaDB client
+# packages were only needed to compile mysqlclient, which was uninstalled above.
+# Debian reports every MariaDB server CVE against libmariadb3 and mariadb-common,
+# so keeping them would carry server CVEs into an image that has no server.
 # libunbound8 arrived as a transitive build dependency and nothing here resolves
-# DNS through it. Together they carry 10 CVEs the runtime does not need.
-# libmariadb3 and mariadb-common MUST stay -- mysqlclient links against them at
-# runtime. apt-get needs root, so switch back briefly -- USER openmetadata above
-# has no sudo access -- then restore the non-root user for the runtime image.
-#
-# Purging libmariadb-dev force-removes default-libmysqlclient-dev as a reverse
-# dependency, which orphans libmariadb3/mariadb-common in apt's eyes even
-# though mysqlclient's compiled extension links against them at runtime.
-# apt-mark manual pins them before autoremove runs so the cleanup doesn't take
-# them out too -- verified end-to-end by the `import MySQLdb` gate check.
+# DNS through it. apt-get needs root, so switch back briefly -- USER openmetadata
+# above has no sudo access -- then restore the non-root user for the runtime image.
+# The build fails if any src:mariadb binary survives the purge.
 #
 # The OS security upgrades ride along in the same root layer. trixie's base ships
 # util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
@@ -227,8 +226,8 @@ RUN pip install psycopg2 mysqlclient==2.1.1
 # built. Below the COPY and pip layers, the index is re-read on every build.
 #
 # The C/C++ toolchain is build-only and goes in this layer, the first point after
-# the last pip install that compiles: psycopg2 and mysqlclient above, kerberos and
-# mysql-connector-python through the extras. Scanners attribute src:gcc-NN CVEs to
+# the last pip install that compiles: psycopg2 above; mysqlclient (pulled in by pydoris),
+# kerberos and mysql-connector-python through the extras. Scanners attribute src:gcc-NN CVEs to
 # every installed binary of that source, and most of those binaries are the
 # compilers and their sanitizer libraries. Nothing compiles at runtime: the DB2
 # connector switches clidriver versions by swapping the driver files, not by
@@ -253,10 +252,12 @@ RUN set -eu; \
     apt-get -qq update; \
     cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
-    apt-mark manual libpq5 libmariadb3 mariadb-common libgomp1 xz-utils bzip2; \
-    apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libunbound8; \
+    apt-mark manual libpq5 libgomp1 xz-utils bzip2; \
+    apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
     apt-get -qq purge -y build-essential gcc; \
     apt-get -qq autoremove -y --purge; \
+    mariadb_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="mariadb"{print $2}')"; \
+    [ -z "$mariadb_left" ] || { echo "MariaDB packages survived the purge: $mariadb_left" >&2; exit 1; }; \
     cc_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '($1=="gcc-defaults" || $1 ~ /^gcc-[0-9]+$/) && $2 !~ /^(gcc-[0-9]+-base|libgcc-s1|libstdc\+\+6|libgomp1)$/ {print $2}')"; \
     [ -z "$cc_left" ] || { echo "compiler packages survived the purge: $cc_left" >&2; exit 1; }; \
     for cc in cc c++ gcc g++ cpp; do if command -v "$cc" >/dev/null; then echo "$cc is still on PATH" >&2; exit 1; fi; done; \
@@ -268,7 +269,7 @@ USER openmetadata
 # Fail the build if the purge above took a runtime library from an extension that was
 # compiled earlier, or from the DB2 driver on amd64. Modules that a slimmer
 # INGESTION_DEPENDENCY does not install are skipped.
-RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('MySQLdb', 'psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
+RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
 
 # Models are opt-in so the default image remains unchanged. Run this after the
 # package installs and before the spaCy cleanup below, while using the runtime user.

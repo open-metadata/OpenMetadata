@@ -14,7 +14,10 @@ Source connection handler
 
 from typing import TYPE_CHECKING, cast
 
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy.dialects import registry
 from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
+from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -36,6 +39,22 @@ from metadata.utils.constants import THREE_MIN
 
 if TYPE_CHECKING:
     from sqlalchemy.engine.default import DefaultDialect
+
+
+class DorisPyMySQLDialect(DorisDialect, MySQLDialect_pymysql):
+    """pydoris on the pure-Python PyMySQL driver.
+
+    pydoris builds on SQLAlchemy's mysqldb dialect, which needs the mysqlclient C
+    extension and, through it, Debian's libmariadb3 and mariadb-common. Those packages
+    carry MariaDB server CVEs into every image, so `doris://` resolves here instead.
+    ADR:2026-10-22-doris-connects-through-pymysql-and-images-ship-no-mariadb-client
+    """
+
+    supports_statement_cache = True
+
+
+# Importing pydoris above already registered its own `doris` entry; this overrides it.
+registry.register("doris", __name__, DorisPyMySQLDialect.__name__)
 
 
 class DorisIdentifierPreparer(MySQLIdentifierPreparer):
