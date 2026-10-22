@@ -51,7 +51,7 @@ describe('Tabs.List card variant', () => {
     renderTabs('card', true);
 
     const tabList = screen.getByRole('tablist');
-    const card = tabList.parentElement;
+    const card = tabList.parentElement?.parentElement;
 
     expect(card).toHaveClass('tw:bg-surface', 'tw:border-subtle');
     expect(card).toContainElement(screen.getByTestId('action'));
@@ -117,7 +117,7 @@ describe('useTabItemState', () => {
     expect(screen.getByTestId('probe')).toHaveTextContent('null');
   });
 
-  describe('card overflow fade', () => {
+  describe('card overflow shadow', () => {
     afterEach(() => {
       vi.unstubAllGlobals();
       vi.restoreAllMocks();
@@ -139,44 +139,50 @@ describe('useTabItemState', () => {
       );
     };
 
-    it('fades the end edge while tabs overflow it', () => {
+    const queryShadow = (edge: 'start' | 'end') =>
+      screen.queryByTestId(`tab-list-shadow-${edge}`);
+
+    it('shadows only the end edge while tabs overflow it', () => {
       mockScrollBox(1000, 600);
       renderTabs('card');
 
-      const { maskImage } = screen.getByRole('tablist').style;
-
-      expect(maskImage).toContain('linear-gradient(to right, #000');
-      expect(maskImage).toMatch(/transparent\)$/);
+      expect(queryShadow('end')).toBeInTheDocument();
+      expect(queryShadow('start')).not.toBeInTheDocument();
     });
 
-    it('keeps the caller style alongside the fade', () => {
+    it('shadows both edges once scrolled into the middle', () => {
       mockScrollBox(1000, 600);
-      render(
-        <Tabs defaultSelectedKey="one">
-          <Tabs.List
-            aria-label="Sections"
-            style={{ marginTop: 4 }}
-            type="underline"
-            variant="card">
-            <Tabs.Item id="one">One</Tabs.Item>
-            <Tabs.Item id="two">Two</Tabs.Item>
-          </Tabs.List>
-        </Tabs>
-      );
+      renderTabs('card');
       const tabList = screen.getByRole('tablist');
 
-      expect(tabList.style.marginTop).toBe('4px');
-      expect(tabList.style.maskImage).toContain('transparent');
+      tabList.scrollLeft = 200;
+      fireEvent.scroll(tabList);
+
+      expect(queryShadow('start')).toBeInTheDocument();
+      expect(queryShadow('end')).toBeInTheDocument();
     });
 
-    it('leaves the list unmasked when every tab fits', () => {
+    it('drops the end shadow once scrolled to the end', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+      const tabList = screen.getByRole('tablist');
+
+      tabList.scrollLeft = 400;
+      fireEvent.scroll(tabList);
+
+      expect(queryShadow('start')).toBeInTheDocument();
+      expect(queryShadow('end')).not.toBeInTheDocument();
+    });
+
+    it('renders no shadow when every tab fits', () => {
       mockScrollBox(600, 600);
       renderTabs('card');
 
-      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+      expect(queryShadow('start')).not.toBeInTheDocument();
+      expect(queryShadow('end')).not.toBeInTheDocument();
     });
 
-    it('fades the end edge once tabs added after mount overflow the list', async () => {
+    it('shadows the end edge once tabs added after mount overflow the list', async () => {
       mockScrollBox(600, 600);
       const renderList = (ids: string[]) => (
         <Tabs defaultSelectedKey="one">
@@ -191,18 +197,14 @@ describe('useTabItemState', () => {
       );
       const { rerender } = render(renderList(['one', 'two']));
 
-      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+      expect(queryShadow('end')).not.toBeInTheDocument();
 
       vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
         1000
       );
       rerender(renderList(['one', 'two', 'three', 'four']));
 
-      await waitFor(() =>
-        expect(screen.getByRole('tablist').style.maskImage).toContain(
-          'transparent'
-        )
-      );
+      await waitFor(() => expect(queryShadow('end')).toBeInTheDocument());
     });
   });
 });
