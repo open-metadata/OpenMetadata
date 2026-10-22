@@ -34,6 +34,8 @@ cd "$REPO_ROOT"
 # ---------------------------------------------------------------------------
 JAVA_VERSION=21
 NODE_VERSION=22
+# The UI's engines floor; an older 22.x passes the major check but fails `yarn install`.
+NODE_MIN="$(sed 's/^v//' "$REPO_ROOT/openmetadata-ui/src/main/resources/ui/.nvmrc")"
 PYTHON_PREFERRED="3.11"
 PYTHON_MIN="3.10"
 # The package metadata intentionally has no Python ceiling, but the current dev
@@ -474,19 +476,28 @@ node_major() {
   node --version | sed 's/^v//' | cut -d. -f1
 }
 
+node_meets_min() {
+  if version_ge "$(node --version | sed 's/^v//')" "$NODE_MIN"; then
+    ok "Node $(node --version)"
+    return 0
+  fi
+  warn "Node $(node --version) is older than v$NODE_MIN (.nvmrc); yarn install will reject it. Run: nvm install $NODE_MIN"
+  return 1
+}
+
 ensure_node() {
   local major found_display
   major="$(node_major || true)"
   if [ "$major" = "$NODE_VERSION" ]; then
     NODE_BIN_DIR="$(dirname "$(command -v node)")"
-    ok "Node $(node --version)"
-    return 0
+    node_meets_min
+    return
   fi
   [ -n "$major" ] && info "Found Node v$major; the current UI dependency tree requires Node $NODE_VERSION."
 
   if activate_installed_node; then
-    ok "Node $(node --version)"
-    return 0
+    node_meets_min
+    return
   fi
 
   if [ "$DO_TOOLS" -eq 0 ] || [ "$CHECK_ONLY" -eq 1 ]; then

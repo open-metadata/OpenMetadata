@@ -162,7 +162,8 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v22.22.2</nodeVersion>
+              <!-- Keep in sync with openmetadata-ui/src/main/resources/ui/.nvmrc; plugin 1.12.1 cannot read it. -->
+              <nodeVersion>v22.23.4</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
               <skip>${skip.ui.build}</skip>
             </configuration>

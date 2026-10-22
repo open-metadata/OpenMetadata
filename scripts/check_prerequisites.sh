@@ -52,6 +52,7 @@ declare -A node
 node["name"]="Node"
 node["version_command"]="node --version"
 node["required_version"]="22"
+node["minimum_version"]="$(sed 's/^v//' "$(dirname "${BASH_SOURCE[0]}")/../openmetadata-ui/src/main/resources/ui/.nvmrc")"
 
 declare -A yarn
 yarn["name"]="Yarn"

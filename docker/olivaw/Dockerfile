@@ -66,8 +66,8 @@ RUN curl -fsSL --retry 3 --retry-all-errors \
     && ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
     && mvn --version
 
-# Node 22.23.4 + yarn 1.22.22 — the versions `.devcontainer/dev/devcontainer.json` pins, and what the
-# UI's `package.json` requires (`node >=22.23.4`, `yarn ^1.22.0`).
+# Node 22.23.4 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the
+# UI's `engines` floor rejects anything older); it is pinned here because the tarball is checksum-verified.
 #
 # Arch-resolved rather than hardcoded to x64: a local install on Apple Silicon builds and runs arm64,
 # and the wrong tarball fails at exec with a misleading "not found".
