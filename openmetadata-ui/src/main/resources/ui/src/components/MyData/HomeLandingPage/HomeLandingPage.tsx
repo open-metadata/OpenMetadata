@@ -201,7 +201,7 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         data-testid="home-landing-page"
         scroll="page">
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
-          <div className="tw:flex tw:flex-col tw:gap-10 tw:px-4 tw:pt-8">
+          <div className="tw:flex tw:flex-col tw:gap-6 tw:px-4 tw:pt-4">
             <Suspense fallback={greeting}>
               <CriticalAnnouncements fallback={greeting} />
             </Suspense>
