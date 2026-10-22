@@ -201,6 +201,11 @@ DEFAULT_NATS_ACK_WAIT = 60
 MIN_NATS_KEEPALIVE_INTERVAL = 1.0
 
 
+def _nats_setting(configured: Any, default: Any) -> Any:
+    """The configured value, or the default when a code-built config left it unset."""
+    return default if configured is None else configured
+
+
 class OpenlineageSource(PipelineServiceSource):
     """
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
@@ -1353,23 +1358,24 @@ class OpenlineageSource(PipelineServiceSource):
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
 
     def _poll_nats(self, broker: NatsBrokerConfig) -> Iterable[OpenLineageEvent]:
-        """Poll events from a NATS JetStream stream."""
+        """Poll events from a NATS JetStream stream until the stream goes quiet."""
         try:
             client = self.client
-            idle_time = 0.0
             # the schema defaults these, but a config built in code can leave them unset;
             # `or` would also swallow a deliberate sessionTimeout of 0, which means "one
             # empty fetch ends the run". poolTimeout and batchSize cannot be 0: the schema
             # rejects them, because a zero wait never advances idle_time
-            pool_timeout = DEFAULT_NATS_POOL_TIMEOUT if broker.poolTimeout is None else broker.poolTimeout
-            session_timeout = DEFAULT_NATS_SESSION_TIMEOUT if broker.sessionTimeout is None else broker.sessionTimeout
-            batch_size = DEFAULT_NATS_BATCH_SIZE if broker.batchSize is None else broker.batchSize
+            pool_timeout = _nats_setting(broker.poolTimeout, DEFAULT_NATS_POOL_TIMEOUT)
+            session_timeout = _nats_setting(broker.sessionTimeout, DEFAULT_NATS_SESSION_TIMEOUT)
+            batch_size = _nats_setting(broker.batchSize, DEFAULT_NATS_BATCH_SIZE)
             # A reused durable keeps its own ackWait and the configured one is only
             # warned about, so pacing the keep-alive off the config would leave the
             # heartbeat slower than the deadline the server is actually applying
             ack_wait = getattr(client, "effective_ack_wait", None)
             if ack_wait is None:
-                ack_wait = DEFAULT_NATS_ACK_WAIT if broker.ackWait is None else broker.ackWait
+                ack_wait = _nats_setting(broker.ackWait, DEFAULT_NATS_ACK_WAIT)
+
+            idle_time = 0.0
             while idle_time <= session_timeout:
                 messages = client.fetch(batch_size, timeout=pool_timeout)
                 if not messages:
@@ -1378,45 +1384,52 @@ class OpenlineageSource(PipelineServiceSource):
                     continue
 
                 idle_time = 0.0
-                # One heartbeat for the whole batch, not one per message: the timers all
-                # start together at the fetch, so refreshing the remainder on every
-                # message meant N(N-1)/2 blocking round trips -- about 4,950 for the
-                # default batch of 100 -- paid even when the pipeline kept up
-                with self._batch_keepalive(client, messages, ack_wait) as leaving_batch:
-                    for message in messages:
-                        parsed = None
-                        try:
-                            event = message_to_open_lineage_event(json.loads(message.data))
-                            parsed = self._filter_event_by_types(
-                                event,
-                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                            )
-                        except Exception as e:
-                            logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
-                            logger.debug(traceback.format_exc())
-
-                        if parsed:
-                            yield parsed
-
-                        # Dropped from the heartbeat first, so a refresh is never sent for
-                        # a message that has already been acknowledged
-                        leaving_batch(message)
-
-                        # Acknowledged once the connector has handed the event on. The
-                        # ingestion pipeline reports its own failures in the run status and
-                        # does not report them back here, so redelivery covers a run that
-                        # died mid-batch, not an event the pipeline rejected.
-                        try:
-                            client.ack(message)
-                        except Exception as e:
-                            # The event stays unacknowledged and comes back next run; that
-                            # is better than losing the rest of this batch
-                            logger.warning("Failed to acknowledge a NATS message: %s", e)
-                            logger.debug(traceback.format_exc())
+                yield from self._consume_nats_batch(client, messages, ack_wait)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    def _consume_nats_batch(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[OpenLineageEvent]:
+        """Yield the ingestible events of one fetched batch, acknowledging each as it goes."""
+        # One heartbeat for the whole batch, not one per message: the timers all
+        # start together at the fetch, so refreshing the remainder on every
+        # message meant N(N-1)/2 blocking round trips -- about 4,950 for the
+        # default batch of 100 -- paid even when the pipeline kept up
+        with self._batch_keepalive(client, messages, ack_wait) as leaving_batch:
+            for message in messages:
+                parsed = self._parse_nats_event(message)
+                if parsed:
+                    yield parsed
+
+                # Dropped from the heartbeat first, so a refresh is never sent for
+                # a message that has already been acknowledged
+                leaving_batch(message)
+
+                # Acknowledged once the connector has handed the event on. The
+                # ingestion pipeline reports its own failures in the run status and
+                # does not report them back here, so redelivery covers a run that
+                # died mid-batch, not an event the pipeline rejected.
+                try:
+                    client.ack(message)
+                except Exception as e:
+                    # The event stays unacknowledged and comes back next run; that
+                    # is better than losing the rest of this batch
+                    logger.warning("Failed to acknowledge a NATS message: %s", e)
+                    logger.debug(traceback.format_exc())
+
+    def _parse_nats_event(self, message: Any) -> OpenLineageEvent | None:
+        """The event a NATS message carries, or None when it is unparseable or filtered out."""
+        try:
+            event = message_to_open_lineage_event(json.loads(message.data))
+            return self._filter_event_by_types(
+                event,
+                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+            )
+        except Exception as e:
+            logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
+            logger.debug(traceback.format_exc())
+            return None
 
     @contextmanager
     def _batch_keepalive(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[Callable[[Any], None]]:

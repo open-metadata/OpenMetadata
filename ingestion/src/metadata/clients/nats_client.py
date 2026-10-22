@@ -83,6 +83,22 @@ def build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) -
     return ctx
 
 
+def auth_connect_options(auth: Any, temp_files: list[str]) -> dict[str, Any]:
+    """The nats.connect() keyword arguments for one authentication variant."""
+    match auth:
+        case BasicAuth():
+            return {"user": auth.username, "password": auth.password.get_secret_value()}
+        case TokenAuth():
+            return {"token": auth.token.get_secret_value()}
+        case NkeyAuth():
+            return {"nkeys_seed_str": auth.nkeySeed.get_secret_value()}
+        # The credentials variant is declared per connector, so match on its shape
+        case _ if hasattr(auth, "credentials"):
+            creds = write_temp_secret(auth.credentials.get_secret_value(), temp_files, suffix=".creds")
+            return {"user_credentials": creds}
+    raise ValueError(f"Unsupported NATS authentication type: {type(auth).__name__}")
+
+
 def build_connect_options(
     *,
     servers: str,
@@ -101,23 +117,8 @@ def build_connect_options(
         raise ValueError("NATS servers must be non-empty comma-separated URLs")
     opts["servers"] = server_list
 
-    match auth:
-        case None:
-            pass
-        case BasicAuth():
-            opts["user"] = auth.username
-            opts["password"] = auth.password.get_secret_value()
-        case TokenAuth():
-            opts["token"] = auth.token.get_secret_value()
-        case NkeyAuth():
-            opts["nkeys_seed_str"] = auth.nkeySeed.get_secret_value()
-        # The credentials variant is declared per connector, so match on its shape
-        case _ if hasattr(auth, "credentials"):
-            opts["user_credentials"] = write_temp_secret(
-                auth.credentials.get_secret_value(), temp_files, suffix=".creds"
-            )
-        case _:
-            raise ValueError(f"Unsupported NATS authentication type: {type(auth).__name__}")
+    if auth is not None:
+        opts.update(auth_connect_options(auth, temp_files))
 
     if tls_config and tls_config.root:
         opts["tls"] = build_tls_context(tls_config.root, temp_files)
