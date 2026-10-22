@@ -1443,12 +1443,13 @@ public class CreateTask implements TaskListener {
     }
   }
 
-  // The request keeps memories by id only, so it may read the derivation of any memory.
+  // The request keeps memories by id only, so it may read the derivation of any memory. The payload
+  // stays a map: the workflow merges the term's pending changes into it and drops anything else.
   private static Object proposalPayload(EntityInterface<?> term) {
     List<MemoryDerivation> derivations =
         new MemoryDerivations()
             .find(Entity.GLOSSARY_TERM, List.of(term.getId()), UnaryOperator.identity());
-    return AutomationProposals.payloadFor(term, derivations);
+    return JsonUtils.getMap(AutomationProposals.payloadFor(term, derivations));
   }
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
