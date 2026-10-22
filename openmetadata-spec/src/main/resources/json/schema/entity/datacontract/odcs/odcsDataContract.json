@@ -805,7 +805,7 @@
         }
       },
       "required": ["property", "value"],
-      "additionalProperties": false
+      "additionalProperties": true
     }
   },
   "properties": {

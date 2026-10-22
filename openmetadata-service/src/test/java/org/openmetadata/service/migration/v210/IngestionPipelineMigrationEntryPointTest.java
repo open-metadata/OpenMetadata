@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigratio
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
@@ -87,6 +88,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
+        MockedStatic<ODCSCustomPropertiesMigration> odcsCustomPropertiesMigration =
+            mockStatic(ODCSCustomPropertiesMigration.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -98,6 +101,8 @@ class IngestionPipelineMigrationEntryPointTest {
       ingestionPipelineMigration.verify(
           () -> IngestionPipelineMigrationUtil.backfillSourceConfigTypes(collectionDAO));
       searchTermBoostRepair.verify(SearchTermBoostRepair::repairTermBoostSettings);
+      odcsCustomPropertiesMigration.verify(
+          () -> ODCSCustomPropertiesMigration.convertODCSCustomPropertiesToLists(collectionDAO));
       ConnectionType connectionType =
           "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
       referenceMigration.verify(
