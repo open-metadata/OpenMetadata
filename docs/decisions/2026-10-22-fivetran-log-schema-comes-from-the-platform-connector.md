@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
-- **Deciders:** @akashverma0768, reviewers of #35933
+- **Deciders:** @akashverma0786, reviewers of #35933
 - **Guard:** `ingestion/tests/unit/source/pipeline/fivetran/test_fivetran_log.py::TestResolveLogSchema`
   and `test_pipeline_list_prefers_the_configured_log_schema`
 - **Related:** #32253, #35933

@@ -2204,9 +2204,6 @@
       "2bbb82cd34c56b0b162548247a11b1380fae73e3345a1e41928f5953d52b06ab": 1,
       "d7a1625b01033e89fd8c34ab360f93a224ff0071e2c98642c9c7853aa7735d2d": 1
     },
-    "ingestion/src/metadata/ingestion/source/pipeline/fivetran/fivetran_log.py": {
-      "ccf27fdad76cdba74422b632fbbce10a82f58d5bf3d7270280cbd92b8d2e755c": 1
-    },
     "ingestion/src/metadata/ingestion/source/pipeline/fivetran/metadata.py": {
       "04f7a8d262860b63066205be12bb98d31964c949d78b79e4e1a0f250e14c18f4": 1,
       "1ed1b8ea06a9ea4dc40caa5dad4c350f66286b4ac4b0c5a2673ee4af7ddd1987": 1,
