@@ -55,6 +55,10 @@ def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
         yield list(values[start : start + size])
 
 
+class SearchCursorStalledError(RuntimeError):
+    """search_after pagination returned the same page again, so it can never reach the end."""
+
+
 @dataclass(frozen=True)
 class FqnSearchResult:
     """Unhydrated FQN candidates and the server's hit count."""
@@ -537,14 +541,13 @@ class ESMixin(Generic[T]):
 
             next_after = self._next_search_after(response)
             # An index that cannot sort on the server's id tiebreaker returns a null sort value
-            # search_after cannot move past, so the same page would come back forever.
+            # search_after cannot move past, so the same page would come back forever. Stopping
+            # quietly would hand the caller a partial walk as a complete one.
             if after and next_after == after:
-                logger.warning(
-                    "Search cursor for %s did not advance past %s; stopping pagination",
-                    entity.__name__,
-                    after,
+                raise SearchCursorStalledError(
+                    f"Search cursor for {entity.__name__} did not advance past {after}: its index"
+                    f" {ES_INDEX_MAP[entity.__name__]} cannot sort on the id tiebreaker. Reindex it."
                 )
-                break
             yield response
 
             if not next_after:

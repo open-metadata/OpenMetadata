@@ -12,8 +12,10 @@
 
 from urllib.parse import parse_qs, urlsplit
 
+import pytest
+
 from metadata.generated.schema.entity.data.table import Table
-from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin, SearchCursorStalledError
 
 
 def _page(*sorts):
@@ -50,10 +52,19 @@ def test_pagination_follows_a_cursor_that_advances():
     assert client.cursors == [None, ["b", "b", "id-b"], ["a", "a", "id-a"]]
 
 
-def test_pagination_stops_when_the_cursor_does_not_advance():
+def test_pagination_raises_when_the_cursor_does_not_advance():
     # A hit whose index cannot sort on the id tiebreaker comes back with a null sort value, and
     # search_after cannot move past it: the server answers every request with the same page.
-    responses, client = _paginate([_page(["p", "p", None])])
+    # Stopping quietly would report a partial walk as a complete one.
+    client = PagedSearchClient([_page(["p", "p", None])])
+    mixin = ESMixin()
+    mixin.client = client
+    responses = []
+
+    with pytest.raises(SearchCursorStalledError, match=r"table_search_index .* Reindex it"):
+        for response in mixin._paginate_es_internal(entity=Table):
+            responses.append(response)
+            assert len(client.cursors) <= 3, "the guard must stop the loop"
 
     assert len(responses) == 1
     assert len(client.cursors) == 2
