@@ -119,6 +119,7 @@ const CustomPropertiesSection = ({
                 }}
               />
             }
+            title={t('label.no-custom-properties-defined')}
           />
         </div>
       </div>
