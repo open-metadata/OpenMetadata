@@ -135,6 +135,7 @@ const mockUseOntologyStudioScopes = jest.fn(() => ({
   isError: false,
   isLoading: false,
   isOntologyError: false,
+  ...({} as { isOntologyFetching?: boolean }),
   isOntologyLoading: false,
   refetchOntologies: jest.fn(),
   ontologies: [] as Ontology[],
@@ -353,6 +354,13 @@ describe('OntologyExplorerPage', () => {
     <output data-testid="location">{useLocation().search}</output>
   );
 
+  const bareStudio = () => (
+    <MemoryRouter initialEntries={['/']}>
+      <OntologyExplorerPage />
+      <Location />
+    </MemoryRouter>
+  );
+
   const renderNativeStudio = (search: string) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
@@ -447,15 +455,9 @@ describe('OntologyExplorerPage', () => {
       refetch: jest.fn(),
       refetchOntologies: jest.fn(),
     };
-    const studio = () => (
-      <MemoryRouter initialEntries={['/']}>
-        <OntologyExplorerPage />
-        <Location />
-      </MemoryRouter>
-    );
     mockUseRealRouter = true;
     mockUseOntologyStudioScopes.mockReturnValue(loadingScopes);
-    const view = renderWithQueryClient(studio());
+    const view = renderWithQueryClient(bareStudio());
 
     expect(screen.getByTestId('location')).toBeEmptyDOMElement();
 
@@ -464,13 +466,47 @@ describe('OntologyExplorerPage', () => {
       isLoading: false,
       isOntologyLoading: false,
     });
-    view.rerender(studio());
+    view.rerender(bareStudio());
 
     await waitFor(() =>
       expect(screen.getByTestId('location')).toHaveTextContent(
         'scope=glossary%3Aall'
       )
     );
+  });
+
+  it('does not fall back while a cached empty list is refreshing', async () => {
+    const refreshingScopes = {
+      glossaries: [],
+      isError: false,
+      isLoading: false,
+      isOntologyError: false,
+      isOntologyFetching: true,
+      isOntologyLoading: false,
+      ontologies: [],
+      refetch: jest.fn(),
+      refetchOntologies: jest.fn(),
+    };
+    mockUseRealRouter = true;
+    mockUseOntologyStudioScopes.mockReturnValue(refreshingScopes);
+    const view = renderWithQueryClient(bareStudio());
+
+    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
+
+    mockUseOntologyStudioScopes.mockReturnValue({
+      ...refreshingScopes,
+      isOntologyFetching: false,
+      ontologies: [nativeOntology],
+    });
+    view.rerender(bareStudio());
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('all-ontologies-empty')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
   });
 
   it('keeps an explicitly chosen empty All ontologies view and links back to glossaries', async () => {

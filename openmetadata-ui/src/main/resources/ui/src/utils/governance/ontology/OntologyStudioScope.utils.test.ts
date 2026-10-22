@@ -44,6 +44,7 @@ describe('shouldFallBackToGlossaryScope', () => {
   const loadedEmpty: NativeOntologyListState = {
     isCreatingOntology: false,
     isOntologyError: false,
+    isOntologyFetching: false,
     isOntologyLoading: false,
     ontologyCount: 0,
   };
@@ -56,6 +57,7 @@ describe('shouldFallBackToGlossaryScope', () => {
 
   it.each<[string, string, Partial<NativeOntologyListState>]>([
     ['the list is loading', '', { isOntologyLoading: true }],
+    ['a cached list is refreshing', '', { isOntologyFetching: true }],
     ['the list failed', '', { isOntologyError: true }],
     ['an ontology is being created', '', { isCreatingOntology: true }],
     ['native ontologies exist', '', { ontologyCount: 1 }],

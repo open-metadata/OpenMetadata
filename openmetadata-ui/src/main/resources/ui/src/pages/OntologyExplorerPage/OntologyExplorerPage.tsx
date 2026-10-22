@@ -748,6 +748,7 @@ const OntologyExplorerPage: React.FC = () => {
     {
       isCreatingOntology,
       isOntologyError: studioScopes.isOntologyError,
+      isOntologyFetching: studioScopes.isOntologyFetching,
       isOntologyLoading: studioScopes.isOntologyLoading,
       ontologyCount: studioScopes.ontologies.length,
     }

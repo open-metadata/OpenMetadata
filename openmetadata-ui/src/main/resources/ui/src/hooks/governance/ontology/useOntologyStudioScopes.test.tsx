@@ -16,7 +16,10 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { getGlossariesList } from '../../../rest/glossaryAPI';
 import { listOntologies } from '../../../rest/ontologyAPI';
-import { useOntologyStudioScopes } from './useOntologyStudioScopes';
+import {
+  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
+  useOntologyStudioScopes,
+} from './useOntologyStudioScopes';
 
 jest.mock('../../../rest/glossaryAPI');
 jest.mock('../../../rest/ontologyAPI');
@@ -121,6 +124,41 @@ describe('useOntologyStudioScopes', () => {
 
     expect(result.current.isOntologyError).toBe(false);
     expect(mockGetGlossariesList).not.toHaveBeenCalled();
+  });
+
+  it('reports a background refresh of cached ontologies as fetching, not loading', async () => {
+    let resolveList:
+      | ((value: { data: never[]; paging: { total: number } }) => void)
+      | undefined;
+    mockListOntologies.mockReturnValue(
+      new Promise((resolve) => {
+        resolveList = resolve;
+      })
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    client.setQueryData([ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY], []);
+    const { result } = renderHook(
+      () =>
+        useOntologyStudioScopes({
+          enabled: true,
+          loadGlossaries: false,
+          knownGlossaries: [],
+        }),
+      {
+        wrapper: ({ children }: { children: ReactNode }) => (
+          <QueryClientProvider client={client}>{children}</QueryClientProvider>
+        ),
+      }
+    );
+
+    await waitFor(() => expect(result.current.isOntologyFetching).toBe(true));
+
+    expect(result.current.isOntologyLoading).toBe(false);
+
+    resolveList?.({ data: [], paging: { total: 0 } });
+    await waitFor(() => expect(result.current.isOntologyFetching).toBe(false));
   });
 
   it('keeps native loading success independent of glossary failure', async () => {
