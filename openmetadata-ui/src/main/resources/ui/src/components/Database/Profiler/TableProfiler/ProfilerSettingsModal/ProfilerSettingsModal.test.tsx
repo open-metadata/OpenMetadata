@@ -143,6 +143,20 @@ const renderAndSave = async (
   return (putTableProfileConfig as jest.Mock).mock.calls[0][1];
 };
 
+const buildStaticSampleConfig = (
+  profileSample: number,
+  profileSampleType = ProfileSampleType.Percentage
+): TableProfilerConfig => ({
+  sampleDataCount: 500,
+  profileSampleConfig: {
+    sampleConfigType: SampleConfigType.Static,
+    config: {
+      profileSample,
+      profileSampleType,
+    },
+  },
+});
+
 describe('Test ProfilerSettingsModal component', () => {
   beforeEach(() => {
     cleanup();
@@ -381,20 +395,6 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
       mockTableProfilerConfig.excludeColumns
     );
   });
-});
-
-const buildStaticSampleConfig = (
-  profileSample: number,
-  profileSampleType = ProfileSampleType.Percentage
-): TableProfilerConfig => ({
-  sampleDataCount: 500,
-  profileSampleConfig: {
-    sampleConfigType: SampleConfigType.Static,
-    config: {
-      profileSample,
-      profileSampleType,
-    },
-  },
 });
 
 describe('ProfilerSettingsModal profile-sample round-trip', () => {
