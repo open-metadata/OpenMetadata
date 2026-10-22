@@ -26,6 +26,7 @@ import {
   waitForUserPatch,
 } from '../../../utils/aiProfile';
 import { chooseSelectOption, uuid } from '../../../utils/common';
+import { performUserLogin } from '../../../utils/user';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -215,24 +216,34 @@ test.describe('AI Profile Users', () => {
     await hardDelete;
   });
 
-  test('Should edit the preferred name on a user profile', async ({
+  // Legacy parity: only the user renames themselves, admins included.
+  test('Should let a user edit their own preferred name', async ({
     browser,
-    page,
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
+    const newName = `${user.responseData.name}-edited`;
+    const { page, afterAction } = await performUserLogin(browser, user);
 
-    await openUserProfile(page, user.responseData.name);
+    try {
+      await openAiProfile(page);
+      await page.getByTestId('preferred-name-edit').click();
+      await page
+        .getByTestId('preferred-name-input')
+        .getByRole('textbox')
+        .fill(newName);
 
-    await page.getByTestId('preferred-name-edit').click();
-    await page
-      .getByTestId('preferred-name-input')
-      .getByRole('textbox')
-      .fill(`${user.responseData.name}-edited`);
+      const patch = waitForUserPatch(page, user.responseData.id ?? '');
+      await page.getByTestId('preferred-name-save').click();
+      expect((await patch).ok()).toBeTruthy();
 
-    const patch = waitForUserPatch(page, user.responseData.id ?? '');
-    await page.getByTestId('preferred-name-save').click();
-    await patch;
+      const saved = await apiContext.get(
+        `/api/v1/users/${user.responseData.id}`
+      );
+      expect((await saved.json()).displayName).toBe(newName);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('Should add a persona on a user profile', async ({ browser, page }) => {
