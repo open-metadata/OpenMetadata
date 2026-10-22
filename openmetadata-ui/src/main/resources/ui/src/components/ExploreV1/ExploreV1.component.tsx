@@ -59,7 +59,7 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE, SORT_ORDER } from '../../enums/common.enum';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -81,11 +81,11 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 import { DomainFilterChip } from '../common/DomainFilterChip/DomainFilterChip.component';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
 } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
-import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
@@ -1098,10 +1098,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
       return loading ? (
         <Loader />
       ) : (
-        <FilterErrorPlaceHolder
-          className="h-min-80 d-flex flex-col justify-center border-none"
-          size={SIZE.MEDIUM}
-        />
+        <div className="tw:relative tw:min-h-80">
+          <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+        </div>
       );
     }
 

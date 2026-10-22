@@ -33,13 +33,6 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
 });
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<>mockErrorPlaceHolder</>);
-  }
-);
-
-jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
   () => {
     return jest.fn().mockReturnValue(<>mockTitleBreadcrumb</>);
@@ -144,6 +137,8 @@ describe('ServicesPage', () => {
       );
     });
 
-    expect(await screen.findByText('mockErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 });

@@ -16,6 +16,8 @@ import AssetSelectionContentBody, {
 } from './AssetSelectionContentBody';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Alert: ({
     children,
     title,
@@ -93,12 +95,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </span>
   ),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="error-placeholder">{children}</div>
-  ));
-});
 
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader" />);
@@ -440,7 +436,11 @@ describe('AssetSelectionContentBody', () => {
       />
     );
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText('no data found')).toBeInTheDocument();
   });
 
@@ -448,7 +448,11 @@ describe('AssetSelectionContentBody', () => {
     render(<AssetSelectionContentBody {...defaultProps} isLoading />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).not.toBeInTheDocument();
   });
 
   it('should render dry run modal when dryRunWarnings is defined', () => {

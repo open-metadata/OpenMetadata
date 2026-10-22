@@ -972,7 +972,7 @@ describe('DataQualityTab', () => {
 
       await waitFor(() => {
         expect(
-          screen.getByText('message.no-access-placeholder')
+          screen.getByTestId('permission-error-placeholder')
         ).toBeInTheDocument();
       });
 
