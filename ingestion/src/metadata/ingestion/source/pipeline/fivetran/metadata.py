@@ -251,13 +251,13 @@ class FivetranSource(PipelineServiceSource):
         # Fivetran's "destination" config holds the warehouse where logs live
         log_database = self._get_database_name(pipeline_details.destination)
         if not log_database:
-            logger.debug(f"No database in the destination config of [{pipeline_details.connector_id}]")
+            logger.debug("No database in the destination config of [%s]", pipeline_details.connector_id)
             return None
 
         log_service_type = pipeline_details.destination.get("service", "")
         service = self._resolve_log_source(log_service_type)
         if not service:
-            logger.debug(f"No [{log_service_type}] service in dbServiceNames holds [{log_database}]")
+            logger.debug("No [%s] service in dbServiceNames holds [%s]", log_service_type, log_database)
             return None
 
         syncs = query_sync_logs(
@@ -267,7 +267,11 @@ class FivetranSource(PipelineServiceSource):
             log_schema=pipeline_details.log_schema,
         )
         if not syncs:
-            logger.debug(f"No sync rows in {pipeline_details.log_schema}.log for [{pipeline_details.connector_id}]")
+            logger.debug(
+                "No sync rows in %s.log for [%s]",
+                pipeline_details.log_schema,
+                pipeline_details.connector_id,
+            )
             return None
 
         statuses = []
@@ -656,11 +660,7 @@ class FivetranSource(PipelineServiceSource):
             except Exception as exc:
                 logger.warning(f"Failed to get destination for group [{group_id}]: {exc}")
                 continue
-            try:
-                connectors = list(self.fivetran_client.list_group_connectors(group_id=group_id))
-            except Exception as exc:
-                logger.warning(f"Failed to list connectors for group [{group_id}]: {exc}")
-                continue
+            connectors = list(self.fivetran_client.list_group_connectors(group_id=group_id))
             log_schema = self.fivetran_connection.logSchema or resolve_log_schema(connectors)
             for connector in connectors:
                 connector_id: str = connector.get("id", "")

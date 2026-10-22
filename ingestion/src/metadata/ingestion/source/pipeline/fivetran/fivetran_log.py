@@ -164,7 +164,11 @@ def query_sync_logs(
     except Exception as exc:
         logger.debug(traceback.format_exc())
         logger.warning(
-            f"Could not query {log_schema}.log for connector [{connector_id}] in database [{log_database}]: {exc}"
+            "Could not query %s.log for connector [%s] in database [%s]: %s",
+            log_schema,
+            connector_id,
+            log_database,
+            exc,
         )
         return None
     finally:
