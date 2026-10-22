@@ -64,7 +64,9 @@ const UserAssetCard: React.FC<UserAssetCardProps> = ({
       size="sm"
       variant="muted">
       <Card.Content>
-        <Box direction="col" gap={1}>
+        {/* py-1 on top of the sm Card's padding gives the 12px × 16px inset and
+            the row rhythm of the Explore result card (ExploreSearchCard). */}
+        <Box className="tw:py-1" direction="col" gap={2}>
           {breadcrumbItems.length > 0 && (
             <Breadcrumbs
               autoCollapse
