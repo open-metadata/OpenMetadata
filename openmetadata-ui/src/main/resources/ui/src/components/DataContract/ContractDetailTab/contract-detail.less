@@ -115,6 +115,34 @@
   }
 }
 
+.rule-item-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--om-space-8);
+
+  .rule-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--om-space-12);
+
+    .rule-item-content {
+      display: flex;
+      flex-direction: column;
+      .rule-name {
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-medium);
+        color: @grey-900;
+      }
+
+      .rule-description {
+        font-size: var(--om-font-size-sm);
+        font-weight: var(--om-font-weight-regular);
+        color: @grey-600;
+      }
+    }
+  }
+}
+
 .data-quality-card-container {
   .data-quality-chart-pie-chart {
     cursor: pointer !important;

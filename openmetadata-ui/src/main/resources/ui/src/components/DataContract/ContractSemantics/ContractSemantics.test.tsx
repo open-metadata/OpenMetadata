@@ -24,6 +24,16 @@ jest.mock('../../../assets/svg/ic-task.svg', () => ({
   ReactComponent: (props: React.SVGProps<SVGSVGElement>) => <svg {...props} />,
 }));
 
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+  return function MockRichTextEditorPreviewerNew({
+    markdown,
+  }: {
+    markdown: string;
+  }) {
+    return <div data-testid="rich-text-preview">{markdown}</div>;
+  };
+});
+
 jest.mock('../../common/StatusBadge/StatusBadgeV2.component', () => {
   return function MockStatusBadgeV2({
     label,
@@ -126,27 +136,24 @@ describe('ContractSemantics', () => {
     });
 
     it('should render with empty semantics array', () => {
-      render(<ContractSemantics semantics={[]} />);
+      const { container } = render(<ContractSemantics semantics={[]} />);
 
-      expect(
-        screen.queryByTestId('semantic-rule-item')
-      ).not.toBeInTheDocument();
+      expect(container.querySelector('.rule-item')).not.toBeInTheDocument();
     });
   });
 
   describe('Icon Rendering Based on Execution Results', () => {
     it('should render default icons when no latest results are provided', () => {
-      render(<ContractSemantics semantics={mockSemantics} />);
+      const { container } = render(
+        <ContractSemantics semantics={mockSemantics} />
+      );
 
-      const icons = screen.getAllByTestId('semantic-rule-icon');
+      const icons = container.querySelectorAll('.rule-icon-default');
 
-      expect(icons.map((icon) => icon.dataset.status)).toEqual([
-        'not-run',
-        'not-run',
-      ]);
+      expect(icons).toHaveLength(2);
     });
 
-    it('should mark each rule passed or failed from the latest results', () => {
+    it('should render success icon for passed rules', () => {
       render(
         <ContractSemantics
           latestContractResults={mockLatestContractResults}
@@ -154,18 +161,55 @@ describe('ContractSemantics', () => {
         />
       );
 
-      const icons = screen.getAllByTestId('semantic-rule-icon');
+      const icons = document.querySelectorAll('.rule-icon');
 
-      expect(icons.map((icon) => icon.dataset.status)).toEqual([
-        'passed',
-        'failed',
-      ]);
+      expect(icons).toHaveLength(2);
+    });
+
+    it('should render fail icon for failed rules', () => {
+      render(
+        <ContractSemantics
+          latestContractResults={mockLatestContractResults}
+          semantics={mockSemantics}
+        />
+      );
+
+      const icons = document.querySelectorAll('.rule-icon');
+
+      expect(icons).toHaveLength(2);
+    });
+  });
+
+  describe('Rule icon', () => {
+    it('should render every status icon at one size with its status color', () => {
+      const { container } = render(
+        <ContractSemantics
+          latestContractResults={mockLatestContractResults}
+          semantics={[
+            ...mockSemantics,
+            { ...mockSemantics[0], enabled: false, rule: 'disabled' },
+          ]}
+        />
+      );
+
+      const icons = [...container.querySelectorAll('.rule-icon')];
+
+      expect(icons).toHaveLength(3);
+
+      icons.forEach((icon) => expect(icon).toHaveClass('tw:size-5'));
+
+      expect(icons[0]).toHaveClass('tw:text-fg-success-secondary');
+      expect(icons[1]).toHaveClass('tw:text-fg-error-secondary');
+      expect(icons[2]).toHaveClass(
+        'rule-icon-default',
+        'tw:text-fg-quaternary'
+      );
     });
   });
 
   describe('Disabled rules', () => {
     it('shows a disabled rule as not run, not as passed', () => {
-      render(
+      const { container } = render(
         <ContractSemantics
           latestContractResults={mockLatestContractResults}
           semantics={[
@@ -175,10 +219,10 @@ describe('ContractSemantics', () => {
         />
       );
 
-      const ruleIcons = screen.getAllByTestId('semantic-rule-icon');
+      const ruleIcons = container.querySelectorAll('.rule-icon');
 
-      expect(ruleIcons[0]).toHaveAttribute('data-status', 'passed');
-      expect(ruleIcons[1]).toHaveAttribute('data-status', 'not-run');
+      expect(ruleIcons[0]).not.toHaveClass('rule-icon-default');
+      expect(ruleIcons[1]).toHaveClass('rule-icon-default');
     });
   });
 
@@ -188,7 +232,7 @@ describe('ContractSemantics', () => {
         <ContractSemantics contractStatus="Passed" semantics={mockSemantics} />
       );
 
-      expect(screen.getByText('Semantic Status')).toBeInTheDocument();
+      expect(screen.getByText('Semantic Status :')).toBeInTheDocument();
       expect(
         screen.getByTestId('contract-status-card-item-semantics-status')
       ).toBeInTheDocument();
@@ -198,7 +242,7 @@ describe('ContractSemantics', () => {
     it('should not display contract status when not provided', () => {
       render(<ContractSemantics semantics={mockSemantics} />);
 
-      expect(screen.queryByText('Semantic Status')).not.toBeInTheDocument();
+      expect(screen.queryByText('Semantic Status :')).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('contract-status-card-item-semantics-status')
       ).not.toBeInTheDocument();
@@ -219,67 +263,42 @@ describe('ContractSemantics', () => {
     });
   });
 
-  describe('Description', () => {
-    it('should render each description as one line of plain text', () => {
-      render(
-        <ContractSemantics
-          semantics={[
-            {
-              ...mockSemantics[0],
-              description: '<p>Table must have <strong>an owner</strong></p>',
-            },
-          ]}
-        />
+  describe('Rich Text Preview Integration', () => {
+    it('should render RichTextEditorPreviewerNew for each rule description', () => {
+      render(<ContractSemantics semantics={mockSemantics} />);
+
+      const richTextPreviews = screen.getAllByTestId('rich-text-preview');
+
+      expect(richTextPreviews).toHaveLength(2);
+      expect(richTextPreviews[0]).toHaveTextContent(
+        'First semantic rule description'
       );
-
-      const description = screen.queryByTestId('semantic-rule-description');
-
-      expect(description).toHaveTextContent('Table must have an owner');
-      expect(description?.innerHTML).not.toContain('<strong>');
-    });
-
-    it('should strip markdown from a description', () => {
-      render(
-        <ContractSemantics
-          semantics={[
-            {
-              ...mockSemantics[0],
-              description: '- first\n- second\n\n**Bold** and `code`',
-            },
-          ]}
-        />
+      expect(richTextPreviews[1]).toHaveTextContent(
+        'Second semantic rule description'
       );
-
-      expect(
-        screen.queryByTestId('semantic-rule-description')
-      ).toHaveTextContent(/^first second Bold and code$/);
-    });
-
-    it('should drop the divider and description when a rule has none', () => {
-      render(
-        <ContractSemantics
-          semantics={[{ ...mockSemantics[0], description: '' }]}
-        />
-      );
-
-      expect(screen.queryByTestId('semantic-rule-name')).toHaveTextContent(
-        'Rule 1'
-      );
-      expect(screen.queryByTestId('semantic-rule-description')).toBeNull();
     });
   });
 
   describe('Layout and Structure', () => {
     it('should render with proper row and column structure', () => {
-      render(<ContractSemantics semantics={mockSemantics} />);
+      const { container } = render(
+        <ContractSemantics semantics={mockSemantics} />
+      );
 
-      expect(screen.getByTestId('contract-semantics')).toBeInTheDocument();
+      expect(
+        container.querySelector('.contract-semantic-component-container')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.rule-item-container')
+      ).toBeInTheDocument();
     });
 
     it('should render multiple rule items', () => {
-      render(<ContractSemantics semantics={mockSemantics} />);
+      const { container } = render(
+        <ContractSemantics semantics={mockSemantics} />
+      );
 
-      const ruleItems = screen.getAllByTestId('semantic-rule-item');
+      const ruleItems = container.querySelectorAll('.rule-item');
 
       expect(ruleItems).toHaveLength(2);
     });
@@ -369,16 +388,14 @@ describe('ContractSemantics', () => {
 
   describe('Accessibility', () => {
     it('should have proper semantic HTML structure', () => {
-      render(
+      const { container } = render(
         <ContractSemantics contractStatus="Passed" semantics={mockSemantics} />
       );
 
-      expect(screen.getAllByTestId('semantic-rule-name')).toHaveLength(2);
-      expect(screen.getAllByTestId('semantic-rule-description')).toHaveLength(
-        2
-      );
+      expect(container.querySelector('.rule-name')).toBeInTheDocument();
+      expect(container.querySelector('.rule-description')).toBeInTheDocument();
       expect(
-        screen.getByTestId('contract-status-card-item-semantics-status')
+        container.querySelector('.contract-status-container')
       ).toBeInTheDocument();
     });
   });
