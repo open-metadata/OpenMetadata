@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Table,
   TableCard,
 } from '@openmetadata/ui-core-components';
@@ -28,6 +27,8 @@ import {
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
@@ -159,7 +160,7 @@ function ObservabilityAlertsTable({
 
   const emptyStatePlaceholder = (
     <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           hasCreatePermission
             ? [
@@ -178,7 +179,6 @@ function ObservabilityAlertsTable({
         description={t('message.observability-alert-empty-description')}
         features={emptyStateFeatures}
         title={t('message.observability-alert-empty-heading')}
-        variant="features"
       />
     </Box>
   );
@@ -188,7 +188,7 @@ function ObservabilityAlertsTable({
   // cue instead of the create-less onboarding.
   const errorStatePlaceholder = (
     <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
+      <SomethingWentWrongPlaceholder
         actions={
           onRetryPermission
             ? [
@@ -204,7 +204,6 @@ function ObservabilityAlertsTable({
         description={t('server.unexpected-error')}
         icon={<AlertTriangle className="tw:text-fg-error-primary" />}
         title={t('message.something-went-wrong')}
-        variant="blank"
       />
     </Box>
   );

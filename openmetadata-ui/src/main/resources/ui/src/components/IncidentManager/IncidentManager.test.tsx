@@ -151,11 +151,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     EmptyPlaceholder: ({
       title,
       description,
+      'data-testid': testId = 'empty-placeholder',
     }: {
+      'data-testid'?: string;
       title?: React.ReactNode;
       description?: React.ReactNode;
     }) => (
-      <div data-testid="empty-placeholder">
+      <div data-testid={testId}>
         <span>{title}</span>
         <span>{description}</span>
       </div>

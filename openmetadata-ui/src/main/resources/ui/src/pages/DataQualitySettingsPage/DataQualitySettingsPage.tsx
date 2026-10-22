@@ -24,7 +24,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useFormDrawerWithHook } from '../../components/common/atoms/drawer/useFormDrawer';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   DeleteIconButton,
   EditIconButton,
@@ -38,7 +39,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../../constants/constants';
 import { DIMENSION_COLOR_PALETTE } from '../../constants/DataQualityDimension.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   DataQualityDimension,
   ProviderType,
@@ -435,20 +435,23 @@ const DataQualitySettingsPage = () => {
             dataSource={filteredDimensions}
             locale={{
               emptyText: (
-                <ErrorPlaceHolder
-                  permission
-                  className="border-none"
-                  heading={t('label.dimension')}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.dimension'),
-                  })}
-                  type={
-                    searchTerm
-                      ? ERROR_PLACEHOLDER_TYPE.FILTER
-                      : ERROR_PLACEHOLDER_TYPE.CREATE
-                  }
-                  onClick={() => setDrawer({ mode: 'create' })}
-                />
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  {searchTerm ? (
+                    <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+                  ) : (
+                    <CreatePlaceholder
+                      permission
+                      data-testid={`create-error-placeholder-${t(
+                        'label.dimension'
+                      )}`}
+                      heading={t('label.dimension')}
+                      permissionValue={t('label.create-entity', {
+                        entity: t('label.dimension'),
+                      })}
+                      onCreate={() => setDrawer({ mode: 'create' })}
+                    />
+                  )}
+                </div>
               ),
             }}
             pagination={false}

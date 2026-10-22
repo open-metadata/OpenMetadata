@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,6 +27,7 @@ import { getPersonaByName } from '../../../../../../../rest/PersonaAPI';
 import { docStoreQueryKey } from '../../../../../../../rest/queries/docStoreQuery';
 import { getEntityName } from '../../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../../common/Loader/Loader';
 import { isFullscreenPersonaCategory } from '../Personas.utils';
 import AiSidebarEditor from './AiSidebarEditor';
@@ -194,7 +191,7 @@ const PersonaCustomizeView = ({
   const content = useMemo(() => {
     if (!persona || !personaDocument) {
       return (
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="persona-customize-empty"
           title={t('message.no-data-available')}
         />
@@ -215,7 +212,7 @@ const PersonaCustomizeView = ({
     }
 
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="persona-customize-empty"
         title={t('message.no-data-available')}
       />

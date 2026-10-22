@@ -1925,7 +1925,7 @@ const LineageMapCanvas = ({
       empty: (
         <NoDataPlaceholder
           description={t('message.no-lineage-data-available')}
-          icon={<PlatformLineage className="tw:text-secondary" />}
+          icon={<PlatformLineage />}
         />
       ),
     };

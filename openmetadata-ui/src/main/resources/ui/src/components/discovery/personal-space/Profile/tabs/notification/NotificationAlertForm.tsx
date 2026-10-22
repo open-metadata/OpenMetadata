@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { isEmpty, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
@@ -38,12 +38,11 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import {
   createNotificationAlert,
   getAlertsFromName,
-  getResourceFunctions,
   updateNotificationAlert,
 } from '../../../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
 import {
-  SourceOfTheCatalog,
+  shouldShowRuleSection,
   toCapabilitiesInput,
 } from '../../../../../../utils/Alerts/AlertSelectionUtil';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
@@ -71,14 +70,6 @@ interface NotificationAlertFormProps {
 
 // One array for "nothing selected", so what depends on the sources does not change every render.
 const NO_SOURCES: string[] = [];
-
-type ObservabilityFilterResourceDescriptor = {
-  containerEntities?: string[];
-  name?: string;
-  supportedActions?: unknown[];
-  supportedEventTypes?: string[];
-  supportedFilters?: unknown[];
-};
 
 const getEmptyFormValues = (): ModifiedCreateEventSubscription => ({
   alertType: AlertType.Notification,
@@ -120,9 +111,6 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
   const [isLoading, setIsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filterResources, setFilterResources] = useState<
-    ObservabilityFilterResourceDescriptor[]
-  >([]);
   const [alert, setAlert] = useState<ModifiedEventSubscription>();
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [formData, setFormData] =
@@ -145,36 +133,24 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     [formData.input]
   );
   // The server says what the chosen sources support and who they can reach, as in every alert form.
-  const { support } = useAlertSelection({
+  const selection = useAlertSelection({
     alertType: CapabilitiesAlertType.Notification,
     sources,
     input: capabilitiesInput,
-    catalog: filterResources as unknown as SourceOfTheCatalog[],
   });
 
+  const { hasFilters } = selection.support;
   const shouldShowFiltersSection = useMemo(
-    () => (isEmpty(sources) ? true : !isEmpty(support.supportedFilters)),
-    [sources, support.supportedFilters]
+    () => shouldShowRuleSection(sources, hasFilters, formData.input?.filters),
+    [sources, hasFilters, formData.input?.filters]
   );
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [functionsResponse, alertResponse] = await Promise.allSettled([
-        getResourceFunctions(),
+      const [alertResponse] = await Promise.allSettled([
         fqn ? getAlertsFromName(fqn) : Promise.resolve(null),
       ]);
-
-      if (functionsResponse.status === 'fulfilled') {
-        setFilterResources(
-          functionsResponse.value
-            .data as unknown as ObservabilityFilterResourceDescriptor[]
-        );
-      } else {
-        showErrorToast(
-          t('server.entity-fetch-error', { entity: t('label.config') })
-        );
-      }
 
       if (fqn && alertResponse.status === 'fulfilled' && alertResponse.value) {
         const rawAlert = alertResponse.value as EventSubscription;
@@ -261,7 +237,8 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
     ]
   );
 
-  if (isLoading || (isEditMode && isUndefined(alert))) {
+  // The form shows what the server says the sources support, so it waits for its first answer.
+  if (isLoading || !selection.ready || (isEditMode && isUndefined(alert))) {
     return <Loader />;
   }
 
@@ -283,13 +260,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
         <Box className="tw:w-1/2" direction="col">
           <AlertAiForm
             alert={alert}
-            containerEntities={support.containerEntities}
             fieldDocDisplay="popover"
-            filterResources={
-              filterResources as Parameters<
-                typeof AlertAiForm
-              >[0]['filterResources']
-            }
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={
               inlineAlertDetails
@@ -302,11 +273,10 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
                 : undefined
             }
             mode={isEditMode ? 'edit' : 'add'}
-            recipientCategories={support.recipientCategories}
+            selection={selection}
             shouldShowActionsSection={false}
             shouldShowFiltersSection={shouldShowFiltersSection}
             showHint={showHint}
-            supportedFilters={support.supportedFilters}
             templateResourcePermission={templateResourcePermission}
             templates={templates}
             value={formData}
