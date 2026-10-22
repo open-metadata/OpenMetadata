@@ -22,13 +22,13 @@ import { ROUTES } from '../../constants/constants';
 const ClassicObservabilityRedirect = () => {
   const { pathname, search, hash } = useLocation();
   const classicPath = pathname.replace(/^\/observability/, '');
+  // `/observability` and `/observability/` have no Classic page of their own.
+  const target =
+    classicPath === '' || classicPath === '/'
+      ? ROUTES.DATA_QUALITY
+      : classicPath;
 
-  return (
-    <Navigate
-      replace
-      to={`${classicPath || ROUTES.DATA_QUALITY}${search}${hash}`}
-    />
-  );
+  return <Navigate replace to={`${target}${search}${hash}`} />;
 };
 
 export default ClassicObservabilityRedirect;

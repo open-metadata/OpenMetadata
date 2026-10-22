@@ -36,6 +36,7 @@ const renderAt = (url: string) =>
 describe('ClassicObservabilityRedirect', () => {
   it.each([
     ['/observability', '/data-quality'],
+    ['/observability/', '/data-quality'],
     ['/observability/incident-manager', '/incident-manager'],
     [
       '/observability/data-quality/test-cases?status=Failed',
