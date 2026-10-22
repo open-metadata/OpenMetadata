@@ -13,7 +13,6 @@
 import {
   Button,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
@@ -34,6 +33,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { ExtentionEntities } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { KeyDownStopPropagationWrapper } from '../../common/KeyDownStopPropagationWrapper/KeyDownStopPropagationWrapper';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -139,13 +139,10 @@ export const ModalWithCustomPropertyEditor = ({
                 !hasCustomProperties && (
                   // The placeholder fills its nearest positioned ancestor.
                   <div className="tw:relative tw:min-h-60">
-                    <EmptyPlaceholder
+                    <NoDataPlaceholder
                       description={t('message.no-custom-properties-defined')}
-                      icon={
-                        <GridDotsOuter className="tw:text-utility-brand-600" />
-                      }
+                      icon={<GridDotsOuter />}
                       title={t('label.no-custom-properties-defined')}
-                      variant="blank"
                     />
                   </div>
                 )}
