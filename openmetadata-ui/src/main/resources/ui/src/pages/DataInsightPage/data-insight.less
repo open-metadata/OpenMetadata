@@ -31,10 +31,6 @@
   padding-top: @size-md;
   border-radius: @border-rad-sm;
 
-  .side-panel-icons {
-    width: 14px;
-  }
-
   .ant-menu-item::after {
     left: 0;
     right: unset;
@@ -62,13 +58,6 @@
     padding: 0 var(--om-space-16) !important;
   }
 
-  .ant-menu-item:hover,
-  .ant-menu-item-selected {
-    .side-panel-icons {
-      color: @primary-color;
-    }
-  }
-
   .ant-menu-item-selected {
     .ant-menu-title-content {
       font-weight: var(--om-font-weight-semibold);
@@ -82,10 +71,6 @@
   .ant-menu:not(.ant-menu-horizontal) .ant-menu-item-selected {
     border-right: 1px solid @left-panel-border-color;
   }
-}
-
-.side-panel-icons {
-  color: var(--tw-color-fg-tertiary);
 }
 
 .data-insight-progress-bar {

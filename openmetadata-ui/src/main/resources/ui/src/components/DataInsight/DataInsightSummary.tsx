@@ -240,7 +240,7 @@ const DataInsightSummary: FC<Props> = ({ chartFilter, onScrollToChart }) => {
             {/* summary of most active user */}
             {mostActiveUser?.userName && (
               <Grid.Item
-                className="layout-column data-insight-active-user"
+                className="layout-column"
                 data-testid={`summary-item-${DataInsightChartType.MostActiveUsers}`}
                 key={DataInsightChartType.MostActiveUsers}
                 span={6}>

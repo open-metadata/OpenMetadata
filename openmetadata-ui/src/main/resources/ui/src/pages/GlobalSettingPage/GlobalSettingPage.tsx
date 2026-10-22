@@ -34,7 +34,6 @@ import {
   SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import './global-setting-page.style.less';
 
 const GlobalSettingPage = () => {
   const navigate = useNavigate();
