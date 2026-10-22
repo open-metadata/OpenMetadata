@@ -158,7 +158,7 @@
     "oidc-client": "^1.11.5",
     "pdfjs-dist": "^4",
     "process": "^0.11.10",
-    "qs": "6.16.0",
+    "qs": "6.16.1",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rc-picker": "^4.5.0",
