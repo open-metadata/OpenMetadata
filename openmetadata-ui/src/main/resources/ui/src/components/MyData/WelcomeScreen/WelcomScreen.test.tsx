@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import WelcomeScreen from './WelcomeScreen.component';
 
 const mockNavigate = jest.fn();
@@ -59,6 +60,26 @@ describe('WelcomeScreen', () => {
       root.style.getPropertyValue('--tw-background-color-brand-solid')
     ).toBe('#7147E8');
     expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('#7147E8');
+  });
+
+  it('should keep the theme colour when the brand has no welcome accent', () => {
+    const getAccent = jest
+      .spyOn(brandClassBase, 'getWelcomeAccentColor')
+      .mockReturnValue(undefined);
+
+    renderScreen();
+
+    expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
+
+    getAccent.mockRestore();
+  });
+
+  it('should render the heading without a highlighted word', () => {
+    renderScreen();
+
+    const heading = screen.getByRole('heading', { level: 1 });
+
+    expect(heading.querySelector('.tw\\:text-utility-brand-600')).toBeNull();
   });
 
   it('should render the illustration and message', () => {
