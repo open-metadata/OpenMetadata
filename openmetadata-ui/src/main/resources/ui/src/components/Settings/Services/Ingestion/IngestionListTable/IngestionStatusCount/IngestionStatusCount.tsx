@@ -38,7 +38,7 @@ function IngestionStatusCount({
           data-testid={`${record.type}-count`}
           key={`${record.label}-${runId}`}>
           <span className="tw:text-sm tw:font-bold">{record.value}</span>
-          <span className="tw:text-xs tw:leading-4">
+          <span className="tw:text-xs tw:font-medium tw:leading-4">
             {record.label}
           </span>
         </div>
