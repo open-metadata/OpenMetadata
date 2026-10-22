@@ -13,6 +13,8 @@
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { getEntityLifecycleStages } from '../rest/metadataTypeAPI';
+import { getAggregateFieldOptions } from '../rest/miscAPI';
+import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { JSONLogicSearchClassBase } from './JSONLogicSearchClassBase';
 
 // Define extended widget interface for testing widget properties
@@ -45,6 +47,57 @@ describe('JSONLogicSearchClassBase', () => {
 
   beforeEach(() => {
     jsonLogicSearchClassBase = new JSONLogicSearchClassBase();
+  });
+
+  describe('updatedBy field', () => {
+    it('should use the user name as the option value and display name as the label', async () => {
+      jest.useFakeTimers();
+      const autocomplete = advancedSearchClassBase.autocomplete as jest.Mock;
+      const mockedAutocomplete = autocomplete.getMockImplementation();
+      autocomplete.mockImplementation(
+        jest.requireActual('./AdvancedSearchClassBase').default.autocomplete
+      );
+      (getAggregateFieldOptions as jest.Mock).mockResolvedValueOnce({
+        data: {
+          aggregations: {
+            'sterms#displayName.keyword': {
+              buckets: [
+                {
+                  key: 'aaron johnson',
+                  doc_count: 1,
+                  'top_hits#top': {
+                    hits: {
+                      hits: [
+                        {
+                          _source: {
+                            displayName: 'aaron johnson',
+                            name: 'aaron_johnson0',
+                          },
+                        },
+                      ],
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      });
+
+      const field = jsonLogicSearchClassBase.mapFields[
+        EntityReferenceFields.UPDATED_BY
+      ] as { fieldSettings: { asyncFetch: (q: string) => Promise<unknown> } };
+      const result = field.fieldSettings.asyncFetch('aaron');
+      jest.runAllTimers();
+
+      await expect(result).resolves.toEqual({
+        values: [{ title: 'aaron johnson', value: 'aaron_johnson0' }],
+        hasMore: false,
+      });
+
+      autocomplete.mockImplementation(mockedAutocomplete);
+      jest.useRealTimers();
+    });
   });
 
   describe('configOperators', () => {

@@ -563,6 +563,12 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
             entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+            sourceFields: 'displayName,name',
+            // Entities store updatedBy as the user name, so the rule must compare against it.
+            sourceFieldOptionType: {
+              label: 'displayName',
+              value: 'name',
+            },
           }),
           useAsyncSearch: true,
         },
