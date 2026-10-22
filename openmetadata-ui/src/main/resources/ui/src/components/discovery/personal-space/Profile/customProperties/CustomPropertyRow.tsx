@@ -35,7 +35,7 @@ import {
 import { getPropertyRenderer } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
 import { EMPTY_VALUE } from './UserCustomProperties.constants';
 
-interface UserCustomPropertyRowProps {
+interface CustomPropertyRowProps {
   property: CustomProperty;
   value: unknown;
   canEdit: boolean;
@@ -47,11 +47,11 @@ interface UserCustomPropertyRowProps {
 }
 
 /**
- * One user custom property: type tile, name and type badge on the left, the
+ * One custom property: type tile, name and type badge on the left, the
  * value on the right. Editing happens in place; Save submits the type's own
  * editor form, so every type keeps its validation and value shape.
  */
-const UserCustomPropertyRow = ({
+const CustomPropertyRow = ({
   property,
   value,
   canEdit,
@@ -60,7 +60,7 @@ const UserCustomPropertyRow = ({
   onEdit,
   onSave,
   onCancel,
-}: UserCustomPropertyRowProps) => {
+}: CustomPropertyRowProps) => {
   const { t } = useTranslation();
   const formId = useId();
   const [isDirty, setIsDirty] = useState(false);
@@ -188,4 +188,4 @@ const UserCustomPropertyRow = ({
   );
 };
 
-export default UserCustomPropertyRow;
+export default CustomPropertyRow;

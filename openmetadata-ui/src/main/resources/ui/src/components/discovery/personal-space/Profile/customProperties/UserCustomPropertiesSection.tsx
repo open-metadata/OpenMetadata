@@ -21,7 +21,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from '@openmetadata/ui-core-components/icons';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Type } from '../../../../../generated/entity/type';
@@ -30,27 +30,39 @@ import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
 import { viewToSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
 import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
-import UserCustomPropertyRow from './UserCustomPropertyRow';
+import CustomPropertyRow from './CustomPropertyRow';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
-import { useUserCustomPropertyEditor } from './useUserCustomPropertyEditor';
+import { useCustomPropertyEditor } from './useCustomPropertyEditor';
 
 const CUSTOM_PROPERTIES_NAV_ID = 'custom-properties';
 
-const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
+const UserCustomPropertiesSection = ({
+  user,
+  onUpdate,
+}: UserCustomPropertiesProps) => {
   const { t } = useTranslation();
-  const access = useUserCustomPropertyAccess(props.user);
+  const access = useUserCustomPropertyAccess(user);
   const { isAdminUser } = useAuth();
   const { setHash } = useSettingsHash();
   const [isExpanded, setIsExpanded] = useState(false);
+  const extension = user.extension as Record<string, unknown> | undefined;
+  const saveExtension = useCallback(
+    (nextExtension: Record<string, unknown> | undefined) =>
+      onUpdate({ extension: nextExtension }, 'extension'),
+    [onUpdate]
+  );
   const {
     customProperties,
-    extension,
     editingProperty,
     isSaving,
     startEditing,
     stopEditing,
     saveValue,
-  } = useUserCustomPropertyEditor(props);
+  } = useCustomPropertyEditor({
+    entityType: EntityType.USER,
+    extension,
+    onUpdate: saveExtension,
+  });
 
   if (!access.canView || customProperties.length === 0) {
     return null;
@@ -102,7 +114,7 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
         className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
         variant="muted">
         {visibleProperties.map((property) => (
-          <UserCustomPropertyRow
+          <CustomPropertyRow
             canEdit={access.canEdit}
             isEditing={editingProperty?.name === property.name}
             isSaving={isSaving}

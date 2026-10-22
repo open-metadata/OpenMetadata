@@ -554,9 +554,9 @@ test.describe('AI Profile Team Detail', () => {
   });
 
   // The Custom Properties tab is native to MembersTeamDetail (it renders the
-  // shared CustomPropertyTable): one pass covers that the tab is reachable and
-  // that a property defined for the `team` entity actually shows up in it.
-  test('Should show the Custom Properties tab and render a team property', async ({
+  // shared CustomPropertiesList): one pass covers that a property defined for
+  // the `team` entity shows up in it and that a value set inline is saved.
+  test('Should set a team custom property value inline from the Custom Properties tab', async ({
     browser,
     page,
   }) => {
@@ -593,10 +593,32 @@ test.describe('AI Profile Team Detail', () => {
       await openTeamTab(page, /Custom Properties/);
 
       await expect(tab).toHaveAttribute('aria-selected', 'true');
-      await expect(page.getByTestId('custom-properties-card')).toBeVisible();
-      await expect(
-        page.getByTestId(`custom-property-${propertyName}-card`)
-      ).toBeVisible();
+
+      const row = page.getByTestId(`custom-property-row-${propertyName}`);
+
+      await expect(row).toBeVisible();
+
+      const value = `team value ${uuid()}`;
+      await row.getByTestId(`edit-${propertyName}`).click();
+      await row.getByRole('textbox').fill(value);
+      const patch = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/teams/${team.responseData.id}`
+      );
+      await row.getByTestId('inline-save-btn').click();
+
+      expect((await patch).ok()).toBeTruthy();
+      await expect(row).toContainText(value);
+
+      const saved = await (
+        await apiContext.get(
+          `/api/v1/teams/${team.responseData.id}?fields=extension`
+        )
+      ).json();
+
+      expect(saved.extension?.[propertyName]).toBe(value);
     } finally {
       // Leaving the property behind would alter every later team's tab. There
       // is no REST delete for a single custom property, so remove it from the

@@ -15,19 +15,26 @@ import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
 import { buildUpdatedExtension } from '../../../../../utils/CustomProperty.utils';
-import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 
-/** User custom-property definitions plus the inline-edit state shared by the tab and the Profile section. */
-export const useUserCustomPropertyEditor = ({
-  user,
+export interface CustomPropertyEditorOptions {
+  entityType: EntityType;
+  extension?: Record<string, unknown>;
+  // Saves the whole new extension and resolves to whether the save landed.
+  onUpdate: (
+    extension: Record<string, unknown> | undefined
+  ) => Promise<boolean>;
+}
+
+/** An entity type's custom-property definitions plus the one-row-at-a-time inline-edit state. */
+export const useCustomPropertyEditor = ({
+  entityType,
+  extension,
   onUpdate,
-}: UserCustomPropertiesProps) => {
-  const { customProperties, isLoading } = useEntityTypeCustomProperties(
-    EntityType.USER
-  );
+}: CustomPropertyEditorOptions) => {
+  const { customProperties, isLoading } =
+    useEntityTypeCustomProperties(entityType);
   const [editingProperty, setEditingProperty] = useState<CustomProperty>();
   const [isSaving, setIsSaving] = useState(false);
-  const extension = user.extension as Record<string, unknown> | undefined;
 
   const stopEditing = useCallback(() => setEditingProperty(undefined), []);
 
@@ -38,15 +45,12 @@ export const useUserCustomPropertyEditor = ({
       }
       setIsSaving(true);
       const saved = await onUpdate(
-        {
-          extension: buildUpdatedExtension(
-            extension,
-            editingProperty.name,
-            editingProperty.propertyType.name ?? '',
-            value
-          ),
-        },
-        'extension'
+        buildUpdatedExtension(
+          extension,
+          editingProperty.name,
+          editingProperty.propertyType.name ?? '',
+          value
+        )
       );
       setIsSaving(false);
       // A failed save keeps the editor open with what the user typed; the
@@ -61,7 +65,6 @@ export const useUserCustomPropertyEditor = ({
   return {
     customProperties,
     isLoading,
-    extension,
     editingProperty,
     isSaving,
     startEditing: setEditingProperty,

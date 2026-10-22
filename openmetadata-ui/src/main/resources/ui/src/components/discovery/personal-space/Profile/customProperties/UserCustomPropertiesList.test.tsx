@@ -95,10 +95,10 @@ describe('UserCustomPropertiesList', () => {
     renderTable();
 
     expect(
-      screen.getByTestId('user-custom-properties-no-permission')
+      screen.getByTestId('custom-properties-no-permission')
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('user-custom-properties-list')
+      screen.queryByTestId('custom-properties-list')
     ).not.toBeInTheDocument();
   });
 
@@ -241,9 +241,7 @@ describe('UserCustomPropertiesList', () => {
       </QueryClientProvider>
     );
 
-    expect(
-      screen.getByTestId('user-custom-properties-loading')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('custom-properties-loading')).toBeInTheDocument();
     expect(screen.queryByTestId('edit-employeeId')).not.toBeInTheDocument();
   });
 });
