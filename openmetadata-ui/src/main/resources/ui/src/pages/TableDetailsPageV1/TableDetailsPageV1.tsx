@@ -24,7 +24,6 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
@@ -120,7 +119,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import TableDetailsPageSkeleton from './TableDetailsPageSkeleton.component';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 // The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
@@ -959,7 +958,7 @@ const TableDetailsPageV1: React.FC = () => {
   // returns. Once permissions are in, this gate falls through naturally. Skipped in tour mode,
   // matching the old `useState(!isTourOpen)` seed — the tour never waits on a real fetch.
   if (!isTourOpen && isPermissionsLoading) {
-    return <TableDetailsPageSkeleton />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!isTourDataset && !viewBasicPermission) {
@@ -976,10 +975,11 @@ const TableDetailsPageV1: React.FC = () => {
   }
 
   // Still loading the entity itself — useQuery is mid-flight or hasn't started (e.g. the
-  // FQN just changed and the new cache slot is empty). Distinct from the permission gate
-  // above so we keep the loader spinning instead of flashing the missing-entity placeholder.
+  // FQN just changed and the new cache slot is empty). Keeps the permission-gate skeleton on
+  // screen instead of swapping to a spinner between skeleton and header, or flashing the
+  // missing-entity placeholder.
   if (tableLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   // Fetch completed but no entity body — typically a 404 (invalid FQN) or a network error

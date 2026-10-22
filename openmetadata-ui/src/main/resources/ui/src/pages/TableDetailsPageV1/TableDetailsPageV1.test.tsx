@@ -177,12 +177,14 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
-// Distinct sentinel so permission-loading (this) and entity-loading (mocked PageLoader
-// below) are unambiguous in assertions — both real components render
-// data-testid="loader", which would make "no loader" assertions ambiguous between the two.
-jest.mock('./TableDetailsPageSkeleton.component', () => {
-  return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
-});
+// Distinct sentinel so "skeleton shown" assertions don't collide with other components
+// that render data-testid="loader".
+jest.mock(
+  '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton',
+  () => {
+    return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
+  }
+);
 
 jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);

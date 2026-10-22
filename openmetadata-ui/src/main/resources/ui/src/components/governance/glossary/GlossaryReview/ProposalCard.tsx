@@ -96,10 +96,14 @@ const ProposalSummary = ({ proposal }: { proposal: GlossaryProposal }) => {
       <span className="tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
         {proposal.term.parent ? t('label.new-child-term') : t('label.new-term')}
       </span>
-      <Typography size="text-sm" weight="semibold">
+      {/* Names and descriptions can be one unbroken token (FQN-like); break anywhere so they stay in the card. */}
+      <Typography className="tw:wrap-anywhere" size="text-sm" weight="semibold">
         {getEntityName(proposal.term)}
       </Typography>
-      <Typography className="tw:line-clamp-3" color="secondary" size="text-sm">
+      <Typography
+        className="tw:line-clamp-3 tw:wrap-anywhere"
+        color="secondary"
+        size="text-sm">
         {getTextFromHtmlString(proposal.term.description)}
       </Typography>
     </Box>
