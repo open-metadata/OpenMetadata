@@ -11,14 +11,28 @@
  *  limitations under the License.
  */
 /**
- * Preview a local RDF document as native ontology draft operations.
+ * Preview a local RDF or native CSV document as native ontology draft operations.
  */
 export interface PreviewNativeOntologyImport {
-    data:   string;
-    format: Format;
+    data: string;
+    /**
+     * Name of the uploaded file. Format detection uses its extension only when the content has
+     * no recognizable signature.
+     */
+    fileName?: string;
+    /**
+     * Serialization of `data`. When omitted, the server detects it from the content first and
+     * the file name second.
+     */
+    format?: Format;
 }
 
+/**
+ * Serialization of `data`. When omitted, the server detects it from the content first and
+ * the file name second.
+ */
 export enum Format {
+    CSV = "csv",
     Jsonld = "jsonld",
     Ntriples = "ntriples",
     Rdfxml = "rdfxml",
