@@ -50,12 +50,6 @@ jest.mock(
       )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockReturnValue(<div data-testid="errorPlaceHolder">ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn().mockReturnValue({ isAdminUser: true }),
 }));

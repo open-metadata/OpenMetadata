@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   FilterSelect,
   Input,
   PaginationCardWithControls,
@@ -61,6 +60,9 @@ import {
   getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
 
 type ColumnId =
@@ -320,17 +322,17 @@ const SystemAnnouncementsTable = ({
     if (isError) {
       return (
         <div className="tw:relative tw:min-h-60">
-          <EmptyPlaceholder
+          <SomethingWentWrongPlaceholder
             actions={[
               {
-                color: 'secondary' as const,
+                color: 'primary' as const,
                 key: 'retry',
                 label: t('label.retry'),
                 onPress: () => refetch(),
               },
             ]}
             data-testid="announcements-error"
-            icon={<AlertCircle className="tw:text-quaternary" />}
+            icon={<AlertCircle />}
             title={t('server.entity-fetch-error', {
               entity: t('label.announcement-plural'),
             })}
@@ -341,16 +343,16 @@ const SystemAnnouncementsTable = ({
 
     return hasFilters ? (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           data-testid="announcements-no-match"
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       </div>
     ) : (
       <div className="tw:relative tw:min-h-60">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={[
             {
               color: 'primary' as const,
@@ -363,7 +365,7 @@ const SystemAnnouncementsTable = ({
           ]}
           data-testid="announcements-empty"
           description={t('message.no-system-announcements-description')}
-          icon={<Announcement02 className="tw:text-quaternary" />}
+          icon={<Announcement02 />}
           title={t('label.no-entity-found', {
             entity: t('label.announcement-plural'),
           })}

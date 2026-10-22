@@ -30,7 +30,7 @@ import {
   DQTooltipContent,
 } from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   MetricChartType,
   ProfilerDetailsCardProps,
@@ -124,10 +124,12 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 />
               </div>
             ) : (
-              <ErrorPlaceHolder
-                className="mt-0-important"
-                placeholderText={noDataPlaceholderText}
-              />
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  description={noDataPlaceholderText}
+                />
+              </div>
             )}
           </Box>
         </Card.Content>

@@ -488,14 +488,6 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    ))
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -755,7 +747,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1408,7 +1400,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1651,7 +1643,7 @@ describe('ServiceDetailsPage', () => {
 
       // The component should show error placeholder when service fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
   });
@@ -1677,7 +1669,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       // Should not fetch permissions for OpenMetadata service
@@ -1865,7 +1859,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();

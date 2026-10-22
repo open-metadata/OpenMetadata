@@ -12,12 +12,12 @@
  */
 import {
   Box,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -240,7 +240,7 @@ const KnowledgeCenterFilterPage = () => {
   if (!hasViewPermission) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
-        <EmptyPlaceholder
+        <PermissionPlaceholder
           description={
             <Transi18next
               i18nKey="message.no-access-placeholder"
@@ -252,7 +252,7 @@ const KnowledgeCenterFilterPage = () => {
               }}
             />
           }
-          icon={<Lock01 className="tw:text-secondary" />}
+          icon={<Lock01 />}
           title={t('label.access-denied')}
         />
       </div>
