@@ -100,7 +100,7 @@ describe('ProposalCard', () => {
     expect(screen.getByText('message.ai-proposal-rule')).toBeInTheDocument();
   });
 
-  it('approves, edits or rejects an AI draft at once', async () => {
+  it('approves or edits an AI proposal at once and asks why before rejecting it', async () => {
     const onDecide = jest.fn().mockResolvedValue(undefined);
     const onEdit = jest.fn();
     renderCard({ onDecide, onEdit });
@@ -109,21 +109,12 @@ describe('ProposalCard', () => {
       fireEvent.click(screen.getByTestId('approve-proposal'));
     });
     fireEvent.click(screen.getByTestId('edit-proposal'));
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('reject-proposal'));
-    });
+    fireEvent.click(screen.getByTestId('reject-proposal'));
 
-    expect(onDecide).toHaveBeenNthCalledWith(
-      1,
-      EntityStatus.Approved,
-      undefined
-    );
-    expect(onDecide).toHaveBeenNthCalledWith(
-      2,
-      EntityStatus.Rejected,
-      undefined
-    );
+    expect(onDecide).toHaveBeenCalledTimes(1);
+    expect(onDecide).toHaveBeenCalledWith(EntityStatus.Approved, undefined);
     expect(onEdit).toHaveBeenCalled();
+    expect(screen.getByTestId('confirm-reject-proposal')).toBeDisabled();
   });
 
   it('asks why before rejecting a person proposal', async () => {
@@ -154,6 +145,23 @@ describe('ProposalCard', () => {
 
     expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
     expect(screen.getByText('message.waiting-on-deciders')).toBeInTheDocument();
+  });
+
+  it('lets an editor edit an AI proposal still waiting for its approval request', () => {
+    const onEdit = jest.fn();
+    renderCard({
+      canDecide: false,
+      onEdit,
+      proposal: { ...aiProposal, term: { ...term, reviewers: [] } },
+    });
+
+    fireEvent.click(screen.getByTestId('edit-proposal'));
+
+    expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.waiting-for-approval-request')
+    ).toBeInTheDocument();
+    expect(onEdit).toHaveBeenCalled();
   });
 
   it('expands from its collapsed summary', () => {

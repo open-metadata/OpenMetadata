@@ -5,6 +5,7 @@ import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.rules.JsonLogicUtils.evaluateUserInRole;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.ast.JsonLogicArray;
 import io.github.jamsesso.jsonlogic.evaluator.JsonLogicEvaluationException;
@@ -18,14 +19,21 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 public class LogicOps {
+  static final String HAS_OPEN_APPROVAL_TASK = "hasOpenApprovalTask";
+  static final String HAS_BEEN_APPROVED = "hasBeenApproved";
 
   public enum CustomLogicOps {
     LENGTH("length"),
@@ -262,6 +270,28 @@ public class LogicOps {
           return refs.stream().filter(ref -> type.equals(ref.getType())).toList();
         });
 
+    // {"hasOpenApprovalTask": [{"var": "fullyQualifiedName"}, {"var": "id"}]}: an approval workflow
+    // asks it before opening a task, so a change to an entity already under review leaves that
+    // review deciding it.
+    jsonLogic.addOperation(
+        HAS_OPEN_APPROVAL_TASK,
+        args ->
+            args.length == 2
+                && args[0] instanceof String entityFqn
+                && args[1] instanceof String entityId
+                && hasOpenApprovalTask(entityFqn, entityId));
+
+    // {"hasBeenApproved": [{"var": "id"}, "glossaryTerm"]}: whether any version of the entity was
+    // approved, which tells the first review of a proposal from a review of changes to published
+    // content.
+    jsonLogic.addOperation(
+        HAS_BEEN_APPROVED,
+        args ->
+            args.length == 2
+                && args[0] instanceof String entityId
+                && args[1] instanceof String entityType
+                && hasBeenApproved(entityType, entityId));
+
     // Example: {"filterTagsBySource":[{"var":"tags"},"Glossary"]}
     jsonLogic.addOperation(
         "filterTagsBySource",
@@ -287,6 +317,33 @@ public class LogicOps {
    */
   public static List<String> getCustomOpsKeys() {
     return Arrays.stream(CustomLogicOps.values()).map(op -> op.key).toList();
+  }
+
+  private static boolean hasOpenApprovalTask(String entityFqn, String entityId) {
+    TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    return tasks.listNonTerminalTasksByEntityAndCategory(entityFqn, TaskCategory.Approval).stream()
+        .anyMatch(task -> isAbout(task, entityId));
+  }
+
+  // Tasks are looked up by FQN, which an entity of another type can share.
+  private static boolean isAbout(Task task, String entityId) {
+    return task.getAbout() != null
+        && task.getAbout().getId() != null
+        && entityId.equals(task.getAbout().getId().toString());
+  }
+
+  private static boolean hasBeenApproved(String entityType, String entityId) {
+    EntityHistory history =
+        Entity.getEntityRepository(entityType).listVersions(UUID.fromString(entityId));
+    return history.getVersions().stream().anyMatch(LogicOps::isApprovedVersion);
+  }
+
+  private static boolean isApprovedVersion(Object version) {
+    String status =
+        JsonUtils.readOrConvertValue(version, JsonNode.class)
+            .path(Entity.FIELD_ENTITY_STATUS)
+            .asText(null);
+    return EntityStatus.APPROVED.value().equals(status);
   }
 
   private static List<EntityReference> getDataProductDomains(EntityReference dataProduct) {

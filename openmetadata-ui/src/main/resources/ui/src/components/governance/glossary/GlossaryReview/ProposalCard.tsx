@@ -161,6 +161,27 @@ export const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
   );
 };
 
+export const EditProposalButton = ({
+  isDisabled,
+  onEdit,
+}: {
+  isDisabled?: boolean;
+  onEdit: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Button
+      color="secondary"
+      data-testid="edit-proposal"
+      isDisabled={isDisabled}
+      size="sm"
+      onPress={onEdit}>
+      {t('label.edit')}
+    </Button>
+  );
+};
+
 interface ProposalActionsProps {
   proposal: GlossaryProposal;
   /** Approve takes the free width in the narrow queue, and its natural width elsewhere. */
@@ -169,7 +190,7 @@ interface ProposalActionsProps {
   onEdit?: () => void;
 }
 
-/** Approve, edit or reject; rejecting a person's proposal first asks why, for its request. */
+/** Approve, edit or reject; rejecting first asks why, for the approval request. */
 export const ProposalActions = ({
   proposal,
   isApproveWide,
@@ -192,11 +213,6 @@ export const ProposalActions = ({
       setPendingDecision(undefined);
     }
   };
-
-  const reject = () =>
-    proposal.approvalTask
-      ? setIsAskingWhy(true)
-      : decide(EntityStatus.Rejected);
 
   if (isAskingWhy) {
     return (
@@ -247,15 +263,7 @@ export const ProposalActions = ({
     </Button>
   );
   const edit = proposal.source === 'ai' && onEdit && (
-    <Button
-      color="secondary"
-      data-testid="edit-proposal"
-      isDisabled={isBusy}
-      key="edit"
-      size="sm"
-      onPress={onEdit}>
-      {t('label.edit')}
-    </Button>
+    <EditProposalButton isDisabled={isBusy} key="edit" onEdit={onEdit} />
   );
   const rejectButton = (
     <Button
@@ -265,7 +273,7 @@ export const ProposalActions = ({
       isLoading={pendingDecision === EntityStatus.Rejected}
       key="reject"
       size="sm"
-      onPress={reject}>
+      onPress={() => setIsAskingWhy(true)}>
       {t('label.reject')}
     </Button>
   );
@@ -299,7 +307,7 @@ export const DecidersNote = ({ proposal }: { proposal: GlossaryProposal }) => {
                 .map((decider) => getEntityName(decider))
                 .join(', '),
             })
-          : t('message.waiting-on-glossary-editor')}
+          : t('message.waiting-for-approval-request')}
       </span>
     </div>
   );
@@ -357,7 +365,11 @@ const ProposalCard = ({
             onEdit={onEdit}
           />
         ) : (
-          <DecidersNote proposal={proposal} />
+          <>
+            <DecidersNote proposal={proposal} />
+            {/* An edit is what opens a missing approval request, so editors keep it. */}
+            {isAi && onEdit && <EditProposalButton onEdit={onEdit} />}
+          </>
         )}
       </Box>
     </section>

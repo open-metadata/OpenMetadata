@@ -43,6 +43,7 @@ import { LOCATION_SEPARATOR } from './GlossaryReviewTab.constants';
 import {
   AgentEvidence,
   DecidersNote,
+  EditProposalButton,
   ProposalActions,
   ProposedBy,
 } from './ProposalCard';
@@ -271,7 +272,15 @@ const ProposalDetail = ({
                 onEdit={onEdit}
               />
             ) : (
-              <DecidersNote proposal={proposal} />
+              <>
+                <DecidersNote proposal={proposal} />
+                {/* An edit is what opens a missing approval request, so editors keep it. */}
+                {isAi && onEdit && (
+                  <Box justify="end">
+                    <EditProposalButton onEdit={onEdit} />
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         </Box>

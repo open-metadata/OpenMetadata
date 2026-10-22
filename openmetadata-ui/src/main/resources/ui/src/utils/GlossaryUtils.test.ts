@@ -18,7 +18,6 @@ import {
   GlossaryTerm,
   ProviderType,
 } from '../generated/entity/data/glossaryTerm';
-import { User } from '../generated/entity/teams/user';
 import {
   MOCKED_GLOSSARY_TERMS,
   MOCKED_GLOSSARY_TERMS_1,
@@ -27,7 +26,6 @@ import {
 } from '../mocks/Glossary.mock';
 import {
   buildTree,
-  canDecideAiGeneratedDraft,
   findAndUpdateNested,
   findExpandableKeys,
   findExpandableKeysForArray,
@@ -533,8 +531,6 @@ describe('Glossary Utils - glossaryTermTableColumnsWidth', () => {
 });
 
 describe('AI-generated glossary drafts', () => {
-  const reviewer = { id: 'reviewer-id', type: EntityType.USER };
-  const reviewerTeam = { id: 'team-id', type: EntityType.TEAM };
   const draft = (overrides: Partial<GlossaryTerm> = {}): GlossaryTerm =>
     ({
       id: 'term-id',
@@ -545,8 +541,6 @@ describe('AI-generated glossary drafts', () => {
       entityStatus: EntityStatus.Draft,
       ...overrides,
     } as GlossaryTerm);
-  const user = (overrides: Partial<User> = {}): User =>
-    ({ id: 'user-id', name: 'user', email: 'u@x.io', ...overrides } as User);
 
   it('marks an automation term until it is approved', () => {
     expect(isAiGeneratedDraft(draft())).toBe(true);
@@ -560,37 +554,6 @@ describe('AI-generated glossary drafts', () => {
     expect(isAiGeneratedDraft(draft({ provider: ProviderType.User }))).toBe(
       false
     );
-  });
-
-  it('lets anyone who can edit decide a draft without reviewers', () => {
-    expect(canDecideAiGeneratedDraft(draft(), user(), true)).toBe(true);
-    expect(canDecideAiGeneratedDraft(draft(), user(), false)).toBe(false);
-  });
-
-  it('leaves a reviewed draft to its reviewers, directly or through a team', () => {
-    const reviewed = draft({ reviewers: [reviewer, reviewerTeam] });
-
-    expect(canDecideAiGeneratedDraft(reviewed, user(), true)).toBe(false);
-    expect(
-      canDecideAiGeneratedDraft(reviewed, user({ id: 'reviewer-id' }), true)
-    ).toBe(true);
-    expect(
-      canDecideAiGeneratedDraft(
-        reviewed,
-        user({ teams: [{ id: 'team-id', type: EntityType.TEAM }] }),
-        true
-      )
-    ).toBe(true);
-  });
-
-  it('leaves an In Review draft to its approval task', () => {
-    expect(
-      canDecideAiGeneratedDraft(
-        draft({ entityStatus: EntityStatus.InReview }),
-        user(),
-        true
-      )
-    ).toBe(false);
   });
 });
 

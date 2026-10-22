@@ -20,7 +20,6 @@ import { EntityReference } from '../../generated/type/entityReference';
 import { Task } from '../../rest/tasksAPI';
 import Fqn from '../Fqn';
 import {
-  canDecideAiGeneratedDraft,
   getGlossaryEntityLink,
   isAiGeneratedDraft,
   permissionForApproveOrReject,
@@ -167,18 +166,14 @@ export const getProposalAuthor = (proposal: GlossaryProposal) =>
   getRequestAuthor(proposal.approvalTask, proposal.term.updatedBy);
 
 /**
- * Whether the user decides this proposal. A term the approval workflow holds is decided through
- * its approval request; an AI draft directly, by its reviewers or by anyone who can edit it.
+ * Whether the user decides this proposal: every proposal, an AI agent's included, is decided
+ * through its approval request, so no one decides one before the approval workflow opens it.
  */
 export const canDecideProposal = (
   proposal: GlossaryProposal,
-  user: User | undefined,
-  canEditTerm: boolean
+  user: User | undefined
 ) => {
-  if (!proposal.approvalTask) {
-    return canDecideAiGeneratedDraft(proposal.term, user, canEditTerm);
-  }
-  if (!user) {
+  if (!proposal.approvalTask || !user) {
     return false;
   }
   const entityLink = getGlossaryEntityLink(

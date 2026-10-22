@@ -27,7 +27,7 @@ import {
   MAX_DERIVATION_ENTITIES,
 } from '../../../rest/contextMemoryAPI';
 import {
-  patchGlossaryTerm,
+  getGlossaryTermsById,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
 import {
@@ -124,7 +124,7 @@ const fetchProposalCounts = async (
   return { all, ai, person: all - ai };
 };
 
-// Only a person's proposal in review has an approval request, and one request reads them all.
+// A proposal in review, an AI agent's or a person's, has an approval request; one read gets them.
 const getApprovalTasks = async (terms: GlossaryTerm[]) => {
   const inReview = terms
     .filter((term) => term.entityStatus === EntityStatus.InReview)
@@ -153,7 +153,7 @@ const getTermDerivations = (termIds: string[]) =>
   ).then((derivations) => derivations.flat());
 
 const toExplainedProposals = async (terms: GlossaryTerm[]) => {
-  // Without its approval request a person's proposal names who decides it, and AI drafts stay.
+  // Without its approval request a proposal still lists, waiting on the people who decide it.
   const [derivations, approvalTasks] = await Promise.all([
     getTermDerivations(
       terms
@@ -188,17 +188,24 @@ const fetchProposalPage = async (
   return toExplainedProposals(pages.flatMap(({ data }) => data));
 };
 
+// A term read on its own carries the reviewers it inherits, as the listing does.
+const fetchProposal = async (termId: string) => {
+  const term = await getGlossaryTermsById(termId, {
+    fields: 'reviewers,parent',
+  });
+  const [proposal] = await toExplainedProposals([term]);
+
+  return proposal ?? null;
+};
+
+// The approval workflow owns a proposal's status, so only its approval request decides it.
 const settle = async (
   proposal: GlossaryProposal,
   decision: ProposalDecision,
   comment?: string
 ) => {
   if (!proposal.approvalTask) {
-    await patchGlossaryTerm(proposal.term.id, [
-      { op: 'replace', path: '/entityStatus', value: decision },
-    ]);
-
-    return true;
+    throw new Error('A proposal is decided through its approval request');
   }
   const isApproval = decision === EntityStatus.Approved;
   const task = await resolveTask(String(proposal.approvalTask.id), {
@@ -269,6 +276,17 @@ export const useGlossaryProposalPage = (
   };
 };
 
+/** One proposal wherever its page is, such as the term page it heads. */
+export const useGlossaryProposal = (termId?: string) => {
+  const { data } = useQuery({
+    enabled: Boolean(termId),
+    queryFn: () => fetchProposal(termId ?? ''),
+    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'proposal', termId],
+  });
+
+  return data ?? undefined;
+};
+
 /** Settles a proposal, then refreshes every view of the review queue. */
 export const useDecideProposal = (): DecideProposal => {
   const client = useQueryClient();
@@ -296,18 +314,4 @@ export const useTermDerivations = (termIds: string[]) => {
   });
 
   return data ?? NO_DERIVATIONS;
-};
-
-/** Why an AI agent proposed one term, for that term's own page. */
-export const useTermDerivation = (termId?: string) => {
-  const { data } = useQuery({
-    enabled: Boolean(termId),
-    queryFn: () =>
-      getMemoryDerivations(EntityType.GLOSSARY_TERM, [termId ?? '']).catch(
-        () => []
-      ),
-    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'derivation', termId],
-  });
-
-  return data?.[0];
 };

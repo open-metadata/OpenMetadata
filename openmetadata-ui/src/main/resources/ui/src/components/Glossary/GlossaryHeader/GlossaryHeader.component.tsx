@@ -49,8 +49,8 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { Votes } from '../../../generated/type/votes';
 import {
-  refreshGlossaryProposals,
-  useTermDerivation,
+  useDecideProposal,
+  useGlossaryProposal,
 } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
@@ -65,10 +65,9 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  canDecideAiGeneratedDraft,
-  isAiGeneratedDraft,
-} from '../../../utils/GlossaryPureUtils';
+import { isAiGeneratedDraft } from '../../../utils/GlossaryPureUtils';
+import { GlossaryProposal } from '../../../utils/GlossaryReview/GlossaryReview.types';
+import { canDecideProposal } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
@@ -76,7 +75,7 @@ import {
   getGlossaryTermsVersionsPath,
   getGlossaryVersionsPath,
 } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import {
@@ -472,43 +471,43 @@ interface GlossaryTermAiDraftNoticeProps {
   term: GlossaryTerm;
   isGlossary: boolean;
   isVersionView?: boolean;
-  canEditAll: boolean;
-  onUpdate: (updatedData: GlossaryTerm) => Promise<void>;
+  onDecided?: () => void;
 }
 
+/** An AI agent's proposal heads its term's page, decided there through its approval request. */
 const GlossaryTermAiDraftNotice = ({
   term,
   isGlossary,
   isVersionView,
-  canEditAll,
-  onUpdate,
+  onDecided,
 }: GlossaryTermAiDraftNoticeProps) => {
+  const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  // An AI term sent to review by someone's edit is decided through its approval request instead.
-  const isAiDraft =
-    !isGlossary &&
-    !isVersionView &&
-    term.entityStatus === EntityStatus.Draft &&
-    isAiGeneratedDraft(term);
-  const derivation = useTermDerivation(isAiDraft ? term.id : undefined);
+  const isAiProposal =
+    !isGlossary && !isVersionView && isAiGeneratedDraft(term);
+  const loadedProposal = useGlossaryProposal(
+    isAiProposal ? term.id : undefined
+  );
+  const decide = useDecideProposal();
 
-  if (!isAiDraft) {
+  if (!isAiProposal) {
     return null;
   }
+  const proposal: GlossaryProposal = loadedProposal ?? { source: 'ai', term };
 
   return (
     <div className="tw:mb-3" data-testid="ai-generated-term-card">
       <ProposalCard
         isExpanded
-        canDecide={
-          !term.deleted &&
-          canDecideAiGeneratedDraft(term, currentUser, canEditAll)
-        }
+        canDecide={!term.deleted && canDecideProposal(proposal, currentUser)}
         layout="banner"
-        proposal={{ derivation, source: 'ai', term }}
-        onDecide={async (entityStatus) => {
-          await onUpdate({ ...term, entityStatus });
-          await refreshGlossaryProposals();
+        proposal={proposal}
+        onDecide={async (decision, comment) => {
+          if (await decide(proposal, decision, comment)) {
+            onDecided?.();
+          } else {
+            showSuccessToast(t('message.vote-recorded'));
+          }
         }}
       />
     </div>
@@ -519,6 +518,7 @@ const GlossaryHeader = ({
   onDelete,
   onAssetAdd,
   onAddGlossaryTerm,
+  onProposalDecided,
   updateVote,
 }: GlossaryHeaderProps) => {
   const { t } = useTranslation();
@@ -871,11 +871,10 @@ const GlossaryHeader = ({
         />
       )}
       <GlossaryTermAiDraftNotice
-        canEditAll={canEditAll}
         isGlossary={isGlossary}
         isVersionView={isVersionView}
         term={selectedData}
-        onUpdate={onUpdate}
+        onDecided={onProposalDecided}
       />
       <PageHeader
         actions={

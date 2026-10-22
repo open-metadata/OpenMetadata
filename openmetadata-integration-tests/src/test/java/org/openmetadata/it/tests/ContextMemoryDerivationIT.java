@@ -5,10 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,10 +42,14 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -56,6 +63,7 @@ import org.openmetadata.service.context.center.DocumentMemoryExtractor;
 import org.openmetadata.service.context.center.MemoryDerivations;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.context.center.MemoryGlossaryDeriver;
+import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jobs.GenericBackgroundWorker;
 import org.openmetadata.service.jobs.JobDAO;
@@ -66,7 +74,8 @@ import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 
 /**
  * Publication queues a real job and the worker's handler runs it; only the AI provider's deriver is
- * scripted, writing the Draft term and its evidence the way a provider must.
+ * scripted, writing the term, its creation event and its evidence the way a provider must. The
+ * event starts the glossary approval workflow, which opens the proposal's approval request.
  */
 @Isolated("Replaces the embedded server's AI provider and pauses its background worker")
 @ExtendWith(TestNamespaceExtension.class)
@@ -75,6 +84,7 @@ class ContextMemoryDerivationIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String DERIVATIONS = "/v1/contextCenter/memories/derivations";
   private static final String AGENT = "Scripted Glossary Agent";
+  private static final String ADMIN = "admin";
 
   private final List<List<UUID>> deriverCalls = new ArrayList<>();
   private GenericBackgroundWorker worker;
@@ -103,7 +113,7 @@ class ContextMemoryDerivationIT {
   }
 
   @Test
-  void fileAndArticleMemoriesBecomeDraftTermsThatKeepTheirEvidence(TestNamespace ns)
+  void fileAndArticleMemoriesBecomeProposalsUnderReviewThatKeepTheirEvidence(TestNamespace ns)
       throws Exception {
     ContextFile file = orgWideFile(ns);
     Page article = article(ns);
@@ -127,7 +137,7 @@ class ContextMemoryDerivationIT {
     List<EntityReference> terms = completedTerms(job);
     assertEquals(2, terms.size());
     EntityReference term = terms.getFirst();
-    assertDraftAutomationTerm(term);
+    assertProposalUnderReview(term);
     assertEquals(
         List.of(term.getId()),
         memories()
@@ -205,7 +215,7 @@ class ContextMemoryDerivationIT {
 
     List<EntityReference> terms = completedTerms(followUp);
     assertEquals(1, terms.size());
-    assertDraftAutomationTerm(terms.getFirst());
+    assertProposalUnderReview(terms.getFirst());
     assertEquals(
         latestAnswer,
         SdkClients.adminClient().glossaryTerms().get(terms.getFirst().getId()).getDescription());
@@ -267,8 +277,8 @@ class ContextMemoryDerivationIT {
     };
   }
 
-  // A provider writes its term as a bot with the automation provider and links it through
-  // MemoryDerivations, which is the whole contract OpenMetadata asks of it.
+  // A provider writes its term as a bot with the automation provider, records its creation event
+  // and links it through MemoryDerivations, which is the whole contract OpenMetadata asks of it.
   private List<EntityReference> derive(List<ContextMemory> memories) {
     deriverCalls.add(memories.stream().map(ContextMemory::getId).toList());
     return memories.stream().map(this::writeTerm).toList();
@@ -286,6 +296,7 @@ class ContextMemoryDerivationIT {
     GlossaryTerm term =
         terms.create(
             null, new GlossaryTermMapper().createToEntity(create, Entity.INGESTION_BOT_NAME));
+    recordCreation(term);
     new MemoryDerivations()
         .record(
             memory.getId(),
@@ -372,11 +383,46 @@ class ContextMemoryDerivationIT {
                 Page.class));
   }
 
-  private void assertDraftAutomationTerm(EntityReference reference) {
+  // Outside a request no change event is recorded, and the event is what starts the approval
+  // workflow, so the provider records it with the term.
+  private static void recordCreation(GlossaryTerm term) {
+    ChangeEvent created =
+        ChangeEventHandler.entityChangeEvent(
+            Entity.INGESTION_BOT_NAME, EventType.ENTITY_CREATED, term);
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(created));
+  }
+
+  // The test glossary has no reviewers or owners, so the proposal's request goes to the admins.
+  private void assertProposalUnderReview(EntityReference reference) {
+    Task request = awaitOpenApprovalTask(reference);
     GlossaryTerm term = SdkClients.adminClient().glossaryTerms().get(reference.getId().toString());
-    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+    assertEquals(EntityStatus.IN_REVIEW, term.getEntityStatus());
     assertEquals(ProviderType.AUTOMATION, term.getProvider());
     assertEquals(Entity.INGESTION_BOT_NAME, term.getUpdatedBy());
+    assertTrue(
+        request.getAssignees().stream().anyMatch(assignee -> ADMIN.equals(assignee.getName())),
+        "assignees: " + request.getAssignees());
+  }
+
+  private static Task awaitOpenApprovalTask(EntityReference term) {
+    Map<String, String> filters =
+        Map.of(
+            "limit",
+            "10",
+            "status",
+            TaskEntityStatus.Open.value(),
+            "aboutEntityIds",
+            term.getId().toString(),
+            "fields",
+            "assignees");
+    return Awaitility.await("an approval request for " + term.getId())
+        .atMost(Duration.ofMinutes(3))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .until(
+            () -> SdkClients.adminClient().tasks().listWithFilters(filters).getData(),
+            tasks -> !tasks.isEmpty())
+        .getFirst();
   }
 
   private void assertEvidence(EntityReference term, ContextMemory memory) {

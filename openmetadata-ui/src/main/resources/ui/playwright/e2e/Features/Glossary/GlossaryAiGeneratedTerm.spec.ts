@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Page, Response } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { okJson } from '../../../utils/apiResponse';
@@ -19,12 +19,14 @@ import {
   getAuthContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { verifyTaskCreated } from '../../../utils/glossary';
 import { getRowByName } from '../../../utils/scopedLocators';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
-// AI agents write the terms they derive as a bot, and bot writes never start the approval
-// workflow, so the term waits in Draft for a person.
+// AI agents write the terms they derive as a bot. The approval workflow sends each one to an
+// approval request for its reviewers, else its owners, else the admins, and only that request
+// decides it.
 const createTermAsBot = async (
   page: Page,
   term: GlossaryTerm,
@@ -69,6 +71,17 @@ const queueItem = (page: Page, name: string) =>
     .getByTestId('review-queue-item')
     .filter({ hasText: name });
 
+const waitForApprovalRequest = (page: Page, term: GlossaryTerm) =>
+  verifyTaskCreated(
+    page,
+    term.responseData.fullyQualifiedName,
+    term.responseData.name
+  );
+
+const isDecisionOf = (response: Response) =>
+  response.request().method() === 'POST' &&
+  /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(new URL(response.url()).pathname);
+
 test.describe('AI-generated glossary terms', () => {
   const glossary = new Glossary();
   const reviewedInPanel = new GlossaryTerm(glossary);
@@ -84,6 +97,8 @@ test.describe('AI-generated glossary terms', () => {
     await afterAction();
     await createTermAsBot(page, reviewedInPanel);
     await createTermAsBot(page, reviewedOnItsPage);
+    await waitForApprovalRequest(page, reviewedInPanel);
+    await waitForApprovalRequest(page, reviewedOnItsPage);
     await page.close();
   });
 
@@ -125,15 +140,7 @@ test.describe('AI-generated glossary terms', () => {
       ratio: 1,
     });
 
-    const approve = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response
-          .url()
-          .includes(`/api/v1/glossaryTerms/${reviewedInPanel.responseData.id}`),
-      200
-    );
+    const approve = waitForResponseWithStatus(page, isDecisionOf, 200);
     await detail.getByTestId('approve-proposal').click();
     await approve;
 
@@ -151,18 +158,13 @@ test.describe('AI-generated glossary terms', () => {
     const card = page.getByTestId('ai-generated-term-card');
     await expect(card).toBeVisible();
 
-    const reject = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response
-          .url()
-          .includes(
-            `/api/v1/glossaryTerms/${reviewedOnItsPage.responseData.id}`
-          ),
-      200
-    );
     await card.getByTestId('reject-proposal').click();
+    await card
+      .getByTestId('proposal-rejection-reason')
+      .getByRole('textbox')
+      .fill('Covered by an existing term');
+    const reject = waitForResponseWithStatus(page, isDecisionOf, 200);
+    await card.getByTestId('confirm-reject-proposal').click();
     await reject;
 
     await expect(card).toBeHidden();
@@ -185,9 +187,9 @@ test.describe('AI-generated glossary terms', () => {
     await proposalsLoaded;
     await page.getByTestId('review').click();
     await expect(page.getByTestId('glossary-review-tab')).toBeVisible();
-    await expect(queueItem(page, reviewedOnItsPage.data.displayName)).toHaveCount(
-      0
-    );
+    await expect(
+      queueItem(page, reviewedOnItsPage.data.displayName)
+    ).toHaveCount(0);
     const { apiContext, afterAction } = await getApiContext(page);
     const rejected = await okJson<{ entityStatus: string }>(
       await apiContext.get(
@@ -228,7 +230,7 @@ test('loads a large queue of AI-generated glossary proposals a page at a time', 
   }
 });
 
-test('a term owner can review an AI draft without editing its glossary', async ({
+test('a term owner decides an AI proposal through its approval request without editing its glossary', async ({
   page,
   ownerPage,
 }) => {
@@ -247,6 +249,7 @@ test('a term owner can review an AI draft without editing its glossary', async (
       'termOwner'
     );
     await createTermAsBot(page, term, [{ id: owner.id, type: 'user' }]);
+    await waitForApprovalRequest(page, term);
     const parentPermission = await okJson<{
       permissions: { operation: string; access: string }[];
     }>(
@@ -263,15 +266,7 @@ test('a term owner can review an AI draft without editing its glossary', async (
     await openReviewTab(ownerPage);
     const card = ownerPage.getByTestId('proposal-detail');
     await expect(card).toContainText(term.data.displayName);
-    const approved = waitForResponseWithStatus(
-      ownerPage,
-      (response) =>
-        response.request().method() === 'PATCH' &&
-        response
-          .url()
-          .includes(`/api/v1/glossaryTerms/${term.responseData.id}`),
-      200
-    );
+    const approved = waitForResponseWithStatus(ownerPage, isDecisionOf, 200);
     await card.getByTestId('approve-proposal').click();
     await approved;
     await expect(ownerPage.getByTestId('resolved-proposals')).toContainText(

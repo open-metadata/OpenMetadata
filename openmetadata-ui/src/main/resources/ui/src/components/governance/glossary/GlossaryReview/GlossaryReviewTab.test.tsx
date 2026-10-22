@@ -31,12 +31,16 @@ import { Operation } from '../../../../generated/entity/policies/policy';
 import { searchTerms } from '../../../../hooks/governance/glossary/useGlossaryProposals.mock';
 import { queryClient } from '../../../../queryClient';
 import { getMemoryDerivations } from '../../../../rest/contextMemoryAPI';
-import {
-  patchGlossaryTerm,
-  searchGlossaryTermsPaginated,
-} from '../../../../rest/glossaryAPI';
+import { searchGlossaryTermsPaginated } from '../../../../rest/glossaryAPI';
 import { getEntityPermissionByFqn } from '../../../../rest/permissionAPI';
-import { addTaskComment, listTasks } from '../../../../rest/tasksAPI';
+import {
+  addTaskComment,
+  listTasks,
+  resolveTask,
+  Task,
+  TaskEntityStatus,
+} from '../../../../rest/tasksAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   ModifiedGlossary,
   useGlossaryStore,
@@ -44,7 +48,6 @@ import {
 import GlossaryReviewTab from './GlossaryReviewTab';
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
-  patchGlossaryTerm: jest.fn(),
   searchGlossaryTermsPaginated: jest.fn(),
 }));
 
@@ -106,7 +109,18 @@ const pending = (
   } as GlossaryTerm);
 
 const aiDraft = pending('Churn Risk', ProviderType.Automation);
-const sureAiDraft = pending('Net Retention', ProviderType.Automation);
+const aiInReview = pending(
+  'Churn Risk',
+  ProviderType.Automation,
+  EntityStatus.InReview
+);
+const sureAiInReview = pending(
+  'Net Retention',
+  ProviderType.Automation,
+  EntityStatus.InReview
+);
+// Sure, but still waiting for the approval workflow to open its request.
+const sureAiDraft = pending('Gross Margin', ProviderType.Automation);
 const personDraft = pending('Escrow', undefined, EntityStatus.InReview);
 
 const approvalTask = {
@@ -124,6 +138,17 @@ const approvalTask = {
     },
   ],
 };
+
+// The current user is an assignee of the request the approval workflow opened.
+const approvalRequestFor = (term: GlossaryTerm) =>
+  ({
+    id: `task-${term.id}`,
+    about: {
+      fullyQualifiedName: term.fullyQualifiedName,
+      type: 'glossaryTerm',
+    },
+    assignees: [{ id: 'user-id', type: 'user' }],
+  } as Task);
 
 const derivationOf = (term: GlossaryTerm, confidence: number) => ({
   entity: { id: term.id, type: 'glossaryTerm' },
@@ -155,16 +180,23 @@ describe('GlossaryReviewTab', () => {
     (searchGlossaryTermsPaginated as jest.Mock).mockImplementation(
       searchTerms(() => terms)
     );
-    (patchGlossaryTerm as jest.Mock).mockImplementation(
-      async (id: string, [{ value }]: { value: EntityStatus }[]) => {
+    (resolveTask as jest.Mock).mockImplementation(
+      async (taskId: string, { newValue }: { newValue: string }) => {
+        const entityStatus =
+          newValue === 'approved'
+            ? EntityStatus.Approved
+            : EntityStatus.Rejected;
         terms = terms.map((term) =>
-          term.id === id ? { ...term, entityStatus: value } : term
+          `task-${term.id}` === taskId ? { ...term, entityStatus } : term
         );
+
+        return { id: taskId, status: TaskEntityStatus.Approved };
       }
     );
     (getMemoryDerivations as jest.Mock).mockResolvedValue([
       derivationOf(aiDraft, 0.72),
-      derivationOf(sureAiDraft, 0.95),
+      derivationOf(sureAiInReview, 0.95),
+      derivationOf(sureAiDraft, 0.97),
     ]);
     (listTasks as jest.Mock).mockResolvedValue({ data: [approvalTask] });
   });
@@ -223,10 +255,21 @@ describe('GlossaryReviewTab', () => {
     expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
   });
 
-  it('does not offer decisions on a term the user cannot edit', async () => {
+  it('lets an assignee who cannot edit an AI proposal decide it through its request', async () => {
     (getEntityPermissionByFqn as jest.Mock).mockResolvedValue({
       permissions: [{ operation: Operation.EditAll, access: Access.Deny }],
     });
+    terms = [aiInReview];
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [approvalRequestFor(aiInReview)],
+    });
+    renderTab();
+
+    expect(await screen.findByTestId('approve-proposal')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
+  });
+
+  it('offers no decision on an AI draft before its approval request opens, only an edit', async () => {
     terms = [aiDraft];
     renderTab();
 
@@ -234,13 +277,20 @@ describe('GlossaryReviewTab', () => {
     await waitFor(() => expect(getEntityPermissionByFqn).toHaveBeenCalled());
 
     expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('edit-proposal')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.waiting-for-approval-request')
+    ).toBeInTheDocument();
   });
 
   it('lists a decided proposal as resolved and settles its table row', async () => {
-    terms = [aiDraft];
+    terms = [aiInReview];
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [approvalRequestFor(aiInReview)],
+    });
     useGlossaryStore
       .getState()
-      .setGlossaryChildTerms([aiDraft as unknown as ModifiedGlossary]);
+      .setGlossaryChildTerms([aiInReview as unknown as ModifiedGlossary]);
     renderTab();
 
     fireEvent.click(await screen.findByTestId('approve-proposal'));
@@ -250,16 +300,24 @@ describe('GlossaryReviewTab', () => {
         'Churn Risk · label.approved-by-you'
       )
     ).toBeInTheDocument();
-    expect(patchGlossaryTerm).toHaveBeenCalledWith('Churn Risk', [
-      { op: 'replace', path: '/entityStatus', value: EntityStatus.Approved },
-    ]);
+    expect(resolveTask).toHaveBeenCalledWith(
+      'task-Churn Risk',
+      expect.objectContaining({ newValue: 'approved' })
+    );
     expect(useGlossaryStore.getState().glossaryChildTerms[0].entityStatus).toBe(
       EntityStatus.Approved
     );
   });
 
-  it('selects the confident AI proposals and approves them together', async () => {
-    terms = [aiDraft, sureAiDraft, personDraft];
+  it('selects the confident AI proposals open for decision and approves them together', async () => {
+    terms = [aiInReview, sureAiDraft, sureAiInReview, personDraft];
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [
+        approvalRequestFor(aiInReview),
+        approvalRequestFor(sureAiInReview),
+        approvalTask,
+      ],
+    });
     renderTab();
     await screen.findByTestId('proposal-detail');
     await waitFor(() => expect(getEntityPermissionByFqn).toHaveBeenCalled());
@@ -270,14 +328,15 @@ describe('GlossaryReviewTab', () => {
 
     fireEvent.click(screen.getByTestId('bulk-approve'));
 
-    await waitFor(() => expect(patchGlossaryTerm).toHaveBeenCalledTimes(1));
-
-    expect(patchGlossaryTerm).toHaveBeenCalledWith('Net Retention', [
-      { op: 'replace', path: '/entityStatus', value: EntityStatus.Approved },
-    ]);
     expect(
       await screen.findByText('Net Retention · label.approved-by-you')
     ).toBeInTheDocument();
+    expect(resolveTask).toHaveBeenCalledTimes(1);
+    expect(resolveTask).toHaveBeenCalledWith(
+      'task-Net Retention',
+      expect.objectContaining({ newValue: 'approved' })
+    );
+    expect(showErrorToast).not.toHaveBeenCalled();
   });
 
   it("shows the comments on a person's approval request and adds one", async () => {

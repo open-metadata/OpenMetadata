@@ -187,28 +187,42 @@ describe('GlossaryReview utils', () => {
     expect(getProposalAuthor(ai)).toBe('karthick');
   });
 
-  it('lets anyone who can edit decide an AI draft in a glossary without reviewers', () => {
-    const [ai] = toProposals([aiDraft], [], []);
-
-    expect(canDecideProposal(ai, user('anyone'), true)).toBe(true);
-    expect(canDecideProposal(ai, user('anyone'), false)).toBe(false);
-    expect(getDeciders(ai)).toEqual([]);
-  });
-
-  it('lets only reviewers decide an AI draft in a reviewed glossary', () => {
+  it('lets no one decide an AI proposal before its approval request opens', () => {
     const [ai] = toProposals([{ ...aiDraft, reviewers: [reviewer] }], [], []);
 
-    expect(canDecideProposal(ai, user('reviewer-id'), true)).toBe(true);
-    expect(canDecideProposal(ai, user('admin'), true)).toBe(false);
+    expect(canDecideProposal(ai, user('reviewer-id'))).toBe(false);
+    expect(canDecideProposal(ai, user('admin'))).toBe(false);
     expect(getDeciders(ai)).toEqual([reviewer]);
+  });
+
+  it('lets only the assignees of its approval request decide an AI proposal', () => {
+    const admin = { id: 'admin-id', name: 'admin', type: 'user' };
+    const [ai] = toProposals(
+      [{ ...aiDraft, entityStatus: EntityStatus.InReview }],
+      [],
+      [
+        {
+          ...approvalTask,
+          about: {
+            fullyQualifiedName: 'Customers.Churn',
+            type: 'glossaryTerm',
+          },
+          assignees: [admin],
+        } as Task,
+      ]
+    );
+
+    expect(canDecideProposal(ai, user('admin-id'))).toBe(true);
+    expect(canDecideProposal(ai, user('reviewer-id'))).toBe(false);
+    expect(getDeciders(ai)).toEqual([admin]);
   });
 
   it('lets only the assignees decide a proposal held by its approval request', () => {
     const [person] = toProposals([personDraft], [], [approvalTask]);
 
-    expect(canDecideProposal(person, user('reviewer-id'), false)).toBe(true);
-    expect(canDecideProposal(person, user('author-id'), true)).toBe(false);
-    expect(canDecideProposal(person, undefined, true)).toBe(false);
+    expect(canDecideProposal(person, user('reviewer-id'))).toBe(true);
+    expect(canDecideProposal(person, user('author-id'))).toBe(false);
+    expect(canDecideProposal(person, undefined)).toBe(false);
     expect(getDeciders(person)).toEqual([reviewer]);
   });
 });

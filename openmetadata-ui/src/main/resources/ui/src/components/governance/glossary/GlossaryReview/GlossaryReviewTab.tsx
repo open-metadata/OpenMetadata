@@ -473,8 +473,7 @@ const GlossaryReviewTab = () => {
     !proposal.term.deleted &&
     Boolean(flagsByFqn[proposal.term.fullyQualifiedName ?? '']?.canEditAll);
   const canDecide = (proposal: GlossaryProposal) =>
-    !data?.deleted &&
-    canDecideProposal(proposal, currentUser, canEdit(proposal));
+    !data?.deleted && canDecideProposal(proposal, currentUser);
   const isConfident = (proposal: GlossaryProposal) =>
     proposal.source === 'ai' &&
     (getConfidencePercent(proposal.derivation) ?? 0) >=

@@ -1,7 +1,7 @@
 # Memories become Draft glossary terms through the AI provider
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server); v5 2026-10-21 (preserve a pending derivation for edits during agent calls); v6 2026-10-22 (proposals are reviewed in a Review tab, not a panel)
+- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server); v5 2026-10-21 (preserve a pending derivation for edits during agent calls); v6 2026-10-22 (proposals are reviewed in a Review tab, not a panel); v7 2026-10-22 (proposals are decided through the approval workflow, not directly)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `ContextMemoryDerivationIT`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `GlossaryReviewTab.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension
@@ -102,6 +102,11 @@ evidence, the approval request's comments, and the decision. The tab is added af
 customization, so every persona reaches it without saving a new layout. The
 `KnowledgePanel.PendingReview` widget is removed; a layout that still names it renders nothing in
 its place. The terms table keeps marking AI and people proposals. The header no longer counts
-proposals and the glossary list no longer counts or explains them. An AI draft still has no
-approval request, because a bot's write never starts the workflow: the tab decides it on the term
-and a person's proposal through its request, as above.
+proposals and the glossary list no longer counts or explains them.
+
+v7, 2026-10-22: people no longer decide an automation's Draft term directly.
+ADR:2026-10-22-agent-glossary-proposals-are-decided-through-the-approval-workflow reverses that
+paragraph of the Decision and the edit-and-approve consequence: an agent's term starts the approval
+workflow, which opens an approval request for its reviewers, else its owners, else the admins, and
+only that request decides it, from the Review tab or the term's page. An edit while the request is
+open never approves the term.
