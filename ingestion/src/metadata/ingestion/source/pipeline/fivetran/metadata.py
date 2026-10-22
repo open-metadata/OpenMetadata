@@ -657,10 +657,10 @@ class FivetranSource(PipelineServiceSource):
             group_id: str = group.get("id", "")
             try:
                 destination = self.fivetran_client.get_destination_details(destination_id=group_id)
+                connectors = list(self.fivetran_client.list_group_connectors(group_id=group_id))
             except Exception as exc:
-                logger.warning(f"Failed to get destination for group [{group_id}]: {exc}")
+                logger.warning("Failed to list group [%s]: %s", group_id, exc)
                 continue
-            connectors = list(self.fivetran_client.list_group_connectors(group_id=group_id))
             log_schema = self.fivetran_connection.logSchema or resolve_log_schema(connectors)
             for connector in connectors:
                 connector_id: str = connector.get("id", "")

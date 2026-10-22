@@ -344,6 +344,17 @@ class TestFivetranSource:
         source, _ = fivetran_source
         assert list(source.get_pipelines_list())[0] == EXPECTED_FIVETRAN_DETAILS  # noqa: RUF015
 
+    def test_pipeline_list_skips_a_group_whose_connectors_cannot_be_listed(self, fivetran_source):
+        """A failed listing skips that group instead of aborting every later one."""
+        source, client = fivetran_source
+        client.list_groups.return_value = [{"id": "unreachable"}, mock_data["group"]]
+        client.list_group_connectors.side_effect = [
+            RuntimeError("Fivetran API request failed"),
+            [mock_data["source"]],
+        ]
+
+        assert list(source.get_pipelines_list()) == [EXPECTED_FIVETRAN_DETAILS]
+
     def test_pipeline_list_carries_the_platform_connection_schema(self, fivetran_source):
         source, client = fivetran_source
         client.list_group_connectors.return_value = [
