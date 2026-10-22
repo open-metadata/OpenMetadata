@@ -290,7 +290,7 @@ const StoredProcedureTab = () => {
               />
             ) : (
               <NoDataPlaceholder
-                icon={<Assets className="tw:text-utility-gray-600" />}
+                icon={<Assets />}
                 title={t('message.no-entity-data-available', {
                   entity: t('label.stored-procedure-plural'),
                 })}
