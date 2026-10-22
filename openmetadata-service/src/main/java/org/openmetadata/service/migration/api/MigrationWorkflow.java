@@ -795,8 +795,8 @@ public class MigrationWorkflow {
           if (sql != null && !sql.isBlank()) {
             String checksum = hash(sql);
             try {
-              String existingQuery = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-              if (existingQuery == null) {
+              String executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+              if (executedInVersion == null) {
                 migrationDAO.upsertServerMigrationSQL(omVersion, sql, checksum);
                 totalStatements++;
               }

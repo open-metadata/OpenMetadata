@@ -166,8 +166,8 @@ public class FlywayMigrationFile extends MigrationFile {
   private boolean checkIfQueryPreviouslyRan(String query) {
     try {
       String checksum = EntityUtil.hash(query);
-      String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-      return sqlStatement != null;
+      String executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(checksum);
+      return executedInVersion != null;
     } catch (Exception e) {
       // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
       return false;

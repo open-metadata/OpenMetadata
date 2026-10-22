@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.api.configuration.ClassicConfiguration;
 import org.flywaydb.core.api.configuration.Configuration;
 import org.flywaydb.core.internal.database.postgresql.PostgreSQLParser;
@@ -18,6 +19,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
 
+@Slf4j
 public class MigrationFile implements Comparable<MigrationFile> {
   public final int[] versionNumbers;
   public final String version;
@@ -226,13 +228,25 @@ public class MigrationFile implements Comparable<MigrationFile> {
   }
 
   private boolean checkIfQueryPreviouslyRan(String query) {
+    String executedInVersion = null;
     try {
-      String checksum = EntityUtil.hash(query);
-      String sqlStatement = migrationDAO.checkIfQueryPreviouslyRan(checksum);
-      return sqlStatement != null;
+      executedInVersion = migrationDAO.checkIfQueryPreviouslyRan(EntityUtil.hash(query));
     } catch (Exception e) {
       // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
-      return false;
+    }
+    warnIfExecutedByAnotherVersion(executedInVersion, query);
+    return executedInVersion != null;
+  }
+
+  // A reprocessed version is parsed on every start; its skips were reported when it was applied.
+  private void warnIfExecutedByAnotherVersion(String executedInVersion, String query) {
+    if (!reprocessing && executedInVersion != null && !executedInVersion.equals(version)) {
+      LOG.warn(
+          "[MigrationWorkflow] Skipping a statement of version {} because identical text already"
+              + " ran in version {}: {}",
+          version,
+          executedInVersion,
+          query);
     }
   }
 }

@@ -119,25 +119,7 @@ public class MigrationProcessImpl implements MigrationProcess {
     if (!nullOrEmpty(queryList)) {
       for (String sql : queryList) {
         try {
-          String previouslyRanSql = null;
-          try {
-            previouslyRanSql = migrationDAO.getSqlQuery(version, hash(sql));
-          } catch (Exception dbException) {
-            // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
-            previouslyRanSql = null;
-          }
-
-          if ((previouslyRanSql == null || previouslyRanSql.isEmpty())) {
-            handle.execute(sql);
-            try {
-              migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
-            } catch (Exception logException) {
-              // If logging fails (table doesn't exist yet), continue - the SQL was executed
-              // successfully
-            }
-          }
-          queryStatusMap.put(
-              sql, new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
+          queryStatusMap.put(sql, executeUnlessAlreadyRun(handle, migrationDAO, sql, version));
         } catch (Exception e) {
           String message = String.format("Failed to run sql: [%s] due to [%s]", sql, e);
           queryStatusMap.put(sql, new QueryStatus(QueryStatus.Status.FAILURE, message));
@@ -148,6 +130,39 @@ public class MigrationProcessImpl implements MigrationProcess {
       }
     }
     return queryStatusMap;
+  }
+
+  private static QueryStatus executeUnlessAlreadyRun(
+      Handle handle, MigrationDAO migrationDAO, String sql, String version) {
+    if (ranInVersion(migrationDAO, sql, version)) {
+      LOG.warn(
+          "[MigrationWorkflow] Skipping a statement of version {} because identical text already"
+              + " ran earlier in this version: {}",
+          version,
+          sql);
+      return new QueryStatus(
+          QueryStatus.Status.SKIPPED, "Identical statement already executed in version " + version);
+    }
+    handle.execute(sql);
+    recordExecution(migrationDAO, sql, version);
+    return new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query");
+  }
+
+  private static boolean ranInVersion(MigrationDAO migrationDAO, String sql, String version) {
+    try {
+      return !nullOrEmpty(migrationDAO.getSqlQuery(version, hash(sql)));
+    } catch (Exception dbException) {
+      // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+      return false;
+    }
+  }
+
+  private static void recordExecution(MigrationDAO migrationDAO, String sql, String version) {
+    try {
+      migrationDAO.upsertServerMigrationSQL(version, sql, hash(sql));
+    } catch (Exception logException) {
+      // If logging fails (table doesn't exist yet), continue - the SQL was executed successfully
+    }
   }
 
   @Override

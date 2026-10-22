@@ -7,18 +7,24 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.QueryStatus;
 import org.openmetadata.service.migration.utils.MigrationCodeFingerprint;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
@@ -78,6 +84,44 @@ class MigrationProcessImplTest {
     assertEquals(
         List.of("INSERT INTO sample VALUES ('value;with-semicolon')", "UPDATE sample SET id = 2"),
         statements);
+  }
+
+  @Test
+  void reportsAStatementAlreadyRunInThisVersionAsSkipped() {
+    Handle handle = mock(Handle.class);
+    String sql = "PREPARE stmt FROM @ddl";
+    when(migrationDAO.getSqlQuery("2.1.0", hash(sql))).thenReturn(sql);
+
+    Map<String, QueryStatus> statuses =
+        MigrationProcessImpl.performSqlExecutionAndUpdate(
+            handle, migrationDAO, List.of(sql), "2.1.0", false);
+
+    assertEquals(QueryStatus.Status.SKIPPED, statuses.get(sql).getStatus());
+    verify(handle, never()).execute(sql);
+    verify(migrationDAO, never()).upsertServerMigrationSQL(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void executesAndRecordsANewStatement() {
+    Handle handle = mock(Handle.class);
+    String sql = "ALTER TABLE test ADD COLUMN a INT";
+
+    Map<String, QueryStatus> statuses =
+        MigrationProcessImpl.performSqlExecutionAndUpdate(
+            handle, migrationDAO, List.of(sql), "2.1.0", false);
+
+    assertEquals(QueryStatus.Status.SUCCESS, statuses.get(sql).getStatus());
+    verify(handle).execute(sql);
+    verify(migrationDAO).upsertServerMigrationSQL("2.1.0", sql, hash(sql));
+  }
+
+  @Test
+  void dropsAStatementWhoseTextRanInAnotherVersion() throws IOException {
+    when(migrationDAO.checkIfQueryPreviouslyRan(anyString())).thenReturn("2.0.0");
+    MigrationFile file = createMigrationDir("2.1.0", "UPDATE test SET a = 1;", "");
+    file.parseSQLFiles();
+
+    assertFalse(file.hasNewStatements());
   }
 
   @Test
