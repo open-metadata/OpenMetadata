@@ -433,6 +433,10 @@ test.describe('Search Settings', () => {
           await page.goto('/my-data#platform-settings/search/tables', {
             waitUntil: 'domcontentloaded',
           });
+          // Sign-in already landed on /my-data, so the goto above is only a
+          // hash change: no document load, so the AI-mode and theme init
+          // scripts never ran. Reload to boot the app with them applied.
+          await page.reload({ waitUntil: 'domcontentloaded' });
           await waitForAllLoadersToDisappear(page);
 
           const rankingSignals = page
