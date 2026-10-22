@@ -325,7 +325,7 @@ def test_unreadable_stored_charts_are_reported_and_the_next_report_still_ingeste
     )
     errors = []
 
-    charts, _ = ingest(
+    charts, dashboards = ingest(
         source,
         PowerBIReport(id="report-a", name="Report A"),
         PowerBIReport(id="report-b", name="Report B"),
@@ -334,6 +334,8 @@ def test_unreadable_stored_charts_are_reported_and_the_next_report_still_ingeste
 
     assert [error.name for error in errors] == ["Report A"]
     assert list(charts) == ["report-b_ReportSection"]
+    assert list(dashboards) == ["report-b"]
+    assert source.dashboard_source_state == {f"{SERVICE}.report-a", f"{SERVICE}.report-b"}
 
 
 def test_paginated_report_pages_use_the_rdl_prefix(make_source):
