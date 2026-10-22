@@ -534,15 +534,31 @@ class ESMixin(Generic[T]):
                     continue
                 else:
                     break
+
+            next_after = self._next_search_after(response)
+            # An index that cannot sort on the server's id tiebreaker returns a null sort value
+            # search_after cannot move past, so the same page would come back forever.
+            if after and next_after == after:
+                logger.warning(
+                    "Search cursor for %s did not advance past %s; stopping pagination",
+                    entity.__name__,
+                    after,
+                )
+                break
             yield response
 
-            # Get next page
-            last_hit = response.hits.hits[-1] if response.hits.hits else None
-            if not last_hit or not last_hit.sort:
+            if not next_after:
                 logger.debug("No more pages to fetch")
                 break
 
-            after = "".join(f"&search_after={quote_plus(str(v))}" for v in last_hit.sort)
+            after = next_after
+
+    @staticmethod
+    def _next_search_after(response: ESResponse) -> str:
+        """The search_after query parameters for the page after `response`, empty on the last page."""
+        last_hit = response.hits.hits[-1] if response.hits.hits else None
+        sort = last_hit.sort if last_hit else None
+        return "".join(f"&search_after={quote_plus(str(v))}" for v in sort or [])
 
     def paginate_es(
         self,
