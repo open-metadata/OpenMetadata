@@ -259,8 +259,9 @@ class TestBackfillDetection:
         server.metadata.query.return_value = {**datasources_of("wb-1"), "errors": [{"message": "Something failed"}]}
         client = tableau_client(server)
 
-        client.get_datasources("wb-1")
+        datasources = client.get_datasources("wb-1")
 
+        assert [datasource.id for datasource in datasources] == ["ds-wb-1"]
         assert not client.metadata_api_backfill_running
 
 
