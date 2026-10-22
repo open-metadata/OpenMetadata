@@ -43,6 +43,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     PowerBIReport,
     PowerBiTable,
     PowerBiToken,
+    ReportPage,
     ReportPagesAPIResponse,
     ReportsResponse,
     TablesResponse,
@@ -353,14 +354,23 @@ class PowerBiApiClient:
 
         return None
 
-    def fetch_report_pages(self, group_id: str, report_id: str) -> list[dict] | None:
-        # get report pages for report url formation
+    def fetch_report_pages(self, group_id: str, report_id: str) -> list[ReportPage]:
+        """Fetch the pages of a report in a group, empty when they cannot be read
+        API: https://learn.microsoft.com/en-us/rest/api/power-bi/reports/get-pages-in-group
+        """
         try:
             # https://api.powerbi.com/v1.0/myorg/groups/4e57dcbb-***/reports/a2902011-***/pages
             response_data = self.client.get(f"/myorg/groups/{group_id}/reports/{report_id}/pages")
             if response_data:
                 response = ReportPagesAPIResponse(**response_data)
-                return response.value
+                if response.value:
+                    return response.value
+            logger.debug(
+                "Report pages API returned no pages for report [%s] in workspace [%s], response: %s",
+                report_id,
+                group_id,
+                response_data,
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error fetching report pages: {exc}")

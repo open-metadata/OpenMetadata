@@ -24,6 +24,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBIReport,
+    ReportPage,
 )
 
 # A workspace's "dashboards" list from the admin scan can contain either
@@ -51,6 +52,7 @@ class WorkspaceState:
         self._filtered_dashboards: list[DashboardLike] = []
         self._filtered_datamodels: list[DataModelLike] | None = None
         self._dashboard_charts: dict[str, list[str]] = {}
+        self._report_pages: dict[str, list[ReportPage]] = {}
 
     def enter(self, workspace: Group) -> None:
         """Activate `workspace` and build its per-workspace caches.
@@ -68,6 +70,7 @@ class WorkspaceState:
         self._filtered_dashboards = []
         self._filtered_datamodels = None
         self._dashboard_charts = {}
+        self._report_pages = {}
         for report in workspace.reports or []:
             self._known_report_ids.add(report.id)
 
@@ -81,6 +84,7 @@ class WorkspaceState:
         self._filtered_dashboards = []
         self._filtered_datamodels = None
         self._dashboard_charts = {}
+        self._report_pages = {}
 
     @property
     def current(self) -> Group:
@@ -136,3 +140,13 @@ class WorkspaceState:
     def pop_dashboard_chart_ids(self, dashboard_id: str) -> list[str]:
         """Consume the chart ids for a dashboard; empty list if absent or already consumed."""
         return self._dashboard_charts.pop(dashboard_id, [])
+
+    # --- Report pages: write-once per report, read by the chart and dashboard stages ---
+
+    def cache_report_pages(self, report_id: str, pages: list[ReportPage]) -> None:
+        """Memoise a report's pages so the current workspace calls the pages API once per report."""
+        self._report_pages[report_id] = pages
+
+    def get_report_pages(self, report_id: str) -> list[ReportPage] | None:
+        """Pages cached for a report in the current workspace; `None` until fetched."""
+        return self._report_pages.get(report_id)

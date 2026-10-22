@@ -22,6 +22,7 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
     Group,
     PowerBIDashboard,
     PowerBIReport,
+    ReportPage,
 )
 from metadata.ingestion.source.dashboard.powerbi.workspace_state import WorkspaceState
 
@@ -97,6 +98,20 @@ def test_dataflow_exports_cleared_on_exit(state, ws_a):
     assert state.get_dataflow_export("df_a1") is export
     state.exit()
     assert state.get_dataflow_export("df_a1") is None
+
+
+def test_report_pages_cached_per_workspace(state, ws_a, ws_b):
+    """A report with no pages stays cached as [], apart from one never fetched (None)."""
+    state.enter(ws_a)
+    pages = [ReportPage(name="ReportSection", displayName="Overview")]
+    state.cache_report_pages("r_a1", pages)
+    state.cache_report_pages("r_a2", [])
+    assert state.get_report_pages("r_a1") == pages
+    assert state.get_report_pages("r_a2") == []
+    assert state.get_report_pages("never_fetched") is None
+    state.exit()
+    state.enter(ws_b)
+    assert state.get_report_pages("r_a1") is None
 
 
 def test_filtered_datamodels_lazy_memo_lifecycle(state, ws_a):
