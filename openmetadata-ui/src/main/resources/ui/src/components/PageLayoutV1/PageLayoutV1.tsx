@@ -24,7 +24,7 @@ import {
   ENTITY_TABS_FILL_GRID_CLASS,
 } from './PageLayoutV1.constants';
 
-export type PageLayoutVariant = 'default' | 'compact' | 'flush';
+export type PageLayoutVariant = 'default' | 'compact';
 
 interface PageLayoutProp extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
@@ -55,15 +55,9 @@ const PageLayoutV1: FC<PageLayoutProp> = ({
   const location = useLocation();
 
   // `compact` (uniform 8px) is for pages whose header is a core PageLayout.PageHeader —
-  // the calling component decides. `flush` drops the gutter for pages whose
-  // header/footer bars must reach the content edges: the center column clips
-  // overflow, so a bar cannot bleed through the gutter with negative margins.
-  // Everything else gets the default 16px horizontal gutter.
-  const paddingClassName = {
-    compact: 'tw:p-2',
-    default: 'tw:px-4',
-    flush: '',
-  }[variant];
+  // the calling component decides. Everything else gets the default 16px
+  // horizontal gutter.
+  const paddingClassName = variant === 'compact' ? 'tw:p-2' : 'tw:px-4';
 
   const contentWidth = useMemo(() => {
     if (leftPanel && rightPanel) {
