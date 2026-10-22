@@ -104,7 +104,6 @@ const OntologyStudioScopeMenu = ({
       <Dropdown.Popover className="tw:w-72" placement="bottom left">
         <Dropdown.Menu
           aria-label={t('label.ontology-plural')}
-          className="tw:max-h-[min(480px,70vh)] tw:overflow-y-auto"
           selectedKeys={new Set([getScopeKey(scope)])}
           onAction={(key) => handleAction(String(key))}>
           {isLoading ? (
@@ -175,37 +174,41 @@ const OntologyStudioScopeMenu = ({
               />
             ) : null}
           </Dropdown.Section>
-          <Dropdown.Separator />
-          <Dropdown.Section id="glossaries">
-            <Dropdown.SectionHeader className={SECTION_HEADER_CLASS}>
-              {t('label.glossary-plural')}
-            </Dropdown.SectionHeader>
-            <Dropdown.Item
-              addon={`${glossaries.length} ${t(
-                'label.glossary-plural'
-              ).toLocaleLowerCase()}`}
-              data-testid="ontology-scope-all-glossaries"
-              icon={BookClosed}
-              id={ALL_GLOSSARIES_SCOPE_KEY}
-              label={t('label.all-glossaries')}
-              textValue={t('label.all-glossaries')}
-            />
-            {glossaries.map((glossary) => {
-              const name = getEntityName(glossary);
-
-              return (
+          {scope.kind === 'glossaries' ? (
+            <>
+              <Dropdown.Separator />
+              <Dropdown.Section id="glossaries">
+                <Dropdown.SectionHeader className={SECTION_HEADER_CLASS}>
+                  {t('label.glossary-plural')}
+                </Dropdown.SectionHeader>
                 <Dropdown.Item
-                  addon={`${glossary.termCount ?? 0} ${termLabel}`}
-                  data-testid={glossary.id}
+                  addon={`${glossaries.length} ${t(
+                    'label.glossary-plural'
+                  ).toLocaleLowerCase()}`}
+                  data-testid="ontology-scope-all-glossaries"
                   icon={BookClosed}
-                  id={`glossary:${glossary.id}`}
-                  key={glossary.id}
-                  label={name}
-                  textValue={name}
+                  id={ALL_GLOSSARIES_SCOPE_KEY}
+                  label={t('label.all-glossaries')}
+                  textValue={t('label.all-glossaries')}
                 />
-              );
-            })}
-          </Dropdown.Section>
+                {glossaries.map((glossary) => {
+                  const name = getEntityName(glossary);
+
+                  return (
+                    <Dropdown.Item
+                      addon={`${glossary.termCount ?? 0} ${termLabel}`}
+                      data-testid={glossary.id}
+                      icon={BookClosed}
+                      id={`glossary:${glossary.id}`}
+                      key={glossary.id}
+                      label={name}
+                      textValue={name}
+                    />
+                  );
+                })}
+              </Dropdown.Section>
+            </>
+          ) : null}
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>

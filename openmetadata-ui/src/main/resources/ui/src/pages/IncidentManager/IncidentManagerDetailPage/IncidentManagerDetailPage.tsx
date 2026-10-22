@@ -21,8 +21,9 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -33,7 +34,6 @@ import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManag
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
@@ -280,18 +280,23 @@ const IncidentManagerDetailPage = ({
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.incident-manager'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.incident-manager'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testCase)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

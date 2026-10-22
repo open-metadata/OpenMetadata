@@ -21,11 +21,11 @@ import {
   EventFilterRule,
 } from '../../../generated/events/eventSubscription';
 import { EventType } from '../../../generated/type/changeEvent';
+import type { AlertSelection } from '../../../hooks/useAlertSelection';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
   ModifiedEventSubscription,
-  ObservabilityFilterResourceDescriptor,
 } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 
@@ -41,8 +41,6 @@ export type AlertAiFormValidationErrors = Record<string, string>;
 
 export interface AlertAiFormFieldsProps {
   alert?: ModifiedEventSubscription;
-  containerEntities?: string[];
-  filterResources: ObservabilityFilterResourceDescriptor[];
   inlineAlert?: InlineAlertProps;
   isViewOnly?: boolean;
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
@@ -55,13 +53,14 @@ export interface AlertAiFormFieldsProps {
           prev: ModifiedCreateEventSubscription
         ) => ModifiedCreateEventSubscription)
   ) => void;
-  /** The recipient categories the server offers for the selected sources. */
-  recipientCategories?: string[];
+  /**
+   * The chosen sources and what the server says they support. Every section reads it, so the
+   * source picker, the filters, the triggers and the recipients never disagree.
+   */
+  selection: AlertSelection;
   showBasicFields?: boolean;
   shouldShowActionsSection: boolean;
   shouldShowFiltersSection: boolean;
-  supportedFilters?: EventFilterRule[];
-  supportedTriggers?: EventFilterRule[];
   templateResourcePermission?: OperationPermission;
   templates?: NotificationTemplate[];
   templatesLoading?: boolean;
@@ -119,9 +118,7 @@ export interface AlertAiSectionProps {
 }
 
 export interface RuleSectionProps {
-  containerEntities?: string[];
   field: RuleSectionField;
-  selectedSource?: string;
   supportedEventTypes?: EventType[];
   supportedRules?: EventFilterRule[];
   title: string;
@@ -131,11 +128,16 @@ export interface RuleSectionProps {
   value: AlertAiFormValue;
 }
 
+export interface AlertAiRuleSectionProps extends RuleSectionProps {
+  selectedSources: string[];
+  /** Searches the names and ids the chosen sources hold. */
+  sourceSearch: AlertSourceSearch;
+}
+
 export interface RuleArgumentFieldProps {
   testId?: string;
-  sourceSearch?: AlertSourceSearch;
+  sourceSearch: AlertSourceSearch;
   argument: string;
-  containerEntities?: string[];
   supportedEventTypes?: EventType[];
   field: RuleSectionField;
   index: number;
@@ -148,12 +150,15 @@ export interface RuleArgumentFieldProps {
   value: AlertAiFormValue;
 }
 
-export interface AiArgumentTextInputProps extends RuleArgumentFieldProps {
+// Only the autocomplete searches; the other argument inputs never need the source search.
+type FixedArgumentProps = Omit<RuleArgumentFieldProps, 'sourceSearch'>;
+
+export interface AiArgumentTextInputProps extends FixedArgumentProps {
   label: string;
   placeholder: string;
 }
 
-export interface AiArgumentMultiSelectProps extends RuleArgumentFieldProps {
+export interface AiArgumentMultiSelectProps extends FixedArgumentProps {
   items: SelectItemType[];
   label: string;
   placeholder: string;
@@ -162,14 +167,13 @@ export interface AiArgumentMultiSelectProps extends RuleArgumentFieldProps {
 export interface AiArgumentAutocompleteProps extends RuleArgumentFieldProps {
   label: string;
   placeholder: string;
-  selectedSource?: string;
 }
 
 export interface AlertAiDestinationSectionProps {
   isViewOnly?: boolean;
   onChange?: AlertAiFormFieldsProps['onChange'];
   recipientCategories?: string[];
-  selectedSource?: string;
+  selectedSources?: string[];
   validationErrors?: AlertAiFormValidationErrors;
   value: AlertAiFormValue;
 }

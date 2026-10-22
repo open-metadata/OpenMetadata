@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,6 +24,7 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { MembersPanelProps, MembersView } from './Members.types';
@@ -218,7 +219,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     <Box
       className="tw:relative tw:h-full"
       data-testid="permission-error-placeholder">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={t('message.no-permission-for-action')}
         icon={<Lock01 />}
         title={t('label.no-access')}

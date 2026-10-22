@@ -11,12 +11,8 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lock01, User01 } from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { FC, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
@@ -25,6 +21,8 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEditableUser } from '../../../../../../hooks/user-profile/useEditableUser';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import DomainsRow from '../../components/DomainsRow';
 import PersonaRow from '../../components/PersonaRow';
@@ -73,9 +71,9 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
   if (isNotFound) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="user-not-found"
-          icon={User01}
+          icon={<User01 />}
           title={t('label.no-entity-found', { entity: t('label.user') })}
         />
       </Box>
@@ -91,10 +89,7 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
       <Box
         className="tw:relative tw:flex-1 tw:min-h-90"
         data-testid="user-no-access">
-        <EmptyPlaceholder
-          icon={Lock01}
-          title={t('message.no-permission-to-view')}
-        />
+        <PermissionPlaceholder permissionValue={t('label.user')} />
       </Box>
     );
   }

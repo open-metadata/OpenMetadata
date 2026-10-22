@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Input,
   PageLayout,
   SlideoutMenu,
@@ -33,6 +32,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
@@ -293,7 +293,7 @@ const WorkflowsPage = () => {
 
   const emptyPlaceholder = (
     <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           allowCreateWorkflow
             ? [
@@ -310,7 +310,6 @@ const WorkflowsPage = () => {
         description={t('message.workflow-empty-description')}
         features={emptyStateFeatures}
         title={t('message.put-your-data-operations-on-autopilot')}
-        variant="features"
       />
     </Box>
   );

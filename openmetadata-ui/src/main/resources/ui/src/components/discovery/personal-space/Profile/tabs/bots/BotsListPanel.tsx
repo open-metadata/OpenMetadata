@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   Input,
   PaginationCardWithControls,
   Skeleton,
@@ -61,6 +60,8 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { escapeESReservedCharacters } from '../../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { BotsView } from './BotsPanel.types';
 
@@ -467,7 +468,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
     if (searchTerm.trim()) {
       return (
         <div className="tw:relative tw:min-h-70">
-          <EmptyPlaceholder
+          <NoSearchResultsPlaceholder
             actions={[
               {
                 color: 'primary' as const,
@@ -478,7 +479,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
             ]}
             data-testid="search-error-placeholder"
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearch className="tw:text-quaternary" />}
+            icon={<NoSearch />}
             title={t('label.no-matching-results')}
           />
         </div>
@@ -487,7 +488,7 @@ const BotsListPanel: React.FC<BotsListPanelProps> = ({
 
     return (
       <div className="tw:relative tw:min-h-70">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             isAdminUser && !showDeleted
               ? [

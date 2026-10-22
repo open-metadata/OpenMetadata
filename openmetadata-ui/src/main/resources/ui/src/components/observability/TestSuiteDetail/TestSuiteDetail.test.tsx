@@ -52,15 +52,6 @@ jest.mock('components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader">Loader</div>,
 }));
 
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="error-placeholder" data-type={type ?? 'default'}>
-      error-placeholder
-    </div>
-  ),
-}));
-
 jest.mock(
   'components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
@@ -146,6 +137,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+      .EmptyPlaceholder,
     Box,
     Button,
     Dialog,
@@ -330,10 +323,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
   });
 
   it('should render the permission placeholder before the undefined guard when permission is denied and testSuite is undefined', () => {
@@ -350,10 +342,9 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'PERMISSION'
-    );
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(DocumentTitleMock).not.toHaveBeenCalled();
   });
 
@@ -371,11 +362,12 @@ describe('TestSuiteDetail', () => {
 
     render(<TestSuiteDetail />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
-    expect(screen.getByTestId('error-placeholder')).toHaveAttribute(
-      'data-type',
-      'default'
-    );
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-suite-detail-page')
     ).not.toBeInTheDocument();

@@ -462,8 +462,18 @@ run_local_docker_main() {
   fi
 
   if [[ $includeIngestion == "true" ]]; then
-    echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
-    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" && \
+    # CI builds the ingestion image on its own runner and loads it here, so
+    # building it again would only repeat that work; `up` runs the loaded image.
+    build_services=()
+    if [[ "${OM_INGESTION_IMAGE_PRELOADED:-false}" == "true" ]]; then
+      while IFS= read -r service; do
+        [[ "$service" == "ingestion" ]] || build_services+=("$service")
+      done < <(docker compose "${COMPOSE_ARGS[@]}" config --services)
+      echo "Building all services except the preloaded ingestion image"
+    else
+      echo "Building all services including ingestion (dependency: ${INGESTION_DEPENDENCY:-all})"
+    fi
+    docker compose "${COMPOSE_ARGS[@]}" build --build-arg INGESTION_DEPENDENCY="${INGESTION_DEPENDENCY:-all}" ${build_services[@]+"${build_services[@]}"} && \
       docker compose "${COMPOSE_ARGS[@]}" up -d
   else
     echo "Building services without ingestion"

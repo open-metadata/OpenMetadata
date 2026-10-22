@@ -47,7 +47,7 @@ import {
   normalizeGraphLevel,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
 import { getGraphRelationshipRows } from '../../../utils/discovery/knowledge-graph/knowledgeGraphExport.utils';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import CustomNode from './GraphElements/CustomNode';
@@ -342,10 +342,9 @@ const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
 
   const handleExportCsv = useCallback(async () => {
     const { unparse } = await import('papaparse');
-    downloadFile(
+    downloadCsv(
       unparse(getGraphRelationshipRows(displayData), { escapeFormulae: true }),
-      'knowledge-graph-relationships.csv',
-      'text/csv;charset=utf-8'
+      'knowledge-graph-relationships.csv'
     );
   }, [displayData]);
 

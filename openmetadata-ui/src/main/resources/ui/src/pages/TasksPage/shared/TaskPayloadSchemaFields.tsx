@@ -390,6 +390,7 @@ const TaskPayloadSchemaFields = ({
               color="gray"
               key={tag.tagFQN}
               size="sm"
+              tooltip={tag.tagFQN}
               type="color">
               {tag.tagFQN}
             </Badge>

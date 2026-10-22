@@ -15,10 +15,6 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyTable } from './CustomPropertyTable';
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>);
-});
-
 jest.mock('./EditCustomPropertyModal/EditCustomPropertyModal', () => {
   return jest
     .fn()
@@ -237,7 +233,11 @@ describe('CustomPropertyTable', () => {
   it('renders the empty placeholder when there are no properties', () => {
     render(<CustomPropertyTable {...mockProp} customProperties={[]} />);
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('masks the rows with a loader while loading', () => {

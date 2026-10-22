@@ -47,7 +47,9 @@ $$
 $$section
 ### Source $(id="source")
 
-The type of asset this alert watches. Choose from **Table**, **Topic**, **Container**, **Pipeline**, **Ingestion Pipeline**, **Test Case**, **Test Suite**, or **Data Contract**.
+What this alert watches. Choose one or more sources from **Table**, **Topic**, **Container**, **Pipeline**, **Ingestion Pipeline**, **Test Case**, **Test Suite**, or **Data Contract**.
+
+Choose several sources when the same filters and destinations should cover all of them, instead of keeping near-identical alerts in step. The filters on offer are the ones the chosen sources share. A source that cannot be combined with the ones already chosen is greyed out, with the reason beside it.
 
 The source is the first choice because it determines everything after it — each asset type emits its own events, so the available filters and triggers change with it. Adding or removing a source resets the filters and triggers; removing one also resets the destinations.
 
@@ -65,19 +67,21 @@ Filters scope the alert to the assets you care about. Without them, the alert ap
 
 Most sources support:
 
-- **Entity Specific Name** — match named assets by fully qualified name
+- **A name filter**, called after the source's own assets, such as **Table Name** or **Pipeline Name** — match named assets by fully qualified name
 - **Owner Name** — match by the asset's owner
 - **Domain** — match everything belonging to a domain
-- **Filter By Updater Is Bot** — match changes made by automated processes
+- **Update is Bot** — match changes made by automated processes
 
-Test Case alerts add **Table Name a Test Case Belongs To**, so you can watch every test on a given table without listing them individually.
+Test Case alerts add **Table Name A Test Case Belongs To**, so you can watch every test on a given table without listing them individually.
+
+With several sources, a filter they name differently shows its general name: the name filter of a Pipeline and Ingestion Pipeline alert is **Entity FQN**, and it matches the names of both.
 
 Each filter has an **Include** toggle. With Include **on**, an event meeting the filter condition sends the alert. With Include **off**, a matching event silences it instead.
 
 **Examples:**
 
 - Include *Domain = Finance* — only assets belonging to the Finance domain
-- Include off, *Filter By Updater Is Bot* — silence ingestion-bot churn and only hear about human changes
+- Include off, *Update is Bot* — silence ingestion-bot churn and only hear about human changes
 - Include *Table Name = `prod.sales.orders`* — every test on the orders table
 
 **Guidelines:**
@@ -99,6 +103,8 @@ The available triggers depend on the source:
 - **Test Case Status** (Test Case) — fires when tests are `Failed`, `Aborted`, or `Queued`, with a variant scoped to a Test Suite
 
 Triggers carry the same **Include** toggle as filters, so a trigger can be inverted to fire on everything *except* the selected events.
+
+With several sources, each trigger names the sources it applies to, such as *Get Pipeline Status Updates (Pipeline)*. Add one trigger for each source you want to hear about. A source that no chosen trigger applies to gets a warning, because none of its events can match.
 
 **Example:**
 

@@ -16,6 +16,7 @@ import { isReactComponent } from '@/utils/is-react-component';
 import { forgetFocusedOptionOnTab } from '@/components/base/select/forget-focused-option';
 import { Search } from '../../../icons';
 import type {
+  CSSProperties,
   FocusEventHandler,
   KeyboardEvent,
   PointerEventHandler,
@@ -45,6 +46,7 @@ import type {
   Key,
 } from 'react-aria-components';
 import {
+  Button as AriaButton,
   ComboBox as AriaComboBox,
   Group as AriaGroup,
   Input as AriaInput,
@@ -56,7 +58,11 @@ import {
 import type { ListData } from 'react-stately';
 import { Avatar } from '../avatar/avatar';
 import { Badge, BadgeWithButton } from '../badges/badges';
-import { AutocompleteItem } from './autocomplete-item';
+import { Tooltip } from '../tooltip/tooltip';
+import {
+  AutocompleteCheckedKeysContext,
+  AutocompleteItem,
+} from './autocomplete-item';
 
 interface AutocompleteContextValue {
   size: 'sm' | 'md';
@@ -69,9 +75,12 @@ interface AutocompleteContextValue {
   hideDropdown: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
+  wrapsSelectedItems: boolean;
+  isReadOnly: boolean;
   multiple: boolean;
   visibleItemCount: number;
   triggerRef: RefObject<HTMLDivElement | null>;
+  onShowSelection: () => void;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -84,9 +93,12 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   allowsCreation: false,
   hideDropdown: false,
   maxVisibleItems: undefined,
+  wrapsSelectedItems: true,
+  isReadOnly: false,
   multiple: true,
   visibleItemCount: 0,
   triggerRef: { current: null },
+  onShowSelection: () => {},
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -124,11 +136,40 @@ export interface AutocompleteProps
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   filterOption?: (item: SelectItemType, filterText: string) => boolean;
   onSearchChange?: (value: string) => void;
+  /** Chips drawn before the rest collapse into a +N button that opens the list with them checked. */
   maxVisibleItems?: number;
+  /**
+   * Wrap the chips onto more lines. Defaults to true without `maxVisibleItems`;
+   * a capped field stays on one line, so set this when the cap is large.
+   */
+  wrapSelectedItems?: boolean;
   multiple?: boolean;
   allowsCreation?: boolean;
   hideDropdown?: boolean;
 }
+
+const CHIP_MIN_VISIBLE_CHARS = 5;
+// Rem left of the chips' share: +N (2.5) plus the gaps beside it and the input (0.75).
+const CHIP_ROW_RESERVED_REM = 3.25;
+const CHIP_GAP_REM = 0.375;
+
+// In a one-line (capped) field the chips shrink to fit, and without a floor the
+// shortest label shrank first, down to one letter. Each chip keeps about four
+// letters (all of a short label), but never more than its share of the row,
+// so a narrow field still fits. The rem is the badge's own padding, gap and
+// remove button, plus the leading icon if any.
+const chipMinWidth = (item: SelectItemType) => {
+  const chars = Math.min((item.label ?? '').length, CHIP_MIN_VISIBLE_CHARS);
+  const chromeRem = item.avatarUrl || item.icon ? 3.25 : 2.125;
+
+  return `min(calc(${chars}ch + ${chromeRem}rem), var(--autocomplete-chip-share))`;
+};
+
+// The input keeps 20% of the row; the chips split what +N and the gaps leave.
+const chipShare = (chipCount: number) =>
+  `calc((80% - ${
+    CHIP_ROW_RESERVED_REM + chipCount * CHIP_GAP_REM
+  }rem) / ${chipCount})`;
 
 const renderChipIcon = (item: SelectItemType) => {
   if (item.avatarUrl) {
@@ -161,6 +202,7 @@ const InnerAutocomplete = ({
   const focusManager = useFocusManager();
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const canCreateItem =
     context.allowsCreation &&
@@ -247,6 +289,16 @@ const InnerAutocomplete = ({
     }
   };
 
+  // +N sits between the chips and the input, so it passes the same
+  // Backspace/arrow walk along instead of ending it.
+  const handleOverflowKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Backspace' || event.key === 'ArrowLeft') {
+      focusManager?.focusPrevious({ wrap: false, tabbable: false });
+    } else if (event.key === 'ArrowRight') {
+      focusManager?.focusNext({ wrap: false, tabbable: false });
+    }
+  };
+
   const isSelectionEmpty = context?.selectedItems?.length === 0;
   const { maxVisibleItems, multiple } = context;
   const allSelected = context?.selectedItems ?? [];
@@ -254,45 +306,80 @@ const InnerAutocomplete = ({
     maxVisibleItems === undefined
       ? allSelected
       : allSelected.slice(0, maxVisibleItems);
-  const overflowCount =
-    maxVisibleItems === undefined
-      ? 0
-      : allSelected.length - visibleSelected.length;
+  const overflowCount = allSelected.length - visibleSelected.length;
+
+  const renderChip = (item: SelectItemType) =>
+    context.renderTag ? (
+      context.renderTag(item, () => context.onRemove(new Set([item.id])))
+    ) : (
+      <BadgeWithButton
+        // Capped at the field width so a long label ends in an ellipsis.
+        buttonLabel={t('label.remove-entity', { entity: item.label })}
+        className="tw:max-w-full"
+        color="gray"
+        data-testid="autocomplete-selected-item"
+        isDisabled={isDisabled}
+        key={item.id}
+        size="lg"
+        style={
+          context.wrapsSelectedItems
+            ? undefined
+            : { minWidth: chipMinWidth(item) }
+        }
+        type="modern"
+        onButtonClick={() => context.onRemove(new Set([item.id]))}
+        onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
+        {renderChipIcon(item)}
+        {/* Not the badge's own `tooltip`: that wraps the label in a w-max
+            button, which stops the truncation and joins the ComboBox's ButtonContext. */}
+        <Tooltip
+          excludeTriggerFromTabOrder
+          title={item.label}
+          triggerClassName="tw:block tw:min-w-0 tw:max-w-40">
+          <Typography ellipsis as="p" weight="medium">
+            {item.label}
+          </Typography>
+        </Tooltip>
+      </BadgeWithButton>
+    );
 
   return (
-    <div className="tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:flex-wrap tw:items-center tw:justify-start tw:gap-1.5">
-      {!isSelectionEmpty &&
-        visibleSelected.map((item) =>
-          context.renderTag ? (
-            context.renderTag(item, () => context.onRemove(new Set([item.id])))
-          ) : (
-            <BadgeWithButton
-              // Capped at the field width so a long label ends in an ellipsis.
-              buttonLabel={t('label.remove-entity', { entity: item.label })}
-              className="tw:max-w-full"
-              color="gray"
-              data-testid="autocomplete-selected-item"
-              isDisabled={isDisabled}
-              key={item.id}
-              size="lg"
-              title={item.label}
-              type="modern"
-              onButtonClick={() => context.onRemove(new Set([item.id]))}
-              onButtonKeyDown={(e) => handleTagKeyDown(e, item.id)}>
-              {renderChipIcon(item)}
-              <div className="tw:min-w-0 tw:max-w-40">
-                <Typography ellipsis as="p" weight="medium">
-                  {item.label}
-                </Typography>
-              </div>
-            </BadgeWithButton>
-          )
-        )}
+    <div
+      className={cx(
+        'tw:relative tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-row tw:items-center tw:justify-start tw:gap-1.5',
+        // A capped field stays one line: chips truncate, +N holds the rest.
+        context.wrapsSelectedItems ? 'tw:flex-wrap' : 'tw:flex-nowrap'
+      )}
+      style={
+        context.wrapsSelectedItems || visibleSelected.length === 0
+          ? undefined
+          : ({
+              '--autocomplete-chip-share': chipShare(visibleSelected.length),
+            } as CSSProperties)
+      }>
+      {!isSelectionEmpty && visibleSelected.map((item) => renderChip(item))}
 
       {overflowCount > 0 && (
-        <Badge color="gray" size="lg" type="modern">
-          +{overflowCount}
-        </Badge>
+        // Opens the list in its checkbox view: selected values stay as checked rows.
+        <AriaButton
+          preventFocusOnPress
+          aria-label={t('label.show-count-more', { count: overflowCount })}
+          className="tw:shrink-0 tw:cursor-pointer tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+          data-testid="autocomplete-overflow-trigger"
+          // slot={null} also drops the ComboBox's disabled state, so pass it here.
+          isDisabled={isDisabled || context.isReadOnly}
+          // Opt out of the ComboBox's ButtonContext so this is not the menu trigger.
+          slot={null}
+          onKeyDown={handleOverflowKeyDown}
+          onPress={() => {
+            context.onShowSelection();
+            inputRef.current?.focus();
+            comboBoxStateContext?.open();
+          }}>
+          <Badge color="gray" size="lg" type="modern">
+            +{overflowCount}
+          </Badge>
+        </AriaButton>
       )}
 
       <div
@@ -309,6 +396,7 @@ const InnerAutocomplete = ({
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-text-primary tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
+          ref={inputRef}
           onBlur={(event) => {
             const inputValue = event.target.value.trim();
             const isMovingInsideWidget = context.triggerRef?.current?.contains(
@@ -406,8 +494,10 @@ export const AutocompleteBase = ({
   multiple = true,
   onSearchChange,
   maxVisibleItems,
+  wrapSelectedItems = maxVisibleItems === undefined,
   allowsCreation = false,
   hideDropdown = false,
+  onOpenChange,
   name: _name,
   className: _className,
   ...props
@@ -430,9 +520,54 @@ export const AutocompleteBase = ({
     setAllItems(items ?? []);
   }, [items]);
 
+  // Opened from +N, the list switches to a checkbox view that keeps selected
+  // values as checked rows; it reverts when the list closes.
+  // ADR:2026-10-21-capped-autocomplete-stays-on-one-line
+  // It keeps the selection it opened with, so an unchecked value that is not
+  // in the loaded items stays listed and can be checked again.
+  const [openedSelection, setOpenedSelection] = useState<SelectItemType[]>([]);
+  const [isSelectionView, setIsSelectionView] = useState(false);
+  const listsSelection = multiple && isSelectionView;
+  const onShowSelection = useCallback(() => {
+    setOpenedSelection(internalSelected);
+    setIsSelectionView(true);
+  }, [internalSelected]);
+  const handleOpenChange = (
+    isOpen: boolean,
+    trigger?: Parameters<NonNullable<typeof onOpenChange>>[1]
+  ) => {
+    if (!isOpen) {
+      setIsSelectionView(false);
+    }
+    onOpenChange?.(isOpen, trigger);
+  };
+
+  const itemMap = useMemo(
+    () => new Map(allItems.map((item) => [item.id, item])),
+    [allItems]
+  );
+
+  // The saved selection matching the search. Matched locally, not through
+  // `filterOption`: async callers pass one that accepts everything.
+  const matchingOpenedSelection = useMemo(
+    () =>
+      listsSelection
+        ? openedSelection.filter((item) =>
+            contains(item.label || item.supportingText || '', filterText)
+          )
+        : [],
+    [listsSelection, openedSelection, filterText, contains]
+  );
+
+  // Selections outside the loaded (e.g. async) items, listed first in the view.
+  const unloadedSelection = useMemo(
+    () => matchingOpenedSelection.filter((item) => !itemMap.has(item.id)),
+    [matchingOpenedSelection, itemMap]
+  );
+
   const visibleItems = useMemo(() => {
-    return allItems.filter((item) => {
-      if (selectedKeys.includes(item.id)) {
+    const matches = allItems.filter((item) => {
+      if (!listsSelection && selectedKeys.includes(item.id)) {
         return false;
       }
       if (filterOption) {
@@ -441,11 +576,21 @@ export const AutocompleteBase = ({
 
       return contains(item.label || item.supportingText || '', filterText);
     });
-  }, [allItems, filterText, selectedKeys, filterOption, contains]);
 
-  const itemMap = useMemo(
-    () => new Map(allItems.map((item) => [item.id, item])),
-    [allItems]
+    return [...unloadedSelection, ...matches];
+  }, [
+    allItems,
+    filterText,
+    selectedKeys,
+    filterOption,
+    contains,
+    listsSelection,
+    unloadedSelection,
+  ]);
+
+  const checkedKeys = useMemo(
+    () => (listsSelection ? new Set<Key>(selectedKeys) : null),
+    [listsSelection, selectedKeys]
   );
 
   // The ListBox renders the caller's static children. Filter them by the
@@ -457,12 +602,29 @@ export const AutocompleteBase = ({
     () => new Set(visibleItems.map((item) => String(item.id))),
     [visibleItems]
   );
+  // Static children render only the caller's items, so a selection they lack
+  // (an async miss, or a value created in this session) needs its own row.
+  const unrenderedSelection = useMemo(() => {
+    if (typeof children === 'function') {
+      return [];
+    }
+    const renderedIds = new Set(
+      Children.toArray(children)
+        .filter(isValidElement)
+        .map((child) => String((child.props as { id?: Key }).id))
+    );
+
+    return matchingOpenedSelection.filter(
+      (item) => !renderedIds.has(String(item.id))
+    );
+  }, [children, matchingOpenedSelection]);
+
   const visibleChildren = useMemo(() => {
     if (typeof children === 'function') {
       return children;
     }
 
-    return Children.toArray(children).filter((child) => {
+    const filtered = Children.toArray(children).filter((child) => {
       if (!isValidElement(child)) {
         return true;
       }
@@ -473,7 +635,19 @@ export const AutocompleteBase = ({
 
       return visibleIds.has(String(childId));
     });
-  }, [children, visibleIds, itemMap]);
+    const unloadedRows = unrenderedSelection.map((item) => (
+      <AutocompleteItem
+        avatarUrl={item.avatarUrl}
+        icon={item.icon}
+        id={String(item.id)}
+        key={item.id}
+        label={item.label}
+        supportingText={item.supportingText}
+      />
+    ));
+
+    return [...unloadedRows, ...filtered];
+  }, [children, visibleIds, itemMap, unrenderedSelection]);
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -492,10 +666,17 @@ export const AutocompleteBase = ({
     if (!id) {
       return;
     }
+    if (listsSelection && selectedKeys.includes(id as string)) {
+      onRemove(new Set([id]));
+
+      return;
+    }
     if (!multiple && internalSelected.length >= 1) {
       return;
     }
-    const item = itemMap.get(id as string);
+    const item =
+      itemMap.get(id as string) ??
+      unloadedSelection.find((selected) => selected.id === id);
     if (!item) {
       return;
     }
@@ -619,9 +800,12 @@ export const AutocompleteBase = ({
       hideDropdown,
       renderTag,
       maxVisibleItems,
+      wrapsSelectedItems: wrapSelectedItems,
+      isReadOnly: Boolean(props.isReadOnly),
       multiple,
       visibleItemCount: visibleItems.length,
       triggerRef,
+      onShowSelection,
     }),
     [
       selectedKeys,
@@ -633,86 +817,94 @@ export const AutocompleteBase = ({
       hideDropdown,
       renderTag,
       maxVisibleItems,
+      wrapSelectedItems,
+      props.isReadOnly,
       multiple,
       visibleItems.length,
       triggerRef,
+      onShowSelection,
     ]
   );
 
   return (
     <SelectContext.Provider value={selectContextValue}>
-      <AutocompleteContext.Provider value={autocompleteContextValue}>
-        <AriaComboBox
-          allowsEmptyCollection
-          inputValue={filterText}
-          items={visibleItems}
-          menuTrigger="focus"
-          selectedKey={null}
-          onInputChange={onInputChange}
-          onSelectionChange={onSelectionChange}
-          {...props}>
-          {(state) => (
-            <div className="tw:flex tw:flex-col tw:gap-1.5">
-              {label && (
-                <Label isRequired={state.isRequired} tooltip={tooltip}>
-                  {label}
-                </Label>
-              )}
+      <AutocompleteCheckedKeysContext.Provider value={checkedKeys}>
+        <AutocompleteContext.Provider value={autocompleteContextValue}>
+          <AriaComboBox
+            allowsEmptyCollection
+            inputValue={filterText}
+            items={visibleItems}
+            menuTrigger="focus"
+            selectedKey={null}
+            onInputChange={onInputChange}
+            onOpenChange={handleOpenChange}
+            onSelectionChange={onSelectionChange}
+            {...props}>
+            {(state) => (
+              <div className="tw:flex tw:flex-col tw:gap-1.5">
+                {label && (
+                  <Label isRequired={state.isRequired} tooltip={tooltip}>
+                    {label}
+                  </Label>
+                )}
 
-              <div className="tw:relative tw:w-full" ref={triggerRef}>
-                <AutocompleteTrigger
-                  icon={props.icon}
-                  isInvalid={isInvalid}
-                  placeholder={placeholder}
-                  size="sm"
-                  onFocus={(event) => {
-                    onResize();
-                    onFocus?.(event);
-                  }}
-                  onPointerEnter={onResize}
-                />
+                <div className="tw:relative tw:w-full" ref={triggerRef}>
+                  <AutocompleteTrigger
+                    icon={props.icon}
+                    isInvalid={isInvalid}
+                    placeholder={placeholder}
+                    size="sm"
+                    onFocus={(event) => {
+                      onResize();
+                      onFocus?.(event);
+                    }}
+                    onPointerEnter={onResize}
+                  />
+                </div>
+
+                {!hideDropdown && (
+                  <Popover
+                    className={cx(
+                      // A virtualized listbox is its own bounded scroller.
+                      isVirtualized && 'tw:overflow-hidden tw:py-0',
+                      // Header/footer stay put; the list gets its own scroller.
+                      hasPopoverChrome &&
+                        'tw:flex tw:flex-col tw:overflow-hidden tw:py-0',
+                      popoverClassName
+                    )}
+                    size="md"
+                    style={{ width: popoverWidth }}
+                    triggerRef={triggerRef}
+                    onScroll={
+                      isVirtualized || hasPopoverChrome
+                        ? undefined
+                        : handleScroll
+                    }>
+                    {hasPopoverChrome ? (
+                      <>
+                        {popoverHeader}
+                        <div
+                          className={cx(
+                            'tw:min-h-0 tw:flex-1',
+                            !isVirtualized && 'tw:overflow-y-auto tw:py-1'
+                          )}
+                          onScroll={isVirtualized ? undefined : handleScroll}>
+                          {dropdownList}
+                        </div>
+                        {popoverFooter}
+                      </>
+                    ) : (
+                      dropdownList
+                    )}
+                  </Popover>
+                )}
+
+                {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
               </div>
-
-              {!hideDropdown && (
-                <Popover
-                  className={cx(
-                    // A virtualized listbox is its own bounded scroller.
-                    isVirtualized && 'tw:overflow-hidden tw:py-0',
-                    // Header/footer stay put; the list gets its own scroller.
-                    hasPopoverChrome &&
-                      'tw:flex tw:flex-col tw:overflow-hidden tw:py-0',
-                    popoverClassName
-                  )}
-                  size="md"
-                  style={{ width: popoverWidth }}
-                  triggerRef={triggerRef}
-                  onScroll={
-                    isVirtualized || hasPopoverChrome ? undefined : handleScroll
-                  }>
-                  {hasPopoverChrome ? (
-                    <>
-                      {popoverHeader}
-                      <div
-                        className={cx(
-                          'tw:min-h-0 tw:flex-1',
-                          !isVirtualized && 'tw:overflow-y-auto tw:py-1'
-                        )}
-                        onScroll={isVirtualized ? undefined : handleScroll}>
-                        {dropdownList}
-                      </div>
-                      {popoverFooter}
-                    </>
-                  ) : (
-                    dropdownList
-                  )}
-                </Popover>
-              )}
-
-              {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
-            </div>
-          )}
-        </AriaComboBox>
-      </AutocompleteContext.Provider>
+            )}
+          </AriaComboBox>
+        </AutocompleteContext.Provider>
+      </AutocompleteCheckedKeysContext.Provider>
     </SelectContext.Provider>
   );
 };

@@ -15,7 +15,6 @@ import {
   Button,
   Card,
   Dropdown,
-  EmptyPlaceholder,
   Input,
   PageLayout,
   PaginationCardMinimal,
@@ -42,6 +41,7 @@ import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/f
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
@@ -884,7 +884,7 @@ const ContextCenterMemoriesPage: FC = () => {
           )}>
           {showMemoriesEmptyState ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={getMemoryEmptyActions(
                   hasCreatePermission,
                   t('label.new-memory'),
@@ -925,7 +925,6 @@ const ContextCenterMemoriesPage: FC = () => {
                   },
                 ]}
                 title={t('label.teach-the-ai-once-it-remembers-for-everyone')}
-                variant="features"
               />
             </div>
           ) : (

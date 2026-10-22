@@ -120,7 +120,7 @@ import {
   validateCsvString,
 } from '../../../utils/EntityImport/EntityImportUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { downloadFile } from '../../../utils/Export/ExportUtils';
+import { downloadCsv } from '../../../utils/Export/ExportUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
   getEntityDetailsPath,
@@ -745,7 +745,7 @@ const BulkEntityImportPage = () => {
       {}
     );
 
-    downloadFile(unparse({ fields, data: [exampleRow] }), `${entityType}.csv`);
+    downloadCsv(unparse({ fields, data: [exampleRow] }), `${entityType}.csv`);
   }, [csvDocumentation, entityType]);
 
   const handleRevertChanges = useCallback(() => {
