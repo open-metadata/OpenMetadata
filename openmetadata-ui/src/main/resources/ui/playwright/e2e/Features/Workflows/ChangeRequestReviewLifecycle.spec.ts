@@ -199,11 +199,29 @@ const publishedDescription = async (page: Page, glossary: Glossary) => {
 };
 
 // By URL rather than the sidebar list, which the role pages cannot all reach and other specs crowd.
+// The indicator's read of the glossary's change requests: until it lands, an absent
+// Pending Changes button says nothing about whether a request is open.
+const isChangeRequestsRead = (glossary: Glossary) => (response: Response) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname.endsWith('/api/v1/changeRequests') &&
+    url.searchParams.get('entityId') === glossary.responseData.id
+  );
+};
+
 const visitGlossary = async (page: Page, glossary: Glossary) => {
+  const requestsRead = waitForResponseWithStatus(
+    page,
+    isChangeRequestsRead(glossary),
+    200
+  );
   await page.goto(
     `/glossary/${encodeURIComponent(glossary.responseData.fullyQualifiedName)}`,
     { waitUntil: 'domcontentloaded' }
   );
+  await requestsRead;
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
     glossary.responseData.displayName
   );
