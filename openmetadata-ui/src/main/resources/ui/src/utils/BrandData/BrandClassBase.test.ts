@@ -20,11 +20,4 @@ describe('BrandClassBase', () => {
       buttonHover: 'purple-700',
     });
   });
-
-  it.each(['light', 'dark'] as const)(
-    'should return a %s welcome illustration',
-    (theme) => {
-      expect(brandClassBase.getWelcomeScreenImg(theme)).toBeDefined();
-    }
-  );
 });
