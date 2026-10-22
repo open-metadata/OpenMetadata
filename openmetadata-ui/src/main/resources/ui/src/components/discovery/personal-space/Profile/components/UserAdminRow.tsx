@@ -35,17 +35,18 @@ const UserAdminRow: React.FC<UserAdminRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
-  const [isSaving, setIsSaving] = useState(false);
+  // The value being saved, shown right away so the switch moves on click;
+  // cleared afterwards, so a failure falls back to the stored value.
+  const [pendingValue, setPendingValue] = useState<boolean>();
 
   const handleChange = async (isAdmin: boolean) => {
-    setIsSaving(true);
+    setPendingValue(isAdmin);
     try {
       await updateUserDetails({ isAdmin }, 'isAdmin');
     } catch (error) {
-      // The toggle reverts on its own: it reads the unchanged userData.
       showErrorToast(error as AxiosError);
     } finally {
-      setIsSaving(false);
+      setPendingValue(undefined);
     }
   };
 
@@ -57,8 +58,8 @@ const UserAdminRow: React.FC<UserAdminRowProps> = ({
       <Toggle
         aria-label={t('label.admin')}
         data-testid="user-admin-toggle"
-        isDisabled={!canEdit || isSaving}
-        isSelected={Boolean(userData.isAdmin)}
+        isDisabled={!canEdit || pendingValue !== undefined}
+        isSelected={pendingValue ?? Boolean(userData.isAdmin)}
         onChange={handleChange}
       />
     </ReadOnlyRow>

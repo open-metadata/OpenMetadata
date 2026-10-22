@@ -16,6 +16,7 @@ import {
   getCsvFileSizeLabel,
   getCsvRowCount,
   hashSubPathToView,
+  hasDirectDomainChanges,
   mergeDomainEdits,
   viewToSubPath,
 } from './Members.utils';
@@ -210,4 +211,17 @@ describe('mergeDomainEdits', () => {
       { id: 'd2', type: 'domain' },
     ]);
   });
+
+describe('hasDirectDomainChanges', () => {
+  const current = [
+    { id: 'd-team', type: 'domain', inherited: true },
+    { id: 'd1', type: 'domain' },
+  ];
+
+  it('compares only the direct domains, by id', () => {
+    expect(hasDirectDomainChanges(current, ['d1'])).toBe(false);
+    expect(hasDirectDomainChanges(current, [])).toBe(true);
+    expect(hasDirectDomainChanges(current, ['d1', 'd2'])).toBe(true);
+  });
+});
 });

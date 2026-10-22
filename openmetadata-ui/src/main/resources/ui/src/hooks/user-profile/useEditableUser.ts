@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, pick } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -70,6 +70,10 @@ export const useEditableUser = (
   // would otherwise re-fire the fetch in a loop.
   const seedRef = useRef(seed);
   seedRef.current = seed;
+  // Latest user state, kept in step with every update, so a save diffs against
+  // what the page shows now rather than the render its handler closed over.
+  const latestUserRef = useRef(userData);
+  latestUserRef.current = userData;
 
   const fetchUser = useCallback(async () => {
     if (!username) {
@@ -118,13 +122,18 @@ export const useEditableUser = (
 
   const updateUserDetails = useCallback(
     async (data: Partial<User>, key: keyof User) => {
-      if (!userData) {
+      const base = latestUserRef.current;
+      if (!base) {
         return;
       }
-      const jsonPatch = compare(userData, { ...userData, ...data });
+      // Diff only the fields being saved, so a concurrent save of another field
+      // can't put stale (index-based array) operations for it in this patch.
+      const savedKeys = Object.keys(data) as (keyof User)[];
+      const current = pick(base, savedKeys);
+      const jsonPatch = compare(current, { ...current, ...data });
       // Errors propagate (no toast here) so an inline editor stays open with
       // the user's draft; the caller surfaces the failure.
-      const response = await updateUserDetail(userData.id, jsonPatch);
+      const response = await updateUserDetail(base.id, jsonPatch);
       if (!response) {
         return;
       }
@@ -140,15 +149,20 @@ export const useEditableUser = (
           : nonTeamKeyData;
       // Merge into the latest state, not the copy this save started from, so
       // two overlapping saves can't overwrite each other's field.
-      setUserData(
-        (prev) =>
-          prev && (omitBy({ ...prev, ...updatedKeyData }, isUndefined) as User)
-      );
+      setUserData((prev) => {
+        const next =
+          prev && (omitBy({ ...prev, ...updatedKeyData }, isUndefined) as User);
+        latestUserRef.current = next;
+
+        return next;
+      });
       showSuccessToast(
-        t('server.update-entity-success', { entity: t('label.profile') })
+        t('server.update-entity-success', {
+          entity: isSelf ? t('label.profile') : t('label.user'),
+        })
       );
     },
-    [userData, t]
+    [isSelf, t]
   );
 
   return {

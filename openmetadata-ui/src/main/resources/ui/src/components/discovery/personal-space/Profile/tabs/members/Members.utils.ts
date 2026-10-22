@@ -51,23 +51,28 @@ export const toDomainArray = (
 export const getDirectDomains = (domains?: EntityReference[]) =>
   (domains ?? []).filter((domain) => !domain.inherited);
 
+// Whether `directIds` differs from the user's directly assigned domains.
+export const hasDirectDomainChanges = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+) =>
+  !isEmpty(
+    xor(
+      directIds,
+      getDirectDomains(current).map((domain) => domain.id)
+    )
+  );
+
 // The stored domain list with its direct part replaced by `directIds`;
 // unchanged when the direct ids are the same.
 export const mergeDomainEdits = (
   current: EntityReference[] | undefined,
   directIds: string[]
 ): EntityReference[] | undefined => {
-  const direct = getDirectDomains(current);
-  if (
-    isEmpty(
-      xor(
-        directIds,
-        direct.map((domain) => domain.id)
-      )
-    )
-  ) {
+  if (!hasDirectDomainChanges(current, directIds)) {
     return current;
   }
+  const direct = getDirectDomains(current);
 
   return [
     ...(current ?? []).filter((domain) => domain.inherited),

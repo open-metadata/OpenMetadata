@@ -71,7 +71,8 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
   // The teams list only feeds the edit dropdown; fetch it lazily when the row
   // enters edit mode rather than on every Permissions page load. Admins may add
   // users to closed teams (the server allows it), so they get every team;
-  // everyone else only the joinable ones.
+  // everyone else only the joinable ones. Keyed on admin, not `canEdit`: a
+  // non-admin with EditAll on the user still can't add them to a closed team.
   const loadTeams = useCallback(() => {
     getTeamsHierarchy(!isAdminUser)
       .then((res) => setTeamOptions(flattenTeams(res.data ?? [])))

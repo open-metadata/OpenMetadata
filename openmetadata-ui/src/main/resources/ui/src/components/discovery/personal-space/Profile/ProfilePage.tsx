@@ -87,7 +87,13 @@ const ProfilePage: React.FC = () => {
   // User form for admins, and the read-only classic user page for everyone
   // else, who can't reach the admin-only Members tab.
   useEffect(() => {
-    if (hashState.tab !== DEFAULT_PROFILE_NAV_ID || !hashState.subPath) {
+    // Wait for the current user: during app boot it's still undefined, which
+    // would read as "not admin" and wrongly send an admin to the classic page.
+    if (
+      !currentUser ||
+      hashState.tab !== DEFAULT_PROFILE_NAV_ID ||
+      !hashState.subPath
+    ) {
       return;
     }
     const linkedName = safeDecodeURIComponent(hashState.subPath);
@@ -103,8 +109,7 @@ const ProfilePage: React.FC = () => {
   }, [
     hashState.tab,
     hashState.subPath,
-    currentUser?.name,
-    currentUser?.isAdmin,
+    currentUser,
     setHash,
     navigate,
   ]);

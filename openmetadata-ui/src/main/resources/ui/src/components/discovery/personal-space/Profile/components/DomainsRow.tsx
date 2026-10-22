@@ -19,6 +19,7 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import DomainSelect from '../../../../common/DomainSelect/DomainSelect';
 import {
   getDirectDomains,
+  hasDirectDomainChanges,
   mergeDomainEdits,
 } from '../tabs/members/Members.utils';
 import ChipView from './ChipView';
@@ -64,10 +65,10 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
       canEdit={canEdit}
       description={description ?? t('message.domain-belong-description')}
       isSaveDisabled={
-        mergeDomainEdits(
+        !hasDirectDomainChanges(
           userData.domains,
           draft.map((domain) => domain.id)
-        ) === userData.domains
+        )
       }
       renderEdit={() => (
         <DomainSelect

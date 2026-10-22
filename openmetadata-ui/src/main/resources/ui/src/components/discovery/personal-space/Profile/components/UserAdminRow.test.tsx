@@ -14,6 +14,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { User } from '../../../../../generated/entity/teams/user';
 import UserAdminRow from './UserAdminRow';
 
+jest.mock('../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
@@ -57,5 +61,30 @@ describe('UserAdminRow', () => {
 
     expect(screen.getByRole('switch')).toBeChecked();
     expect(screen.getByRole('switch')).toBeDisabled();
+  });
+
+  it('moves the switch right away and reverts it if the save fails', async () => {
+    let rejectSave!: (error: Error) => void;
+    const updateUserDetails = jest.fn(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectSave = reject;
+        })
+    );
+    render(
+      <UserAdminRow canEdit updateUserDetails={updateUserDetails} userData={user} />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('switch'));
+    });
+
+    expect(screen.getByRole('switch')).toBeChecked();
+
+    await act(async () => {
+      rejectSave(new Error('boom'));
+    });
+
+    expect(screen.getByRole('switch')).not.toBeChecked();
   });
 });

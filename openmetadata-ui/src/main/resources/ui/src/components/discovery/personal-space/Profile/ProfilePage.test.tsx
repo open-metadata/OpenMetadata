@@ -52,9 +52,12 @@ jest.mock('react-router-dom', () => ({
 }));
 
 let mockIsAdmin = false;
+let mockHasCurrentUser = true;
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    currentUser: { id: 'u1', name: 'harsh', isAdmin: mockIsAdmin },
+    currentUser: mockHasCurrentUser
+      ? { id: 'u1', name: 'harsh', isAdmin: mockIsAdmin }
+      : undefined,
     updateCurrentUser: jest.fn(),
   }),
 }));
@@ -150,6 +153,7 @@ describe('ProfilePage', () => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
     mockIsAdmin = false;
+    mockHasCurrentUser = true;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetLoggedInUser.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
@@ -264,5 +268,17 @@ describe('ProfilePage', () => {
 
     expect(screen.getByTestId('content-permissions')).toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+  });
+
+  it('waits for the current user before redirecting a legacy #profile/<name> link', async () => {
+    mockHasCurrentUser = false;
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockSetHash).not.toHaveBeenCalledWith('members', expect.anything());
   });
 });
