@@ -160,10 +160,12 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.APIRequestMethod;
 import org.openmetadata.schema.type.ApiConnection;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.MetadataCompletionPayload;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
@@ -7713,15 +7715,53 @@ public class WorkflowDefinitionResourceIT {
     List<String> fields = new ArrayList<>();
     request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
     assertEquals(List.of("description", INPUT_PORTS), fields.stream().sorted().toList());
+    // The port joined the description's request as its second revision, which supersedes the first
+    // and gets a review task of its own.
     approveAs(
-        SdkClients.user1Client(),
-        awaitOpenApprovalTaskAssignedTo(
-            admin, product.getFullyQualifiedName(), SharedEntities.get().USER1.getId()));
+        SdkClients.user1Client(), awaitReviewTaskOfRevision(admin, request.get("id").asText(), 2));
 
     awaitRequestStatus(request.get("id").asText(), "Applied");
-    assertEquals(
-        "held together", admin.dataProducts().get(product.getId().toString(), "").getDescription());
+    DataProduct applied = admin.dataProducts().get(product.getId().toString(), "");
+    assertEquals("held together", applied.getDescription());
     assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(
+        List.of("description", INPUT_PORTS), changedFields(applied.getChangeDescription()));
+  }
+
+  // The open review task of a change request once its active revision is {@code revisionNumber}.
+  private Task awaitReviewTaskOfRevision(
+      OpenMetadataClient client, String changeRequestId, int revisionNumber) {
+    String[] taskId = new String[1];
+    await("review task of revision " + revisionNumber + " of " + changeRequestId)
+        .atMost(Duration.ofMinutes(4))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode request =
+                  MAPPER.readTree(
+                      client
+                          .getHttpClient()
+                          .executeForString(
+                              HttpMethod.GET,
+                              "/v1/changeRequests/" + changeRequestId,
+                              null,
+                              RequestOptions.builder().build()));
+              assertEquals(revisionNumber, request.path("activeRevisionNumber").asInt());
+              Task task = client.tasks().get(request.get("taskId").asText());
+              assertEquals(TaskEntityStatus.Open, task.getStatus());
+              taskId[0] = task.getId().toString();
+            });
+    return client.tasks().get(taskId[0]);
+  }
+
+  private static List<String> changedFields(ChangeDescription change) {
+    return Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+        .flatMap(List::stream)
+        .map(FieldChange::getName)
+        .distinct()
+        .sorted()
+        .toList();
   }
 
   @Test
@@ -7809,6 +7849,113 @@ public class WorkflowDefinitionResourceIT {
   }
 
   // Reviewed by USER1, in its own domain.
+  @Test
+  void test_portEditOutsideTheTriggersIncludedFieldsIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portInclude");
+    Table table = portTable(admin, ns, "portInclude");
+    deployHookWorkflow(
+        admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of("description"));
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+    patchDescription(admin, product, "held description");
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(
+        "Data product whose ports are gated",
+        admin.dataProducts().get(product.getId().toString(), "").getDescription());
+    assertEquals(List.of("description"), heldFields(onlyChangeRequest(admin, product.getId())));
+  }
+
+  @Test
+  void test_portEditOnTheTriggersExcludedFieldsIsNotHeld(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portExclude");
+    Table inputTable = portTable(admin, ns, "portExcludeIn");
+    Table outputTable = portTable(admin, ns, "portExcludeOut");
+    deployHookWorkflow(
+        admin,
+        DATA_PRODUCT,
+        product.getFullyQualifiedName(),
+        List.of(),
+        List.of(INPUT_PORTS),
+        null);
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(inputTable));
+    BulkOperationResult held =
+        admin.dataProducts().outputPorts(product.getId()).add(portsOf(outputTable));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(inputTable.getId().toString()), inputPortIds(admin, product));
+    assertEquals(1, held.getNumberOfRowsPendingApproval());
+    assertTrue(outputPortIds(admin, product).isEmpty(), "The output port must be held");
+    assertEquals(List.of(OUTPUT_PORTS), heldFields(onlyChangeRequest(admin, product.getId())));
+  }
+
+  @Test
+  void test_portEditOnADataProductTheTriggerFilterExcludesIsNotHeld(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct product = reviewedDataProduct(admin, ns, "portFiltered");
+    Table table = portTable(admin, ns, "portFiltered");
+    patchDescription(admin, product, "Experimental product, no-approval");
+    deployHookWorkflow(
+        admin,
+        DATA_PRODUCT,
+        product.getFullyQualifiedName(),
+        List.of(),
+        List.of(),
+        NO_APPROVAL_MARKER_RULE);
+
+    BulkOperationResult written =
+        admin.dataProducts().inputPorts(product.getId()).add(portsOf(table));
+
+    assertEquals(0, written.getNumberOfRowsPendingApproval());
+    assertEquals(List.of(table.getId().toString()), inputPortIds(admin, product));
+    assertEquals(0, changeRequestsOf(admin, product.getId()).size());
+  }
+
+  private static final String NO_APPROVAL_MARKER_RULE =
+      "{\"in\":[\"no-approval\",{\"var\":\"description\"}]}";
+
+  private static void patchDescription(
+      OpenMetadataClient client, DataProduct product, String description) throws Exception {
+    client
+        .dataProducts()
+        .patch(
+            product.getId().toString(),
+            MAPPER.valueToTree(
+                List.of(Map.of("op", "replace", "path", "/description", "value", description))));
+  }
+
+  private static List<String> heldFields(JsonNode request) {
+    List<String> fields = new ArrayList<>();
+    request.get("activeRevision").get("ops").forEach(op -> fields.add(op.get("field").asText()));
+    return fields.stream().distinct().sorted().toList();
+  }
+
+  private JsonNode changeRequestsOf(OpenMetadataClient client, UUID entityId) throws Exception {
+    return MAPPER
+        .readTree(
+            client
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/changeRequests?entityId=" + entityId,
+                    null,
+                    RequestOptions.builder().build()))
+        .get("data");
+  }
+
+  private static List<String> outputPortIds(OpenMetadataClient client, DataProduct product) {
+    return client.dataProducts().outputPorts(product.getId()).list().getData().stream()
+        .map(port -> JsonUtils.valueToTree(port).get("id").asText())
+        .toList();
+  }
+
   private static DataProduct reviewedDataProduct(
       OpenMetadataClient admin, TestNamespace ns, String tag) {
     Domain domain =
@@ -8342,10 +8489,23 @@ public class WorkflowDefinitionResourceIT {
   private String deployHookWorkflow(
       OpenMetadataClient client, String entityType, String entityFqn, List<String> include)
       throws Exception {
+    return deployHookWorkflow(client, entityType, entityFqn, include, List.of(), null);
+  }
+
+  private String deployHookWorkflow(
+      OpenMetadataClient client,
+      String entityType,
+      String entityFqn,
+      List<String> include,
+      List<String> exclude,
+      String extraExclusion)
+      throws Exception {
     String workflowName = "hookGate" + UUID.randomUUID().toString().substring(0, 8);
     ObjectNode workflow =
         (ObjectNode)
-            MAPPER.readTree(hookWorkflowJson(workflowName, entityType, entityFqn, include));
+            MAPPER.readTree(
+                hookWorkflowJson(
+                    workflowName, entityType, entityFqn, include, exclude, extraExclusion));
     String createResponse =
         client
             .getHttpClient()
@@ -8362,11 +8522,27 @@ public class WorkflowDefinitionResourceIT {
 
   private static String hookWorkflowJson(
       String workflowName, String entityType, String entityFqn, List<String> include) {
+    return hookWorkflowJson(workflowName, entityType, entityFqn, include, List.of(), null);
+  }
+
+  // The filter leaves every entity but entityFqn ungated, and also any entity extraExclusion (a
+  // JsonLogic rule) matches.
+  private static String hookWorkflowJson(
+      String workflowName,
+      String entityType,
+      String entityFqn,
+      List<String> include,
+      List<String> exclude,
+      String extraExclusion) {
+    String onlyThisEntity =
+        "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}".formatted(entityFqn);
     String filter =
         JsonUtils.pojoToJson(
             Map.of(
                 entityType,
-                "{\"!=\":[{\"var\":\"fullyQualifiedName\"},\"%s\"]}".formatted(entityFqn)));
+                extraExclusion == null
+                    ? onlyThisEntity
+                    : "{\"or\":[%s,%s]}".formatted(onlyThisEntity, extraExclusion)));
     return """
         {
           "name": "%s",
@@ -8380,7 +8556,7 @@ public class WorkflowDefinitionResourceIT {
               "entityTypes": ["%s"],
               "events": ["Updated"],
               "include": %s,
-              "exclude": [],
+              "exclude": %s,
               "filter": %s
             },
             "output": ["relatedEntity", "updatedBy"]
@@ -8401,7 +8577,12 @@ public class WorkflowDefinitionResourceIT {
           ]
         }
         """
-        .formatted(workflowName, entityType, JsonUtils.pojoToJson(include), filter);
+        .formatted(
+            workflowName,
+            entityType,
+            JsonUtils.pojoToJson(include),
+            JsonUtils.pojoToJson(exclude),
+            filter);
   }
 
   private JsonNode onlyChangeRequest(OpenMetadataClient client, UUID entityId) throws Exception {
