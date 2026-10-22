@@ -2488,6 +2488,13 @@
               "default": 30,
               "minimum": 0
             },
+            "workflowInstanceRetentionPeriod": {
+              "title": "Governance Workflow Run History Retention Period (days)",
+              "description": "Enter the retention period in days for the run history of governance workflows. A finished run older than this is deleted with its stages, but the latest run of each workflow for every entity is always kept. Use 0 to retain the history forever.",
+              "type": "integer",
+              "default": 30,
+              "minimum": 0
+            },
             "extensions": {
               "title": "Extension Retention Periods (days)",
               "description": "Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed by the extension's name. OpenMetadata never reads these values; it hands them to the registered DataRetentionExtension, which decides what a missing key means.",
