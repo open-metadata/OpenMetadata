@@ -53,8 +53,11 @@ const UserAssetCard: React.FC<UserAssetCardProps> = ({
   const owners = (source.owners as EntityReference[] | undefined) ?? [];
 
   return (
+    // shrink-0: the list is a scrolling flex column; without it every card is
+    // squeezed to fit the viewport instead of the list scrolling.
     <Card
       isClickable
+      className="tw:shrink-0"
       data-selected={isSelected}
       data-testid={`user-asset-card-${source.fullyQualifiedName}`}
       isSelected={isSelected}
