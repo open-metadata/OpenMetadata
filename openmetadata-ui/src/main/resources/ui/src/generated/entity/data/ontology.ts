@@ -29,7 +29,8 @@ export interface Ontology {
     incrementalChangeDescription?: ChangeDescription;
     /**
      * Verified library packs installed into this ontology, one entry per pack ID. The server
-     * records an entry when a change set with a source pack applies.
+     * records an entry when a change set with a source pack applies. PUT keeps the stored
+     * value, and PATCH cannot change it.
      */
     installedPacks?: OntologyPackInstallation[];
     /**
