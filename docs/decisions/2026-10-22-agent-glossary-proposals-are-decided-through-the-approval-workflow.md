@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowAutomationBranchTest`, `GlossaryAutomationProposalMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `GlossaryTermUnmigratedApprovalWorkflowIT`, `useGlossaryProposals.test.tsx`, `GlossaryReviewTab.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowAutomationBranchTest`, `GlossaryAutomationProposalMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `GlossaryTermUnmigratedApprovalWorkflowIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 
 ## Context

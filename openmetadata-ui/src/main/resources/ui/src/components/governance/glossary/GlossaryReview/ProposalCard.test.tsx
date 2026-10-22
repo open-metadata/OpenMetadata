@@ -77,7 +77,6 @@ const renderCard = (props: Partial<Parameters<typeof ProposalCard>[0]>) =>
   render(
     <ProposalCard
       canDecide
-      isExpanded
       proposal={aiProposal}
       onDecide={jest.fn().mockResolvedValue(undefined)}
       {...props}
@@ -100,28 +99,23 @@ describe('ProposalCard', () => {
     expect(screen.getByText('message.ai-proposal-rule')).toBeInTheDocument();
   });
 
-  it('approves or edits an AI proposal at once and asks why before rejecting it', async () => {
+  it('approves an AI proposal at once and asks why before rejecting it', async () => {
     const onDecide = jest.fn().mockResolvedValue(undefined);
-    const onEdit = jest.fn();
-    renderCard({ onDecide, onEdit });
+    renderCard({ onDecide });
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('approve-proposal'));
     });
-    fireEvent.click(screen.getByTestId('edit-proposal'));
     fireEvent.click(screen.getByTestId('reject-proposal'));
 
     expect(onDecide).toHaveBeenCalledTimes(1);
     expect(onDecide).toHaveBeenCalledWith(EntityStatus.Approved, undefined);
-    expect(onEdit).toHaveBeenCalled();
     expect(screen.getByTestId('confirm-reject-proposal')).toBeDisabled();
   });
 
   it('asks why before rejecting a person proposal', async () => {
     const onDecide = jest.fn().mockResolvedValue(undefined);
     renderCard({ onDecide, proposal: personProposal });
-
-    expect(screen.queryByTestId('edit-proposal')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('reject-proposal'));
 
@@ -147,28 +141,13 @@ describe('ProposalCard', () => {
     expect(screen.getByText('message.waiting-on-deciders')).toBeInTheDocument();
   });
 
-  it('lets an editor edit an AI proposal still waiting for its approval request', () => {
-    const onEdit = jest.fn();
-    // Its reviewers cannot decide it before the request opens, so it names no one.
-    renderCard({ canDecide: false, onEdit });
-
-    fireEvent.click(screen.getByTestId('edit-proposal'));
+  it('names no one while an AI proposal waits for its approval request', () => {
+    // Its reviewers cannot decide it before the request opens.
+    renderCard({ canDecide: false });
 
     expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
     expect(
       screen.getByText('message.waiting-for-approval-request')
     ).toBeInTheDocument();
-    expect(onEdit).toHaveBeenCalled();
-  });
-
-  it('expands from its collapsed summary', () => {
-    const onExpand = jest.fn();
-    renderCard({ isExpanded: false, onExpand });
-
-    expect(screen.queryByTestId('proposal-evidence')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('proposal-card'));
-
-    expect(onExpand).toHaveBeenCalled();
   });
 });

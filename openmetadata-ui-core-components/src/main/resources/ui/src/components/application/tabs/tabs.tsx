@@ -92,15 +92,6 @@ const getTabStyles = ({
 });
 
 const sizes = {
-  // Compact segmented filters inside a narrow panel.
-  xs: {
-    'button-brand': 'tw:text-xs tw:py-1.5 tw:px-2',
-    'button-gray': 'tw:text-xs tw:py-1.5 tw:px-2',
-    'button-border': 'tw:text-xs tw:py-1.5 tw:px-2',
-    'button-minimal': 'tw:text-xs tw:py-1.5 tw:px-2',
-    underline: 'tw:text-xs tw:px-1 tw:pb-2 tw:pt-0',
-    line: 'tw:text-xs tw:pl-2 tw:pr-2.5 tw:py-0.5',
-  },
   sm: {
     'button-brand': 'tw:text-sm tw:py-2 tw:px-3',
     'button-gray': 'tw:text-sm tw:py-2 tw:px-3',
@@ -122,7 +113,6 @@ const sizes = {
 // The badge sizing should be less than the tab size
 // according to the design system
 const badgeSizeMapping: Record<keyof typeof sizes, Sizes> = {
-  xs: 'xs',
   sm: 'xs',
   md: 'sm',
 };
@@ -132,15 +122,14 @@ const getHorizontalStyles = ({
   size,
   fullWidth,
 }: {
-  size?: keyof typeof sizes;
+  size?: 'sm' | 'md';
   fullWidth?: boolean;
 }) => ({
   'button-brand': 'tw:gap-1',
   'button-gray': 'tw:gap-1',
   'button-border': cx(
     'tw:gap-1 tw:rounded-[10px] tw:bg-secondary_alt tw:p-1 tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',
-    size === 'md' && 'tw:rounded-xl tw:p-1.5',
-    size === 'xs' && 'tw:rounded-lg tw:p-0.5'
+    size === 'md' && 'tw:rounded-xl tw:p-1.5'
   ),
   'button-minimal':
     'tw:gap-0.5 tw:rounded-lg tw:bg-secondary_alt tw:outline-1 tw:-outline-offset-1 tw:outline-secondary',

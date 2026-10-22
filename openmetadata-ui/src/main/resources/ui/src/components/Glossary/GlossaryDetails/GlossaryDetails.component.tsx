@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -136,19 +135,6 @@ const GlossaryDetails = ({
     }
   };
 
-  const proposalScope = useMemo(
-    () =>
-      glossary?.id && !isVersionView
-        ? {
-            fullyQualifiedName: glossary.fullyQualifiedName ?? '',
-            id: glossary.id,
-            isGlossary: true,
-          }
-        : undefined,
-    [glossary?.id, glossary?.fullyQualifiedName, isVersionView]
-  );
-  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -229,16 +215,19 @@ const GlossaryDetails = ({
       : withReviewTab(customizedTabs, {
           activeTab,
           afterKey: EntityTabs.TERMS,
-          pendingCount: proposalCounts.all,
+          entityFqn: glossary.fullyQualifiedName ?? '',
+          openTaskCount: feedCount.openTaskCount,
+          onTasksChange: fetchTaskCounts,
         });
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
+    feedCount.openTaskCount,
+    fetchTaskCounts,
     activeTab,
     isVersionView,
-    proposalCounts.all,
   ]);
 
   useEffect(() => {

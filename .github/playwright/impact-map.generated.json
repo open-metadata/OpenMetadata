@@ -4482,6 +4482,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/EntityRenameConsolidation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",
@@ -10499,7 +10500,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailPanel.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
       ]
     },
     {
@@ -10508,7 +10510,8 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
-        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts"
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
       ]
     },
     {
@@ -11339,23 +11342,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/GlossaryReviewTab.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalCard.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalDetail.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
@@ -12844,6 +12831,7 @@
         "playwright/e2e/Features/ExploreQuickFilters.spec.ts",
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryApprovalAfterMove.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAssets.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryHierarchy.spec.ts",

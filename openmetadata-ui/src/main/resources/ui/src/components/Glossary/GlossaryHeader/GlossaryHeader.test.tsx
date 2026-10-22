@@ -71,7 +71,6 @@ jest.mock('react-router-dom', () => ({
   ),
 }));
 
-const mockProposalCounts = { all: 0, ai: 0, person: 0 };
 const mockDerivation = {
   entity: { id: 'term-id', type: 'glossaryTerm' },
   memory: {
@@ -93,10 +92,6 @@ const mockLoadedProposal: { current?: GlossaryProposal } = {};
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
   useDecideProposal: jest.fn(() => mockDecide),
   useGlossaryProposal: jest.fn(() => mockLoadedProposal.current),
-  useGlossaryProposalCounts: jest.fn(() => ({
-    counts: mockProposalCounts,
-    isLoading: false,
-  })),
 }));
 
 jest.mock(
@@ -607,7 +602,6 @@ describe('GlossaryHeader component', () => {
     } as unknown as Task;
 
     beforeEach(() => {
-      Object.assign(mockProposalCounts, { all: 0, ai: 0, person: 0 });
       mockContext.type = EntityType.GLOSSARY_TERM;
       mockContext.permissions = { ...DEFAULT_ENTITY_PERMISSION, EditAll: true };
       mockContext.onUpdate = jest.fn().mockResolvedValue(undefined);
@@ -717,25 +711,6 @@ describe('GlossaryHeader component', () => {
 
       expect(
         screen.queryByTestId('ai-generated-term-card')
-      ).not.toBeInTheDocument();
-    });
-
-    it('leaves the pending counts to the Review tab', () => {
-      mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
-      mockProposalCounts.all = 3;
-      mockProposalCounts.ai = 2;
-      mockProposalCounts.person = 1;
-
-      render(
-        <GlossaryHeader
-          updateVote={mockOnUpdateVote}
-          onAddGlossaryTerm={mockOnDelete}
-          onDelete={mockOnDelete}
-        />
-      );
-
-      expect(
-        screen.queryByTestId('pending-review-summary')
       ).not.toBeInTheDocument();
     });
   });

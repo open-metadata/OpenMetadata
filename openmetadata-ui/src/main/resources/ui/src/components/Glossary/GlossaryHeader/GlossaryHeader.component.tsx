@@ -495,9 +495,7 @@ const GlossaryTermAiDraftNotice = ({
   return (
     <div className="tw:mb-3" data-testid="ai-generated-term-card">
       <ProposalCard
-        isExpanded
         canDecide={!term.deleted && canDecideProposal(proposal, currentUser)}
-        layout="banner"
         proposal={proposal}
         onDecide={async (decision, comment) => {
           if (await decide(proposal, decision, comment)) {

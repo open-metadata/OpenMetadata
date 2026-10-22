@@ -18,19 +18,12 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Task } from '../../rest/tasksAPI';
-import Fqn from '../Fqn';
 import {
   getGlossaryEntityLink,
   isAiGeneratedDraft,
   permissionForApproveOrReject,
 } from '../GlossaryPureUtils';
-import {
-  GlossaryProposal,
-  ProposalCounts,
-  ProposalFilter,
-  ProposalSlice,
-  ProposalSource,
-} from './GlossaryReview.types';
+import { GlossaryProposal, ProposalSource } from './GlossaryReview.types';
 
 export const PENDING_REVIEW_STATUSES = [
   EntityStatus.Draft,
@@ -91,42 +84,6 @@ export const toProposals = (
   });
 };
 
-/**
- * The slices of each source's pending terms that make one page of the queue. AI agents'
- * proposals come before people's, so a page of all proposals can end one and start the other.
- */
-export const getPageSlices = (
-  filter: ProposalFilter,
-  page: number,
-  counts: ProposalCounts,
-  size: number
-): ProposalSlice[] => {
-  const start = (page - 1) * size;
-  const end = start + size;
-  if (filter !== 'all') {
-    return start < counts[filter]
-      ? [{ source: filter, offset: start, limit: size }]
-      : [];
-  }
-  const slices: ProposalSlice[] = [];
-  if (start < counts.ai) {
-    slices.push({
-      source: 'ai',
-      offset: start,
-      limit: Math.min(end, counts.ai) - start,
-    });
-  }
-  if (end > counts.ai && start < counts.all) {
-    slices.push({
-      source: 'person',
-      offset: Math.max(0, start - counts.ai),
-      limit: end - Math.max(start, counts.ai),
-    });
-  }
-
-  return slices;
-};
-
 /** A loaded row of the terms table: a term, whose children are rows too. */
 type TermRow = Pick<GlossaryTerm, 'id' | 'entityStatus' | 'provider'> & {
   children?: unknown[];
@@ -138,16 +95,6 @@ export const collectAiDraftIds = (rows: TermRow[]): string[] =>
     ...(getProposalSource(row) === 'ai' ? [row.id] : []),
     ...collectAiDraftIds((row.children ?? []) as TermRow[]),
   ]);
-
-/** Filtering by who proposed only helps when both AI agents and people have proposals. */
-export const hasProposalsFromBothSources = (counts: ProposalCounts) =>
-  counts.ai > 0 && counts.person > 0;
-
-/** The filter that applies: every proposal, once only one source has any left. */
-export const getActiveFilter = (
-  counts: ProposalCounts,
-  filter: ProposalFilter
-): ProposalFilter => (hasProposalsFromBothSources(counts) ? filter : 'all');
 
 /** The agent's confidence as a whole percentage, when it recorded one. */
 export const getConfidencePercent = (derivation?: MemoryDerivation) => {
@@ -193,8 +140,3 @@ export const canDecideProposal = (
  */
 export const getDeciders = (proposal: GlossaryProposal): EntityReference[] =>
   proposal.approvalTask?.assignees ?? [];
-
-/** Where a proposed term would sit: its glossary and parent terms, outermost first. */
-export const getProposalLocation = (
-  term: Pick<GlossaryTerm, 'fullyQualifiedName'>
-) => Fqn.split(term.fullyQualifiedName ?? '').slice(0, -1);

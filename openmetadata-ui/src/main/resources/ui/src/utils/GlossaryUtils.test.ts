@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ReactElement } from 'react';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -567,7 +568,7 @@ describe('withReviewTab', () => {
         tab(EntityTabs.TERMS),
         tab(EntityTabs.RELATIONS_GRAPH),
       ],
-      { afterKey: EntityTabs.TERMS, pendingCount: 2 }
+      { afterKey: EntityTabs.TERMS, entityFqn: 'Banking Core' }
     );
 
     expect(tabs.map(({ key }) => key)).toEqual([
@@ -581,12 +582,33 @@ describe('withReviewTab', () => {
   it('leads with the Review tab when a persona hid the tab it follows', () => {
     const tabs = withReviewTab([tab(EntityTabs.ACTIVITY_FEED)], {
       afterKey: EntityTabs.TERMS,
-      pendingCount: 0,
+      entityFqn: 'Banking Core',
     });
 
     expect(tabs.map(({ key }) => key)).toEqual([
       EntityTabs.REVIEW,
       EntityTabs.ACTIVITY_FEED,
     ]);
+  });
+
+  it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
+    const onTasksChange = jest.fn();
+    const [reviewTab] = withReviewTab([], {
+      afterKey: EntityTabs.TERMS,
+      entityFqn: 'Banking Core',
+      openTaskCount: 6,
+      onTasksChange,
+    }) as {
+      label: ReactElement<{ children: ReactElement }>;
+      children: ReactElement<{ children: ReactElement }>;
+    }[];
+
+    expect(reviewTab.label.props).toEqual(
+      expect.objectContaining({ count: 6, id: EntityTabs.REVIEW })
+    );
+    expect(reviewTab.children.props.children.props).toEqual({
+      aboutEntity: 'Banking Core',
+      onCountChange: onTasksChange,
+    });
   });
 });

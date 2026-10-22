@@ -59,18 +59,6 @@ const createTermAsBot = async (
   await botContext.dispose();
 };
 
-// The Review tab lists every proposal under the glossary; the Terms tab only links to it.
-const openReviewTab = async (page: Page) => {
-  await page.getByTestId('review').click();
-  await expect(page.getByTestId('review-queue')).toBeVisible();
-};
-
-const queueItem = (page: Page, name: string) =>
-  page
-    .getByTestId('review-queue')
-    .getByTestId('review-queue-item')
-    .filter({ hasText: name });
-
 const waitForApprovalRequest = (page: Page, term: GlossaryTerm) =>
   verifyTaskCreated(
     page,
@@ -78,13 +66,59 @@ const waitForApprovalRequest = (page: Page, term: GlossaryTerm) =>
     term.responseData.name
   );
 
+const getApprovalTaskId = async (page: Page, term: GlossaryTerm) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const { data } = await okJson<{ data: { id: string }[] }>(
+    await apiContext.get(
+      `/api/v1/tasks?aboutEntity=${encodeURIComponent(
+        term.responseData.fullyQualifiedName
+      )}&status=Open&category=Approval&limit=1`
+    ),
+    'approvalTask'
+  );
+  await afterAction();
+
+  return data[0].id;
+};
+
+const getEntityStatus = async (page: Page, term: GlossaryTerm) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const { entityStatus } = await okJson<{ entityStatus: string }>(
+    await apiContext.get(`/api/v1/glossaryTerms/${term.responseData.id}`),
+    'glossaryTerm'
+  );
+  await afterAction();
+
+  return entityStatus;
+};
+
+// The Review tab is the glossary's task list: the approval requests for its terms.
+const openReviewTab = async (page: Page) => {
+  await page.getByTestId('review').click();
+  await expect(page).toHaveURL(/\/review$/);
+  await expect(page.getByTestId('inbox-tasks-tab')).toBeVisible();
+};
+
 const isDecisionOf = (response: Response) =>
   response.request().method() === 'POST' &&
   /\/api\/v1\/tasks\/[^/]+\/resolve$/.test(new URL(response.url()).pathname);
 
+const approveFromReviewTab = async (page: Page, taskId: string) => {
+  const row = page.getByTestId(`inbox-task-${taskId}`);
+  await row.click();
+  const approve = page
+    .getByTestId('task-detail-panel')
+    .getByTestId('task-approve');
+  await expect(approve).toBeEnabled();
+  const decided = waitForResponseWithStatus(page, isDecisionOf, 200);
+  await approve.click();
+  await decided;
+  await expect(row).toHaveCount(0);
+};
+
 test.describe('AI-generated glossary terms', () => {
   const glossary = new Glossary();
-  const reviewedInPanel = new GlossaryTerm(glossary);
+  const reviewedInTab = new GlossaryTerm(glossary);
   const reviewedOnItsPage = new GlossaryTerm(glossary);
 
   test.beforeAll(async ({ browser }) => {
@@ -95,9 +129,9 @@ test.describe('AI-generated glossary terms', () => {
     const { apiContext, afterAction } = await getApiContext(page);
     await glossary.create(apiContext);
     await afterAction();
-    await createTermAsBot(page, reviewedInPanel);
+    await createTermAsBot(page, reviewedInTab);
     await createTermAsBot(page, reviewedOnItsPage);
-    await waitForApprovalRequest(page, reviewedInPanel);
+    await waitForApprovalRequest(page, reviewedInTab);
     await waitForApprovalRequest(page, reviewedOnItsPage);
     await page.close();
   });
@@ -113,47 +147,28 @@ test.describe('AI-generated glossary terms', () => {
     await page.close();
   });
 
-  test('are reviewed from the Review tab until someone approves them', async ({
-    page,
-  }) => {
+  test('are approved from the Review tab', async ({ page }) => {
     await redirectToHomePage(page);
-    expect(reviewedInPanel.responseData.entityStatus).toBe('Draft');
+    const taskId = await getApprovalTaskId(page, reviewedInTab);
 
     await glossary.visitEntityPage(page);
     // The terms table marks the proposal and, as for a person's, offers its assignees the
     // decision of its approval request; the Review tab decides it here.
-    const row = getRowByName(page, reviewedInPanel.data.displayName);
+    const row = getRowByName(page, reviewedInTab.data.displayName);
     await expect(row.getByTestId('proposal-source-ai')).toBeVisible();
     await expect(
-      row.getByTestId(`${reviewedInPanel.data.name}-approve-btn`)
+      row.getByTestId(`${reviewedInTab.data.name}-approve-btn`)
     ).toBeVisible();
-    await expect(page.getByTestId('pending-review-summary')).toHaveCount(0);
 
     await openReviewTab(page);
+    await approveFromReviewTab(page, taskId);
 
-    await expect(page).toHaveURL(/\/review$/);
-    await queueItem(page, reviewedInPanel.data.displayName)
-      .getByRole('button')
-      .click();
-    const detail = page.getByTestId('proposal-detail');
-    await expect(detail).toContainText(reviewedInPanel.data.displayName);
-    await expect(detail.getByTestId('reject-proposal')).toBeInViewport({
-      ratio: 1,
-    });
-
-    const approve = waitForResponseWithStatus(page, isDecisionOf, 200);
-    await detail.getByTestId('approve-proposal').click();
-    await approve;
-
-    await expect(page.getByTestId('resolved-proposals')).toContainText(
-      reviewedInPanel.data.displayName
-    );
-    await expect(queueItem(page, reviewedInPanel.data.displayName)).toHaveCount(
-      0
-    );
+    await expect
+      .poll(() => getEntityStatus(page, reviewedInTab))
+      .toBe('Approved');
   });
 
-  test('are reviewed on their own page', async ({ page }) => {
+  test('are rejected on their own page', async ({ page }) => {
     await redirectToHomePage(page);
     await reviewedOnItsPage.visitEntityPage(page);
     const card = page.getByTestId('ai-generated-term-card');
@@ -170,68 +185,11 @@ test.describe('AI-generated glossary terms', () => {
 
     await expect(card).toBeHidden();
     await expect(page.getByTestId('glossary-header')).toContainText('Rejected');
-
-    // A rejected draft leaves the review queue.
-    const proposalsLoaded = waitForResponseWithStatus(
-      page,
-      (response) => {
-        const url = new URL(response.url());
-
-        return (
-          url.pathname.endsWith('/api/v1/glossaryTerms/search') &&
-          url.searchParams.get('entityStatus') === 'Draft,In Review'
-        );
-      },
-      200
-    );
-    await glossary.visitEntityPage(page);
-    await proposalsLoaded;
-    await page.getByTestId('review').click();
-    await expect(page.getByTestId('glossary-review-tab')).toBeVisible();
-    await expect(
-      queueItem(page, reviewedOnItsPage.data.displayName)
-    ).toHaveCount(0);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const rejected = await okJson<{ entityStatus: string }>(
-      await apiContext.get(
-        `/api/v1/glossaryTerms/${reviewedOnItsPage.responseData.id}`
-      ),
-      'rejectedTerm'
-    );
-    await afterAction();
-    expect(rejected.entityStatus).toBe('Rejected');
+    expect(await getEntityStatus(page, reviewedOnItsPage)).toBe('Rejected');
   });
 });
 
-test('loads a large queue of AI-generated glossary proposals a page at a time', async ({
-  page,
-}) => {
-  const glossary = new Glossary();
-  const terms = Array.from({ length: 16 }, () => new GlossaryTerm(glossary));
-  await redirectToHomePage(page);
-  const { apiContext, afterAction } = await getApiContext(page);
-  await glossary.create(apiContext);
-
-  try {
-    for (const term of terms) {
-      await createTermAsBot(page, term);
-    }
-    await glossary.visitEntityPage(page);
-    await openReviewTab(page);
-    const items = page.getByTestId('review-queue-item');
-    await expect(items).toHaveCount(15);
-
-    await page.getByTestId('review-queue-load-more').click();
-
-    await expect(items).toHaveCount(16);
-    await expect(page.getByTestId('review-queue-load-more')).toHaveCount(0);
-  } finally {
-    await glossary.delete(apiContext);
-    await afterAction();
-  }
-});
-
-test('a term owner decides an AI proposal through its approval request without editing its glossary', async ({
+test('a term owner decides an AI proposal from the Review tab without editing its glossary', async ({
   page,
   ownerPage,
 }) => {
@@ -262,22 +220,13 @@ test('a term owner decides an AI proposal through its approval request without e
     expect(parentPermission.permissions).not.toContainEqual(
       expect.objectContaining({ operation: 'EditAll', access: 'allow' })
     );
+    const taskId = await getApprovalTaskId(page, term);
 
     await glossary.visitEntityPage(ownerPage);
     await openReviewTab(ownerPage);
-    const card = ownerPage.getByTestId('proposal-detail');
-    await expect(card).toContainText(term.data.displayName);
-    const approved = waitForResponseWithStatus(ownerPage, isDecisionOf, 200);
-    await card.getByTestId('approve-proposal').click();
-    await approved;
-    await expect(ownerPage.getByTestId('resolved-proposals')).toContainText(
-      term.data.displayName
-    );
-    const stored = await okJson<{ entityStatus: string }>(
-      await ownerApi.get(`/api/v1/glossaryTerms/${term.responseData.id}`),
-      'approvedOwnedTerm'
-    );
-    expect(stored.entityStatus).toBe('Approved');
+    await approveFromReviewTab(ownerPage, taskId);
+
+    await expect.poll(() => getEntityStatus(page, term)).toBe('Approved');
   } finally {
     await glossary.delete(apiContext);
     await afterOwnerAction();

@@ -30,7 +30,6 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -50,7 +49,6 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryPureUtils';
-import { withReviewTab } from '../../../utils/GlossaryUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   getGlossaryTermDetailsPath,
@@ -198,19 +196,6 @@ const GlossaryTermsV1 = ({
     [permissions]
   );
 
-  const proposalScope = useMemo(
-    () =>
-      glossaryTerm?.id && !isVersionView
-        ? {
-            fullyQualifiedName: glossaryTerm.fullyQualifiedName ?? '',
-            id: glossaryTerm.id,
-            isGlossary: false,
-          }
-        : undefined,
-    [glossaryTerm?.id, glossaryTerm?.fullyQualifiedName, isVersionView]
-  );
-  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
-
   const tabItems = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -233,24 +218,13 @@ const GlossaryTermsV1 = ({
       setAssetModalVisible,
       setPreviewAsset,
     });
-    const customizedTabs = getDetailsTabWithNewLabel(
+
+    return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.OVERVIEW,
       isVersionView
     );
-    // A term's queue holds its child terms, so the tab shows only while some wait, or is open.
-    const hasReviewTab =
-      !isVersionView &&
-      (proposalCounts.all > 0 || activeTab === EntityTabs.REVIEW);
-
-    return hasReviewTab
-      ? withReviewTab(customizedTabs, {
-          activeTab,
-          afterKey: EntityTabs.GLOSSARY_TERMS,
-          pendingCount: proposalCounts.all,
-        })
-      : customizedTabs;
   }, [
     customizedPage?.tabs,
     glossaryTerm,
@@ -265,7 +239,6 @@ const GlossaryTermsV1 = ({
     handleAssetSave,
     previewAsset,
     handleAssetClick,
-    proposalCounts.all,
   ]);
 
   useEffect(() => {
