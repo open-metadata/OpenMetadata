@@ -286,6 +286,8 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
         with self.engine.connect() as conn:
             rows = conn.execute(text(INFORMIX_GET_STORED_PROCEDURES), {"owner": schema_name}).fetchall()
         for name, is_proc, proc_id in rows:
+            if self.is_stored_procedure_filtered(name):
+                continue
             yield InformixStoredProcedure(name=name, proc_id=proc_id, is_function=is_proc != "t")
 
     def _stored_procedure_code(self, proc_id: int) -> str | None:
@@ -304,22 +306,22 @@ class InformixSource(CommonDbSourceService, MultiDBSource):
     ) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Prepare the stored procedure payload."""
         try:
-            yield Either(  # pyright: ignore[reportCallIssue]
-                right=CreateStoredProcedureRequest(
-                    name=EntityName(stored_procedure.name),
-                    storedProcedureCode=StoredProcedureCode(
-                        language=Language.SQL,
-                        code=self._stored_procedure_code(stored_procedure.proc_id),
-                    ),
-                    databaseSchema=fqn.build(  # pyright: ignore[reportArgumentType]
-                        metadata=self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                        database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
-                        schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
-                    ),
-                )
+            stored_procedure_request = CreateStoredProcedureRequest(
+                name=EntityName(stored_procedure.name),
+                storedProcedureCode=StoredProcedureCode(
+                    language=Language.SQL,
+                    code=self._stored_procedure_code(stored_procedure.proc_id),
+                ),
+                databaseSchema=fqn.build(  # pyright: ignore[reportArgumentType]
+                    metadata=self.metadata,
+                    entity_type=DatabaseSchema,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    database_name=self.context.get().database,  # pyright: ignore[reportAttributeAccessIssue]
+                    schema_name=self.context.get().database_schema,  # pyright: ignore[reportAttributeAccessIssue]
+                ),
             )
+            yield Either(right=stored_procedure_request)  # pyright: ignore[reportCallIssue]
+            self.register_record_stored_proc_request(stored_procedure_request)
         except Exception as exc:
             yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
