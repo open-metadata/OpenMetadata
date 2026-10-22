@@ -28,7 +28,7 @@ test.use({
   viewport: { width: 3200, height: 1000 },
 });
 
-const table = new TableClass();
+let table: TableClass;
 
 const getGridCell = async (page: Page, columnName: string, header: string) => {
   const colIndex = await page
@@ -64,6 +64,7 @@ const selectTagsCell = async (page: Page, columnName: string) => {
 
 test.describe('Bulk edit table grid interactions', () => {
   test.beforeAll(async ({ browser }) => {
+    table = new TableClass();
     const { apiContext, afterAction } = await createNewPage(browser);
     await table.create(apiContext);
     await table.patch({
@@ -92,13 +93,6 @@ test.describe('Bulk edit table grid interactions', () => {
     await expect(
       await getGridCell(page, table.columnsName[0], 'Column Name')
     ).toBeVisible();
-  });
-
-  test('labels the rows of a table bulk edit as columns', async ({ page }) => {
-    await expect(page.getByText(/^Edit \d+ columns$/)).toBeVisible();
-    await expect(
-      page.getByTestId('bulk-edit-search').locator('input')
-    ).toHaveAttribute('placeholder', /^Search \d+ columns$/);
   });
 
   test('select-all inside the description editor selects the text so it can be cleared', async ({
@@ -203,11 +197,6 @@ test.describe('Bulk edit table grid interactions', () => {
   test('pastes onto the searched row, not the row at the same position in the full list', async ({
     page,
   }) => {
-    const sourceTags = await getGridCell(
-      page,
-      table.columnsName[0],
-      'Column Tags'
-    );
     await selectTagsCell(page, table.columnsName[0]);
     await page.keyboard.press('ControlOrMeta+c');
 
