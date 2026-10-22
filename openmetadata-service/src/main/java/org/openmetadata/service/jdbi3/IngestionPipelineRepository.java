@@ -708,7 +708,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      // A create stores user-submitted values, so the encrypt pass rejects credentials the
+      // pipeline does not own. An update stores values the masker already validated (PATCH and
+      // PUT) or a stored copy (restore, a Data Contract deployment), where encoded values are the
+      // pipeline's own.
+      if (update) {
+        secretsManager.encryptIngestionPipeline(
+            ingestionPipeline, SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+      } else {
+        secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      }
     }
     store(ingestionPipeline, update);
   }
@@ -721,6 +730,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
 
     for (IngestionPipeline ingestionPipeline : entities) {
       if (secretsManager != null) {
+        // The batch store is a user create path: encoded values it does not own are rejected.
         secretsManager.encryptIngestionPipeline(ingestionPipeline);
       }
 

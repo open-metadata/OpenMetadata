@@ -1,9 +1,12 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
 
 import java.util.Map;
@@ -26,6 +29,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.openmetadata.service.exception.SecretsManagerException;
 
 public abstract class ExternalSecretsManagerTest {
   protected ExternalSecretsManager secretsManager;
@@ -120,6 +124,102 @@ public abstract class ExternalSecretsManagerTest {
         secretKey,
         actualWorkflow.getOpenMetadataServerConnection().getSecurityConfig().getJwtToken());
     assertEquals(expectedWorkflow, actualWorkflow);
+  }
+
+  @Test
+  void testEncryptAcceptsTheServicesOwnStoredReference() {
+    String storedReference = servicePasswordReference("test");
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(storedReference));
+
+    // The reference the entity itself holds round-trips through the store
+    MysqlConnection actualConnection =
+        (MysqlConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, Mysql.value(), "test", ServiceType.DATABASE);
+    assertNotEquals(
+        storedReference,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+
+    actualConnection =
+        (MysqlConnection)
+            secretsManager.decryptServiceConnectionConfig(
+                actualConnection, Mysql.value(), ServiceType.DATABASE);
+    assertEquals(
+        storedReference,
+        JsonUtils.convertValue(actualConnection.getAuthType(), basicAuth.class).getPassword());
+  }
+
+  /**
+   * A reference under the deployment's own namespace - where every secret the server stores lives
+   * - is a pointer at another entity's secret when its base is not this entity's. Storing it
+   * would let the submitter's entity resolve, and later delete, that secret.
+   */
+  @Test
+  void testEncryptRejectsAReferenceToAnotherEntitysSecret() {
+    String foreignReference = servicePasswordReference("other-service");
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(foreignReference));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    connection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(
+        rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  @Test
+  void testEncryptWorkflowAcceptsTheNamedServicesReference() {
+    String serviceReference = servicePasswordReference("test-service");
+    Workflow workflow = testConnectionWorkflow("test-service", serviceReference);
+
+    Workflow encrypted = secretsManager.encryptWorkflow(workflow);
+    assertNotEquals(serviceReference, getPassword(encrypted));
+
+    Workflow decrypted = secretsManager.decryptWorkflow(encrypted);
+    assertEquals(serviceReference, getPassword(decrypted));
+  }
+
+  @Test
+  void testEncryptWorkflowRejectsAnotherServicesReference() {
+    String foreignReference = servicePasswordReference("other-service");
+    Workflow workflow = testConnectionWorkflow("test-service", foreignReference);
+
+    SecretsManagerException rejected =
+        assertThrows(SecretsManagerException.class, () -> secretsManager.encryptWorkflow(workflow));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(
+        rejected.getMessage().contains(foreignReference), "the reference must not be echoed");
+  }
+
+  private String servicePasswordReference(String serviceName) {
+    return SecretsManager.SECRET_FIELD_PREFIX
+        + secretsManager.buildSecretId(
+            false,
+            secretsManager.buildSecretId(true, "database", serviceName),
+            "authtype",
+            "password");
+  }
+
+  private Workflow testConnectionWorkflow(String serviceName, String password) {
+    DatabaseConnection dbConnection =
+        new DatabaseConnection()
+            .withConfig(new MysqlConnection().withAuthType(new basicAuth().withPassword(password)));
+    TestServiceConnectionRequest testRequest =
+        new TestServiceConnectionRequest()
+            .withConnection(dbConnection)
+            .withServiceType(ServiceType.DATABASE)
+            .withConnectionType("Mysql")
+            .withServiceName(serviceName);
+    return new Workflow().withName("my-workflow").withRequest(testRequest);
   }
 
   @Test

@@ -3,6 +3,8 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Locale;
@@ -21,6 +23,7 @@ import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
@@ -117,6 +120,41 @@ public class SecretsManagerNullSecretIT {
     assertNull(
         vault.getSecretValue(SecretsManager.SECRET_FIELD_PREFIX + secretId),
         "A service stored before the fix must read back no credential, not the string \"null\"");
+  }
+
+  @Test
+  void aServiceRejectsAnotherServicesSecretReference(TestNamespace ns) {
+    String ownerName = ns.prefix("snowflake_secret_owner");
+    DatabaseService owner =
+        SdkClients.adminClient().databaseServices().create(snowflakeRequest(ownerName, PASSWORD));
+    ns.trackRoot(Entity.DATABASE_SERVICE, owner);
+    String ownedReference = SecretsManager.SECRET_FIELD_PREFIX + secretId(ownerName, "password");
+
+    CreateDatabaseService borrowerRequest =
+        snowflakeRequest(ns.prefix("snowflake_secret_borrower"), ownedReference);
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().databaseServices().create(borrowerRequest),
+            "a service must not store a reference to another service's secret");
+    assertEquals(400, rejected.getStatusCode());
+    String message = rejected.getResponseBody();
+    assertTrue(message != null && message.contains("Password"), message);
+    assertFalse(
+        message.contains(ownedReference), "the rejection must not echo the rejected reference");
+  }
+
+  private static CreateDatabaseService snowflakeRequest(String serviceName, String password) {
+    SnowflakeConnection connection =
+        new SnowflakeConnection()
+            .withAccount("test-account")
+            .withUsername("test_user")
+            .withWarehouse("test_warehouse")
+            .withPassword(password);
+    return new CreateDatabaseService()
+        .withName(serviceName)
+        .withServiceType(DatabaseServiceType.Snowflake)
+        .withConnection(new DatabaseConnection().withConfig(connection));
   }
 
   private static String secretId(String serviceName, String fieldName) {

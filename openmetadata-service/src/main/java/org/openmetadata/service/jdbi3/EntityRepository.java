@@ -3448,11 +3448,30 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entity;
   }
 
+  /**
+   * Create an entity the caller already ran {@link #prepareInternal(Object, boolean)} on — the PUT
+   * create-or-update path, whose resource boundary prepares with {@code update == true} before
+   * deciding whether the request creates. The create pipeline still runs its own prepare pass, but
+   * with {@code alreadyPrepared == true}: {@link #prepare(Object, boolean, boolean)} then treats the
+   * second pass as a re-storage of what the first pass stored, instead of re-validating it against
+   * a strict credential policy.
+   */
+  public final T createPrepared(
+      UriInfo uriInfo, T entity, String updatedBy, String impersonatedBy) {
+    entity = withHref(uriInfo, createInternal(entity, updatedBy, impersonatedBy, true));
+    return entity;
+  }
+
   public final T createInternal(T entity) {
     return createInternal(entity, null, null);
   }
 
   private T createInternal(T entity, String updatedBy, String impersonatedBy) {
+    return createInternal(entity, updatedBy, impersonatedBy, false);
+  }
+
+  private T createInternal(
+      T entity, String updatedBy, String impersonatedBy, boolean alreadyPrepared) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -3464,7 +3483,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     try (var ignored = phase("createPrepareInternal")) {
-      prepareInternal(entity, false);
+      prepareInternal(entity, false, alreadyPrepared);
     }
 
     // Set updatedBy and impersonatedBy after prepare but before storing
@@ -3478,8 +3497,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   public final void prepareInternal(T entity, boolean update) {
+    prepareInternal(entity, update, false);
+  }
+
+  public final void prepareInternal(T entity, boolean update, boolean alreadyPrepared) {
     validateTags(entity);
-    prepare(entity, update);
+    prepare(entity, update, alreadyPrepared);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     if (!update) {
@@ -3489,6 +3512,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       prepareCertification(entity);
     }
     // Domain is already validated
+  }
+
+  /**
+   * Prepare an entity a previous {@link #prepareInternal(Object, boolean, boolean)} pass in the same
+   * request already handled. The default delegates to {@link #prepare(Object, boolean)}: most
+   * repositories have no reason to distinguish the passes. A repository whose prepare encrypts
+   * password fields must override this, because re-running a strict credential policy on the first
+   * pass's own encrypted output cannot tell that output from a foreign credential — see
+   * ServiceEntityRepository.
+   */
+  protected void prepare(T entity, boolean update, boolean alreadyPrepared) {
+    prepare(entity, update);
   }
 
   /**

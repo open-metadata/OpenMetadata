@@ -172,17 +172,48 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service, boolean update) {
-    if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+    if (service.getConnection() == null) {
+      return;
     }
+    service
+        .getConnection()
+        .setConfig(
+            SecretsManagerFactory.getSecretsManager()
+                .encryptServiceConnectionConfig(
+                    service.getConnection().getConfig(),
+                    service.getServiceType().value(),
+                    service.getName(),
+                    serviceType));
+  }
+
+  /**
+   * The connection is encrypted here rather than in storeEntity because prepare runs on every
+   * persistence path, including the version-checked update that bypasses storeEntity. The PUT
+   * create-or-update path runs prepare twice: once at the resource boundary with the user's
+   * submission, and once more in the create pipeline on what the first pass encrypted. A strict
+   * credential policy cannot tell the first pass's own encrypted output from a foreign credential,
+   * so the re-prepare stores it as the server's copy (CredentialPolicy.INTERNAL_RE_STORAGE)
+   * instead of validating it again.
+   */
+  @Override
+  protected void prepare(T service, boolean update, boolean alreadyPrepared) {
+    if (!alreadyPrepared) {
+      prepare(service, update);
+      return;
+    }
+    if (service.getConnection() == null) {
+      return;
+    }
+    service
+        .getConnection()
+        .setConfig(
+            SecretsManagerFactory.getSecretsManager()
+                .encryptServiceConnectionConfig(
+                    service.getConnection().getConfig(),
+                    service.getServiceType().value(),
+                    service.getName(),
+                    serviceType,
+                    SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE));
   }
 
   @Override
