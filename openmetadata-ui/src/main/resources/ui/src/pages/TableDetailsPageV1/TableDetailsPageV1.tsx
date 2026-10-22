@@ -27,16 +27,16 @@ import { AlignRightIconButton } from '../../components/common/IconButtons/EditIc
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
-    DataAssetsHeaderProps,
-    DataAssetWithDomains
+  DataAssetsHeaderProps,
+  DataAssetWithDomains,
 } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { DataQualityIndicator } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator';
 import { DataQualityIndicatorCounts } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.types';
 import {
-    countUnresolvedIncidents,
-    DQ_INDICATOR_FETCH_LIMIT,
-    EMPTY_DQ_INDICATOR_COUNTS,
-    OPEN_INCIDENT_STATUSES
+  countUnresolvedIncidents,
+  DQ_INDICATOR_FETCH_LIMIT,
+  EMPTY_DQ_INDICATOR_COUNTS,
+  OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
 import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
@@ -49,10 +49,10 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import {
-    EntityTabs,
-    EntityType,
-    FqnPart,
-    TabSpecificField
+  EntityTabs,
+  EntityType,
+  FqnPart,
+  TabSpecificField,
 } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Tag } from '../../generated/entity/classification/tag';
@@ -71,34 +71,34 @@ import { FeedCounts } from '../../interface/feed.interface';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import {
-    tableQueryCountFn,
-    tableQueryCountKey,
-    tableQueryFn,
-    tableQueryKey
+  tableQueryCountFn,
+  tableQueryCountKey,
+  tableQueryFn,
+  tableQueryKey,
 } from '../../rest/queries/tableQuery';
 import {
-    addFollower,
-    patchTableDetails,
-    removeFollower,
-    restoreTable,
-    updateTablesVotes
+  addFollower,
+  patchTableDetails,
+  removeFollower,
+  restoreTable,
+  updateTablesVotes,
 } from '../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../rest/testAPI';
 import { Suggestion, SuggestionType } from '../../types/taskSuggestion';
 import {
-    checkIfExpandViewSupported,
-    getDetailsTabWithNewLabel,
-    getRenderedActiveTab,
-    getTabLabelMapFromTabs
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getRenderedActiveTab,
+  getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageEntityTabUtils';
 import { defaultFieldsWithColumns } from '../../utils/DatasetDetailsUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { mergeEntityStateUpdate } from '../../utils/EntityUpdateUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
-    fetchEntityActivityCountInto,
-    fetchEntityTaskCountsInto,
-    getFeedCounts
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -106,16 +106,16 @@ import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
 import {
-    findColumnByEntityLink,
-    generateEntityLink,
-    getJoinsFromTableJoins,
-    getTagsWithoutTier,
-    getTierTags,
-    updateColumnInNestedStructure
+  findColumnByEntityLink,
+  generateEntityLink,
+  getJoinsFromTableJoins,
+  getTagsWithoutTier,
+  getTierTags,
+  updateColumnInNestedStructure,
 } from '../../utils/TablePureUtils';
 import {
-    updateCertificationTag,
-    updateTierTag
+  updateCertificationTag,
+  updateTierTag,
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
