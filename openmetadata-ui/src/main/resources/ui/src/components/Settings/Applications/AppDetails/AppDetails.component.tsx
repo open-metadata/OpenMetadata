@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  Card,
   Tabs,
   Tooltip,
   Typography,
@@ -656,7 +657,7 @@ const AppDetails = () => {
     // has nothing to manage.
     if (isEmpty(tabs)) {
       return (
-        <div className="tw:relative tw:min-h-60 tw:rounded-xl tw:border tw:border-secondary tw:bg-primary">
+        <Card className="tw:relative tw:min-h-60">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={
@@ -667,7 +668,7 @@ const AppDetails = () => {
                   })
             }
           />
-        </div>
+        </Card>
       );
     }
 
