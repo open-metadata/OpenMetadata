@@ -26,6 +26,7 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const getTagFqn = (tag: TagLabel) =>
   (tag.tagFQN || tag.name || tag.displayName || '').toString();
@@ -174,7 +175,7 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
     if (!nonTierTags.length) {
       return (
-        <span className="no-data-placeholder">
+        <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.tag-plural'),
           })}

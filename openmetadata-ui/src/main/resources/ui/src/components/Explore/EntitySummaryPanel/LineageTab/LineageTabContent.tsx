@@ -39,6 +39,7 @@ import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.com
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
 import './LineageTabContent.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../../constants/EntitySummaryPanelUtils.constant';
 
 const LineageTabContent: React.FC<LineageTabContentProps> = ({
   lineageData,
@@ -287,7 +288,9 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
               className="text-grey-14 m-t-lg"
               icon={<AddPlaceHolderIcon height={100} width={100} />}
               type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography as="p" className="text-center  no-data-placeholder">
+              <Typography
+                as="p"
+                className={`text-center ${NO_DATA_PLACEHOLDER_CLASS_NAME}`}>
                 {t('label.lineage-not-found')}
               </Typography>
             </ErrorPlaceHolderNew>

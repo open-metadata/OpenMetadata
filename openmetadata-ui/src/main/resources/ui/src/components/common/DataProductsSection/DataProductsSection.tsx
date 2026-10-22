@@ -27,6 +27,7 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { DataProductsSectionProps } from './DataProductsSection.interface';
 import './DataProductsSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
   dataProducts = [],
@@ -163,14 +164,14 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
       (!displayActiveDomains || displayActiveDomains.length === 0)
     ) {
       return (
-        <Typography className="no-data-placeholder">
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('message.select-domain-to-add-data-product')}
         </Typography>
       );
     }
 
     return (
-      <span className="no-data-placeholder">
+      <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
         {t('label.no-entity-assigned', {
           entity: t('label.data-product-plural'),
         })}

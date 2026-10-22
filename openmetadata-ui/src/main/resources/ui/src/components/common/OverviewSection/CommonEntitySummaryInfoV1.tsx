@@ -22,6 +22,7 @@ import {
   EntityInfoItemV1,
 } from './CommonEntitySummaryInfoV1.interface';
 import './OverviewSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,
@@ -109,7 +110,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       {visibleEntityInfo.length === 0 ? (
         <div className="overview-row">
           <Typography
-            className="no-data-placeholder"
+            className={NO_DATA_PLACEHOLDER_CLASS_NAME}
             data-testid="no-data-placeholder">
             {t('label.no-overview-available')}
           </Typography>

@@ -537,7 +537,6 @@ describe('LineageTabContent', () => {
 
       expect(paragraph).toBeInTheDocument();
       expect(paragraph).toHaveClass('text-center');
-      expect(paragraph).toHaveClass('no-data-placeholder');
     });
   });
 

@@ -30,6 +30,7 @@ import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.c
 import DomainTags from '../DomainTags/DomainTags';
 import Loader from '../Loader/Loader';
 import './DomainsSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 interface DomainsSectionProps {
   domains?: EntityReference[];
@@ -232,7 +233,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           {selectableList}
         </div>
         <div className="domains-content">
-          <span className="no-data-placeholder">
+          <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.domain-plural'),
             })}

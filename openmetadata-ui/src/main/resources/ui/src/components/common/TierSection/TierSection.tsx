@@ -26,6 +26,7 @@ import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
 import './TierSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const TierSection: React.FC<TierSectionProps> = ({
   tier,
@@ -142,7 +143,7 @@ const TierSection: React.FC<TierSectionProps> = ({
             />
           </div>
         ) : (
-          <span className="no-data-placeholder">
+          <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.tier'),
             })}

@@ -23,6 +23,7 @@ import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
 import { SEARCH_PLACEHOLDER_MAP } from './EntityDetailsSection.constants';
 import { EntityDetailsSectionProps } from './EntityDetailsSection.interface';
 import './EntityDetailsSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   entityType,
@@ -79,7 +80,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
         type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
         <Typography
           as="p"
-          className="text-center p-x-md m-t-sm no-data-placeholder">
+          className={`text-center p-x-md m-t-sm ${NO_DATA_PLACEHOLDER_CLASS_NAME}`}>
           {t('message.no-schema-message')}
         </Typography>
       </ErrorPlaceHolderNew>

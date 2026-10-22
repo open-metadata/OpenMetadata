@@ -29,6 +29,7 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { GlossaryTermsSectionProps } from './GlossaryTermsSection.interface';
 import './GlossaryTermsSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   tags = [],
@@ -174,7 +175,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
     if (!glossaryTerms.length) {
       return (
-        <span className="no-data-placeholder">
+        <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.glossary-term-plural'),
           })}

@@ -32,6 +32,7 @@ import Loader from '../../../common/Loader/Loader';
 import { ExtensionDataProps } from '../../../Modals/ModalWithCustomProperty/ModalWithMarkdownEditor.interface';
 import { CustomPropertiesSectionProps } from './CustomPropertiesSection.interface';
 import './CustomPropertiesSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../../constants/EntitySummaryPanelUtils.constant';
 
 const CustomPropertiesSection = ({
   entityData,
@@ -109,7 +110,8 @@ const CustomPropertiesSection = ({
           className="text-grey-14"
           icon={<AddPlaceHolderIcon height={100} width={100} />}
           type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <div className="p-t-md no-data-placeholder tw:text-center tw:break-words">
+          <div
+            className={`p-t-md tw:text-center tw:break-words ${NO_DATA_PLACEHOLDER_CLASS_NAME}`}>
             <Tooltip
               title={t('label.documentation')}
               triggerClassName="tw:block tw:whitespace-normal">

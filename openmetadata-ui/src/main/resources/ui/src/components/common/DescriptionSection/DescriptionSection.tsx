@@ -20,6 +20,7 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
@@ -253,7 +254,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-section">
           {descriptionHeader}
           <div className="description-content">
-            <span className="no-data-placeholder">
+            <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
               {t('label.no-entity-added', {
                 entity: t('label.description-lowercase'),
               })}

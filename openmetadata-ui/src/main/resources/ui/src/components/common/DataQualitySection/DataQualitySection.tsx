@@ -20,6 +20,7 @@ import { DataQualityLegendItem } from './DataQualityLegendItem';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 import { DataQualitySectionProps } from './DataQualitySection.interface';
 import { DataQualityStatCard } from './DataQualityStatCard';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,
@@ -101,7 +102,9 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       onEdit={onEdit}>
       {totalTests === 0 ? (
         <div className="data-quality-section">
-          <span className="no-data-placeholder">{t('label.no-tests-run')}</span>
+          <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+            {t('label.no-tests-run')}
+          </span>
         </div>
       ) : (
         <div className="data-quality-content">
