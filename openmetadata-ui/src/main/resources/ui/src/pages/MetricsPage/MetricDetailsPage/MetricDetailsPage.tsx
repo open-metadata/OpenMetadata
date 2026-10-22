@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
 import { ROUTES } from '../../../constants/constants';
@@ -339,7 +339,7 @@ const MetricDetailsPage = () => {
   );
 
   if (isPermissionsLoading || metricLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
@@ -364,7 +364,7 @@ const MetricDetailsPage = () => {
     );
   }
   if (!metricDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (
