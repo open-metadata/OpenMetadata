@@ -13,11 +13,7 @@
 
 import classNames from 'classnames';
 import { CSSProperties, FunctionComponent } from 'react';
-import {
-  LOADER_BASE_CLASS,
-  LOADER_SIZE_CLASS,
-  LOADER_TYPE_CLASS,
-} from './Loader.constants';
+import './Loader.less';
 
 type Props = {
   size?: 'default' | 'small' | 'x-small';
@@ -36,11 +32,37 @@ const Loader: FunctionComponent<Props> = ({
   style,
   dataTestId = 'loader',
 }: Props): JSX.Element => {
-  const classes = classNames(
-    LOADER_BASE_CLASS,
-    LOADER_SIZE_CLASS[size],
-    LOADER_TYPE_CLASS[type]
-  );
+  let classes = 'loader';
+  switch (size) {
+    case 'small':
+      classes += ' loader-sm';
+
+      break;
+    case 'x-small':
+      classes += ' loader-x-sm';
+
+      break;
+
+    default:
+      break;
+  }
+
+  switch (type) {
+    case 'success':
+      classes += ' loader-success';
+
+      break;
+    case 'error':
+      classes += ' loader-error';
+
+      break;
+    case 'white':
+      classes += ' loader-white';
+
+      break;
+    default:
+      break;
+  }
 
   if (fullScreen) {
     return (

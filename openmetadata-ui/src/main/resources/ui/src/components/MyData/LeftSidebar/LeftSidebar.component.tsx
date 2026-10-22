@@ -41,6 +41,7 @@ import {
 } from '../../../utils/LeftSidebarUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import BrandImage from '../../common/BrandImage/BrandImage';
+import './left-sidebar.less';
 
 const LeftSidebar = () => {
   const location = useCustomLocation();
@@ -258,20 +259,16 @@ const LeftSidebar = () => {
 
   return (
     <aside
-      // Full-height rail that scrolls without showing a scrollbar.
-      className={classNames(
-        'app-sidebar tw:h-screen tw:overflow-y-auto tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden',
-        {
-          'sidebar-collapsed': isSidebarCollapsed,
-          'left-sidebar-col-rtl': isDirectionRTL,
-          'sidebar-open': !isSidebarCollapsed,
-          'tw:w-18 tw:min-w-18 tw:max-w-18': isSidebarCollapsed,
-          'tw:w-57 tw:min-w-57 tw:max-w-57': !isSidebarCollapsed,
-        }
-      )}
+      className={classNames('app-sidebar', {
+        'sidebar-collapsed': isSidebarCollapsed,
+        'left-sidebar-col-rtl': isDirectionRTL,
+        'sidebar-open': !isSidebarCollapsed,
+        'tw:w-18 tw:min-w-18 tw:max-w-18': isSidebarCollapsed,
+        'tw:w-57 tw:min-w-57 tw:max-w-57': !isSidebarCollapsed,
+      })}
       data-testid="left-sidebar"
       dir={i18n.dir()}>
-      <div className="logo-container tw:my-5 tw:h-10 tw:px-7 tw:text-left">
+      <div className="logo-container">
         <Link className="flex-shrink-0" id="openmetadata_logo" to="/">
           <BrandImage
             className="vertical-middle h-full"
@@ -282,12 +279,9 @@ const LeftSidebar = () => {
           />
         </Link>
       </div>
-      {/* The navbar is 80px tall; the menus fill the rest of the viewport. */}
-      <div className="left-sidebar-layout tw:h-[calc(100vh-80px)]">
-        <Box
-          className="menu-container tw:h-full tw:overflow-y-auto tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden"
-          direction="col">
-          <nav aria-label={t('label.navigation')} className="top-menu tw:grow">
+      <div className="left-sidebar-layout">
+        <Box className="menu-container" direction="col">
+          <nav aria-label={t('label.navigation')} className="top-menu">
             <ul
               // Collapsed and expanded share one inset, so the 56px items keep their place.
               className="left-sidebar-menu tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:py-0 tw:ps-4 tw:pe-0">
@@ -300,7 +294,7 @@ const LeftSidebar = () => {
           </nav>
           <nav
             aria-label={t('label.setting-plural')}
-            className="bottom-menu tw:shrink-0 tw:ps-4">
+            className="bottom-menu tw:ps-4">
             <Divider className="tw:mt-4 tw:mb-2" />
             <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
               {[SETTING_ITEM, LOGOUT_ITEM].map((item) => (

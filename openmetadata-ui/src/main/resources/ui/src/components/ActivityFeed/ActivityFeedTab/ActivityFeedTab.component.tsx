@@ -811,7 +811,7 @@ export const ActivityFeedTab = ({
   }, [entityPaging, loading, isInView, fqn, handleFeedFetchFromFeedList]);
 
   const loader = useMemo(
-    () => (loading ? <Loader className="tw:aspect-square" /> : null),
+    () => (loading ? <Loader className="aspect-square" /> : null),
     [loading]
   );
 
