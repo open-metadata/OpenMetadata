@@ -39,6 +39,7 @@ import {
   OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
 import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -161,6 +162,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const location = useLocation();
   const breadcrumbData = (
     location.state as {
@@ -353,10 +355,11 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             tablePermissions,
             tableDetails,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [tablePermissions, tableFqn, tableDetails, navigate]
+    [tablePermissions, tableFqn, tableDetails, navigate, showModal]
   );
 
   const fetchDqIndicatorCounts = useCallback(

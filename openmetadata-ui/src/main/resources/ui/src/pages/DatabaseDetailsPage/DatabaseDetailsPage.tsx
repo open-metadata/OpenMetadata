@@ -37,6 +37,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
@@ -226,6 +227,7 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<boolean>(false);
 
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -329,9 +331,10 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN,
         databasePermission,
         database ?? ({} as Database),
-        navigate
+        navigate,
+        showModal
       ),
-    [decodedDatabaseFQN, databasePermission, database]
+    [decodedDatabaseFQN, databasePermission, database, showModal]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
