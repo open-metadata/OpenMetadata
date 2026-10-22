@@ -24,7 +24,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import ButtonSkeleton from '../../components/common/Skeleton/CommonSkeletons/ControlElements/ControlElements.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -38,7 +38,6 @@ import {
   NOT_INCLUDE_EMAIL_CONFIG_VALUE,
 } from '../../constants/EmailConfig.constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { SMTPSettings } from '../../generated/email/smtpSettings';
 import { SettingType } from '../../generated/settings/settings';
 import { useAuth } from '../../hooks/authHooks';
@@ -155,14 +154,17 @@ function EmailConfigSettingsPage() {
   const configValuesContainer = useMemo(() => {
     if (isUndefined(emailConfigValues) && !loading) {
       return (
-        <ErrorPlaceHolder
-          className="mt-24"
-          heading={t('label.email-configuration-lowercase')}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.email-configuration'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <CreatePlaceholder
+            data-testid={`create-error-placeholder-${t(
+              'label.email-configuration-lowercase'
+            )}`}
+            heading={t('label.email-configuration-lowercase')}
+            permissionValue={t('label.create-entity', {
+              entity: t('label.email-configuration'),
+            })}
+          />
+        </div>
       );
     }
 

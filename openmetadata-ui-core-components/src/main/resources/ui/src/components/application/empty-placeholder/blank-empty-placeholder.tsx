@@ -23,7 +23,8 @@ import {
   renderEmptyPlaceholderIcon,
 } from './empty-placeholder-shell';
 
-const DEFAULT_BLANK_WIDTH = 300;
+// Matches the `tw:max-w-lg` text block so long copy wraps at a readable width.
+const DEFAULT_BLANK_WIDTH = 512;
 
 export interface BlankEmptyPlaceholderProps
   extends Omit<EmptyPlaceholderShellProps, 'children'> {

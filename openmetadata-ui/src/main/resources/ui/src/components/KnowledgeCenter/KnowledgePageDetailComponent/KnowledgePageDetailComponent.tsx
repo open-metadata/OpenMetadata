@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   File06 as Articles,
   Lock01 as Lock,
@@ -97,6 +96,8 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
@@ -1010,7 +1011,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   if (!hasViewPermission) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
+        <PermissionPlaceholder
           description={
             <Transi18next
               i18nKey="message.no-access-placeholder"
@@ -1020,7 +1021,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               }}
             />
           }
-          icon={<Lock className="tw:text-secondary" />}
+          icon={<Lock />}
           title={t('label.access-denied')}
         />
       </div>
@@ -1030,8 +1031,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   if (!knowledgePage) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
-          icon={<Articles className="tw:text-secondary" />}
+        <NoDataPlaceholder
+          icon={<Articles />}
           title={t('label.no-entity', { entity: t('label.article') })}
         />
       </div>

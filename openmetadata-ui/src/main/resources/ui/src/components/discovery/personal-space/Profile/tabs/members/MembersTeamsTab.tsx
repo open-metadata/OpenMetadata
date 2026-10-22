@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dialog,
-  EmptyPlaceholder,
   FeaturedIcon,
   Modal,
   ModalOverlay,
@@ -28,6 +27,7 @@ import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import type { MembersTeamsTabProps } from './MembersTeamDetail.types';
 import { TEAM_DRAG_TYPE } from './MembersTeamDetail.utils';
@@ -113,7 +113,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                 align="center"
                 className="tw:min-h-32 tw:relative"
                 justify="center">
-                <EmptyPlaceholder title={t('label.no-data-found')} />
+                <NoDataPlaceholder title={t('label.no-data-found')} />
               </Box>
             ),
           }}
