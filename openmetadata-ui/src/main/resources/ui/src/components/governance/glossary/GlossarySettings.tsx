@@ -110,7 +110,6 @@ const GlossarySettings = ({ embedded = false }: { embedded?: boolean }) => {
     return (
       <SettingsSection testId="glossary-settings" title={pageTitle}>
         <ReadOnlyRow
-          isValueCompact
           description={t('message.glossary-tag-propagation-reindex')}
           title={t('label.glossary-tag-propagation')}>
           {status}
