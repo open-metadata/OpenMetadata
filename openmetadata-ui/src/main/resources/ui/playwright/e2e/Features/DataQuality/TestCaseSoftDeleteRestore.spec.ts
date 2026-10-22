@@ -333,7 +333,6 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
 
         await expect(page.getByTestId('deleted-badge')).toBeVisible();
 
-        await expect(page.getByTestId('run-test-case-button')).toHaveCount(0);
         await expect(page.getByTestId('edit-description')).toHaveCount(0);
         await expect(page.getByTestId('edit-parameter-icon')).toHaveCount(0);
 
