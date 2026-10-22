@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  * Groups each MySQL guarded block into one {@link SqlUnit}: the {@code SET @v} statements that
  * build the DDL, then {@code PREPARE n FROM @v}, {@code EXECUTE n} and an optional {@code
  * DEALLOCATE PREPARE n}. A malformed block fails when the file is parsed, not half way through a
- * migration.
+ * migration. The authoring rule is ADR:2026-10-22-mysql-guarded-blocks-run-as-one-migration-unit.
  */
 final class GuardedBlockGrouper {
   private static final Pattern LEADING_COMMENTS =

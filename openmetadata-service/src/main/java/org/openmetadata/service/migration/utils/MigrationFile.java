@@ -1,5 +1,7 @@
 package org.openmetadata.service.migration.utils;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -237,20 +239,29 @@ public class MigrationFile implements Comparable<MigrationFile> {
 
   /**
    * A unit is applied once its own checksum is recorded. Runners before units recorded a guarded
-   * block's statements one by one, so a block of a version they completed, which is only seen again
-   * when the version is reprocessed, also counts as applied when every statement is recorded. A
-   * block interrupted part way has a statement missing and runs again as a whole.
+   * block's statements one by one, so a block also counts as applied when every one of its
+   * statements was recorded under this version. Rows recorded under another version belong to
+   * another block that reused the same names, and a block interrupted part way has a statement
+   * missing, so both run again as a whole.
    */
   protected boolean isApplied(SqlUnit unit) {
     String executedInVersion = executedInVersion(unit.checksum());
     warnIfExecutedByAnotherVersion(executedInVersion, unit.text());
-    return executedInVersion != null
-        || (reprocessing && unit.isBlock() && isRecordedOneByOne(unit));
+    return executedInVersion != null || (unit.isBlock() && isRecordedOneByOne(unit));
   }
 
   private boolean isRecordedOneByOne(SqlUnit unit) {
     return unit.statements().stream()
-        .allMatch(statement -> executedInVersion(EntityUtil.hash(statement)) != null);
+        .allMatch(statement -> isRecordedInThisVersion(EntityUtil.hash(statement)));
+  }
+
+  private boolean isRecordedInThisVersion(String checksum) {
+    try {
+      return !nullOrEmpty(migrationDAO.getSqlQuery(version, checksum));
+    } catch (Exception e) {
+      // If SERVER_MIGRATION_SQL_LOGS table doesn't exist yet, assume query hasn't run
+      return false;
+    }
   }
 
   private String executedInVersion(String checksum) {
