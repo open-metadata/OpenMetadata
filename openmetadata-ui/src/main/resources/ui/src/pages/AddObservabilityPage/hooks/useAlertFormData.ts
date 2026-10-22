@@ -54,8 +54,9 @@ import { useAlertResources } from './useAlertResources';
 import { useObservabilityAlertTemplates } from './useObservabilityAlertTemplates';
 
 /**
- * Alert form state, resources, templates and save for a caller that owns the form values,
- * so it needs no antd form. The caller passes the chosen sources and the choices so far.
+ * Alert form state, what the chosen sources support, templates and save for a caller that owns
+ * the form values, so it needs no antd form. The caller passes the chosen sources and the choices
+ * so far.
  */
 export function useAlertFormData({
   afterSaveAction,
@@ -80,7 +81,6 @@ export function useAlertFormData({
     UseAlertFormDataReturn['loadingState']
   >({
     alerts: false,
-    functions: false,
     templates: false,
   });
   const [saving, setSaving] = useState(false);
@@ -240,7 +240,6 @@ export function useAlertFormData({
     breadcrumb,
     extraFormButtons,
     extraFormWidgets,
-    filterResources: alertResources.filterResources,
     handleCancel,
     handleSave,
     inlineAlertDetails,
@@ -248,7 +247,6 @@ export function useAlertFormData({
     isLoading,
     loadingState: {
       ...loadingState,
-      functions: alertResources.loading,
       templates: alertTemplates.loading,
     },
     saving,

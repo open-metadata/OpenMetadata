@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
@@ -75,6 +74,7 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -1160,7 +1160,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </div>
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     actions={
                       !hasActiveFilters && emptyStateAction
                         ? [emptyStateAction]
@@ -1177,7 +1177,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases'
                         : 'message.no-test-cases-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )

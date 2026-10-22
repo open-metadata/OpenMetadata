@@ -78,6 +78,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -92,6 +93,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.auth.JwtResponse;
@@ -1311,9 +1313,47 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
-      return UserUtil.addOrUpdateUser(newUser);
+      return createOrAdoptConcurrentlyCreatedUser(
+          () -> UserUtil.addOrUpdateUser(newUser),
+          () -> Entity.getUserRepository().getUserByNameForAuthUpdate(userName),
+          email);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
+  }
+
+  /**
+   * Two first sign-ins of one new user race to create the account, and the loser gets a uniqueness
+   * conflict. It signs in to the account the winner just created, but only when that account
+   * carries the same email: a conflict with a differently addressed account is a different person.
+   */
+  static User createOrAdoptConcurrentlyCreatedUser(
+      Supplier<User> create, Supplier<User> loadByName, String email) {
+    try {
+      return create.get();
+    } catch (UserCreationException conflict) {
+      return adoptConcurrentlyCreatedUser(conflict, loadByName, email);
+    }
+  }
+
+  private static User adoptConcurrentlyCreatedUser(
+      UserCreationException conflict, Supplier<User> loadByName, String email) {
+    if (!UserUtil.isRetryableUserCreationConflict(conflict)) {
+      throw conflict;
+    }
+    User concurrentlyCreated = loadOrRethrow(loadByName, conflict);
+    if (!email.equalsIgnoreCase(concurrentlyCreated.getEmail())) {
+      throw conflict;
+    }
+    LOG.debug("Signing in to the account a concurrent first login created for {}", email);
+    return concurrentlyCreated;
+  }
+
+  private static User loadOrRethrow(Supplier<User> loadByName, UserCreationException conflict) {
+    try {
+      return loadByName.get();
+    } catch (EntityNotFoundException notCreatedUnderThisName) {
+      throw conflict;
+    }
   }
 
   /**

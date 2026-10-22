@@ -25,18 +25,14 @@ import {
   ProviderType,
 } from '../../../../generated/entity/events/notificationTemplate';
 import { AlertType as CapabilitiesAlertType } from '../../../../generated/events/api/alertCapabilitiesRequest';
-import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import {
   AlertSelectionProvider,
   useAlertSelection,
 } from '../../../../hooks/useAlertSelection';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
-import { getResourceFunctions } from '../../../../rest/observabilityAPI';
 import { getClassicAlertInitialValues } from '../../../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
 import { ModifiedCreateEventSubscription } from '../../../../utils/AlertsClassBase.interface';
-import Fqn from '../../../../utils/Fqn';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -72,12 +68,8 @@ function AlertConfigDetails({
   useEffect(() => reset(modifiedAlertData), [modifiedAlertData, reset]);
   const [loadingState, setLoadingState] = useState<AlertConfigLoadingState>({
     templates: false,
-    functions: false,
   });
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [filterResources, setFilterResources] = useState<
-    FilterResourceDescriptor[]
-  >([]);
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -85,32 +77,12 @@ function AlertConfigDetails({
     () => alertDetails.filteringRules?.resources ?? [],
     [alertDetails]
   );
-  // Showing an alert asks nothing of the user, so a server that cannot answer is not reported.
   const selection = useAlertSelection({
     alertType: isNotificationAlert
       ? CapabilitiesAlertType.Notification
       : CapabilitiesAlertType.Observability,
     sources: savedSources,
-    catalog: filterResources,
-    quiet: true,
   });
-
-  const fetchFunctions = useCallback(async () => {
-    try {
-      setLoadingState((prev) => ({ ...prev, functions: true }));
-      const filterResources = await (isNotificationAlert
-        ? getNotificationResourceFunctions()
-        : getResourceFunctions());
-
-      setFilterResources(filterResources.data);
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoadingState((prev) => ({ ...prev, functions: false }));
-    }
-  }, [isNotificationAlert]);
 
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
@@ -149,13 +121,10 @@ function AlertConfigDetails({
     }
   }, [extraFormWidgets]);
 
-  useEffect(() => {
-    fetchFunctions();
-  }, [Fqn]);
-
+  // The configuration shows what the server says the sources support, so it waits for it.
   const isLoading = useMemo(
-    () => Object.values(loadingState).some((val) => val),
-    [loadingState]
+    () => Object.values(loadingState).some((val) => val) || !selection.ready,
+    [loadingState, selection.ready]
   );
 
   if (isLoading) {

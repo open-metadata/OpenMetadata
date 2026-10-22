@@ -42,12 +42,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () =>
-    jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
-);
-
-jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(

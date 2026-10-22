@@ -16,12 +16,12 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import type { MembersInlineEntityTabProps } from './MembersTeamDetail.types';
 
@@ -110,7 +110,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 description={t(
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: entityLabel }

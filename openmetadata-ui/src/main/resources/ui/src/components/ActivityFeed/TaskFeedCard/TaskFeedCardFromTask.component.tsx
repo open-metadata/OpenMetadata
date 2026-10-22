@@ -203,6 +203,7 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
+            wrap
             className="tw:w-[98%]"
             color="link-color"
             data-testid="redirect-task-button-link"
@@ -454,7 +455,7 @@ const TaskFeedCardFromTask = ({
             />
             {taskLinkTitleElement}
           </div>
-          <div className="tw:-mt-2">
+          <div className="tw:mt-1">
             <Typography>
               <UserPopOverCard
                 key={task.createdBy?.name}
