@@ -84,7 +84,7 @@ const TaskListV1 = ({
   if (isEmpty(taskList) && !isLoading) {
     return (
       <div
-        className="p-x-md no-data-placeholder-container h-full tw:w-full"
+        className="p-x-md h-full"
         data-testid="no-data-placeholder-container"
         id="taskData">
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">

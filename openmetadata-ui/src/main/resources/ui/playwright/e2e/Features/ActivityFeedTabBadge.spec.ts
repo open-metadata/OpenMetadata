@@ -13,7 +13,6 @@
 
 import { APIRequestContext } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../constant/common';
-import { MetricClass } from '../../support/entity/MetricClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -171,19 +170,6 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await navigateToTasksPanel(page);
 
       await expect(page.getByText(/Great News/i)).toBeVisible();
-
-      // The placeholder is absolutely positioned, so a container that sizes to
-      // its content collapses to its own padding and wraps the message one
-      // word per line; it has to span the feed panel.
-      const panelBox = await page.locator('#center-container').boundingBox();
-      const placeholderBox = await page
-        .getByTestId('no-data-placeholder-container')
-        .boundingBox();
-
-      expect(placeholderBox?.width).toBeGreaterThanOrEqual(
-        (panelBox?.width ?? 0) - 2
-      );
-
       await switchTaskFilter(page, 'closed-tasks');
 
       await expect(page.getByText(/Nothing Closed Yet/i)).toBeVisible();
@@ -194,38 +180,6 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await expect(page.getByText(/Nothing Closed Yet/i)).not.toBeVisible();
     } finally {
       await emptyTable.delete(apiContext);
-      await afterAction();
-    }
-  });
-
-  test('metric feed panel is as tall as a table feed panel', async ({
-    browser,
-  }) => {
-    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
-      navigate: true,
-    });
-
-    const metric = new MetricClass();
-    const feedPanel = page.locator('#center-container');
-
-    try {
-      await metric.create(apiContext);
-
-      await table.visitEntityPage(page);
-      await page.getByTestId('activity_feed').click();
-      await expect(feedPanel).toBeVisible();
-      const tablePanelBox = await feedPanel.boundingBox();
-
-      // The metric page used to size its feed panel to its content, so an
-      // empty feed rendered half the height every other entity page gets.
-      await metric.visitEntityPage(page);
-      await page.getByTestId('activity_feed').click();
-      await expect(feedPanel).toBeVisible();
-      const metricPanelBox = await feedPanel.boundingBox();
-
-      expect(metricPanelBox?.height).toBe(tablePanelBox?.height);
-    } finally {
-      await metric.delete(apiContext);
       await afterAction();
     }
   });
