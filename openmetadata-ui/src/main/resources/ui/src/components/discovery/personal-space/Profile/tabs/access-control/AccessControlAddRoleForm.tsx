@@ -205,6 +205,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
                     contains(String(item.id), filterText)
                   }
                   items={policyItems}
+                  maxVisibleItems={5}
                   placeholder={t('label.select-a-policy')}
                   selectedItems={selectedPolicyItems}
                   onItemCleared={(key) =>

@@ -72,6 +72,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
               profilePicture={profilePicture}
               type={type}
               userName={userName}
+              onTitleClick={onTitleClick}
             />
           )}
           {isTeam ? (

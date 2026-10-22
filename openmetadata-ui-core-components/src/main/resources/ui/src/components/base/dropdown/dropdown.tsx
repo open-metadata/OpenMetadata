@@ -169,7 +169,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:max-h-[min(24rem,40vh)] tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
+          'tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
@@ -189,9 +189,14 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       offset={offset}
       placement={placement}
       {...rest}
+      // React Aria caps this popover at the space on the side it opens
+      // toward, and it scrolls past that. `duration-*` below would also
+      // transition `top` and `max-height`, so React Aria would measure a
+      // half-animated popover and shrink it instead of flipping (#30031);
+      // transition-none keeps the enter/exit keyframes.
       className={(state) =>
         cx(
-          'tw:w-62 tw:max-h-none! tw:origin-(--trigger-anchor-point) tw:overflow-hidden tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&

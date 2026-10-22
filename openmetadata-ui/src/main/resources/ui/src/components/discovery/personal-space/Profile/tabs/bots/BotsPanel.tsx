@@ -129,7 +129,7 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
     };
 
     const onBreadcrumbAction = (id: Key) => {
-      if (id === 'bots' || id === 'settings') {
+      if (id === 'bots') {
         onNavigate({ type: 'list' });
       }
     };

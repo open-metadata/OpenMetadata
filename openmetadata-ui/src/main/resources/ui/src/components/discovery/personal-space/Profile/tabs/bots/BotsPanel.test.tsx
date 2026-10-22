@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import BotsPanel from './BotsPanel';
 
@@ -42,21 +42,30 @@ jest.mock('../../../../../../hoc/LimitWrapper', () => ({
   ),
 }));
 
+const mockBotsListPanel = jest.fn();
+
 jest.mock('./BotsListPanel', () => ({
   __esModule: true,
-  default: ({
-    onNavigate,
-  }: {
+  default: (props: {
+    refreshKey?: number;
     onNavigate: (view: { type: string; fqn: string; name: string }) => void;
-  }) => (
-    <button
-      data-testid="bots-list-panel-mock"
-      onClick={() =>
-        onNavigate({ type: 'detail', fqn: 'my bot/100%', name: 'my bot/100%' })
-      }>
-      open-bot
-    </button>
-  ),
+  }) => {
+    mockBotsListPanel(props);
+
+    return (
+      <button
+        data-testid="bots-list-panel-mock"
+        onClick={() =>
+          props.onNavigate({
+            type: 'detail',
+            fqn: 'my bot/100%',
+            name: 'my bot/100%',
+          })
+        }>
+        open-bot
+      </button>
+    );
+  },
 }));
 
 jest.mock('./BotAddForm', () => ({
@@ -117,5 +126,24 @@ describe('BotsPanel', () => {
     fireEvent.click(screen.getByTestId('bots-list-panel-mock'));
 
     expect(mockSetHash).toHaveBeenCalledWith('bots', 'my%20bot%2F100%25');
+  });
+
+  it('does not reload the bots list when the Settings crumb is clicked', () => {
+    render(<BotsPanel onHeaderChange={mockOnHeaderChange} />);
+    const { onBreadcrumbAction } =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+    const refreshKeyBefore =
+      mockBotsListPanel.mock.calls[mockBotsListPanel.mock.calls.length - 1][0]
+        .refreshKey;
+
+    act(() => onBreadcrumbAction('settings'));
+
+    expect(mockSetHash).not.toHaveBeenCalled();
+    expect(
+      mockBotsListPanel.mock.calls[mockBotsListPanel.mock.calls.length - 1][0]
+        .refreshKey
+    ).toBe(refreshKeyBefore);
   });
 });
