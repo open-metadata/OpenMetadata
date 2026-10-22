@@ -5221,9 +5221,13 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             creator.user().getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
 
     for (Task suggestion : List.of(creator.openSuggestion(), creator.closedSuggestion())) {
-      assertThrows(
-          ApiException.class,
-          () -> SdkClients.adminClient().tasks().get(suggestion.getId().toString()),
+      ApiException notFound =
+          assertThrows(
+              ApiException.class,
+              () -> SdkClients.adminClient().tasks().get(suggestion.getId().toString()));
+      assertEquals(
+          404,
+          notFound.getStatusCode(),
           "The deleted creator's suggestion " + suggestion.getName() + " should be removed");
     }
     Task resolvedRequest =

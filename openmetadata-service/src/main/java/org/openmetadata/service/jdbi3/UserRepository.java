@@ -1686,6 +1686,7 @@ public class UserRepository extends EntityRepository<User> {
       userPreferencesRepository.delete(entity.getId());
       // A soft delete can be restored, so the user's tasks must survive it. A permanent delete
       // removes only the suggestions they created; their other tasks stay.
+      // ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
       deleteSuggestionTasksForUser(entity);
     }
 
