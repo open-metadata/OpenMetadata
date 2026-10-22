@@ -68,7 +68,7 @@ describe('ActivityThreadPanel', () => {
 
     expect(await screen.findByText('label.activity-feed')).toBeVisible();
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByTestId('closeDrawer'));
 
     expect(onCancel).toHaveBeenCalled();
   });

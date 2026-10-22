@@ -66,7 +66,7 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           onCancel?.();
         }
       }}>
-      <SlideoutMenu.Header onClose={onCancel}>
+      <SlideoutMenu.Header closeButtonTestId="closeDrawer" onClose={onCancel}>
         <Typography size="text-lg" weight="semibold">
           {t('label.activity-feed')}
         </Typography>
