@@ -85,7 +85,7 @@ const TaskFormLayout = <T extends FieldValues>({
             <Card.Header
               title={t('label.task-entity', { entity: t('label.details') })}
             />
-            <Card.Content className="tw:flex tw:flex-col tw:gap-6 tw:py-6">
+            <Card.Content className="tw:flex tw:flex-col tw:gap-6">
               {children}
             </Card.Content>
             <Card.Footer>
