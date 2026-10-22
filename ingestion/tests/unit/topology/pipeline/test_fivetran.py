@@ -30,6 +30,9 @@ from metadata.generated.schema.entity.data.pipeline import (
 )
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
+    FivetranConnection,
+)
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
     PipelineService,
@@ -340,6 +343,35 @@ class TestFivetranSource:
     def test_pipeline_list(self, fivetran_source):
         source, _ = fivetran_source
         assert list(source.get_pipelines_list())[0] == EXPECTED_FIVETRAN_DETAILS  # noqa: RUF015
+
+    def test_pipeline_list_carries_the_platform_connection_schema(self, fivetran_source):
+        source, client = fivetran_source
+        client.list_group_connectors.return_value = [
+            mock_data["source"],
+            {"id": "untruth_abrogation", "service": "fivetran_log", "schema": "acme_ops_audit_logs"},
+        ]
+
+        details = list(source.get_pipelines_list())
+
+        assert len(details) == 2
+        assert {detail.log_schema for detail in details} == {"acme_ops_audit_logs"}
+
+    def test_pipeline_list_prefers_the_configured_log_schema(self, fivetran_source):
+        source, client = fivetran_source
+        client.list_group_connectors.return_value = [
+            mock_data["source"],
+            {"id": "untruth_abrogation", "service": "fivetran_log", "schema": "acme_ops_audit_logs"},
+        ]
+        source.service_connection = FivetranConnection.model_validate(
+            {
+                **MOCK_FIVETRAN_CONFIG["source"]["serviceConnection"]["config"],
+                "logSchema": "my_own_schema",
+            }
+        )
+
+        details = list(source.get_pipelines_list())
+
+        assert {detail.log_schema for detail in details} == {"my_own_schema"}
 
     def test_pipeline_name(self, fivetran_source):
         source, _ = fivetran_source
