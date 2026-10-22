@@ -87,28 +87,28 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
       />
       <Box
         align="center"
-        className="tw:relative tw:h-full tw:gap-22.5 tw:overflow-y-auto tw:px-6 tw:py-12 tw:text-center"
+        className="tw:relative tw:h-full tw:gap-15 tw:overflow-y-auto tw:px-6 tw:py-12 tw:text-center"
         direction="col"
         justify="center">
         <img
           alt={greeting}
-          className="tw:w-full tw:max-w-130"
+          className="tw:w-full tw:max-w-[570px]"
           data-testid="welcome-screen-img"
           src={brandClassBase.getWelcomeScreenImg(theme)}
         />
-        <Box align="center" direction="col" gap={12}>
-          <Box align="center" direction="col" gap={6}>
-            <div className="tw:text-display-md tw:text-primary">
-              <p className="tw:m-0">{`${greeting} 👋`}</p>
-              <h1 className="tw:m-0 tw:mt-2.5 tw:text-display-md tw:font-bold tw:text-primary">
+        <Box align="center" direction="col" gap={10}>
+          <Box align="center" direction="col" gap={3}>
+            <div className="tw:text-primary">
+              <p className="tw:m-0 tw:text-[26px] tw:leading-[50px] tw:font-medium">{`${greeting} 👋`}</p>
+              <h1 className="tw:m-0 tw:mt-5 tw:text-display-sm tw:font-normal tw:text-primary">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
-                  renderElement={<span className="tw:text-utility-brand-600" />}
+                  renderElement={<span />}
                   values={{ platform: brandClassBase.getPlatformName() }}
                 />
               </h1>
             </div>
-            <Typography as="p" className="tw:text-tertiary" size="text-xl">
+            <Typography as="p" className="tw:text-tertiary" size="text-md">
               {t('message.welcome-screen-message')}
             </Typography>
           </Box>
