@@ -40,6 +40,7 @@ class OntologySqlMigrationParityTest {
           "ontology_change_set_entity",
           "ontology_annex",
           "ontology_edit_lock",
+          "ontology_concept_binding",
           "rdf_inference_rule");
 
   @Test
