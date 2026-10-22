@@ -92,6 +92,18 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
   );
 };
 
+// Until the full profile lands, userData is the store's copy without
+// `extension`, and a save then would replace every other value.
+const LoadedCustomPropertiesSection: React.FC<
+  Pick<
+    ProfileDetailsPanelProps,
+    'isProfileLoading' | 'updateUserDetails' | 'userData'
+  >
+> = ({ isProfileLoading, updateUserDetails, userData }) =>
+  isProfileLoading ? null : (
+    <UserCustomPropertiesSection user={userData} onUpdate={updateUserDetails} />
+  );
+
 /**
  * Content for the `profile` nav item: a PROFILE section (photo, preferred name,
  * email) and an IDENTITY & ACCESS section (persona, default persona, domains,
@@ -116,6 +128,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
     isSelf,
     isAdmin: isAdminUser,
     isDeleted: userData.deleted,
+    isBot: userData.isBot,
   });
   const visibleEmail =
     userData.email && !isMaskedEmail(userData.email) ? userData.email : '';
@@ -205,9 +218,10 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
       </SettingsSection>
 
       {showCustomProperties && (
-        <UserCustomPropertiesSection
-          user={userData}
-          onUpdate={updateUserDetails}
+        <LoadedCustomPropertiesSection
+          isProfileLoading={isProfileLoading}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
         />
       )}
     </Box>

@@ -139,7 +139,6 @@ const buildDeleteAction = (
 
 const buildTabs = (
   t: TranslateFn,
-  user: User,
   activeTab: UserDetailTab,
   counts: TabCounts,
   hiddenTabs: ReadonlySet<UserDetailTab>,
@@ -275,7 +274,7 @@ export const useMembersUserDetailHeader = ({
     onSetHeader({
       ...buildUserIdentityHeader(t, user, isSelf),
       actions: canManage ? buildDeleteAction(t, user, onDelete) : undefined,
-      tabs: buildTabs(t, user, activeTab, counts, hiddenTabs, onTabChange),
+      tabs: buildTabs(t, activeTab, counts, hiddenTabs, onTabChange),
     });
   }, [
     user,

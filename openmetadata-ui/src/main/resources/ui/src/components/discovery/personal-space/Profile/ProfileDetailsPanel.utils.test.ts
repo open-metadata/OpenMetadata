@@ -15,19 +15,17 @@ import { AuthProvider } from '../../../../generated/settings/settings';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 describe('canUserChangePassword', () => {
-  it.each([AuthProvider.Basic, AuthProvider.LDAP])(
-    'should allow the signed-in user on the %s provider',
-    (provider) => {
-      expect(canUserChangePassword({ provider, isSelf: true })).toBe(true);
-    }
-  );
+  it('should allow the signed-in user on the Basic provider', () => {
+    expect(
+      canUserChangePassword({ provider: AuthProvider.Basic, isSelf: true })
+    ).toBe(true);
+  });
 
   // Derived from the enum rather than hand-listed, so a provider added to
   // AuthProvider later is asserted against instead of silently untested.
   it.each(
     Object.values(AuthProvider).filter(
-      (provider) =>
-        provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
+      (provider) => provider !== AuthProvider.Basic
     )
   )('should not allow an externally managed credential (%s)', (provider) => {
     expect(canUserChangePassword({ provider, isSelf: true })).toBe(false);
@@ -56,7 +54,7 @@ describe('canUserChangePassword', () => {
   it('should not allow an admin on a deleted user', () => {
     expect(
       canUserChangePassword({
-        provider: AuthProvider.LDAP,
+        provider: AuthProvider.Basic,
         isSelf: false,
         isAdmin: true,
         isDeleted: true,
@@ -70,6 +68,17 @@ describe('canUserChangePassword', () => {
         provider: AuthProvider.Basic,
         isSelf: true,
         isDeleted: true,
+      })
+    ).toBe(false);
+  });
+
+  it('should not allow a bot, which signs in with a JWT', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.Basic,
+        isSelf: false,
+        isAdmin: true,
+        isBot: true,
       })
     ).toBe(false);
   });

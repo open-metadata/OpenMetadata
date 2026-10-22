@@ -191,7 +191,7 @@ describe('ProfileDetailsPanel', () => {
     mockUseAuth.mockReturnValue({ isAdminUser: true });
     mockUseApplicationStore.mockReturnValue({
       currentUser: { name: 'admin' },
-      authConfig: { provider: AuthProvider.LDAP },
+      authConfig: { provider: AuthProvider.Basic },
     });
     renderPanel();
 
@@ -223,6 +223,35 @@ describe('ProfileDetailsPanel', () => {
     expect(
       screen.getByTestId('user-custom-properties-section')
     ).toBeInTheDocument();
+  });
+
+  it('holds the custom properties section back until the full profile loads', () => {
+    // Before then userData is the store's copy without `extension`.
+    renderPanel({}, true, true);
+
+    expect(
+      screen.queryByTestId('user-custom-properties-section')
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      'an LDAP deployment, which cannot change passwords',
+      AuthProvider.LDAP,
+      {},
+    ],
+    ['a bot, which signs in with a JWT', AuthProvider.Basic, { isBot: true }],
+  ])('offers no password change on %s', (_label, provider, overrides) => {
+    mockUseAuth.mockReturnValue({ isAdminUser: true });
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { name: 'admin' },
+      authConfig: { provider },
+    });
+    renderPanel(overrides);
+
+    expect(
+      screen.queryByTestId('profile-section-security')
+    ).not.toBeInTheDocument();
   });
 
   it('lets you edit your own preferred name and saves the trimmed draft', () => {
