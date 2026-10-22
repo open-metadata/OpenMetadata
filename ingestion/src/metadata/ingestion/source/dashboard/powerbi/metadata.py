@@ -446,16 +446,14 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dashboards/{dashboard_id}?experience=power-bi"
         )
 
-    def _get_report_pages(self, workspace_id: str, report_id: str) -> list[ReportPage]:
+    def _get_report_pages(self, workspace_id: str, report_id: str) -> list[ReportPage] | None:
         """
-        Fetch a report's pages once per workspace: the chart stage ingests them as charts
-        and the dashboard stage builds the report url from the same response
+        Read a report's pages once per workspace, None when they cannot be read: the chart stage
+        ingests them as charts and the dashboard stage builds the report url from the same response
         """
-        pages = self.state.get_report_pages(report_id)
-        if pages is None:
-            pages = self.client.api_client.fetch_report_pages(workspace_id, report_id)
-            self.state.cache_report_pages(report_id, pages)
-        return pages
+        if not self.state.has_cached_report_pages(report_id):
+            self.state.cache_report_pages(report_id, self.client.api_client.fetch_report_pages(workspace_id, report_id))
+        return self.state.get_report_pages(report_id)
 
     def _get_report_url(self, workspace_id: str, dashboard_details: PowerBIReport, page_name: str | None = None) -> str:
         """
@@ -564,17 +562,50 @@ class PowerbiSource(DashboardServiceSource):
         FQNs of the charts the chart stage recorded under a dashboard or report
         """
         return [
-            FullyQualifiedEntityName(chart_fqn)
-            for chart_name in self.state.pop_dashboard_chart_ids(dashboard_id)
-            if (
-                chart_fqn := fqn.build(
+            FullyQualifiedEntityName(
+                fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for Chart
                     self.metadata,
                     entity_type=Chart,
                     service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
                     chart_name=chart_name,
                 )
             )
+            for chart_name in self.state.pop_dashboard_chart_ids(dashboard_id)
         ]
+
+    def _keep_stored_report_charts(self, report: PowerBIReport) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Keep the charts the server already lists under a report whose pages cannot be read this run,
+        so a failed read neither soft-deletes them (markDeletedCharts) nor empties the report's charts
+        """
+        try:
+            report_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                dashboard_name=report.id,
+            )
+            stored_report = self.metadata.get_by_name(entity=Dashboard, fqn=report_fqn, fields=["charts"])  # pyright: ignore[reportArgumentType]
+            stored_charts = stored_report.charts.root if stored_report and stored_report.charts else []
+            for chart in stored_charts:
+                if chart.name and chart.fullyQualifiedName:
+                    self.state.add_dashboard_chart(report.id, chart.name)
+                    self.chart_source_state.add(chart.fullyQualifiedName)
+            if stored_charts:
+                logger.warning(
+                    "Could not read the pages of PowerBI report [%s], keeping its %s ingested charts",
+                    report.id,
+                    len(stored_charts),
+                )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=report.name or report.id,
+                    error=f"Error keeping the charts of report [{report.id}] whose pages could not be read: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
 
     def _yield_chart(
         self, dashboard_id: str, chart_name: str, display_name: str, source_url: str
@@ -627,7 +658,11 @@ class PowerbiSource(DashboardServiceSource):
                         ),
                     )
             elif isinstance(dashboard_details, PowerBIReport):
-                for page in self._get_report_pages(workspace_id, dashboard_details.id):
+                pages = self._get_report_pages(workspace_id, dashboard_details.id)
+                if pages is None:
+                    yield from self._keep_stored_report_charts(dashboard_details)
+                    continue
+                for page in pages:
                     if not page.name:
                         logger.warning("Skipping a page without a name in PowerBI report [%s]", dashboard_details.id)
                         continue

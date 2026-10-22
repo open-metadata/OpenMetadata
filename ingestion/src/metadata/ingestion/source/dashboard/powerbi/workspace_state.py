@@ -52,7 +52,7 @@ class WorkspaceState:
         self._filtered_dashboards: list[DashboardLike] = []
         self._filtered_datamodels: list[DataModelLike] | None = None
         self._dashboard_charts: dict[str, list[str]] = {}
-        self._report_pages: dict[str, list[ReportPage]] = {}
+        self._report_pages: dict[str, list[ReportPage] | None] = {}
 
     def enter(self, workspace: Group) -> None:
         """Activate `workspace` and build its per-workspace caches.
@@ -143,10 +143,14 @@ class WorkspaceState:
 
     # --- Report pages: write-once per report, read by the chart and dashboard stages ---
 
-    def cache_report_pages(self, report_id: str, pages: list[ReportPage]) -> None:
-        """Memoise a report's pages so the current workspace calls the pages API once per report."""
+    def cache_report_pages(self, report_id: str, pages: list[ReportPage] | None) -> None:
+        """Memoise a report's pages, `None` when they could not be read, so the workspace reads them once."""
         self._report_pages[report_id] = pages
 
+    def has_cached_report_pages(self, report_id: str) -> bool:
+        """Whether the current workspace already read the report's pages, successfully or not."""
+        return report_id in self._report_pages
+
     def get_report_pages(self, report_id: str) -> list[ReportPage] | None:
-        """Pages cached for a report in the current workspace; `None` until fetched."""
+        """Pages cached for a report in the current workspace; `None` when the read failed or never ran."""
         return self._report_pages.get(report_id)

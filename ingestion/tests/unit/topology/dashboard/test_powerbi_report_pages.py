@@ -9,17 +9,23 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-PowerBI report pages -> Chart entities, driven through the real producer, chart stage and dashboard stage.
+PowerBI report pages and dashboard tiles -> Chart entities, driven through the real producer, chart stage
+and dashboard stage.
 """
 
 import copy
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient, PowerBiClient
@@ -75,12 +81,13 @@ def make_source():
     """A real source whose Power BI REST GET answers from `responses`, keyed by path.
 
     A missing path answers None, which is what the REST client returns for an error status.
+    `stored_charts` maps a report id to the chart names the server already lists under it.
     """
 
     @patch("metadata.ingestion.source.dashboard.powerbi.client.msal")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def build(create_connection, test_connection, _msal, responses: dict, **source_config):
+    def build(create_connection, test_connection, _msal, responses: dict, stored_charts=None, **source_config):
         create_connection.return_value.client = False
         test_connection.return_value = False
         config = copy.deepcopy(CONFIG)
@@ -90,6 +97,8 @@ def make_source():
             config["source"], OpenMetadata(workflow_config.workflowConfig.openMetadataServerConfig)
         )
         source.context.get().__dict__["dashboard_service"] = SERVICE
+        # A class attribute on the base source, so every instance in the process would share it.
+        source.chart_source_state = set()
 
         def get(path, *_, **__):
             response = responses.get(path)
@@ -101,9 +110,31 @@ def make_source():
         api_client.client = MagicMock()
         api_client.client.get.side_effect = get
         source.client = PowerBiClient(api_client=api_client, file_client=None)
+        source.metadata.get_by_name = lambda entity, fqn, fields=None, **_: stored_report(fqn, stored_charts or {})
         return source
 
     return build
+
+
+def stored_report(report_fqn: str, stored_charts: dict) -> Dashboard | None:
+    """The report the server holds for `report_fqn`, as `get_by_name(Dashboard, fields=["charts"])` returns it."""
+    report_id = report_fqn.rsplit(".", 1)[-1]
+    charts = stored_charts.get(report_id)
+    if isinstance(charts, Exception):
+        raise charts
+    if charts is None:
+        return None
+    return Dashboard(
+        id=uuid.uuid4(),
+        name=report_id,
+        service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
+        charts=EntityReferenceList(
+            root=[
+                EntityReference(id=uuid.uuid4(), type="chart", name=name, fullyQualifiedName=f"{SERVICE}.{name}")
+                for name in charts
+            ]
+        ),
+    )
 
 
 def requested_paths(source: PowerbiSource) -> list[str]:
@@ -111,9 +142,12 @@ def requested_paths(source: PowerbiSource) -> list[str]:
 
 
 def ingest(
-    source: PowerbiSource, *items: PowerBIReport | PowerBIDashboard
+    source: PowerbiSource, *items: PowerBIReport | PowerBIDashboard, errors: list[StackTraceError] | None = None
 ) -> tuple[dict[str, CreateChartRequest], dict[str, CreateDashboardRequest]]:
-    """Run one workspace through the real producer, then its chart and dashboard stages in topology order."""
+    """Run one workspace through the real producer, then its chart and dashboard stages in topology order.
+
+    Chart errors are appended to `errors` when it is given.
+    """
     workspace = Group(
         id=WORKSPACE_ID,
         name="Sales",
@@ -123,11 +157,10 @@ def ingest(
     source._prepare_workspace_data = lambda: iter([workspace])
     charts, dashboards = {}, {}
     for produced in source.get_dashboard():
-        charts = {
-            model_str(either.right.name): either.right
-            for either in source.yield_dashboard_chart(produced)
-            if either.right is not None
-        }
+        chart_results = list(source.yield_dashboard_chart(produced))
+        charts = {model_str(either.right.name): either.right for either in chart_results if either.right is not None}
+        if errors is not None:
+            errors.extend(either.left for either in chart_results if either.left is not None)
         dashboards = {
             model_str(either.right.name): either.right
             for either in source.yield_dashboard(produced)
@@ -155,6 +188,7 @@ def test_report_pages_become_charts_of_the_report(make_source):
         f"{SERVICE}.report-a_ReportSection",
         f"{SERVICE}.report-a_ReportSection1",
     ]
+    assert source.chart_source_state == {f"{SERVICE}.report-a_ReportSection", f"{SERVICE}.report-a_ReportSection1"}
 
 
 def test_report_url_is_built_from_the_one_pages_call(make_source):
@@ -213,20 +247,62 @@ def test_page_without_a_name_is_skipped(make_source):
     assert chart_fqns(dashboards["report-a"]) == [f"{SERVICE}.report-a_ReportSection1"]
 
 
-@pytest.mark.parametrize(
-    "response",
-    [None, ConnectionError("connection reset"), pages_body()],
-    ids=["error-status", "network-error", "no-pages"],
-)
-def test_report_without_readable_pages_has_no_charts_and_a_page_less_url(make_source, response):
-    source = make_source(responses={pages_path("report-a"): response})
+def test_report_without_pages_lets_its_stored_charts_go(make_source):
+    """An answer with no pages is the report's real state, so markDeletedCharts may remove its old page charts."""
+    source = make_source(
+        responses={pages_path("report-a"): pages_body()}, stored_charts={"report-a": ["report-a_ReportSection"]}
+    )
 
     charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"))
 
     assert charts == {}
     assert chart_fqns(dashboards["report-a"]) == []
+    assert source.chart_source_state == set()
     assert model_str(dashboards["report-a"].sourceUrl) == f"{WORKSPACE_URL}/reports/report-a?experience=power-bi"
     assert requested_paths(source) == [pages_path("report-a")]
+
+
+@pytest.mark.parametrize("response", [None, ConnectionError("connection reset")], ids=["error-status", "network-error"])
+def test_failed_pages_read_keeps_the_report_stored_charts(make_source, response):
+    """Without the pages, the run must neither soft-delete the report's page charts nor empty its charts."""
+    stored = ["report-a_ReportSection", "report-a_ReportSection1"]
+    source = make_source(responses={pages_path("report-a"): response}, stored_charts={"report-a": stored})
+
+    charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"))
+
+    assert charts == {}
+    assert chart_fqns(dashboards["report-a"]) == [f"{SERVICE}.{name}" for name in stored]
+    assert source.chart_source_state == {f"{SERVICE}.{name}" for name in stored}
+    assert model_str(dashboards["report-a"].sourceUrl) == f"{WORKSPACE_URL}/reports/report-a?experience=power-bi"
+    assert requested_paths(source) == [pages_path("report-a")]
+
+
+def test_failed_pages_read_of_a_report_not_ingested_yet_keeps_nothing(make_source):
+    source = make_source(responses={})
+
+    charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"))
+
+    assert charts == {}
+    assert chart_fqns(dashboards["report-a"]) == []
+    assert source.chart_source_state == set()
+
+
+def test_unreadable_stored_charts_are_reported_and_the_next_report_still_ingested(make_source):
+    source = make_source(
+        responses={pages_path("report-b"): pages_body(("ReportSection", "Overview"))},
+        stored_charts={"report-a": ConnectionError("server unreachable")},
+    )
+    errors = []
+
+    charts, _ = ingest(
+        source,
+        PowerBIReport(id="report-a", name="Report A"),
+        PowerBIReport(id="report-b", name="Report B"),
+        errors=errors,
+    )
+
+    assert [error.name for error in errors] == ["Report A"]
+    assert list(charts) == ["report-b_ReportSection"]
 
 
 def test_paginated_report_pages_use_the_rdl_prefix(make_source):
@@ -250,6 +326,36 @@ def test_filtered_out_report_fetches_no_pages(make_source):
     assert charts == {}
     assert dashboards == {}
     assert requested_paths(source) == []
+
+
+def test_failed_page_chart_is_reported_and_left_out_of_the_report(make_source):
+    """The server resolves every chart a report lists, so listing a chart it never got fails the report."""
+    too_long_page_name = "p" * 256
+    source = make_source(
+        responses={pages_path("report-a"): pages_body((too_long_page_name, "Broken"), ("ReportSection1", "Details"))}
+    )
+    errors = []
+
+    charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"), errors=errors)
+
+    assert [error.name for error in errors] == ["Broken"]
+    assert list(charts) == ["report-a_ReportSection1"]
+    assert chart_fqns(dashboards["report-a"]) == [f"{SERVICE}.report-a_ReportSection1"]
+
+
+def test_failed_tile_without_a_title_is_reported_by_its_id(make_source):
+    too_long_tile_id = "t" * 257
+    source = make_source(responses={})
+    dashboard = PowerBIDashboard(
+        id="dash-a", displayName="Executive", tiles=[Tile(id=too_long_tile_id), Tile(id="tile-b", title="Revenue")]
+    )
+    errors = []
+
+    charts, dashboards = ingest(source, dashboard, errors=errors)
+
+    assert [error.name for error in errors] == [too_long_tile_id]
+    assert list(charts) == ["tile-b"]
+    assert chart_fqns(dashboards["dash-a"]) == [f"{SERVICE}.tile-b"]
 
 
 def test_dashboard_tiles_and_report_pages_in_one_workspace(make_source):

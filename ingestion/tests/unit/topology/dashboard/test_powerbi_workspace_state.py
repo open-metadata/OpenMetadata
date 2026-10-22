@@ -101,17 +101,23 @@ def test_dataflow_exports_cleared_on_exit(state, ws_a):
 
 
 def test_report_pages_cached_per_workspace(state, ws_a, ws_b):
-    """A report with no pages stays cached as [], apart from one never fetched (None)."""
+    """No pages ([]) and a failed read (None) both count as read, so neither is fetched again."""
     state.enter(ws_a)
     pages = [ReportPage(name="ReportSection", displayName="Overview")]
     state.cache_report_pages("r_a1", pages)
     state.cache_report_pages("r_a2", [])
+    state.cache_report_pages("r_a3", None)
     assert state.get_report_pages("r_a1") == pages
     assert state.get_report_pages("r_a2") == []
-    assert state.get_report_pages("never_fetched") is None
+    assert [state.has_cached_report_pages(report_id) for report_id in ("r_a1", "r_a2", "r_a3", "never_read")] == [
+        True,
+        True,
+        True,
+        False,
+    ]
     state.exit()
     state.enter(ws_b)
-    assert state.get_report_pages("r_a1") is None
+    assert state.has_cached_report_pages("r_a1") is False
 
 
 def test_filtered_datamodels_lazy_memo_lifecycle(state, ws_a):
