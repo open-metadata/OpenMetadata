@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
+import {
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import type { CSSProperties } from 'react';
 import { SEMICOLON_SPLITTER } from '../../../../constants/regex.constants';
@@ -19,21 +23,25 @@ import Fqn from '../../../../utils/Fqn';
 import { removeOuterEscapes } from '../../../../utils/StringUtils';
 import './csv-cell-preview.less';
 
+// The same chips tags and glossary terms use everywhere else in the app.
+const TAG_CHIP_BY_COLUMN: Record<
+  string,
+  typeof ClassificationTag | typeof GlossaryTag
+> = {
+  tags: ClassificationTag,
+  glossaryTerms: GlossaryTag,
+  relatedTerms: GlossaryTag,
+};
+
 const CHIP_VARIANT_BY_COLUMN: Record<string, string> = {
-  tags: 'tag',
-  glossaryTerms: 'glossary',
   tiers: 'tier',
-  relatedTerms: 'glossary',
   domains: 'domain',
   dataProducts: 'product',
   extension: 'prop',
   relatedMetrics: 'metric',
 };
 
-// Tags have no fallback: a fixed hex can't follow the theme, so .csv-chip-tag colors them.
 const CHIP_FALLBACK_COLORS: Record<string, string> = {
-  glossaryTerms: '#1570ef',
-  relatedTerms: '#1570ef',
   domains: '#1570ef',
   dataProducts: '#1570ef',
   tiers: '#5925dc',
@@ -183,6 +191,25 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
             </Tooltip>
           );
         })}
+      </div>
+    );
+  } else if (items.length && TAG_CHIP_BY_COLUMN[column]) {
+    const TagChip = TAG_CHIP_BY_COLUMN[column];
+    // Some grid columns use a monospace cell font; tag chips are sans everywhere else.
+    content = (
+      <div className="csv-cell-chips tw:font-body">
+        {items.map((item) => (
+          <TagChip
+            className={`csv-chip-${column === 'tags' ? 'tag' : 'glossary'}`}
+            color={itemStyles?.[item]}
+            key={item}
+            label={
+              column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item
+            }
+            size="sm"
+            tooltip={item}
+          />
+        ))}
       </div>
     );
   } else if (items.length) {

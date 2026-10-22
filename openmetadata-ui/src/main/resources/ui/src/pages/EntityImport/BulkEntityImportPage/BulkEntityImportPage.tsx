@@ -326,6 +326,11 @@ const BulkEntityImportPage = () => {
     [t]
   );
   const [validationData, setValidationData] = useState<CSVImportResult>();
+  // What the last validation was given, so its result rows map back to grid rows.
+  const [validatedSubmission, setValidatedSubmission] = useState<{
+    csv: string;
+    rowIds?: string[];
+  }>();
   const [columns, setColumns] = useState<Column<Record<string, string>>[]>([]);
   const [dataSource, setDataSource] = useState<Record<string, string>[]>([]);
   const navigate = useNavigate();
@@ -863,6 +868,9 @@ const BulkEntityImportPage = () => {
         entityType,
       };
 
+      // Grid row ids are the upload positions, so no id list is needed.
+      setValidatedSubmission({ csv: selectedCsvFile.content });
+
       const initialLoadJobData: CSVImportJobType = {
         type: 'initialLoad',
         initialResult: selectedCsvFile.content,
@@ -918,10 +926,17 @@ const BulkEntityImportPage = () => {
         return;
       }
 
+      const submittedRows = isBulkEdit
+        ? bulkEditChangeSummary.changedDataSource
+        : dataSource;
       const csvData = getCSVStringFromColumnsAndDataSource(
         columns,
-        isBulkEdit ? bulkEditChangeSummary.changedDataSource : dataSource
+        submittedRows
       );
+      setValidatedSubmission({
+        csv: csvData,
+        rowIds: submittedRows.map((row) => row.id),
+      });
       const isMetricImportApply =
         isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE;
 
@@ -1318,8 +1333,13 @@ const BulkEntityImportPage = () => {
   */
   // The grid holds the uploaded CSV, which has no status column.
   const failedRowIds = useMemo(
-    () => getFailedImportRowIds(validationData?.importResultsCsv),
-    [validationData?.importResultsCsv]
+    () =>
+      getFailedImportRowIds({
+        importResultsCsv: validationData?.importResultsCsv,
+        submittedCsv: validatedSubmission?.csv,
+        submittedRowIds: validatedSubmission?.rowIds,
+      }),
+    [validationData?.importResultsCsv, validatedSubmission]
   );
 
   const editableDataSource = useMemo(() => {

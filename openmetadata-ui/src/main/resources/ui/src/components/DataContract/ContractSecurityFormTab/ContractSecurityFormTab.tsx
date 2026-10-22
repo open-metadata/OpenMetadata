@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonUtility,
   Divider,
@@ -250,7 +251,7 @@ const ContractPolicyCard = ({
             <Typography className="consumer-form-item-title">
               {accessPolicy || t('label.untitled')}
             </Typography>
-            <div className="tw:flex tw:items-center tw:gap-3">
+            <Box align="center" gap={3}>
               <ButtonUtility
                 className="edit-expand-button"
                 color="secondary"
@@ -258,18 +259,17 @@ const ContractPolicyCard = ({
                 icon={Edit01}
                 size="sm"
                 tooltip={t('label.edit')}
-                onPress={() => onEdit(policyIndex)}
+                onClick={() => onEdit(policyIndex)}
               />
               <ButtonUtility
-                className="delete-expand-button"
                 color="secondary-destructive"
                 data-testid={`delete-policy-${policyIndex}`}
                 icon={Trash01}
                 size="sm"
                 tooltip={t('label.delete')}
-                onPress={() => onDelete(policyIndex)}
+                onClick={() => onDelete(policyIndex)}
               />
-            </div>
+            </Box>
           </div>
         ),
       }}

@@ -2590,7 +2590,12 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   closeDrawerRef.current = closeDrawer;
-  bulkAssetsNotificationRef.current = handleBulkAssetsNotification;
+  // The replayed early messages are fire-and-forget, so a rejection is surfaced here.
+  bulkAssetsNotificationRef.current = (message: string) => {
+    handleBulkAssetsNotification(message).catch(() =>
+      showErrorToast(t('server.entity-updating-error'))
+    );
+  };
   openDrawerRef.current = openDrawer;
 
   // Automatically turn off "View Selected" when selection is cleared

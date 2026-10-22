@@ -144,7 +144,7 @@ export const ContractSemanticFormTab: React.FC<{
 
   const renderCardTitle = (index: number) => (
     <div className="semantic-form-item-title-container">
-      <div className="tw:flex tw:items-center tw:gap-6">
+      <Box align="center" gap={6}>
         <FormField control={form.control} name={`semantics.${index}.enabled`}>
           {({ field }) => (
             <Toggle
@@ -156,16 +156,16 @@ export const ContractSemanticFormTab: React.FC<{
             />
           )}
         </FormField>
-        <div className="tw:flex tw:min-w-0 tw:flex-col">
+        <Box className="tw:min-w-0" direction="col">
           <Typography className="semantic-form-item-title">
             {semantics?.[index]?.name || t('label.untitled')}
           </Typography>
           <Typography ellipsis className="semantic-form-item-description">
             {semantics?.[index]?.description || t('label.no-description')}
           </Typography>
-        </div>
-      </div>
-      <div className="tw:flex tw:items-center tw:gap-3">
+        </Box>
+      </Box>
+      <Box align="center" gap={3}>
         <ButtonUtility
           className="edit-expand-button"
           color="secondary"
@@ -173,18 +173,17 @@ export const ContractSemanticFormTab: React.FC<{
           icon={Edit01}
           size="sm"
           tooltip={t('label.edit')}
-          onPress={() => setEditingKey(index)}
+          onClick={() => setEditingKey(index)}
         />
         <ButtonUtility
-          className="delete-expand-button"
           color="secondary-destructive"
           data-testid={`delete-semantic-${index}`}
           icon={Trash01}
           size="sm"
           tooltip={t('label.delete')}
-          onPress={() => handleDeleteSemantic(index)}
+          onClick={() => handleDeleteSemantic(index)}
         />
-      </div>
+      </Box>
     </div>
   );
 
