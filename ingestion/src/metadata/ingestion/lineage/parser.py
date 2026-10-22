@@ -494,9 +494,9 @@ class LineageParser:
         ):
             return None
 
-        switch = TSQL_SWITCH_STATEMENT.match(clean_query.strip())
-        if switch:
-            clean_query = f"INSERT INTO {switch['target']} SELECT * FROM {switch['source']}"
+        clean_query = TSQL_SWITCH_STATEMENT.sub(
+            lambda switch: f"INSERT INTO {switch['target']} SELECT * FROM {switch['source']}", clean_query
+        )
 
         # Filter out CREATE TRIGGER statements - they don't provide lineage information
         if insensitive_match(clean_query, r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)?TRIGGER\s+"):

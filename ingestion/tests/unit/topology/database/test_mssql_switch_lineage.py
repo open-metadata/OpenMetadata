@@ -89,6 +89,17 @@ class TestSwitchParsing:
         assert _table_names(parser.source_tables) == {source}
         assert _table_names(parser.target_tables) == {target}
 
+    def test_switch_keeps_the_lineage_of_the_rest_of_its_batch(self):
+        parser = LineageParser(
+            "ALTER TABLE fact SWITCH PARTITION 1 TO fact_archive; INSERT INTO fact SELECT * FROM staging",
+            Dialect.TSQL,
+        )
+
+        # staging -> fact -> fact_archive: an edge into and out of the intermediate table
+        assert _table_names(parser.source_tables) == {"staging"}
+        assert _table_names(parser.intermediate_tables) == {"fact"}
+        assert _table_names(parser.target_tables) == {"fact_archive"}
+
     def test_other_alter_table_statements_are_not_rewritten(self):
         query = "ALTER TABLE dbo.stage ADD loaded_at DATETIME"
 
