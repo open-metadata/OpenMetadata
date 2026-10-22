@@ -1,9 +1,9 @@
 # Memories become Draft glossary terms through the AI provider
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server); v5 2026-10-21 (preserve a pending derivation for edits during agent calls)
+- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-20 (organization-wide sharing; only bots mark automation terms and never decide them); v3 2026-10-20 (publishing vocabulary gives it independent access; discard stale proposals); v4 2026-10-20 (memory extraction's switches gate derivation; article anchors publish; the review queue pages on the server); v5 2026-10-21 (preserve a pending derivation for edits during agent calls); v6 2026-10-22 (proposals are reviewed in a Review tab, not a panel)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `ContextMemoryDerivationIT`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `PendingReviewPanel.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `MemoryGlossaryDerivationQueueTest`, `MemoryGlossaryDerivationJobHandlerTest`, `MemoryDerivationsTest`, `ContextMemoryDerivationIT`, `GlossaryTermAutomationDraftIT`, `MemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `GlossaryReviewTab.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models, ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension
 
 ## Context
@@ -90,3 +90,18 @@ means giving the built-in provider a deriver, not a new switch.
 Context Center no longer links memory-sourced Studio drafts (`?draft=`); native memory drafts are
 reviewed from Ontology Studio's memory review panel. This revises that part of
 ADR:2026-10-16-native-ontologies-share-studio-and-memory-review.
+
+## Amendment
+
+v6, 2026-10-22: proposals are reviewed in a **Review** tab on the glossary page, after Terms, and on
+a term's page while its child terms wait, rather than in a Pending review panel in the right
+column. The tab carries the pending count that the Terms tab used to show. It lists AI agents'
+and people's proposals grouped by parent, with a server-side search, a source filter, Load more
+instead of pages, and bulk approve or reject. Its detail pane shows the proposed term, the agent's
+evidence, the approval request's comments, and the decision. The tab is added after a persona's tab
+customization, so every persona reaches it without saving a new layout. The
+`KnowledgePanel.PendingReview` widget is removed; a layout that still names it renders nothing in
+its place. The terms table keeps marking AI and people proposals. The header no longer counts
+proposals and the glossary list no longer counts or explains them. An AI draft still has no
+approval request, because a bot's write never starts the workflow: the tab decides it on the term
+and a person's proposal through its request, as above.

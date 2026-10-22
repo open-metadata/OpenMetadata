@@ -23,13 +23,19 @@ const hasProvider = (
   (!provider || term.provider === provider) &&
   (!excludeProvider || term.provider !== excludeProvider);
 
+const matchesQuery = (term: GlossaryTerm, q?: string) =>
+  !q || term.name.toLowerCase().includes(q.toLowerCase());
+
 /** Answers term searches the way the server filters and pages them, over the terms a test holds. */
 export const searchTerms =
   (getTerms: () => GlossaryTerm[]) =>
   async (params: SearchGlossaryTermsParams) => {
     const { entityStatus, limit = 10, offset = 0 } = params;
     const matching = getTerms().filter(
-      (term) => hasStatus(term, entityStatus) && hasProvider(term, params)
+      (term) =>
+        hasStatus(term, entityStatus) &&
+        hasProvider(term, params) &&
+        matchesQuery(term, params.q)
     );
 
     return {

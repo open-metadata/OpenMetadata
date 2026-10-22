@@ -58,7 +58,7 @@ export interface ProposalCardProps {
   layout?: 'panel' | 'banner';
 }
 
-const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
+export const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   const { t } = useTranslation();
   const author = getProposalAuthor(proposal) ?? '';
 
@@ -106,7 +106,7 @@ const ProposalSummary = ({ proposal }: { proposal: GlossaryProposal }) => {
   );
 };
 
-const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
+export const AgentEvidence = ({ proposal }: { proposal: GlossaryProposal }) => {
   const { t } = useTranslation();
   const { derivation } = proposal;
   const confidence = getConfidencePercent(derivation);
@@ -170,7 +170,7 @@ interface ProposalActionsProps {
 }
 
 /** Approve, edit or reject; rejecting a person's proposal first asks why, for its request. */
-const ProposalActions = ({
+export const ProposalActions = ({
   proposal,
   isApproveWide,
   onDecide,
@@ -232,43 +232,61 @@ const ProposalActions = ({
     );
   }
 
-  return (
+  const approve = (
+    <Button
+      className={isApproveWide ? 'tw:flex-1' : undefined}
+      color="primary"
+      data-testid="approve-proposal"
+      iconLeading={Check}
+      isDisabled={isBusy}
+      isLoading={pendingDecision === EntityStatus.Approved}
+      key="approve"
+      size="sm"
+      onPress={() => decide(EntityStatus.Approved)}>
+      {t('label.approve')}
+    </Button>
+  );
+  const edit = proposal.source === 'ai' && onEdit && (
+    <Button
+      color="secondary"
+      data-testid="edit-proposal"
+      isDisabled={isBusy}
+      key="edit"
+      size="sm"
+      onPress={onEdit}>
+      {t('label.edit')}
+    </Button>
+  );
+  const rejectButton = (
+    <Button
+      color="secondary-destructive"
+      data-testid="reject-proposal"
+      isDisabled={isBusy}
+      isLoading={pendingDecision === EntityStatus.Rejected}
+      key="reject"
+      size="sm"
+      onPress={reject}>
+      {t('label.reject')}
+    </Button>
+  );
+
+  // The narrow queue leads with Approve; a wide pane ends with it, at the right edge.
+  return isApproveWide ? (
     <Box gap={2} wrap="wrap">
-      <Button
-        className={isApproveWide ? 'tw:flex-1' : undefined}
-        color="primary"
-        data-testid="approve-proposal"
-        iconLeading={Check}
-        isDisabled={isBusy}
-        isLoading={pendingDecision === EntityStatus.Approved}
-        size="sm"
-        onPress={() => decide(EntityStatus.Approved)}>
-        {t('label.approve')}
-      </Button>
-      {proposal.source === 'ai' && onEdit && (
-        <Button
-          color="secondary"
-          data-testid="edit-proposal"
-          isDisabled={isBusy}
-          size="sm"
-          onPress={onEdit}>
-          {t('label.edit')}
-        </Button>
-      )}
-      <Button
-        color="secondary-destructive"
-        data-testid="reject-proposal"
-        isDisabled={isBusy}
-        isLoading={pendingDecision === EntityStatus.Rejected}
-        size="sm"
-        onPress={reject}>
-        {t('label.reject')}
-      </Button>
+      {approve}
+      {edit}
+      {rejectButton}
+    </Box>
+  ) : (
+    <Box gap={2} justify="end" wrap="wrap">
+      {rejectButton}
+      {edit}
+      {approve}
     </Box>
   );
 };
 
-const DecidersNote = ({ proposal }: { proposal: GlossaryProposal }) => {
+export const DecidersNote = ({ proposal }: { proposal: GlossaryProposal }) => {
   const { t } = useTranslation();
   const deciders = getDeciders(proposal);
 

@@ -10,67 +10,52 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ProposalFilter } from '../../../utils/GlossaryReview/GlossaryReview.types';
-import {
-  getActiveFilter,
-  getTotalPages,
-} from '../../../utils/GlossaryReview/GlossaryReview.utils';
+import { getActiveFilter } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import {
   ProposalScope,
   PROPOSALS_PAGE_SIZE,
-  useGlossaryProposal,
   useGlossaryProposalCounts,
   useGlossaryProposalPage,
 } from './useGlossaryProposals';
 
 /**
- * The server pages the queue; a selected off-page proposal is shown first so selecting a table
- * row always opens its proposal.
+ * The review queue of a glossary or term: the server filters it by who proposed and by a search,
+ * and it grows a page at a time.
  */
-export const useGlossaryReviewQueue = (
-  scope: ProposalScope | undefined,
-  selectedProposalId?: string
-) => {
+export const useGlossaryReviewQueue = (scope: ProposalScope | undefined) => {
   const [filter, setFilter] = useState<ProposalFilter>('all');
-  const [page, setPage] = useState(1);
-  const { counts, isLoading: isCounting } = useGlossaryProposalCounts(scope);
-  const activeFilter = getActiveFilter(counts, filter);
-  const totalPages = getTotalPages(counts, activeFilter, PROPOSALS_PAGE_SIZE);
-  const currentPage = Math.min(page, totalPages);
+  const [search, setSearch] = useState('');
+  const [shown, setShown] = useState(PROPOSALS_PAGE_SIZE);
+  // Unsearched counts pick the filters; the searched ones size the list.
+  const { counts: totals, isLoading: isCounting } =
+    useGlossaryProposalCounts(scope);
+  const { counts } = useGlossaryProposalCounts(scope, search);
+  const activeFilter = getActiveFilter(totals, filter);
   const { proposals, isLoading: isPageLoading } = useGlossaryProposalPage(
     scope,
     activeFilter,
-    currentPage,
-    counts
-  );
-  const isSelectedOnPage = proposals.some(
-    ({ term }) => term.id === selectedProposalId
-  );
-  const selected = useGlossaryProposal(
-    isSelectedOnPage ? undefined : selectedProposalId
-  );
-  const visible = useMemo(
-    () =>
-      scope?.fullyQualifiedName &&
-      selected?.term.fullyQualifiedName?.startsWith(
-        `${scope.fullyQualifiedName}.`
-      )
-        ? [selected, ...proposals]
-        : proposals,
-    [scope?.fullyQualifiedName, selected, proposals]
+    shown,
+    counts,
+    search
   );
 
-  useEffect(() => setPage(1), [activeFilter, scope?.id]);
+  useEffect(
+    () => setShown(PROPOSALS_PAGE_SIZE),
+    [activeFilter, scope?.id, search]
+  );
 
   return {
     activeFilter,
     counts,
-    currentPage,
+    totals,
     isLoading: isCounting || isPageLoading,
+    search,
     setFilter,
-    setPage,
-    totalPages,
-    visible,
+    setSearch,
+    hasMore: proposals.length < counts[activeFilter],
+    loadMore: () => setShown((previous) => previous + PROPOSALS_PAGE_SIZE),
+    proposals,
   };
 };

@@ -15,7 +15,6 @@ import { chunk } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { PAGE_SIZE_BASE, PAGE_SIZE_LARGE } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { MemoryDerivation } from '../../../generated/entity/context/memoryDerivation';
 import {
   EntityStatus,
@@ -28,11 +27,9 @@ import {
   MAX_DERIVATION_ENTITIES,
 } from '../../../rest/contextMemoryAPI';
 import {
-  getGlossaryTermsById,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
-import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   listTasks,
   resolveTask,
@@ -95,13 +92,19 @@ const sourceParams = (source: ProposalSource) =>
     ? { provider: ProviderType.Automation }
     : { excludeProvider: ProviderType.Automation };
 
+// The server matches a search against the term's name, display name and description.
+const searchParams = (search?: string) =>
+  search?.trim() ? { q: search.trim() } : {};
+
 const countPendingTerms = async (
   scope: ProposalScope,
-  source?: ProposalSource
+  source?: ProposalSource,
+  search?: string
 ) => {
   const { paging } = await searchGlossaryTermsPaginated({
     ...scopeParams(scope),
     ...(source ? sourceParams(source) : {}),
+    ...searchParams(search),
     entityStatus: PENDING_STATUSES,
     limit: 1,
   });
@@ -110,11 +113,12 @@ const countPendingTerms = async (
 };
 
 const fetchProposalCounts = async (
-  scope: ProposalScope
+  scope: ProposalScope,
+  search?: string
 ): Promise<ProposalCounts> => {
   const [all, ai] = await Promise.all([
-    countPendingTerms(scope),
-    countPendingTerms(scope, 'ai'),
+    countPendingTerms(scope, undefined, search),
+    countPendingTerms(scope, 'ai', search),
   ]);
 
   return { all, ai, person: all - ai };
@@ -134,7 +138,7 @@ const getApprovalTasks = async (terms: GlossaryTerm[]) => {
     type: TaskEntityType.RequestApproval,
     aboutEntityIds: inReview.join(','),
     limit: PAGE_SIZE_LARGE,
-    fields: 'about,assignees,createdBy',
+    fields: 'about,assignees,createdBy,comments',
   });
 
   return data;
@@ -164,13 +168,15 @@ const toExplainedProposals = async (terms: GlossaryTerm[]) => {
 
 const fetchProposalPage = async (
   scope: ProposalScope,
-  slices: ProposalSlice[]
+  slices: ProposalSlice[],
+  search?: string
 ) => {
   const pages = await Promise.all(
     slices.map((slice) =>
       searchGlossaryTermsPaginated({
         ...scopeParams(scope),
         ...sourceParams(slice.source),
+        ...searchParams(search),
         entityStatus: PENDING_STATUSES,
         fields: 'reviewers,parent',
         limit: slice.limit,
@@ -180,16 +186,6 @@ const fetchProposalPage = async (
   );
 
   return toExplainedProposals(pages.flatMap(({ data }) => data));
-};
-
-// A term read on its own carries the reviewers it inherits, as the listing does.
-const fetchProposal = async (termId: string) => {
-  const term = await getGlossaryTermsById(termId, {
-    fields: 'reviewers,parent',
-  });
-  const [proposal] = await toExplainedProposals([term]);
-
-  return proposal ?? null;
 };
 
 const settle = async (
@@ -216,12 +212,20 @@ const settle = async (
   return !isTaskPendingFurtherApproval(task);
 };
 
-/** How many proposals a glossary or a term awaits, and how many of them AI agents made. */
-export const useGlossaryProposalCounts = (scope?: ProposalScope) => {
+/**
+ * How many proposals a glossary or a term awaits, and how many of them AI agents made; only those
+ * matching `search` when one is given.
+ */
+export const useGlossaryProposalCounts = (
+  scope?: ProposalScope,
+  search = ''
+) => {
   const { data, isPending } = useQuery({
     enabled: Boolean(scope?.id),
-    queryFn: () => fetchProposalCounts(scope as ProposalScope),
-    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'counts', scope?.id],
+    queryFn: () => fetchProposalCounts(scope as ProposalScope, search),
+    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'counts', scope?.id, search],
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[3] === scope?.id ? previous : undefined,
   });
 
   return {
@@ -232,22 +236,26 @@ export const useGlossaryProposalCounts = (scope?: ProposalScope) => {
 
 const PAGE_QUERY_KEY = [...GLOSSARY_PROPOSALS_QUERY_KEY, 'page'];
 
-/** One page of the review queue, read from the server: AI agents' proposals, then people's. */
+/**
+ * The first `shown` proposals of the review queue, read from the server: AI agents' proposals,
+ * then people's.
+ */
 export const useGlossaryProposalPage = (
   scope: ProposalScope | undefined,
   filter: ProposalFilter,
-  page: number,
-  counts: ProposalCounts
+  shown: number,
+  counts: ProposalCounts,
+  search = ''
 ) => {
   const slices = useMemo(
-    () => getPageSlices(filter, page, counts, PROPOSALS_PAGE_SIZE),
-    [filter, page, counts]
+    () => getPageSlices(filter, 1, counts, shown),
+    [filter, shown, counts]
   );
   const isEnabled = Boolean(scope?.id) && slices.length > 0;
   const { data, isPending } = useQuery({
     enabled: isEnabled,
-    queryFn: () => fetchProposalPage(scope as ProposalScope, slices),
-    queryKey: [...PAGE_QUERY_KEY, scope?.id, slices],
+    queryFn: () => fetchProposalPage(scope as ProposalScope, slices, search),
+    queryKey: [...PAGE_QUERY_KEY, scope?.id, slices, search],
     // The page on show stays until the next arrives, unless it is another glossary's or term's.
     placeholderData: (previous, previousQuery) =>
       previousQuery?.queryKey[PAGE_QUERY_KEY.length] === scope?.id
@@ -259,17 +267,6 @@ export const useGlossaryProposalPage = (
     proposals: (isEnabled && data) || NO_PROPOSALS,
     isLoading: isEnabled && isPending,
   };
-};
-
-/** One proposal wherever its page is, such as the one selected in the terms table. */
-export const useGlossaryProposal = (termId?: string) => {
-  const { data } = useQuery({
-    enabled: Boolean(termId),
-    queryFn: () => fetchProposal(termId ?? ''),
-    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'proposal', termId],
-  });
-
-  return data ?? undefined;
 };
 
 /** Settles a proposal, then refreshes every view of the review queue. */
@@ -314,67 +311,3 @@ export const useTermDerivation = (termId?: string) => {
 
   return data?.[0];
 };
-
-const GLOSSARY_ID_FIELD = 'glossary.id';
-const MAX_GLOSSARY_BUCKETS = 1000;
-const PENDING_COUNTS_STALE_TIME = 60 * 1000;
-const PENDING_TERMS_FILTER = {
-  terms: {
-    entityStatus: PENDING_REVIEW_STATUSES.map((status) => status.toLowerCase()),
-  },
-};
-const AI_TERMS_FILTER = {
-  term: { 'provider.keyword': ProviderType.Automation },
-};
-
-/**
- * Pending terms per glossary, keyed by the glossary's id: its name keyword folds case and accents,
- * so a name would not find its own bucket.
- */
-export interface GlossaryPendingCounts {
-  all: Record<string, number>;
-  ai: Record<string, number>;
-}
-
-const countPendingTermsByGlossary = (
-  filters: Record<string, unknown>[],
-  signal?: AbortSignal
-) =>
-  postExactAggregateFieldOptions(
-    {
-      deleted: false,
-      fieldName: GLOSSARY_ID_FIELD,
-      // The include pattern is required: without one the server returns no buckets.
-      fieldValue: '.*',
-      index: SearchIndex.GLOSSARY_TERM,
-      query: JSON.stringify({ query: { bool: { must: filters } } }),
-      size: MAX_GLOSSARY_BUCKETS,
-    },
-    signal
-  ).then(({ data }) =>
-    Object.fromEntries(
-      (data.aggregations?.[`sterms#${GLOSSARY_ID_FIELD}`]?.buckets ?? []).map(
-        ({ key, doc_count }) => [key, doc_count]
-      )
-    )
-  );
-
-/** How many terms await review in each glossary, and how many of those an AI agent proposed. */
-export const useGlossaryPendingCounts = (enabled = true) =>
-  useQuery({
-    enabled,
-    queryFn: async ({ signal }): Promise<GlossaryPendingCounts> => {
-      const [all, ai] = await Promise.all([
-        countPendingTermsByGlossary([PENDING_TERMS_FILTER], signal),
-        countPendingTermsByGlossary(
-          [PENDING_TERMS_FILTER, AI_TERMS_FILTER],
-          signal
-        ),
-      ]);
-
-      return { ai, all };
-    },
-    queryKey: [...GLOSSARY_PROPOSALS_QUERY_KEY, 'byGlossary'],
-    retry: false,
-    staleTime: PENDING_COUNTS_STALE_TIME,
-  }).data;

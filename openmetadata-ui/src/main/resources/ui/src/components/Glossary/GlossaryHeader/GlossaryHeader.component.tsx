@@ -92,7 +92,6 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
-import PendingReviewSummary from '../../governance/glossary/GlossaryReview/PendingReviewSummary';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import ChangeParentHierarchy from '../../Modals/ChangeParentHierarchy/ChangeParentHierarchy.component';
@@ -554,17 +553,6 @@ const GlossaryHeader = ({
     useState(false);
   const [isOntologyImportOpen, setIsOntologyImportOpen] = useState(false);
   const isGlossary = entityType === EntityType.GLOSSARY;
-  const proposalScope = useMemo(
-    () =>
-      selectedData?.id
-        ? {
-            fullyQualifiedName: selectedData.fullyQualifiedName ?? '',
-            id: selectedData.id,
-            isGlossary,
-          }
-        : undefined,
-    [selectedData?.id, selectedData?.fullyQualifiedName, isGlossary]
-  );
   const { permissions: globalPermissions } = usePermissionProvider();
   const { refreshGlossaryTerms } = useGlossaryStore();
 
@@ -899,17 +887,12 @@ const GlossaryHeader = ({
             isVersionView={isVersionView}
             manageButtonContent={manageButtonContent}
             pendingChangeRequests={
-              <>
-                {!isVersionView && (
-                  <PendingReviewSummary scope={proposalScope} />
-                )}
-                <ChangeRequestsIndicator
-                  entityId={selectedData?.id ?? ''}
-                  entityType={
-                    isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
-                  }
-                />
-              </>
+              <ChangeRequestsIndicator
+                entityId={selectedData?.id ?? ''}
+                entityType={
+                  isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM
+                }
+              />
             }
             setShowActions={setShowActions}
             showActions={showActions}

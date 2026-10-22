@@ -26,8 +26,8 @@ import {
   getDeciders,
   getPageSlices,
   getProposalAuthor,
+  getProposalLocation,
   getProposalSource,
-  getTotalPages,
   hasProposalsFromBothSources,
   toProposals,
 } from './GlossaryReview.utils';
@@ -141,8 +141,15 @@ describe('GlossaryReview utils', () => {
     ]);
     expect(getPageSlices('ai', 3, counts, 5)).toEqual([]);
     expect(getPageSlices('all', 5, counts, 5)).toEqual([]);
-    expect(getTotalPages(counts, 'all', 5)).toBe(4);
-    expect(getTotalPages({ all: 0, ai: 0, person: 0 }, 'ai', 5)).toBe(1);
+  });
+
+  it('loads more of the queue as one longer first page that crosses into people', () => {
+    expect(getPageSlices('all', 1, { all: 20, ai: 7, person: 13 }, 10)).toEqual(
+      [
+        { source: 'ai', offset: 0, limit: 7 },
+        { source: 'person', offset: 0, limit: 3 },
+      ]
+    );
   });
 
   it('collects the AI drafts among the loaded rows, nested ones included', () => {
@@ -154,6 +161,17 @@ describe('GlossaryReview utils', () => {
         aiDraft,
       ])
     ).toEqual(['nested-ai', 'ai-id']);
+  });
+
+  it('places a proposal under its glossary and parent terms', () => {
+    expect(
+      getProposalLocation({
+        fullyQualifiedName: 'Banking.Account."Joint.Account"',
+      })
+    ).toEqual(['Banking', 'Account']);
+    expect(getProposalLocation({ fullyQualifiedName: 'Banking.Fee' })).toEqual([
+      'Banking',
+    ]);
   });
 
   it('reads the confidence as a whole percentage and the author from the request', () => {

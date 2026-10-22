@@ -14,8 +14,10 @@
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import type { DetailsTabItem } from './CustomizePage/CustomizePageEntityTabUtils';
+import { t } from './i18next/LocalUtil';
 
 const CommonWidgets = withSuspenseFallback(
   lazy(() =>
@@ -25,13 +27,17 @@ const CommonWidgets = withSuspenseFallback(
   )
 );
 
-const PendingReviewPanel = withSuspenseFallback(
+const GlossaryReviewTab = withSuspenseFallback(
   lazy(
     () =>
       import(
-        '../components/governance/glossary/GlossaryReview/PendingReviewPanel'
+        '../components/governance/glossary/GlossaryReview/GlossaryReviewTab'
       )
   )
+);
+
+const TabsLabel = withSuspenseFallback(
+  lazy(() => import('../components/common/TabsLabel/TabsLabel.component'))
 );
 
 const GlossaryTermTab = withSuspenseFallback(
@@ -45,9 +51,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
   if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.TERMS_TABLE)) {
     return <GlossaryTermTab isGlossary />;
   }
-  if (widget.i.startsWith(GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW)) {
-    return <PendingReviewPanel />;
-  }
 
   return (
     <CommonWidgets
@@ -56,4 +59,33 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
       widgetConfig={widget}
     />
   );
+};
+
+/**
+ * Adds the Review tab after `afterKey`. It is added after a persona's tab customization so every
+ * persona reaches the review queue.
+ */
+export const withReviewTab = <T extends DetailsTabItem>(
+  tabs: T[],
+  {
+    activeTab,
+    afterKey,
+    pendingCount,
+  }: { activeTab?: string; afterKey: EntityTabs; pendingCount: number }
+): T[] => {
+  const reviewTab = {
+    key: EntityTabs.REVIEW,
+    label: (
+      <TabsLabel
+        id={EntityTabs.REVIEW}
+        isActive={activeTab === EntityTabs.REVIEW}
+        name={t('label.review')}
+        proposedCount={pendingCount}
+      />
+    ),
+    children: <GlossaryReviewTab />,
+  } as T;
+  const index = tabs.findIndex((tab) => tab.key === afterKey) + 1;
+
+  return [...tabs.slice(0, index), reviewTab, ...tabs.slice(index)];
 };

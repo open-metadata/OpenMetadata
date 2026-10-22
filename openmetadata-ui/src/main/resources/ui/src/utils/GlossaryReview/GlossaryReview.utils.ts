@@ -18,6 +18,7 @@ import {
 import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Task } from '../../rest/tasksAPI';
+import Fqn from '../Fqn';
 import {
   canDecideAiGeneratedDraft,
   getGlossaryEntityLink,
@@ -127,12 +128,6 @@ export const getPageSlices = (
   return slices;
 };
 
-export const getTotalPages = (
-  counts: ProposalCounts,
-  filter: ProposalFilter,
-  size: number
-) => Math.max(1, Math.ceil(counts[filter] / size));
-
 /** A loaded row of the terms table: a term, whose children are rows too. */
 type TermRow = Pick<GlossaryTerm, 'id' | 'entityStatus' | 'provider'> & {
   children?: unknown[];
@@ -203,3 +198,8 @@ export const getDeciders = (proposal: GlossaryProposal): EntityReference[] => {
 
   return assignees.length > 0 ? assignees : proposal.term.reviewers ?? [];
 };
+
+/** Where a proposed term would sit: its glossary and parent terms, outermost first. */
+export const getProposalLocation = (
+  term: Pick<GlossaryTerm, 'fullyQualifiedName'>
+) => Fqn.split(term.fullyQualifiedName ?? '').slice(0, -1);

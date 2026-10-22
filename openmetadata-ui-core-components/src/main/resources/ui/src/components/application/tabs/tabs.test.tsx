@@ -117,3 +117,19 @@ describe('useTabItemState', () => {
     expect(screen.getByTestId('probe')).toHaveTextContent('null');
   });
 });
+
+describe('Tabs.List sizes', () => {
+  it('renders compact segmented tabs at the xs size', () => {
+    render(
+      <Tabs defaultSelectedKey="all">
+        <Tabs.List aria-label="Filters" size="xs" type="button-border">
+          <Tabs.Item id="all">All</Tabs.Item>
+          <Tabs.Item id="ai">AI</Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveClass('tw:text-xs');
+    expect(screen.getByRole('tablist')).toHaveClass('tw:p-0.5');
+  });
+});

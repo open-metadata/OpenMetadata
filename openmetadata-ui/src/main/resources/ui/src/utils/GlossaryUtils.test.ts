@@ -12,7 +12,7 @@
  */
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
 import { ModifiedGlossary } from '../components/Glossary/useGlossary.store';
-import { EntityType } from '../enums/entity.enum';
+import { EntityTabs, EntityType } from '../enums/entity.enum';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -38,6 +38,7 @@ import {
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
+import { withReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -590,5 +591,39 @@ describe('AI-generated glossary drafts', () => {
         true
       )
     ).toBe(false);
+  });
+});
+
+describe('withReviewTab', () => {
+  const tab = (key: string) => ({ key, label: key });
+
+  it('puts the Review tab right after the given tab, whatever order a persona chose', () => {
+    const tabs = withReviewTab(
+      [
+        tab(EntityTabs.ACTIVITY_FEED),
+        tab(EntityTabs.TERMS),
+        tab(EntityTabs.RELATIONS_GRAPH),
+      ],
+      { afterKey: EntityTabs.TERMS, pendingCount: 2 }
+    );
+
+    expect(tabs.map(({ key }) => key)).toEqual([
+      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.TERMS,
+      EntityTabs.REVIEW,
+      EntityTabs.RELATIONS_GRAPH,
+    ]);
+  });
+
+  it('leads with the Review tab when a persona hid the tab it follows', () => {
+    const tabs = withReviewTab([tab(EntityTabs.ACTIVITY_FEED)], {
+      afterKey: EntityTabs.TERMS,
+      pendingCount: 0,
+    });
+
+    expect(tabs.map(({ key }) => key)).toEqual([
+      EntityTabs.REVIEW,
+      EntityTabs.ACTIVITY_FEED,
+    ]);
   });
 });

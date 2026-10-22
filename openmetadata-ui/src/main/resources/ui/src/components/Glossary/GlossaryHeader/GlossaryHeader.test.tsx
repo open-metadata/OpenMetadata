@@ -675,7 +675,7 @@ describe('GlossaryHeader component', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('counts the proposals under the page that await review', () => {
+    it('leaves the pending counts to the Review tab', () => {
       mockContext.data = { ...aiDraft, entityStatus: EntityStatus.Approved };
       mockProposalCounts.all = 3;
       mockProposalCounts.ai = 2;
@@ -689,11 +689,9 @@ describe('GlossaryHeader component', () => {
         />
       );
 
-      const summary = screen.getByTestId('pending-review-summary');
-
-      expect(summary).toHaveTextContent('label.count-from-ai');
-      expect(summary).toHaveTextContent('label.count-from-people');
-      expect(summary).toHaveTextContent('message.awaiting-review');
+      expect(
+        screen.queryByTestId('pending-review-summary')
+      ).not.toBeInTheDocument();
     });
   });
 });

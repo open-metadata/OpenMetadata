@@ -57,6 +57,18 @@ const createTermAsBot = async (
   await botContext.dispose();
 };
 
+// The Review tab lists every proposal under the glossary; the Terms tab only links to it.
+const openReviewTab = async (page: Page) => {
+  await page.getByTestId('review').click();
+  await expect(page.getByTestId('review-queue')).toBeVisible();
+};
+
+const queueItem = (page: Page, name: string) =>
+  page
+    .getByTestId('review-queue')
+    .getByTestId('review-queue-item')
+    .filter({ hasText: name });
+
 test.describe('AI-generated glossary terms', () => {
   const glossary = new Glossary();
   const reviewedInPanel = new GlossaryTerm(glossary);
@@ -86,36 +98,30 @@ test.describe('AI-generated glossary terms', () => {
     await page.close();
   });
 
-  test('are reviewed from the glossary until someone approves them', async ({
+  test('are reviewed from the Review tab until someone approves them', async ({
     page,
   }) => {
     await redirectToHomePage(page);
     expect(reviewedInPanel.responseData.entityStatus).toBe('Draft');
 
     await glossary.visitEntityPage(page);
+    // The terms table marks the proposal; the Review tab decides it.
     const row = getRowByName(page, reviewedInPanel.data.displayName);
     await expect(row.getByTestId('proposal-source-ai')).toBeVisible();
     await expect(row.getByTestId('proposal-status-badge')).toContainText(
       'Proposed by AI'
     );
-    await expect(row.getByText('Draft', { exact: true })).toHaveCount(0);
-    await expect(page.getByTestId('pending-review-summary')).toBeVisible();
-    await expect(
-      page.getByTestId(`pending-terms-${glossary.responseData.name}`)
-    ).toBeVisible();
+    await expect(page.getByTestId('pending-review-summary')).toHaveCount(0);
 
-    const panel = page.getByTestId('pending-review-panel');
-    await expect(panel).toBeVisible();
-    // The panel opens one proposal at a time; open this term's unless it is open already.
-    const collapsedCard = panel
-      .getByTestId('proposal-card')
-      .filter({ hasText: reviewedInPanel.data.displayName });
-    if ((await collapsedCard.count()) > 0) {
-      await collapsedCard.click();
-    }
-    const card = panel.getByTestId('proposal-card-expanded');
-    await expect(card).toContainText(reviewedInPanel.data.displayName);
-    await expect(card.getByTestId('reject-proposal')).toBeInViewport({
+    await openReviewTab(page);
+
+    await expect(page).toHaveURL(/\/review$/);
+    await queueItem(page, reviewedInPanel.data.displayName)
+      .getByRole('button')
+      .click();
+    const detail = page.getByTestId('proposal-detail');
+    await expect(detail).toContainText(reviewedInPanel.data.displayName);
+    await expect(detail.getByTestId('reject-proposal')).toBeInViewport({
       ratio: 1,
     });
 
@@ -128,13 +134,15 @@ test.describe('AI-generated glossary terms', () => {
           .includes(`/api/v1/glossaryTerms/${reviewedInPanel.responseData.id}`),
       200
     );
-    await card.getByTestId('approve-proposal').click();
+    await detail.getByTestId('approve-proposal').click();
     await approve;
 
-    await expect(panel.getByTestId('resolved-proposals')).toContainText(
+    await expect(page.getByTestId('resolved-proposals')).toContainText(
       reviewedInPanel.data.displayName
     );
-    await expect(row.getByTestId('proposal-source-ai')).toHaveCount(0);
+    await expect(queueItem(page, reviewedInPanel.data.displayName)).toHaveCount(
+      0
+    );
   });
 
   test('are reviewed on their own page', async ({ page }) => {
@@ -175,13 +183,11 @@ test.describe('AI-generated glossary terms', () => {
     );
     await glossary.visitEntityPage(page);
     await proposalsLoaded;
-    // The other term's row proves the table has rendered its rows before checking an absence.
-    await expect(
-      getRowByName(page, reviewedInPanel.data.displayName)
-    ).toBeVisible();
-    await expect(
-      getRowByName(page, reviewedOnItsPage.data.displayName)
-    ).toHaveCount(0);
+    await page.getByTestId('review').click();
+    await expect(page.getByTestId('glossary-review-tab')).toBeVisible();
+    await expect(queueItem(page, reviewedOnItsPage.data.displayName)).toHaveCount(
+      0
+    );
     const { apiContext, afterAction } = await getApiContext(page);
     const rejected = await okJson<{ entityStatus: string }>(
       await apiContext.get(
@@ -191,15 +197,10 @@ test.describe('AI-generated glossary terms', () => {
     );
     await afterAction();
     expect(rejected.entityStatus).toBe('Rejected');
-    await expect(
-      page
-        .getByTestId('pending-review-panel')
-        .getByText(reviewedOnItsPage.data.displayName)
-    ).toHaveCount(0);
   });
 });
 
-test('pages a large queue of AI-generated glossary proposals', async ({
+test('loads a large queue of AI-generated glossary proposals a page at a time', async ({
   page,
 }) => {
   const glossary = new Glossary();
@@ -213,18 +214,14 @@ test('pages a large queue of AI-generated glossary proposals', async ({
       await createTermAsBot(page, term);
     }
     await glossary.visitEntityPage(page);
-    const panel = page.getByTestId('pending-review-panel');
-    await expect(panel.getByTestId('proposal-card')).toHaveCount(14);
-    await expect(panel.getByTestId('proposal-card-expanded')).toBeVisible();
+    await openReviewTab(page);
+    const items = page.getByTestId('review-queue-item');
+    await expect(items).toHaveCount(15);
 
-    await panel.getByTestId('next').click();
+    await page.getByTestId('review-queue-load-more').click();
 
-    await expect(panel.getByTestId('proposal-card')).toHaveCount(0);
-    await expect(panel.getByTestId('proposal-card-expanded')).toBeVisible();
-
-    await panel.getByTestId('previous').click();
-
-    await expect(panel.getByTestId('proposal-card')).toHaveCount(14);
+    await expect(items).toHaveCount(16);
+    await expect(page.getByTestId('review-queue-load-more')).toHaveCount(0);
   } finally {
     await glossary.delete(apiContext);
     await afterAction();
@@ -263,7 +260,8 @@ test('a term owner can review an AI draft without editing its glossary', async (
     );
 
     await glossary.visitEntityPage(ownerPage);
-    const card = ownerPage.getByTestId('proposal-card-expanded');
+    await openReviewTab(ownerPage);
+    const card = ownerPage.getByTestId('proposal-detail');
     await expect(card).toContainText(term.data.displayName);
     const approved = waitForResponseWithStatus(
       ownerPage,

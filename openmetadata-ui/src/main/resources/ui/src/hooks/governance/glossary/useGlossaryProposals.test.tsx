@@ -20,11 +20,9 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { getMemoryDerivations } from '../../../rest/contextMemoryAPI';
 import {
-  getGlossaryTermsById,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
-import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
 import {
   listTasks,
   resolveTask,
@@ -33,9 +31,8 @@ import {
 } from '../../../rest/tasksAPI';
 import { ProposalCounts } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import {
+  PROPOSALS_PAGE_SIZE,
   useDecideProposal,
-  useGlossaryPendingCounts,
-  useGlossaryProposal,
   useGlossaryProposalCounts,
   useGlossaryProposalPage,
   useTermDerivations,
@@ -43,7 +40,6 @@ import {
 import { searchTerms } from './useGlossaryProposals.mock';
 
 jest.mock('../../../rest/glossaryAPI', () => ({
-  getGlossaryTermsById: jest.fn(),
   patchGlossaryTerm: jest.fn(),
   searchGlossaryTermsPaginated: jest.fn(),
 }));
@@ -51,10 +47,6 @@ jest.mock('../../../rest/glossaryAPI', () => ({
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   ...jest.requireActual('../../../rest/contextMemoryAPI'),
   getMemoryDerivations: jest.fn(),
-}));
-
-jest.mock('../../../rest/miscAPI', () => ({
-  postExactAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -136,9 +128,6 @@ describe('useGlossaryProposals', () => {
     (searchGlossaryTermsPaginated as jest.Mock).mockImplementation(
       searchTerms(() => terms)
     );
-    (getGlossaryTermsById as jest.Mock).mockImplementation(async (id: string) =>
-      terms.find((term) => term.id === id)
-    );
     (getMemoryDerivations as jest.Mock).mockResolvedValue([derivation]);
     (listTasks as jest.Mock).mockResolvedValue({ data: [approvalTask] });
   });
@@ -171,7 +160,13 @@ describe('useGlossaryProposals', () => {
 
   it('reads a page of AI proposals then people, with their evidence and approval requests', async () => {
     const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
+      () =>
+        useGlossaryProposalPage(
+          scope,
+          'all',
+          PROPOSALS_PAGE_SIZE,
+          twoProposals
+        ),
       { wrapper }
     );
 
@@ -209,7 +204,7 @@ describe('useGlossaryProposals', () => {
     }));
     const { result } = renderHook(
       () =>
-        useGlossaryProposalPage(scope, 'person', 1, {
+        useGlossaryProposalPage(scope, 'person', PROPOSALS_PAGE_SIZE, {
           all: 1,
           ai: 0,
           person: 1,
@@ -222,14 +217,14 @@ describe('useGlossaryProposals', () => {
     );
   });
 
-  it('starts on people proposals where the AI ones run out', async () => {
+  it('loads more proposals, moving on to people where the AI ones run out', async () => {
     const aiTerms = termsOf('ai', 7, ProviderType.Automation);
     const personTerms = termsOf('person', 13);
     terms = [...aiTerms, ...personTerms];
     const counts = { all: 20, ai: 7, person: 13 };
     const { result, rerender } = renderHook(
-      ({ page }) => useGlossaryProposalPage(scope, 'all', page, counts),
-      { initialProps: { page: 1 }, wrapper }
+      ({ shown }) => useGlossaryProposalPage(scope, 'all', shown, counts),
+      { initialProps: { shown: PROPOSALS_PAGE_SIZE }, wrapper }
     );
 
     await waitFor(() => expect(result.current.proposals).toHaveLength(15));
@@ -238,20 +233,59 @@ describe('useGlossaryProposals', () => {
       ids([...aiTerms, ...personTerms.slice(0, 8)])
     );
 
-    rerender({ page: 2 });
+    rerender({ shown: PROPOSALS_PAGE_SIZE * 2 });
 
-    await waitFor(() => expect(result.current.proposals).toHaveLength(5));
+    await waitFor(() => expect(result.current.proposals).toHaveLength(20));
 
     expect(ids(result.current.proposals.map(({ term }) => term))).toEqual(
-      ids(personTerms.slice(8))
+      ids(terms)
     );
     expect(listTasks).not.toHaveBeenCalled();
+  });
+
+  it('counts and lists only the proposals a search matches', async () => {
+    terms = [
+      aiDraft,
+      personDraft,
+      ...termsOf('other', 3, ProviderType.Automation),
+    ];
+    const { result } = renderHook(
+      () => {
+        const { counts } = useGlossaryProposalCounts(scope, 'churn');
+
+        return {
+          counts,
+          page: useGlossaryProposalPage(
+            scope,
+            'all',
+            PROPOSALS_PAGE_SIZE,
+            counts,
+            'churn'
+          ),
+        };
+      },
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.page.proposals).toHaveLength(1));
+
+    expect(result.current.counts).toEqual({ all: 1, ai: 1, person: 0 });
+    expect(result.current.page.proposals[0].term.id).toBe('ai-id');
+    expect(searchGlossaryTermsPaginated).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'churn' })
+    );
   });
 
   it('still lists the AI drafts when the caller may not read memories', async () => {
     (getMemoryDerivations as jest.Mock).mockRejectedValue(new Error('403'));
     const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
+      () =>
+        useGlossaryProposalPage(
+          scope,
+          'all',
+          PROPOSALS_PAGE_SIZE,
+          twoProposals
+        ),
       { wrapper }
     );
 
@@ -263,32 +297,19 @@ describe('useGlossaryProposals', () => {
   it('keeps every proposal when the approval requests cannot be loaded', async () => {
     (listTasks as jest.Mock).mockRejectedValue(new Error('500'));
     const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
+      () =>
+        useGlossaryProposalPage(
+          scope,
+          'all',
+          PROPOSALS_PAGE_SIZE,
+          twoProposals
+        ),
       { wrapper }
     );
 
     await waitFor(() => expect(result.current.proposals).toHaveLength(2));
 
     expect(result.current.proposals[1].approvalTask).toBeUndefined();
-  });
-
-  it('opens one proposal wherever its page is, and nothing for a decided term', async () => {
-    const { result } = renderHook(
-      () => ({
-        decided: useGlossaryProposal('approved-id'),
-        pending: useGlossaryProposal('person-id'),
-      }),
-      { wrapper }
-    );
-
-    await waitFor(() =>
-      expect(result.current.pending?.approvalTask).toEqual(approvalTask)
-    );
-
-    expect(result.current.decided).toBeUndefined();
-    expect(getGlossaryTermsById).toHaveBeenCalledWith('person-id', {
-      fields: 'reviewers,parent',
-    });
   });
 
   it('decides an AI draft on the term and a person proposal through its request, then recounts', async () => {
@@ -366,7 +387,12 @@ describe('useGlossaryProposals', () => {
     const { result } = renderHook(
       () => ({
         counts: useGlossaryProposalCounts(undefined),
-        page: useGlossaryProposalPage(undefined, 'all', 1, twoProposals),
+        page: useGlossaryProposalPage(
+          undefined,
+          'all',
+          PROPOSALS_PAGE_SIZE,
+          twoProposals
+        ),
       }),
       { wrapper }
     );
@@ -378,6 +404,25 @@ describe('useGlossaryProposals', () => {
 
   it('reads the evidence of many table rows in chunks the API accepts', async () => {
     const termIds = Array.from({ length: 101 }, (_, index) => `ai-${index}`);
+    (getMemoryDerivations as jest.Mock).mockImplementation(
+      async (_entityType: string, chunk: string[]) =>
+        chunk.map((id) => ({
+          ...derivation,
+          entity: { id, type: 'glossaryTerm' },
+        }))
+    );
+
+    const { result } = renderHook(() => useTermDerivations(termIds), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current).toHaveLength(101));
+
+    expect(getMemoryDerivations).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads the evidence of a long queue in chunks the API accepts', async () => {
+    terms = termsOf('ai', 101, ProviderType.Automation);
     (getMemoryDerivations as jest.Mock).mockImplementation(
       async (_entityType: string, chunk: string[]) => {
         if (chunk.length > 100) {
@@ -391,51 +436,20 @@ describe('useGlossaryProposals', () => {
       }
     );
 
-    const { result } = renderHook(() => useTermDerivations(termIds), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current).toHaveLength(101));
-  });
-
-  it('counts pending terms per glossary, and the AI ones apart', async () => {
-    const buckets = (counts: Record<string, number>) => ({
-      data: {
-        aggregations: {
-          'sterms#glossary.id': {
-            buckets: Object.entries(counts).map(([key, doc_count]) => ({
-              key,
-              doc_count,
-            })),
-          },
-        },
-      },
-    });
-    (postExactAggregateFieldOptions as jest.Mock)
-      .mockResolvedValueOnce(buckets({ 'metrics-id': 2, 'success-id': 1 }))
-      .mockResolvedValueOnce(buckets({ 'metrics-id': 1 }));
-
-    const { result } = renderHook(() => useGlossaryPendingCounts(), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current).toBeDefined());
-
-    expect(result.current).toEqual({
-      all: { 'metrics-id': 2, 'success-id': 1 },
-      ai: { 'metrics-id': 1 },
-    });
-
-    const [[allRequest], [aiRequest]] = (
-      postExactAggregateFieldOptions as jest.Mock
-    ).mock.calls;
-
-    expect(allRequest).toEqual(
-      expect.objectContaining({
-        fieldName: 'glossary.id',
-        fieldValue: '.*',
-      })
+    const { result } = renderHook(
+      () =>
+        useGlossaryProposalPage(scope, 'ai', 101, {
+          all: 101,
+          ai: 101,
+          person: 0,
+        }),
+      { wrapper }
     );
-    expect(aiRequest.query).toContain('provider.keyword');
+
+    await waitFor(() => expect(result.current.proposals).toHaveLength(101));
+
+    expect(result.current.proposals.every(({ derivation }) => derivation)).toBe(
+      true
+    );
   });
 });

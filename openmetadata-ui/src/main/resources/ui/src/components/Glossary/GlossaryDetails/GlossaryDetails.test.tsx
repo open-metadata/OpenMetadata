@@ -20,9 +20,7 @@ import {
 } from '../../../mocks/Glossary.mock';
 import GlossaryDetails from './GlossaryDetails.component';
 
-let mockPendingCounts: unknown;
 jest.mock('../../../hooks/governance/glossary/useGlossaryProposals', () => ({
-  useGlossaryPendingCounts: jest.fn(() => mockPendingCounts),
   useGlossaryProposalCounts: jest.fn(() => ({
     counts: { all: 0, ai: 0, person: 0 },
     isLoading: false,

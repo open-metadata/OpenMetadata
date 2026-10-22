@@ -36,6 +36,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { withReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -159,7 +160,6 @@ const GlossaryDetails = ({
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
-            proposedCount={proposalCounts.all}
           />
         ),
         key: EntityTabs.TERMS,
@@ -218,11 +218,19 @@ const GlossaryDetails = ({
         : []),
     ];
 
-    return getDetailsTabWithNewLabel(
+    const customizedTabs = getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.TERMS
     );
+
+    return isVersionView
+      ? customizedTabs
+      : withReviewTab(customizedTabs, {
+          activeTab,
+          afterKey: EntityTabs.TERMS,
+          pendingCount: proposalCounts.all,
+        });
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,

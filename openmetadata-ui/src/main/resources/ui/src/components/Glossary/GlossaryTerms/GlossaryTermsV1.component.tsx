@@ -50,6 +50,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import glossaryTermClassBase from '../../../utils/Glossary/GlossaryTermClassBase';
 import { getQueryFilterToExcludeTerm } from '../../../utils/GlossaryPureUtils';
+import { withReviewTab } from '../../../utils/GlossaryUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import {
   getGlossaryTermDetailsPath,
@@ -231,15 +232,25 @@ const GlossaryTermsV1 = ({
       refreshActiveGlossaryTerm,
       setAssetModalVisible,
       setPreviewAsset,
-      proposedCount: proposalCounts.all,
     });
-
-    return getDetailsTabWithNewLabel(
+    const customizedTabs = getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.OVERVIEW,
       isVersionView
     );
+    // A term's queue holds its child terms, so the tab shows only while some wait, or is open.
+    const hasReviewTab =
+      !isVersionView &&
+      (proposalCounts.all > 0 || activeTab === EntityTabs.REVIEW);
+
+    return hasReviewTab
+      ? withReviewTab(customizedTabs, {
+          activeTab,
+          afterKey: EntityTabs.GLOSSARY_TERMS,
+          pendingCount: proposalCounts.all,
+        })
+      : customizedTabs;
   }, [
     customizedPage?.tabs,
     glossaryTerm,

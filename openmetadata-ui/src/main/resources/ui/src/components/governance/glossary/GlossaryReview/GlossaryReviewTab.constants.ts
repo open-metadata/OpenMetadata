@@ -19,3 +19,10 @@ export const FILTER_LABELS: Record<ProposalFilter, string> = {
   ai: 'label.filter-ai-count',
   person: 'label.filter-people-count',
 };
+
+/** "Select AI ≥ N%" picks the AI proposals at or above this confidence. */
+export const HIGH_CONFIDENCE_PERCENT = 90;
+
+export const SEARCH_DEBOUNCE_MS = 300;
+
+export const LOCATION_SEPARATOR = ' › ';
