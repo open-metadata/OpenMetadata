@@ -44,7 +44,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigrat
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
-import org.openmetadata.service.migration.utils.v210.GlossaryAutomationProposalMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
@@ -90,8 +90,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
-        MockedStatic<GlossaryAutomationProposalMigration> glossaryAutomationProposalMigration =
-            mockStatic(GlossaryAutomationProposalMigration.class);
+        MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
+            mockStatic(GlossaryAutomationReviewMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
@@ -118,8 +118,8 @@ class IngestionPipelineMigrationEntryPointTest {
                   .addContractAndStatusToActivityFeedAlert(handle));
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
-      glossaryAutomationProposalMigration.verify(
-          GlossaryAutomationProposalMigration::addAutomationProposalBranch);
+      glossaryAutomationReview.verify(
+          GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
     }
   }
 

@@ -57,132 +57,6 @@
     {
       "type": "automatedTask",
       "subType": "checkEntityAttributesTask",
-      "name": "CheckIfGlossaryTermIsAutomationProposal",
-      "displayName": "Check if Glossary Term is an AI Proposal Awaiting a Decision",
-      "config": {
-        "rules": "{\"and\":[{\"==\":[{\"var\":\"provider\"},\"automation\"]},{\"in\":[{\"var\":\"entityStatus\"},[\"Draft\",\"In Review\"]]},{\"!\":[{\"hasBeenApproved\":[{\"var\":\"id\"},\"glossaryTerm\"]}]}]}"
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "checkEntityAttributesTask",
-      "name": "CheckIfAutomationProposalHasOpenApprovalTask",
-      "displayName": "Check if the AI Proposal Already Has an Approval Task",
-      "config": {
-        "rules": "{\"hasOpenApprovalTask\":[{\"var\":\"fullyQualifiedName\"},{\"var\":\"id\"}]}"
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "endEvent",
-      "subType": "endEvent",
-      "name": "AutomationProposalUnderReviewEnd",
-      "displayName": "AI Proposal Still Under Review"
-    },
-    {
-      "type": "automatedTask",
-      "subType": "setEntityAttributeTask",
-      "name": "SetAutomationProposalStatusToInReview",
-      "displayName": "Set AI Proposal Status to 'In Review'",
-      "config": {
-        "fieldName": "status",
-        "fieldValue": "In Review"
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "userTask",
-      "subType": "userApprovalTask",
-      "name": "ApproveAutomationProposal",
-      "displayName": "Review AI Proposal",
-      "config": {
-        "assignees": {
-          "addReviewers": true,
-          "addOwners": false,
-          "candidates": [],
-          "emptyAssigneeStrategy": "assignAdmins"
-        },
-        "approvalThreshold": 1,
-        "rejectionThreshold": 1,
-        "stageId": "review",
-        "stageDisplayName": "Review",
-        "taskStatus": "Open",
-        "assigneeStrategy": "reviewers-and-assignees",
-        "transitionMetadata": [
-          {
-            "id": "approve",
-            "label": "Approve",
-            "targetStageId": "approved",
-            "targetTaskStatus": "Approved",
-            "resolutionType": "Approved",
-            "formRef": "approve",
-            "requiresComment": false
-          },
-          {
-            "id": "reject",
-            "label": "Reject",
-            "targetStageId": "rejected",
-            "targetTaskStatus": "Rejected",
-            "resolutionType": "Rejected",
-            "formRef": "reject",
-            "requiresComment": true
-          }
-        ]
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "setEntityAttributeTask",
-      "name": "SetAutomationProposalStatusToApproved",
-      "displayName": "Set AI Proposal Status to 'Approved'",
-      "config": {
-        "fieldName": "status",
-        "fieldValue": "Approved"
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global",
-        "updatedBy": "ApproveAutomationProposal"
-      }
-    },
-    {
-      "type": "automatedTask",
-      "subType": "setEntityAttributeTask",
-      "name": "SetAutomationProposalStatusToRejected",
-      "displayName": "Set AI Proposal Status to 'Rejected'",
-      "config": {
-        "fieldName": "status",
-        "fieldValue": "Rejected"
-      },
-      "inputNamespaceMap": {
-        "relatedEntity": "global",
-        "updatedBy": "ApproveAutomationProposal"
-      }
-    },
-    {
-      "type": "endEvent",
-      "subType": "endEvent",
-      "name": "AutomationProposalApprovedEnd",
-      "displayName": "AI Proposal Approved"
-    },
-    {
-      "type": "endEvent",
-      "subType": "endEvent",
-      "name": "AutomationProposalRejectedEnd",
-      "displayName": "AI Proposal Rejected"
-    },
-    {
-      "type": "automatedTask",
-      "subType": "checkEntityAttributesTask",
       "name": "CheckIfGlossaryTermUpdatedByIsReviewer",
       "displayName": "Check if Glossary Term Updated By is Reviewer",
       "config": {
@@ -210,9 +84,9 @@
       "type": "automatedTask",
       "subType": "checkEntityAttributesTask",
       "name": "CheckGlossaryTermHasReviewers",
-      "displayName": "Check if Glossary Term has Reviewers",
+      "displayName": "Check if Glossary Term has Reviewers or an Automation proposed it",
       "config": {
-        "rules": "{\"and\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}]}"
+        "rules": "{\"or\":[{\"some\":[{\"var\":\"reviewers\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]},{\"==\":[{\"var\":\"provider\"},\"automation\"]}]}"
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"
@@ -265,7 +139,8 @@
         "assignees": {
           "addReviewers": true,
           "addOwners": false,
-          "candidates": []
+          "candidates": [],
+          "emptyAssigneeStrategy": "assignAdmins"
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1,
@@ -333,7 +208,8 @@
         "assignees": {
           "addReviewers": true,
           "addOwners": false,
-          "candidates": []
+          "candidates": [],
+          "emptyAssigneeStrategy": "assignAdmins"
         },
         "approvalThreshold": 1,
         "rejectionThreshold": 1,
@@ -449,49 +325,7 @@
   "edges": [
     {
       "from": "GlossaryTermCreated",
-      "to": "CheckIfGlossaryTermIsAutomationProposal"
-    },
-    {
-      "from": "CheckIfGlossaryTermIsAutomationProposal",
-      "to": "CheckGlossaryTermHasReviewers",
-      "condition": "false"
-    },
-    {
-      "from": "CheckIfGlossaryTermIsAutomationProposal",
-      "to": "CheckIfAutomationProposalHasOpenApprovalTask",
-      "condition": "true"
-    },
-    {
-      "from": "CheckIfAutomationProposalHasOpenApprovalTask",
-      "to": "AutomationProposalUnderReviewEnd",
-      "condition": "true"
-    },
-    {
-      "from": "CheckIfAutomationProposalHasOpenApprovalTask",
-      "to": "SetAutomationProposalStatusToInReview",
-      "condition": "false"
-    },
-    {
-      "from": "SetAutomationProposalStatusToInReview",
-      "to": "ApproveAutomationProposal"
-    },
-    {
-      "from": "ApproveAutomationProposal",
-      "to": "SetAutomationProposalStatusToApproved",
-      "condition": "approve"
-    },
-    {
-      "from": "ApproveAutomationProposal",
-      "to": "SetAutomationProposalStatusToRejected",
-      "condition": "reject"
-    },
-    {
-      "from": "SetAutomationProposalStatusToApproved",
-      "to": "AutomationProposalApprovedEnd"
-    },
-    {
-      "from": "SetAutomationProposalStatusToRejected",
-      "to": "AutomationProposalRejectedEnd"
+      "to": "CheckGlossaryTermHasReviewers"
     },
     {
       "from": "CheckGlossaryTermHasReviewers",

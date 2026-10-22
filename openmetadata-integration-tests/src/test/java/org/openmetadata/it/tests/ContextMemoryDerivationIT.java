@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -44,10 +45,12 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.schema.type.AutomationProposal;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.GlossaryApprovalPayload;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -84,6 +87,8 @@ class ContextMemoryDerivationIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String DERIVATIONS = "/v1/contextCenter/memories/derivations";
   private static final String AGENT = "Scripted Glossary Agent";
+  private static final double CONFIDENCE = 0.91;
+  private static final String REASON = "Defines a durable customer segment";
   private static final String ADMIN = "admin";
 
   private final List<List<UUID>> deriverCalls = new ArrayList<>();
@@ -296,16 +301,17 @@ class ContextMemoryDerivationIT {
     GlossaryTerm term =
         terms.create(
             null, new GlossaryTermMapper().createToEntity(create, Entity.INGESTION_BOT_NAME));
-    recordCreation(term);
     new MemoryDerivations()
         .record(
             memory.getId(),
             term.getEntityReference(),
             new DerivationEvidence()
                 .withAgent(AGENT)
-                .withConfidence(0.91)
-                .withReasons(List.of("Defines a durable customer segment"))
+                .withConfidence(CONFIDENCE)
+                .withReasons(List.of(REASON))
                 .withDerivedAt(System.currentTimeMillis()));
+    // Linked before its creation event, so the request the workflow opens can name the agent.
+    recordCreation(term);
     return term.getEntityReference();
   }
 
@@ -402,6 +408,22 @@ class ContextMemoryDerivationIT {
     assertTrue(
         request.getAssignees().stream().anyMatch(assignee -> ADMIN.equals(assignee.getName())),
         "assignees: " + request.getAssignees());
+    assertNamesTheProposal(request);
+  }
+
+  // Every user reads tasks, so the request names the agent and its memory by id, never its reasons.
+  private static void assertNamesTheProposal(Task request) {
+    GlossaryApprovalPayload payload =
+        JsonUtils.convertValue(request.getPayload(), GlossaryApprovalPayload.class);
+    AutomationProposal proposal = payload.getProposal();
+    assertEquals(ProviderType.AUTOMATION, proposal.getProvider());
+    assertEquals(AGENT, proposal.getAgent());
+    assertEquals(CONFIDENCE, proposal.getConfidence());
+    assertEquals(1, proposal.getDerivedFrom().size());
+    EntityReference memory = proposal.getDerivedFrom().getFirst();
+    assertEquals(Entity.CONTEXT_MEMORY, memory.getType());
+    assertNull(memory.getName());
+    assertFalse(JsonUtils.pojoToJson(request.getPayload()).contains(REASON));
   }
 
   private static Task awaitOpenApprovalTask(EntityReference term) {
@@ -414,7 +436,7 @@ class ContextMemoryDerivationIT {
             "aboutEntityIds",
             term.getId().toString(),
             "fields",
-            "assignees");
+            "assignees,payload");
     return Awaitility.await("an approval request for " + term.getId())
         .atMost(Duration.ofMinutes(3))
         .pollInterval(Duration.ofSeconds(2))
@@ -442,9 +464,8 @@ class ContextMemoryDerivationIT {
     MemoryDerivation derivation = derivations.getFirst();
     assertEquals(memory.getId(), derivation.getMemory().getId());
     assertEquals(AGENT, derivation.getEvidence().getAgent());
-    assertEquals(0.91, derivation.getEvidence().getConfidence());
-    assertEquals(
-        List.of("Defines a durable customer segment"), derivation.getEvidence().getReasons());
+    assertEquals(CONFIDENCE, derivation.getEvidence().getConfidence());
+    assertEquals(List.of(REASON), derivation.getEvidence().getReasons());
   }
 
   private ContextMemory editAnswer(ContextMemory memory, String answer) {

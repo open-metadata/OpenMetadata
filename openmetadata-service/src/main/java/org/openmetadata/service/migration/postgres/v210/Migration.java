@@ -44,7 +44,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
-import org.openmetadata.service.migration.utils.v210.GlossaryAutomationProposalMigration;
+import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 
@@ -137,10 +137,10 @@ public class Migration extends MigrationProcessImpl {
     runOnce(
         migrationDAO,
         getVersion(),
-        GlossaryAutomationProposalMigration.STEP_NAME,
+        GlossaryAutomationReviewMigration.STEP_NAME,
         () -> {
           initializeWorkflowHandler();
-          GlossaryAutomationProposalMigration.addAutomationProposalBranch();
+          GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
         });
   }
 }

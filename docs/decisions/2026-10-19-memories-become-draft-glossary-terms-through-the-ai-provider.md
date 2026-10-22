@@ -105,7 +105,8 @@ list no longer count or explain proposals.
 
 v7, 2026-10-22: people no longer decide an automation's Draft term directly.
 ADR:2026-10-22-agent-glossary-proposals-are-decided-through-the-approval-workflow reverses that
-paragraph of the Decision and the edit-and-approve consequence: an agent's term starts the approval
-workflow, which opens an approval request for its reviewers, else its owners, else the admins, and
-only that request decides it, from the Review tab or the term's page. An edit while the request is
-open never approves the term.
+paragraph of the Decision: an agent's term starts the glossary approval workflow like anyone's, and
+its approval request decides it, from the Review tab or the term's page. It also narrows the
+edit-and-approve consequence: a reviewer's edit still approves it, but where a glossary has no
+reviewers the request goes to its owners, else the admins, and an edit sends the change to them
+rather than approving it.

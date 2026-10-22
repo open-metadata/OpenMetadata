@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,8 +41,10 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.AutomationProposal;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.GlossaryApprovalPayload;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -56,16 +59,15 @@ import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.glossary.GlossaryTermMapper;
 
 /**
- * A term an automation provides, such as one an AI agent derived from a memory, is a proposal: the
- * glossary approval workflow sends it to an approval task for its reviewers, else its owners, else
- * the admins, and only that task decides it. Editing the proposal while its task is open neither
- * approves it nor replaces the task.
+ * A term an automation provides, such as one an AI agent derived from a memory, takes the glossary
+ * approval workflow like anyone's term, with one difference: only a person approves it. In a
+ * glossary with reviewers they decide it as they would any term; without reviewers it still goes to
+ * an approval request, for the glossary's owners, else the admins, where anyone's term would be
+ * approved outright.
  */
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.CONCURRENT)
 public class GlossaryTermAutomationDraftIT {
-  private static final String APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
-  private static final String WORKFLOW_FINISHED = "FINISHED";
   private static final String ADMIN = "admin";
   private static final Duration WORKFLOW_TIMEOUT = Duration.ofMinutes(3);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
@@ -83,6 +85,9 @@ public class GlossaryTermAutomationDraftIT {
 
     assertEquals(List.of(reviewer.getId()), assigneeIds(task));
     assertEquals(EntityStatus.IN_REVIEW, reload(proposal).getEntityStatus());
+    // The request names the automation; this bot recorded no agent or evidence.
+    assertEquals(ProviderType.AUTOMATION, proposalOf(task).getProvider());
+    assertNull(proposalOf(task).getAgent());
     resolve(SdkClients.user1Client(), task, TaskResolutionType.Approved);
     awaitStatus(proposal, EntityStatus.APPROVED);
   }
@@ -112,19 +117,40 @@ public class GlossaryTermAutomationDraftIT {
   }
 
   @Test
-  void editingAnAutomationTermUnderReviewNeitherApprovesItNorReplacesItsTask(TestNamespace ns) {
+  void aReviewersEditApprovesAnAutomationTermAsItWouldAnyTerm(TestNamespace ns) {
     Glossary glossary =
         createGlossary(ns, "edited", List.of(SharedEntities.get().USER1_REF), List.of());
     GlossaryTerm proposal = createTermAsBot(glossary, ns.prefix("edited"), ProviderType.AUTOMATION);
-    Task task = awaitOpenApprovalTask(proposal);
+    awaitOpenApprovalTask(proposal);
 
     SdkClients.user1Client()
         .glossaryTerms()
         .patch(proposal.getId(), JsonUtils.readTree(SHARPER_DEFINITION));
-    awaitFinishedApprovalRun(proposal);
 
+    awaitStatus(proposal, EntityStatus.APPROVED);
+  }
+
+  @Test
+  void anEditInAGlossaryWithoutReviewersNeverApprovesAnAutomationTerm(TestNamespace ns) {
+    Glossary glossary = createGlossary(ns, "unreviewed", List.of(), List.of());
+    GlossaryTerm proposal =
+        createTermAsBot(glossary, ns.prefix("unreviewed"), ProviderType.AUTOMATION);
+    Task first = awaitOpenApprovalTask(proposal);
+
+    editDescription(SdkClients.user2Client(), proposal, "A colleague's sharper definition");
+
+    // The edit's run reviews the change rather than approving it, replacing the first request.
+    Task review =
+        Awaitility.await("the edit's review replaces the first request")
+            .atMost(WORKFLOW_TIMEOUT)
+            .pollInterval(POLL_INTERVAL)
+            .ignoreExceptions()
+            .until(
+                () -> openApprovalTasks(proposal),
+                tasks -> !tasks.isEmpty() && !tasks.getFirst().getId().equals(first.getId()))
+            .getFirst();
     assertEquals(EntityStatus.IN_REVIEW, reload(proposal).getEntityStatus());
-    assertEquals(task.getId(), awaitOpenApprovalTask(proposal).getId());
+    assertTrue(assigneeNames(review).contains(ADMIN), "assignees: " + assigneeNames(review));
   }
 
   @Test
@@ -154,10 +180,11 @@ public class GlossaryTermAutomationDraftIT {
     assertEquals(EntityStatus.IN_REVIEW, reload(term).getEntityStatus());
     assertEquals(
         List.of(SharedEntities.get().USER1_REF.getId()), assigneeIds(openReviews.getFirst()));
+    assertNull(proposalOf(openReviews.getFirst()), "a review of changes is no AI proposal");
   }
 
   @Test
-  void aProposalLeftWithoutARequestIsReviewedOnceSomeoneEditsIt(TestNamespace ns) {
+  void aProposalLeftWithoutARequestGoesToReviewOnceSomeoneEditsIt(TestNamespace ns) {
     EntityReference reviewer = SharedEntities.get().USER1_REF;
     Glossary glossary = createGlossary(ns, "stranded", List.of(reviewer), List.of());
     GlossaryTerm stranded = createTermWithoutEvent(glossary, ns.prefix("stranded"));
@@ -166,11 +193,13 @@ public class GlossaryTermAutomationDraftIT {
         assertThrows(
             OpenMetadataException.class,
             () -> setStatus(SdkClients.user1Client(), stranded, EntityStatus.APPROVED));
-    editDescription(SdkClients.user1Client(), stranded, "A reviewer's sharper definition");
+    editDescription(SdkClients.user2Client(), stranded, "A colleague's sharper definition");
 
     assertEquals(403, direct.getStatusCode());
-    assertEquals(List.of(reviewer.getId()), assigneeIds(awaitOpenApprovalTask(stranded)));
+    Task request = awaitOpenApprovalTask(stranded);
+    assertEquals(List.of(reviewer.getId()), assigneeIds(request));
     assertEquals(EntityStatus.IN_REVIEW, reload(stranded).getEntityStatus());
+    assertEquals(ProviderType.AUTOMATION, proposalOf(request).getProvider());
   }
 
   @Test
@@ -453,6 +482,12 @@ public class GlossaryTermAutomationDraftIT {
             });
   }
 
+  private static AutomationProposal proposalOf(Task task) {
+    return task.getPayload() == null
+        ? null
+        : JsonUtils.convertValue(task.getPayload(), GlossaryApprovalPayload.class).getProposal();
+  }
+
   private static List<UUID> assigneeIds(Task task) {
     return task.getAssignees().stream().map(EntityReference::getId).toList();
   }
@@ -480,7 +515,7 @@ public class GlossaryTermAutomationDraftIT {
             "aboutEntityIds",
             term.getId().toString(),
             "fields",
-            "assignees");
+            "assignees,payload");
     return SdkClients.adminClient().tasks().listWithFilters(filters).getData();
   }
 
@@ -490,38 +525,6 @@ public class GlossaryTermAutomationDraftIT {
         .pollInterval(POLL_INTERVAL)
         .ignoreExceptions()
         .until(() -> reload(term).getEntityStatus(), expected::equals);
-  }
-
-  /** Waits for a run of the approval workflow on the term to end, such as the one an edit starts. */
-  private static void awaitFinishedApprovalRun(GlossaryTerm term) {
-    Awaitility.await("a finished approval run for " + term.getFullyQualifiedName())
-        .atMost(WORKFLOW_TIMEOUT)
-        .pollInterval(POLL_INTERVAL)
-        .ignoreExceptions()
-        .until(() -> approvalRunStatuses(term).contains(WORKFLOW_FINISHED));
-  }
-
-  private static List<String> approvalRunStatuses(GlossaryTerm term) {
-    long now = System.currentTimeMillis();
-    RequestOptions options =
-        RequestOptions.builder()
-            .queryParam(
-                "entityLink",
-                String.format("<#E::%s::%s>", Entity.GLOSSARY_TERM, term.getFullyQualifiedName()))
-            .queryParam("workflowDefinitionName", APPROVAL_WORKFLOW)
-            .queryParam("startTs", String.valueOf(now - Duration.ofHours(1).toMillis()))
-            .queryParam("endTs", String.valueOf(now + Duration.ofHours(1).toMillis()))
-            .queryParam("limit", "50")
-            .build();
-    JsonNode runs =
-        JsonUtils.readTree(
-            SdkClients.adminClient()
-                .getHttpClient()
-                .executeForString(
-                    HttpMethod.GET, "/v1/governance/workflowInstances", null, options));
-    return StreamSupport.stream(runs.path("data").spliterator(), false)
-        .map(run -> run.path("status").asText())
-        .toList();
   }
 
   private static GlossaryTerm reload(GlossaryTerm term) {

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowAutomationBranchTest`, `GlossaryAutomationProposalMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `GlossaryTermUnmigratedApprovalWorkflowIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowReviewTest`, `GlossaryAutomationReviewMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `AutomationProposalsTest`, `ContextMemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 
 ## Context
@@ -23,16 +23,15 @@ hands it to the entity's workflows as it does a person's change. Every other bot
 outside them, and governance-bot's writes never start one. A writer that creates such an entity
 outside a request records its `entityCreated` change event itself, in the creating transaction.
 
-`GlossaryTermApprovalWorkflow` checks for an automation term awaiting its first decision (Draft
-or In Review, and never approved) before any step can approve it. Without an open approval request
-about it, the term goes In Review with a request for its reviewers, else its owners, inherited ones
-included, else every admin (`emptyAssigneeStrategy: assignAdmins`), and that request decides it.
-With one open, the run ends: an edit refines the proposal but never approves it or replaces its
-request. Once approved, an AI term's later changes are reviewed like any term's. The private rule
-operators `hasBeenApproved` and `hasOpenApprovalTask` (matched by the term's id, since another
-entity type can share its FQN) answer those checks. Seeding never updates a stored workflow, so the
-2.1.0 migration starts Flowable and inserts the branch, read from the seed, in front of whatever
-step the start led to.
+`GlossaryTermApprovalWorkflow` keeps its steps: an automation's term takes the same path as anyone's
+term, and only a person approves it. Its reviewers check also passes a term whose provider is
+`automation`, so such a term goes In Review where anyone's term in a glossary without reviewers
+would be approved outright. Its approval steps (`ApproveGlossaryTerm`, `ApprovalForUpdates`) fall
+back from reviewers to owners to the admins (`emptyAssigneeStrategy: assignAdmins`) instead of
+approving a term nobody was assigned. Otherwise the term is reviewed as any term is: a reviewer's
+edit approves it, and anyone else's edit sends the change to review. Seeding never updates a
+stored workflow, so a 2.1.0 migration step gives the stored workflow those settings in place, and
+keeps a check or fallback an admin changed.
 
 The workflow owns an automation term's stage like any term's: a direct status change is refused,
 and only its approval request decides it. A bot, or a workflow writing for one, never moves an
@@ -40,17 +39,25 @@ automation term to Approved, whatever a stored workflow says (`checkStageDecisio
 pages decide every proposal, an AI agent's or a person's, through its request; a proposal still
 waiting for one offers no decision, only an edit, which opens it.
 
+A request about an automation's term that was never approved says so in its payload, a
+`GlossaryApprovalPayload` whose `proposal` (`AutomationProposal`) names the provider, the agent
+and its confidence from the term's latest derivation evidence, and the memories it was derived from
+by id and type. Every user may read tasks while those memories may be Private or Shared, so the
+request carries no agent reasons, memory names or term description; the memory derivations API
+serves the reasons to whoever may read the memories. A published term's later reviews carry no
+proposal. A deriver links its derivation before, or in the same transaction as, the term's creation
+event, so the request can name the agent; the request's creator is the bot the deriver writes as.
+
 ## Consequences
 
 Rejecting a single AI proposal asks for a reason, as rejecting a person's always has; a bulk
 rejection sends none, since the server requires one only for data access requests. An AI term's
-requester is the agent's bot, so every assignee may decide it. A proposal whose request was closed
-or terminated without a decision opens a new one on its next edit. As for any term, the editor is
-left off its assignees while another of its reviewers (or owners, when it has none) remains, and a
-sole one keeps it; the admin fallback never includes the editor, so a sole admin then needs another
-reviewer, owner or admin.
+requester is the agent's bot, so every assignee may decide it. The editor of a change is left off
+its assignees while another of its reviewers (or owners, when it has none) remains, and a sole one
+keeps it; the admin fallback never includes the editor, so a sole admin's own edit to an AI term in
+a glossary without reviewers or owners leaves nobody assigned, and the step approves it. A term
+whose reviewers are teams without members now goes to the admins instead of being approved.
 
 AI terms created between ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 and this change have no request: the next edit sends them to review, or deleting them lets the
-memory derive them again. Revisit the admin fallback if agents' proposals get a reviewer of their
-own to route to.
+memory derive them again.
