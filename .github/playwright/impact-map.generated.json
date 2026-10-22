@@ -10580,7 +10580,8 @@
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts"
+        "playwright/e2e/Pages/BotsProfile.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
