@@ -111,6 +111,7 @@ const FeedCardBodyNew = ({
 
       return (
         <RichTextEditorPreviewerNew
+          clampByLines
           className="text-wrap"
           markdown={getFrontEndFormat(activity.summary ?? message)}
         />
@@ -119,6 +120,7 @@ const FeedCardBodyNew = ({
 
     return (
       <RichTextEditorPreviewerNew
+        clampByLines
         className="text-wrap"
         markdown={getFrontEndFormat(feed?.message ?? message)}
       />

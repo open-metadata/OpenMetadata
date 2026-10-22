@@ -202,8 +202,10 @@ test.describe('AI mode — Settings notification alerts use the AI alert pages',
       ).toBeVisible();
 
       const failedEvents = listEvents('failed');
-      await recentEvents.getByRole('button', { name: /Filter/ }).click();
-      await page.getByRole('option', { name: 'Failed', exact: true }).click();
+      await recentEvents.getByTestId('filter-button').click();
+      await page
+        .getByRole('menuitemradio', { name: 'Failed', exact: true })
+        .click();
       const { data: failed } = await (await failedEvents).json();
 
       if (failed.length === 0) {

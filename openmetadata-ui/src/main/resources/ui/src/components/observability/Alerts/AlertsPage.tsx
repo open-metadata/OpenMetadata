@@ -89,6 +89,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
     hasResourcePermissionError,
     refetchResourcePermission,
     alerts,
+    alertsError,
     columnList,
     currentPage,
     fetchAlerts,
@@ -222,6 +223,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
           alertPermissions={alertPermissions}
           alertResourcePermission={alertResourcePermission}
           alerts={alerts}
+          alertsError={alertsError}
           ariaLabel={t(kind.titleKey)}
           columnList={columnList}
           currentPage={currentPage}
@@ -236,6 +238,7 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
           onEditAlert={handleEditAlert}
           onPageChange={onPageChange}
           onPageSizeChange={handlePageSizeChange}
+          onRetry={() => fetchAlerts()}
           onRetryPermission={refetchResourcePermission}
           onSelectAlert={handleSelectAlert}
         />
