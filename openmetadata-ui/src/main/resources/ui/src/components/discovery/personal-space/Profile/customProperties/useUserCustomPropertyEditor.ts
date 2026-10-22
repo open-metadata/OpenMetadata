@@ -10,13 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
 import { buildUpdatedExtension } from '../../../../../utils/CustomProperty.utils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 
 /** User custom-property definitions plus the edit-modal state shared by the tab and the Profile section. */
@@ -39,23 +37,22 @@ export const useUserCustomPropertyEditor = ({
         return;
       }
       setIsSaving(true);
-      try {
-        await onUpdate(
-          {
-            extension: buildUpdatedExtension(
-              extension,
-              editingProperty.name,
-              editingProperty.propertyType.name ?? '',
-              value
-            ),
-          },
-          'extension'
-        );
+      const saved = await onUpdate(
+        {
+          extension: buildUpdatedExtension(
+            extension,
+            editingProperty.name,
+            editingProperty.propertyType.name ?? '',
+            value
+          ),
+        },
+        'extension'
+      );
+      setIsSaving(false);
+      // A failed save keeps the modal open with what the user typed; the
+      // update handler has already shown the error.
+      if (saved) {
         setEditingProperty(undefined);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsSaving(false);
       }
     },
     [editingProperty, extension, onUpdate]

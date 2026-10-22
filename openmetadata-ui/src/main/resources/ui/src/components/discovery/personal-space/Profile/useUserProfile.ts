@@ -115,16 +115,17 @@ export const useUserProfile = (username: string | undefined) => {
   }, [fetchUser]);
 
   const updateUserDetails = useCallback(
-    async (data: Partial<User>, key: keyof User) => {
+    // Resolves to whether the save landed, so an editor closes only on success.
+    async (data: Partial<User>, key: keyof User): Promise<boolean> => {
       if (!userData) {
-        return;
+        return false;
       }
       const updatedDetails: User = { ...userData, ...data };
       const jsonPatch = compare(userData, updatedDetails);
       try {
         const response = await updateUserDetail(userData.id, jsonPatch);
         if (!response) {
-          return;
+          return false;
         }
         const nonTeamKeyData =
           key === 'roles'
@@ -150,8 +151,12 @@ export const useUserProfile = (username: string | undefined) => {
         showSuccessToast(
           t('server.update-entity-success', { entity: t('label.profile') })
         );
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
     [userData, isSelf, updateCurrentUser, t]

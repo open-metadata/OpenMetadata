@@ -115,7 +115,7 @@ export interface ProfileHeaderOverride {
 export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }

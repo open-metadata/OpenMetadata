@@ -137,20 +137,12 @@ const buildDeleteAction = (
   );
 };
 
-const isTabHidden = (
-  tab: UserDetailTab,
-  user: User,
-  showCustomProperties: boolean
-): boolean =>
-  (user.isBot && tab === 'following') ||
-  (!showCustomProperties && tab === 'custom-properties');
-
 const buildTabs = (
   t: TranslateFn,
   user: User,
   activeTab: UserDetailTab,
   counts: TabCounts,
-  showCustomProperties: boolean,
+  hiddenTabs: ReadonlySet<UserDetailTab>,
   onTabChange: (key: Key) => void
 ): ReactNode => (
   <Tabs
@@ -158,9 +150,7 @@ const buildTabs = (
     selectedKey={activeTab}
     onSelectionChange={onTabChange}>
     <Tabs.List size="sm" type="underline">
-      {USER_DETAIL_TABS.filter(
-        (tab) => !isTabHidden(tab, user, showCustomProperties)
-      ).map((id) => (
+      {USER_DETAIL_TABS.filter((tab) => !hiddenTabs.has(tab)).map((id) => (
         // A zero count is hidden, as in the design.
         <Tabs.Item
           badge={counts[id] || undefined}
@@ -223,7 +213,7 @@ interface UseMembersUserDetailHeaderParams {
   view: MembersUserDetailView;
   activeTab: UserDetailTab;
   canManage: boolean;
-  showCustomProperties: boolean;
+  hiddenTabs: ReadonlySet<UserDetailTab>;
   onTabChange: (key: Key) => void;
   onDelete: () => void;
   onSetHeader: MembersUserDetailProps['onSetHeader'];
@@ -240,7 +230,7 @@ export const useMembersUserDetailHeader = ({
   view,
   activeTab,
   canManage,
-  showCustomProperties,
+  hiddenTabs,
   onTabChange,
   onDelete,
   onSetHeader,
@@ -285,14 +275,7 @@ export const useMembersUserDetailHeader = ({
     onSetHeader({
       ...buildUserIdentityHeader(t, user, isSelf),
       actions: canManage ? buildDeleteAction(t, user, onDelete) : undefined,
-      tabs: buildTabs(
-        t,
-        user,
-        activeTab,
-        counts,
-        showCustomProperties,
-        onTabChange
-      ),
+      tabs: buildTabs(t, user, activeTab, counts, hiddenTabs, onTabChange),
     });
   }, [
     user,
@@ -303,7 +286,7 @@ export const useMembersUserDetailHeader = ({
     activeTab,
     counts,
     canManage,
-    showCustomProperties,
+    hiddenTabs,
     onTabChange,
     onDelete,
     onSetHeader,

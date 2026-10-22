@@ -15,11 +15,12 @@ import { Box } from '@openmetadata/ui-core-components';
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, Key, useCallback, useState } from 'react';
+import { FC, Key, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -38,6 +39,7 @@ import ProfileDetailsPanel from '../../ProfileDetailsPanel';
 import { useUserProfile } from '../../useUserProfile';
 import PermissionsTab from '../PermissionsTab';
 import type { MembersUserDetailProps, UserDetailTab } from './Members.types';
+import { getHiddenUserDetailTabs } from './Members.utils';
 import MembersUserDetailBanners from './MembersUserDetailBanners';
 import MembersUserDetailSkeleton from './MembersUserDetailSkeleton';
 import { useMembersUserDetailHeader } from './useMembersUserDetailHeader';
@@ -46,7 +48,7 @@ interface UserDetailTabContentProps {
   user: User;
   tab: UserDetailTab;
   isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   onOpenTask: (taskId: string) => void;
 }
 
@@ -112,6 +114,7 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
 }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
+  const { currentUser } = useApplicationStore();
   const {
     userData,
     isProfileLoading,
@@ -123,18 +126,22 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
   // Legacy parity: admins manage every entry, their own included.
   const canManage = Boolean(isAdminUser);
   const customPropertyAccess = useUserCustomPropertyAccess(userData);
-  const showCustomProperties = customPropertyAccess.canView;
-
-  // A stale link to a tab this user can't have (bots don't follow assets,
-  // custom properties need view access) lands on Overview.
-  const isFollowingUnavailable = userData?.isBot && view.tab === 'following';
-  const isCustomPropertiesUnavailable =
-    view.tab === 'custom-properties' &&
-    !customPropertyAccess.isLoading &&
-    !showCustomProperties;
-  const isTabUnavailable =
-    isFollowingUnavailable || isCustomPropertiesUnavailable;
-  const activeTab: UserDetailTab = isTabUnavailable ? 'overview' : view.tab;
+  const canViewAccess = canManage || view.name === currentUser?.name;
+  const hiddenTabs = useMemo(
+    () =>
+      getHiddenUserDetailTabs({
+        isBot: userData?.isBot,
+        canViewAccess,
+        canViewCustomProperties: customPropertyAccess.canView,
+      }),
+    [userData?.isBot, canViewAccess, customPropertyAccess.canView]
+  );
+  // A stale link to a hidden tab lands on Overview, but not while custom
+  // property access is still resolving.
+  const isTabPending =
+    view.tab === 'custom-properties' && customPropertyAccess.isLoading;
+  const activeTab: UserDetailTab =
+    hiddenTabs.has(view.tab) && !isTabPending ? 'overview' : view.tab;
 
   const navigateTo = useCallback(
     (tab: UserDetailTab, taskId?: string) =>
@@ -171,7 +178,7 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
     view,
     activeTab,
     canManage,
-    showCustomProperties,
+    hiddenTabs,
     onTabChange: handleTabChange,
     onDelete: openDelete,
     onSetHeader,

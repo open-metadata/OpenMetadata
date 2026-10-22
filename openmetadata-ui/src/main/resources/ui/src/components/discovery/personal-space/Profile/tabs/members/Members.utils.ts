@@ -552,3 +552,31 @@ export const buildMembersHeaderMaps = (
     ),
   };
 };
+
+/**
+ * Tabs a viewer can't use on a user's detail. Bots follow nothing; another
+ * user's permission debug info is admin-only on the server (it would 403);
+ * custom properties need view access on that user.
+ */
+export const getHiddenUserDetailTabs = ({
+  isBot,
+  canViewAccess,
+  canViewCustomProperties,
+}: {
+  isBot?: boolean;
+  canViewAccess: boolean;
+  canViewCustomProperties: boolean;
+}): ReadonlySet<UserDetailTab> => {
+  const hidden = new Set<UserDetailTab>();
+  if (isBot) {
+    hidden.add('following');
+  }
+  if (!canViewAccess) {
+    hidden.add('access');
+  }
+  if (!canViewCustomProperties) {
+    hidden.add('custom-properties');
+  }
+
+  return hidden;
+};

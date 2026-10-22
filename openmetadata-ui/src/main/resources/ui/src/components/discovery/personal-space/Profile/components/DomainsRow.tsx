@@ -34,7 +34,7 @@ import { useProfileCopy } from '../useUserProfile';
 
 interface DomainsRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const DomainsRow: React.FC<DomainsRowProps> = ({
@@ -97,7 +97,8 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
     const newlyAddedDomains = draftIds
       .filter((id) => !currentIdSet.has(id))
       .map((id) => ({ id, type: 'domain' }));
-    await updateUserDetails(
+
+    return updateUserDetails(
       { domains: [...retainedDomains, ...newlyAddedDomains] },
       'domains'
     );

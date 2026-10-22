@@ -97,7 +97,7 @@ const mockDefinitions = (customProperties: CustomProperty[]) =>
     isLoading: false,
   });
 
-const renderTable = (onUpdate = jest.fn().mockResolvedValue(undefined)) =>
+const renderTable = (onUpdate = jest.fn().mockResolvedValue(true)) =>
   render(
     <QueryClientProvider
       client={
@@ -206,7 +206,7 @@ describe('UserCustomPropertiesTable', () => {
 
   it('saves an edited value into the user extension', async () => {
     mockAccess(true, true);
-    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    const onUpdate = jest.fn().mockResolvedValue(true);
 
     renderTable(onUpdate);
     fireEvent.click(screen.getByTestId('edit-employeeId'));
@@ -223,5 +223,20 @@ describe('UserCustomPropertiesTable', () => {
         screen.queryByTestId('custom-property-edit-modal')
       ).not.toBeInTheDocument()
     );
+  });
+
+  it('keeps the edit modal open when the save fails', async () => {
+    mockAccess(true, true);
+    const onUpdate = jest.fn().mockResolvedValue(false);
+
+    renderTable(onUpdate);
+    fireEvent.click(screen.getByTestId('edit-employeeId'));
+    fireEvent.click(screen.getByTestId('custom-property-edit-modal'));
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalled());
+
+    expect(
+      screen.getByTestId('custom-property-edit-modal')
+    ).toBeInTheDocument();
   });
 });

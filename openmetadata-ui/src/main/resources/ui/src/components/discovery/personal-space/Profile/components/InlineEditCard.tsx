@@ -34,7 +34,8 @@ interface InlineEditCardProps {
   canEdit: boolean;
   onEnterEdit?: () => void;
   onCancel?: () => void;
-  onSave: () => Promise<void>;
+  /** Resolving to `false` keeps the card in edit mode (the save failed). */
+  onSave: () => Promise<boolean | void>;
   /** Right-column edit control shown in edit mode. */
   renderEdit: (api: InlineEditCardRenderApi) => React.ReactNode;
   // Anchors the card + its edit/cancel/save controls for E2E tests.
@@ -95,8 +96,10 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   const save = async () => {
     setIsSaving(true);
     try {
-      await onSave();
-      setIsEditing(false);
+      const saved = await onSave();
+      if (saved !== false) {
+        setIsEditing(false);
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {

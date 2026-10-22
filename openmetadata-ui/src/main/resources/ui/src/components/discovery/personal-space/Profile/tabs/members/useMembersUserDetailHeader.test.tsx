@@ -53,7 +53,7 @@ interface HarnessProps {
   view?: Partial<MembersUserDetailView>;
   activeTab?: UserDetailTab;
   canManage?: boolean;
-  showCustomProperties?: boolean;
+  hiddenTabs?: ReadonlySet<UserDetailTab>;
   onTabChange?: jest.Mock;
   onDelete?: jest.Mock;
   onSetHeader?: jest.Mock;
@@ -78,7 +78,7 @@ const Harness = (props: HarnessProps) => {
       },
       activeTab,
       canManage: props.canManage ?? true,
-      showCustomProperties: props.showCustomProperties ?? true,
+      hiddenTabs: props.hiddenTabs ?? new Set<UserDetailTab>(),
       onTabChange: props.onTabChange ?? jest.fn(),
       onDelete: props.onDelete ?? jest.fn(),
       onSetHeader: props.onSetHeader ?? setHeader,
@@ -159,11 +159,16 @@ describe('useMembersUserDetailHeader', () => {
     );
   });
 
-  it('hides the Following tab for a bot', () => {
-    renderHeader({ user: { ...ALICE, isBot: true } });
+  it('leaves out every hidden tab', () => {
+    renderHeader({
+      hiddenTabs: new Set<UserDetailTab>(['following', 'access']),
+    });
 
     expect(
       screen.queryByTestId('user-detail-tab-following')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('user-detail-tab-access')
     ).not.toBeInTheDocument();
     expect(
       screen.getByTestId('user-detail-tab-owned-assets')
@@ -180,7 +185,7 @@ describe('useMembersUserDetailHeader', () => {
   });
 
   it('hides the Custom Properties tab without view access', () => {
-    renderHeader({ showCustomProperties: false });
+    renderHeader({ hiddenTabs: new Set<UserDetailTab>(['custom-properties']) });
 
     expect(
       screen.queryByTestId('user-detail-tab-custom-properties')

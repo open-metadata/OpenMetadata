@@ -14,5 +14,6 @@ import { User } from '../../../../../generated/entity/teams/user';
 
 export interface UserCustomPropertiesProps {
   user: User;
-  onUpdate: (data: Partial<User>, key: keyof User) => Promise<void>;
+  // Resolves to whether the save landed.
+  onUpdate: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }

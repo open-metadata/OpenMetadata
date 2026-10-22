@@ -41,7 +41,7 @@ import { useProfileCopy } from './useUserProfile';
 interface ProfileDetailsPanelProps {
   userData: User;
   isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Only your own Profile tab lists custom properties; the user detail has a tab. */
   showCustomProperties?: boolean;
 }
@@ -49,7 +49,7 @@ interface ProfileDetailsPanelProps {
 interface PreferredNameRowProps {
   userData: User;
   canEdit: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const PreferredNameRow: React.FC<PreferredNameRowProps> = ({

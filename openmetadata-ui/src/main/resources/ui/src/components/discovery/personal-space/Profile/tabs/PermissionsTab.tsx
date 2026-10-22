@@ -43,7 +43,7 @@ import TeamPermissionsSection from './permissions/TeamPermissionsSection';
 
 interface PermissionsTabProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 interface SectionBlockProps {

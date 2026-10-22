@@ -17,6 +17,7 @@ import {
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
+  getHiddenUserDetailTabs,
   hashSubPathToView,
   makeBreadcrumbAction,
   profileSubPathToUserView,
@@ -316,5 +317,35 @@ describe('profile sub-path <-> user view', () => {
       'custom-properties'
     );
     expect(profileSubPathToUserView('')).toBeUndefined();
+  });
+});
+
+describe('getHiddenUserDetailTabs', () => {
+  it('hides nothing for an admin viewing a person with custom property access', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        canViewAccess: true,
+        canViewCustomProperties: true,
+      }).size
+    ).toBe(0);
+  });
+
+  it('hides Access from a viewer who is neither an admin nor that user', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        canViewAccess: false,
+        canViewCustomProperties: true,
+      })
+    ).toEqual(new Set(['access']));
+  });
+
+  it('hides Following for a bot and Custom Properties without view access', () => {
+    expect(
+      getHiddenUserDetailTabs({
+        isBot: true,
+        canViewAccess: true,
+        canViewCustomProperties: false,
+      })
+    ).toEqual(new Set(['following', 'custom-properties']));
   });
 });

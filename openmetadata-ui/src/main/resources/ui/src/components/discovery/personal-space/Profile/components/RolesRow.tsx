@@ -34,7 +34,7 @@ import { useProfileCopy } from '../useUserProfile';
 
 interface RolesRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
@@ -104,7 +104,8 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
     const newlyAddedRoles = draftRoleIds
       .filter((id) => id !== TERM_ADMIN && !currentRoleIdSet.has(id))
       .map((id) => ({ id, type: 'role' }));
-    await updateUserDetails(
+
+    return updateUserDetails(
       { roles: [...retainedRoles, ...newlyAddedRoles], isAdmin },
       'roles'
     );

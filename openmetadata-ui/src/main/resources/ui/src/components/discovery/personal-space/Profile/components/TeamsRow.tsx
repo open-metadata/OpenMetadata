@@ -42,7 +42,7 @@ const flattenTeams = (nodes: TeamHierarchy[]): TeamOption[] =>
 
 interface TeamsRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
@@ -115,7 +115,8 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
     const newlyAddedTeams = draftTeamIds
       .filter((teamId) => !currentTeamIdSet.has(teamId))
       .map((teamId) => ({ id: teamId, type: 'team' }));
-    await updateUserDetails(
+
+    return updateUserDetails(
       { teams: [...retainedTeams, ...newlyAddedTeams] },
       'teams'
     );

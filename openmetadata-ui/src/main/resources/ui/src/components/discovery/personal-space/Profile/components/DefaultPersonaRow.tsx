@@ -27,7 +27,7 @@ import { useProfileCopy } from '../useUserProfile';
 
 interface DefaultPersonaRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
@@ -71,11 +71,13 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
   const handleSave = async () => {
     const nextDefault = personaPool.find((p) => p.id === draftDefaultId);
     if (nextDefault?.id !== userData.defaultPersona?.id) {
-      await updateUserDetails(
+      return updateUserDetails(
         { defaultPersona: nextDefault },
         'defaultPersona'
       );
     }
+
+    return true;
   };
 
   return (

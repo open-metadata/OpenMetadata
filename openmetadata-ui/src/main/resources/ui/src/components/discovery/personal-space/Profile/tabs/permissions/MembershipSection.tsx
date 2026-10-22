@@ -23,7 +23,7 @@ import { useProfileCopy } from '../../useUserProfile';
 
 export interface MembershipSectionProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 /**

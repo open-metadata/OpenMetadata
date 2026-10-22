@@ -91,7 +91,7 @@ const mockDefinitions = (customProperties: CustomProperty[]) =>
     isLoading: false,
   });
 
-const renderSection = (onUpdate = jest.fn().mockResolvedValue(undefined)) =>
+const renderSection = (onUpdate = jest.fn().mockResolvedValue(true)) =>
   render(<UserCustomPropertiesSection user={USER} onUpdate={onUpdate} />);
 
 describe('UserCustomPropertiesSection', () => {
@@ -168,7 +168,7 @@ describe('UserCustomPropertiesSection', () => {
   });
 
   it('removes a cleared value from the extension on save', async () => {
-    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    const onUpdate = jest.fn().mockResolvedValue(true);
 
     renderSection(onUpdate);
     fireEvent.click(screen.getByTestId('edit-prop0'));

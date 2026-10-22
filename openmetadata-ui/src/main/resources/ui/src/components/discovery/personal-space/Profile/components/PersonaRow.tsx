@@ -53,7 +53,7 @@ const mergeFetchedPersonas =
 
 interface PersonaRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const PersonaRow: React.FC<PersonaRowProps> = ({
@@ -154,7 +154,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
     const selectedPersonas = draftPersonaIds
       .map((id) => resolvedById.get(id))
       .filter((p): p is EntityReference => Boolean(p));
-    await updateUserDetails({ personas: selectedPersonas }, 'personas');
+
+    return updateUserDetails({ personas: selectedPersonas }, 'personas');
   };
 
   const handleItemCleared = useCallback(

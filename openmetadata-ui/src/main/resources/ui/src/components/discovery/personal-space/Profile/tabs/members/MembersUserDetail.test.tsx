@@ -33,8 +33,9 @@ jest.mock('rest/tasksAPI', () => ({
   getTaskById: (...a: unknown[]) => mockGetTaskById(...a),
 }));
 
+let mockIsAdmin = true;
 jest.mock('hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: true }),
+  useAuth: () => ({ isAdminUser: mockIsAdmin }),
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({
@@ -173,6 +174,7 @@ const ALICE = {
 describe('MembersUserDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAdmin = true;
     mockGetUserByName.mockResolvedValue(ALICE);
     Object.assign(mockCustomPropertyAccess, {
       canView: true,
@@ -267,6 +269,25 @@ describe('MembersUserDetail', () => {
     expect(
       screen.queryByTestId('tab-custom-properties')
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps a non-admin off another user’s Access tab, whose debug info is admin-only', async () => {
+    mockIsAdmin = false;
+    renderDetail({ tab: 'access' });
+
+    expect(await screen.findByTestId('tab-overview')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-access')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('user-detail-tab-access')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows a non-admin their own Access tab', async () => {
+    mockIsAdmin = false;
+    mockGetUserByName.mockResolvedValue({ ...ALICE, name: 'harsh' });
+    renderDetail({ name: 'harsh', tab: 'access' });
+
+    expect(await screen.findByTestId('tab-access')).toBeInTheDocument();
   });
 
   it('hides the Following tab for a bot', async () => {
