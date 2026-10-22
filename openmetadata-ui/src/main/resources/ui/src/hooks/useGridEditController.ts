@@ -130,7 +130,8 @@ function useClipboardHandlers(
         }
         cells.push(rowValues);
       }
-      const text = cells.map((rowValues) => rowValues.join(',')).join('\n');
+      // Tab-separated, like spreadsheets, so it parses back the same way.
+      const text = cells.map((rowValues) => rowValues.join('\t')).join('\n');
       copiedCells.current = { text, cells };
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(text);
@@ -172,11 +173,17 @@ function useClipboardHandlers(
           const { startRow, endRow, startCol, endCol } = range;
           const minRow = Math.min(startRow, endRow);
           const minCol = Math.min(startCol, endCol);
-          const isSingleCell = startRow === endRow && startCol === endCol;
-          let pastedCells = clipText
-            .split(/\r?\n/)
+          // A header selection (startRow -1) spans the column even when one
+          // row is visible, so it is never a single cell.
+          const isSingleCell =
+            selectedRange?.startRow !== -1 &&
+            startRow === endRow &&
+            startCol === endCol;
+          const normalizedText = clipText.replaceAll('\r\n', '\n');
+          let pastedCells = normalizedText
+            .split('\n')
             .map((line) => line.split('\t'));
-          if (clipText === copiedCells.current?.text) {
+          if (normalizedText === copiedCells.current?.text) {
             pastedCells = copiedCells.current.cells;
           } else if (isSingleCell) {
             pastedCells = [[clipText]];
@@ -691,6 +698,16 @@ export function useGridEditController({
   // Selection state
   const { selectedRange, setSelectedRange, getFinalSelectedRange } =
     useSelectionState(gridRows);
+  // A selected range indexes the rendered rows. Once a search or an edit
+  // changes which rows those are, it would point at different rows.
+  const gridRowIds = rows
+    ?.map((row, index) => (rowIdKey ? row[rowIdKey] : index))
+    .join(',');
+  useEffect(() => {
+    if (gridRowIds !== undefined) {
+      setSelectedRange(null);
+    }
+  }, [gridRowIds]);
   // Clipboard
   const { handleCopy, handlePaste } = useClipboardHandlers(
     selectedRange,

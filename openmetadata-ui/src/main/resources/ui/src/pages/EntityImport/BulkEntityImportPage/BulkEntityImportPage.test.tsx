@@ -103,7 +103,6 @@ jest.mock('../../../hooks/useGridEditController', () => ({
     handleOnRowsChange: jest.fn(),
     setGridContainer: jest.fn(),
     handleAddRow: jest.fn(),
-    setSelectedRange: jest.fn(),
   })),
 }));
 

@@ -55,12 +55,12 @@ import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
-import Banner from '../../../components/common/Banner/Banner';
 import {
   BULK_EDIT_OPERATION_KEY,
   filterBulkEditRows,
   getBulkEditRenderedColumns,
 } from '../../../components/BulkEditEntity/BulkEditEntity.utils';
+import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import CsvWorkflowHeader from '../../../components/common/EntityImport/CsvWorkflowHeader/CsvWorkflowHeader.component';
@@ -478,23 +478,12 @@ const BulkEntityImportPage = () => {
     handleOnRowsChange,
     setGridContainer,
     handleAddRow,
-    setSelectedRange,
   } = useGridEditController({
     dataSource,
     setDataSource,
     columns: gridEditColumns,
     rows: bulkEditGridRows,
   });
-
-  // A selected range indexes the rows currently shown; once the search
-  // changes them it would point at different rows.
-  const handleBulkEditSearchTextChange = useCallback(
-    (searchText: string) => {
-      setBulkEditSearchText(searchText);
-      setSelectedRange(null);
-    },
-    [setSelectedRange]
-  );
 
   const bulkEditChangeSummary = useMemo(() => {
     const editableColumnKeys = filterColumns
@@ -2195,7 +2184,7 @@ const BulkEntityImportPage = () => {
             workflowHeaderConfig={bulkEditWorkflowProps.workflowHeaderConfig}
             workflowMode={bulkEditWorkflowProps.workflowMode}
             onCSVReadComplete={onCSVReadComplete}
-            onSearchTextChange={handleBulkEditSearchTextChange}
+            onSearchTextChange={setBulkEditSearchText}
           />
         ) : (
           <Fragment>
