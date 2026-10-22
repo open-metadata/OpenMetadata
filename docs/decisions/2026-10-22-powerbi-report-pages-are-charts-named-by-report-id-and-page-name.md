@@ -4,8 +4,9 @@
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `test_reports_sharing_a_page_name_get_distinct_charts`,
-  `test_report_url_is_built_from_the_one_pages_call`, `test_failed_pages_read_keeps_the_report_stored_charts`
-  and `test_report_without_pages_lets_its_stored_charts_go` in
+  `test_report_url_is_built_from_the_one_pages_call`, `test_failed_pages_read_keeps_the_report_stored_charts`,
+  `test_report_whose_charts_cannot_be_read_is_left_as_stored` and
+  `test_report_without_pages_lets_its_stored_charts_go` in
   `ingestion/tests/unit/topology/dashboard/test_powerbi_report_pages.py`
 - **Related:** issue #35965
 
@@ -25,7 +26,9 @@ and the report URL use that response.
 An answer with no pages is the report's real state, so its old page charts go. A read that fails
 (an error status, a transport error, an unreadable body) is not: for that run the report keeps the
 charts the server already lists under it, in the run's live set, so `markDeletedCharts` does not
-soft-delete them, and in the report's `charts`.
+soft-delete them, and in the report's `charts`. When the server cannot list them either, the
+report's charts are unknown: it is not sent, so its stored charts stay linked, and the run skips the
+stale-chart pass, since a failed discovery never drives deletion.
 
 ## Consequences
 Reports gain chart-level metadata without any extra API call. The name is the chart's identity

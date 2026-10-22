@@ -97,8 +97,9 @@ def make_source():
             config["source"], OpenMetadata(workflow_config.workflowConfig.openMetadataServerConfig)
         )
         source.context.get().__dict__["dashboard_service"] = SERVICE
-        # A class attribute on the base source, so every instance in the process would share it.
+        # Class attributes on the base source, so every instance in the process would share them.
         source.chart_source_state = set()
+        source.dashboard_source_state = set()
 
         def get(path, *_, **__):
             response = responses.get(path)
@@ -279,12 +280,42 @@ def test_failed_pages_read_keeps_the_report_stored_charts(make_source, response)
 
 def test_failed_pages_read_of_a_report_not_ingested_yet_keeps_nothing(make_source):
     source = make_source(responses={})
+    errors = []
 
-    charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"))
+    charts, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"), errors=errors)
 
+    assert errors == []
     assert charts == {}
     assert chart_fqns(dashboards["report-a"]) == []
     assert source.chart_source_state == set()
+
+
+def test_report_whose_charts_cannot_be_read_is_left_as_stored(make_source):
+    """Without its pages or its stored charts, sending the report would empty its charts and the
+    stale-chart pass would soft-delete them, so the report is not sent and the pass is skipped."""
+    source = make_source(responses={}, stored_charts={"report-a": ConnectionError("server unreachable")})
+    errors = []
+
+    _, dashboards = ingest(source, PowerBIReport(id="report-a", name="Sales Report"), errors=errors)
+
+    assert [error.name for error in errors] == ["Sales Report"]
+    assert dashboards == {}
+    assert source.dashboard_source_state == {f"{SERVICE}.report-a"}
+    with patch("metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source") as delete:
+        assert list(source.mark_charts_as_deleted()) == []
+    delete.assert_not_called()
+
+
+def test_stale_chart_pass_deletes_against_the_charts_ingested_this_run(make_source):
+    source = make_source(responses={pages_path("report-a"): pages_body(("ReportSection", "Overview"))})
+
+    ingest(source, PowerBIReport(id="report-a", name="Sales Report"))
+    with patch(
+        "metadata.ingestion.source.dashboard.dashboard_service.delete_entity_from_source", return_value=iter(())
+    ) as delete:
+        list(source.mark_charts_as_deleted())
+
+    assert delete.call_args.kwargs["entity_source_state"] == {f"{SERVICE}.report-a_ReportSection"}
 
 
 def test_unreadable_stored_charts_are_reported_and_the_next_report_still_ingested(make_source):

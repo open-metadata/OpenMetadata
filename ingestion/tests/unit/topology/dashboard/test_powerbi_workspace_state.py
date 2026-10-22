@@ -153,6 +153,18 @@ def test_reports_registry_persists_across_workspaces(state, ws_a, ws_b):
     assert state.is_known_report("nonexistent") is False
 
 
+def test_unknown_report_charts_persist_across_workspaces(state, ws_a, ws_b):
+    """The stale-chart pass runs after every workspace, so it must still see them."""
+    assert state.any_report_charts_unknown is False
+    state.enter(ws_a)
+    state.mark_report_charts_unknown("r_a1")
+    state.exit()
+    state.enter(ws_b)
+    assert state.are_report_charts_unknown("r_a1") is True
+    assert state.are_report_charts_unknown("r_b1") is False
+    assert state.any_report_charts_unknown is True
+
+
 # -- Dashboard charts: operation-shaped consume API ---------------------
 
 

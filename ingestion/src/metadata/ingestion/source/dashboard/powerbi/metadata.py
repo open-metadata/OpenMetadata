@@ -545,6 +545,10 @@ class PowerbiSource(DashboardServiceSource):
                         service=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
+                    if self.state.are_report_charts_unknown(dashboard_details.id):
+                        # Sending it would replace the charts the server holds under the report with none
+                        self.register_record(dashboard_request=dashboard_request)
+                        continue
                 yield Either(right=dashboard_request)
                 self.register_record(dashboard_request=dashboard_request)
                 self._advance_group_progress(self._progress_group_name(), "Dashboard")
@@ -576,7 +580,9 @@ class PowerbiSource(DashboardServiceSource):
     def _keep_stored_report_charts(self, report: PowerBIReport) -> Iterable[Either[CreateChartRequest]]:
         """
         Keep the charts the server already lists under a report whose pages cannot be read this run,
-        so a failed read neither soft-deletes them (markDeletedCharts) nor empties the report's charts
+        so a failed read neither soft-deletes them (markDeletedCharts) nor empties the report's charts.
+        When the server cannot answer either, the report's charts are unknown: the report is left as
+        stored and the stale-chart pass is skipped
         """
         try:
             report_fqn = fqn.build(
@@ -598,10 +604,14 @@ class PowerbiSource(DashboardServiceSource):
                     len(stored_charts),
                 )
         except Exception as exc:
+            self.state.mark_report_charts_unknown(report.id)
             yield Either(
                 left=StackTraceError(
                     name=report.name or report.id,
-                    error=f"Error keeping the charts of report [{report.id}] whose pages could not be read: {exc}",
+                    error=(
+                        f"Could not read the pages of report [{report.id}] nor its stored charts, so the report is"
+                        f" left as stored and no chart is marked deleted this run: {exc}"
+                    ),
                     stackTrace=traceback.format_exc(),
                 ),
                 right=None,
@@ -674,6 +684,16 @@ class PowerbiSource(DashboardServiceSource):
                         display_name=page.displayName or page.name,
                         source_url=self._get_report_url(workspace_id, dashboard_details, page_name=page.name),
                     )
+
+    def mark_charts_as_deleted(self) -> Iterable[Either]:
+        """
+        Skip the stale-chart pass when some report's charts could not be read: they are missing from
+        the run's live set, so the pass would soft-delete them
+        """
+        if self.state.any_report_charts_unknown:
+            logger.warning("Not marking charts as deleted: the charts of some PowerBI reports could not be read")
+            return
+        yield from super().mark_charts_as_deleted()
 
     def _get_child_measures(self, table: PowerBiTable) -> list[Column]:
         """
