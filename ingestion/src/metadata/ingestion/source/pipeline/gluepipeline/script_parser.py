@@ -10,11 +10,11 @@
 #  limitations under the License.
 
 """
-Regex-based parser for AWS Glue PySpark/GlueContext scripts to extract lineage.
+Lineage of AWS Glue PySpark/GlueContext scripts.
 
-Parses GlueContext DynamicFrame APIs and Spark DataFrame APIs to identify
-source and target entities (S3 paths, Glue Catalog tables, JDBC tables).
-Snowflake tables are found with Python's own parser, in snowflake_parser.
+S3 paths, Glue Catalog tables and JDBC tables used by GlueContext DynamicFrame
+and Spark DataFrame calls are matched with regular expressions over the source.
+Snowflake tables are found from the script's Python AST, in snowflake_parser.
 """
 
 import re

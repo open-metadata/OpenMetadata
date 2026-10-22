@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for Snowflake lineage in the Glue pipeline connector (scripts and Glue Studio nodes)."""
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -392,12 +393,20 @@ df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORD
 """
         assert parse_glue_script(script).snowflake_sources == []
 
-    def test_unknown_schema_is_not_guessed(self):
+    def test_unknown_schema_is_left_to_the_resolver(self):
+        """A schema passed as a job parameter is left unset: the resolver links the table only when it is unique."""
         script = f"""
 {SF_DICT}
 df = spark.read.format("snowflake").options(**sf_options).option("sfSchema", args["SCHEMA"]).option("dbtable", "ORDERS").load()
 """
-        assert parse_glue_script(script).snowflake_sources == []
+        assert parse_glue_script(script).snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB")]
+
+    def test_unknown_schema_in_the_options_dict(self):
+        script = """
+sf = {"sfDatabase": "SALES_DB", "sfSchema": args["SCHEMA"]}
+df = spark.read.format("snowflake").options(**sf).option("dbtable", "ORDERS").load()
+"""
+        assert parse_glue_script(script).snowflake_sources == [SnowflakeRef(table="ORDERS", database="SALES_DB")]
 
     def test_function_parameter_is_unknown(self):
         script = f"""
@@ -408,12 +417,22 @@ def write(df, table):
 """
         assert parse_glue_script(script).snowflake_targets == []
 
-    def test_dict_bound_in_branches_is_unknown(self):
+    def test_branches_keep_the_values_they_agree_on(self):
         script = """
 if args["ENV"] == "prod":
     sf_options = {"sfDatabase": "PROD", "sfSchema": "RAW", "dbtable": "ORDERS"}
 else:
     sf_options = {"sfDatabase": "DEV", "sfSchema": "RAW", "dbtable": "ORDERS"}
+df = spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert parse_glue_script(script).snowflake_sources == [SnowflakeRef(table="ORDERS", schema="RAW")]
+
+    def test_branches_that_disagree_on_the_table_are_not_linked(self):
+        script = """
+if args["ENV"] == "prod":
+    sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS"}
+else:
+    sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "ORDERS_DEV"}
 df = spark.read.format("snowflake").options(**sf_options).load()
 """
         assert parse_glue_script(script).snowflake_sources == []
@@ -426,10 +445,16 @@ df = spark.read.format("snowflake").options(**sf_options).load()
 """
         assert parse_glue_script(script).snowflake_sources == []
 
-    def test_unlisted_options_may_set_the_schema(self):
-        """**get_options() could set sfSchema: a table-only setting after it is not linked by guess."""
+    def test_unlisted_options_leave_database_and_schema_unset(self):
+        """**get_options() may set sfDatabase / sfSchema: neither is guessed, the resolver needs a unique table."""
         script = """
 df = spark.read.format("snowflake").options(**get_options()).option("dbtable", "ORDERS").load()
+"""
+        assert parse_glue_script(script).snowflake_sources == [SnowflakeRef(table="ORDERS")]
+
+    def test_unlisted_options_after_the_table_may_set_it(self):
+        script = """
+df = spark.read.format("snowflake").option("dbtable", "ORDERS").options(**get_options()).load()
 """
         assert parse_glue_script(script).snowflake_sources == []
 
@@ -511,8 +536,8 @@ df.write.format("snowflake").option("dbtable", "ORDERS").save(
         assert result.s3_sources == ["s3://bucket/input/"]
         assert result.snowflake_targets == []
 
-    def test_expression_too_deep_to_analyse_keeps_other_lineage(self):
-        """It parses, but walking it would overflow the stack: Snowflake lineage is skipped, not raised."""
+    def test_deeply_nested_expression_keeps_lineage(self):
+        """A long string concatenation parses deep; analysing the script must not overflow the stack."""
         sql = " + ".join(['"SELECT 1"'] * 1500)
         script = f"""
 df = spark.read.parquet("s3://bucket/input/")
@@ -522,7 +547,7 @@ spark.read.format("snowflake").option("dbtable", "ORDERS").load()
         result = parse_glue_script(script)
 
         assert result.s3_sources == ["s3://bucket/input/"]
-        assert result.snowflake_sources == []
+        assert result.snowflake_sources == [SnowflakeRef(table="ORDERS")]
 
 
 READ_ORDERS = 'spark.read.format("snowflake").options(**sf_options).option("dbtable", "ORDERS").load()'
@@ -537,8 +562,12 @@ def _sources(script: str) -> list[SnowflakeRef]:
 ORDERS = [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")]
 
 
+# assignments that disagree on sfDatabase but agree on sfSchema
+RAW_ANY_DATABASE = [SnowflakeRef(table="ORDERS", schema="RAW")]
+
+
 class TestSnowflakeNameResolution:
-    """Which assignment of an options dict a read sees, following Python's scoping and control flow."""
+    """Which assignments of an options dict a read may see: module and function scope, in order."""
 
     @pytest.mark.parametrize(
         "wrapper",
@@ -571,23 +600,24 @@ if __name__ == "__main__":
 """
         assert _sources(script) == ORDERS
 
-    def test_rebound_in_a_branch_before_the_read_is_unknown(self):
+    def test_rebound_in_a_branch_before_the_read_keeps_agreed_values(self):
         script = f"""
 {SALES_RAW}
 if args["ENV"] == "dev":
     {DEV_RAW}
 {READ_ORDERS}
 """
-        assert _sources(script) == []
+        assert _sources(script) == RAW_ANY_DATABASE
 
-    def test_rebound_in_a_loop_is_unknown(self):
+    def test_rebound_later_in_a_loop_keeps_agreed_values(self):
+        """The second iteration reads the dict assigned at the end of the first."""
         script = f"""
 {SALES_RAW}
 for env in ("dev", "prod"):
     {READ_ORDERS}
     {DEV_RAW}
 """
-        assert _sources(script) == []
+        assert _sources(script) == RAW_ANY_DATABASE
 
     def test_single_binding_is_seen_from_anywhere(self):
         """One binding, even in a branch: wherever the read runs, that is the only value it can have."""
@@ -601,8 +631,8 @@ if __name__ == "__main__":
 """
         assert _sources(script) == ORDERS
 
-    def test_reassigned_global_read_in_a_function_is_unknown(self):
-        """The function reads the global when it is called, not where it is defined."""
+    def test_reassigned_global_read_in_a_function_keeps_agreed_values(self):
+        """The function reads the global when it is called, so any of its assignments may be in effect."""
         script = f"""
 {DEV_RAW}
 
@@ -612,7 +642,7 @@ def main():
 {SALES_RAW}
 main()
 """
-        assert _sources(script) == []
+        assert _sources(script) == RAW_ANY_DATABASE
 
     @pytest.mark.parametrize(
         "helper",
@@ -644,37 +674,6 @@ def main():
 """
         assert _sources(script) == ORDERS
 
-    def test_class_body_reads_the_global_before_its_own_binding(self):
-        script = f"""
-{SALES_RAW}
-
-class Job:
-    source = {READ_ORDERS}
-    {DEV_RAW}
-"""
-        assert _sources(script) == ORDERS
-
-    def test_class_body_reads_its_own_binding_once_made(self):
-        script = f"""
-{DEV_RAW}
-
-class Job:
-    {SALES_RAW}
-    source = {READ_ORDERS}
-"""
-        assert _sources(script) == ORDERS
-
-    def test_class_binding_in_a_branch_before_the_read_is_unknown(self):
-        script = f"""
-{SALES_RAW}
-
-class Job:
-    if args["ENV"] == "dev":
-        {DEV_RAW}
-    source = {READ_ORDERS}
-"""
-        assert _sources(script) == []
-
     @pytest.mark.parametrize("annotation", ["sf_options: dict", "sf_options: dict[str, str]"])
     def test_bare_annotation_binds_nothing(self, annotation):
         script = f"""
@@ -684,7 +683,7 @@ class Job:
 """
         assert _sources(script) == ORDERS
 
-    def test_global_reassigned_from_a_function_is_unknown(self):
+    def test_global_reassigned_from_a_function_keeps_agreed_values(self):
         script = f"""
 {SALES_RAW}
 
@@ -694,7 +693,7 @@ def switch():
 
 {READ_ORDERS}
 """
-        assert _sources(script) == []
+        assert _sources(script) == RAW_ANY_DATABASE
 
     def test_local_dict_changed_in_place_leaves_the_global(self):
         script = f"""
@@ -709,7 +708,7 @@ def build():
 """
         assert _sources(script) == ORDERS
 
-    def test_global_changed_in_place_from_a_function_is_unknown(self):
+    def test_schema_changed_in_place_from_a_function_is_unknown(self):
         script = f"""
 {SALES_RAW}
 
@@ -718,40 +717,79 @@ def switch():
 
 {READ_ORDERS}
 """
-        assert _sources(script) == []
+        assert _sources(script) == [SnowflakeRef(table="ORDERS", database="SALES_DB")]
 
-    @pytest.mark.parametrize("change", ['opts["sfSchema"] = "STAGE"', 'opts |= {"sfSchema": "STAGE"}'])
-    def test_dict_changed_through_an_alias_is_unknown(self, change):
+    @pytest.mark.parametrize(
+        "change",
+        [
+            'sf_options["sfWarehouse"] = "WH"',
+            'sf_options.update({"sfWarehouse": "WH", "sfRole": "R"})',
+            'sf_options.update(sfWarehouse="WH")',
+            'sf_options |= {"sfWarehouse": "WH"}',
+            'sf_options.setdefault("sfRole", "R")',
+            'del sf_options["sfRole"]',
+        ],
+    )
+    def test_other_keys_changed_in_place_keep_the_link(self, change):
         script = f"""
 {SALES_RAW}
-opts = sf_options
 {change}
-{READ_ORDERS}
-"""
-        assert _sources(script) == []
-
-    def test_alias_replaced_before_the_change_leaves_the_original(self):
-        script = f"""
-{SALES_RAW}
-opts = sf_options
-opts = {{}}
-opts["sfSchema"] = "STAGE"
 {READ_ORDERS}
 """
         assert _sources(script) == ORDERS
 
-    def test_alias_assigned_just_before_the_change_is_unknown(self):
+    @pytest.mark.parametrize(
+        "change",
+        ['sf_options["SFSCHEMA"] = args["S"]', 'sf_options.pop("sfSchema")', 'sf_options |= {"sfSchema": "STAGE"}'],
+    )
+    def test_schema_changed_in_place_is_left_to_the_resolver(self, change):
         script = f"""
 {SALES_RAW}
-opts = {{}}
-opts = sf_options
-opts["sfSchema"] = "STAGE"
+{change}
 {READ_ORDERS}
+"""
+        assert _sources(script) == [SnowflakeRef(table="ORDERS", database="SALES_DB")]
+
+    @pytest.mark.parametrize(
+        "change", ["sf_options[key] = value", "sf_options.update(overrides)", "sf_options.clear()"]
+    )
+    def test_unreadable_change_in_place_is_unknown(self, change):
+        script = f"""
+{SALES_RAW}
+{change}
+{READ_ORDERS}
+"""
+        assert _sources(script) == [SnowflakeRef(table="ORDERS")]
+
+    def test_class_attribute_read_in_the_class_body_is_unknown(self):
+        """Class attributes are not tracked: a read of one leaves database and schema to the resolver."""
+        script = f"""
+{SALES_RAW}
+
+class Job:
+    {DEV_RAW}
+    source = {READ_ORDERS}
+"""
+        assert _sources(script) == [SnowflakeRef(table="ORDERS")]
+
+    def test_walrus_in_a_comprehension_rebinds_the_enclosing_name(self):
+        script = f"""
+{SALES_RAW}
+found = [sf_options := pick(c) for c in configs]
+{READ_ORDERS}
+"""
+        assert _sources(script) == [SnowflakeRef(table="ORDERS")]
+
+    def test_comprehension_variable_is_unknown(self):
+        script = f"""
+table = "ORDERS"
+{SALES_RAW}
+frames = [spark.read.format("snowflake").options(**sf_options).option("dbtable", table).load() for table in tables]
 """
         assert _sources(script) == []
 
-    def test_string_concatenation_on_an_alias_leaves_the_original(self):
-        """`+=` on a str rebinds the alias; only `|=` changes a dict in place."""
+    def test_string_concatenation_rebinds_only_the_copy(self):
+        """`+=` on a str rebinds the name it is applied to; the name it was copied from is unchanged."""
         script = f"""
 {SALES_RAW}
 FORMAT = "snowflake"
@@ -916,19 +954,26 @@ class TestResolveSnowflakeEntities:
         assert len(build.call_args_list) == 1
         assert build.call_args.kwargs["schema_name"] is None
 
-    def test_same_table_in_two_services_is_ambiguous(self, glue_source):
+    def test_same_table_in_two_services_is_ambiguous(self, glue_source, caplog):
         """Two Snowflake services with the same table: do not link whichever service is listed first."""
         glue_source.get_db_service_names = MagicMock(return_value=["snowflake_prod", "snowflake_dr"])
         lineage_details = {"sources": [], "targets": []}
 
-        with patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build:
+        with (
+            patch("metadata.ingestion.source.pipeline.gluepipeline.metadata.fqn.build") as build,
+            caplog.at_level(logging.WARNING),
+        ):
             build.side_effect = lambda **kwargs: [f"{kwargs['service_name']}.SALES_DB.RAW.ORDERS"]
             glue_source._resolve_snowflake_entities(
                 [SnowflakeRef(table="ORDERS", database="SALES_DB", schema="RAW")], lineage_details, "sources"
             )
 
         assert lineage_details["sources"] == []
-        assert [call.kwargs["service_name"] for call in build.call_args_list] == ["snowflake_prod", "snowflake_dr"] * 2
+        # a less specific lookup would only match more: the ambiguous attempt ends the search
+        assert [call.kwargs["service_name"] for call in build.call_args_list] == ["snowflake_prod", "snowflake_dr"]
+        warnings = [record.getMessage() for record in caplog.records if record.levelno == logging.WARNING]
+        assert len(warnings) == 1
+        assert "matches several tables" in warnings[0]
 
     def test_unmatched_service_does_not_make_an_exact_match_ambiguous(self, glue_source):
         """A search miss in one service returns a name built from the parts; it is not a second match."""

@@ -21,11 +21,11 @@ language rather than approximated by patterns over the source text:
     glueContext.write_dynamic_frame.from_options(frame=df, connection_type="snowflake", connection_options={...})
 
 Options are applied in call order and the last setting wins, as in Spark; keys
-are case-insensitive. A value is resolved only when it is a literal or a name
-bound to one by a plain assignment that is certain to be the one in effect
-(see _Bindings): anything else (a function parameter, an f-string, args["X"],
-a dict built at runtime) is unknown, and a ref is only produced when the table,
-and the schema when one is set, are known.
+are case-insensitive. A value is resolved when it is a literal or a name bound
+to one by plain assignments that agree on it (see _Bindings); anything else (a
+function parameter, an f-string, args["X"], a dict built at runtime) is unknown.
+A ref needs a known table. An unknown database or schema is left unset, and the
+resolver links the table only when its name matches a single table.
 
 Only Python scripts are read: a Scala Glue job does not parse as Python and
 gets no Snowflake lineage from its script.
@@ -33,9 +33,9 @@ gets no Snowflake lineage from its script.
 
 import ast
 import re
-from collections.abc import Iterable, Iterator
-from contextlib import contextmanager
+from collections.abc import Iterator
 from dataclasses import dataclass
+from functools import cached_property
 
 from metadata.utils.logger import ingestion_logger
 
@@ -59,13 +59,8 @@ SPARK_DIRECTIONS = {("read", "load"): "sources", ("write", "save"): "targets"}
 # load() / save() parameters that are not connector options; any other keyword is one
 SPARK_TERMINAL_PARAMETERS = {"path", "format", "schema", "mode", "partitionBy"}
 
-# dict methods that change a dict in place: its literal no longer describes it
-MUTATING_METHODS = {"update", "setdefault", "pop", "popitem", "clear", "__setitem__", "__delitem__"}
-
 # Snowflake identifiers: "ORDERS.V2" is one quoted name, FINANCE.CURATED.ORDERS are three
 QUALIFIED_NAME_PART_PATTERN = re.compile(r'"[^"]*"|[^.]+')
-
-MAX_DEPTH = 8
 
 
 class _Unknown:
@@ -88,230 +83,58 @@ class SnowflakeRef:
     schema: str | None = None
 
 
-# nodes other than the module that open a scope; comprehensions open one too
-SCOPE_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
+# names bound here are visible only inside: lambda parameters, comprehension targets, class attributes
+SHADOWING_NODES = (ast.Lambda, ast.ClassDef, *COMPREHENSIONS)
 LOOPS = (ast.For, ast.AsyncFor, ast.While)
+# dict methods that change a dict in place; those in KEYED_METHODS take the key they change first
+KEYED_METHODS = {"pop", "setdefault", "__setitem__", "__delitem__"}
+MUTATING_METHODS = {"update", "popitem", "clear", *KEYED_METHODS}
+# more assignments than this reaching one read are not worth merging
+MAX_CANDIDATES = 16
 
 
 @dataclass(frozen=True)
-class _Assignment:
-    """A plain `name = value` statement."""
-
-    value: ast.expr
-    statement: ast.stmt
+class _Binding:
+    statement: ast.AST
+    value: ast.expr | None  # None: not a plain `name = value` (parameter, loop target, import...)
 
 
-# a binding whose value is not statically known: parameter, loop target, import, del...
-_Binding = _Assignment | None
-
-
-class _Scope:
-    def __init__(self, node: ast.AST, parent: "_Scope | None"):
-        self.node = node
-        self.parent = parent
-        self.bindings: dict[str, list[_Binding]] = {}
-        self.declarations: dict[str, type] = {}  # name -> ast.Global / ast.Nonlocal
-        self.changed: set[str] = set()  # names whose dict is changed in place
-        self.annotated: set[str] = set()  # `name: dict` in a function: local, with no value
-
-
-class _ScopeBuilder(ast.NodeVisitor):
-    """Every binding, declaration, in-place change and read of a name, in the scope Python evaluates it in."""
-
-    def __init__(self, tree: ast.Module):
-        self.module = _Scope(tree, None)
-        self.reads: dict[ast.Name, _Scope] = {}
-        self.events: list[tuple[_Scope, str, _Binding]] = []
-        self.changes: list[tuple[_Scope, ast.Name]] = []  # where a name's dict is changed in place
-        self._scope = self.module
-        self.visit(tree)
-
-    @contextmanager
-    def _entering(self, node: ast.AST):
-        outer, self._scope = self._scope, _Scope(node, self._scope)
-        try:
-            yield
-        finally:
-            self._scope = outer
-
-    def _visit_all(self, nodes: Iterable[ast.AST | None]) -> None:
-        for node in nodes:
-            if node is not None:
-                self.visit(node)
-
-    def _bind(self, name: str, binding: _Binding = None, scope: _Scope | None = None) -> None:
-        self.events.append((scope or self._scope, name, binding))
-
-    def _change(self, node: ast.expr) -> None:
-        while isinstance(node, (ast.Subscript, ast.Attribute)):
-            node = node.value
-        if isinstance(node, ast.Name):
-            self.changes.append((self._scope, node))
-
-    def _bind_arguments(self, arguments: ast.arguments) -> None:
-        for argument in (*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs):
-            self._bind(argument.arg)
-        for argument in (arguments.vararg, arguments.kwarg):
-            if argument:
-                self._bind(argument.arg)
-
-    # defaults and decorators run in the enclosing scope; the body in its own
-    def visit_FunctionDef(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
-        self._bind(node.name)
-        self._visit_all([*node.decorator_list, *node.args.defaults, *node.args.kw_defaults])
-        with self._entering(node):
-            self._bind_arguments(node.args)
-            self._visit_all(node.body)
-
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
-        self.visit_FunctionDef(node)
-
-    def visit_Lambda(self, node: ast.Lambda) -> None:
-        self._visit_all([*node.args.defaults, *node.args.kw_defaults])
-        with self._entering(node):
-            self._bind_arguments(node.args)
-            self.visit(node.body)
-
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        self._bind(node.name)
-        self._visit_all([*node.decorator_list, *node.bases, *node.keywords])
-        with self._entering(node):
-            self._visit_all(node.body)
-
-    # the first iterable runs in the enclosing scope; targets are local to the comprehension
-    def _visit_comprehension(self, node: ast.ListComp | ast.SetComp | ast.DictComp | ast.GeneratorExp) -> None:
-        first, *rest = node.generators
-        self.visit(first.iter)
-        with self._entering(node):
-            self._visit_all([first.target, *first.ifs, *rest])
-            self._visit_all([getattr(node, field, None) for field in ("elt", "key", "value")])
-
-    def visit_ListComp(self, node: ast.ListComp) -> None:
-        self._visit_comprehension(node)
-
-    def visit_SetComp(self, node: ast.SetComp) -> None:
-        self._visit_comprehension(node)
-
-    def visit_DictComp(self, node: ast.DictComp) -> None:
-        self._visit_comprehension(node)
-
-    def visit_GeneratorExp(self, node: ast.GeneratorExp) -> None:
-        self._visit_comprehension(node)
-
-    def visit_Global(self, node: ast.Global) -> None:
-        self._scope.declarations.update(dict.fromkeys(node.names, ast.Global))
-
-    def visit_Nonlocal(self, node: ast.Nonlocal) -> None:
-        self._scope.declarations.update(dict.fromkeys(node.names, ast.Nonlocal))
-
-    def visit_Assign(self, node: ast.Assign) -> None:
-        for target in node.targets:
-            if isinstance(target, ast.Name):
-                self._bind(target.id, _Assignment(node.value, node))
-            else:
-                self.visit(target)
-        self.visit(node.value)
-
-    def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
-        if isinstance(node.target, ast.Name):
-            if node.value is not None:
-                self._bind(node.target.id, _Assignment(node.value, node))
-            elif isinstance(self._scope.node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                self._scope.annotated.add(node.target.id)  # local to the function, unbound
-        else:
-            self.visit(node.target)
-        self._visit_all([node.annotation, node.value])
-
-    def visit_NamedExpr(self, node: ast.NamedExpr) -> None:
-        scope = self._scope  # a walrus in a comprehension binds in the scope around it
-        while isinstance(scope.node, COMPREHENSIONS) and scope.parent:
-            scope = scope.parent
-        self._bind(node.target.id, scope=scope)
-        self.visit(node.value)
-
-    def visit_AugAssign(self, node: ast.AugAssign) -> None:
-        # only `d |= {...}` changes a dict in place; `s += "x"` on a str just rebinds s (see visit_Name)
-        if isinstance(node.target, ast.Name) and isinstance(node.op, ast.BitOr):
-            self.changes.append((self._scope, node.target))
-        self.generic_visit(node)
-
-    def visit_Name(self, node: ast.Name) -> None:
-        if isinstance(node.ctx, ast.Load):
-            self.reads[node] = self._scope
-        else:  # for / with targets, unpacking, augmented assignment, del
-            self._bind(node.id)
-
-    def visit_Subscript(self, node: ast.Subscript | ast.Attribute) -> None:
-        if not isinstance(node.ctx, ast.Load):  # d["k"] = v, del d["k"], d["k"] += v
-            self._change(node.value)
-        self.generic_visit(node)
-
-    def visit_Attribute(self, node: ast.Attribute) -> None:
-        self.visit_Subscript(node)
-
-    def visit_Call(self, node: ast.Call) -> None:
-        if isinstance(node.func, ast.Attribute) and node.func.attr in MUTATING_METHODS:  # d.update(...)
-            self._change(node.func.value)
-        self.generic_visit(node)
-
-    def visit_Import(self, node: ast.Import | ast.ImportFrom) -> None:
-        for alias in node.names:
-            if alias.name != "*":
-                self._bind(alias.asname or alias.name.split(".")[0])
-
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        self.visit_Import(node)
-
-    def visit_ExceptHandler(self, node: ast.ExceptHandler) -> None:
-        if node.name:
-            self._bind(node.name)
-        self.generic_visit(node)
-
-    def visit_MatchAs(self, node: ast.MatchAs | ast.MatchStar) -> None:
-        if node.name:
-            self._bind(node.name)
-        self.generic_visit(node)
-
-    def visit_MatchStar(self, node: ast.MatchStar) -> None:
-        self.visit_MatchAs(node)
-
-    def visit_MatchMapping(self, node: ast.MatchMapping) -> None:
-        if node.rest:
-            self._bind(node.rest)
-        self.generic_visit(node)
+@dataclass
+class _Resolution:
+    values: list[ast.expr]  # every assignment that may be in effect at the read
+    changes: list[tuple]  # settings for in-place changes: (key, UNKNOWN), or (OPAQUE, None)
 
 
 class _Bindings:
     """
-    The value a name holds where it is read, following Python's scoping: a name
-    bound in a function is local to it (unless declared global / nonlocal), a
-    class body is not visible to its methods, and a parameter, loop target,
-    import, comprehension variable or walrus binds only in its own scope.
+    Assignments of module-level and function-local names, and which of them may
+    be in effect where a name is read.
 
-    The read resolves to the value of a plain `name = value` statement when:
-    - it is the only binding of the name in the scope the read sees, wherever it
-      sits (in a branch, a loop or a later line, it is still the only value); or
-    - it has several, all plain, the read is in that same scope, no binding is
-      under a loop, and every binding before the read sits in a block enclosing
-      it (so `if`/`else` branches or an `if` body read after the `if` are
-      unknown): the latest one wins.
-    A class body is read in order: before its own binding runs, a read sees the
-    enclosing one. A bare annotation (`name: dict`) binds nothing, though in a
-    function it still makes the name local.
-    A global with several bindings read from inside a function is unknown, since
-    its value depends on when the function is called. A dict changed in place
-    (d["k"] = v, d.update(...), d |= ...) is unknown in the scope it belongs to,
-    and so is the dict it was assigned from (opts = sf_options) when that
-    assignment may be the one in effect where the change happens; a dict handed
-    to a function that changes it, or stored on an object, is not tracked.
+    A name is local to a function that binds it (unless declared global), and is
+    otherwise looked up in enclosing functions, then the module. Lambda
+    parameters, comprehension variables and class attributes are only visible
+    inside, and a read of one of them is unknown. Only `name = value` assignments
+    have a value: a parameter, loop target, import or other binding is unknown.
+
+    For a read in the scope of its assignments, the candidates are the latest
+    assignment before it in an enclosing block plus any later one in a branch
+    before the read (if/else, try/except), and any after it in a loop around the
+    read. A read from a nested function may run after any assignment, so all of
+    them are candidates. The reader merges candidates key by key: a key every
+    candidate sets to the same value is known.
+
+    An in-place change (d["k"] = v, d.update(...), d |= {...}, d.pop(k)) makes
+    the changed keys unknown wherever the dict is read; a key that cannot be read
+    makes the whole dict unknown. Not modelled: class-body ordering, aliases
+    (opts = sf_options; opts["k"] = v), a dict changed by a function it is
+    passed to, nonlocal chains beyond the enclosing function.
     """
 
     def __init__(self, tree: ast.Module):
-        builder = _ScopeBuilder(tree)
-        self._reads = builder.reads
         self._parents = {child: node for node in ast.walk(tree) for child in ast.iter_child_nodes(node)}
-        self._blocks = {
+        self._blocks: dict[ast.AST, tuple[ast.AST, str]] = {
             statement: (node, field)
             for node in ast.walk(tree)
             for field, value in ast.iter_fields(node)
@@ -319,181 +142,280 @@ class _Bindings:
             for statement in value
             if isinstance(statement, ast.stmt)
         }
-        self._module = builder.module
-        # nonlocal bindings last: they belong to the binding of an enclosing function
-        for scope, name, binding in sorted(
-            builder.events, key=lambda event: event[0].declarations.get(event[1]) is ast.Nonlocal
-        ):
-            self._binding_owner(scope, name).bindings.setdefault(name, []).append(binding)
-        pending, followed = list(builder.changes), set()
-        while pending:
-            scope, site = pending.pop()
-            owner = self._owner(scope, site.id)
-            owner.changed.add(site.id)
-            for source in self._aliased_at(owner, scope, site):
-                if source not in followed:
-                    followed.add(source)
-                    pending.append((self._reads[source], source))
+        self._module = tree
+        self._declared: dict[tuple[ast.AST, str], type] = {}  # (function, name) -> ast.Global / ast.Nonlocal
+        self._bindings: dict[tuple[ast.AST, str], list[_Binding]] = {}
+        self._shadows: dict[ast.AST, set[str]] = {}
+        self._changes: dict[tuple[ast.AST, str], list[tuple]] = {}
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.Global, ast.Nonlocal)):
+                scope = self._scope_of(node)
+                self._declared.update({(scope, name): type(node) for name in node.names})
+        for node in ast.walk(tree):
+            self._index(node)
 
-    def _aliased_at(self, owner: _Scope, scope: _Scope, site: ast.Name) -> list[ast.Name]:
-        """
-        The names `site` may share its dict with: those of `name = other` assignments
-        that can be in effect at `site`. When the one in effect is known, only it.
-        """
-        bindings = owner.bindings.get(site.id, [])
-        assignments = [binding for binding in bindings if binding is not None]
-        if owner is scope and len(assignments) == len(bindings) > 1:
-            reaching = self._reaching(site, assignments)
-            assignments = [reaching] if reaching else assignments
-        return [
-            assignment.value
-            for assignment in assignments
-            if isinstance(assignment.value, ast.Name) and assignment.value in self._reads
-        ]
+    # --- indexing
 
-    def _binding_owner(self, scope: _Scope, name: str) -> _Scope:
-        declaration = scope.declarations.get(name)
-        if declaration is ast.Global:
-            return self._module
-        if declaration is ast.Nonlocal:
-            return self._enclosing_owner(scope.parent or self._module, name)
-        return scope
+    def _index(self, node: ast.AST) -> None:
+        if isinstance(node, ast.Name) and not isinstance(node.ctx, ast.Load):
+            self._index_store(node)
+        elif isinstance(node, ast.arg):
+            self._bind(node.arg, _Binding(node, None), self._container_of(node))
+        elif isinstance(node, (*FUNCTIONS, ast.ClassDef)):
+            self._bind(node.name, _Binding(node, None), self._container_of(node))
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                if alias.name != "*":
+                    self._bind(alias.asname or alias.name.split(".")[0], _Binding(node, None), self._container_of(node))
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            self._bind(node.name, _Binding(node, None), self._container_of(node))
+        elif isinstance(node, ast.AnnAssign) and node.value is None and isinstance(node.target, ast.Name):
+            container = self._container_of(node)
+            if isinstance(container, FUNCTIONS):  # `name: dict` in a function makes it local, with no value
+                self._bindings.setdefault((container, node.target.id), [])
+        else:
+            self._index_change(node)
 
-    def _owner(self, scope: _Scope, name: str) -> _Scope:
-        """The scope whose bindings of `name` a read in `scope` sees."""
-        declaration = scope.declarations.get(name)
-        if declaration is ast.Global or scope.parent is None:
-            return self._module
-        if declaration is None and (name in scope.bindings or name in scope.annotated):
-            return scope
-        return self._enclosing_owner(scope.parent, name)
+    def _index_store(self, node: ast.Name) -> None:
+        parent = self._parents[node]
+        if isinstance(parent, ast.AnnAssign) and parent.value is None:
+            return  # handled with the annotation
+        if isinstance(parent, ast.AugAssign) and isinstance(parent.op, ast.BitOr):
+            return  # d |= {...}: an in-place change, see _index_change
+        statement = self._statement_of(node)
+        value = None
+        if isinstance(parent, ast.Assign) and node in parent.targets:
+            value = parent.value
+        elif isinstance(parent, ast.AnnAssign) and node is parent.target:
+            value = parent.value
+        # a walrus in a comprehension or lambda binds in the function or module around it
+        container = self._scope_of(node) if isinstance(parent, ast.NamedExpr) else self._container_of(node)
+        self._bind(node.id, _Binding(statement, value), container)
 
-    @staticmethod
-    def _enclosing_owner(scope: _Scope, name: str) -> _Scope:
-        """The nearest enclosing function binding `name`, else the module; class bodies are skipped."""
-        while scope.parent is not None:
-            if not isinstance(scope.node, ast.ClassDef) and (name in scope.bindings or name in scope.annotated):
+    def _bind(self, name: str, binding: _Binding, container: ast.AST) -> None:
+        if isinstance(container, SHADOWING_NODES):
+            self._shadows.setdefault(container, set()).add(name)
+            return
+        declared = self._declared.get((container, name))
+        if declared is ast.Global:
+            container = self._module
+        elif declared is ast.Nonlocal:
+            container = self._scope_of(container)
+        self._bindings.setdefault((container, name), []).append(binding)
+
+    def _index_change(self, node: ast.AST) -> None:
+        """d["k"] = v, del d["k"], d |= {...}, d.update(...), d.pop("k")..."""
+        if isinstance(node, ast.Subscript) and not isinstance(node.ctx, ast.Load):
+            target, keys = node.value, [node.slice]
+        elif isinstance(node, ast.AugAssign) and isinstance(node.op, ast.BitOr):
+            target, keys = node.target, _changed_keys(node.value)
+        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in MUTATING_METHODS:
+            target, keys = node.func.value, _method_changed_keys(node)
+        else:
+            return
+        if isinstance(target, ast.Name) and not self._is_shadowed(target):
+            owner = self._owner(self._scope_of(target), target.id)
+            self._changes.setdefault((owner, target.id), []).extend(
+                (text.lower(), UNKNOWN) if (text := _literal_str(key)) else (OPAQUE, None) for key in keys
+            )
+
+    # --- scopes
+
+    def _container_of(self, node: ast.AST) -> ast.AST:
+        """The function, module, lambda, comprehension or class body a binding at `node` belongs to."""
+        previous, child, parent = None, node, self._parents.get(node)
+        while parent is not None:
+            if isinstance(parent, (*FUNCTIONS, ast.ClassDef)) and child in parent.body:
+                return parent
+            if isinstance(parent, ast.Lambda) and child is parent.body:
+                return parent
+            if isinstance(parent, ast.arguments) and isinstance(child, ast.arg):
+                return self._parents[parent]  # the function or lambda the parameter belongs to
+            if isinstance(parent, ast.comprehension) and child is parent.target:
+                return self._parents[parent]
+            # inside a comprehension, except its first iterable, which runs in the enclosing scope
+            if isinstance(parent, COMPREHENSIONS):
+                first = parent.generators[0]
+                if not (child is first and previous is first.iter):
+                    return parent
+            previous, child, parent = child, parent, self._parents.get(parent)
+        return self._module
+
+    def _scope_of(self, node: ast.AST) -> ast.AST:
+        """The function or module whose names a read at `node` sees first."""
+        container = self._container_of(node)
+        while isinstance(container, SHADOWING_NODES):
+            container = self._container_of(container)
+        return container
+
+    def _is_shadowed(self, name: ast.Name) -> bool:
+        container = self._container_of(name)
+        while isinstance(container, SHADOWING_NODES):
+            if name.id in self._shadows.get(container, ()):
+                return True
+            container = self._container_of(container)
+        return False
+
+    def _owner(self, scope: ast.AST, name: str) -> ast.AST:
+        """The function or module holding the assignments a read of `name` in `scope` sees."""
+        declared = self._declared.get((scope, name))
+        while scope is not self._module and declared is not ast.Global:
+            if (scope, name) in self._bindings and declared is not ast.Nonlocal:
                 return scope
-            scope = scope.parent
-        return scope
+            scope = self._scope_of(scope)
+            declared = self._declared.get((scope, name))
+        return self._module
 
-    def resolve(self, name: ast.Name) -> ast.expr | None:
-        scope = self._reads.get(name)
-        if scope is None:
-            return None
-        return self._value(self._owner(scope, name.id), scope, name)
+    # --- reads
 
-    def _value(self, owner: _Scope, scope: _Scope, name: ast.Name) -> ast.expr | None:
-        """The value `name`, read in `scope`, takes from the bindings of `owner`."""
-        bindings = owner.bindings.get(name.id, [])
-        assignments = [binding for binding in bindings if binding is not None]
-        if not assignments or len(assignments) != len(bindings) or name.id in owner.changed:
+    def resolve(self, name: ast.Name) -> _Resolution | None:
+        """Every value `name` may hold where it is read, or None when one of them is unknown."""
+        if self._is_shadowed(name):
             return None
-        if owner is scope and isinstance(owner.node, ast.ClassDef):
-            return self._class_body_value(owner, name, assignments)
-        if len(assignments) == 1:
-            return assignments[0].value
-        reaching = self._reaching(name, assignments) if owner is scope else None
-        return reaching.value if reaching else None
+        scope = self._scope_of(name)
+        owner = self._owner(scope, name.id)
+        bindings = self._bindings.get((owner, name.id), [])
+        candidates = self._reaching(name, bindings) if owner is scope else bindings
+        values = [binding.value for binding in candidates if binding.value is not None]
+        if not values or len(values) != len(candidates) or len(values) > MAX_CANDIDATES:
+            return None
+        return _Resolution(values, self._changes.get((owner, name.id), []))
 
-    def _class_body_value(self, scope: _Scope, name: ast.Name, assignments: list[_Assignment]) -> ast.expr | None:
-        """A class body reads its own binding once one has run, and the enclosing one before that."""
-        read_at = self._statement_of(name)
-        if any(_position(assignment.statement) < _position(read_at) for assignment in assignments):
-            reaching = self._reaching(name, assignments)
-            return reaching.value if reaching else None
-        if any(self._in_loop(assignment.statement) for assignment in assignments) or scope.parent is None:
-            return None
-        return self._value(self._enclosing_owner(scope.parent, name.id), scope, name)
-
-    def _reaching(self, name: ast.Name, assignments: list[_Assignment]) -> _Assignment | None:
-        """The latest assignment before the read, when no other one could have run in between."""
-        if any(self._in_loop(assignment.statement) for assignment in assignments):
-            return None
+    def _reaching(self, name: ast.Name, bindings: list[_Binding]) -> list[_Binding]:
         read_at = self._statement_of(name)
         enclosing = self._enclosing_blocks(read_at)
-        reaching = None
-        for assignment in sorted(assignments, key=lambda assignment: _position(assignment.statement)):
-            if _position(assignment.statement) >= _position(read_at):
-                break
-            if self._blocks.get(assignment.statement) not in enclosing:
-                return None
-            reaching = assignment
-        return reaching
+        before = sorted((b for b in bindings if _position(b.statement) < _position(read_at)), key=_binding_position)
+        latest = next(
+            (b for b in reversed(before) if self._blocks.get(self._statement_of(b.statement)) in enclosing), None
+        )
+        candidates = [b for b in before if latest is None or _position(b.statement) >= _position(latest.statement)]
+        loops = [node for node in self._ancestors(read_at) if isinstance(node, LOOPS)]
+        candidates += [
+            b
+            for b in bindings
+            if _position(b.statement) >= _position(read_at)
+            and any(loop in self._ancestors(b.statement) for loop in loops)
+        ]
+        return candidates
 
-    def _statement_of(self, node: ast.AST) -> ast.stmt:
-        while not isinstance(node, ast.stmt):
+    def _statement_of(self, node: ast.AST) -> ast.AST:
+        while not isinstance(node, ast.stmt) and node in self._parents:
             node = self._parents[node]
         return node
 
-    def _enclosing_blocks(self, statement: ast.stmt) -> set[tuple]:
+    def _ancestors(self, node: ast.AST) -> list[ast.AST]:
+        """Nodes around `node` up to its function or module."""
+        ancestors = []
+        parent = self._parents.get(node)
+        while parent is not None and not isinstance(parent, (*FUNCTIONS, ast.Module)):
+            ancestors.append(parent)
+            parent = self._parents.get(parent)
+        return ancestors
+
+    def _enclosing_blocks(self, statement: ast.AST) -> set[tuple]:
         """The statement lists holding `statement` and each statement around it, up to its scope."""
         blocks = set()
         while statement in self._blocks:
             block = self._blocks[statement]
             blocks.add(block)
-            if isinstance(block[0], (ast.Module, *SCOPE_NODES)):
+            if isinstance(block[0], (*FUNCTIONS, ast.Module)):
                 break
             statement = self._statement_of(block[0])  # an except handler or match case: its try / match
         return blocks
 
-    def _in_loop(self, statement: ast.stmt) -> bool:
-        node = self._parents.get(statement)
-        while node is not None and not isinstance(node, (ast.Module, *SCOPE_NODES)):
-            if isinstance(node, LOOPS):
-                return True
-            node = self._parents.get(node)
-        return False
+
+def _position(node: ast.AST) -> tuple[int, int]:
+    return getattr(node, "lineno", 0), getattr(node, "col_offset", 0)
 
 
-def _position(statement: ast.stmt) -> tuple[int, int]:
-    return statement.lineno, statement.col_offset
+def _binding_position(binding: _Binding) -> tuple[int, int]:
+    return _position(binding.statement)
+
+
+def _changed_keys(node: ast.expr | None) -> list[ast.expr | None]:
+    """Keys a dict literal or dict(k=v) sets; [None] when they cannot be listed."""
+    if isinstance(node, ast.Dict) and all(key is not None for key in node.keys):
+        return list(node.keys)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict" and not node.args:
+        return [ast.Constant(keyword.arg) if keyword.arg else None for keyword in node.keywords]
+    return [None]
+
+
+def _method_changed_keys(call: ast.Call) -> list[ast.expr | None]:
+    method = call.func.attr if isinstance(call.func, ast.Attribute) else None
+    if method in KEYED_METHODS:
+        return [call.args[0] if call.args else None]
+    if method == "update":
+        keys = [key for arg in call.args for key in _changed_keys(arg)]
+        return keys + [ast.Constant(keyword.arg) if keyword.arg else None for keyword in call.keywords]
+    return [None]  # popitem(), clear()
 
 
 class _ScriptReader:
     """Static values of a parsed script: strings and option settings."""
 
     def __init__(self, tree: ast.Module):
-        self._bindings = _Bindings(tree)
+        self._tree = tree
+        self._strings: dict[ast.Name, str | _Unknown] = {}
+        self._settings: dict[ast.Name, list[tuple]] = {}
 
-    def string(self, node: ast.expr | None, depth: int = 0) -> str | _Unknown:
+    @cached_property
+    def _names(self) -> _Bindings:
+        """Indexed on first use: most scripts have no Snowflake call to resolve names for."""
+        return _Bindings(self._tree)
+
+    def string(self, node: ast.expr | None) -> str | _Unknown:
         if isinstance(node, ast.Constant) and isinstance(node.value, (str, int, float, bool)):
             return str(node.value)
-        if isinstance(node, ast.Name) and depth < MAX_DEPTH:
-            return self.string(self._bindings.resolve(node), depth + 1)
-        return UNKNOWN
+        if not isinstance(node, ast.Name):
+            return UNKNOWN
+        if node not in self._strings:
+            self._strings[node] = UNKNOWN  # while resolving: a name defined through itself is unknown
+            resolution = self._names.resolve(node)
+            values = {self.string(value) for value in resolution.values} if resolution else {UNKNOWN}
+            self._strings[node] = values.pop() if len(values) == 1 else UNKNOWN
+        return self._strings[node]
 
-    def settings(self, node: ast.expr | None, depth: int = 0) -> list[tuple]:
+    def settings(self, node: ast.expr | None) -> list[tuple]:
         """Ordered (key, value) settings of a dict expression; [(OPAQUE, None)] when unlisted."""
-        if isinstance(node, ast.Name) and depth < MAX_DEPTH:
-            return self.settings(self._bindings.resolve(node), depth + 1)
+        if isinstance(node, ast.Name):
+            return self._name_settings(node)
         if isinstance(node, ast.Dict):
-            return self._dict_literal_settings(node, depth)
+            return self._dict_literal_settings(node)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
-            return self._dict_call_settings(node, depth)
+            return self._dict_call_settings(node)
         return [(OPAQUE, None)]
 
-    def _dict_literal_settings(self, node: ast.Dict, depth: int) -> list[tuple]:
+    def _name_settings(self, node: ast.Name) -> list[tuple]:
+        if node not in self._settings:
+            self._settings[node] = [(OPAQUE, None)]  # while resolving: a name defined through itself is unknown
+            resolution = self._names.resolve(node)
+            if resolution:
+                merged = _merge([self.settings(value) for value in resolution.values])
+                self._settings[node] = merged + resolution.changes
+        return self._settings[node]
+
+    def _dict_literal_settings(self, node: ast.Dict) -> list[tuple]:
         settings = []
         for key, value in zip(node.keys, node.values, strict=True):
             if key is None:  # {**base, ...}
-                settings.extend(self.settings(value, depth + 1))
+                settings.extend(self.settings(value))
             else:
                 settings.append(self.setting(key, value))
         return settings
 
-    def _dict_call_settings(self, node: ast.Call, depth: int) -> list[tuple]:
+    def _dict_call_settings(self, node: ast.Call) -> list[tuple]:
         settings = []
         for arg in node.args:  # dict(base, ...)
-            settings.extend(self.settings(arg, depth + 1))
-        settings.extend(self.keyword_settings(node.keywords, depth))
+            settings.extend(self.settings(arg))
+        settings.extend(self.keyword_settings(node.keywords))
         return settings
 
-    def keyword_settings(self, keywords: list[ast.keyword], depth: int = 0) -> list[tuple]:
+    def keyword_settings(self, keywords: list[ast.keyword]) -> list[tuple]:
         settings = []
         for keyword in keywords:
             if keyword.arg is None:  # **options
-                settings.extend(self.settings(keyword.value, depth + 1))
+                settings.extend(self.settings(keyword.value))
             else:
                 settings.append((keyword.arg.lower(), self.string(keyword.value)))
         return settings
@@ -501,6 +423,18 @@ class _ScriptReader:
     def setting(self, key: ast.expr, value: ast.expr) -> tuple:
         key_text = self.string(key)
         return (key_text.lower(), self.string(value)) if isinstance(key_text, str) else (OPAQUE, None)
+
+
+def _merge(alternatives: list[list[tuple]]) -> list[tuple]:
+    """One dict that may be any of `alternatives`: a key keeps a value only when all of them agree on it."""
+    if len(alternatives) == 1:
+        return alternatives[0]
+    applied = [_apply(settings) for settings in alternatives]
+    keys = sorted(set().union(*applied))
+    return [
+        (key, values.pop() if len(values := {options.get(key, ABSENT) for options in applied}) == 1 else UNKNOWN)
+        for key in keys
+    ]
 
 
 def parse_snowflake_refs(source_code: str) -> tuple[list[SnowflakeRef], list[SnowflakeRef]]:
@@ -618,9 +552,8 @@ def _build_ref(options: dict, fallback: dict) -> SnowflakeRef | None:
         table = parts[0]
     else:  # not a Snowflake table name
         return None
-    # an unknown schema must not fall back to a guess: linking another schema's table is worse than none
-    if schema is UNKNOWN:
-        return None
+    # an unknown database / schema (a job parameter, say) is left unset rather than taken from the script-wide
+    # fallback: the resolver then links the table only when its name is unique
     return SnowflakeRef(
         table=table,
         database=_known(database, fallback.get(SF_DATABASE)),

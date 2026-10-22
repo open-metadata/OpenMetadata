@@ -409,10 +409,19 @@ class GluepipelineSource(PipelineServiceSource):
                 lineage_details[direction].append(table_entity)
 
     def _resolve_snowflake_ref(self, ref: SnowflakeRef) -> EntityReference | None:
+        """
+        The first attempt with any match decides: one match links, several are
+        ambiguous (a less specific attempt would only match more), none tries the next.
+        """
         for database_name, schema_name in self._snowflake_lookup_attempts(ref):
-            table_entity = self._search_unique_table(ref.table, database_name, schema_name)
-            if table_entity:
-                return table_entity
+            matches = self._search_tables(ref.table, database_name, schema_name)
+            if len(matches) == 1:
+                return next(iter(matches.values()))
+            if matches:
+                logger.warning(
+                    "Snowflake table %s matches several tables %s; skipping lineage", ref.table, sorted(matches)
+                )
+                return None
         logger.warning(
             "Could not find table entity for Snowflake reference %s.%s.%s. "
             "Ensure the Snowflake service has been ingested.",
@@ -436,10 +445,11 @@ class GluepipelineSource(PipelineServiceSource):
                 unique.append(attempt)
         return unique
 
-    def _search_unique_table(
+    def _search_tables(
         self, table_name: str, database_name: str | None, schema_name: str | None
-    ) -> EntityReference | None:
+    ) -> dict[str, EntityReference]:
         """
+        Existing tables matching the name in every configured service, by FQN.
         The matches of every configured service are collected before deciding, so the
         same table ingested from two Snowflake services is ambiguous rather than
         resolved to whichever service is listed first. Each name is confirmed to
@@ -467,10 +477,7 @@ class GluepipelineSource(PipelineServiceSource):
             table_entity = self.metadata.get_entity_reference(entity=Table, fqn=table_fqn)
             if table_entity:
                 matches[table_fqn] = table_entity
-        if len(matches) > 1:
-            logger.warning("Snowflake table %s matches several tables %s; skipping lineage", table_name, list(matches))
-            return None
-        return next(iter(matches.values()), None)
+        return matches
 
     def _resolve_glue_connection(self, connection_name: str) -> dict | None:
         if connection_name in self._glue_connection_cache:
