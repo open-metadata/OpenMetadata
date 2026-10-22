@@ -67,7 +67,8 @@ RUN curl -fsSL --retry 3 --retry-all-errors \
     && mvn --version
 
 # Node 22.23.4 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the
-# UI's `engines` floor rejects anything older); it is pinned here because the tarball is checksum-verified.
+# UI's `engines` floor rejects anything older); pinned here because the tarball is checksum-verified
+# (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin).
 #
 # Arch-resolved rather than hardcoded to x64: a local install on Apple Silicon builds and runs arm64,
 # and the wrong tarball fails at exec with a misleading "not found".

@@ -98,6 +98,7 @@ check_version() {
     done
     print_error "$tool_name version $current is not supported. Supported versions are: $required"
     code=1
+    return 1
 }
 
 check_minimum_version() {
@@ -135,11 +136,11 @@ for dependency in python docker java maven jq node yarn antlr; do
     minimum_version=${dependency["minimum_version"]:-}
     if [[ -n "$minimum_version" ]]; then
       # Errors go to stderr; drop only the major check's ✓ so a pass prints once.
-      prev_code=$code
-      check_version "$tool_name" "$version" "$required_version" > /dev/null
-      [[ $code -eq $prev_code ]] && check_minimum_version "$tool_name" "$version" "$minimum_version"
+      if check_version "$tool_name" "$version" "$required_version" > /dev/null; then
+        check_minimum_version "$tool_name" "$version" "$minimum_version"
+      fi
     else
-      check_version "$tool_name" "$version" "$required_version"
+      check_version "$tool_name" "$version" "$required_version" || true
     fi
 done
 if [[ $code -eq 0 ]]; then
