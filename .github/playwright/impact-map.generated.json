@@ -13896,26 +13896,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/RequestTagPage/RequestTagPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/UpdateTagPage/UpdateTagPage.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Tasks.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts",
-        "playwright/e2e/Pages/Tags.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/Assignees.tsx"
       ],
       "specs": [
@@ -13943,6 +13923,15 @@
       ],
       "specs": [
         "playwright/e2e/Pages/GlossaryImportExport.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/TasksPage/shared/TaskFormLayout.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCreation.spec.ts"
       ]
     },
     {
