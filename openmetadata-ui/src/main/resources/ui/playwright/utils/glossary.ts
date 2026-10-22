@@ -2178,3 +2178,12 @@ export const includeGlossaryInApprovalWorkflow = (
   apiContext: APIRequestContext,
   glossary: Glossary
 ) => updateApprovalWorkflowExclusion(apiContext, glossary, false);
+
+// The glossary page also fires its own /glossaryTerms/search proposal-count
+// queries (no q), so match the user's search by its query text.
+export const waitForTermSearch = (page: Page, query: string) =>
+  page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/glossaryTerms/search') &&
+      new URL(response.url()).searchParams.get('q') === query
+  );
