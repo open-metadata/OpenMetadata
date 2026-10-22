@@ -482,6 +482,7 @@ node_at_least_min() {
 
 # nvm/mise resolve "22" to the newest 22.x, which clears the .nvmrc floor.
 node_meets_min() {
+  NODE_BIN_DIR="$(dirname "$(command -v node)")"
   if ! node_at_least_min && [ "$DO_TOOLS" -eq 1 ] && [ "$CHECK_ONLY" -eq 0 ]; then
     info "Node $(node --version) is older than v$NODE_MIN (.nvmrc); upgrading."
     install_node_via_version_manager || true
