@@ -1171,6 +1171,42 @@
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
       ]
+    },
+    {
+      "_comment": "The Lineage section of the entity summary panel (Upstream/Downstream counts). ExplorePageRightPanel.spec.ts opens the panel and navigates from its lineage section; the data product Assets tab renders the same panel.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/LineageSection/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Service Insights widgets and their empty-state placeholders. Pagination.spec.ts and ServiceEntityPermissions.spec.ts open a service's Insights tab; ConnectionServiceDetails.spec.ts covers it in AI mode.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The shared page pagers. Pagination.spec.ts and GlobalPageSize.spec.ts drive Next/Previous and the page size across list pages; the components' importers map them further.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPrevious/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPreviousWithOffset/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/GlobalPageSize.spec.ts"
+      ]
     }
   ]
 }

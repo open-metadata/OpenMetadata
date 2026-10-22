@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Response } from '@playwright/test';
-import { ACTION_TIMEOUT } from '../../constant/common';
+import { ACTION_TIMEOUT, LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { TableClass } from '../../support/entity/TableClass';
 import { TaskClass } from '../../support/entity/TaskClass';
@@ -388,6 +388,11 @@ test.describe('Table & Data Model columns table pagination', () => {
   test('expand / collapse should not appear after updating nested fields table', async ({
     page,
   }) => {
+    // ~50 rich-text column descriptions mount at once on this page; on a busy
+    // CI runner that stalls the browser long enough to outlast the default
+    // tag-picker open retry and the 60s budget for two tag round-trips.
+    test.slow();
+
     await page.goto(
       '/table/sample_data.ecommerce_db.shopify.performance_test_table',
       { waitUntil: 'domcontentloaded' }
@@ -401,6 +406,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       rowId:
         'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
       entityEndpoint: 'tables',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
 
     // Should not show expand icon for non-nested columns
@@ -418,6 +424,7 @@ test.describe('Table & Data Model columns table pagination', () => {
       rowId:
         'sample_data.ecommerce_db.shopify.performance_test_table.test_col_0044',
       entityEndpoint: 'tables',
+      pickerTimeout: LONG_ACTION_TIMEOUT,
     });
   });
 });

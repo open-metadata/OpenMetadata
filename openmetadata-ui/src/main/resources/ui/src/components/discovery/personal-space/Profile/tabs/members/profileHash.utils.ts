@@ -25,14 +25,15 @@ export interface ProfileHashTarget {
 }
 
 /**
- * Builders for the in-modal destinations. Role/policy/team reuse the existing
+ * Builders for the in-modal destinations. A user opens the Members edit view
+ * (the Profile tab is only ever the logged-in user). User/role/policy/team reuse the existing
  * `viewToSubPath` encoders so the sub-paths round-trip through the same parsers
  * (`access-control` and `members`), avoiding divergent encoding.
  */
 export const profileHash = {
   user: (name: string): ProfileHashTarget => ({
-    tab: 'profile',
-    subPath: encodeURIComponent(name),
+    tab: 'members',
+    subPath: membersViewToSubPath({ type: 'user-edit', name }),
   }),
   role: (fqn: string): ProfileHashTarget => ({
     tab: 'access-control',

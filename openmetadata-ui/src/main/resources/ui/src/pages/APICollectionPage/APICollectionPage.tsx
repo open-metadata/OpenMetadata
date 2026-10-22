@@ -33,6 +33,7 @@ import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
@@ -93,6 +94,7 @@ const APICollectionPage: FunctionComponent = () => {
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();
   const { fqn: decodedAPICollectionFQN } = useFqn();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const queryClient = useQueryClient();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
@@ -245,10 +247,17 @@ const APICollectionPage: FunctionComponent = () => {
             decodedAPICollectionFQN,
             apiCollectionPermission,
             apiCollection,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [apiCollectionPermission, decodedAPICollectionFQN, apiCollection, navigate]
+    [
+      apiCollectionPermission,
+      decodedAPICollectionFQN,
+      apiCollection,
+      navigate,
+      showModal,
+    ]
   );
 
   const { currentVersion, apiCollectionId } = useMemo(
@@ -625,7 +634,7 @@ const APICollectionPage: FunctionComponent = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError(
+          title={getEntityMissingError(
             EntityType.API_COLLECTION,
             decodedAPICollectionFQN
           )}

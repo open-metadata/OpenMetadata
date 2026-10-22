@@ -314,7 +314,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block"
+        className="tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"

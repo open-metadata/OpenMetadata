@@ -182,9 +182,7 @@ const TasksEmptyState = ({
           ? t('message.no-match-in-first-tasks', { count: scannedCount })
           : t('message.no-results-for-filters-description')
       }
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
+      icon={<FilterFunnel01 className="tw:size-7" />}
       title={t('message.no-match-found')}
     />
   );
@@ -210,7 +208,7 @@ const TasksEmptyState = ({
       <NoDataPlaceholder
         data-testid="inbox-tasks-closed-empty"
         description={t('message.tasks-closed-empty-description')}
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        icon={<Inbox01 className="tw:size-7" />}
         title={t('label.no-closed-tasks-yet')}
       />
     ),

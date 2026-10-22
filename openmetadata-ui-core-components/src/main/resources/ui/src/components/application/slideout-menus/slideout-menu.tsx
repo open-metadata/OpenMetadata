@@ -147,6 +147,8 @@ interface SlideoutHeaderProps extends ComponentPropsWithRef<'header'> {
   onClose?: () => void;
   /** Omit the built-in close control when the caller already supplies one. */
   showCloseButton?: boolean;
+  /** `data-testid` for the built-in close control. */
+  closeButtonTestId?: string;
 }
 
 const Header = ({
@@ -154,6 +156,7 @@ const Header = ({
   children,
   onClose,
   showCloseButton = true,
+  closeButtonTestId,
   ...props
 }: SlideoutHeaderProps) => {
   return (
@@ -167,6 +170,7 @@ const Header = ({
       {showCloseButton && (
         <CloseButton
           className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
+          data-testid={closeButtonTestId}
           size="md"
           onClick={onClose}
         />

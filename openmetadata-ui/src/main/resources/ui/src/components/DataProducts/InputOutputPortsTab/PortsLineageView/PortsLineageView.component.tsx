@@ -221,11 +221,9 @@ const PortsLineageView = ({
         <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={
-              assetCount === 0
-                ? t('message.no-assets-for-ports-lineage')
-                : t('message.no-ports-to-display-lineage')
-            }
+            {...(assetCount === 0
+              ? { description: t('message.no-assets-for-ports-lineage') }
+              : { title: t('message.no-ports-to-display-lineage') })}
             icon={
               <AddPlaceHolderIcon
                 className="tw:w-16 tw:h-16"

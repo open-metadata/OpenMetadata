@@ -25,6 +25,7 @@ interface TaskListV1Props {
   onTaskClick?: (task: Task) => void;
   activeFeedId?: string;
   emptyPlaceholderText: ReactNode;
+  emptyPlaceholderDescription?: ReactNode;
   selectedTask?: Task;
   onAfterClose?: () => void;
   handlePanelResize?: (isFullWidth: boolean) => void;
@@ -38,6 +39,7 @@ const TaskListV1 = ({
   onTaskClick,
   activeFeedId,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   selectedTask,
   onAfterClose,
   handlePanelResize,
@@ -90,8 +92,9 @@ const TaskListV1 = ({
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={emptyPlaceholderText}
+            description={emptyPlaceholderDescription}
             icon={<FeedEmptyIcon height={140} width={140} />}
+            title={emptyPlaceholderText}
           />
         </div>
       </div>
