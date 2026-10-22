@@ -15,6 +15,10 @@ import { EntityType } from '../../../enums/entity.enum';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { ModalWithCustomPropertyEditor } from './ModalWithCustomPropertyEditor.component';
 
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getTypeByFQN: jest.fn(),
 }));
@@ -61,6 +65,17 @@ describe('ModalWithCustomPropertyEditor', () => {
     ).toBeInTheDocument();
     expect(screen.getByTestId('save')).toBeDisabled();
     expect(screen.getByTestId('cancel')).toBeEnabled();
+  });
+
+  it('does not claim the type has no custom properties when loading it fails', async () => {
+    (getTypeByFQN as jest.Mock).mockRejectedValue(new Error('network'));
+
+    renderModal();
+
+    expect(await screen.findByTestId('save')).toBeDisabled();
+    expect(
+      screen.queryByText('label.no-custom-properties-defined')
+    ).not.toBeInTheDocument();
   });
 
   it('enables Save only after a custom property value changes', async () => {

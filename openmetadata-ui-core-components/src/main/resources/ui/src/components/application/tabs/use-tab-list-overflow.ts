@@ -66,16 +66,24 @@ export const useTabListOverflow = (
     if (!enabled || !el) {
       return undefined;
     }
-    measure();
     el.addEventListener('scroll', measure, { passive: true });
-    // Tabs can change width after mount (counts load, labels translate).
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    Array.from(el.children).forEach((child) => observer.observe(child));
+    // Tabs can change width after mount (counts load, labels translate), and
+    // tabs can be added later (e.g. once permissions load) without the list
+    // itself resizing, so observe each tab and re-run when the set changes.
+    const resizeObserver = new ResizeObserver(measure);
+    resizeObserver.observe(el);
+    const observeTabs = () => {
+      Array.from(el.children).forEach((child) => resizeObserver.observe(child));
+      measure();
+    };
+    observeTabs();
+    const mutationObserver = new MutationObserver(observeTabs);
+    mutationObserver.observe(el, { childList: true });
 
     return () => {
       el.removeEventListener('scroll', measure);
-      observer.disconnect();
+      resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [enabled, measure, ref]);
 

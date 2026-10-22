@@ -159,6 +159,39 @@ describe('Tabs.List card overflow', () => {
     expect(screen.queryByTestId('tab-list-scroll-end')).toBeNull();
   });
 
+  it('shows scroll controls once a tab added after mount makes the list overflow', async () => {
+    let contentWidth = 300;
+    vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.getAttribute('role') === 'tablist' ? contentWidth : 0;
+      }
+    );
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(
+      function (this: HTMLElement) {
+        return this.getAttribute('role') === 'tablist' ? 300 : 0;
+      }
+    );
+    const renderList = (tabs: string[]) => (
+      <Tabs defaultSelectedKey="one">
+        <Tabs.List aria-label="Sections" type="underline" variant="card">
+          {tabs.map((id) => (
+            <Tabs.Item id={id} key={id}>
+              {id}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
+    );
+    const { rerender } = render(renderList(['one', 'two']));
+
+    expect(screen.queryByTestId('tab-list-scroll-end')).toBeNull();
+
+    contentWidth = 800;
+    rerender(renderList(['one', 'two', 'custom-properties']));
+
+    expect(await screen.findByTestId('tab-list-scroll-end')).toBeEnabled();
+  });
+
   it('shows scroll controls when tabs overflow and pages towards the hidden ones', () => {
     const scrollBy = mockTabListWidths(800, 300);
     renderTabs('card');
