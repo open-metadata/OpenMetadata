@@ -148,6 +148,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Explore/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntitySummaryPanelUtils*",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
       ],
       "projects": [
