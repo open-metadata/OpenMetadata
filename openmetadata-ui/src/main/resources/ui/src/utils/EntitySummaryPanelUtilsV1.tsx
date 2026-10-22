@@ -399,8 +399,8 @@ const SchemaFieldCardsV1: React.FC<{
   if (isEmpty(columns)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -463,8 +463,8 @@ const TopicFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -569,8 +569,8 @@ const ContainerFieldCardsV1: React.FC<{
   if (isEmpty(filteredColumns)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -616,8 +616,8 @@ const PipelineTasksV1: React.FC<{
   if (isEmpty(filteredTasks)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -726,8 +726,8 @@ const APICollectionEndpointsV1: React.FC<{
   if (isEmpty(filteredEndpoints) && hasInitialized) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -835,8 +835,8 @@ const DatabaseSchemaTablesV1: React.FC<{
   if (isEmpty(filteredTables) && hasInitialized) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -899,8 +899,8 @@ const DashboardChartsV1: React.FC<{
   if (isEmpty(filteredCharts)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -1087,13 +1087,9 @@ const APIEndpointSchemaV1: React.FC<{
     );
   }
 
+  // The endpoint has no schema at all, so a search cannot be what emptied it.
   if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
-    return (
-      <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
-        searchText={searchText}
-      />
-    );
+    return <PanelEmptyPlaceholder title={t('message.no-data-available')} />;
   }
 
   return (
@@ -1129,8 +1125,8 @@ const APIEndpointSchemaV1: React.FC<{
 
       {isEmpty(activeSchemaFields) ? (
         <PanelEmptyPlaceholder
-          title={t('message.no-data-available')}
           searchText={searchText}
+          title={t('message.no-data-available')}
         />
       ) : (
         <div className="m-l-md">
@@ -1179,8 +1175,8 @@ const DatabaseSchemasV1: React.FC<{
   if (isEmpty(filteredSchemas)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }
@@ -1240,8 +1236,8 @@ const SearchIndexFieldCardsV1: React.FC<{
   if (isEmpty(filteredFields)) {
     return (
       <PanelEmptyPlaceholder
-        title={t('message.no-data-available')}
         searchText={searchText}
+        title={t('message.no-data-available')}
       />
     );
   }

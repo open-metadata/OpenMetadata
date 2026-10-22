@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { EntityType, TabSpecificField } from '../enums/entity.enum';
+import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import {
   Container,
   DataType as ContainerDataType,
@@ -1521,5 +1522,32 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
         expect(showErrorToast).toHaveBeenCalled();
       });
     });
+  });
+});
+
+describe('EntitySummaryPanelUtilsV1 - API endpoint with no schema', () => {
+  // The search filters only the active schema's fields, so an endpoint with
+  // no schema at all is empty whatever the search: it is no data, not no match.
+  it('shows no data rather than no matching results while searching', () => {
+    const endpointWithoutSchema = {
+      name: 'endpoint',
+      requestSchema: { schemaFields: [] },
+      responseSchema: { schemaFields: [] },
+    } as unknown as APIEndpoint;
+
+    const result = getEntityChildDetailsV1(
+      EntityType.API_ENDPOINT,
+      endpointWithoutSchema,
+      undefined,
+      false,
+      'anything'
+    );
+
+    render(<div>{result}</div>);
+
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.no-matching-result-plural')
+    ).not.toBeInTheDocument();
   });
 });
