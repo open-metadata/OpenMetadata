@@ -31,6 +31,7 @@ const stats = (queryStats: Record<string, unknown> = {}) => ({
   dataHealthScore: 78,
   isLoading: false,
   error: undefined,
+  failed: { assets: false, incidents: false, queries: false, health: false },
   refetch: jest.fn(),
 });
 
@@ -104,23 +105,25 @@ describe('UserAssetStats', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows an error with reload instead of zero tiles when the stats fail', () => {
+  it('shows a reload only on the tile whose request failed, keeping the others', () => {
     const refetch = jest.fn();
     mockStats.mockReturnValue({
       ...stats(),
-      error: new Error('boom'),
+      error: new Error('denied'),
+      failed: { assets: false, incidents: true, queries: false, health: false },
       refetch,
     });
     renderStats();
 
     expect(
-      screen.queryByTestId('stat-card-assets-owned-value')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('stat-card-assets-owned-value')
+    ).toHaveTextContent('9');
     expect(
-      screen.getByText('message.something-went-wrong')
-    ).toBeInTheDocument();
+      screen.getByTestId('stat-card-open-incidents-value')
+    ).toHaveTextContent('--');
+    expect(screen.getAllByTestId('stat-card-reload')).toHaveLength(1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    fireEvent.click(screen.getByTestId('stat-card-reload'));
 
     expect(refetch).toHaveBeenCalled();
   });

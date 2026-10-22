@@ -165,11 +165,13 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
             userData={userData}
           />
         )}
+        {/* No canEdit override: the server lets only admins change a user's
+            domains (ADR:2026-10-21-only-admins-change-a-users-domains), which is
+            the row's own default. */}
         {isProfileLoading ? (
           <RowSkeleton chips={1} />
         ) : (
           <DomainsRow
-            canEdit={canEditAll}
             updateUserDetails={updateUserDetails}
             userData={userData}
           />

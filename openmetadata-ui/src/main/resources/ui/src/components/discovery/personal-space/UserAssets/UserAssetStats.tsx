@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Grid } from '@openmetadata/ui-core-components';
+import { Button, Grid } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   CodeSquare02,
@@ -21,11 +21,10 @@ import {
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ROUTES } from '../../../../constants/constants';
+import { NO_DATA_PLACEHOLDER, ROUTES } from '../../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import StatCard from './StatCard';
 import { useUserAssetStats } from './useUserAssetStats';
 
@@ -38,7 +37,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
     requireAttention,
     dataHealthScore,
     isLoading,
-    error,
+    failed,
     refetch,
   } = useUserAssetStats(user);
   const { mostViewed, mostViewedFqn } = queryStats;
@@ -61,32 +60,46 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
     t('label.most-viewed-entity', { entity: mostViewed })
   );
 
-  if (error) {
-    return (
-      <Box className="tw:relative tw:h-40 tw:shrink-0">
-        <SomethingWentWrongPlaceholder onReload={refetch} />
-      </Box>
-    );
-  }
+  // A tile whose request failed shows a placeholder and a reload instead of a
+  // misleading zero; the others keep their values.
+  const failedSubtitle = (
+    <Button
+      color="link-color"
+      data-testid="stat-card-reload"
+      size="sm"
+      onPress={refetch}>
+      {t('message.something-went-wrong')} · {t('label.reload')}
+    </Button>
+  );
+  const valueOrPlaceholder = (isFailed: boolean, value: number) =>
+    isFailed ? NO_DATA_PLACEHOLDER : value;
 
   return (
     <Grid className="tw:shrink-0" gap="4">
       <Grid.Item span={6}>
         <StatCard
           isSelected
-          breakdown={[
-            { label: t('label.table-plural'), value: assetStats.tables },
-            {
-              label: t('label.dashboard-plural'),
-              value: assetStats.dashboards,
-            },
-            { label: t('label.pipeline-plural'), value: assetStats.pipelines },
-          ]}
+          breakdown={
+            failed.assets
+              ? undefined
+              : [
+                  { label: t('label.table-plural'), value: assetStats.tables },
+                  {
+                    label: t('label.dashboard-plural'),
+                    value: assetStats.dashboards,
+                  },
+                  {
+                    label: t('label.pipeline-plural'),
+                    value: assetStats.pipelines,
+                  },
+                ]
+          }
           icon={<Star04 data-icon />}
           label={t('label.asset-owned-plural')}
           loading={isLoading}
+          subtitle={failed.assets ? failedSubtitle : undefined}
           testId="stat-card-assets-owned"
-          value={assetStats.total}
+          value={valueOrPlaceholder(failed.assets, assetStats.total)}
         />
       </Grid.Item>
       <Grid.Item span={6}>
@@ -94,12 +107,16 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
           icon={<HeartRounded data-icon />}
           label={t('label.data-health-score')}
           loading={isLoading}
-          subtitle={t('label.asset-require-attention-count', {
-            count: requireAttention,
-          })}
+          subtitle={
+            failed.health
+              ? failedSubtitle
+              : t('label.asset-require-attention-count', {
+                  count: requireAttention,
+                })
+          }
           testId="stat-card-data-health"
           to={ROUTES.DATA_QUALITY}
-          value={dataHealthScore}
+          value={valueOrPlaceholder(failed.health, dataHealthScore)}
         />
       </Grid.Item>
       <Grid.Item span={6}>
@@ -107,12 +124,16 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
           icon={<AlertTriangle data-icon />}
           label={t('label.open-incidents')}
           loading={isLoading}
-          subtitle={t('label.severity-incidents-open', {
-            severeCount: incidentStats.severity1,
-          })}
+          subtitle={
+            failed.incidents
+              ? failedSubtitle
+              : t('label.severity-incidents-open', {
+                  severeCount: incidentStats.severity1,
+                })
+          }
           testId="stat-card-open-incidents"
           to={ROUTES.INCIDENT_MANAGER}
-          value={incidentStats.total}
+          value={valueOrPlaceholder(failed.incidents, incidentStats.total)}
         />
       </Grid.Item>
       <Grid.Item span={6}>
@@ -120,7 +141,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
           icon={<CodeSquare02 data-icon />}
           label={t('label.queries')}
           loading={isLoading}
-          subtitle={mostViewedSubtitle}
+          subtitle={failed.queries ? failedSubtitle : mostViewedSubtitle}
           testId="stat-card-queries"
           // Queries have no global page; the most-viewed table's tab is the
           // closest place that lists them.
@@ -133,7 +154,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
                 )
               : undefined
           }
-          value={queryStats.count}
+          value={valueOrPlaceholder(failed.queries, queryStats.count)}
         />
       </Grid.Item>
     </Grid>

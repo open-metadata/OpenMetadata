@@ -252,6 +252,14 @@ describe('useUserAssetStats', () => {
 
     expect(result.current.error).toEqual(new Error('boom'));
     expect(showErrorToast).toHaveBeenCalledTimes(1);
+    // Only the incident tile failed; the other requests' results stay usable.
+    expect(result.current.failed).toEqual({
+      assets: false,
+      incidents: true,
+      queries: false,
+      health: false,
+    });
+    expect(result.current.assetStats.total).toBeGreaterThan(0);
   });
 
   it('has no error when every request succeeds', async () => {

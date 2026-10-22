@@ -89,6 +89,13 @@ const countOfBucket = (
  * The Owned Assets stat tiles' numbers for one user: owned-asset counts, data
  * health, open incidents assigned to them and queries on their tables.
  */
+const NO_FAILURES = {
+  assets: false,
+  incidents: false,
+  queries: false,
+  health: false,
+};
+
 export const useUserAssetStats = (user: User | undefined) => {
   const [assetStats, setAssetStats] = useState<AssetStats>(ZERO_STATS);
   const [incidentStats, setIncidentStats] =
@@ -97,6 +104,8 @@ export const useUserAssetStats = (user: User | undefined) => {
   const [healthStats, setHealthStats] = useState<HealthStats>(ZERO_HEALTH);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<unknown>();
+  // Per tile, so one denied or failing request doesn't hide the others.
+  const [failed, setFailed] = useState(NO_FAILURES);
   const [reloadKey, setReloadKey] = useState(0);
 
   const ownerIdsKey = getOwnerIdsKey(user);
@@ -114,6 +123,7 @@ export const useUserAssetStats = (user: User | undefined) => {
     let cancelled = false;
     setIsLoading(true);
     setError(undefined);
+    setFailed(NO_FAILURES);
     const filter = getTermQuery(
       { 'owners.id': ownerIds },
       'should',
@@ -279,6 +289,13 @@ export const useUserAssetStats = (user: User | undefined) => {
       setHealthStats(
         health.status === 'fulfilled' ? health.value : ZERO_HEALTH
       );
+      setFailed({
+        assets: assets.status === 'rejected',
+        incidents: incidents.status === 'rejected',
+        queries: queries.status === 'rejected',
+        // The score is computed against the owned-asset total.
+        health: health.status === 'rejected' || assets.status === 'rejected',
+      });
       const failure = [assets, incidents, queries, health].find(
         (result): result is PromiseRejectedResult =>
           result.status === 'rejected'
@@ -315,6 +332,7 @@ export const useUserAssetStats = (user: User | undefined) => {
     dataHealthScore,
     isLoading,
     error,
+    failed,
     refetch: () => setReloadKey((key) => key + 1),
   };
 };

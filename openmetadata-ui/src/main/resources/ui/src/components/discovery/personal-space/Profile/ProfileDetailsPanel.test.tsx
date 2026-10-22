@@ -244,9 +244,11 @@ describe('ProfileDetailsPanel', () => {
       'data-can-edit',
       'true'
     );
+    // Domains get no override: only admins may change a user's domains, which
+    // is the row's own default (ADR:2026-10-21-only-admins-change-a-users-domains).
     expect(screen.getByTestId('domains-row')).toHaveAttribute(
       'data-can-edit',
-      'true'
+      'undefined'
     );
   });
 
