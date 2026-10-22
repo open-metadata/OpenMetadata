@@ -108,6 +108,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
+    addViewOperation("publicationStatus", MetadataOperation.VIEW_BASIC);
     packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
     packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
     releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());

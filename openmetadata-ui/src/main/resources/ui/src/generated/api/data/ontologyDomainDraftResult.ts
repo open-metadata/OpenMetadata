@@ -382,8 +382,13 @@ export interface OntologyConcept {
     /**
      * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
      */
-    iri:  string;
-    name: string;
+    iri: string;
+    /**
+     * Release review state of this concept, derived by the server from ontology releases. Not
+     * stored or independently editable.
+     */
+    lifecycleStatus?: OntologyDefinitionStatus;
+    name:             string;
     /**
      * Owning ontology entity. Glossaries do not own ontology definitions.
      */
@@ -450,6 +455,19 @@ export enum OntologyConceptType {
     Both = "BOTH",
     OwlClass = "OWL_CLASS",
     SkosConcept = "SKOS_CONCEPT",
+}
+
+/**
+ * Release review state of this concept, derived by the server from ontology releases. Not
+ * stored or independently editable.
+ *
+ * Release review state of an ontology definition. The server derives it from ontology
+ * releases, and clients cannot set it.
+ */
+export enum OntologyDefinitionStatus {
+    Approved = "Approved",
+    Draft = "Draft",
+    InReview = "InReview",
 }
 
 /**

@@ -36,14 +36,19 @@ export interface Ontology {
     /**
      * Absolute namespace used to mint persistent IRIs for native definitions.
      */
-    namespace:  string;
-    owners?:    EntityReference[];
-    prefixes?:  Prefix[];
-    provider?:  ProviderType;
-    reviewers?: EntityReference[];
-    updatedAt?: number;
-    updatedBy?: string;
-    version?:   number;
+    namespace: string;
+    owners?:   EntityReference[];
+    prefixes?: Prefix[];
+    provider?: ProviderType;
+    /**
+     * Publication state derived by the server from ontology releases. Not stored or
+     * independently editable.
+     */
+    publicationStatus?: OntologyPublicationStatus;
+    reviewers?:         EntityReference[];
+    updatedAt?:         number;
+    updatedBy?:         string;
+    version?:           number;
 }
 
 /**
@@ -190,4 +195,61 @@ export enum ProviderType {
     Automation = "automation",
     System = "system",
     User = "user",
+}
+
+/**
+ * Publication state derived by the server from ontology releases. Not stored or
+ * independently editable.
+ *
+ * Publication state of an ontology. The server derives it on read from the ontology state,
+ * its sealed releases and its working content. It is never stored and clients cannot set it.
+ */
+export interface OntologyPublicationStatus {
+    active?: ActiveRelease;
+    latest?: LatestRelease;
+    /**
+     * Number of rows that paging through GET /v1/ontologies/{id}/working/diff returns: added,
+     * changed and removed members of the working ontology against the active release. Without
+     * an active release, every working member counts as added.
+     */
+    unpublishedChanges: number;
+}
+
+/**
+ * The release the ontology currently publishes.
+ */
+export interface ActiveRelease {
+    /**
+     * Time of the activation that made this release current.
+     */
+    activatedAt?:    number;
+    releaseId:       string;
+    releaseRevision: number;
+    /**
+     * Semantic version of the release. Absent on releases captured without a version bump.
+     */
+    semanticVersion?: string;
+}
+
+/**
+ * The newest sealed release, whatever its stage.
+ */
+export interface LatestRelease {
+    releaseId:        string;
+    releaseRevision:  number;
+    semanticVersion?: string;
+    stage:            Stage;
+}
+
+/**
+ * Stage of the latest sealed release. Draft and InReview mirror the release status.
+ * ChangesRequested is a rejected release. Approved is an approved release that is not
+ * active. Published is an approved release that is active.
+ */
+export enum Stage {
+    Approved = "Approved",
+    ChangesRequested = "ChangesRequested",
+    Draft = "Draft",
+    InReview = "InReview",
+    Published = "Published",
 }

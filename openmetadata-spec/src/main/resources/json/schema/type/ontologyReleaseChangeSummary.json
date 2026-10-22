@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyReleaseChangeSummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseChangeSummary",
+  "description": "Member change counts of a release against the release that was active when it was captured. The counts partition the rows of GET /v1/ontologyReleases/{id}/diff with its default base.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyReleaseChangeSummary",
+  "properties": {
+    "added": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "removed": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "required": ["added", "changed", "removed"],
+  "additionalProperties": false
+}
