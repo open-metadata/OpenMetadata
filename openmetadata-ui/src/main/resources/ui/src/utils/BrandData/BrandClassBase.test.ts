@@ -14,7 +14,7 @@ import brandClassBase from './BrandClassBase';
 
 describe('BrandClassBase', () => {
   it('should give the welcome screen the OpenMetadata purple accent', () => {
-    expect(brandClassBase.getWelcomeAccentColor()).toBe('#7147E8');
+    expect(brandClassBase.getWelcomeAccentColor()).toBe('purple');
   });
 
   it.each(['light', 'dark'] as const)(

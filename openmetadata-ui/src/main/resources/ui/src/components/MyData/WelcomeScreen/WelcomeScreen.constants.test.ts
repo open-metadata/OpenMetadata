@@ -20,12 +20,11 @@ describe('getWelcomeAccentStyle', () => {
     expect(getWelcomeAccentStyle()).toBeUndefined();
   });
 
-  it('should point the glow and button variables at the accent', () => {
-    expect(getWelcomeAccentStyle('#7147E8')).toEqual({
-      '--tw-color-brand-500': '#7147E8',
-      '--tw-background-color-brand-solid': '#7147E8',
-      '--tw-background-color-brand-solid_hover':
-        'color-mix(in srgb, #7147E8 85%, black)',
+  it('should point the glow and button variables at the accent family', () => {
+    expect(getWelcomeAccentStyle('purple')).toEqual({
+      '--tw-color-brand-500': 'var(--tw-color-purple-500)',
+      '--tw-background-color-brand-solid': 'var(--tw-color-purple-600)',
+      '--tw-background-color-brand-solid_hover': 'var(--tw-color-purple-700)',
     });
   });
 });

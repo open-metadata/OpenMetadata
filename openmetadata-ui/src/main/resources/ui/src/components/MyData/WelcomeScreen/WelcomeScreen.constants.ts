@@ -39,17 +39,19 @@ export const WELCOME_GLOW_DARK = `radial-gradient(${GLOW_SHAPE}, ${[
 
 /**
  * Re-points the brand variables the welcome screen reads (the glow above and
- * the primary button's `bg-brand-solid`) at a product accent, scoped to the
- * screen. `undefined` keeps the configured theme colour.
+ * the primary button's `bg-brand-solid`) at a core `<accent>-*` palette
+ * family, scoped to the screen. Like the brand solid, the palette keeps the
+ * same shade in dark mode, so white button text stays readable (the
+ * `utility-*` roles lighten in dark mode). `undefined` keeps the theme colour.
  */
 export const getWelcomeAccentStyle = (
   accent?: string
 ): CSSProperties | undefined =>
   accent
     ? ({
-        '--tw-color-brand-500': accent,
-        '--tw-background-color-brand-solid': accent,
-        '--tw-background-color-brand-solid_hover': `color-mix(in srgb, ${accent} 85%, black)`,
+        '--tw-color-brand-500': `var(--tw-color-${accent}-500)`,
+        '--tw-background-color-brand-solid': `var(--tw-color-${accent}-600)`,
+        '--tw-background-color-brand-solid_hover': `var(--tw-color-${accent}-700)`,
       } as CSSProperties)
     : undefined;
 

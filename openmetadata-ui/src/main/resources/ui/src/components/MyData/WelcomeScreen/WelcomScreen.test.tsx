@@ -59,8 +59,10 @@ describe('WelcomeScreen', () => {
 
     expect(
       root.style.getPropertyValue('--tw-background-color-brand-solid')
-    ).toBe('#7147E8');
-    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('#7147E8');
+    ).toBe('var(--tw-color-purple-600)');
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe(
+      'var(--tw-color-purple-500)'
+    );
   });
 
   it('should keep an admin-configured brand colour over the accent', () => {
