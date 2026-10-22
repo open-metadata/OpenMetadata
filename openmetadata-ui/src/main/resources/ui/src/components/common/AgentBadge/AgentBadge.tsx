@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Badge } from '@openmetadata/ui-core-components';
 import { AskCollateSparkle } from '@openmetadata/ui-core-components/icons';
 
 /** Names the AI agent that proposed something, where a person's avatar and name would go. */
 const AgentBadge = ({ name }: { name: string }) => (
-  <span
-    className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700"
-    data-testid="agent-badge">
+  <Badge
+    bordered={false}
+    className="tw:gap-1 tw:bg-utility-purple-100 tw:font-semibold"
+    color="purple"
+    data-testid="agent-badge"
+    size="sm"
+    type="color">
     <AskCollateSparkle aria-hidden className="tw:size-3" />
     {name}
-  </span>
+  </Badge>
 );
 
 export default AgentBadge;
