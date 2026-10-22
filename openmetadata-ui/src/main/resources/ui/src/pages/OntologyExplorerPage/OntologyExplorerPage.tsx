@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  EmptyPlaceholder,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -579,7 +580,7 @@ const OntologyExplorerPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [loadedOntology, setLoadedOntology] = useState<Ontology>();
   const [isCreatingOntology, setIsCreatingOntology] = useState(false);
-  const [isScopeMenuOpen, setIsScopeMenuOpen] = useState(false);
+  const [isGlossaryScopeMenuOpen, setIsGlossaryScopeMenuOpen] = useState(false);
   const [mode, setMode] = useState<StudioMode>(() =>
     studioModeFor(initialDraftId)
   );
@@ -725,7 +726,7 @@ const OntologyExplorerPage: React.FC = () => {
   }>();
   const studioScopes = useOntologyStudioScopes({
     enabled: true,
-    loadGlossaries: isScopeMenuOpen,
+    loadGlossaries: isGlossaryScopeMenuOpen,
     knownGlossaries: glossaries,
   });
   const availableOntologies = useMemo(
@@ -1117,8 +1118,14 @@ const OntologyExplorerPage: React.FC = () => {
     return (
       <OntologyStudioScopeMenu
         glossaries={scopeGlossaries}
-        isError={studioScopes.isError}
-        isLoading={studioScopes.isLoading}
+        isError={
+          isGlossaryScope ? studioScopes.isError : studioScopes.isOntologyError
+        }
+        isLoading={
+          isGlossaryScope
+            ? studioScopes.isLoading
+            : studioScopes.isOntologyLoading
+        }
         label={scopeLabel}
         ontologies={availableOntologies}
         scope={isCreatingOntology ? ALL_ONTOLOGIES_SCOPE : studioScope}
@@ -1130,8 +1137,14 @@ const OntologyExplorerPage: React.FC = () => {
               }
             : undefined
         }
-        onOpenChange={setIsScopeMenuOpen}
-        onRetry={() => void studioScopes.refetch()}
+        onOpenChange={(open) =>
+          setIsGlossaryScopeMenuOpen(open && isGlossaryScope)
+        }
+        onRetry={() =>
+          void (isGlossaryScope
+            ? studioScopes.refetch()
+            : studioScopes.refetchOntologies())
+        }
         onScopeChange={handleScopeChange}
       />
     );
@@ -1544,18 +1557,28 @@ const OntologyExplorerPage: React.FC = () => {
 
     if (availableOntologies.length === 0) {
       return (
-        <Box
-          className="tw:p-6"
-          data-testid="all-ontologies-empty"
-          direction="col"
-          gap={3}>
-          <Typography>{t('message.no-data-available')}</Typography>
-          {canCreateOntology ? (
-            <Button onPress={() => setIsCreatingOntology(true)}>
-              {t('label.new-entity', { entity: t('label.ontology') })}
-            </Button>
-          ) : null}
-        </Box>
+        <div
+          className="tw:relative tw:h-full tw:min-h-70"
+          data-testid="all-ontologies-empty">
+          <EmptyPlaceholder
+            actions={
+              canCreateOntology
+                ? [
+                    {
+                      key: 'new-ontology',
+                      label: t('label.new-entity', {
+                        entity: t('label.ontology'),
+                      }),
+                      iconLeading: Plus,
+                      onPress: () => setIsCreatingOntology(true),
+                    },
+                  ]
+                : undefined
+            }
+            icon={<Share07 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-entity', { entity: t('label.ontology-plural') })}
+          />
+        </div>
       );
     }
     if (!allModels.graph) {

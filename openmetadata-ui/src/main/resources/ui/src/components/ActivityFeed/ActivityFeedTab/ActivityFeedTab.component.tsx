@@ -16,7 +16,6 @@ import {
   ButtonGroupItem,
   Divider,
   Dropdown,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -50,7 +49,6 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -75,7 +73,7 @@ import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -291,7 +289,7 @@ const TaskFilterBar = ({
       : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
 
   return (
-    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+    <div className="d-flex gap-4 task-filter-container justify-between items-center tw:flex-wrap">
       <Dropdown.Root>
         <Button
           color="secondary"
@@ -335,6 +333,7 @@ const TaskFilterBar = ({
 const ActivityFeedTabList = ({
   activityEvents,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   entityThread,
   isActivityLoading,
   isAllTab,
@@ -360,6 +359,7 @@ const ActivityFeedTabList = ({
     return (
       <TaskListV1
         activeFeedId={selectedTask?.id}
+        emptyPlaceholderDescription={emptyPlaceholderDescription}
         emptyPlaceholderText={emptyPlaceholderText}
         handlePanelResize={onPanelResize}
         isFullWidth={isFullWidth}
@@ -378,6 +378,7 @@ const ActivityFeedTabList = ({
       activeFeedId={selectedActivity?.id ?? selectedThread?.id}
       activityList={isAllTab ? activityEvents : undefined}
       componentsVisibility={componentsVisibility}
+      emptyPlaceholderDescription={emptyPlaceholderDescription}
       emptyPlaceholderText={emptyPlaceholderText}
       feedList={entityThread}
       handlePanelResize={onPanelResize}
@@ -402,6 +403,7 @@ const ActivityFeedTabRightPanel = ({
   loader,
   loading,
   placeholder,
+  placeholderDescription,
 }: ActivityFeedTabRightPanelProps) => {
   const isThreePanel = layoutType === ActivityFeedLayoutType.THREE_PANEL;
 
@@ -419,15 +421,14 @@ const ActivityFeedTabRightPanel = ({
           ? content
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography
-                    as="div"
-                    className="placeholder-text tw:mb-4 tw:break-words">
-                    {placeholder}
-                  </Typography>
-                </ErrorPlaceHolderNew>
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-data-placeholder"
+                    description={placeholderDescription}
+                    icon={<NoConversationsIcon />}
+                    title={placeholder}
+                  />
+                </div>
               </div>
             )}
       </div>
@@ -550,45 +551,23 @@ export const ActivityFeedTab = ({
 
   const placeholderText = useMemo(() => {
     if (isAllTab) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-activity-feed-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-activity-feed-description')}
-          </Typography>
-        </div>
-      );
+      return {
+        title: t('message.no-activity-feed-title'),
+        description: t('message.no-activity-feed-description'),
+      };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography className="placeholder-text">
-          {t('message.no-mentions')}
-        </Typography>
-      );
+      return { title: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-closed-tasks-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-closed-tasks-description')}
-          </Typography>
-        </div>
-      );
-    } else {
-      return (
-        <div className="d-flex flex-col gap-4">
-          <Typography className="placeholder-title">
-            {t('message.no-open-tasks-title')}
-          </Typography>
-          <Typography className="placeholder-text">
-            {t('message.no-open-tasks-description')}
-          </Typography>
-        </div>
-      );
+      return {
+        title: t('message.no-closed-tasks-title'),
+        description: t('message.no-closed-tasks-description'),
+      };
     }
+
+    return {
+      title: t('message.no-open-tasks-title'),
+      description: t('message.no-open-tasks-description'),
+    };
   }, [activeTab, isAllTab, taskFilter, t]);
 
   const handleFeedCount = useCallback(
@@ -1060,23 +1039,13 @@ export const ActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return (
-        <Typography className="placeholder-text m-t-0">
-          {t('message.no-mentions')}
-        </Typography>
-      );
+      return { title: t('message.no-mentions') };
     }
 
-    return (
-      <div className="d-flex flex-col gap-4">
-        <Typography className="placeholder-title m-t-md">
-          {t('message.no-conversations')}
-        </Typography>
-        <Typography className="placeholder-text">
-          {t('message.no-conversations-description')}
-        </Typography>
-      </div>
-    );
+    return {
+      title: t('message.no-conversations'),
+      description: t('message.no-conversations-description'),
+    };
   }, [activeTab, t]);
 
   return (
@@ -1111,7 +1080,8 @@ export const ActivityFeedTab = ({
         />
         <ActivityFeedTabList
           activityEvents={activityEvents}
-          emptyPlaceholderText={placeholderText}
+          emptyPlaceholderDescription={placeholderText.description}
+          emptyPlaceholderText={placeholderText.title}
           entityThread={entityThread}
           isActivityLoading={isActivityLoading}
           isAllTab={isAllTab}
@@ -1148,7 +1118,8 @@ export const ActivityFeedTab = ({
         layoutType={layoutType}
         loader={loader}
         loading={loading}
-        placeholder={getRightPanelPlaceholder}
+        placeholder={getRightPanelPlaceholder.title}
+        placeholderDescription={getRightPanelPlaceholder.description}
       />
     </div>
   );

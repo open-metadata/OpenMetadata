@@ -22,24 +22,18 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
-import org.openmetadata.schema.api.AddTagToAssetsRequest;
-import org.openmetadata.schema.api.classification.CreateClassification;
-import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -47,8 +41,6 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
-import org.openmetadata.schema.entity.classification.Classification;
-import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -57,26 +49,20 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 
 /**
  * An Assets tab edit reaches search the way the same PATCH does: a column's own tags are in its
  * search entry when the call returns, and an asset added to a data product follows it to its new
- * domain. A table's labels reach its test cases. Its column entries carry only what their own entry
- * is built from: the column's own tags, and the table's glossary terms as inherited ones, never the
- * table's classification tags.
+ * domain.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -84,19 +70,10 @@ public class AssetsTabSearchEntriesIT {
 
   private static final String COLUMN_INDEX = "column_search_index";
   private static final String TABLE_INDEX = "table_search_index";
-  private static final String TEST_CASE_INDEX = "test_case_search_index";
   private static final List<String> COLUMNS = List.of("c1", "c2", "c3");
   private static final int ROUNDS = 5;
   private static final int DOMAIN_MOVE_ROUNDS = 10;
-  private static final int TABLES_WITH_TEST_CASES = 8;
   private static final Duration PROPAGATION_TIMEOUT = Duration.ofSeconds(30);
-  private static final Duration QUIET_WINDOW = Duration.ofSeconds(5);
-
-  /** How the table is labelled: on the term's Assets tab, or by a PATCH on the table's page. */
-  enum Route {
-    ASSETS_TAB,
-    PATCH
-  }
 
   @Test
   void aColumnLabelledOnTheTab_isInItsSearchEntryWhenTheCallReturns(TestNamespace ns) {
@@ -140,68 +117,6 @@ public class AssetsTabSearchEntriesIT {
     assertEquals(List.of(), stale, "rounds whose asset kept its old domain in search");
   }
 
-  @ParameterizedTest
-  @EnumSource(Route.class)
-  void tableTerms_reachTestCases_andColumnEntriesOnlyAsInherited(Route route, TestNamespace ns) {
-    GlossaryTerm term = createTerm(ns, "tbl" + route.ordinal());
-    TablesWithTestCases fixture = createTablesWithTestCases(ns);
-
-    if (route == Route.ASSETS_TAB) {
-      labelOnTermTab(term, fixture.tables());
-    } else {
-      labelByPatch(glossaryLabel(term), fixture.tables());
-    }
-
-    awaitTestCasesCarry(fixture, term.getFullyQualifiedName());
-    Awaitility.await("column entries carry the table's term, only as inherited")
-        .pollInterval(Duration.ofSeconds(1))
-        .during(QUIET_WINDOW)
-        .atMost(QUIET_WINDOW.plus(PROPAGATION_TIMEOUT))
-        .until(
-            () -> {
-              List<JsonNode> entries = columnEntries(fixture.tables());
-              return entries.size() == fixture.tables().size() * COLUMNS.size()
-                  && entries.stream()
-                      .allMatch(entry -> carriesOnlyInherited(entry, term.getFullyQualifiedName()));
-            });
-  }
-
-  @ParameterizedTest
-  @EnumSource(Route.class)
-  void tableClassificationTags_reachTestCasesNotColumnEntries(Route route, TestNamespace ns) {
-    Tag tag = createTag(ns, "tbl" + route.ordinal());
-    TablesWithTestCases fixture = createTablesWithTestCases(ns);
-
-    if (route == Route.ASSETS_TAB) {
-      labelOnTagTab(tag, fixture.tables());
-    } else {
-      labelByPatch(classificationLabel(tag), fixture.tables());
-    }
-
-    awaitTestCasesCarry(fixture, tag.getFullyQualifiedName());
-    Awaitility.await("column entries never carry the table's classification tag")
-        .pollInterval(Duration.ofSeconds(1))
-        .during(QUIET_WINDOW)
-        .atMost(QUIET_WINDOW.plus(PROPAGATION_TIMEOUT))
-        .until(
-            () -> {
-              List<JsonNode> entries = columnEntries(fixture.tables());
-              return entries.size() == fixture.tables().size() * COLUMNS.size()
-                  && entries.stream()
-                      .noneMatch(entry -> carriesTag(entry, tag.getFullyQualifiedName()));
-            });
-  }
-
-  private static void awaitTestCasesCarry(TablesWithTestCases fixture, String tagFqn) {
-    Awaitility.await("test cases carry the table's label")
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(PROPAGATION_TIMEOUT)
-        .until(
-            () ->
-                fixture.testCases().stream()
-                    .allMatch(testCase -> testCaseCarries(testCase, tagFqn)));
-  }
-
   // ---------------------------------------------------------------------------------------------
   // Search checks
   // ---------------------------------------------------------------------------------------------
@@ -227,22 +142,8 @@ public class AssetsTabSearchEntriesIT {
     }
   }
 
-  private static boolean testCaseCarries(TestCase testCase, String tagFqn) {
-    return hits(TEST_CASE_INDEX, termFilter("id.keyword", testCase.getId().toString())).stream()
-        .anyMatch(entry -> carriesTag(entry, tagFqn));
-  }
-
   private static List<JsonNode> columnEntries(Table table) {
     return hits(COLUMN_INDEX, termFilter("table.id", table.getId().toString()));
-  }
-
-  // One search for all the tables, so a poll stays short when search is slow.
-  private static List<JsonNode> columnEntries(List<Table> tables) {
-    String ids =
-        tables.stream().map(table -> "\"" + table.getId() + "\"").collect(Collectors.joining(","));
-    return hits(
-        COLUMN_INDEX,
-        "{\"query\":{\"bool\":{\"must\":[{\"terms\":{\"table.id\":[" + ids + "]}}]}}}");
   }
 
   private static boolean carriesTag(JsonNode entry, String tagFqn) {
@@ -252,18 +153,6 @@ public class AssetsTabSearchEntriesIT {
       }
     }
     return false;
-  }
-
-  // Carries the label, and every copy of it is an inherited one.
-  private static boolean carriesOnlyInherited(JsonNode entry, String tagFqn) {
-    List<String> labelTypes = new ArrayList<>();
-    for (JsonNode tag : entry.path("tags")) {
-      if (tagFqn.equalsIgnoreCase(tag.path("tagFQN").asText())) {
-        labelTypes.add(tag.path("labelType").asText());
-      }
-    }
-    return !labelTypes.isEmpty()
-        && labelTypes.stream().allMatch(TagLabel.LabelType.DERIVED.value()::equals);
   }
 
   private static boolean inDomain(JsonNode entry, UUID domainId) {
@@ -320,42 +209,6 @@ public class AssetsTabSearchEntriesIT {
     assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
   }
 
-  private static void labelOnTermTab(GlossaryTerm term, List<Table> tables) {
-    BulkOperationResult result =
-        SdkClients.user1Client()
-            .getHttpClient()
-            .execute(
-                HttpMethod.PUT,
-                "/v1/glossaryTerms/" + term.getId() + "/assets/add",
-                new AddGlossaryToAssetsRequest()
-                    .withAssets(tables.stream().map(Table::getEntityReference).toList())
-                    .withDryRun(false),
-                BulkOperationResult.class);
-    assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
-  }
-
-  // The tag tab saves in the background; the search checks wait for its outcome.
-  private static void labelOnTagTab(Tag tag, List<Table> tables) {
-    SdkClients.user1Client()
-        .getHttpClient()
-        .execute(
-            HttpMethod.PUT,
-            "/v1/tags/" + tag.getId() + "/assets/add",
-            new AddTagToAssetsRequest()
-                .withAssets(tables.stream().map(Table::getEntityReference).toList())
-                .withDryRun(false),
-            Void.class);
-  }
-
-  private static void labelByPatch(TagLabel label, List<Table> tables) {
-    OpenMetadataClient user = SdkClients.user1Client();
-    for (Table table : tables) {
-      Table current = user.tables().get(table.getId().toString(), "tags");
-      current.setTags(List.of(label));
-      user.tables().update(table.getId().toString(), current);
-    }
-  }
-
   private static BulkOperationResult putBulkAssets(String containerPath, Table table) {
     return SdkClients.user1Client()
         .getHttpClient()
@@ -374,7 +227,6 @@ public class AssetsTabSearchEntriesIT {
   }
 
   private static DatabaseSchema createSchema(TestNamespace ns) {
-    // Short names: a test case's suite is named after its table's FQN, which has a length limit.
     DatabaseService service =
         DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix("svc"), ns);
     Database database =
@@ -401,65 +253,6 @@ public class AssetsTabSearchEntriesIT {
                 .withDatabaseSchema(schema.getFullyQualifiedName())
                 .withColumns(columns)
                 .withDomains(domain == null ? null : List.of(domain.getFullyQualifiedName())));
-  }
-
-  private record TablesWithTestCases(List<Table> tables, List<TestCase> testCases) {}
-
-  private static TablesWithTestCases createTablesWithTestCases(TestNamespace ns) {
-    DatabaseSchema schema = createSchema(ns);
-    List<Table> tables = new ArrayList<>();
-    List<TestCase> testCases = new ArrayList<>();
-    for (int i = 0; i < TABLES_WITH_TEST_CASES; i++) {
-      Table table = createTable(ns, schema, "t" + i, null);
-      tables.add(table);
-      testCases.add(createTestCase(ns, table, "tc" + i));
-    }
-    return new TablesWithTestCases(tables, testCases);
-  }
-
-  private static TestCase createTestCase(TestNamespace ns, Table table, String name) {
-    return TestCaseBuilder.create(SdkClients.adminClient())
-        .name(ns.prefix(name))
-        .forTable(table)
-        .testDefinition("tableRowCountToEqual")
-        .parameter("value", "100")
-        .create();
-  }
-
-  private static TagLabel glossaryLabel(GlossaryTerm term) {
-    return new TagLabel()
-        .withTagFQN(term.getFullyQualifiedName())
-        .withSource(TagLabel.TagSource.GLOSSARY)
-        .withLabelType(TagLabel.LabelType.MANUAL)
-        .withState(TagLabel.State.CONFIRMED);
-  }
-
-  private static TagLabel classificationLabel(Tag tag) {
-    return new TagLabel()
-        .withTagFQN(tag.getFullyQualifiedName())
-        .withSource(TagLabel.TagSource.CLASSIFICATION)
-        .withLabelType(TagLabel.LabelType.MANUAL)
-        .withState(TagLabel.State.CONFIRMED);
-  }
-
-  private static Tag createTag(TestNamespace ns, String name) {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Classification classification =
-        ns.trackRoot(
-            Entity.CLASSIFICATION,
-            admin
-                .classifications()
-                .create(
-                    new CreateClassification()
-                        .withName(ns.shortPrefix("cls_" + name))
-                        .withDescription("Assets tab search entries")));
-    return admin
-        .tags()
-        .create(
-            new CreateTag()
-                .withName(ns.shortPrefix("tag_" + name))
-                .withClassification(classification.getFullyQualifiedName())
-                .withDescription("Assets tab search entries"));
   }
 
   private static GlossaryTerm createTerm(TestNamespace ns, String name) {

@@ -99,7 +99,11 @@ const TaskAssetCard: React.FC<TaskAssetCardProps> = ({
                 </Link>
               </Typography>
               {about?.tier && (
-                <Badge color="blue" size="sm" type="color">
+                <Badge
+                  color="blue"
+                  size="sm"
+                  tooltip={about.tier.displayName || startCase(about.tier.name)}
+                  type="color">
                   {about.tier.displayName || startCase(about.tier.name)}
                 </Badge>
               )}

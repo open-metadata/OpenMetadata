@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +23,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -67,12 +67,11 @@ function WorkflowsTable() {
       locale={{
         emptyText: (
           <div className="tw:relative tw:min-h-70">
-            <EmptyPlaceholder
-              icon={<Assets className="tw:text-utility-gray-600" />}
+            <NoDataPlaceholder
+              icon={<Assets />}
               title={t('message.no-entity-data-available', {
                 entity: t('label.worksheet-plural'),
               })}
-              variant="blank"
             />
           </div>
         ),

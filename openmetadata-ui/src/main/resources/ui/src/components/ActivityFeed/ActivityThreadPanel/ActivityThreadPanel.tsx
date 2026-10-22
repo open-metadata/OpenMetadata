@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { SlideoutMenu, Tabs } from '@openmetadata/ui-core-components';
+import {
+  SlideoutMenu,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 
 import classNames from 'classnames';
 import { FC, useEffect, useState } from 'react';
@@ -62,6 +66,11 @@ const ActivityThreadPanel: FC<ActivityThreadPanelProp> = ({
           onCancel?.();
         }
       }}>
+      <SlideoutMenu.Header closeButtonTestId="closeDrawer" onClose={onCancel}>
+        <Typography size="text-lg" weight="semibold">
+          {t('label.activity-feed')}
+        </Typography>
+      </SlideoutMenu.Header>
       <SlideoutMenu.Content role="region">
         <div id="thread-panel">
           <Tabs

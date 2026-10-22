@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Card } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { ProviderType } from '../../generated/entity/events/notificationTemplate';
 import { AlertType } from '../../generated/events/eventSubscription';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -39,11 +39,13 @@ function AddObservabilityPage({
 
   if (alert?.provider === ProviderType.System) {
     return (
-      <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p" className="tw:max-w-md">
-          {t('message.system-alert-edit-message')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          icon={<Database01 />}
+          title={t('message.system-alert-edit-message')}
+        />
+      </div>
     );
   }
 

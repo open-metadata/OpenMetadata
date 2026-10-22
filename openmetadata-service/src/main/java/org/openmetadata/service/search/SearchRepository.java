@@ -2853,7 +2853,12 @@ public class SearchRepository {
     Map<String, Object> params = new HashMap<>();
     params.put(field, value);
     String indexName = getWriteIndexName(indexMapping);
-    String script = String.format("ctx._source.%s = params.%s;", field, field);
+    // The update is a scripted upsert: without the noop a missing doc would be created holding
+    // only this field — a nameless stub that surfaces in search.
+    String script =
+        String.format(
+            "if (ctx.op == 'create') { ctx.op = 'noop'; } else { ctx._source.%s = params.%s; }",
+            field, field);
     deferIfFlushScopeActive(
         () -> searchClient.updateEntity(indexName, entityId, params, script),
         "updateEntityFieldInSearch:" + field,
