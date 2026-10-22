@@ -14,9 +14,9 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG MAVEN_VERSION=3.9.9
 ARG MAVEN_SHA512=a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b
-ARG NODE_VERSION=22.17.0
-ARG NODE_SHA256_X64=325c0f1261e0c61bcae369a1274028e9cfb7ab7949c05512c5b1e630f7e80e12
-ARG NODE_SHA256_ARM64=140aee84be6774f5fb3f404be72adbe8420b523f824de82daeb5ab218dab7b18
+ARG NODE_VERSION=22.23.4
+ARG NODE_SHA256_X64=1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce
+ARG NODE_SHA256_ARM64=6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b
 ARG YARN_VERSION=1.22.22
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -66,8 +66,8 @@ RUN curl -fsSL --retry 3 --retry-all-errors \
     && ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
     && mvn --version
 
-# Node 22.17.0 + yarn 1.22.22 — the versions `.devcontainer/dev/devcontainer.json` pins, and what the
-# UI's `package.json` requires (`node >=22.0.0`, `yarn ^1.22.0`).
+# Node 22.23.4 + yarn 1.22.22 — the versions `.devcontainer/dev/devcontainer.json` pins, and what the
+# UI's `package.json` requires (`node >=22.23.4`, `yarn ^1.22.0`).
 #
 # Arch-resolved rather than hardcoded to x64: a local install on Apple Silicon builds and runs arm64,
 # and the wrong tarball fails at exec with a misleading "not found".
