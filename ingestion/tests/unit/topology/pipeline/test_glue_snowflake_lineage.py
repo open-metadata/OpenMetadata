@@ -804,6 +804,68 @@ found = [sf_options := pick(c) for c in configs]
 """
         assert _sources(script) == [SnowflakeRef(table="ORDERS")]
 
+    @pytest.mark.parametrize("change", ['opts["dbtable"] = "CURRENT"', 'opts.update(dbtable="CURRENT")'])
+    def test_change_through_an_alias_reaches_the_original(self, change):
+        script = f"""
+sf_options = {{"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "OLD"}}
+opts = sf_options
+{change}
+spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert _sources(script) == []
+
+    def test_local_change_after_a_nested_assignment_stays_local(self):
+        """The change is indexed after every binding, so it finds the function's own sf_options."""
+        script = """
+def main():
+    if ready:
+        sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "OLD"}
+    sf_options.update(dbtable="CURRENT")
+    spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert _sources(script) == []
+
+    def test_nonlocal_assignment_reaches_the_function_that_binds_the_name(self):
+        script = """
+def outer():
+    sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "OLD"}
+
+    def middle():
+        def change():
+            nonlocal sf_options
+            sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "CURRENT"}
+
+        change()
+
+    middle()
+    spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert _sources(script) == []
+
+    @pytest.mark.parametrize("pattern", ["case str() as table:", "case [*table]:", "case {**table}:", "case table:"])
+    def test_match_capture_rebinds_the_name(self, pattern):
+        script = f"""
+table = "OLD"
+{SALES_RAW}
+match args["TABLE"]:
+    {pattern}
+        spark.read.format("snowflake").options(**sf_options).option("dbtable", table).load()
+"""
+        assert _sources(script) == []
+
+    def test_global_write_from_an_earlier_defined_function_is_a_candidate(self):
+        """switch() is defined first but runs after the module assignment."""
+        script = """
+def switch():
+    global sf_options
+    sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "CURRENT"}
+
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "RAW", "dbtable": "OLD"}
+switch()
+spark.read.format("snowflake").options(**sf_options).load()
+"""
+        assert _sources(script) == []
+
     def test_comprehension_variable_is_unknown(self):
         script = f"""
 table = "ORDERS"

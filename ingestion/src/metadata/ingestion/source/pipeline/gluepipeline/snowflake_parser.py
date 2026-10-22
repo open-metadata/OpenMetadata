@@ -34,8 +34,10 @@ gets no Snowflake lineage from its script.
 import ast
 import re
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import cached_property
+
+from cachetools import LRUCache
 
 from metadata.utils.logger import ingestion_logger
 
@@ -92,13 +94,18 @@ LOOPS = (ast.For, ast.AsyncFor, ast.While)
 KEYED_METHODS = {"pop", "setdefault", "__setitem__", "__delitem__"}
 MUTATING_METHODS = {"update", "popitem", "clear", *KEYED_METHODS}
 # more assignments than this reaching one read are not worth merging
+# ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
 MAX_CANDIDATES = 16
+# names whose resolved value is kept per script
+MEMO_SIZE = 1024
 
 
 @dataclass(frozen=True)
 class _Binding:
     statement: ast.AST
     value: ast.expr | None  # None: not a plain `name = value` (parameter, loop target, import...)
+    # written from another function (global / nonlocal): it runs whenever that function is called
+    is_remote: bool = False
 
 
 @dataclass
@@ -126,11 +133,14 @@ class _Bindings:
     which runs later than where it is written. The reader merges candidates key by key: a key every
     candidate sets to the same value is known.
 
+    An assignment made from another function (global / nonlocal) may run at any
+    point, so it is always a candidate.
+
     An in-place change (d["k"] = v, d.update(...), d |= {...}, d.pop(k)) makes
-    the changed keys unknown wherever the dict is read; a key that cannot be read
-    makes the whole dict unknown. Not modelled: class-body ordering, aliases
-    (opts = sf_options; opts["k"] = v), a dict changed by a function it is
-    passed to, nonlocal chains beyond the enclosing function.
+    the changed keys unknown wherever the dict is read, and wherever a dict it
+    was assigned from (opts = sf_options) is read; a key that cannot be read
+    makes the whole dict unknown. Not modelled: class-body ordering, a dict
+    changed by a function it is passed to or stored on an object.
     """
 
     def __init__(self, tree: ast.Module):
@@ -148,12 +158,19 @@ class _Bindings:
         self._bindings: dict[tuple[ast.AST, str], list[_Binding]] = {}
         self._shadows: dict[ast.AST, set[str]] = {}
         self._changes: dict[tuple[ast.AST, str], list[tuple]] = {}
+        self._nonlocal_bindings: list[tuple[ast.AST, str, _Binding]] = []
         for node in ast.walk(tree):
             if isinstance(node, (ast.Global, ast.Nonlocal)):
                 scope = self._scope_of(node)
                 self._declared.update({(scope, name): type(node) for name in node.names})
+        # every binding is indexed before a nonlocal or an in-place change is given its owner
         for node in ast.walk(tree):
             self._index(node)
+        for function, name, binding in self._nonlocal_bindings:
+            self._bindings.setdefault((self._owner(self._scope_of(function), name), name), []).append(binding)
+        for node in ast.walk(tree):
+            self._index_change(node)
+        self._carry_changes_to_aliased_dicts()
 
     # --- indexing
 
@@ -168,14 +185,14 @@ class _Bindings:
             for alias in node.names:
                 if alias.name != "*":
                     self._bind(alias.asname or alias.name.split(".")[0], _Binding(node, None), self._container_of(node))
-        elif isinstance(node, ast.ExceptHandler) and node.name:
+        elif isinstance(node, (ast.ExceptHandler, ast.MatchAs, ast.MatchStar)) and node.name:
             self._bind(node.name, _Binding(node, None), self._container_of(node))
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            self._bind(node.rest, _Binding(node, None), self._container_of(node))
         elif isinstance(node, ast.AnnAssign) and node.value is None and isinstance(node.target, ast.Name):
             container = self._container_of(node)
             if isinstance(container, FUNCTIONS):  # `name: dict` in a function makes it local, with no value
                 self._bindings.setdefault((container, node.target.id), [])
-        else:
-            self._index_change(node)
 
     def _index_store(self, node: ast.Name) -> None:
         parent = self._parents[node]
@@ -199,11 +216,31 @@ class _Bindings:
             self._shadows.setdefault(container, set()).add(name)
             return
         declared = self._declared.get((container, name))
+        if declared is ast.Nonlocal:  # owned by the enclosing function binding it, known once all are indexed
+            self._nonlocal_bindings.append((container, name, replace(binding, is_remote=True)))
+            return
         if declared is ast.Global:
-            container = self._module
-        elif declared is ast.Nonlocal:
-            container = self._scope_of(container)
+            container, binding = self._module, replace(binding, is_remote=container is not self._module)
         self._bindings.setdefault((container, name), []).append(binding)
+
+    def _carry_changes_to_aliased_dicts(self) -> None:
+        """`opts = sf_options; opts["k"] = v` changes the dict sf_options names too."""
+        aliases = [
+            (owner, name, binding.value)
+            for (owner, name), bindings in self._bindings.items()
+            for binding in bindings
+            if isinstance(binding.value, ast.Name) and not self._is_shadowed(binding.value)
+        ]
+        for _ in aliases:  # a chain of aliases is at most as long as the list
+            carried = False
+            for owner, name, source in aliases:
+                changes = self._changes.get((owner, name), [])
+                target = self._changes.setdefault((self._owner(self._scope_of(source), source.id), source.id), [])
+                new = [change for change in changes if change not in target]
+                target.extend(new)
+                carried = carried or bool(new)
+            if not carried:
+                break
 
     def _index_change(self, node: ast.AST) -> None:
         """d["k"] = v, del d["k"], d |= {...}, d.update(...), d.pop("k")..."""
@@ -289,6 +326,8 @@ class _Bindings:
         return _Resolution(values, self._changes.get((owner, name.id), []))
 
     def _reaching(self, name: ast.Name, bindings: list[_Binding]) -> list[_Binding]:
+        remote = [binding for binding in bindings if binding.is_remote]
+        bindings = [binding for binding in bindings if not binding.is_remote]
         read_at = self._statement_of(name)
         enclosing = self._enclosing_blocks(read_at)
         before = sorted((b for b in bindings if _position(b.statement) < _position(read_at)), key=_binding_position)
@@ -303,7 +342,7 @@ class _Bindings:
             if _position(b.statement) >= _position(read_at)
             and any(loop in self._ancestors(b.statement) for loop in loops)
         ]
-        return candidates
+        return candidates + remote
 
     def _statement_of(self, node: ast.AST) -> ast.AST:
         while not isinstance(node, ast.stmt) and node in self._parents:
@@ -363,8 +402,10 @@ class _ScriptReader:
 
     def __init__(self, tree: ast.Module):
         self._tree = tree
-        self._strings: dict[ast.Name, str | _Unknown] = {}
-        self._settings: dict[ast.Name, list[tuple]] = {}
+        # values of names already resolved, so a name read by many calls is resolved once
+        self._strings: LRUCache[ast.Name, str | _Unknown] = LRUCache(maxsize=MEMO_SIZE)
+        self._settings: LRUCache[ast.Name, list[tuple]] = LRUCache(maxsize=MEMO_SIZE)
+        self._resolving: set[ast.Name] = set()  # a name defined through itself is unknown
 
     @cached_property
     def _names(self) -> _Bindings:
@@ -376,12 +417,19 @@ class _ScriptReader:
             return str(node.value)
         if not isinstance(node, ast.Name):
             return UNKNOWN
-        if node not in self._strings:
-            self._strings[node] = UNKNOWN  # while resolving: a name defined through itself is unknown
+        if node in self._strings:
+            return self._strings[node]
+        if node in self._resolving:
+            return UNKNOWN
+        self._resolving.add(node)
+        try:
             resolution = self._names.resolve(node)
             values = {self.string(value) for value in resolution.values} if resolution else {UNKNOWN}
-            self._strings[node] = values.pop() if len(values) == 1 else UNKNOWN
-        return self._strings[node]
+        finally:
+            self._resolving.discard(node)
+        value = values.pop() if len(values) == 1 else UNKNOWN
+        self._strings[node] = value
+        return value
 
     def settings(self, node: ast.expr | None) -> list[tuple]:
         """Ordered (key, value) settings of a dict expression; [(OPAQUE, None)] when unlisted."""
@@ -394,13 +442,20 @@ class _ScriptReader:
         return [(OPAQUE, None)]
 
     def _name_settings(self, node: ast.Name) -> list[tuple]:
-        if node not in self._settings:
-            self._settings[node] = [(OPAQUE, None)]  # while resolving: a name defined through itself is unknown
+        if node in self._settings:
+            return self._settings[node]
+        if node in self._resolving:
+            return [(OPAQUE, None)]
+        self._resolving.add(node)
+        try:
             resolution = self._names.resolve(node)
+            settings = [(OPAQUE, None)]
             if resolution:
-                merged = _merge([self.settings(value) for value in resolution.values])
-                self._settings[node] = merged + resolution.changes
-        return self._settings[node]
+                settings = _merge([self.settings(value) for value in resolution.values]) + resolution.changes
+        finally:
+            self._resolving.discard(node)
+        self._settings[node] = settings
+        return settings
 
     def _dict_literal_settings(self, node: ast.Dict) -> list[tuple]:
         settings = []
@@ -560,7 +615,8 @@ def _build_ref(options: dict, fallback: dict) -> SnowflakeRef | None:
     else:  # not a Snowflake table name
         return None
     # an unknown database / schema (a job parameter, say) is left unset rather than taken from the script-wide
-    # fallback: the resolver then links the table only when its name is unique
+    # fallback: the resolver then links the table only when its name is unique.
+    # ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
     return SnowflakeRef(
         table=table,
         database=_known(database, fallback.get(SF_DATABASE)),

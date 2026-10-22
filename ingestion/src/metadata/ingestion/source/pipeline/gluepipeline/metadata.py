@@ -412,6 +412,7 @@ class GluepipelineSource(PipelineServiceSource):
         """
         The first attempt with any match decides: one match links, several are
         ambiguous (a less specific attempt would only match more), none tries the next.
+        ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
         """
         for database_name, schema_name in self._snowflake_lookup_attempts(ref):
             matches = self._search_tables(ref.table, database_name, schema_name)
