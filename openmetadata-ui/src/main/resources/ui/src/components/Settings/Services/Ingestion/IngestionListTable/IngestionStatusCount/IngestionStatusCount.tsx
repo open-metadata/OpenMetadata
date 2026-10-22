@@ -28,7 +28,7 @@ function IngestionStatusCount({
   );
 
   return (
-    <Box align="center" gap={1} justify="evenly" wrap="nowrap">
+    <Box align="center" gap={2} wrap="nowrap">
       {records.map((record) => (
         <div
           className={classNames(
