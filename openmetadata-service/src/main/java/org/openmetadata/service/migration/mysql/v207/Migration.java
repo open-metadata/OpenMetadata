@@ -15,7 +15,7 @@ package org.openmetadata.service.migration.mysql.v207;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v207.WorkflowRunEntityLinkIndex;
+import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -25,6 +25,6 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    WorkflowRunEntityLinkIndex.addOnMySql(handle);
+    MigrationUtil.addWorkflowRunEntityLinkIndexOnMySql(handle);
   }
 }

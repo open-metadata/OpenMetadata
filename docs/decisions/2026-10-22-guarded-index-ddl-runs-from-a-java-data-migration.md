@@ -1,4 +1,4 @@
-# Guarded MySQL DDL runs from a version's Java data migration, not SET/PREPARE/EXECUTE
+# Guarded index DDL runs from a version's Java data migration, not schemaChanges.sql
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
@@ -35,9 +35,12 @@ upgrade can never get past it. (#35950 is a second failure of the same idiom: bl
   `schemaChanges.sql` as `SET`/`PREPARE`/`EXECUTE`.
 - Each guarded step is independent and idempotent, so a rerun carries on from wherever the
   previous attempt stopped.
-- PostgreSQL keeps its single-statement `IF NOT EXISTS` DDL in `schemaChanges.sql` (including
-  `CREATE INDEX CONCURRENTLY`), which a retry repeats safely.
-- First applied by `migration/utils/v207/WorkflowRunEntityLinkIndex`.
+- A PostgreSQL index built `CONCURRENTLY` runs from the same Java step: an interrupted
+  concurrent build leaves an INVALID index, which `CREATE INDEX CONCURRENTLY IF NOT EXISTS` in
+  `schemaChanges.sql` would skip on every retry (the operator notes in 1.13.0 and 2.1.0). The step
+  reads `pg_index.indisvalid`, drops an invalid index `CONCURRENTLY`, and builds it again. The Java
+  migration handle is opened with autocommit, so `CONCURRENTLY` works there.
+- First applied by `migration/utils/v207/MigrationUtil`.
 
 ## Consequences
 
