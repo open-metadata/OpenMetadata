@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -225,22 +224,18 @@ export const getServiceInsightsWidgetPlaceholder = ({
       <NoDataPlaceholder
         data-testid="no-data-placeholder"
         description={
-          <Tooltip title={t('label.learn-more')}>
-            <span>
-              <Transi18next
-                i18nKey={localizationKey}
-                renderElement={
-                  <a
-                    aria-label={t('label.learn-more')}
-                    href={docsLink}
-                    rel="noreferrer"
-                    style={{ color: theme.primaryColor }}
-                    target="_blank"
-                  />
-                }
+          <Transi18next
+            i18nKey={localizationKey}
+            renderElement={
+              <a
+                aria-label={t('label.learn-more')}
+                href={docsLink}
+                rel="noreferrer"
+                style={{ color: theme.primaryColor }}
+                target="_blank"
               />
-            </span>
-          </Tooltip>
+            }
+          />
         }
         icon={<Icon className={iconClassName} height={height} width={width} />}
       />

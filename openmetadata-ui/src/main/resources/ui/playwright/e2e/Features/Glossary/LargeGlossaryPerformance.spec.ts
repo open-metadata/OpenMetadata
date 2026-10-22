@@ -19,6 +19,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   confirmationDragAndDropGlossary,
   dragAndDropTerm,
+  waitForTermSearch,
 } from '../../../utils/glossary';
 
 test.use({
@@ -129,21 +130,18 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should search and filter glossary terms', async ({ page }) => {
     // Type in search box
     const searchInput = page.getByPlaceholder(/search.*term/i);
-    const searchResponse = page.waitForResponse(
-      'api/v1/glossaryTerms/search?*'
-    );
+    const searchResponse = waitForTermSearch(page, 'Term_5');
     await searchInput.fill('Term_5');
 
     const searchRes = await searchResponse;
 
     expect(searchRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
-    // Verify filtered results
 
-    const filteredTerms = await page.locator('tbody tr[data-row-key]').count();
-
-    expect(filteredTerms).toBeGreaterThan(0);
-    expect(filteredTerms).toBeLessThan(20); // Should show Term_5, Term_50-59, etc.
+    // Term_5, Term_50-59, etc.
+    await expect
+      .poll(() => page.locator('tbody tr[data-row-key]').count())
+      .toBeLessThan(20);
 
     // Verify Term_5 is visible
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();

@@ -404,7 +404,7 @@ const PipelineDetailsPage = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError('pipeline', decodedPipelineFQN)}
+          title={getEntityMissingError('pipeline', decodedPipelineFQN)}
         />
       </div>
     );

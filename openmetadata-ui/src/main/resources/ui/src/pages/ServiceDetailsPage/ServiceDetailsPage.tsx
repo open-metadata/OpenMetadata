@@ -42,6 +42,7 @@ import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/D
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable';
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useMetadataAgents } from '../../components/ServiceAgents/hooks/useMetadataAgents';
@@ -225,6 +226,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const { isAdminUser } = useAuth();
   const ingestionPagingInfo = usePaging();
   const collateAgentPagingInfo = usePaging();
@@ -428,10 +430,18 @@ const ServiceDetailsPage: FunctionComponent = () => {
         decodedServiceFQN,
         servicePermission,
         serviceDetails,
-        navigate
+        navigate,
+        showModal,
+        tab
       ),
-    [servicePermission, decodedServiceFQN, serviceCategory, serviceDetails, tab]
-    // Don't remove the tab dependency, it's used to disable the PDF Export dropdown options
+    [
+      servicePermission,
+      decodedServiceFQN,
+      serviceCategory,
+      serviceDetails,
+      tab,
+      showModal,
+    ]
   );
 
   const handleShowDeleted = useCallback(
@@ -2138,7 +2148,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={getEntityMissingError(
+            title={getEntityMissingError(
               serviceCategory as string,
               decodedServiceFQN
             )}

@@ -699,8 +699,15 @@ const ExplorePageV1: FC<unknown> = () => {
   );
 };
 
-const ExplorePageV1WithLayout = withPageLayout(
-  withAdvanceSearch(ExplorePageV1)
+const ExplorePageV1WithAdvanceSearch = withAdvanceSearch(ExplorePageV1);
+
+const ExplorePageV1WithLayout = withPageLayout(ExplorePageV1WithAdvanceSearch);
+
+// Classic pins the page to the viewport so the results panel fills what the
+// filters leave and scrolls inside it; the shell around it never scrolls.
+const ExplorePageV1WithFullHeightLayout = withPageLayout(
+  ExplorePageV1WithAdvanceSearch,
+  { fullHeight: true }
 );
 
 // AI-mode presentation: an AI search header rendered above the shared Explore
@@ -736,7 +743,7 @@ const ExplorePageV1WithMode: FC<{ pageTitle?: string }> = ({
   const isAiMode = useIsAiMode();
 
   if (!isAiMode) {
-    return <ExplorePageV1WithLayout pageTitle={pageTitle} />;
+    return <ExplorePageV1WithFullHeightLayout pageTitle={pageTitle} />;
   }
 
   return (
