@@ -99,7 +99,11 @@ public final class NativeOntologyRdfImporter {
                   .withVersion(0.1)
               : JsonUtils.deepCopy(current, OntologyConcept.class)
                   .withConceptType(parsedConcept.getConceptType())
-                  .withSynonyms(parsedConcept.getSynonyms());
+                  .withSynonyms(parsedConcept.getSynonyms())
+                  .withAbstract(parsedConcept.getAbstract())
+                  .withDefinitionSource(parsedConcept.getDefinitionSource())
+                  .withDeprecated(parsedConcept.getDeprecated())
+                  .withReplacedBy(parsedConcept.getReplacedBy());
       if (current != null) {
         proposed.withConceptMappings(
             reconcileMappings(proposed.getConceptMappings(), parsedConcept.getConceptMappings()));
@@ -132,7 +136,9 @@ public final class NativeOntologyRdfImporter {
                   .withInverse(parsedProperty.getInverse())
                   .withCharacteristics(parsedProperty.getCharacteristics())
                   .withPropertyChain(parsedProperty.getPropertyChain())
-                  .withDisjointWith(parsedProperty.getDisjointWith());
+                  .withDisjointWith(parsedProperty.getDisjointWith())
+                  .withDeprecated(parsedProperty.getDeprecated())
+                  .withReplacedBy(parsedProperty.getReplacedBy());
       overlayLabel(proposed, parsedProperty.getDisplayName(), parsedProperty.getDescription());
       if (current == null || !sameProperty(current, proposed)) {
         operations.add(
@@ -225,6 +231,10 @@ public final class NativeOntologyRdfImporter {
         && Objects.equals(label(a), label(b))
         && Objects.equals(a.getDescription(), b.getDescription())
         && setOrEmpty(a.getSynonyms()).equals(setOrEmpty(b.getSynonyms()))
+        && Boolean.TRUE.equals(a.getAbstract()) == Boolean.TRUE.equals(b.getAbstract())
+        && Objects.equals(iriText(a.getDefinitionSource()), iriText(b.getDefinitionSource()))
+        && sameDeprecation(
+            a.getDeprecated(), a.getReplacedBy(), b.getDeprecated(), b.getReplacedBy())
         && listOrEmpty(a.getConceptMappings()).stream()
             .map(NativeOntologyRdfImporter::mappingKey)
             .collect(Collectors.toSet())
@@ -255,7 +265,18 @@ public final class NativeOntologyRdfImporter {
             .map(URI::toString)
             .toList()
             .equals(listOrEmpty(b.getPropertyChain()).stream().map(URI::toString).toList())
-        && iriSet(a.getDisjointWith()).equals(iriSet(b.getDisjointWith()));
+        && iriSet(a.getDisjointWith()).equals(iriSet(b.getDisjointWith()))
+        && sameDeprecation(
+            a.getDeprecated(), a.getReplacedBy(), b.getDeprecated(), b.getReplacedBy());
+  }
+
+  private static boolean sameDeprecation(
+      final Boolean deprecated,
+      final URI replacedBy,
+      final Boolean otherDeprecated,
+      final URI otherReplacedBy) {
+    return Boolean.TRUE.equals(deprecated) == Boolean.TRUE.equals(otherDeprecated)
+        && Objects.equals(iriText(replacedBy), iriText(otherReplacedBy));
   }
 
   private static Set<String> iriSet(final List<URI> iris) {
@@ -449,7 +470,11 @@ public final class NativeOntologyRdfImporter {
                         ? OntologyConceptType.BOTH
                         : owl ? OntologyConceptType.OWL_CLASS : OntologyConceptType.SKOS_CONCEPT)
                 .withDisplayName(conceptText(subject, SKOS.prefLabel, RDFS.label))
-                .withDescription(conceptText(subject, SKOS.definition, RDFS.comment));
+                .withDescription(conceptText(subject, SKOS.definition, RDFS.comment))
+                .withAbstract(flag(subject, OntologyRdfVocabulary.ABSTRACT))
+                .withDefinitionSource(optionalIri(expressions.one(subject, DCTerms.source)))
+                .withDeprecated(flag(subject, OWL2.deprecated))
+                .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
         final Set<String> synonyms = new LinkedHashSet<>();
         for (final RDFNode synonym : takeAll(subject, SKOS.altLabel)) {
           synonyms.add(string(synonym));
@@ -483,9 +508,7 @@ public final class NativeOntologyRdfImporter {
         for (final Resource subject : model.listSubjectsWithProperty(RDF.type, type).toList()) {
           if (!subject.isURIResource()
               || OwlEntityDeclarations.isReservedVocabulary(subject.getURI())
-              || DCTerms.source.equals(subject)
-              || OntologyRdfVocabulary.UNIT.equals(subject)
-              || OntologyRdfVocabulary.IDENTIFIER_INTENT.equals(subject)
+              || OntologyRdfVocabulary.ANNOTATIONS.contains(subject)
               || (nativeExport && !model.contains(subject, RDFS.label) && referenced(subject))) {
             continue;
           }
@@ -499,7 +522,9 @@ public final class NativeOntologyRdfImporter {
                   .withDomain(iris(subject, RDFS.domain))
                   .withInverse(optionalIri(expressions.one(subject, OWL2.inverseOf)))
                   .withDisjointWith(iris(subject, OWL2.propertyDisjointWith))
-                  .withUnit(text(subject, OntologyRdfVocabulary.UNIT));
+                  .withUnit(text(subject, OntologyRdfVocabulary.UNIT))
+                  .withDeprecated(flag(subject, OWL2.deprecated))
+                  .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
           final RDFNode identifier =
               expressions.one(subject, OntologyRdfVocabulary.IDENTIFIER_INTENT);
           property.withIsIdentifier(identifier != null && booleanValue(identifier));
@@ -665,9 +690,7 @@ public final class NativeOntologyRdfImporter {
         }
         final Resource type = statement.getResource();
         if ((OwlEntityDeclarations.isReservedVocabulary(statement.getSubject().getURI())
-                || DCTerms.source.equals(statement.getSubject())
-                || OntologyRdfVocabulary.UNIT.equals(statement.getSubject())
-                || OntologyRdfVocabulary.IDENTIFIER_INTENT.equals(statement.getSubject())
+                || OntologyRdfVocabulary.ANNOTATIONS.contains(statement.getSubject())
                 || referenced(statement.getSubject())
                 || usedAsPredicate(statement.getSubject())
                 || usedAsAssertionSubject(statement.getSubject()))
@@ -743,6 +766,23 @@ public final class NativeOntologyRdfImporter {
 
     private static URI optionalIri(final RDFNode value) {
       return value == null ? null : OntologyExpressionRdfReader.iri(value);
+    }
+
+    private boolean flag(final Resource subject, final Property predicate) {
+      final RDFNode value = expressions.one(subject, predicate);
+      if (value == null) {
+        return false;
+      }
+      final String lexical =
+          value.isLiteral() && XSD.xboolean.getURI().equals(value.asLiteral().getDatatypeURI())
+              ? value.asLiteral().getLexicalForm()
+              : "";
+      return switch (lexical) {
+        case "true", "1" -> true;
+        case "false", "0" -> false;
+        default -> throw new BadRequestException(
+            predicate.getURI() + " requires an xsd:boolean value");
+      };
     }
 
     private static boolean booleanValue(final RDFNode value) {

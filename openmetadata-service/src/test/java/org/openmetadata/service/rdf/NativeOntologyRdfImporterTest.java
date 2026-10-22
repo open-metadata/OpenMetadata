@@ -1,12 +1,14 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.SKOS;
@@ -21,6 +23,7 @@ import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
@@ -453,6 +456,98 @@ class NativeOntologyRdfImporterTest {
       } finally {
         model.close();
       }
+    }
+  }
+
+  @Test
+  void classModelAnnotationsImportAsClassAndPropertyFields() {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; om:abstract true;
+          dct:source <https://standards.example.org/party>; owl:deprecated true;
+          dct:isReplacedBy <https://example.org/Account> .
+        <https://example.org/Account> a owl:Class; owl:deprecated false .
+        <https://example.org/code> a owl:DatatypeProperty; owl:deprecated "1"^^xsd:boolean;
+          dct:isReplacedBy <https://example.org/identifier> .
+        <https://example.org/identifier> a owl:DatatypeProperty .
+        """,
+            RdfSerializationFormat.TURTLE);
+    try {
+      final var operations = importer.reconcile(model, snapshot).getOperations();
+      final var concepts =
+          operations.stream()
+              .map(OntologyChangeOperation::getConcept)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toMap(concept -> concept.getIri().toString(), c -> c));
+      final var customer = concepts.get("https://example.org/Customer");
+      assertEquals(Boolean.TRUE, customer.getAbstract());
+      assertEquals(
+          URI.create("https://standards.example.org/party"), customer.getDefinitionSource());
+      assertEquals(Boolean.TRUE, customer.getDeprecated());
+      assertEquals(URI.create("https://example.org/Account"), customer.getReplacedBy());
+      final var account = concepts.get("https://example.org/Account");
+      assertEquals(Boolean.FALSE, account.getAbstract());
+      assertNull(account.getDefinitionSource());
+      assertEquals(Boolean.FALSE, account.getDeprecated());
+      assertNull(account.getReplacedBy());
+      final var code =
+          operations.stream()
+              .map(OntologyChangeOperation::getProperty)
+              .filter(
+                  property ->
+                      property != null
+                          && "https://example.org/code".equals(property.getIri().toString()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals(Boolean.TRUE, code.getDeprecated());
+      assertEquals(URI.create("https://example.org/identifier"), code.getReplacedBy());
+    } finally {
+      model.close();
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "owl:deprecated \"yes\" | http://www.w3.org/2002/07/owl#deprecated requires an xsd:boolean value",
+        "om:abstract \"true\" | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "om:abstract \"2\"^^xsd:boolean | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "dct:source \"ISO 8000\" | Expected an absolute RDF IRI",
+        "dct:isReplacedBy \"Account\" | Expected an absolute RDF IRI"
+      })
+  void classModelAnnotationsRefuseValuesOfTheWrongShape(String statement, String message) {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; %s .
+        """
+                .formatted(statement),
+            RdfSerializationFormat.TURTLE);
+    try {
+      assertEquals(
+          message,
+          assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot))
+              .getMessage());
+    } finally {
+      model.close();
     }
   }
 

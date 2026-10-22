@@ -39,9 +39,6 @@ export interface MemberChange {
     ontologyId:       string;
 }
 
-/**
- * Change type of the concept member, or CHANGED when only its axioms or properties changed.
- */
 export enum ChangeType {
     Added = "ADDED",
     Changed = "CHANGED",
@@ -115,8 +112,6 @@ export interface EntityReference {
  *
  * URI that points to a resource.
  *
- * Semantic IRI of the concept.
- *
  * Absolute semantic IRI, preserved exactly without URL normalization, case folding, or
  * percent encoding.
  */
@@ -132,22 +127,18 @@ export enum MemberKind {
 /**
  * Member changes grouped under the concept they define: the concept itself, axioms whose
  * subject is the concept, and properties whose first domain in this ontology is the
- * concept. A change that belongs to no concept forms its own group without a concept.
+ * concept. The change type is the concept's own, or CHANGED when only its axioms or
+ * properties changed. A change that belongs to no concept forms its own group without a
+ * concept.
  */
 export interface ConceptChange {
-    changes: MemberChange[];
-    /**
-     * Change type of the concept member, or CHANGED when only its axioms or properties changed.
-     */
+    changes:    MemberChange[];
     changeType: ChangeType;
     /**
      * Label of the concept: its display name, or its name when it has none.
      */
     concept?: string;
-    /**
-     * Semantic IRI of the concept.
-     */
-    iri?: string;
+    iri?:     string;
     /**
      * Labels of the named superclasses from the concept's SUBCLASS_OF axioms.
      */

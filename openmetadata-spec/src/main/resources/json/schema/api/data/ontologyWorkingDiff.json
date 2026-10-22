@@ -7,7 +7,7 @@
   "javaType": "org.openmetadata.schema.api.data.OntologyWorkingDiff",
   "definitions": {
     "conceptChange": {
-      "description": "Member changes grouped under the concept they define: the concept itself, axioms whose subject is the concept, and properties whose first domain in this ontology is the concept. A change that belongs to no concept forms its own group without a concept.",
+      "description": "Member changes grouped under the concept they define: the concept itself, axioms whose subject is the concept, and properties whose first domain in this ontology is the concept. The change type is the concept's own, or CHANGED when only its axioms or properties changed. A change that belongs to no concept forms its own group without a concept.",
       "type": "object",
       "javaType": "org.openmetadata.schema.type.OntologyConceptChange",
       "properties": {
@@ -16,11 +16,9 @@
           "type": "string"
         },
         "iri": {
-          "description": "Semantic IRI of the concept.",
           "$ref": "../../type/ontologyIri.json"
         },
         "changeType": {
-          "description": "Change type of the concept member, or CHANGED when only its axioms or properties changed.",
           "$ref": "ontologyReleaseDiff.json#/definitions/changeType"
         },
         "parents": {
