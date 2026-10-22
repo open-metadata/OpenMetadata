@@ -543,7 +543,8 @@ class ESMixin(Generic[T]):
             next_after = self._next_search_after(response)
             # The server sorts last on its id tiebreaker. An index without id.keyword sorts it as
             # null, and each next page then starts again with the previous page's last hit, so
-            # the walk is refused before any page of it is handed out.
+            # the walk is refused before any page of it is handed out
+            # (ADR:2026-10-23-paged-search-indexes-sort-last-on-id-keyword).
             last_hit = response.hits.hits[-1] if response.hits.hits else None
             no_tiebreaker = bool(last_hit and last_hit.sort and last_hit.sort[-1] is None)
             if no_tiebreaker or (after and next_after == after):
