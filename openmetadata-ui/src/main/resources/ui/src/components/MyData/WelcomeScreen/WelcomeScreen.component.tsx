@@ -30,9 +30,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
 import {
+  getWelcomeGlow,
   getWelcomeThemeStyle,
-  WELCOME_GLOW_DARK,
-  WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
 
 interface WelcomeScreenProps {
@@ -43,6 +42,9 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { theme } = useTheme();
+  // Optional call: a downstream brand class may not define it yet, and then
+  // the theme colours apply.
+  const welcomeTheme = brandClassBase.getWelcomeTheme?.();
   const { currentUser } = useApplicationStore();
   // AI mode's Connections opens on every connector; classic keeps its
   // database-services entry point. The hook also owns the create-permission
@@ -70,14 +72,15 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     <div
       className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
       data-testid="welcome-screen"
-      // Optional call: a downstream brand class may not define it yet.
-      style={getWelcomeThemeStyle(brandClassBase.getWelcomeTheme?.())}>
+      style={getWelcomeThemeStyle(welcomeTheme)}>
       <div
         aria-hidden
         className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"
         style={{
-          backgroundImage:
-            theme === 'dark' ? WELCOME_GLOW_DARK : WELCOME_GLOW_LIGHT,
+          backgroundImage: getWelcomeGlow(
+            welcomeTheme?.glow ?? 'brand-500',
+            theme === 'dark'
+          ),
         }}
       />
       <ButtonUtility

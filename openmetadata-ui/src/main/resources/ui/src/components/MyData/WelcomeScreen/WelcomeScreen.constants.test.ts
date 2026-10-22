@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 import {
+  getWelcomeGlow,
   getWelcomeThemeStyle,
-  WELCOME_GLOW_DARK,
-  WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
 
 describe('getWelcomeThemeStyle', () => {
@@ -21,7 +20,7 @@ describe('getWelcomeThemeStyle', () => {
     expect(getWelcomeThemeStyle()).toBeUndefined();
   });
 
-  it('should pin the glow and button to the welcome theme', () => {
+  it('should pin the button to the welcome theme', () => {
     expect(
       getWelcomeThemeStyle({
         glow: 'blue-500',
@@ -29,19 +28,29 @@ describe('getWelcomeThemeStyle', () => {
         buttonHover: 'blue-800',
       })
     ).toEqual({
-      '--tw-color-brand-500': 'var(--tw-color-blue-500)',
       '--tw-background-color-brand-solid': 'var(--tw-color-blue-700)',
       '--tw-background-color-brand-solid_hover': 'var(--tw-color-blue-800)',
     });
   });
 });
 
-describe('welcome glow', () => {
-  // The glow must read brand-500, which getWelcomeThemeStyle pins.
-  it.each([WELCOME_GLOW_LIGHT, WELCOME_GLOW_DARK])(
-    'should be drawn from brand-500',
-    (glow) => {
-      expect(glow).toContain('var(--tw-color-brand-500)');
-    }
-  );
+describe('getWelcomeGlow', () => {
+  it('should draw the light glow in the given colour token', () => {
+    const glow = getWelcomeGlow('purple-500', false);
+
+    expect(glow).toMatch(/^radial-gradient\(168\.55% 167\.82% /);
+    expect(glow).toContain(
+      'color-mix(in srgb, var(--tw-color-purple-500) 25%, transparent) 77.5%'
+    );
+    expect(glow).not.toContain('brand');
+  });
+
+  it('should use the wider, fainter dark glow', () => {
+    const glow = getWelcomeGlow('blue-500', true);
+
+    expect(glow).toMatch(/^radial-gradient\(220\.28% 218\.41% /);
+    expect(glow).toContain(
+      'color-mix(in srgb, var(--tw-color-blue-500) 30%, transparent) 73%'
+    );
+  });
 });
