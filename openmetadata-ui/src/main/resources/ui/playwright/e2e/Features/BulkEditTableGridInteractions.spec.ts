@@ -229,4 +229,43 @@ test.describe('Bulk edit table grid interactions', () => {
 
     await expect(targetTags).toContainText(TAG_FQN);
   });
+
+  test('pastes text copied outside the grid into the selected cell only', async ({
+    page,
+  }) => {
+    const pastedText = 'Customer id, primary key\nSecond paragraph';
+    const description = await getGridCell(
+      page,
+      table.columnsName[0],
+      'Column Description'
+    );
+    const dataTypeDisplay = await getGridCell(
+      page,
+      table.columnsName[0],
+      'Column Data Type Display'
+    );
+    const nextRowDescription = await getGridCell(
+      page,
+      table.columnsName[1],
+      'Column Description'
+    );
+    const [dataTypeBefore, nextDescriptionBefore] = await Promise.all([
+      dataTypeDisplay.textContent(),
+      nextRowDescription.textContent(),
+    ]);
+
+    await page.evaluate(
+      (text) => navigator.clipboard.writeText(text),
+      pastedText
+    );
+    await description.click();
+
+    await expect(description).toHaveAttribute('aria-selected', 'true');
+
+    await page.keyboard.press('ControlOrMeta+v');
+
+    await expect(description).toContainText('Customer id, primary key');
+    await expect(dataTypeDisplay).toHaveText(dataTypeBefore ?? '');
+    await expect(nextRowDescription).toHaveText(nextDescriptionBefore ?? '');
+  });
 });

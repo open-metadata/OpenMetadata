@@ -14,6 +14,8 @@
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Column } from 'react-data-grid';
+import { t } from '../utils/i18next/LocalUtil';
+import { showErrorToast } from '../utils/ToastUtils';
 
 const ARIA_ROWINDEX_ATTR = 'aria-rowindex';
 const ARIA_COLINDEX_ATTR = 'aria-colindex';
@@ -104,6 +106,11 @@ function useClipboardHandlers(
   columns: Column<Record<string, string>>[],
   pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
 ) {
+  // The cells of the last grid copy. Pasting text the grid did not copy (a
+  // description from another page) must land in one cell, not be split on
+  // commas and newlines across its neighbours and the rows below.
+  const copiedCells = useRef<{ text: string; cells: string[][] } | null>(null);
+
   const handleCopy = useCallback(() => {
     const range = getFinalSelectedRange();
     if (range && dataSource.length > 0) {
@@ -113,22 +120,19 @@ function useClipboardHandlers(
       const minCol = Math.min(startCol, endCol);
       const maxCol = Math.max(startCol, endCol);
 
-      const tsv: string[] = [];
+      const cells: string[][] = [];
       for (let r = minRow; r <= maxRow; r++) {
         const row = dataSource[r];
         const rowValues: string[] = [];
         for (let c = minCol; c <= maxCol; c++) {
-          const key = columns[c].key;
-          let value = row[key];
-          if (value === undefined || value === null) {
-            value = '';
-          }
-          rowValues.push(value || '');
+          rowValues.push(row[columns[c].key] || '');
         }
-        tsv.push(rowValues.join(','));
+        cells.push(rowValues);
       }
+      const text = cells.map((rowValues) => rowValues.join(',')).join('\n');
+      copiedCells.current = { text, cells };
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(tsv.join('\n'));
+        navigator.clipboard.writeText(text);
 
         return undefined;
       } else {
@@ -137,7 +141,7 @@ function useClipboardHandlers(
         // and the grid stops responding until the user clicks a cell again.
         const previouslyFocused = document.activeElement as HTMLElement | null;
         const textarea = document.createElement('textarea');
-        textarea.value = tsv.join('\n');
+        textarea.value = text;
         document.body.appendChild(textarea);
         textarea.select();
         let success = false;
@@ -162,34 +166,45 @@ function useClipboardHandlers(
     const newRows = dataSource.map((row) => ({ ...row }));
 
     if (range && dataSource.length > 0) {
-      return navigator.clipboard.readText().then((clipText) => {
-        const { startRow, endRow, startCol, endCol } = range;
-        const minRow = Math.min(startRow, endRow);
-        const minCol = Math.min(startCol, endCol);
-        const lines = clipText.split('\n');
-        for (let i = 0; i < lines.length; i++) {
-          const rowIdx = minRow + i;
-          if (rowIdx >= dataSource.length) {
-            break;
-          }
-          const cells = lines[i].split(',');
-          for (let j = 0; j < cells.length; j++) {
-            const colIdx = minCol + j;
-            if (colIdx >= columns.length) {
+      return navigator.clipboard
+        .readText()
+        .then((clipText) => {
+          const { startRow, endRow, startCol, endCol } = range;
+          const minRow = Math.min(startRow, endRow);
+          const minCol = Math.min(startCol, endCol);
+          const pastedCells =
+            clipText === copiedCells.current?.text
+              ? copiedCells.current.cells
+              : [[clipText]];
+          for (let i = 0; i < pastedCells.length; i++) {
+            const rowIdx = minRow + i;
+            if (rowIdx >= dataSource.length) {
               break;
             }
-            const column = columns[colIdx];
-            if (column.editable) {
-              (newRows[rowIdx] as Record<string, string>)[column.key] =
-                cells[j];
+            const cells = pastedCells[i];
+            for (let j = 0; j < cells.length; j++) {
+              const colIdx = minCol + j;
+              if (colIdx >= columns.length) {
+                break;
+              }
+              const column = columns[colIdx];
+              if (column.editable) {
+                (newRows[rowIdx] as Record<string, string>)[column.key] =
+                  cells[j];
+              }
             }
           }
-        }
-        setDataSource(newRows);
-        pushToUndoStack(dataSource);
+          setDataSource(newRows);
+          pushToUndoStack(dataSource);
 
-        return newRows;
-      });
+          return newRows;
+        })
+        .catch(() => {
+          // Clipboard read was denied; the keystroke was already consumed.
+          showErrorToast(t('message.clipboard-not-available'));
+
+          return dataSource;
+        });
     }
 
     return dataSource;

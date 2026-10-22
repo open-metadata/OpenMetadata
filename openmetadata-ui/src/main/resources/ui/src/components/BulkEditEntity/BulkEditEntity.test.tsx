@@ -191,13 +191,18 @@ const defaultProps: BulkEditEntityProps = {
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
   searchText: '',
+  visibleRows: mockDataSource,
   onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };

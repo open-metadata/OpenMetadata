@@ -69,7 +69,6 @@ import { useEntityExportModalProvider } from '../Entity/EntityExportModalProvide
 import { BulkEditEntityProps } from './BulkEditEntity.interface';
 import {
   BULK_EDIT_OPERATION_KEY,
-  filterBulkEditRows,
   getBulkEditRenderedColumns,
   getBulkEditRowsLabelKey,
   isBulkEditNameColumn,
@@ -168,6 +167,7 @@ const BulkEditEntity = ({
   workflowHeaderConfig,
   workflowMode = 'bulkEdit',
   searchText,
+  visibleRows,
   onSearchTextChange,
 }: BulkEditEntityProps) => {
   const { t } = useTranslation();
@@ -335,11 +335,6 @@ const BulkEditEntity = ({
     };
   }, [clearCSVExportData, isExportHydrationRequired]);
 
-  const filteredDataSource = useMemo(
-    () => filterBulkEditRows(dataSource, searchText),
-    [dataSource, searchText]
-  );
-
   // Look up the original (pre-edit) row by its stable id so operation
   // classification and the rename hint never depend on array position.
   const initialRowById = useMemo(
@@ -358,7 +353,7 @@ const BulkEditEntity = ({
   // across re-renders that do not change the data (columns, handlers, ...).
   const dataSourceWithOperations = useMemo<Record<string, string>[]>(
     () =>
-      filteredDataSource.map((row, index) => {
+      visibleRows.map((row, index) => {
         const rowId = row.id ?? `${index}`;
         const originalRow = initialRowById.get(row.id);
         const operation = getBulkEditOperation(
@@ -374,7 +369,7 @@ const BulkEditEntity = ({
           [BULK_EDIT_ORIGINAL_NAME_KEY]: getBulkEditRowName(originalRow),
         };
       }),
-    [filteredDataSource, initialRowById, changedCellKeysByRowId, workflowMode]
+    [visibleRows, initialRowById, changedCellKeysByRowId, workflowMode]
   );
 
   const editDataGrid = useMemo(() => {
@@ -513,9 +508,7 @@ const BulkEditEntity = ({
           onCopy={handleCopy}
           onPaste={handlePaste}
           onRowsChange={(rows: Record<string, string>[]) =>
-            handleOnRowsChange(
-              mergeGridRows(dataSource, filteredDataSource, rows)
-            )
+            handleOnRowsChange(mergeGridRows(dataSource, visibleRows, rows))
           }
         />
       </div>
@@ -525,7 +518,7 @@ const BulkEditEntity = ({
     columns,
     dataSource,
     dataSourceWithOperations,
-    filteredDataSource,
+    visibleRows,
     handleCopy,
     handlePaste,
     handleOnRowsChange,

@@ -2180,6 +2180,7 @@ const BulkEntityImportPage = () => {
             sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
+            visibleRows={bulkEditGridRows}
             workflowHeaderConfig={bulkEditWorkflowProps.workflowHeaderConfig}
             workflowMode={bulkEditWorkflowProps.workflowMode}
             onCSVReadComplete={onCSVReadComplete}
