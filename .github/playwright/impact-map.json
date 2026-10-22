@@ -1337,6 +1337,13 @@
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts"
       ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/__snapshots__/**"
+      ],
+      "projects": ["visual-regression"],
+      "specs": ["playwright/e2e/VisualRegression/**/*.spec.ts"]
     }
   ]
 }
