@@ -380,13 +380,17 @@ export const TabList = <K extends Orientation>({
   if (isCard) {
     content = (
       <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
-        <div className="tw:relative tw:flex tw:min-w-0 tw:items-center tw:self-stretch">
+        <div
+          className={cx(
+            'tw:relative tw:flex tw:min-w-0 tw:items-center tw:self-stretch',
+            fullWidth && 'tw:flex-1'
+          )}>
           {tabList}
           {/* Shadows reach past the card's px-5 to sit flush with its edge, or end before the actions. */}
           {overflow.edges.start && (
             <div
               aria-hidden="true"
-              className="tw:pointer-events-none tw:absolute tw:inset-y-0 tw:-left-5 tw:w-7 tw:bg-linear-to-r tw:from-black/10 tw:to-transparent"
+              className="tw:pointer-events-none tw:absolute tw:inset-y-0 tw:-left-5 tw:w-7 tw:bg-linear-to-r tw:from-black/10 tw:to-transparent tw:dark:from-black/40"
               data-testid="tab-list-shadow-start"
             />
           )}
@@ -394,7 +398,7 @@ export const TabList = <K extends Orientation>({
             <div
               aria-hidden="true"
               className={cx(
-                'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:bg-linear-to-l tw:from-black/10 tw:to-transparent',
+                'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:bg-linear-to-l tw:from-black/10 tw:to-transparent tw:dark:from-black/40',
                 actionsSlot ? 'tw:right-0' : 'tw:-right-5'
               )}
               data-testid="tab-list-shadow-end"

@@ -58,6 +58,22 @@ describe('Tabs.List card variant', () => {
     expect(tabList.className).not.toContain('tw:before:bg-border-secondary');
   });
 
+  it('lets fullWidth card tabs grow to the card width', () => {
+    render(
+      <Tabs>
+        <Tabs.List
+          fullWidth
+          aria-label="Sections"
+          type="underline"
+          variant="card">
+          <Tabs.Item id="one">One</Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    expect(screen.getByRole('tablist').parentElement).toHaveClass('tw:flex-1');
+  });
+
   it.each(['default', 'card'] as const)(
     'gives %s tabs no z-index so fixed overlays can cover the bar',
     (variant) => {
