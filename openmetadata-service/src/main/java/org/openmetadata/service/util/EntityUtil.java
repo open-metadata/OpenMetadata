@@ -166,17 +166,19 @@ public final class EntityUtil {
   /**
    * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
    * column name, so that the FK mapping {@code columns[i] → referredColumns[i]} is preserved
-   * after normalization. For non-FK constraints ({@code referredColumns == null}), the columns
-   * list is sorted in place as before.
+   * after normalization. When there is no column-for-column mapping ({@code referredColumns} is
+   * null or its size differs from {@code columns}), each list is sorted on its own as before.
    */
   public static void sortConstraintPairs(TableConstraint constraint) {
     List<String> cols = constraint.getColumns();
-    if (cols == null || cols.size() <= 1) {
-      return;
-    }
     List<String> refs = constraint.getReferredColumns();
-    if (refs == null || refs.isEmpty()) {
-      Collections.sort(cols);
+    if (cols == null || refs == null || refs.size() != cols.size()) {
+      if (cols != null) {
+        Collections.sort(cols);
+      }
+      if (refs != null) {
+        Collections.sort(refs);
+      }
       return;
     }
     // Sort both lists together by the local column name so the FK mapping survives normalization.

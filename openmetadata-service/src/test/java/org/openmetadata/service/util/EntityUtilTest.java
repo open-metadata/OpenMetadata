@@ -1675,4 +1675,36 @@ class EntityUtilTest {
     assertEquals(List.of("only_col"), fk.getColumns());
     assertEquals(List.of("parent.pk"), fk.getReferredColumns());
   }
+
+  @Test
+  void testSortConstraintPairs_fewerReferredColumnsSortsEachListIndependently() {
+    List<String> cols = new ArrayList<>(List.of("b_col", "a_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.pk"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("a_col", "b_col"), fk.getColumns());
+    assertEquals(List.of("parent.pk"), fk.getReferredColumns());
+  }
+
+  @Test
+  void testSortConstraintPairs_moreReferredColumnsKeepsEveryReferredColumn() {
+    List<String> cols = new ArrayList<>(List.of("b_col", "a_col"));
+    List<String> refs = new ArrayList<>(List.of("parent.z", "parent.y", "parent.x"));
+    TableConstraint fk =
+        new TableConstraint()
+            .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+            .withColumns(cols)
+            .withReferredColumns(refs);
+
+    EntityUtil.sortConstraintPairs(fk);
+
+    assertEquals(List.of("a_col", "b_col"), fk.getColumns());
+    assertEquals(List.of("parent.x", "parent.y", "parent.z"), fk.getReferredColumns());
+  }
 }
