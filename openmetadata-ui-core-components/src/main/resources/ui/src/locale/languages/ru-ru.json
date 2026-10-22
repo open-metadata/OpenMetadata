@@ -34,6 +34,8 @@
     "remove": "Удалить",
     "remove-entity": "Удалить {{entity}}",
     "remove-filter": "Удалить фильтр",
+    "scroll-left": "Прокрутить влево",
+    "scroll-right": "Прокрутить вправо",
     "search": "Поиск",
     "select": "Выбрать",
     "select-all": "Выбрать все",

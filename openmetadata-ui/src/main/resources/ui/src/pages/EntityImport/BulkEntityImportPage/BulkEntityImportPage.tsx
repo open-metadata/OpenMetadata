@@ -1616,7 +1616,7 @@ const BulkEntityImportPage = () => {
   );
 
   const renderUploadFooter = () => (
-    <div className="csv-import-wizard-footer csv-import-wizard-footer-end import-footer">
+    <div className="csv-import-wizard-footer csv-import-wizard-footer-end import-footer tw:mt-auto tw:-mx-6 tw:in-[.assistant-content]:-mx-10">
       <div className="csv-import-wizard-footer-actions">
         <Button
           color="secondary"
@@ -2034,7 +2034,7 @@ const BulkEntityImportPage = () => {
     }
 
     return (
-      <div className="csv-import-wizard-footer import-footer">
+      <div className="csv-import-wizard-footer import-footer tw:mt-auto tw:-mx-6 tw:in-[.assistant-content]:-mx-10">
         <Button color="secondary" onPress={handleRetryCsvUpload}>
           {t('label.import-more')}
         </Button>
@@ -2055,7 +2055,7 @@ const BulkEntityImportPage = () => {
     }
 
     return (
-      <div className="csv-import-wizard-footer import-footer">
+      <div className="csv-import-wizard-footer import-footer tw:mt-auto tw:-mx-6 tw:in-[.assistant-content]:-mx-10">
         {activeStep > 0 && (
           <Button
             color="secondary"

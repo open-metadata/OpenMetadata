@@ -34,6 +34,8 @@
     "remove": "移除",
     "remove-entity": "移除 {{entity}}",
     "remove-filter": "移除篩選器",
+    "scroll-left": "向左捲動",
+    "scroll-right": "向右捲動",
     "search": "搜尋",
     "select": "選取",
     "select-all": "全選",

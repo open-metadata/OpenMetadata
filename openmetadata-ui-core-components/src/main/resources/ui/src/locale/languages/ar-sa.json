@@ -34,6 +34,8 @@
     "remove": "إزالة",
     "remove-entity": "إزالة {{entity}}",
     "remove-filter": "إزالة التصفية",
+    "scroll-left": "التمرير لليسار",
+    "scroll-right": "التمرير لليمين",
     "search": "بحث",
     "select": "تحديد",
     "select-all": "تحديد الكل",

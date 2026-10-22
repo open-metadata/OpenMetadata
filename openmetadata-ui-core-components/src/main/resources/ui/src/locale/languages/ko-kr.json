@@ -34,6 +34,8 @@
     "remove": "제거",
     "remove-entity": "{{entity}} 제거",
     "remove-filter": "필터 제거",
+    "scroll-left": "왼쪽으로 스크롤",
+    "scroll-right": "오른쪽으로 스크롤",
     "search": "검색",
     "select": "선택",
     "select-all": "모두 선택",

@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, SimpleModal } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  EmptyPlaceholder,
+  SimpleModal,
+} from '@openmetadata/ui-core-components';
+import { GridDotsOuter } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { isEmpty } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { Table } from '../../../generated/entity/data/table';
@@ -51,14 +57,22 @@ export const ModalWithCustomPropertyEditor = ({
 
   const [customPropertyEntityRecord, setCustomPropertyEntityRecord] =
     useState<Type>();
+  // The value as the editor would save it untouched, so formatting differences
+  // in the incoming CSV string don't count as an edit.
+  const [initialValue, setInitialValue] = useState<string>();
 
   const fetchTypeDetail = async () => {
     setIsLoading(true);
     try {
       const response = await getTypeByFQN(entityType);
+      const extension = convertCustomPropertyStringToEntityExtension(
+        value ?? '',
+        response
+      );
       setCustomPropertyEntityRecord(response);
-      setExtensionObject(
-        convertCustomPropertyStringToEntityExtension(value ?? '', response)
+      setExtensionObject(extension);
+      setInitialValue(
+        convertEntityExtensionToCustomPropertyString(extension, response)
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
@@ -88,13 +102,26 @@ export const ModalWithCustomPropertyEditor = ({
     fetchTypeDetail();
   }, []);
 
+  const hasCustomProperties = !isEmpty(
+    customPropertyEntityRecord?.customProperties
+  );
+
+  const isDirty = useMemo(
+    () =>
+      convertEntityExtensionToCustomPropertyString(
+        extensionObject,
+        customPropertyEntityRecord
+      ) !== initialValue,
+    [extensionObject, customPropertyEntityRecord, initialValue]
+  );
+
   return (
     <SimpleModal
       data-testid="custom-property-editor"
       footer={
-        <KeyDownStopPropagationWrapper>
+        <KeyDownStopPropagationWrapper className="tw:flex tw:gap-3">
           <Button
-            color="link-color"
+            color="secondary"
             data-testid="cancel"
             isDisabled={isSaveLoading}
             key="cancelButton"
@@ -104,6 +131,7 @@ export const ModalWithCustomPropertyEditor = ({
           <Button
             color="primary"
             data-testid="save"
+            isDisabled={isLoading || !hasCustomProperties || !isDirty}
             isLoading={isSaveLoading}
             key="saveButton"
             onClick={handleSaveData}>
@@ -117,9 +145,19 @@ export const ModalWithCustomPropertyEditor = ({
       width={650}
       onCancel={() => onCancel?.()}>
       <KeyDownStopPropagationWrapper>
-        {isLoading ? (
-          <Loader />
-        ) : (
+        {isLoading && <Loader />}
+        {!isLoading && !hasCustomProperties && (
+          // The placeholder fills its nearest positioned ancestor.
+          <div className="tw:relative tw:min-h-60">
+            <EmptyPlaceholder
+              description={t('message.no-custom-properties-defined')}
+              icon={<GridDotsOuter className="tw:text-utility-brand-600" />}
+              title={t('label.no-custom-properties-defined')}
+              variant="blank"
+            />
+          </div>
+        )}
+        {!isLoading && hasCustomProperties && (
           <GenericProvider<Table>
             customizedPage={null}
             data={

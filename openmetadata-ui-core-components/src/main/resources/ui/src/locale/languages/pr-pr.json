@@ -34,6 +34,8 @@
     "remove": "حذف",
     "remove-entity": "حذف {{entity}}",
     "remove-filter": "حذف فیلتر",
+    "scroll-left": "پیمایش به چپ",
+    "scroll-right": "پیمایش به راست",
     "search": "جستجو",
     "select": "انتخاب کنید",
     "select-all": "انتخاب همه",

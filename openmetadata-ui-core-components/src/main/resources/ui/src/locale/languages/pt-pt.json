@@ -34,6 +34,8 @@
     "remove": "Remover",
     "remove-entity": "Remover {{entity}}",
     "remove-filter": "Remover filtro",
+    "scroll-left": "Deslocar para a esquerda",
+    "scroll-right": "Deslocar para a direita",
     "search": "Pesquisar",
     "select": "Selecionar",
     "select-all": "Selecionar tudo",

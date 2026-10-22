@@ -1,10 +1,14 @@
 import type { BadgeColors, Sizes } from '@/components/base/badges/badge-types';
 import { Badge } from '@/components/base/badges/badges';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Card } from '@/components/base/card/card';
+import { useCoreTranslation } from '@/i18n/useCoreTranslation';
+import { ChevronLeft } from '@/icons/ChevronLeft';
+import { ChevronRight } from '@/icons/ChevronRight';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
-import { createContext, useContext, useMemo } from 'react';
+import { createContext, useContext, useMemo, useRef } from 'react';
 import type {
   TabListProps as AriaTabListProps,
   TabProps as AriaTabProps,
@@ -15,9 +19,11 @@ import {
   TabList as AriaTabList,
   TabPanel as AriaTabPanel,
   Tabs as AriaTabs,
+  TabListStateContext,
   TabsContext,
   useSlottedContext,
 } from 'react-aria-components';
+import { useTabListOverflow } from './use-tab-list-overflow';
 
 type Orientation = 'horizontal' | 'vertical';
 
@@ -280,6 +286,15 @@ export const TabList = <K extends Orientation>({
   );
 
   const isCard = variant === 'card';
+  const { t } = useCoreTranslation();
+  const tabListRef = useRef<HTMLDivElement>(null);
+  const tabListState = useContext(TabListStateContext);
+  const { isOverflowing, canScrollStart, canScrollEnd, scrollByPage } =
+    useTabListOverflow(
+      tabListRef,
+      isCard && orientation === 'horizontal',
+      tabListState?.selectedKey
+    );
 
   const tabList = (
     <AriaTabList
@@ -306,7 +321,8 @@ export const TabList = <K extends Orientation>({
 
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={tabListRef}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
@@ -319,9 +335,35 @@ export const TabList = <K extends Orientation>({
 
   let content = tabList;
   if (isCard) {
+    // The list scrolls with a hidden scrollbar, so these are the only cue that
+    // tabs continue past the edge; they render only when the tabs overflow.
     content = (
       <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
+        {isOverflowing && (
+          <ButtonUtility
+            className="tw:shrink-0"
+            color="tertiary"
+            data-testid="tab-list-scroll-start"
+            icon={ChevronLeft}
+            isDisabled={!canScrollStart}
+            size="sm"
+            tooltip={t('label.scroll-left')}
+            onClick={() => scrollByPage(-1)}
+          />
+        )}
         {tabList}
+        {isOverflowing && (
+          <ButtonUtility
+            className="tw:ml-auto tw:shrink-0"
+            color="tertiary"
+            data-testid="tab-list-scroll-end"
+            icon={ChevronRight}
+            isDisabled={!canScrollEnd}
+            size="sm"
+            tooltip={t('label.scroll-right')}
+            onClick={() => scrollByPage(1)}
+          />
+        )}
         {actionsSlot}
       </Card>
     );

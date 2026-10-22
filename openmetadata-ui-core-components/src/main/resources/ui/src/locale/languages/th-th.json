@@ -34,6 +34,8 @@
     "remove": "ลบ",
     "remove-entity": "ลบ {{entity}}",
     "remove-filter": "ลบตัวกรอง",
+    "scroll-left": "เลื่อนไปทางซ้าย",
+    "scroll-right": "เลื่อนไปทางขวา",
     "search": "ค้นหา",
     "select": "เลือก",
     "select-all": "เลือกทั้งหมด",

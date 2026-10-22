@@ -34,6 +34,8 @@
     "remove": "削除",
     "remove-entity": "{{entity}}を削除",
     "remove-filter": "フィルターを削除",
+    "scroll-left": "左にスクロール",
+    "scroll-right": "右にスクロール",
     "search": "検索",
     "select": "選択",
     "select-all": "すべて選択",
