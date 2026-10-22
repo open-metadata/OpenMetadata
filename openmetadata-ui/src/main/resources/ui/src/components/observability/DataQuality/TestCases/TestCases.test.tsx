@@ -335,6 +335,7 @@ describe('TestCases', () => {
   it('should treat deleted visibility as a filter and disable bulk actions', () => {
     mockUseTestCaseListPage.mockReturnValue({
       ...baseHookReturn,
+      searchValue: '',
       showDeleted: true,
     });
 
