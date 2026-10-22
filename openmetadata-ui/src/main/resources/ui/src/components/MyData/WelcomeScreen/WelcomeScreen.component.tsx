@@ -30,6 +30,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
 import {
+  getWelcomeAccentStyle,
   WELCOME_GLOW_DARK,
   WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
@@ -68,7 +69,10 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
   return (
     <div
       className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
-      data-testid="welcome-screen">
+      data-testid="welcome-screen"
+      // Optional call: a downstream build that swaps in its own brand class
+      // may not define it, and then the theme colour applies.
+      style={getWelcomeAccentStyle(brandClassBase.getWelcomeAccentColor?.())}>
       <div
         aria-hidden
         className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"

@@ -50,6 +50,17 @@ describe('WelcomeScreen', () => {
     });
   });
 
+  it('should scope the brand accent to the welcome screen', () => {
+    renderScreen();
+
+    const root = screen.getByTestId('welcome-screen');
+
+    expect(
+      root.style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('#7147E8');
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('#7147E8');
+  });
+
   it('should render the illustration and message', () => {
     renderScreen();
 

@@ -68,6 +68,15 @@ class BrandClassBase {
     return theme === 'dark' ? UpgradeScreenDarkSrc : UpgradeScreenLightSrc;
   }
 
+  /**
+   * Accent for the welcome screen's primary button and glow, in place of the
+   * theme's brand colour. OpenMetadata's welcome design is purple; return
+   * `undefined` to follow the theme.
+   */
+  public getWelcomeAccentColor(): string | undefined {
+    return '#7147E8';
+  }
+
   /** Product name in the welcome screen's "Your {{platform}} is ready". */
   public getPlatformName() {
     return t('label.context-platform');

@@ -14,6 +14,8 @@
 // Figma 15448:9083: a radial glow rising into the brand colour along the bottom
 // 65% of the panel; dark mode keeps it faint. `--tw-*` is the runtime name of
 // the core theme variables, and it follows the configured brand colour.
+import { CSSProperties } from 'react';
+
 const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
 const BRAND = 'var(--tw-color-brand-500)';
 
@@ -33,3 +35,19 @@ export const WELCOME_GLOW_DARK = `radial-gradient(${GLOW_SHAPE}, ${[
   `${brandMix(20)} 73%`,
   brandMix(20),
 ].join(', ')})`;
+
+/**
+ * Re-points the brand variables the welcome screen reads (the glow above and
+ * the primary button's `bg-brand-solid`) at a product accent, scoped to the
+ * screen. `undefined` keeps the configured theme colour.
+ */
+export const getWelcomeAccentStyle = (
+  accent?: string
+): CSSProperties | undefined =>
+  accent
+    ? ({
+        '--tw-color-brand-500': accent,
+        '--tw-background-color-brand-solid': accent,
+        '--tw-background-color-brand-solid_hover': `color-mix(in srgb, ${accent} 85%, black)`,
+      } as CSSProperties)
+    : undefined;
