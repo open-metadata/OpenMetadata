@@ -23,6 +23,7 @@ import { useEditableUser } from '../../../../../../hooks/user-profile/useEditabl
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import DomainsRow from '../../components/DomainsRow';
 import PersonaRow from '../../components/PersonaRow';
@@ -52,7 +53,8 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
-  const { userData, isNotFound, updateUserDetails } = useEditableUser(name);
+  const { userData, isLoading, isNotFound, reload, updateUserDetails } =
+    useEditableUser(name);
   const {
     hasViewAccess,
     canEditAll,
@@ -75,6 +77,19 @@ const MembersUserEdit: FC<MembersUserEditProps> = ({ name, onResolveName }) => {
           data-testid="user-not-found"
           icon={<User01 />}
           title={t('label.no-entity-found', { entity: t('label.user') })}
+        />
+      </Box>
+    );
+  }
+
+  // A non-404 failure (500, network, 403) leaves no data once loading ends;
+  // show it with a Reload rather than spinning forever.
+  if (!isLoading && !userData) {
+    return (
+      <Box className="tw:relative tw:flex-1 tw:min-h-90">
+        <SomethingWentWrongPlaceholder
+          data-testid="user-load-error"
+          onReload={reload}
         />
       </Box>
     );

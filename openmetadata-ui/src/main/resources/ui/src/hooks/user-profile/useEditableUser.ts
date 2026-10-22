@@ -40,6 +40,8 @@ export interface EditableUser {
   userData?: User;
   isLoading: boolean;
   isNotFound: boolean;
+  // Re-runs the fetch, e.g. from an error placeholder's Reload action.
+  reload: () => Promise<void>;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
 }
 
@@ -149,5 +151,11 @@ export const useEditableUser = (
     [userData, t]
   );
 
-  return { userData, isLoading, isNotFound, updateUserDetails };
+  return {
+    userData,
+    isLoading,
+    isNotFound,
+    reload: fetchUser,
+    updateUserDetails,
+  };
 };

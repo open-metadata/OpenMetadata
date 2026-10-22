@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
@@ -178,6 +178,26 @@ describe('MembersUserEdit', () => {
     expect(canEditOf('row-name')).toBe('false');
     expect(canEditOf('row-admin')).toBe('false');
     expect(canEditOf('row-roles')).toBe('false');
+  });
+
+  it('shows an error with Reload instead of spinning forever when the fetch fails', async () => {
+    mockGetUserByName
+      .mockRejectedValueOnce({ response: { status: 500 } })
+      .mockResolvedValueOnce({ id: 'u2', name: 'jane', email: 'jane@acme.io' });
+    mockUseEntityPermissions.mockReturnValue(
+      permissionsWith([Operation.ViewAll])
+    );
+
+    await renderView();
+
+    expect(screen.getByTestId('user-load-error')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.reload'));
+    });
+
+    expect(screen.getByTestId('members-user-edit')).toBeInTheDocument();
   });
 
   it('shows a not-found placeholder for an unknown user', async () => {
