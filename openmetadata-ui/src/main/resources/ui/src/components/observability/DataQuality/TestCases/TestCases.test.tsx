@@ -51,6 +51,7 @@ jest.mock('pages/DataQuality/DataQualityProvider', () => ({
 jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   __esModule: true,
   default: ({
+    afterDeleteAction,
     isLoading,
     testCases,
     enableBulkActions,
@@ -66,6 +67,9 @@ jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
       data-test-cases-count={testCases?.length ?? 0}
       data-testid="data-quality-tab">
       data-quality-tab
+      <button data-testid="after-delete-action" onClick={afterDeleteAction}>
+        after-delete
+      </button>
       {emptyStateAction && (
         <button
           data-testid="empty-state-action"
@@ -146,6 +150,7 @@ jest.mock('../DqSummaryPanel', () => ({
 const handleSearchParam = jest.fn();
 const clearAll = jest.fn();
 const handleShowDeletedChange = jest.fn();
+const handleAfterDeleteAction = jest.fn();
 
 const baseHookReturn = {
   testCasePermission: { ViewAll: true, ViewBasic: true },
@@ -171,7 +176,7 @@ const baseHookReturn = {
   extraDropdownContent: [],
   showDeleted: false,
   handleShowDeletedChange,
-  handleAfterDeleteAction: jest.fn(),
+  handleAfterDeleteAction,
 };
 
 const onAddTestCase = jest.fn();
@@ -319,7 +324,7 @@ describe('TestCases', () => {
     expect(screen.queryByTestId('empty-state-action')).not.toBeInTheDocument();
   });
 
-  it('should soft delete test cases and wire the show deleted toggle', () => {
+  it('should use soft deletion and wire the show deleted toggle', () => {
     render(<TestCases />);
 
     expect(screen.getByTestId('data-quality-tab')).toHaveAttribute(
@@ -330,6 +335,14 @@ describe('TestCases', () => {
     fireEvent.click(screen.getByTestId('show-deleted'));
 
     expect(handleShowDeletedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('should refresh through handleAfterDeleteAction after a delete or restore', () => {
+    render(<TestCases />);
+
+    fireEvent.click(screen.getByTestId('after-delete-action'));
+
+    expect(handleAfterDeleteAction).toHaveBeenCalledTimes(1);
   });
 
   it('should treat deleted visibility as a filter and disable bulk actions', () => {
