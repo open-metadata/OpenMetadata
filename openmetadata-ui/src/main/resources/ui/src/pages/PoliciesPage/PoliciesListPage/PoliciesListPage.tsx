@@ -115,7 +115,7 @@ const PoliciesListPage = () => {
         GlobalSettingsMenuCategory.ACCESS,
         t('label.policy-plural')
       ),
-    []
+    [t]
   );
 
   const columns: ColumnsType<Policy> = useMemo(() => {
@@ -188,7 +188,7 @@ const PoliciesListPage = () => {
                   </AriaButton>
                   <Popover
                     arrow
-                    containerClassName="tw:w-40 tw:px-4 tw:py-3 tw:text-center"
+                    containerClassName="tw:w-40 tw:px-4 tw:py-3"
                     placement="bottom">
                     <Box
                       inline
@@ -258,26 +258,29 @@ const PoliciesListPage = () => {
         },
       },
     ];
-  }, []);
+  }, [deletePolicyPermission, t, viewRolePermission]);
 
-  const fetchPolicies = async (paging?: Partial<Paging>) => {
-    setIsLoading(true);
-    try {
-      const data = await getPolicies(
-        'roles',
-        paging?.after,
-        paging?.before,
-        pageSize
-      );
+  const fetchPolicies = useCallback(
+    async (paging?: Partial<Paging>) => {
+      setIsLoading(true);
+      try {
+        const data = await getPolicies(
+          'roles',
+          paging?.after,
+          paging?.before,
+          pageSize
+        );
 
-      setPolicies(data.data || []);
-      handlePagingChange(data.paging);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        setPolicies(data.data || []);
+        handlePagingChange(data.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [handlePagingChange, pageSize]
+  );
 
   const handleAfterDeleteAction = useCallback(() => {
     fetchPolicies();
@@ -323,7 +326,7 @@ const PoliciesListPage = () => {
     } else {
       fetchPolicies();
     }
-  }, [pageSize, pagingCursor]);
+  }, [fetchPolicies, pagingCursor]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.policy-plural')}>

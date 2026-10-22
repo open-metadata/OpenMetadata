@@ -25,8 +25,8 @@ import NoSearchResultsPlaceholder from './NoSearchResultsPlaceholder';
  */
 const PanelEmptyPlaceholder = ({
   searchText,
+  title,
   description,
-  icon,
   className,
   'data-testid': dataTestId = 'no-data-placeholder',
   searchResultsTestId = dataTestId,
@@ -42,7 +42,7 @@ const PanelEmptyPlaceholder = ({
       <NoDataPlaceholder
         data-testid={dataTestId}
         description={description}
-        icon={icon}
+        title={title}
       />
     )}
   </div>

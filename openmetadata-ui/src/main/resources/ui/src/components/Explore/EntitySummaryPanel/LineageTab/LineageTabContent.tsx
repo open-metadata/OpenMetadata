@@ -21,7 +21,6 @@ import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -282,9 +281,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <PanelEmptyPlaceholder
-            description={t('label.lineage-not-found')}
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
             searchText={searchText}
+            title={t('label.lineage-not-found')}
           />
         )}
       </div>

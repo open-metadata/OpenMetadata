@@ -25,7 +25,6 @@ import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
@@ -604,10 +603,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     // status filter matched none of them.
     return (
       <PanelEmptyPlaceholder
-        description={t('label.no-entity', {
+        searchText={searchText}
+        title={t('label.no-entity', {
           entity: t('label.test-case-plural'),
         })}
-        searchText={searchText}
       />
     );
   };
@@ -637,13 +636,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <PanelEmptyPlaceholder
-        description={t('message.no-entity-found-for-name', {
+        searchText={searchText}
+        title={t('message.no-entity-found-for-name', {
           entity: t('label.incident-plural'),
           name: `${t('label.type-filed-name', {
             fieldName: startCase(activeIncidentFilter),
           })}`,
         })}
-        searchText={searchText}
       />
     );
   };
@@ -661,7 +660,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       return (
         <PanelEmptyPlaceholder
           description={t('message.no-data-quality-test-message')}
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
         />
       );
     }
@@ -712,10 +710,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <PanelEmptyPlaceholder
-            description={t('message.no-data-quality-test-message')}
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
-          />
+          <PanelEmptyPlaceholder description={t('message.no-incident-found')} />
         </div>
       );
     }

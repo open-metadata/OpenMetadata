@@ -518,7 +518,6 @@ describe('LineageTabContent', () => {
           /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
         )
       ).toBeInTheDocument();
-      expect(screen.getByTestId('no-data-icon')).toBeInTheDocument();
       expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
     });
 

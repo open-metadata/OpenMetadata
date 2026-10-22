@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Box, Input, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
@@ -87,29 +86,22 @@ const CustomPropertiesSection = ({
       <div className="lineage-items-list tw:min-w-0 tw:px-4">
         <PanelEmptyPlaceholder
           description={
-            <Tooltip
-              title={t('label.documentation')}
-              triggerClassName="tw:block tw:whitespace-normal">
-              <span>
-                <Transi18next
-                  i18nKey="message.no-custom-properties-entity"
-                  renderElement={
-                    <a
-                      aria-label={t('label.documentation')}
-                      href={CUSTOM_PROPERTIES_DOCS}
-                      rel="noreferrer"
-                      target="_blank"
-                    />
-                  }
-                  values={{
-                    entity: emptyStateMessage ?? t('label.entity'),
-                    docs: t('label.doc-plural-lowercase'),
-                  }}
+            <Transi18next
+              i18nKey="message.no-custom-properties-entity"
+              renderElement={
+                <a
+                  aria-label={t('label.documentation')}
+                  href={CUSTOM_PROPERTIES_DOCS}
+                  rel="noreferrer"
+                  target="_blank"
                 />
-              </span>
-            </Tooltip>
+              }
+              values={{
+                entity: emptyStateMessage ?? t('label.entity'),
+                docs: t('label.doc-plural-lowercase'),
+              }}
+            />
           }
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
           searchResultsTestId="no-matching-custom-properties"
           searchText={searchText}
         />

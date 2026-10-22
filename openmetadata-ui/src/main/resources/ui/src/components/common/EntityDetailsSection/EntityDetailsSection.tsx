@@ -13,7 +13,6 @@
 import { isEmpty } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
 import PanelEmptyPlaceholder from '../EmptyPlaceholder/PanelEmptyPlaceholder';
 import Loader from '../Loader/Loader';
@@ -73,7 +72,6 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     <div className="lineage-items-list empty-state">
       <PanelEmptyPlaceholder
         description={t('message.no-schema-message')}
-        icon={<AddPlaceHolderIcon height={100} width={100} />}
       />
     </div>
   );
