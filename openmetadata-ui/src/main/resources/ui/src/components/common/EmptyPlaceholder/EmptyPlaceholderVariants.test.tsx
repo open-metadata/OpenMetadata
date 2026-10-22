@@ -277,20 +277,30 @@ describe('Caller copy replaces wrapper defaults', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps a caller description as body copy under the default title', () => {
+  it('keeps a caller description as body copy without inventing a title', () => {
     render(
       <NoDataPlaceholder description="Enable the profiler to see data." />
     );
 
-    const title = screen.getByText('message.no-data-available');
     const description = screen.getByText('Enable the profiler to see data.');
 
-    expect(title).toHaveClass('tw:font-semibold', 'tw:text-primary');
     expect(description).toHaveClass('tw:text-secondary');
     expect(description).not.toHaveClass('tw:font-semibold');
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
   });
 
-  it('keeps the default title above a description that has a footer', () => {
+  it('renders a caller title with its own text colour', () => {
+    render(<NoDataPlaceholder title="No test cases yet" />);
+
+    expect(screen.getByText('No test cases yet')).toHaveClass(
+      'tw:font-semibold',
+      'tw:text-primary'
+    );
+  });
+
+  it('adds no title above a description that has a footer', () => {
     render(
       <NoDataPlaceholder
         description="Adding a new insight is easy."
@@ -298,10 +308,12 @@ describe('Caller copy replaces wrapper defaults', () => {
       />
     );
 
-    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
     expect(
       screen.getByText('Adding a new insight is easy.')
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
   });
 
   it.each([
