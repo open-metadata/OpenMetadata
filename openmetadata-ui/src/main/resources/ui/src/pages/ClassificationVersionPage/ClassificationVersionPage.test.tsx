@@ -50,13 +50,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>testErrorPlaceHolder</div>);
-  }
-);
-
-jest.mock(
   '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine',
   () => {
     return jest.fn().mockReturnValue(<div>testEntityVersionTimeLine</div>);
@@ -169,7 +162,9 @@ describe('ClassificationVersionPage component', () => {
       wrapper: MemoryRouter,
     });
 
-    const errorPlaceholder = await screen.findByText('testErrorPlaceHolder');
+    const errorPlaceholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+    );
 
     expect(errorPlaceholder).toBeInTheDocument();
   });

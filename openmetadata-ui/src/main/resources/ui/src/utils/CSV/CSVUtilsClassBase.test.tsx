@@ -90,6 +90,36 @@ jest.mock('../../components/common/InlineEdit/InlineEdit.component', () => ({
   default: jest.fn(),
 }));
 
+jest.mock(
+  '../../components/common/ClassificationTagPicker/ClassificationTagPicker',
+  () => ({
+    __esModule: true,
+    default: jest.fn(
+      (props: {
+        value: { tagFQN: string; source: string }[];
+        onChange: (tags: { tagFQN: string }[]) => void;
+        onOpenChange: (open: boolean) => void;
+      }) => (
+        <div>
+          <span data-testid="picker-value">
+            {props.value.map((tag) => `${tag.source}:${tag.tagFQN}`).join(',')}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              props.onChange([...props.value, { tagFQN: 'PII.Sensitive' }])
+            }>
+            pick
+          </button>
+          <button type="button" onClick={() => props.onOpenChange(false)}>
+            close
+          </button>
+        </div>
+      )
+    ),
+  })
+);
+
 jest.mock('../../components/common/TierCard/TierCard', () => ({
   __esModule: true,
   default: jest.fn(),
@@ -359,6 +389,44 @@ describe('CSV utils ClassBase', () => {
           [committedRow]
         )
       ).toBe('name,tags\nasset,Business.Critical;PII.Sensitive');
+    });
+
+    it('should edit tags through the classification picker and close on dismiss', () => {
+      const TagEditor = csvUtils.getEditor(
+        'tags',
+        EntityType.GLOSSARY_TERM,
+        multipleOwner
+      ) as FC<RenderEditCellProps<Record<string, unknown>, unknown>>;
+      const row = { name: 'term', tags: 'Business.Critical' };
+      const onRowChange = jest.fn();
+      const onClose = jest.fn();
+
+      render(
+        <TagEditor
+          {...({
+            row,
+            rowIdx: 0,
+            column: { key: 'tags' },
+            onRowChange,
+            onClose,
+          } as unknown as Parameters<typeof TagEditor>[0])}
+        />
+      );
+
+      expect(screen.getByTestId('picker-value')).toHaveTextContent(
+        'Classification:Business.Critical'
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: 'pick' }));
+
+      expect(onRowChange).toHaveBeenCalledWith({
+        ...row,
+        tags: 'Business.Critical;PII.Sensitive',
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: 'close' }));
+
+      expect(onClose).toHaveBeenCalledWith(true, true);
     });
 
     it('should find bulk tags outside the initial page and discard cancelled changes', async () => {

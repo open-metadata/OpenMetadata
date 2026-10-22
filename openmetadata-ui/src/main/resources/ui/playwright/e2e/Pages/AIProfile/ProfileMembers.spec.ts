@@ -194,9 +194,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await afterAction();
   });
 
-  test('Should navigate from team detail to a user profile', async ({
-    page,
-  }) => {
+  test('Should open the edit user view from team detail', async ({ page }) => {
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
@@ -221,10 +219,12 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    // The panel renders the displayName via startCase (spaced/capitalised), so
-    // assert on the email, which is shown verbatim and is unique per run.
-    await expect(page.getByTestId('profile-details-panel')).toContainText(
+    // The email is unique per run and shown verbatim on the user's page.
+    await expect(page.getByTestId('user-email')).toContainText(
       regularUser.responseData.email
+    );
+    expect(new URL(page.url()).hash).toBe(
+      `#members/user/${encodeURIComponent(regularUser.responseData.name)}`
     );
   });
 

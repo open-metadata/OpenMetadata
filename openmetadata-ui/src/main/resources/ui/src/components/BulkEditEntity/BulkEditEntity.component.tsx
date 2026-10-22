@@ -762,7 +762,7 @@ const BulkEditEntity = ({
 
   const renderFooterActions = () => (
     <div>
-      <div className="float-right import-footer">
+      <div className="float-right import-footer tw:mt-auto tw:-mx-6 tw:in-[.assistant-content]:-mx-10">
         {activeStep === 1 && (
           <Button
             color="secondary"

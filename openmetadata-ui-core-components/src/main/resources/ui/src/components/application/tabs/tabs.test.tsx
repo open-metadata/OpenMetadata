@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Tabs, useTabItemState } from './tabs';
 
 const SelectionLabel = ({ name }: { name: string }) => {
@@ -115,5 +115,94 @@ describe('useTabItemState', () => {
     render(<Probe />);
 
     expect(screen.getByTestId('probe')).toHaveTextContent('null');
+  });
+
+  describe('card overflow fade', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    const mockScrollBox = (scrollWidth: number, clientWidth: number) => {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          disconnect() {}
+        }
+      );
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        scrollWidth
+      );
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(
+        clientWidth
+      );
+    };
+
+    it('fades the end edge while tabs overflow it', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+
+      const { maskImage } = screen.getByRole('tablist').style;
+
+      expect(maskImage).toContain('linear-gradient(to right, #000');
+      expect(maskImage).toMatch(/transparent\)$/);
+    });
+
+    it('keeps the caller style alongside the fade', () => {
+      mockScrollBox(1000, 600);
+      render(
+        <Tabs defaultSelectedKey="one">
+          <Tabs.List
+            aria-label="Sections"
+            style={{ marginTop: 4 }}
+            type="underline"
+            variant="card">
+            <Tabs.Item id="one">One</Tabs.Item>
+            <Tabs.Item id="two">Two</Tabs.Item>
+          </Tabs.List>
+        </Tabs>
+      );
+      const tabList = screen.getByRole('tablist');
+
+      expect(tabList.style.marginTop).toBe('4px');
+      expect(tabList.style.maskImage).toContain('transparent');
+    });
+
+    it('leaves the list unmasked when every tab fits', () => {
+      mockScrollBox(600, 600);
+      renderTabs('card');
+
+      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+    });
+
+    it('fades the end edge once tabs added after mount overflow the list', async () => {
+      mockScrollBox(600, 600);
+      const renderList = (ids: string[]) => (
+        <Tabs defaultSelectedKey="one">
+          <Tabs.List aria-label="Sections" type="underline" variant="card">
+            {ids.map((id) => (
+              <Tabs.Item id={id} key={id}>
+                {id}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+      );
+      const { rerender } = render(renderList(['one', 'two']));
+
+      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        1000
+      );
+      rerender(renderList(['one', 'two', 'three', 'four']));
+
+      await waitFor(() =>
+        expect(screen.getByRole('tablist').style.maskImage).toContain(
+          'transparent'
+        )
+      );
+    });
   });
 });
