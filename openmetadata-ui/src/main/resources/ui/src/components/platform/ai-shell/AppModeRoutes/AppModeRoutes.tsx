@@ -23,6 +23,7 @@ import { AppShell } from '../AppShell';
 import KeepAliveRoutes from '../KeepAliveRoutes/KeepAliveRoutes';
 import { useAllAppModules } from '../sharedAppModules';
 import { useSyncActiveModule } from '../state/useActiveModule';
+import { CLASSIC_ONLY_ROUTE_PATHS } from './AppModeRoutes.constants';
 import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 
 // The app-mode shell owns its own /404 so an unknown URL lands on the branded
@@ -33,19 +34,6 @@ import { resolveAppModuleRoutes } from './AppModeRoutes.utils';
 const AINotFoundPage = withPageSuspenseFallback(
   lazy(() => import('../AINotFoundPage/AINotFoundPage'))
 );
-
-/**
- * Classic-only page trees. Settings live in the settings modal in AI mode, so
- * these must not render inside the shell — not from the classic route table
- * and not from a plugin's catch-all fallback, which both sit at `/*` and so
- * lose to these more specific splats. Links reach the modal through
- * `getSettingsLink`. ADR:2026-10-21-settings-pages-are-classic-only
- */
-export const CLASSIC_ONLY_ROUTE_PATHS = [
-  `${ROUTES.SETTINGS}/*`,
-  `${ROUTES.MARKETPLACE}/*`,
-  '/bots/*',
-];
 
 /**
  * Top-level routes component for app mode.
