@@ -2,76 +2,18 @@
   "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportPreview.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NativeOntologyImportPreview",
-  "description": "Dry run of a native ontology import. Nothing is persisted until the change set is created and applied.",
+  "description": "Dry run of a native ontology import into one target. Nothing is persisted until the change set is created and applied.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportPreview",
-  "definitions": {
-    "counts": {
-      "description": "Every parsed definition is counted once as new, updated, or skipped. Mappings are counted inside their concepts.",
-      "type": "object",
-      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportCounts",
-      "properties": {
-        "newConcepts": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "updatedConcepts": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "newProperties": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "updatedProperties": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "newRelations": {
-          "description": "Axioms the target does not hold yet.",
-          "type": "integer",
-          "minimum": 0
-        },
-        "newMappings": {
-          "description": "Concept mappings the target does not hold yet.",
-          "type": "integer",
-          "minimum": 0
-        },
-        "skippedDefinitions": {
-          "description": "Parsed definitions identical to the stored ones.",
-          "type": "integer",
-          "minimum": 0
-        }
-      },
-      "required": [
-        "newConcepts",
-        "updatedConcepts",
-        "newProperties",
-        "updatedProperties",
-        "newRelations",
-        "newMappings",
-        "skippedDefinitions"
-      ],
-      "additionalProperties": false
-    }
-  },
   "properties": {
-    "detectedFormat": {
-      "description": "Format the server parsed: the requested format, or the detected one when the request omits it.",
-      "$ref": "previewNativeOntologyImport.json#/properties/format"
-    },
-    "ontologyLabel": {
-      "description": "Label of the source ontology, when the file declares one.",
-      "type": "string"
-    },
-    "counts": {
-      "$ref": "#/definitions/counts"
+    "summary": {
+      "$ref": "nativeOntologyImportSummary.json"
     },
     "changeSet": {
-      "description": "Draft operations for the target ontology. Absent when the preview ran without a target.",
+      "description": "Draft operations that bring the target to the parsed definitions.",
       "$ref": "createOntologyChangeSet.json"
     }
   },
-  "required": ["detectedFormat", "counts"],
+  "required": ["summary", "changeSet"],
   "additionalProperties": false
 }

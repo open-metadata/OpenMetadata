@@ -30,6 +30,8 @@ export interface PreviewNativeOntologyImport {
 /**
  * Serialization of `data`. When omitted, the server detects it from the content first and
  * the file name second.
+ *
+ * Serialization of a native ontology import source.
  */
 export enum Format {
     CSV = "csv",

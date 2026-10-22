@@ -2,12 +2,8 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -49,6 +45,7 @@ import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -58,9 +55,13 @@ public final class NativeOntologyRdfImporter {
     return new SafeRdfModelParser().parse(data, format);
   }
 
+  public static NativeOntologyDocument read(final Model model) {
+    return new Reader(model).read();
+  }
+
   public CreateOntologyChangeSet reconcile(
       final Model model, final OntologyWorkingSnapshot.Snapshot working) {
-    final Parsed parsed = new Reader(model).read();
+    final NativeOntologyDocument parsed = read(model);
     final Map<String, OntologyConcept> concepts = new HashMap<>();
     final Map<String, OntologyProperty> properties = new HashMap<>();
     final Map<String, List<OntologyAxiom>> axioms = new HashMap<>();
@@ -78,7 +79,10 @@ public final class NativeOntologyRdfImporter {
           propertyNames.add(property.getName());
         }
         case OntologyAxiom axiom -> {
-          axioms.computeIfAbsent(signature(axiom), ignored -> new ArrayList<>()).add(axiom);
+          axioms
+              .computeIfAbsent(
+                  NativeOntologyDocument.signature(axiom), ignored -> new ArrayList<>())
+              .add(axiom);
           axiomNames.add(axiom.getName());
         }
         default -> {}
@@ -141,7 +145,7 @@ public final class NativeOntologyRdfImporter {
     }
     final Map<String, Integer> used = new HashMap<>();
     for (final OntologyAxiom parsedAxiom : parsed.axioms()) {
-      final String signature = signature(parsedAxiom);
+      final String signature = NativeOntologyDocument.signature(parsedAxiom);
       final List<OntologyAxiom> matches = axioms.getOrDefault(signature, List.of());
       final int index = used.merge(signature, 1, Integer::sum) - 1;
       if (index < matches.size()) {
@@ -301,51 +305,6 @@ public final class NativeOntologyRdfImporter {
     return value.getDisplayName() == null ? value.getName() : value.getDisplayName();
   }
 
-  private static String signature(final OntologyAxiom axiom) {
-    final ObjectNode node = JsonUtils.getObjectMapper().valueToTree(axiom);
-    node.retain("axiomType", "subjectIri", "propertyIri", "targetIri", "literal", "expressions");
-    normalizeLiteral(node.get("literal"));
-    final ArrayNode expressions = JsonUtils.getObjectMapper().createArrayNode();
-    listOrEmpty(axiom.getExpressions()).stream()
-        .map(expression -> normalizeExpression(JsonUtils.getObjectMapper().valueToTree(expression)))
-        .sorted(Comparator.comparing(JsonNode::toString))
-        .forEach(expressions::add);
-    node.set("expressions", expressions);
-    return node.toString();
-  }
-
-  private static JsonNode normalizeExpression(final JsonNode expression) {
-    if (!(expression instanceof ObjectNode object)) {
-      return expression;
-    }
-    for (final String field : List.of("operands", "individualIris")) {
-      if (object.get(field) instanceof ArrayNode values) {
-        final ArrayNode normalized = JsonUtils.getObjectMapper().createArrayNode();
-        final List<JsonNode> items = new ArrayList<>();
-        values.forEach(value -> items.add(normalizeExpression(value)));
-        items.stream().sorted(Comparator.comparing(JsonNode::toString)).forEach(normalized::add);
-        object.set(field, normalized);
-      }
-    }
-    if (object.get("filler") != null) {
-      object.set("filler", normalizeExpression(object.get("filler")));
-    }
-    normalizeLiteral(object.get("literal"));
-    return object;
-  }
-
-  private static void normalizeLiteral(final JsonNode literal) {
-    if (literal instanceof ObjectNode object
-        && XSD.xstring.getURI().equals(object.path("datatypeIri").asText())) {
-      object.remove("datatypeIri");
-    }
-  }
-
-  private record Parsed(
-      List<OntologyConcept> concepts,
-      List<OntologyProperty> properties,
-      List<OntologyAxiom> axioms) {}
-
   private static final class Reader {
     private final Model model;
     private final Set<Statement> remaining;
@@ -353,6 +312,7 @@ public final class NativeOntologyRdfImporter {
     private final Map<Statement, List<String>> sources = new HashMap<>();
     private boolean nativeExport;
     private String versionIri;
+    private NativeOntologyDocument.Header header;
 
     private Reader(final Model model) {
       this.model = model;
@@ -360,7 +320,7 @@ public final class NativeOntologyRdfImporter {
       expressions = new OntologyExpressionRdfReader(model, remaining);
     }
 
-    private Parsed read() {
+    private NativeOntologyDocument read() {
       headers();
       annotations();
       final List<OntologyConcept> concepts = concepts();
@@ -372,7 +332,7 @@ public final class NativeOntologyRdfImporter {
         throw new BadRequestException(
             "Unsupported RDF statement: " + diagnostic(unsupported.toString()));
       }
-      return new Parsed(concepts, properties, axioms);
+      return new NativeOntologyDocument(header, concepts, properties, axioms);
     }
 
     private static String diagnostic(final String value) {
@@ -383,12 +343,17 @@ public final class NativeOntologyRdfImporter {
       if (model.contains(null, OWL2.imports)) {
         throw new BadRequestException("owl:imports is not supported by native import");
       }
-      for (final Resource header :
-          model.listSubjectsWithProperty(RDF.type, OWL2.Ontology).toList()) {
-        expressions.takeType(header, OWL2.Ontology);
-        text(header, RDFS.label);
-        text(header, RDFS.comment);
-        final RDFNode version = expressions.one(header, OWL2.versionIRI);
+      final List<Resource> declared =
+          model.listSubjectsWithProperty(RDF.type, OWL2.Ontology).toList();
+      for (final Resource subject : declared) {
+        expressions.takeType(subject, OWL2.Ontology);
+        final NativeOntologyDocument.Header parsed =
+            new NativeOntologyDocument.Header(
+                subject.isURIResource() ? URI.create(subject.getURI()) : null,
+                text(subject, RDFS.label),
+                text(subject, RDFS.comment));
+        header = declared.size() == 1 ? parsed : null;
+        final RDFNode version = expressions.one(subject, OWL2.versionIRI);
         if (version != null) {
           versionIri = OntologyExpressionRdfReader.iri(version).toString();
         }

@@ -5,11 +5,18 @@
   "description": "Preview a local RDF or native CSV document as native ontology draft operations.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.data.PreviewNativeOntologyImport",
+  "definitions": {
+    "format": {
+      "description": "Serialization of a native ontology import source.",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportFormat",
+      "type": "string",
+      "enum": ["turtle", "rdfxml", "ntriples", "jsonld", "csv"]
+    }
+  },
   "properties": {
     "format": {
       "description": "Serialization of `data`. When omitted, the server detects it from the content first and the file name second.",
-      "type": "string",
-      "enum": ["turtle", "rdfxml", "ntriples", "jsonld", "csv"]
+      "$ref": "#/definitions/format"
     },
     "fileName": {
       "description": "Name of the uploaded file. Format detection uses its extension only when the content has no recognizable signature.",

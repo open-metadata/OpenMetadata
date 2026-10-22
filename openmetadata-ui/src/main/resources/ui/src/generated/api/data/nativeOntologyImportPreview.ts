@@ -11,28 +11,19 @@
  *  limitations under the License.
  */
 /**
- * Dry run of a native ontology import. Nothing is persisted until the change set is created
- * and applied.
+ * Dry run of a native ontology import into one target. Nothing is persisted until the
+ * change set is created and applied.
  */
 export interface NativeOntologyImportPreview {
     /**
-     * Draft operations for the target ontology. Absent when the preview ran without a target.
+     * Draft operations that bring the target to the parsed definitions.
      */
-    changeSet?: CreateOntologyChangeSetRequest;
-    counts:     Counts;
-    /**
-     * Format the server parsed: the requested format, or the detected one when the request
-     * omits it.
-     */
-    detectedFormat: DetectedFormat;
-    /**
-     * Label of the source ontology, when the file declares one.
-     */
-    ontologyLabel?: string;
+    changeSet: CreateOntologyChangeSetRequest;
+    summary:   NativeOntologyImportSummary;
 }
 
 /**
- * Draft operations for the target ontology. Absent when the preview ran without a target.
+ * Draft operations that bring the target to the parsed definitions.
  *
  * Create or update an ontology authoring session.
  */
@@ -1187,8 +1178,27 @@ export enum ChangeSetState {
 }
 
 /**
- * Every parsed definition is counted once as new, updated, or skipped. Mappings are counted
- * inside their concepts.
+ * What a native ontology import would change, counted from one parse of the source. Nothing
+ * is persisted.
+ */
+export interface NativeOntologyImportSummary {
+    counts: Counts;
+    /**
+     * Format the server parsed: the requested format, or the detected one when the request
+     * omits it.
+     */
+    detectedFormat: Format;
+    /**
+     * Label of the source ontology, when the source declares exactly one ontology header with a
+     * label.
+     */
+    ontologyLabel?: string;
+}
+
+/**
+ * Every parsed concept, property, and axiom is counted once as new, updated, or skipped.
+ * `newMappings` counts mappings inside new and updated concepts, so it overlaps the concept
+ * counts.
  */
 export interface Counts {
     newConcepts: number;
@@ -1198,25 +1208,28 @@ export interface Counts {
     newMappings:   number;
     newProperties: number;
     /**
-     * Axioms the target does not hold yet.
+     * Parsed axioms the target does not hold yet.
      */
     newRelations: number;
     /**
-     * Parsed definitions identical to the stored ones.
+     * Parsed concepts and properties identical to the stored ones.
      */
     skippedDefinitions: number;
-    updatedConcepts:    number;
-    updatedProperties:  number;
+    /**
+     * Parsed axioms the target already holds.
+     */
+    skippedRelations:  number;
+    updatedConcepts:   number;
+    updatedProperties: number;
 }
 
 /**
  * Format the server parsed: the requested format, or the detected one when the request
  * omits it.
  *
- * Serialization of `data`. When omitted, the server detects it from the content first and
- * the file name second.
+ * Serialization of a native ontology import source.
  */
-export enum DetectedFormat {
+export enum Format {
     CSV = "csv",
     Jsonld = "jsonld",
     Ntriples = "ntriples",

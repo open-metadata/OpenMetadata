@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -265,7 +266,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
         securityContext,
         id,
         new PreviewNativeOntologyImport()
-            .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
+            .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
             .withData(selected.body()));
   }
 

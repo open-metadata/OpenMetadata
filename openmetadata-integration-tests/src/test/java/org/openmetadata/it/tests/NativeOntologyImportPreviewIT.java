@@ -21,6 +21,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
@@ -186,7 +187,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
                     .withConceptMappings(mappings));
     final var request =
         new PreviewNativeOntologyImport()
-            .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+            .withFormat(NativeOntologyImportFormat.TURTLE)
             .withData(
                 """
                 @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -256,7 +257,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
                           .previewImport(
                               ontology.getId(),
                               new PreviewNativeOntologyImport()
-                                  .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+                                  .withFormat(NativeOntologyImportFormat.TURTLE)
                                   .withData(data)))
               .getStatusCode());
       assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
@@ -333,7 +334,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
 
   private static PreviewNativeOntologyImport turtle(String conceptIri) {
     return new PreviewNativeOntologyImport()
-        .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+        .withFormat(NativeOntologyImportFormat.TURTLE)
         .withData(
             """
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -345,7 +346,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
 
   private static PreviewNativeOntologyImport graphTurtle(String baseIri) {
     return new PreviewNativeOntologyImport()
-        .withFormat(PreviewNativeOntologyImport.Format.TURTLE)
+        .withFormat(NativeOntologyImportFormat.TURTLE)
         .withData(
             """
             @prefix ex: <%s> .
