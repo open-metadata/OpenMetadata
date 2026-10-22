@@ -32,7 +32,9 @@ them with Native Memory Tracking on the published `openmetadata/fuseki:6.2.0-600
 
 - Fuseki runs with `-XX:MaxDirectMemorySize=256m` unless `JVM_ARGS` sets the flag, and
   `O_f = direct limit + 768 MiB` (+ 1.25 GiB from an 8 GiB heap), which keeps the defaults at
-  1 GiB and 1.5 GiB. A larger limit, or `0` (the heap), raises `O_f` with it.
+  1 GiB and 1.5 GiB. A larger limit, or `0` (the heap), raises `O_f` with it. The image applies
+  the flag itself from open-metadata/jena#6. The pinned `6.2.0-600514c` predates it, so until the
+  pin moves the Compose files and the Kubernetes example set the flag in `JVM_ARGS`.
 - `O_w` stays 512 MiB, its floor; `H_w` stays 2 GiB.
 - Admission limits scale with the configured `-Xmx`, keeping 150,000 closure triples, 100,000
   logical axioms and 25,000 individuals per GiB: a 2 GiB worker admits 300,000 triples, 200,000

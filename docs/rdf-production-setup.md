@@ -35,6 +35,11 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
 - **Admin-only access.** Only `/$/ping` is anonymous; OpenMetadata connects as `admin`.
 - **Explicit equal heap** from `FUSEKI_HEAP` (default `4g`; the development compose files use
   1500 MB).
+- **Capped direct buffers.** Fuseki holds about 5 MiB of them per HTTP request until the next
+  collection, up to the heap size by default. The pinned image predates the 256 MiB default cap
+  (open-metadata/jena#6), so the Compose files and the Kubernetes example set
+  `JVM_ARGS=-Xms<heap> -Xmx<heap> -XX:MaxDirectMemorySize=256m`. `JVM_ARGS` replaces the heap
+  flags `FUSEKI_HEAP` would set.
 - **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
   `text:TextDataset`; no OpenMetadata code issues `text:query`.
 

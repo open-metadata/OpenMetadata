@@ -149,7 +149,7 @@ spec:
             - { name: FUSEKI_QUERY_TIMEOUT_MS, value: "50000" }
             - { name: FUSEKI_UPDATE_TIMEOUT_MS, value: "50000" }
             - { name: OPENMETADATA_EXTENSION_ENABLED, value: "true" }
-            - { name: FUSEKI_HEAP, value: "4g" }
+            - { name: JVM_ARGS, value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m" }
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki

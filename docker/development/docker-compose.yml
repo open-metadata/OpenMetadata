@@ -644,7 +644,9 @@ services:
       - FUSEKI_QUERY_TIMEOUT_MS=50000
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
-      - FUSEKI_HEAP=${FUSEKI_HEAP:-1500m}
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     networks:
       - local_app_net
     expose:

@@ -256,7 +256,7 @@ services:
       - FUSEKI_QUERY_TIMEOUT_MS=50000
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
-      - FUSEKI_HEAP=${FUSEKI_HEAP:-1500m}
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     volumes:
       - fuseki-store:/fuseki
 ```

@@ -46,7 +46,8 @@ Every query returned rows without errors (100 samples per type after each phase;
 recovery), and the graph held 2,827,008 triples after each rebuild and after restart. RSS and cgroup memory include TDB2's memory-mapped files and page cache, so they exceed
 heap plus off-heap. The direct buffers are Fuseki's own: it allocates about 5 MiB of them per HTTP
 request and frees them at the next collection, so without a limit they reach the heap size between
-collections. The image now caps them at 256 MiB
+collections. They are capped at 256 MiB: by the image from open-metadata/jena#6, and until the
+pin includes that image by `JVM_ARGS` in the deployment files
 ([decision](decisions/2026-10-15-reasoning-memory-budget-defaults.md)).
 
 Reproduce with the launcher below, setting `RDF_SCALE_TABLES=20000 RDF_SCALE_EDGES=200000` and the

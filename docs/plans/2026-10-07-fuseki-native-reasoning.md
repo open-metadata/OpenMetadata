@@ -619,7 +619,7 @@ term; TDB2 performance, not survival, depends on it.
 | Term | Meaning | Value (measured in phase 1; see [Starting sizes](#starting-sizes)) |
 |---|---|---|
 | `H_f` | Fuseki `-Xmx`, from the existing capacity table | 2, 4, or 8 GiB |
-| `O_f` | Fuseki off-heap: metaspace, code cache, thread stacks, GC, NIO | Direct-buffer limit (`-XX:MaxDirectMemorySize`, 256 MiB by default) + 768 MiB, or + 1.25 GiB from an 8 GiB heap: 1 GiB (1.5 GiB) by default. Measured: ≤ 291 MiB besides direct buffers, which reached 1.5 GiB on a 4 GiB heap before the cap |
+| `O_f` | Fuseki off-heap: metaspace, code cache, thread stacks, GC, NIO | Direct-buffer limit (`-XX:MaxDirectMemorySize`, 256 MiB by default from open-metadata/jena#6; OpenMetadata's deployment files set it until the pin includes that image) + 768 MiB, or + 1.25 GiB from an 8 GiB heap: 1 GiB (1.5 GiB) by default. Measured: ≤ 291 MiB besides direct buffers, which reached 1.5 GiB on a 4 GiB heap before the cap |
 | `H_w` | Worker heap, `OPENMETADATA_REASONER_HEAP` | 2 GiB. Measured: a 50,000-individual catalog closure peaks at 0.65 GiB after collection and classifies in 1 GiB |
 | `O_w` | Worker off-heap, capped by the launch flags | 512 MiB. Measured: ≤ 200 MiB |
 | `C_min` | Serving page-cache floor, `OPENMETADATA_REASONER_PAGE_CACHE_FLOOR` | 50% of the serving dataset's size on disk |
@@ -668,8 +668,9 @@ peaks.
   0.2 s resolution (exit 143 and 137), 3 s and 10 s into the step.
 - **Direct buffers:** Fuseki allocates about 5 MiB of direct buffers per HTTP request and frees
   them at the next collection; with the JVM's default limit (the heap) an idle 2 GiB server held
-  1.2 GiB. The image now caps them at 256 MiB, which serves 23 MB uploads and 254 MB result sets
-  without error.
+  1.2 GiB. A 256 MiB cap serves 23 MB uploads and 254 MB result sets without error. The image
+  applies it by default from open-metadata/jena#6; until OpenMetadata pins such an image, its
+  deployment files set it in `JVM_ARGS`.
 - **Admission envelope:** the 2 GiB default worker admits 300,000 closure triples, 200,000 logical
   axioms and 50,000 individuals, about 40,000 individuals of the measured catalog shape; the
   axiom limit stays 2.5 times below what that assertion-heavy shape needs, because no

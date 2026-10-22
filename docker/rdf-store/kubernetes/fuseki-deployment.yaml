@@ -84,9 +84,11 @@ spec:
               value: "50000"
             - name: OPENMETADATA_EXTENSION_ENABLED
               value: "true"
-            # Equal min/max heap keeps the page-cache budget predictable.
-            - name: FUSEKI_HEAP
-              value: "4g"
+            # Equal min/max heap keeps the page-cache budget predictable. JVM_ARGS replaces the
+            # image's FUSEKI_HEAP flags and caps direct buffers until the pinned image applies
+            # that cap itself (open-metadata/jena#6).
+            - name: JVM_ARGS
+              value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki
