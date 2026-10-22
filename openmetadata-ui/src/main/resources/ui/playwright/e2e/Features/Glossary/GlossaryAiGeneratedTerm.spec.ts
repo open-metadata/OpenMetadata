@@ -120,12 +120,13 @@ test.describe('AI-generated glossary terms', () => {
     expect(reviewedInPanel.responseData.entityStatus).toBe('Draft');
 
     await glossary.visitEntityPage(page);
-    // The terms table marks the proposal; the Review tab decides it.
+    // The terms table marks the proposal and, as for a person's, offers its assignees the
+    // decision of its approval request; the Review tab decides it here.
     const row = getRowByName(page, reviewedInPanel.data.displayName);
     await expect(row.getByTestId('proposal-source-ai')).toBeVisible();
-    await expect(row.getByTestId('proposal-status-badge')).toContainText(
-      'Proposed by AI'
-    );
+    await expect(
+      row.getByTestId(`${reviewedInPanel.data.name}-approve-btn`)
+    ).toBeVisible();
     await expect(page.getByTestId('pending-review-summary')).toHaveCount(0);
 
     await openReviewTab(page);

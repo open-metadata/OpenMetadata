@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -433,13 +434,23 @@ public class GlossaryTermAutomationDraftIT {
         null, new GlossaryTermMapper().createToEntity(create, Entity.INGESTION_BOT_NAME));
   }
 
+  // The task row commits before the workflow creates its runtime task, so a resolution sent as soon
+  // as the task lists can be told to retry.
   private static void resolve(
       OpenMetadataClient client, Task task, TaskResolutionType resolutionType) {
     ResolveTask resolution =
         new ResolveTask()
             .withResolutionType(resolutionType)
             .withComment("Decided on the agent's proposal");
-    client.tasks().resolve(task.getId().toString(), resolution);
+    Awaitility.await("resolution of " + task.getId())
+        .atMost(WORKFLOW_TIMEOUT)
+        .pollInterval(POLL_INTERVAL)
+        .ignoreException(ConflictException.class)
+        .until(
+            () -> {
+              client.tasks().resolve(task.getId().toString(), resolution);
+              return true;
+            });
   }
 
   private static List<UUID> assigneeIds(Task task) {
