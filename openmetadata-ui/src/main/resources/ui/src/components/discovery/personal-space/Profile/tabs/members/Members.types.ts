@@ -36,6 +36,7 @@ export type MembersView =
   | { type: 'users' }
   | { type: 'admins' }
   | { type: 'user-create'; isAdmin?: boolean }
+  | { type: 'user-edit'; name: string }
   | { type: 'online-users' }
   // A downstream-contributed section (EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS).
   // `subPath` carries the section's own internal route, as the Notification
