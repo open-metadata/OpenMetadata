@@ -510,12 +510,12 @@ function buildDataModeTermStyle(
     badges,
     labelFill: NODE_FILL_DEFAULT,
     ...(d?.isSelected && {
-      stroke: NODE_SELECTED_STROKE,
+      stroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       lineWidth: NODE_SELECTED_LINE_WIDTH,
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
@@ -538,7 +538,7 @@ function getStudioNodeKindStyle(
   };
 }
 
-function buildStudioNodeStyle(
+export function buildStudioNodeStyle(
   datum: NodeData,
   d: GraphNodeMeta,
   ontNode: OntologyNode | undefined
@@ -557,13 +557,15 @@ function buildStudioNodeStyle(
     studioAccentColor: accentColor,
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : kindStyle.stroke,
+    stroke: d?.isSelected
+      ? getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK)
+      : kindStyle.stroke,
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
     ...(d?.isSelected && {
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
@@ -650,7 +652,10 @@ function buildDefaultNodeStyle(
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+    stroke: getCanvasColor(
+      d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+      BRAND_BLUE_FALLBACK
+    ),
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : 1,
     ...(hasHierarchyBadge && {
       radius: [0, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS],

@@ -21,7 +21,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
@@ -38,6 +39,7 @@ import {
   EMPTY_DQ_INDICATOR_COUNTS,
   OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -47,7 +49,6 @@ import { mockTablePermission } from '../../constants/mockTourPermission.constant
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -162,6 +163,7 @@ const TableDetailsPageV1: React.FC = () => {
   const { tab: activeTab } = useRequiredParams<{ tab: EntityTabs }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const location = useLocation();
   const breadcrumbData = (
     location.state as {
@@ -354,10 +356,11 @@ const TableDetailsPageV1: React.FC = () => {
             tableFqn,
             tablePermissions,
             tableDetails,
-            navigate
+            navigate,
+            showModal
           )
         : [],
-    [tablePermissions, tableFqn, tableDetails, navigate]
+    [tablePermissions, tableFqn, tableDetails, navigate, showModal]
   );
 
   const fetchDqIndicatorCounts = useCallback(
@@ -964,13 +967,14 @@ const TableDetailsPageV1: React.FC = () => {
 
   if (!isTourDataset && !viewBasicPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.table-details'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.table-details'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -985,7 +989,11 @@ const TableDetailsPageV1: React.FC = () => {
   // that {@code tableError} surfaced. Show the missing-entity placeholder instead of
   // looping on the loader (the original page used a separate gate for this).
   if (!tableDetails) {
-    return <ErrorPlaceHolder className="m-0" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   const renderTabs = () => (

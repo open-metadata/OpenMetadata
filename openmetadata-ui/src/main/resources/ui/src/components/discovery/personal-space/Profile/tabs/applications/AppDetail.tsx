@@ -16,7 +16,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Tabs,
   Typography,
@@ -66,6 +65,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component';
@@ -558,7 +558,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   if (!appData) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="app-not-found"
           description={fqn}
           icon={GridView}

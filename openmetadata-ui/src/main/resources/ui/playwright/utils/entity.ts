@@ -945,7 +945,8 @@ export const updateDescriptionForChildren = async (
 // popover before the search input shows, so the open is retried.
 export const openClassificationTagPicker = async (
   page: Page,
-  trigger: Locator
+  trigger: Locator,
+  timeout?: number
 ) => {
   await expect(trigger).toBeVisible();
   await expect(trigger).toBeEnabled();
@@ -953,7 +954,7 @@ export const openClassificationTagPicker = async (
   await clickUntilVisible(
     trigger,
     page.getByTestId('classification-tag-picker-search'),
-    { force: 'onRetry' }
+    { force: 'onRetry', timeout }
   );
 };
 
@@ -1063,6 +1064,7 @@ export const assignTagToChildren = async ({
   action = 'Add',
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tag: string;
@@ -1070,13 +1072,14 @@ export const assignTagToChildren = async ({
   action?: 'Add' | 'Edit';
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   const trigger = page
     .locator(`[${rowSelector}="${rowId}"]`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button');
 
-  await openClassificationTagPicker(page, trigger);
+  await openClassificationTagPicker(page, trigger, pickerTimeout);
 
   const searchTags = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(
@@ -1169,12 +1172,14 @@ export const removeTagsFromChildren = async ({
   tags,
   rowSelector = 'data-row-key',
   entityEndpoint,
+  pickerTimeout,
 }: {
   page: Page;
   tags: string[];
   rowId: string;
   rowSelector?: string;
   entityEndpoint: string;
+  pickerTimeout?: number;
 }) => {
   for (const tag of tags) {
     const trigger = page
@@ -1183,7 +1188,7 @@ export const removeTagsFromChildren = async ({
       .getByTestId('edit-button')
       .first();
 
-    await openClassificationTagPicker(page, trigger);
+    await openClassificationTagPicker(page, trigger, pickerTimeout);
 
     const searchResponse = page.waitForResponse(
       `/api/v1/search/query?q=*${encodeURIComponent(

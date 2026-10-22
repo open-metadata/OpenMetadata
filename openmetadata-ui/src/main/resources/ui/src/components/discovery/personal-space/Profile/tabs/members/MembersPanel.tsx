@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -24,6 +24,7 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import type { MembersPanelProps, MembersView } from './Members.types';
@@ -40,12 +41,14 @@ import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 import MembersTeamDetail from './MembersTeamDetail';
+import MembersUserEdit from './MembersUserEdit';
 import MembersUsersPanel from './MembersUsersPanel';
 
 const TEAM_DETAIL = 'team-detail' as const;
 const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
+const USER_EDIT = 'user-edit' as const;
 const SECTION = 'section' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
@@ -127,10 +130,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     useState<React.ReactNode>(undefined);
   const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
     useState<React.ReactNode>(undefined);
-  // The team-detail view's sub-path only carries the FQN; MembersTeamDetail
-  // reports the fetched team's display name back here so the header/breadcrumb
-  // show it (and update live on rename) instead of the raw FQN.
-  const [resolvedTeamName, setResolvedTeamName] = useState('');
+  // Detail views' sub-paths only carry the FQN / username; MembersTeamDetail and
+  // MembersUserEdit report the fetched display name back here so the header and
+  // breadcrumb show it (and update live on rename) instead of the raw value.
+  const [resolvedName, setResolvedName] = useState('');
 
   // One header setter for the children: a partial patch merged into the three
   // slots (only the keys present are touched, so a panel that owns just `actions`
@@ -154,7 +157,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
-  const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
+  // Identifies the detail entity so switching between two teams or two users
+  // also resets the header slots.
+  const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
+  const viewFqn = view.type === USER_EDIT ? view.name : teamFqn;
 
   useEffect(() => {
     // Header actions are owned by each child panel (set + unmount-cleanup), so
@@ -163,7 +169,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     // same commit (the add-user button vanishing when isAdmin is already loaded).
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-    setResolvedTeamName('');
+    setResolvedName('');
   }, [view.type, viewFqn]);
 
   useEffect(() => {
@@ -175,7 +181,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       buildMembersHeaderMaps(
         view,
         t,
-        resolvedTeamName,
+        resolvedName,
         activeSection && {
           title: t(activeSection.titleKey),
           description: activeSection.descriptionKey
@@ -205,7 +211,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     panelHeaderActions,
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
-    resolvedTeamName,
+    resolvedName,
     activeSection,
   ]);
 
@@ -213,7 +219,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     <Box
       className="tw:relative tw:h-full"
       data-testid="permission-error-placeholder">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={t('message.no-permission-for-action')}
         icon={<Lock01 />}
         title={t('label.no-access')}
@@ -293,6 +299,16 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
     }
 
+    if (view.type === USER_EDIT) {
+      return (
+        <MembersUserEdit
+          key={view.name}
+          name={view.name}
+          onResolveName={setResolvedName}
+        />
+      );
+    }
+
     if (view.type === SECTION) {
       return renderSection();
     }
@@ -323,7 +339,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           fqn={view.fqn}
           key={view.fqn}
           onNavigate={onNavigate}
-          onRename={setResolvedTeamName}
+          onRename={setResolvedName}
           onSetHeader={setPanelHeader}
         />
       );

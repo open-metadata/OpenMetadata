@@ -70,10 +70,6 @@ jest.mock('./DataInsightProvider', () => ({
   }),
 }));
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('./DataInsightHeader/DataInsightHeader.component', () =>
   jest
     .fn()

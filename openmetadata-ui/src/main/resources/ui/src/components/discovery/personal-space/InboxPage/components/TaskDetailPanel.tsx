@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -57,6 +53,8 @@ import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUt
 import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
 import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
@@ -81,7 +79,6 @@ import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
 import ClampedText from './ClampedText';
-import InboxCommentComposer from './InboxCommentComposer';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
@@ -652,10 +649,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       <TaskDetailSkeleton />
     ) : (
       <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:p-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-task-found-desc')}
           title={t('label.no-task-found')}
-          variant="blank"
         />
       </div>
     );
@@ -763,7 +759,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           aria-hidden
           className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
         />
-        <InboxCommentComposer onSave={handleAddComment} />
+        <CommentComposer onSave={handleAddComment} />
       </Box>
 
       <TaskActionCommentModal

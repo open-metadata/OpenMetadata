@@ -14,7 +14,6 @@
 import {
   Badge,
   Box,
-  EmptyPlaceholder,
   FeaturedIcon,
   PageLayout,
   PaginationCardWithControls,
@@ -31,6 +30,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
@@ -322,7 +322,7 @@ const ContextCenterAIContextPage = () => {
           )}>
           {isLoading && <Loader />}
           {!isLoading && personas.length === 0 && (
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-persona-ai-context-description')}
               icon={PersonaIcon}
               title={t('message.no-persona-available')}

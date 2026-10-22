@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Alert,
-  Box,
-  Button,
-  Checkbox,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Alert, Box, Button, Checkbox } from '@openmetadata/ui-core-components';
 import { Loading01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
@@ -228,11 +222,12 @@ const AssetSelectionList = ({
       )}
 
       {!isLoading && items.length === 0 && (
-        <ErrorPlaceHolder>
-          {emptyPlaceHolderText && (
-            <Typography as="p">{emptyPlaceHolderText}</Typography>
-          )}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            title={emptyPlaceHolderText}
+          />
+        </div>
       )}
 
       {isLoading && (items.length === 0 || items.length < totalCount) && (

@@ -16,6 +16,7 @@ import { capitalize } from 'lodash';
 import type { FC } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { ManageMenuItem as ItemType } from '../components/common/EntityPageInfos/ManageButton/ManageMenu';
+import type { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { type OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -135,6 +136,7 @@ const ENTITY_DETAILS_PATH_TYPE_MAP: Record<string, EntityType> = {
   [EntityType.FILE]: EntityType.FILE,
   [EntityType.SPREADSHEET]: EntityType.SPREADSHEET,
   [EntityType.WORKSHEET]: EntityType.WORKSHEET,
+  [EntityType.DATA_CONTRACT]: EntityType.DATA_CONTRACT,
 };
 
 interface EntityLinkParams {
@@ -496,6 +498,7 @@ class EntityUtilClassBase {
     return { entityFqn: fqn, columnFqn: undefined };
   }
 
+  // Hook-free; the page passes showModal in. ADR:2026-10-21-class-base-menu-helpers-take-showmodal
   public getManageExtraOptions(
     _entityType: EntityType,
     _fqn: string,
@@ -506,7 +509,9 @@ class EntityUtilClassBase {
       | Database
       | DatabaseSchema
       | APICollection,
-    navigate: NavigateFunction
+    navigate: NavigateFunction,
+    showModal: (data: ExportData) => void,
+    _tab?: string
   ): ItemType[] {
     const isEntityDeleted = _entityDetails?.deleted ?? false;
     switch (_entityType) {
@@ -516,7 +521,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE:
@@ -525,7 +531,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE_SCHEMA:
@@ -534,7 +541,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       case EntityType.DATABASE_SERVICE:
@@ -543,7 +551,8 @@ class EntityUtilClassBase {
             _fqn,
             _permission,
             isEntityDeleted,
-            navigate
+            navigate,
+            showModal
           ),
         ];
       default:

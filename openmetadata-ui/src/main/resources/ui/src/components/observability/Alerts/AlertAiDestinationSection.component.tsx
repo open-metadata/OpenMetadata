@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, isNil } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../constants/Alerts.constants';
@@ -55,7 +55,7 @@ const AlertAiDestinationSection = ({
   isViewOnly,
   onChange,
   recipientCategories,
-  selectedSource,
+  selectedSources,
   validationErrors,
   value,
 }: AlertAiDestinationSectionProps) => {
@@ -79,8 +79,8 @@ const AlertAiDestinationSection = ({
     return { ...errors, ...validationErrors };
   }, [showDestinationErrors, t, validationErrors, value]);
   const destinationError = destinationValidationErrors?.destinations;
-  const isTestDestinationDisabled =
-    isEmpty(selectedSource) || isNil(selectedSource) || !hasExternalDestination;
+  const hasSources = !isEmpty(selectedSources);
+  const isTestDestinationDisabled = !hasSources || !hasExternalDestination;
 
   const handleTestDestination = useCallback(async () => {
     try {
@@ -204,7 +204,7 @@ const AlertAiDestinationSection = ({
                 className={ALERT_AI_FORM_CLASS_NAMES.actionButton}
                 color="secondary"
                 data-testid="add-destination-button"
-                isDisabled={isEmpty(selectedSource) || isNil(selectedSource)}
+                isDisabled={!hasSources}
                 size="sm"
                 onPress={() =>
                   updateAlertAiValue(

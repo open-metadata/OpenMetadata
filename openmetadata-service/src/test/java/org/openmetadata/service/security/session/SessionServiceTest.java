@@ -35,6 +35,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -300,6 +301,54 @@ class SessionServiceTest {
     assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
     verify(response, never()).addHeader(eq("Set-Cookie"), any());
     verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
+  void acquireRefreshLease_revokesASessionIssuedByAProviderNoLongerConfigured() {
+    String sessionId = validSessionId('x');
+    long now = System.currentTimeMillis();
+    UserSession oidcSession =
+        UserSession.builder()
+            .id(sessionId)
+            .provider(AuthProvider.CUSTOM_OIDC.value())
+            .status(SessionStatus.ACTIVE)
+            .version(2L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(oidcSession));
+    when(repository.updateIfVersion(any(UserSession.class), eq(2L))).thenReturn(true);
+
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+
+    ArgumentCaptor<UserSession> stored = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(stored.capture(), eq(2L));
+    assertEquals(SessionStatus.REVOKED, stored.getValue().getStatus());
+  }
+
+  @Test
+  void acquireRefreshLease_leasesANativePasswordSessionUnderEitherNativeProviderName() {
+    String sessionId = validSessionId('n');
+    long now = System.currentTimeMillis();
+    UserSession basicSession =
+        UserSession.builder()
+            .id(sessionId)
+            .provider(AuthProvider.OPENMETADATA.value())
+            .status(SessionStatus.ACTIVE)
+            .version(1L)
+            .expiresAt(now + 60_000)
+            .idleExpiresAt(now + 60_000)
+            .build();
+    when(authConfig.getProvider()).thenReturn(AuthProvider.BASIC);
+    when(request.getCookies()).thenReturn(new Cookie[] {new Cookie("OM_SESSION", sessionId)});
+    when(repository.findById(sessionId)).thenReturn(Optional.of(basicSession));
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(true);
+
+    UserSession leased = sessionService.acquireRefreshLease(request, response).orElseThrow();
+
+    assertEquals(SessionStatus.REFRESHING, leased.getStatus());
   }
 
   @Test

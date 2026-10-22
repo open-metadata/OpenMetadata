@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder, Grid } from '@openmetadata/ui-core-components';
+import { Box, Grid } from '@openmetadata/ui-core-components';
 import { Assets } from '@openmetadata/ui-core-components/icons';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { isEmpty, isNil } from 'lodash';
@@ -117,12 +118,11 @@ function ServiceVersionMainTabContent({
                 locale={{
                   emptyText: (
                     <div className="tw:relative tw:min-h-42">
-                      <EmptyPlaceholder
-                        icon={<Assets className="tw:text-utility-gray-600" />}
+                      <NoDataPlaceholder
+                        icon={<Assets />}
                         title={t('message.no-entity-data-available', {
                           entity: getCountLabel(serviceCategory),
                         })}
-                        variant="blank"
                       />
                     </div>
                   ),
