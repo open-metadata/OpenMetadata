@@ -830,7 +830,14 @@ public class TaskWorkflowHandler {
             JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
         if (newTags != null && !newTags.isEmpty()) {
           tagsToAdd = newTags;
-          tagsToRemove = null;
+          // Remove what the target holds now and newValue leaves out, so the replace is real. When
+          // the target can't be read, the payload's tagsToRemove is the best we have.
+          List<TagLabel> current = currentTags(entity, fieldPath);
+          if (current != null) {
+            Set<String> kept =
+                newTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+            tagsToRemove = current.stream().filter(t -> !kept.contains(t.getTagFQN())).toList();
+          }
         }
       }
 
@@ -853,6 +860,25 @@ public class TaskWorkflowHandler {
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
+    }
+  }
+
+  /** The tags the TagUpdate target holds now, or null when the target can't be located. */
+  @SuppressWarnings("unchecked")
+  private List<TagLabel> currentTags(EntityInterface<?> entity, String fieldPath) {
+    if (isEntityLevelTagPath(fieldPath)) {
+      return entity.getTags() == null ? List.of() : entity.getTags();
+    }
+    Optional<Object> target = FieldPathUtils.findField(entity, fieldPath);
+    if (target.isEmpty()) {
+      return null;
+    }
+    try {
+      List<TagLabel> tags =
+          (List<TagLabel>) target.get().getClass().getMethod("getTags").invoke(target.get());
+      return tags == null ? List.of() : tags;
+    } catch (ReflectiveOperationException e) {
+      return null;
     }
   }
 
