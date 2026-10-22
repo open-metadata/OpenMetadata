@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   CodeSquare02,
@@ -34,6 +34,7 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import MyDataAssetsList from './components/MyDataAssetsList';
 import StatCard from './components/StatCard';
 
@@ -396,12 +397,11 @@ const MyDataPage: React.FC = () => {
           <Box
             className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-[10px] tw:border tw:border-secondary"
             direction="col">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               data-testid="my-data-empty"
               description={t('message.my-data-empty-description')}
               icon={<Grid01 className="tw:size-7 tw:text-utility-brand-600" />}
               title={t('label.no-assets-in-care-yet')}
-              variant="blank"
             />
           </Box>
         ) : (

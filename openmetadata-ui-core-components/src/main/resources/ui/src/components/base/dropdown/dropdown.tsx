@@ -38,6 +38,11 @@ interface DropdownItemProps extends AriaMenuItemProps {
   checkboxSize?: 'xs' | 'sm';
   /** If true, shows a radio on the left to indicate single selection state. */
   showRadio?: boolean;
+  /**
+   * `lg` is for navigation flyouts (the collapsed sidebar's group menus): a 24px icon in the
+   * sidebar's rest colour and a larger label, so the flyout reads like the sidebar it opens from.
+   */
+  size?: 'sm' | 'lg';
 }
 
 const DropdownItem = ({
@@ -49,8 +54,11 @@ const DropdownItem = ({
   showCheckbox,
   checkboxSize = 'sm',
   showRadio,
+  size = 'sm',
   ...props
 }: DropdownItemProps) => {
+  const isLarge = size === 'lg';
+
   if (unstyled) {
     return (
       <AriaMenuItem id={label} textValue={label} {...props}>
@@ -74,7 +82,8 @@ const DropdownItem = ({
       {(state) => (
         <div
           className={cx(
-            'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            'tw:relative tw:flex tw:items-center tw:rounded-md tw:px-2.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            isLarge ? 'tw:gap-3 tw:py-2.5' : 'tw:gap-2 tw:py-2',
             // Selected matches the sidebar's selected nav item and keeps its
             // tint under hover/focus, like the sidebar does.
             state.isSelected
@@ -106,11 +115,14 @@ const DropdownItem = ({
             <Icon
               aria-hidden="true"
               className={cx(
-                'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
+                'tw:shrink-0',
+                isLarge ? 'tw:size-6' : 'tw:size-4 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
                   ? 'tw:text-fg-brand-secondary_alt'
+                  : isLarge
+                  ? 'tw:text-fg-tertiary'
                   : 'tw:text-fg-quaternary'
               )}
             />
@@ -118,7 +130,8 @@ const DropdownItem = ({
 
           <span
             className={cx(
-              'tw:grow tw:truncate tw:text-sm',
+              'tw:grow tw:truncate',
+              isLarge ? 'tw:text-md' : 'tw:text-sm',
               state.isDisabled
                 ? 'tw:text-disabled'
                 : state.isSelected

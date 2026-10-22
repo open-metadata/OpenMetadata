@@ -22,11 +22,9 @@ import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant'
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AirflowMessageBanner from '../AirflowMessageBanner/AirflowMessageBanner';
 import Loader from '../Loader/Loader';
-import { ErrorPlaceHolderIngestionProps } from './ErrorPlaceHolderIngestion.interface';
+import { AirflowSetupGuideProps } from './AirflowSetupGuide.interface';
 
-const ErrorPlaceHolderIngestion = ({
-  cardClassName,
-}: ErrorPlaceHolderIngestionProps) => {
+const AirflowSetupGuide = ({ cardClassName }: AirflowSetupGuideProps) => {
   const { platform, isFetchingStatus } = useAirflowStatus();
   const { t } = useTranslation();
 
@@ -83,4 +81,4 @@ const ErrorPlaceHolderIngestion = ({
   );
 };
 
-export default ErrorPlaceHolderIngestion;
+export default AirflowSetupGuide;

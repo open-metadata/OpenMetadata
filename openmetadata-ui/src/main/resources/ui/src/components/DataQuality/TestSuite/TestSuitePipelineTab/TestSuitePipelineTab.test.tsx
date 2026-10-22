@@ -289,18 +289,13 @@ jest.mock('../../../common/DeleteModal/DeleteModal', () =>
   jest.fn().mockImplementation(() => null)
 );
 
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(() => (
-        <div data-testid="error-placeholder-ingestion">
-          Airflow not available
-        </div>
-      ));
-  }
-);
+jest.mock('../../../common/AirflowSetupGuide/AirflowSetupGuide', () => {
+  return jest
+    .fn()
+    .mockImplementation(() => (
+      <div data-testid="error-placeholder-ingestion">Airflow not available</div>
+    ));
+});
 
 describe('TestSuite Pipeline component', () => {
   beforeEach(() => {
