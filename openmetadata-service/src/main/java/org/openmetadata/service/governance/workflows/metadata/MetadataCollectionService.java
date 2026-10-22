@@ -76,6 +76,8 @@ public final class MetadataCollectionService {
       "The approval to leave %s was rejected. Make the requested changes: the next edit to the"
           + " asset resubmits it for approval.";
   static final String RESUBMITTED = "Resubmitted for approval";
+  static final String REVISION_CLOSES_ON_EDIT =
+      "This task closes when the asset is edited; edit the asset to resubmit it for approval";
   private static final int MAX_STALE_TASKS = 50;
 
   static final List<TaskAvailableTransition> TRANSITIONS =
@@ -177,6 +179,9 @@ public final class MetadataCollectionService {
   public static void requireFilledIn(final Task task) {
     final MetadataCompletionPayload payload =
         JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
+    if (payload.getRevision() != null) {
+      throw BadRequestException.of(REVISION_CLOSES_ON_EDIT);
+    }
     final EntityInterface<?> entity = Entity.getEntity(task.getAbout(), "*", Include.NON_DELETED);
     final Outstanding outstanding =
         isInStage(entity, payload.getStage())

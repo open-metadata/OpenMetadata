@@ -186,9 +186,12 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       // available, so the task stays actionable; "assignAdmins" and "wait" have a fallback of their
       // own below, and workflow-managed tasks rely on it too. A change request is never given back
       // to its requester.
+      // A stored definition may carry the key with a null value; it means the default, none.
       final EmptyAssigneeStrategy emptyAssigneeStrategy =
-          EmptyAssigneeStrategy.fromValue(
-              String.valueOf(assigneesConfig.getOrDefault("emptyAssigneeStrategy", NONE.value())));
+          Optional.ofNullable(assigneesConfig.get("emptyAssigneeStrategy"))
+              .map(String::valueOf)
+              .map(EmptyAssigneeStrategy::fromValue)
+              .orElse(NONE);
       final boolean assignAdmins = emptyAssigneeStrategy == ASSIGN_ADMINS;
       Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);

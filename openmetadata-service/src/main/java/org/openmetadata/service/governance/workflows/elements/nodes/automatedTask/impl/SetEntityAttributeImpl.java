@@ -119,7 +119,9 @@ public class SetEntityAttributeImpl implements JavaDelegate {
           entity, entityType, GOVERNANCE_BOT, update.fieldName(), update.fieldValue(), true, null);
     }
     if (EntityStatusWorkflows.isStageField(update.fieldName()) && update.fieldValue() != null) {
-      closeRevisionsOutsideStage(entity, update.fieldValue());
+      // The stage is saved as its EntityStatus, whatever the case and spacing of the value.
+      closeRevisionsOutsideStage(
+          entity, EntityFieldUtils.parseEntityStatus(update.fieldValue()).value());
     }
   }
 

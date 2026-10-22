@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.metadata;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.type.MetadataCompletionPayload;
 import org.openmetadata.schema.type.MetadataCompletionRevision;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService.Outstanding;
 import org.openmetadata.service.jdbi3.TaskRepository;
 
@@ -93,6 +95,17 @@ class MetadataCollectionServiceTest {
     verify(repository, never()).resolveTask(eq(currentStage), any(), any());
     verify(repository, never()).resolveTask(eq(collection), any(), any());
     assertEquals(TaskResolutionType.Cancelled, resolution.getValue().getType());
+  }
+
+  @Test
+  void aRevisionTaskIsNotResolvedThroughTheApi() {
+    final Task revision = completionTask(EntityStatus.IN_REVIEW, true);
+
+    final BadRequestException refused =
+        assertThrows(
+            BadRequestException.class, () -> MetadataCollectionService.requireFilledIn(revision));
+
+    assertEquals(MetadataCollectionService.REVISION_CLOSES_ON_EDIT, refused.getMessage());
   }
 
   private static Task completionTask(final EntityStatus stage, final boolean revision) {
