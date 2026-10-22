@@ -41,7 +41,9 @@ if TYPE_CHECKING:
     from sqlalchemy.engine.default import DefaultDialect
 
 
-class DorisPyMySQLDialect(DorisDialect, MySQLDialect_pymysql):
+# pydoris's reflection signatures predate SQLAlchemy 2.0's typed ones; its methods win in
+# the MRO by design, so the override mismatch with the MySQL base is not ours to fix.
+class DorisPyMySQLDialect(DorisDialect, MySQLDialect_pymysql):  # pyright: ignore[reportIncompatibleMethodOverride]
     """pydoris on the pure-Python PyMySQL driver.
 
     pydoris builds on SQLAlchemy's mysqldb dialect, which needs the mysqlclient C
