@@ -44,14 +44,14 @@ _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     # than a broad "anything with 'date'" match, so operational timestamps
     # (event_timestamp, created_at, updated_at) are never tagged as PII.
     PIITag.DATE_TIME: [
-        # Date of birth / age / death
-        r"^.*(date[_-]?of[_-]?birth|birth[_-]?date|dob|birthday|date[_-]?of[_-]?death|dod).*$",
+        # Date of birth / age / death.  Separators may be "_", "-" or whitespace.
+        r"^.*(date[_\s-]?of[_\s-]?birth|birth[_\s-]?date|dob|birthday|date[_\s-]?of[_\s-]?death|death[_\s-]?date|dod).*$",
         # Employment lifecycle dates
-        r"^.*(hire[_-]?date|employment[_-]?date|start[_-]?date|termination[_-]?date|retirement[_-]?date|resignation[_-]?date).*$",
+        r"^.*(hire[_\s-]?date|employment[_\s-]?date|start[_\s-]?date|termination[_\s-]?date|retirement[_\s-]?date|resignation[_\s-]?date).*$",
         # Medical / patient dates
-        r"^.*(admission[_-]?date|discharge[_-]?date|appointment[_-]?date|diagnosis[_-]?date|treatment[_-]?date|medical[_-]?test[_-]?date).*$",
+        r"^.*(admission[_\s-]?date|discharge[_\s-]?date|appointment[_\s-]?date|diagnosis[_\s-]?date|treatment[_\s-]?date|medical[_\s-]?test[_\s-]?date).*$",
         # User / account lifecycle dates (registration, onboarding, deletion)
-        r"^.*(registration[_-]?date|signup[_-]?date|sign[_-]?up[_-]?date|account[_-]?date|onboarding[_-]?date|deletion[_-]?date|deactivation[_-]?date).*$",
+        r"^.*(registration[_\s-]?date|signup[_\s-]?date|sign[_\s-]?up[_\s-]?date|account[_\s-]?date|onboarding[_\s-]?date|deletion[_\s-]?date|deactivation[_\s-]?date).*$",
     ],
     PIITag.NRP: "^.*(gender|nationality).*$",
     PIITag.LOCATION: "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
