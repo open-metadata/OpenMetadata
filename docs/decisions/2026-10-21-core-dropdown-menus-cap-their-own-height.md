@@ -1,7 +1,7 @@
 # Core Dropdown menus cap their own height and scroll
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial)
+- **Revisions:** v1 2026-10-21 (initial); v2 2026-10-22 (cap is the space react-aria measures, not a fixed height)
 - **Deciders:** UI team
 - **Guard:** reviewer
 - **Related:** #30031, ADR:2026-10-21-capped-autocomplete-stays-on-one-line
@@ -14,13 +14,26 @@ such as Ontology Studio's glossary list, grew past the screen, and because the p
 overflow, the rows below the fold could not be reached.
 
 ## Decision
-`Dropdown.Menu` caps itself at `min(24rem, 40vh)` and scrolls (`max-h-[min(24rem,40vh)]
-overflow-y-auto`). The popover keeps `max-h-none!`, so react-aria still flips it rather than
-shrinking it. 40vh is about the space on the side react-aria opens toward, so a capped menu fits
-wherever the trigger sits. A caller that needs another height passes its own `max-h-*` on
-`Dropdown.Menu`; `twMerge` lets it replace the default.
+The core component does not pick a menu height. `Dropdown.Popover` drops `max-h-none!` and lets
+react-aria set its `max-height` to the space on the side it opens toward. The popover is a flex
+column and `Dropdown.Menu` is `min-h-0 overflow-y-auto`, so the menu shrinks to that space and
+scrolls. A caller that wants a shorter menu passes its own `max-h-*` on `Dropdown.Menu`; the menu
+then scrolls at whichever is smaller, the caller's height or the space on screen.
+
+The shrinking in #30031 came from the popover's enter classes. `duration-150` sets
+`transition-duration`, and the default `transition-property` is `all`, so `top` and `max-height`
+animated while react-aria measured the popover. It read a half-animated height, decided the menu
+fit, and capped it instead of flipping. The popover now sets `transition-none`; the enter and exit
+effects are keyframe animations, so they still play.
+
+v1 capped the menu at `min(24rem, 40vh)`, which put one product's height into a shared component.
+Two alternatives were tried and rejected. A viewport-height cap with `max-h-none!` kept let a long
+menu opened from mid-screen run off the top of the viewport. `max-h-[inherit]` on the menu ignored
+the space on screen when a caller's `max-h-*` replaced it, so the popover clipped the menu's end.
 
 ## Consequences
-Short menus look as before. A long menu now scrolls inside the cap instead of running off the
-screen. Callers that set their own cap keep it. Revisit if a menu has to show more than about ten
-rows without scrolling, or if the popover moves back to react-aria's computed height.
+Short menus look as before and still flip above a trigger near the bottom. A long menu grows to the
+edge of the screen on its roomier side and scrolls. Callers that set their own cap keep it. A
+popover with custom content (FilterSelect, TreeSelect) is now also bounded by the available space.
+Revisit if a `transition-*` class comes back on `Dropdown.Popover`, or if a custom popover needs
+block rather than flex layout.
