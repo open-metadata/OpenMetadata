@@ -43,12 +43,6 @@ jest.mock('@react-awesome-query-builder/ui', () => ({
   },
 }));
 
-jest.mock('@ant-design/icons', () => ({
-  InfoCircleOutlined: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="info-icon">Info Icon</div>),
-}));
-
 describe('CuratedAssetsUtils', () => {
   beforeEach(() => {
     (useTranslation as jest.Mock).mockReturnValue({

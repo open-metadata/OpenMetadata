@@ -1271,6 +1271,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -2570,6 +2576,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -2996,6 +3008,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -6817,6 +6835,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -7135,6 +7159,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -7386,6 +7416,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -8919,6 +8955,192 @@
                   ]
                 },
                 {
+                  "title": "DatabendConnection",
+                  "description": "Databend Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.DatabendConnection",
+                  "definitions": {
+                    "databendType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Databend"
+                      ],
+                      "default": "Databend"
+                    },
+                    "databendScheme": {
+                      "description": "SQLAlchemy driver scheme options.",
+                      "type": "string",
+                      "enum": [
+                        "databend"
+                      ],
+                      "default": "databend"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Databend",
+                      "type": "string",
+                      "enum": [
+                        "Databend"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "SQLAlchemy driver scheme options.",
+                      "default": "databend",
+                      "type": "string",
+                      "enum": [
+                        "databend"
+                      ]
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Databend. The user must be able to read system and information_schema metadata.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Databend.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Host and port of the Databend HTTP query service. The default self-hosted port is 8000.",
+                      "type": "string",
+                      "default": "localhost:8000"
+                    },
+                    "databaseSchema": {
+                      "title": "Database Schema",
+                      "description": "Optional Databend database to ingest. It is also used as the initial database of the connection. When omitted, the connection starts in the `default` database and all accessible Databend databases are scanned as OpenMetadata schemas.",
+                      "type": "string"
+                    },
+                    "connectionOptions": {
+                      "title": "Connection Options",
+                      "description": "Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS endpoint, set sslmode to enable.",
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "connectionArguments": {
+                      "title": "Connection Arguments",
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                      "type": "object",
+                      "additionalProperties": {
+                        ".{1,}": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to include or exclude Databend databases.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^system$",
+                          "^system_history$"
+                        ]
+                      },
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to include or exclude tables and views.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "databaseFilterPattern": {
+                      "title": "Default Database Filter Pattern",
+                      "description": "Regex to include or exclude Databend catalogs. Only the `default` catalog is currently ingested.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsProfiler": {
+                      "title": "Supports Profiler",
+                      "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "password"
+                  ]
+                },
+                {
                   "title": "Db2Connection",
                   "description": "Db2 Connection Config",
                   "type": "object",
@@ -9194,393 +9416,6 @@
                     "hostPort",
                     "username",
                     "database"
-                  ]
-                },
-                {
-                  "title": "DeltaLakeConnection",
-                  "description": "DeltaLake Database Connection Config",
-                  "type": "object",
-                  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
-                  "definitions": {
-                    "deltaLakeType": {
-                      "description": "Service type.",
-                      "type": "string",
-                      "enum": [
-                        "DeltaLake"
-                      ],
-                      "default": "DeltaLake"
-                    }
-                  },
-                  "properties": {
-                    "type": {
-                      "title": "Service Type",
-                      "description": "Service Type",
-                      "default": "DeltaLake",
-                      "type": "string",
-                      "enum": [
-                        "DeltaLake"
-                      ]
-                    },
-                    "configSource": {
-                      "title": "DeltaLake Configuration Source",
-                      "description": "Available sources to fetch the metadata.",
-                      "oneOf": [
-                        {
-                          "title": "MetastoreConfig",
-                          "description": "Deltalake Metastore configuration.",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig",
-                          "definitions": {
-                            "metastoreHostPortConnection": {
-                              "title": "Hive Metastore Service",
-                              "type": "object",
-                              "properties": {
-                                "metastoreHostPort": {
-                                  "title": "Hive Metastore Service",
-                                  "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "metastoreDbConnection": {
-                              "title": "Hive Metastore Database",
-                              "type": "object",
-                              "properties": {
-                                "metastoreDb": {
-                                  "title": "Hive Metastore Database",
-                                  "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                  "type": "string"
-                                },
-                                "username": {
-                                  "title": "Connection UserName",
-                                  "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                  "type": "string"
-                                },
-                                "password": {
-                                  "title": "Connection Password",
-                                  "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                  "type": "string",
-                                  "format": "password"
-                                },
-                                "driverName": {
-                                  "title": "Connection Driver Name",
-                                  "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                  "type": "string"
-                                },
-                                "jdbcDriverClassPath": {
-                                  "title": "JDBC Driver Class Path",
-                                  "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "metastoreFilePathConnection": {
-                              "title": "Hive Metastore File Path",
-                              "type": "object",
-                              "properties": {
-                                "metastoreFilePath": {
-                                  "title": "Hive Metastore File Path",
-                                  "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            }
-                          },
-                          "properties": {
-                            "connection": {
-                              "title": "Connection",
-                              "description": "Metastore connection configuration, depending on your metastore type.",
-                              "oneOf": [
-                                {
-                                  "title": "Hive Metastore Service",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreHostPort": {
-                                      "title": "Hive Metastore Service",
-                                      "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "Hive Metastore Database",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreDb": {
-                                      "title": "Hive Metastore Database",
-                                      "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                      "type": "string"
-                                    },
-                                    "username": {
-                                      "title": "Connection UserName",
-                                      "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                      "type": "string"
-                                    },
-                                    "password": {
-                                      "title": "Connection Password",
-                                      "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                      "type": "string",
-                                      "format": "password"
-                                    },
-                                    "driverName": {
-                                      "title": "Connection Driver Name",
-                                      "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                      "type": "string"
-                                    },
-                                    "jdbcDriverClassPath": {
-                                      "title": "JDBC Driver Class Path",
-                                      "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "Hive Metastore File Path",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreFilePath": {
-                                      "title": "Hive Metastore File Path",
-                                      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "appName": {
-                              "title": "Application Name",
-                              "description": "pySpark App Name.",
-                              "type": "string",
-                              "default": "OpenMetadata"
-                            }
-                          },
-                          "additionalProperties": false,
-                          "required": [
-                            "connection"
-                          ]
-                        },
-                        {
-                          "title": "StorageConfig",
-                          "description": "DeltaLake Storage Connection Config",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
-                          "definitions": {
-                            "localConfig": {
-                              "title": "Local Config",
-                              "description": "Local config source where no extra information needs to be sent.",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          },
-                          "properties": {
-                            "connection": {
-                              "title": "DeltaLake Storage Configuration Source",
-                              "description": "Available sources to fetch files.",
-                              "oneOf": [
-                                {
-                                  "title": "S3Config",
-                                  "description": "DataLake S3 bucket will ingest metadata of files in bucket",
-                                  "type": "object",
-                                  "javaType": "org.openmetadata.schema.services.connections.database.datalake.S3Config",
-                                  "properties": {
-                                    "securityConfig": {
-                                      "title": "DataLake S3 Security Config",
-                                      "description": "AWS credentials configs.",
-                                      "type": "object",
-                                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
-                                      "properties": {
-                                        "enabled": {
-                                          "title": "Enable IAM Auth",
-                                          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
-                                          "type": "boolean",
-                                          "default": false
-                                        },
-                                        "awsAccessKeyId": {
-                                          "title": "AWS Access Key ID",
-                                          "description": "AWS Access key ID.",
-                                          "type": "string"
-                                        },
-                                        "awsSecretAccessKey": {
-                                          "title": "AWS Secret Access Key",
-                                          "description": "AWS Secret Access Key.",
-                                          "type": "string",
-                                          "format": "password"
-                                        },
-                                        "awsRegion": {
-                                          "title": "AWS Region",
-                                          "description": "AWS Region",
-                                          "type": "string"
-                                        },
-                                        "awsSessionToken": {
-                                          "title": "AWS Session Token",
-                                          "description": "AWS Session Token.",
-                                          "type": "string",
-                                          "format": "password"
-                                        },
-                                        "endPointURL": {
-                                          "title": "Endpoint URL",
-                                          "description": "EndPoint URL for the AWS",
-                                          "type": "string",
-                                          "format": "uri"
-                                        },
-                                        "profileName": {
-                                          "title": "Profile Name",
-                                          "description": "The name of a profile to use with the boto session.",
-                                          "type": "string"
-                                        },
-                                        "assumeRoleArn": {
-                                          "title": "Role Arn for Assume Role",
-                                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
-                                          "type": "string"
-                                        },
-                                        "assumeRoleSessionName": {
-                                          "title": "Role Session Name for Assume Role",
-                                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
-                                          "type": "string",
-                                          "default": "OpenMetadataSession"
-                                        },
-                                        "assumeRoleSourceIdentity": {
-                                          "title": "Source Identity for Assume Role",
-                                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false,
-                                      "required": [
-                                        "awsRegion"
-                                      ]
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "bucketName": {
-                              "title": "Bucket Name",
-                              "description": "Bucket Name of the data source.",
-                              "type": "string",
-                              "default": ""
-                            },
-                            "prefix": {
-                              "title": "Prefix",
-                              "description": "Prefix of the data source.",
-                              "type": "string",
-                              "default": ""
-                            }
-                          },
-                          "additionalProperties": false,
-                          "required": [
-                            "connection"
-                          ]
-                        }
-                      ]
-                    },
-                    "databaseName": {
-                      "title": "Database Name",
-                      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
-                      "type": "string"
-                    },
-                    "connectionArguments": {
-                      "title": "Connection Arguments",
-                      "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
-                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
-                      "type": "object",
-                      "additionalProperties": {
-                        ".{1,}": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "schemaFilterPattern": {
-                      "title": "Default Schema Filter Pattern",
-                      "description": "Regex to only include/exclude schemas that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "tableFilterPattern": {
-                      "title": "Default Table Filter Pattern",
-                      "description": "Regex to only include/exclude tables that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "databaseFilterPattern": {
-                      "title": "Default Database Filter Pattern",
-                      "description": "Regex to only include/exclude databases that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "supportsMetadataExtraction": {
-                      "description": "Supports Metadata Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Metadata Extraction"
-                    },
-                    "supportsDBTExtraction": {
-                      "description": "Supports DBT Extraction.",
-                      "type": "boolean",
-                      "default": true
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "configSource"
                   ]
                 },
                 {
@@ -10785,6 +10620,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -11211,6 +11052,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -13176,6 +13023,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -13934,6 +13787,12 @@
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
                     },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
+                    },
                     "connectionOptions": {
                       "title": "Connection Options",
                       "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
@@ -14544,6 +14403,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -14986,6 +14851,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -17680,6 +17551,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -19500,6 +19377,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -19752,6 +19635,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -19995,6 +19884,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -20776,6 +20671,16 @@
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
                       "type": "boolean",
                       "default": true
                     }
@@ -21723,6 +21628,12 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -22269,16 +22180,77 @@
                       "description": "Azure Application (client) ID for Service Principal authentication.",
                       "type": "string"
                     },
-                    "clientSecret": {
-                      "title": "Client Secret",
-                      "description": "Azure Application client secret for Service Principal authentication.",
-                      "type": "string",
-                      "format": "password"
-                    },
                     "tenantId": {
                       "title": "Tenant ID",
                       "description": "Azure Directory (tenant) ID for Service Principal authentication.",
                       "type": "string"
+                    },
+                    "authType": {
+                      "title": "Authentication Type",
+                      "description": "Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.",
+                      "oneOf": [
+                        {
+                          "title": "Client Secret",
+                          "description": "Authenticate the service principal with a client secret of its Microsoft Entra ID application.",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication",
+                          "type": "object",
+                          "properties": {
+                            "clientSecret": {
+                              "title": "Client Secret",
+                              "description": "Client secret value (not the secret ID) from the application's Certificates & secrets page in Microsoft Entra ID.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "clientSecret"
+                          ]
+                        },
+                        {
+                          "title": "Certificate",
+                          "description": "Authenticate the service principal with an X.509 certificate registered on its Microsoft Entra ID application.",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication",
+                          "type": "object",
+                          "properties": {
+                            "certificate": {
+                              "title": "Certificate",
+                              "description": "PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page in Microsoft Entra ID. It may be followed by its issuing certificate chain.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "privateKey": {
+                              "title": "Private Key",
+                              "description": "PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding both the key and the certificate can be supplied in both fields.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".key",
+                                ".p8"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "privateKeyPassphrase": {
+                              "title": "Private Key Passphrase",
+                              "description": "Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "certificate",
+                            "privateKey"
+                          ]
+                        }
+                      ]
                     },
                     "driver": {
                       "title": "Driver",
@@ -22419,8 +22391,8 @@
                   "required": [
                     "hostPort",
                     "clientId",
-                    "clientSecret",
-                    "tenantId"
+                    "tenantId",
+                    "authType"
                   ]
                 },
                 {
@@ -23319,6 +23291,168 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Lineage Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "password"
+                  ]
+                },
+                {
+                  "title": "Neo4jConnection",
+                  "description": "Neo4j Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+                  "definitions": {
+                    "neo4jType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Neo4j"
+                      ],
+                      "default": "Neo4j"
+                    },
+                    "neo4jScheme": {
+                      "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+                      "type": "string",
+                      "enum": [
+                        "neo4j",
+                        "neo4j+s",
+                        "neo4j+ssc",
+                        "bolt",
+                        "bolt+s",
+                        "bolt+ssc"
+                      ],
+                      "default": "neo4j"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Neo4j",
+                      "type": "string",
+                      "enum": [
+                        "Neo4j"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+                      "default": "neo4j",
+                      "type": "string",
+                      "enum": [
+                        "neo4j",
+                        "neo4j+s",
+                        "neo4j+ssc",
+                        "bolt",
+                        "bolt+s",
+                        "bolt+ssc"
+                      ]
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+                      "type": "string"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Neo4j.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "databaseName": {
+                      "title": "Database Name",
+                      "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+                      "type": "string"
+                    },
+                    "includeRelationships": {
+                      "title": "Include Relationships",
+                      "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propertyFilterPattern": {
+                      "title": "Property Filter Pattern",
+                      "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to only include/exclude tables that matches the pattern.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
                     }
                   },
                   "additionalProperties": false,
@@ -24360,6 +24494,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -24877,7 +25017,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -26049,6 +26190,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -26475,6 +26622,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -27757,6 +27910,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -28482,6 +28641,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -29317,6 +29482,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -34436,6 +34607,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -35160,6 +35337,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -36352,6 +36535,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -38773,6 +38962,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -40072,6 +40267,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -40498,6 +40699,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -44319,6 +44526,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -44637,6 +44850,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -44888,6 +45107,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -46421,6 +46646,192 @@
                   ]
                 },
                 {
+                  "title": "DatabendConnection",
+                  "description": "Databend Database Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.DatabendConnection",
+                  "definitions": {
+                    "databendType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Databend"
+                      ],
+                      "default": "Databend"
+                    },
+                    "databendScheme": {
+                      "description": "SQLAlchemy driver scheme options.",
+                      "type": "string",
+                      "enum": [
+                        "databend"
+                      ],
+                      "default": "databend"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Databend",
+                      "type": "string",
+                      "enum": [
+                        "Databend"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "SQLAlchemy driver scheme options.",
+                      "default": "databend",
+                      "type": "string",
+                      "enum": [
+                        "databend"
+                      ]
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Databend. The user must be able to read system and information_schema metadata.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Databend.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Host and port of the Databend HTTP query service. The default self-hosted port is 8000.",
+                      "type": "string",
+                      "default": "localhost:8000"
+                    },
+                    "databaseSchema": {
+                      "title": "Database Schema",
+                      "description": "Optional Databend database to ingest. It is also used as the initial database of the connection. When omitted, the connection starts in the `default` database and all accessible Databend databases are scanned as OpenMetadata schemas.",
+                      "type": "string"
+                    },
+                    "connectionOptions": {
+                      "title": "Connection Options",
+                      "description": "Additional options appended to the Databend SQLAlchemy connection URL. For a non-TLS HTTP endpoint, such as the default self-hosted port 8000, set sslmode to disable. For a TLS endpoint, set sslmode to enable.",
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "connectionArguments": {
+                      "title": "Connection Arguments",
+                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                      "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                      "type": "object",
+                      "additionalProperties": {
+                        ".{1,}": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to include or exclude Databend databases.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^system$",
+                          "^system_history$"
+                        ]
+                      },
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to include or exclude tables and views.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "databaseFilterPattern": {
+                      "title": "Default Database Filter Pattern",
+                      "description": "Regex to include or exclude Databend catalogs. Only the `default` catalog is currently ingested.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsProfiler": {
+                      "title": "Supports Profiler",
+                      "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "password"
+                  ]
+                },
+                {
                   "title": "Db2Connection",
                   "description": "Db2 Connection Config",
                   "type": "object",
@@ -46696,393 +47107,6 @@
                     "hostPort",
                     "username",
                     "database"
-                  ]
-                },
-                {
-                  "title": "DeltaLakeConnection",
-                  "description": "DeltaLake Database Connection Config",
-                  "type": "object",
-                  "javaType": "org.openmetadata.schema.services.connections.database.DeltaLakeConnection",
-                  "definitions": {
-                    "deltaLakeType": {
-                      "description": "Service type.",
-                      "type": "string",
-                      "enum": [
-                        "DeltaLake"
-                      ],
-                      "default": "DeltaLake"
-                    }
-                  },
-                  "properties": {
-                    "type": {
-                      "title": "Service Type",
-                      "description": "Service Type",
-                      "default": "DeltaLake",
-                      "type": "string",
-                      "enum": [
-                        "DeltaLake"
-                      ]
-                    },
-                    "configSource": {
-                      "title": "DeltaLake Configuration Source",
-                      "description": "Available sources to fetch the metadata.",
-                      "oneOf": [
-                        {
-                          "title": "MetastoreConfig",
-                          "description": "Deltalake Metastore configuration.",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig",
-                          "definitions": {
-                            "metastoreHostPortConnection": {
-                              "title": "Hive Metastore Service",
-                              "type": "object",
-                              "properties": {
-                                "metastoreHostPort": {
-                                  "title": "Hive Metastore Service",
-                                  "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "metastoreDbConnection": {
-                              "title": "Hive Metastore Database",
-                              "type": "object",
-                              "properties": {
-                                "metastoreDb": {
-                                  "title": "Hive Metastore Database",
-                                  "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                  "type": "string"
-                                },
-                                "username": {
-                                  "title": "Connection UserName",
-                                  "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                  "type": "string"
-                                },
-                                "password": {
-                                  "title": "Connection Password",
-                                  "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                  "type": "string",
-                                  "format": "password"
-                                },
-                                "driverName": {
-                                  "title": "Connection Driver Name",
-                                  "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                  "type": "string"
-                                },
-                                "jdbcDriverClassPath": {
-                                  "title": "JDBC Driver Class Path",
-                                  "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            },
-                            "metastoreFilePathConnection": {
-                              "title": "Hive Metastore File Path",
-                              "type": "object",
-                              "properties": {
-                                "metastoreFilePath": {
-                                  "title": "Hive Metastore File Path",
-                                  "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                  "type": "string"
-                                }
-                              },
-                              "additionalProperties": false
-                            }
-                          },
-                          "properties": {
-                            "connection": {
-                              "title": "Connection",
-                              "description": "Metastore connection configuration, depending on your metastore type.",
-                              "oneOf": [
-                                {
-                                  "title": "Hive Metastore Service",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreHostPort": {
-                                      "title": "Hive Metastore Service",
-                                      "description": "Thrift connection to the metastore service. E.g., localhost:9083",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "Hive Metastore Database",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreDb": {
-                                      "title": "Hive Metastore Database",
-                                      "description": "JDBC connection to the metastore database. E.g., jdbc:mysql://localhost:3306/demo_hive",
-                                      "type": "string"
-                                    },
-                                    "username": {
-                                      "title": "Connection UserName",
-                                      "description": "Username to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionUserName sparks property.",
-                                      "type": "string"
-                                    },
-                                    "password": {
-                                      "title": "Connection Password",
-                                      "description": "Password to use against metastore database. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionPassword sparks property.",
-                                      "type": "string",
-                                      "format": "password"
-                                    },
-                                    "driverName": {
-                                      "title": "Connection Driver Name",
-                                      "description": "Driver class name for JDBC metastore. The value will be mapped as spark.hadoop.javax.jdo.option.ConnectionDriverName sparks property. E.g., org.mariadb.jdbc.Driver",
-                                      "type": "string"
-                                    },
-                                    "jdbcDriverClassPath": {
-                                      "title": "JDBC Driver Class Path",
-                                      "description": "Class path to JDBC driver required for JDBC connection. The value will be mapped as spark.driver.extraClassPath sparks property.",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "title": "Hive Metastore File Path",
-                                  "type": "object",
-                                  "properties": {
-                                    "metastoreFilePath": {
-                                      "title": "Hive Metastore File Path",
-                                      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
-                                      "type": "string"
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "appName": {
-                              "title": "Application Name",
-                              "description": "pySpark App Name.",
-                              "type": "string",
-                              "default": "OpenMetadata"
-                            }
-                          },
-                          "additionalProperties": false,
-                          "required": [
-                            "connection"
-                          ]
-                        },
-                        {
-                          "title": "StorageConfig",
-                          "description": "DeltaLake Storage Connection Config",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.database.deltalake.StorageConfig",
-                          "definitions": {
-                            "localConfig": {
-                              "title": "Local Config",
-                              "description": "Local config source where no extra information needs to be sent.",
-                              "type": "object",
-                              "additionalProperties": false
-                            }
-                          },
-                          "properties": {
-                            "connection": {
-                              "title": "DeltaLake Storage Configuration Source",
-                              "description": "Available sources to fetch files.",
-                              "oneOf": [
-                                {
-                                  "title": "S3Config",
-                                  "description": "DataLake S3 bucket will ingest metadata of files in bucket",
-                                  "type": "object",
-                                  "javaType": "org.openmetadata.schema.services.connections.database.datalake.S3Config",
-                                  "properties": {
-                                    "securityConfig": {
-                                      "title": "DataLake S3 Security Config",
-                                      "description": "AWS credentials configs.",
-                                      "type": "object",
-                                      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
-                                      "properties": {
-                                        "enabled": {
-                                          "title": "Enable IAM Auth",
-                                          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
-                                          "type": "boolean",
-                                          "default": false
-                                        },
-                                        "awsAccessKeyId": {
-                                          "title": "AWS Access Key ID",
-                                          "description": "AWS Access key ID.",
-                                          "type": "string"
-                                        },
-                                        "awsSecretAccessKey": {
-                                          "title": "AWS Secret Access Key",
-                                          "description": "AWS Secret Access Key.",
-                                          "type": "string",
-                                          "format": "password"
-                                        },
-                                        "awsRegion": {
-                                          "title": "AWS Region",
-                                          "description": "AWS Region",
-                                          "type": "string"
-                                        },
-                                        "awsSessionToken": {
-                                          "title": "AWS Session Token",
-                                          "description": "AWS Session Token.",
-                                          "type": "string",
-                                          "format": "password"
-                                        },
-                                        "endPointURL": {
-                                          "title": "Endpoint URL",
-                                          "description": "EndPoint URL for the AWS",
-                                          "type": "string",
-                                          "format": "uri"
-                                        },
-                                        "profileName": {
-                                          "title": "Profile Name",
-                                          "description": "The name of a profile to use with the boto session.",
-                                          "type": "string"
-                                        },
-                                        "assumeRoleArn": {
-                                          "title": "Role Arn for Assume Role",
-                                          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
-                                          "type": "string"
-                                        },
-                                        "assumeRoleSessionName": {
-                                          "title": "Role Session Name for Assume Role",
-                                          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
-                                          "type": "string",
-                                          "default": "OpenMetadataSession"
-                                        },
-                                        "assumeRoleSourceIdentity": {
-                                          "title": "Source Identity for Assume Role",
-                                          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
-                                          "type": "string"
-                                        }
-                                      },
-                                      "additionalProperties": false,
-                                      "required": [
-                                        "awsRegion"
-                                      ]
-                                    }
-                                  },
-                                  "additionalProperties": false
-                                }
-                              ]
-                            },
-                            "bucketName": {
-                              "title": "Bucket Name",
-                              "description": "Bucket Name of the data source.",
-                              "type": "string",
-                              "default": ""
-                            },
-                            "prefix": {
-                              "title": "Prefix",
-                              "description": "Prefix of the data source.",
-                              "type": "string",
-                              "default": ""
-                            }
-                          },
-                          "additionalProperties": false,
-                          "required": [
-                            "connection"
-                          ]
-                        }
-                      ]
-                    },
-                    "databaseName": {
-                      "title": "Database Name",
-                      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
-                      "type": "string"
-                    },
-                    "connectionArguments": {
-                      "title": "Connection Arguments",
-                      "description": "If using Metastore, Key-Value pairs that will be used to add configs to the SparkSession.",
-                      "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
-                      "type": "object",
-                      "additionalProperties": {
-                        ".{1,}": {
-                          "type": "string"
-                        }
-                      }
-                    },
-                    "schemaFilterPattern": {
-                      "title": "Default Schema Filter Pattern",
-                      "description": "Regex to only include/exclude schemas that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "tableFilterPattern": {
-                      "title": "Default Table Filter Pattern",
-                      "description": "Regex to only include/exclude tables that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "databaseFilterPattern": {
-                      "title": "Default Database Filter Pattern",
-                      "description": "Regex to only include/exclude databases that matches the pattern.",
-                      "type": "object",
-                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
-                      "properties": {
-                        "includes": {
-                          "description": "List of strings/regex patterns to match and include only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        },
-                        "excludes": {
-                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
-                          "type": "array",
-                          "items": {
-                            "type": "string"
-                          }
-                        }
-                      },
-                      "additionalProperties": false
-                    },
-                    "supportsMetadataExtraction": {
-                      "description": "Supports Metadata Extraction.",
-                      "type": "boolean",
-                      "default": true,
-                      "title": "Supports Metadata Extraction"
-                    },
-                    "supportsDBTExtraction": {
-                      "description": "Supports DBT Extraction.",
-                      "type": "boolean",
-                      "default": true
-                    }
-                  },
-                  "additionalProperties": false,
-                  "required": [
-                    "configSource"
                   ]
                 },
                 {
@@ -48287,6 +48311,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -48713,6 +48743,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -50678,6 +50714,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -51436,6 +51478,12 @@
                       "description": "Use Oracle DBA_* tables instead of ALL_* tables for metadata ingestion. Requires DBA privileges.",
                       "default": true
                     },
+                    "includeTemporaryTables": {
+                      "title": "Include Temporary Tables",
+                      "type": "boolean",
+                      "description": "Ingest Oracle Global Temporary Tables (GTTs). GTTs have permanent definitions in the data dictionary (DURATION is SYS$SESSION or SYS$TRANSACTION) but their data is session-scoped. When enabled, GTTs are ingested with TableType=Local so they can be distinguished from regular tables.",
+                      "default": false
+                    },
                     "connectionOptions": {
                       "title": "Connection Options",
                       "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
@@ -52046,6 +52094,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -52488,6 +52542,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -55182,6 +55242,12 @@
                                           "description": "Google Cloud client certificate uri.",
                                           "type": "string",
                                           "format": "uri"
+                                        },
+                                        "universeDomain": {
+                                          "title": "Universe Domain",
+                                          "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                          "type": "string",
+                                          "default": "googleapis.com"
                                         }
                                       },
                                       "additionalProperties": false
@@ -57002,6 +57068,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsDatabase": {
                       "title": "Supports Database",
                       "description": "The source service supports the database concept in its hierarchy",
@@ -57254,6 +57326,12 @@
                       "type": "boolean",
                       "default": true
                     },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
+                    },
                     "supportsQueryComment": {
                       "title": "Supports Query Comment",
                       "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
@@ -57497,6 +57575,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                       "type": "boolean",
                       "default": true
                     },
@@ -58278,6 +58362,16 @@
                     },
                     "supportsViewLineageExtraction": {
                       "description": "Supports View Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsLineageExtraction": {
+                      "description": "Supports Lineage Extraction.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsUsageExtraction": {
+                      "description": "Supports Usage Extraction.",
                       "type": "boolean",
                       "default": true
                     }
@@ -59225,6 +59319,12 @@
                       "description": "Supports Profiler",
                       "type": "boolean",
                       "default": true
+                    },
+                    "supportsAutoPartitionDetection": {
+                      "title": "Supports Auto Partition Detection",
+                      "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                      "type": "boolean",
+                      "default": true
                     }
                   },
                   "additionalProperties": false,
@@ -59771,16 +59871,77 @@
                       "description": "Azure Application (client) ID for Service Principal authentication.",
                       "type": "string"
                     },
-                    "clientSecret": {
-                      "title": "Client Secret",
-                      "description": "Azure Application client secret for Service Principal authentication.",
-                      "type": "string",
-                      "format": "password"
-                    },
                     "tenantId": {
                       "title": "Tenant ID",
                       "description": "Azure Directory (tenant) ID for Service Principal authentication.",
                       "type": "string"
+                    },
+                    "authType": {
+                      "title": "Authentication Type",
+                      "description": "Credential the service principal uses to obtain Microsoft Entra ID access tokens for the Fabric SQL endpoint.",
+                      "oneOf": [
+                        {
+                          "title": "Client Secret",
+                          "description": "Authenticate the service principal with a client secret of its Microsoft Entra ID application.",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.ClientSecretAuthentication",
+                          "type": "object",
+                          "properties": {
+                            "clientSecret": {
+                              "title": "Client Secret",
+                              "description": "Client secret value (not the secret ID) from the application's Certificates & secrets page in Microsoft Entra ID.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "clientSecret"
+                          ]
+                        },
+                        {
+                          "title": "Certificate",
+                          "description": "Authenticate the service principal with an X.509 certificate registered on its Microsoft Entra ID application.",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftFabric.CertificateAuthentication",
+                          "type": "object",
+                          "properties": {
+                            "certificate": {
+                              "title": "Certificate",
+                              "description": "PEM-encoded X.509 certificate uploaded to the application's Certificates & secrets page in Microsoft Entra ID. It may be followed by its issuing certificate chain.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "privateKey": {
+                              "title": "Private Key",
+                              "description": "PEM-encoded private key of the certificate, as PKCS#8 (`BEGIN PRIVATE KEY` or `BEGIN ENCRYPTED PRIVATE KEY`) or PKCS#1 (`BEGIN RSA PRIVATE KEY`). A single PEM file holding both the key and the certificate can be supplied in both fields.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".key",
+                                ".p8"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "privateKeyPassphrase": {
+                              "title": "Private Key Passphrase",
+                              "description": "Passphrase of an encrypted private key. Leave empty when the private key is not encrypted.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "certificate",
+                            "privateKey"
+                          ]
+                        }
+                      ]
                     },
                     "driver": {
                       "title": "Driver",
@@ -59921,8 +60082,8 @@
                   "required": [
                     "hostPort",
                     "clientId",
-                    "clientSecret",
-                    "tenantId"
+                    "tenantId",
+                    "authType"
                   ]
                 },
                 {
@@ -60821,6 +60982,168 @@
                       "type": "boolean",
                       "default": true,
                       "title": "Supports Lineage Extraction"
+                    }
+                  },
+                  "additionalProperties": false,
+                  "required": [
+                    "hostPort",
+                    "username",
+                    "password"
+                  ]
+                },
+                {
+                  "title": "Neo4jConnection",
+                  "description": "Neo4j Connection Config",
+                  "type": "object",
+                  "javaType": "org.openmetadata.schema.services.connections.database.Neo4jConnection",
+                  "definitions": {
+                    "neo4jType": {
+                      "description": "Service type.",
+                      "type": "string",
+                      "enum": [
+                        "Neo4j"
+                      ],
+                      "default": "Neo4j"
+                    },
+                    "neo4jScheme": {
+                      "description": "Neo4j driver URI scheme. `+s` encrypts with full certificate validation; `+ssc` encrypts and accepts self-signed certificates.",
+                      "type": "string",
+                      "enum": [
+                        "neo4j",
+                        "neo4j+s",
+                        "neo4j+ssc",
+                        "bolt",
+                        "bolt+s",
+                        "bolt+ssc"
+                      ],
+                      "default": "neo4j"
+                    }
+                  },
+                  "properties": {
+                    "type": {
+                      "title": "Service Type",
+                      "description": "Service Type",
+                      "default": "Neo4j",
+                      "type": "string",
+                      "enum": [
+                        "Neo4j"
+                      ]
+                    },
+                    "scheme": {
+                      "title": "Connection Scheme",
+                      "description": "Neo4j driver URI scheme. Use `neo4j+s` for Neo4j Aura.",
+                      "default": "neo4j",
+                      "type": "string",
+                      "enum": [
+                        "neo4j",
+                        "neo4j+s",
+                        "neo4j+ssc",
+                        "bolt",
+                        "bolt+s",
+                        "bolt+ssc"
+                      ]
+                    },
+                    "hostPort": {
+                      "title": "Host and Port",
+                      "description": "Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use 7687.",
+                      "type": "string"
+                    },
+                    "username": {
+                      "title": "Username",
+                      "description": "Username to connect to Neo4j. The user needs read access to the graph schema of the database.",
+                      "type": "string"
+                    },
+                    "password": {
+                      "title": "Password",
+                      "description": "Password to connect to Neo4j.",
+                      "type": "string",
+                      "format": "password"
+                    },
+                    "databaseName": {
+                      "title": "Database Name",
+                      "description": "Neo4j database to extract metadata from. If left blank, the user's home database is used.",
+                      "type": "string"
+                    },
+                    "includeRelationships": {
+                      "title": "Include Relationships",
+                      "description": "Also ingest relationship types as tables in the `relationships` schema, with their properties as columns.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "propertyFilterPattern": {
+                      "title": "Property Filter Pattern",
+                      "description": "Regex to only include/exclude node and relationship properties (columns) that match the pattern, e.g. properties written back by graph algorithms.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "schemaFilterPattern": {
+                      "title": "Default Schema Filter Pattern",
+                      "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "tableFilterPattern": {
+                      "title": "Default Table Filter Pattern",
+                      "description": "Regex to only include/exclude tables that matches the pattern.",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "supportsMetadataExtraction": {
+                      "description": "Supports Metadata Extraction.",
+                      "type": "boolean",
+                      "default": true,
+                      "title": "Supports Metadata Extraction"
                     }
                   },
                   "additionalProperties": false,
@@ -61862,6 +62185,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -62379,7 +62708,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -63551,6 +63881,12 @@
                               "type": "boolean",
                               "default": true
                             },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
+                              "type": "boolean",
+                              "default": true
+                            },
                             "supportsDatabase": {
                               "title": "Supports Database",
                               "description": "The source service supports the database concept in its hierarchy",
@@ -63977,6 +64313,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -65259,6 +65601,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -65984,6 +66332,12 @@
                                                   "description": "Google Cloud client certificate uri.",
                                                   "type": "string",
                                                   "format": "uri"
+                                                },
+                                                "universeDomain": {
+                                                  "title": "Universe Domain",
+                                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                                  "type": "string",
+                                                  "default": "googleapis.com"
                                                 }
                                               },
                                               "additionalProperties": false
@@ -66819,6 +67173,12 @@
                             "supportsProfiler": {
                               "title": "Supports Profiler",
                               "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            },
+                            "supportsAutoPartitionDetection": {
+                              "title": "Supports Auto Partition Detection",
+                              "description": "The source exposes partition metadata the profiler can use to automatically scope profiling to the most recent partitions.",
                               "type": "boolean",
                               "default": true
                             },
@@ -71938,6 +72298,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -72662,6 +73028,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false
@@ -73854,6 +74226,12 @@
                                   "description": "Google Cloud client certificate uri.",
                                   "type": "string",
                                   "format": "uri"
+                                },
+                                "universeDomain": {
+                                  "title": "Universe Domain",
+                                  "description": "Google Cloud service domain, used to override the default `googleapis.com` domain for sovereign or partner clouds (e.g. Trusted Partner Cloud service accounts).",
+                                  "type": "string",
+                                  "default": "googleapis.com"
                                 }
                               },
                               "additionalProperties": false

@@ -27,10 +27,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
-import {
-  ERROR_PLACEHOLDER_TYPE,
-  SORT_ORDER,
-} from '../../../../enums/common.enum';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
@@ -46,12 +43,12 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getTableFQNFromColumnFQN } from '../../../../utils/FqnUtils';
-import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection/DataQualitySection';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
@@ -665,18 +662,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     if (statusCounts.total === 0) {
       return (
-        <ErrorPlaceHolderNew
-          className="text-grey-14 m-t-lg"
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography
-            as="div"
-            className="text-center p-x-md no-data-placeholder tw:mb-4"
-            color="secondary"
-            size="text-xs">
-            {t('message.no-data-quality-test-message')}
-          </Typography>
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t('message.no-data-quality-test-message')}
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
+          />
+        </div>
       );
     }
 
@@ -726,18 +718,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     if (incidentCounts.total === 0) {
       return (
         <div className="m-t-lg">
-          <ErrorPlaceHolderNew
-            className="text-grey-14"
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
-            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-            <Typography
-              as="div"
-              className="text-center p-x-md no-data-placeholder tw:mb-4"
-              color="secondary"
-              size="text-xs">
-              {t('message.no-data-quality-test-message')}
-            </Typography>
-          </ErrorPlaceHolderNew>
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              description={t('message.no-data-quality-test-message')}
+              icon={<AddPlaceHolderIcon height={100} width={100} />}
+            />
+          </div>
         </div>
       );
     }
@@ -752,12 +739,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('new')}>
-              <Typography className="stat-count new">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.new}
               </Typography>
-              <Typography className="stat-label new">
-                {t('label.new')}
-              </Typography>
+              <Typography size="text-xs">{t('label.new')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -770,12 +755,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('ack')}>
-              <Typography className="stat-count ack">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.ack}
               </Typography>
-              <Typography className="stat-label ack">
-                {t('label.acknowledged')}
-              </Typography>
+              <Typography size="text-xs">{t('label.acknowledged')}</Typography>
             </button>
             <Divider
               aria-hidden="true"
@@ -788,12 +771,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }`}
               type="button"
               onClick={() => handleIncidentFilterChange('assigned')}>
-              <Typography className="stat-count assigned">
+              <Typography size="text-xs" weight="semibold">
                 {incidentCounts.assigned}
               </Typography>
-              <Typography className="stat-label assigned">
-                {t('label.assigned')}
-              </Typography>
+              <Typography size="text-xs">{t('label.assigned')}</Typography>
             </button>
           </div>
           <div>
@@ -850,19 +831,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   if (!hasViewTests) {
     return (
       <div className="lineage-items-list">
-        <ErrorPlaceHolderNew
-          className="text-grey-14 permission-error-placeholder"
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}>
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<span />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.data-quality'),
-              }),
-            }}
-          />
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder data-testid="permission-error-placeholder" />
+        </div>
       </div>
     );
   }
@@ -876,10 +847,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <Tabs.List
           className={classNames(
             'tw:sticky tw:z-3 tw:gap-8 tw:bg-surface tw:px-4 tw:pt-2.5',
-            // Sits below the sticky entity title, which the column panel and the side drawer do not render.
+            // Sits below the 44px sticky entity title, which the column panel and the side drawer do not render.
             isColumnDetailPanel
               ? 'tw:top-0'
-              : 'tw:top-[54px] tw:[.drawer-summary-panel-container_&]:top-0'
+              : 'tw:top-11 tw:[.drawer-summary-panel-container_&]:top-0'
           )}
           size="sm"
           type="underline">

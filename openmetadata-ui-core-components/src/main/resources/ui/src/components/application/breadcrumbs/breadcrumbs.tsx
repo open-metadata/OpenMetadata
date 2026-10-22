@@ -197,7 +197,9 @@ const CrumbLabel = ({
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       <span
         className="tw:truncate"
-        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}>
+        // A capped label can be cut short; the title keeps it readable.
+        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}
+        title={maxItemWidth ? toText(item.label, '') || undefined : undefined}>
         {item.label}
       </span>
     </span>

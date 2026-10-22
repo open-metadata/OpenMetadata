@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button as CoreButton,
   Dropdown,
-  EmptyPlaceholder,
+  Grid,
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
@@ -22,7 +23,11 @@ import {
   Lock01 as Lock,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
-import { Col, Row, Space } from 'antd';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -100,34 +105,52 @@ interface KnowledgePageListComponentProps {
 
 /** The listing's loading placeholder — four skeleton knowledge cards. */
 const KnowledgePageListSkeleton = () => (
-  <Row data-testid="knowledge-page-skeleton" gutter={[0, 56]}>
+  <Grid
+    className="layout-row layout-grid"
+    data-testid="knowledge-page-skeleton"
+    style={{ ...getLayoutGutter(0, 56) }}>
     {Array.from({ length: 4 }).map(() => (
-      <Col className="knowledge-card-col" key={uniqueId()} span={24}>
-        <Row gutter={[16, 16]}>
-          <Col span={24}>
-            <Space>
+      <Grid.Item
+        className="layout-column knowledge-card-col"
+        key={uniqueId()}
+        span={24}>
+        <Grid
+          className="layout-row layout-grid"
+          style={{ ...getLayoutGutter(16, 16) }}>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <div className="tw:flex tw:items-center tw:gap-4">
                 <Skeleton animation={false} variant="circular" width={40} />
                 <Skeleton animation={false} height={16} width={100} />
               </div>
               <Skeleton animation={false} height={16} width={150} />
-            </Space>
-          </Col>
-          <Col span={24}>
+            </Box>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <SkeletonParagraph className="m-b-sm" rows={1} title={false} />
             <SkeletonParagraph rows={2} title={false} />
-          </Col>
-          <Col span={24}>
-            <Space>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal"
+              gap={2}
+              itemClassName="layout-space-item">
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
               <Skeleton height={16} width={100} />
-            </Space>
-          </Col>
-        </Row>
-      </Col>
+            </Box>
+          </Grid.Item>
+        </Grid>
+      </Grid.Item>
     ))}
-  </Row>
+  </Grid>
 );
 
 const KnowledgePageAccessDenied = () => {
@@ -135,7 +158,7 @@ const KnowledgePageAccessDenied = () => {
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
-      <EmptyPlaceholder
+      <PermissionPlaceholder
         description={
           <Transi18next
             i18nKey="message.no-access-placeholder"
@@ -147,7 +170,7 @@ const KnowledgePageAccessDenied = () => {
             }}
           />
         }
-        icon={<Lock className="tw:text-secondary" />}
+        icon={<Lock />}
         title={t('label.access-denied')}
       />
     </div>
@@ -159,11 +182,10 @@ const KnowledgePageNoSearchResults = () => {
 
   return (
     <div className="tw:relative tw:min-h-[320px] tw:py-12">
-      <EmptyPlaceholder
+      <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+        icon={<NoSearchResultIcon />}
         title={t('label.no-matching-results')}
-        variant="blank"
       />
     </div>
   );
@@ -195,7 +217,7 @@ const KnowledgePageEmptyState = ({
 
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         description={
           <Transi18next
             i18nKey="message.refer-to-our-doc"
@@ -220,7 +242,7 @@ const KnowledgePageEmptyState = ({
                     className="tw:text-brand-secondary tw:after:outline-brand"
                     color="secondary"
                     data-testid="add-knowledge-page-btn"
-                    iconLeading={<Plus size={14} />}
+                    iconLeading={Plus}
                     size="sm">
                     {t('label.add')}
                   </CoreButton>
@@ -244,7 +266,7 @@ const KnowledgePageEmptyState = ({
             {addQuickLinkModalElement}
           </>
         }
-        icon={<Articles className="tw:text-secondary" />}
+        icon={<Articles />}
         title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
           entity: t('label.article'),
         })}
@@ -738,10 +760,13 @@ const KnowledgePageListComponent = forwardRef<
 
     return (
       <>
-        <Row data-testid="knowledge-page-listing" gutter={[0, 16]}>
+        <Grid
+          className="layout-row layout-grid"
+          data-testid="knowledge-page-listing"
+          style={{ ...getLayoutGutter(0, 16) }}>
           {map(knowledgePages, (knowledgePage) => (
-            <Col
-              className="knowledge-card-col"
+            <Grid.Item
+              className="layout-column knowledge-card-col"
               key={knowledgePage.id}
               span={24}>
               <KnowledgeCard
@@ -752,10 +777,12 @@ const KnowledgePageListComponent = forwardRef<
                 onUnFollow={unFollowKnowledgePageHandler}
                 onUpdateVote={updateVoteHandler}
               />
-            </Col>
+            </Grid.Item>
           ))}
-        </Row>
-        {isLoadingMore ? <Loader className="tw:shrink-0" /> : null}
+        </Grid>
+        {isLoadingMore ? (
+          <Loader className="tw:shrink-0" dataTestId="knowledge-page-loader" />
+        ) : null}
         <div
           className="w-full"
           data-testid="observer-element"

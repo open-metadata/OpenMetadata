@@ -36,6 +36,53 @@ body {
   background: var(--tw-color-bg-primary);
 }
 
+// Login video panel and card. Fixed brand illustration colours (sampled from
+// the login videos) with no semantic token, named once so LoginClassBase uses
+// one class per surface. The dark panel matches Collate's (gray-modern-800); the dark card
+// matches the dark video's frames, shown until it paints. Collate overrides
+// these through LoginClassCollate.
+:root {
+  --login-panel-bg: linear-gradient(
+    165deg,
+    #f8f7fc 0%,
+    #f3effc 55%,
+    #ece5fb 100%
+  );
+  --login-card-bg: linear-gradient(
+    180deg,
+    #f2f1f5 0%,
+    #e3d9f8 55%,
+    #8a5cf0 100%
+  );
+  --login-card-shadow: 0 32px 80px -28px rgba(86, 54, 205, 0.38),
+    0 6px 20px -6px rgba(38, 24, 90, 0.12);
+}
+
+:root.dark-mode {
+  --login-panel-bg: linear-gradient(
+    var(--tw-color-gray-modern-800),
+    var(--tw-color-gray-modern-800)
+  );
+  --login-card-bg: linear-gradient(
+    180deg,
+    #07152b 0%,
+    #3b307f 50%,
+    #754ddb 100%
+  );
+  --login-card-shadow: none;
+}
+
+// Widget previews in the customize pickers are light-theme screenshots. Dark
+// mode inverts them; hue-rotate turns brand and status colours back to their
+// own hue.
+:root {
+  --widget-preview-filter: none;
+}
+
+:root.dark-mode {
+  --widget-preview-filter: invert(1) hue-rotate(180deg);
+}
+
 .main-container {
   display: flex;
   height: 100vh;
@@ -53,14 +100,6 @@ p {
 }
 
 // Global css
-
-.global-search-select-menu {
-  width: 200px !important;
-}
-
-.appbar-search .rc-virtual-list-holder {
-  max-height: max-content;
-}
 
 .global-border {
   border: @global-border;
@@ -684,12 +723,10 @@ a[href].link-text-grey,
 /* Diff style */
 
 .diff-added {
-  // background: @success-background-color;
   width: fit-content;
-  color: @success-color;
 
   * {
-    color: @success-color;
+    color: var(--tw-color-utility-success-700);
   }
 }
 
@@ -702,7 +739,7 @@ a[href].link-text-grey,
   font-weight: var(--om-font-weight-regular);
   line-height: 20px;
   width: fit-content;
-  color: var(--om-legacy-color-027a48);
+  color: var(--tw-color-utility-success-700);
 }
 
 .diff-removed-new,
@@ -715,9 +752,9 @@ a[href].link-text-grey,
   width: fit-content;
   text-decoration: line-through;
   text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--om-color-error-400);
+  text-decoration-color: var(--tw-color-utility-error-700);
   text-decoration-skip-ink: auto;
-  color: var(--om-color-error-400);
+  color: var(--tw-color-utility-error-700);
 }
 
 .diff-normal-new {
@@ -731,8 +768,7 @@ a[href].link-text-grey,
 
 .diff-normal-new strong {
   font-weight: var(--om-font-weight-semibold);
-  color: var(--om-color-black);
-  /* Adjust color if needed */
+  color: var(--tw-color-text-primary);
 }
 
 .clamp-text-2 {
@@ -823,14 +859,17 @@ a[href].link-text-grey,
 }
 
 // Dark-mode bridge for fixed-hex legacy LESS palette vars.
-// Each var in variables.less is `@x: var(--om-x, #originalHex)`, so light
+// Each var in variables.less has a project token and original color fallback, so light
 // mode resolves to the exact original hex (no drift) while dark mode picks up
 // the semantic/utility override below. This themes every consumer of these
 // legacy vars app-wide without per-file edits. Utility tokens auto-invert under
 // .dark-mode, so referencing them here yields the dark value. Categorical ramps
 // (severity, heatmap gradients) are intentionally excluded — they belong to the
 // token foundation.
-.dark-mode {
+// `:root.dark-mode` (not `.dark-mode`): tokens.css declares the light values on
+// `:root` at equal specificity and is imported after this file, so a bare
+// `.dark-mode` lost and every bridged var stayed light in dark mode.
+:root.dark-mode {
   // Neutral surfaces / borders / muted text
   --om-grey-26: var(--color-bg-secondary_subtle);
   --om-grey-25: var(--color-bg-secondary_subtle);
@@ -876,40 +915,32 @@ a[href].link-text-grey,
   --om-warning-400: var(--tw-color-utility-warning-400);
 }
 
-// AI dark-mode brand ACCENTS -> blue-300 (#84caff).
-// UntitledUIThemeProvider + AntDConfigProvider inject the configured brand
+// AI dark-mode brand ACCENTS -> blue-400 (#53b1fd), the devrel dark palette:
+// #1570ef carries fills/borders, #53b1fd labels/icons/links (~5.4:1 on dark;
+// #1570ef is only ~3.3:1 as text).
+// UntitledUIThemeProvider + useThemeCssVariables inject the configured brand
 // primary (#1570ef) as theme-agnostic inline custom properties on <html> — the
 // same element that carries `.dark-mode` — so the token layer's dark flip can't
 // override them (inline wins on that element). Re-point the brand *accent* vars
-// (text / fg / icon / border / outline / ring) to brand-300 on `body`, a
-// descendant of <html>, which wins over the html-inline value for the whole app
-// subtree (incl. antd portals). Solid-fill vars (*-solid, bg-brand-*, the raw
-// ramp) are intentionally left so buttons/badges keep the brand-600 fill. Light
-// is untouched, so a white-label custom brand still tints accents in light.
+// (text / fg / icon) to brand-400 on `body`, a descendant of <html>, which wins
+// over the html-inline value for the whole app subtree (incl. antd portals).
+// Border / outline / ring and solid-fill vars are intentionally left on the
+// brand-600 primary, so selected cards, focus rings and buttons use #1570ef.
+// Light is untouched, so a white-label custom brand still tints accents in light.
 .dark-mode body {
-  --tw-color-text-brand-secondary: var(--om-color-brand-300);
-  --tw-text-color-brand-secondary: var(--om-color-brand-300);
-  --tw-color-text-brand-tertiary: var(--om-color-brand-300);
-  --tw-text-color-brand-tertiary: var(--om-color-brand-300);
-  --tw-color-text-brand-tertiary_alt: var(--om-color-brand-300);
-  --tw-text-color-brand-tertiary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-primary: var(--om-color-brand-300);
-  --tw-color-fg-brand-primary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary_alt: var(--om-color-brand-300);
-  --tw-color-fg-brand-secondary_hover: var(--om-color-brand-300);
-  --tw-color-icon-fg-brand: var(--om-color-brand-300);
-  --tw-color-featured-icon-light-fg-brand: var(--om-color-brand-300);
-  --tw-color-border-brand: var(--om-color-brand-300);
-  --tw-color-border-brand_alt: var(--om-color-brand-300);
-  --tw-border-color-brand: var(--om-color-brand-300);
-  --tw-border-color-brand_alt: var(--om-color-brand-300);
-  --tw-background-color-border-brand: var(--om-color-brand-300);
-  --tw-background-color-border-brand_alt: var(--om-color-brand-300);
-  --tw-outline-color-brand: var(--om-color-brand-300);
-  --tw-outline-color-brand_alt: var(--om-color-brand-300);
-  --tw-ring-color-brand: var(--om-color-brand-300);
-  --tw-ring-color-brand_alt: var(--om-color-brand-300);
+  --tw-color-text-brand-secondary: var(--tw-color-brand-400);
+  --tw-text-color-brand-secondary: var(--tw-color-brand-400);
+  --tw-color-text-brand-tertiary: var(--tw-color-brand-400);
+  --tw-text-color-brand-tertiary: var(--tw-color-brand-400);
+  --tw-color-text-brand-tertiary_alt: var(--tw-color-brand-400);
+  --tw-text-color-brand-tertiary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-primary: var(--tw-color-brand-400);
+  --tw-color-fg-brand-primary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary_alt: var(--tw-color-brand-400);
+  --tw-color-fg-brand-secondary_hover: var(--tw-color-brand-400);
+  --tw-color-icon-fg-brand: var(--tw-color-brand-400);
+  --tw-color-featured-icon-light-fg-brand: var(--tw-color-brand-400);
   // Status text: the configured error / warning / success colours are injected
   // the same way, as light -600 shades, and stayed below AA on dark surfaces.
   // Text only; the solid fills keep the configured colour.
@@ -922,11 +953,11 @@ a[href].link-text-grey,
 }
 
 // Legacy Ant links: `.text-link-color` uses `@primary-color`
-// (= var(--ant-primary-color)), injected by AntDConfigProvider as #1570ef and
-// never flipped. Point it at the flipping link token in dark (blue-300).
+// (= var(--ant-primary-color)), injected by useThemeCssVariables as #1570ef and
+// never flipped. Point it at the core link token, which flips in dark.
 .dark-mode .text-link-color,
 .dark-mode a.text-link-color {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // (Bare-anchor dark link color is handled in tailwind.css via `:where(.dark-mode) a`
@@ -938,7 +969,7 @@ a[href].link-text-grey,
 .dark-mode a.ant-typography,
 .dark-mode .ant-typography a,
 .dark-mode .prose-typography a {
-  color: var(--om-color-link);
+  color: var(--color-text-link);
 }
 
 // Ant secondary text is @text-color-secondary (fade(@black, 45%)), compiled to a
@@ -957,7 +988,7 @@ a[href].link-text-grey,
 // Carousel active dot draws with --ant-primary-color (#1570ef) via a `!important`
 // rule in temp.css; match !important to win and re-tint in dark.
 .dark-mode .slick-dots li.slick-active button:before {
-  color: var(--om-color-brand-300) !important;
+  color: var(--tw-color-brand-400) !important;
 }
 
 // Dark-mode canvas chrome for every reactflow surface (lineage, workflow,
@@ -1083,12 +1114,6 @@ a[href].link-text-grey,
   padding: 0;
   background: @user-profile-background;
   border: 0px;
-
-  .ant-collapse-content {
-    .ant-collapse-content-box {
-      padding: 0;
-    }
-  }
 }
 
 .data-asset-icon > svg {
@@ -1118,23 +1143,6 @@ a[href].link-text-grey,
         color: @primary-color;
       }
     }
-  }
-}
-
-.error-boundary-result {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
-  height: 100%;
-
-  // antd Result hardcodes rgba(0,0,0,…) text, unreadable on the dark surface.
-  .ant-result-title {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-result-subtitle {
-    color: var(--om-color-text-tertiary);
   }
 }
 
@@ -1194,18 +1202,6 @@ a[href].link-text-grey,
   width: 350px;
 }
 
-// Pagination styles
-
-.pagination-next-icon {
-  font-size: var(--om-font-size-xs);
-}
-
-.pagination-prev-icon {
-  font-size: var(--om-font-size-xs);
-  margin-top: calc(-1 * var(--om-space-3));
-  transform: rotate(180deg);
-}
-
 // transition
 
 .transition-all-200ms {
@@ -1223,44 +1219,7 @@ a[href].link-text-grey,
 }
 
 // antd Alert paints static light tints per type (and antd heading-colour
-// text); in dark they read as white boxes with unreadable copy. Use the
-// theme-aware utility scale instead. Light keeps antd's values.
-.dark-mode .ant-alert {
-  &.ant-alert-info {
-    background-color: var(--tw-color-utility-blue-50);
-    border-color: var(--tw-color-utility-blue-200);
-  }
-
-  &.ant-alert-success {
-    background-color: var(--tw-color-utility-success-50);
-    border-color: var(--tw-color-utility-success-200);
-  }
-
-  &.ant-alert-warning {
-    background-color: var(--tw-color-utility-warning-50);
-    border-color: var(--tw-color-utility-warning-200);
-  }
-
-  &.ant-alert-error {
-    background-color: var(--tw-color-utility-error-50);
-    border-color: var(--tw-color-utility-error-200);
-  }
-
-  .ant-alert-message {
-    color: var(--om-color-text-primary);
-  }
-
-  .ant-alert-description {
-    color: var(--om-color-text-secondary);
-  }
-}
-
-// antd Card header text uses antd's heading colour (85% black) and a light
-// divider; both vanish or glare on the dark surface.
-.dark-mode .ant-card-head {
-  color: var(--om-color-text-primary);
-  border-bottom-color: var(--om-color-border-secondary);
-}
+// text);
 
 // antd DatePicker/RangePicker compile static light values: 25%-black
 // suffix/separator/clear icons and out-of-month cells, #bfbfbf placeholder,

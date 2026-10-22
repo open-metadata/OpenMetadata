@@ -20,6 +20,7 @@ import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProdu
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
+  CUSTOM_PROPERTIES_WIDGET,
   DESCRIPTION_WIDGET,
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
@@ -69,6 +70,8 @@ export interface DomainDetailPageTabProps {
   labelMap?: Record<EntityTabs, string>;
   feedCount?: FeedCounts;
   onFeedUpdate?: () => void;
+  // Reloads the domain after a task on it is decided, so its status and fields are current.
+  onUpdateEntityDetails?: () => void;
 }
 
 type DomainWidgetKeys =
@@ -267,6 +270,7 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      CUSTOM_PROPERTIES_WIDGET,
       KNOWLEDGE_ARTICLE_WIDGET,
     ];
   }

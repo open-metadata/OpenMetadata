@@ -14,11 +14,15 @@
 import {
   Badge,
   Box,
-  Card,
-  EmptyPlaceholder,
+  FeaturedIcon,
   PageLayout,
+  PaginationCardWithControls,
+  ProgressBarBase,
+  Table,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,24 +30,39 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../../constants/constants';
+import { DEFAULT_PERSONA_CONTEXT_DEFINITION } from '../../../constants/PersonaAIContext.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { CursorType } from '../../../enums/pagination.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
+import { PersonaContextStatus } from '../../../generated/type/personaContextStatus';
 import { useAuth } from '../../../hooks/authHooks';
-import { getAllPersonas } from '../../../rest/PersonaAPI';
+import { usePaging } from '../../../hooks/paging/usePaging';
+import {
+  getAllPersonas,
+  getPersonaAIContextStatus,
+  updatePersonaAIContext,
+} from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { getRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getScopedRuleCount } from '../../../utils/PersonaAIContextUtils';
-import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import { digitFormatter } from '../../../utils/NumberUtils';
+import { getPersonaContextFreshness } from '../../../utils/PersonaAIContextUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
-const PERSONA_PAGE_SIZE = 50;
-// Every persona must be reachable from this list — it is the only nav path to its AI context — so
-// the cursor is followed to exhaustion rather than rendering one page. Bounded so a paging bug on
-// the server cannot spin here.
-const MAX_PERSONA_PAGES = 20;
+const PERSONA_FIELDS = `${TabSpecificField.USERS},${TabSpecificField.CONTEXT_DEFINITION}`;
+const EMPTY_CELL = '—';
+const MIN_VISIBLE_BUDGET_FRACTION = 0.02;
+// The budget is stored in characters; the backend estimates tokens with the same 4:1 ratio.
+const CHARS_PER_TOKEN = 4;
 
 const ContextCenterAIContextPage = () => {
   const { t } = useTranslation();
@@ -51,87 +70,238 @@ const ContextCenterAIContextPage = () => {
   const navigate = useNavigate();
   const { isAdminUser } = useAuth();
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [statuses, setStatuses] = useState<Map<string, PersonaContextStatus>>(
+    new Map()
+  );
   const [isLoading, setIsLoading] = useState(true);
+  const {
+    currentPage,
+    handlePageChange,
+    handlePageSizeChange,
+    handlePagingChange,
+    pageSize,
+    paging,
+    pagingCursor: { cursorType: urlCursorType, cursorValue: urlCursorValue },
+    showPagination,
+  } = usePaging();
 
-  const fetchPersonas = useCallback(async () => {
-    try {
+  const fetchPersonas = useCallback(
+    async (cursor?: Partial<Record<CursorType, string>>) => {
       setIsLoading(true);
-      const collected: Persona[] = [];
-      let after: string | undefined;
-      for (let page = 0; page < MAX_PERSONA_PAGES; page++) {
-        const { data, paging } = await getAllPersonas({
-          after,
-          fields: TabSpecificField.CONTEXT_DEFINITION,
-          limit: PERSONA_PAGE_SIZE,
-        });
-        collected.push(...data);
-        after = paging?.after;
-        if (!after) {
-          break;
-        }
+      try {
+        const params = { ...cursor, limit: pageSize };
+        // The status endpoint pages like the persona list, so one cursor fetches both halves of
+        // a page. Cache state is admin-only; non-admins get the configuration columns alone.
+        const [personaPage, statusPage] = await Promise.all([
+          getAllPersonas({ ...params, fields: PERSONA_FIELDS }),
+          isAdminUser ? getPersonaAIContextStatus(params) : undefined,
+        ]);
+        setPersonas(personaPage.data);
+        handlePagingChange(personaPage.paging);
+        setStatuses(
+          new Map(
+            (statusPage?.data ?? []).map((status) => [status.personaId, status])
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setPersonas([]);
+      } finally {
+        setIsLoading(false);
       }
-      setPersonas(collected);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-      setPersonas([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    [isAdminUser, pageSize, handlePagingChange]
+  );
 
+  // The URL owns the cursor alongside the page number, so a reload or browser Back lands on the
+  // same personas the pager says it is showing; page clicks only write the URL.
   useEffect(() => {
-    fetchPersonas();
-  }, [fetchPersonas]);
+    void fetchPersonas(
+      urlCursorType && urlCursorValue
+        ? { [urlCursorType]: urlCursorValue }
+        : undefined
+    );
+  }, [fetchPersonas, urlCursorType, urlCursorValue]);
+
+  const handlePageNavigation = (newPage: number) => {
+    // ponytail: cursor paging only supports ±1 steps; a jump beyond the adjacent page no-ops.
+    const cursorType =
+      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
+    const cursor = paging[cursorType];
+    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+      return;
+    }
+    handlePageChange(newPage, { cursorType, cursorValue: cursor });
+  };
+
+  const setPersonaEnabled = (personaId: string, enabled: boolean) =>
+    setPersonas((current) =>
+      current.map((persona) =>
+        persona.id === personaId
+          ? {
+              ...persona,
+              contextDefinition: { ...persona.contextDefinition, enabled },
+            }
+          : persona
+      )
+    );
+
+  const handleEnabledChange = async (persona: Persona, enabled: boolean) => {
+    const definition = persona.contextDefinition;
+    setPersonaEnabled(persona.id, enabled);
+    try {
+      // The endpoint overwrites all three settings from the body, so they ride along unchanged.
+      await updatePersonaAIContext(persona.id, {
+        cacheTtlMinutes:
+          definition?.cacheTtlMinutes ??
+          DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
+        characterBudget:
+          definition?.characterBudget ??
+          DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
+        enabled,
+      });
+    } catch (error) {
+      setPersonaEnabled(persona.id, !enabled);
+      showErrorToast(error as AxiosError);
+    }
+  };
+
+  const renderBudget = (persona: Persona, status?: PersonaContextStatus) => {
+    if (!status) {
+      return EMPTY_CELL;
+    }
+    if (!status.lastGeneratedAt) {
+      return (
+        <Box direction="col" gap={1}>
+          <ProgressBarBase value={0} />
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.no-context-generated')}
+          </Typography>
+        </Box>
+      );
+    }
+    const budget = Math.ceil(
+      (persona.contextDefinition?.characterBudget ??
+        DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget ??
+        CHARS_PER_TOKEN) / CHARS_PER_TOKEN
+    );
+
+    return (
+      <Box direction="col" gap={1}>
+        <ProgressBarBase
+          max={budget}
+          // A small document is a fraction of a percent of the budget, which renders as an empty
+          // track that reads as a loading skeleton — keep a visible sliver whenever there is content.
+          value={Math.min(
+            Math.max(status.tokensEst, budget * MIN_VISIBLE_BUDGET_FRACTION),
+            budget
+          )}
+        />
+        <Typography className="tw:text-tertiary" size="text-sm">
+          {t('message.persona-context-budget-usage', {
+            total: digitFormatter(budget),
+            used: digitFormatter(status.tokensEst),
+          })}
+        </Typography>
+      </Box>
+    );
+  };
+
+  const renderFreshness = (
+    hasRules: boolean,
+    status?: PersonaContextStatus
+  ) => {
+    const freshness = getPersonaContextFreshness(hasRules, status);
+    if (!freshness) {
+      return EMPTY_CELL;
+    }
+    const label = t(freshness.labelKey);
+
+    return (
+      <Badge color={freshness.color} size="sm" type="pill-color">
+        {freshness.withTime && status?.lastGeneratedAt
+          ? t('label.freshness-with-time', {
+              state: label,
+              time: getRelativeTime(status.lastGeneratedAt),
+            })
+          : label}
+      </Badge>
+    );
+  };
 
   const renderPersona = (persona: Persona) => {
     const rules = persona.contextDefinition?.rules ?? [];
-    const scopedCount = getScopedRuleCount(persona.contextDefinition);
+    const status = statuses.get(persona.id);
 
     return (
-      <Card
-        className="tw:cursor-pointer tw:px-5 tw:py-4.5 tw:shadow-xs tw:transition tw:hover:bg-primary_hover tw:mb-3"
+      <Table.Row
+        className="tw:cursor-pointer"
         data-testid={`ai-context-persona-${persona.name}`}
+        id={persona.id}
         key={persona.id}
-        onClick={() =>
+        onAction={() =>
           navigate(
             contextCenterClassBase.getAIContextPath(
               persona.fullyQualifiedName ?? persona.name
             )
           )
         }>
-        <Box align="center" gap={4} justify="between">
-          <Box className="tw:min-w-0" direction="col" gap={1}>
-            <Typography
-              className="tw:truncate tw:text-primary"
-              size="text-md"
-              weight="semibold">
-              {getEntityName(persona)}
-            </Typography>
-            <Typography ellipsis className="tw:text-tertiary" size="text-sm">
-              {stripMarkdown(persona.description || '') ||
-                t('label.no-description')}
-            </Typography>
+        <Table.Cell>
+          <Box align="center" gap={3}>
+            <FeaturedIcon
+              className="tw:shrink-0"
+              color="brand"
+              icon={User01}
+              size="md"
+              theme="light"
+            />
+            <Box className="tw:min-w-0" direction="col">
+              <Typography
+                ellipsis
+                className="tw:text-primary"
+                weight="semibold">
+                {getEntityName(persona)}
+              </Typography>
+              <Typography
+                ellipsis
+                className="tw:font-mono tw:text-tertiary"
+                size="text-sm">
+                {persona.name}
+              </Typography>
+            </Box>
           </Box>
-          <Box align="center" className="tw:shrink-0" gap={2}>
-            <Badge color="blue-dark" size="sm" type="pill-color">
-              {t('label.entity-count-rule-plural', { count: rules.length })}
-            </Badge>
-            {scopedCount > 0 && (
-              <Badge color="gray" size="sm">
-                {t('label.entity-count-filtered-in-search', {
-                  count: scopedCount,
-                })}
-              </Badge>
-            )}
-          </Box>
-        </Box>
-      </Card>
+        </Table.Cell>
+        <Table.Cell data-testid="ai-context-persona-users">
+          {persona.users?.length ?? 0}
+        </Table.Cell>
+        <Table.Cell data-testid="ai-context-persona-rules">
+          {rules.length}
+        </Table.Cell>
+        <Table.Cell data-testid="ai-context-persona-entities">
+          {status?.entitiesIncluded ?? 0}
+        </Table.Cell>
+        <Table.Cell data-testid="ai-context-persona-budget">
+          {renderBudget(persona, status)}
+        </Table.Cell>
+        <Table.Cell data-testid="ai-context-persona-freshness">
+          {renderFreshness(rules.length > 0, status)}
+        </Table.Cell>
+        <Table.Cell>
+          <Toggle
+            aria-label={t('label.enabled')}
+            data-testid={`ai-context-persona-enabled-${persona.name}`}
+            isDisabled={!isAdminUser}
+            isSelected={persona.contextDefinition?.enabled ?? true}
+            onChange={(enabled) => handleEnabledChange(persona, enabled)}
+          />
+        </Table.Cell>
+      </Table.Row>
     );
   };
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-ai-context-page">
       <DocumentTitle title={t('label.ai-context')} />
       <PageLayout
@@ -152,13 +322,59 @@ const ContextCenterAIContextPage = () => {
           )}>
           {isLoading && <Loader />}
           {!isLoading && personas.length === 0 && (
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               description={t('message.no-persona-ai-context-description')}
               icon={PersonaIcon}
               title={t('message.no-persona-available')}
             />
           )}
-          {!isLoading && personas.map(renderPersona)}
+          {!isLoading && personas.length > 0 && (
+            <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-xs">
+              <Table
+                aria-label={t('label.persona-plural')}
+                className="tw:table-fixed"
+                data-testid="ai-context-persona-table">
+                <Table.Header>
+                  <Table.Head
+                    isRowHeader
+                    className="tw:w-1/4"
+                    id="persona"
+                    label={t('label.persona')}
+                  />
+                  <Table.Head id="users" label={t('label.user-plural')} />
+                  <Table.Head id="rules" label={t('label.rule-plural')} />
+                  <Table.Head id="entities" label={t('label.entity-plural')} />
+                  <Table.Head
+                    className="tw:w-1/5"
+                    id="budget"
+                    label={t('label.context-budget-used')}
+                  />
+                  <Table.Head
+                    className="tw:w-1/6"
+                    id="freshness"
+                    label={t('label.freshness')}
+                  />
+                  <Table.Head id="enabled" label={t('label.enabled')} />
+                </Table.Header>
+                <Table.Body>{personas.map(renderPersona)}</Table.Body>
+              </Table>
+              {showPagination && (
+                <PaginationCardWithControls
+                  minimal
+                  page={currentPage}
+                  pageSize={pageSize}
+                  pageSizeOptions={[
+                    PAGE_SIZE_BASE,
+                    PAGE_SIZE_MEDIUM,
+                    PAGE_SIZE_LARGE,
+                  ]}
+                  total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
+                  onPageChange={handlePageNavigation}
+                  onPageSizeChange={handlePageSizeChange}
+                />
+              )}
+            </div>
+          )}
         </PageLayout.Content>
       </PageLayout>
     </div>

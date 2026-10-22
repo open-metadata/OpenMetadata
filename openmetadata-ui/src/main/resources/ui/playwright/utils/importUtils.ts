@@ -44,10 +44,7 @@ import {
   openCustomPropertyEditModal,
 } from './customProperty';
 import { setDomain } from './domainPicker';
-import {
-  escapeESReservedCharacters,
-  waitForAllLoadersToDisappear,
-} from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -397,9 +394,6 @@ const clickGridEditorSave = async (page: Page, testId: string) => {
   }).toPass({ timeout: 30_000 });
 };
 
-const clickInlineSave = async (page: Page) =>
-  clickGridEditorSave(page, 'inline-save-btn');
-
 const clickAssociatedTagSave = async (page: Page) =>
   clickGridEditorSave(page, 'saveAssociatedTag');
 
@@ -574,31 +568,42 @@ export const fillUserAndTeamOwnerDetails = async (
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const option = page.getByRole('option', { name: entityType, exact: true });
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, option, undefined);
 
-  await page.getByTestId('entity-type-select').click();
-  await page.getByTitle(entityType, { exact: true }).nth(0).click();
-  await clickInlineSave(page);
+  // Picking an option commits it.
+  await option.click();
+  await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
+  const tagsPicker = page.getByTestId('csv-tags-picker');
+  await openActiveCellPopover(page, bulkPicker.or(tagsPicker), undefined);
 
-  const tagSelectorInput = page
-    .locator('[data-testid="tag-selector"] input')
-    .first();
-  await tagSelectorInput.waitFor({ state: 'visible' });
+  if (await bulkPicker.isVisible()) {
+    await bulkPicker.getByRole('textbox').fill(tag);
+    await bulkPicker.getByTestId(`bulk-edit-picker-option-${tag}`).click();
+    await bulkPicker
+      .getByRole('button', { name: 'Update', exact: true })
+      .click();
+    await expect(bulkPicker).toHaveCount(0);
 
-  const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(tag)
-    )}*`
-  );
-  await page.keyboard.type(tag);
-  await waitForQueryResponse;
+    return;
+  }
 
-  await page.click(`[data-testid="tag-${tag}"]`);
-  await clickInlineSave(page);
+  // The search box lives in the popover; clicking the trigger would close the cell.
+  const popover = page.getByTestId('csv-tags-picker-popover');
+  await popover.getByRole('textbox').fill(tag);
+
+  const row = popover.getByTestId(`tree-node-${tag}`);
+  await expect(row).toBeVisible();
+  await row.click();
+
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
 };
 
 export const fillGlossaryTermDetails = async (
@@ -647,35 +652,17 @@ const openActiveCellPopover = async (
   await expect(targetLocator).toBeVisible();
 };
 
-const openRadioCardEditor = async (
-  page: Page,
-  radioTestId: string,
-  responseUrlPattern: string
-) => {
-  await openActiveCellPopover(
-    page,
-    page.getByTestId(radioTestId),
-    responseUrlPattern
-  );
-};
-
-const clickRadioCardUpdate = async (page: Page, updateButtonTestId: string) => {
-  const updateButton = page.getByTestId(updateButtonTestId);
-
-  await updateButton.click();
-  await updateButton.waitFor({ state: 'detached' });
-};
-
 export const fillTierDetails = async (
   page: Page,
   tier: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${tier}`;
-  await openRadioCardEditor(page, radioTestId, '/api/v1/tags?parent=Tier*');
+  const option = page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`);
+  await openActiveCellPopover(page, option, '/api/v1/tags?parent=Tier*');
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-tier-card');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillCertificationDetails = async (
@@ -683,19 +670,24 @@ export const fillCertificationDetails = async (
   certification: string,
   _isBulkEdit?: boolean
 ) => {
-  const radioTestId = `radio-btn-${certification}`;
-  await openRadioCardEditor(
+  const option = page.getByTestId('drop-down-menu').getByTestId(certification);
+  await openActiveCellPopover(
     page,
-    radioTestId,
-    '/api/v1/tags?parent=Certification*'
+    option,
+    '/api/v1/search/query?*index=tag&*'
   );
 
-  await page.getByTestId(radioTestId).click();
-  await clickRadioCardUpdate(page, 'update-certification');
+  // Picking a row commits it and closes the editor.
+  await option.click();
+  await option.waitFor({ state: 'detached' });
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await openActiveCellPopover(
+    page,
+    page.getByTestId('code-mirror-container'),
+    undefined
+  );
 
   // Wait for the loader to disappear
   await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
@@ -808,7 +800,7 @@ export const fillExtensionDetails = async (
   });
 
   // Verify header text
-  await expect(customPropertyEditor.getByTestId('header')).toContainText(
+  await expect(customPropertyEditor.getByTestId('dialog-title')).toContainText(
     'Edit CustomProperty'
   );
 
@@ -1051,11 +1043,9 @@ export const uploadCSVAndWaitForGrid = async (
       .getByTestId('csv-workflow-stepper')
       .waitFor({ state: 'visible' });
   }
-  await expect(
-    page.getByText('Drag & Drop or Browse CSV file here')
-  ).toBeVisible();
+  await expect(page.getByTestId('upload-file-widget')).toBeVisible();
 
-  const uploadWidget = page.getByTestId('upload-file-widget');
+  const uploadWidget = page.getByTestId('upload-file-input');
   await uploadWidget.waitFor({ state: 'attached' });
   let actualFilePath = filePath;
   let tempFilePath: string | undefined;
@@ -1246,12 +1236,14 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  // The grid cell opens its picker on Enter, and bulk edit stages the whole
-  // sheet, so there is no PATCH for this cell to wait on.
+  // Bulk edit stages the whole sheet, so there is no PATCH for this cell to
+  // wait on.
   await setDomain(page, row.domains, {
     trigger: async () => {
-      await page.keyboard.press('Enter');
-      await page.click('[data-testid="domain-selectable-tree-search"]');
+      const domainSearch = page.getByTestId('domain-selectable-tree-search');
+      // A forced cell click can select without focusing, so a bare Enter may not open it.
+      await openActiveCellPopover(page, domainSearch, undefined);
+      await domainSearch.click();
     },
     awaitPatch: false,
     verify: 'none',

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import {
   Box,
-  EmptyPlaceholder,
   EmptyPlaceholderAction,
   Owner,
   Skeleton,
@@ -35,6 +35,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -182,7 +183,7 @@ export const TestSuitesTable = ({
 
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             !hasActiveFilters &&
             subTab === DataQualitySubTabs.BUNDLE_SUITES &&
@@ -193,7 +194,6 @@ export const TestSuitesTable = ({
           description={description}
           icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
           title={title}
-          variant="blank"
         />
       </Box>
     );

@@ -11,14 +11,33 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { Type } from '../../generated/api/rdf/sparqlResponse';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Ontology } from '../../generated/entity/data/ontology';
+import {
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
+} from '../../generated/entity/data/ontologyAxiom';
+import {
+  OntologyConcept,
+  OntologyConceptType,
+} from '../../generated/entity/data/ontologyConcept';
 import { useAuth } from '../../hooks/authHooks';
 import { createRelationshipTypeMock } from '../../mocks/Ontology.mock';
+import APIClient from '../../rest/axiosClient';
 import { getGlossaryTerms } from '../../rest/glossaryAPI';
-import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import {
+  listOntologyAxioms,
+  listOntologyConcepts,
+  listOntologyProperties,
+  listRelationshipTypes,
+} from '../../rest/ontologyAPI';
 import { runGlossarySparqlQuery, runSparqlQuery } from '../../rest/rdfAPI';
+import { renderWithQueryClient as render } from '../../test/unit/test-utils';
 import OntologyVisualQueryBuilder from './OntologyVisualQueryBuilder';
 
 jest.mock('../../rest/glossaryAPI', () => ({
@@ -26,13 +45,21 @@ jest.mock('../../rest/glossaryAPI', () => ({
 }));
 
 jest.mock('../../rest/ontologyAPI', () => ({
+  listOntologyAxioms: jest.fn(),
+  listOntologyConcepts: jest.fn(),
+  listOntologyProperties: jest.fn(),
   listRelationshipTypes: jest.fn(),
 }));
 
 jest.mock('../../rest/rdfAPI', () => ({
+  ...jest.requireActual<typeof import('../../rest/rdfAPI')>(
+    '../../rest/rdfAPI'
+  ),
   runGlossarySparqlQuery: jest.fn(),
   runSparqlQuery: jest.fn(),
 }));
+
+jest.mock('../../rest/axiosClient', () => ({ post: jest.fn() }));
 
 jest.mock('../../hooks/authHooks', () => ({
   useAuth: jest.fn(),
@@ -44,6 +71,14 @@ jest.mock('../../utils/ToastUtils', () => ({
 
 const mockListRelationshipTypes = listRelationshipTypes as jest.MockedFunction<
   typeof listRelationshipTypes
+>;
+const mockListOntologyConcepts = listOntologyConcepts as jest.MockedFunction<
+  typeof listOntologyConcepts
+>;
+const mockListOntologyProperties =
+  listOntologyProperties as jest.MockedFunction<typeof listOntologyProperties>;
+const mockListOntologyAxioms = listOntologyAxioms as jest.MockedFunction<
+  typeof listOntologyAxioms
 >;
 const mockGetGlossaryTerms = getGlossaryTerms as jest.MockedFunction<
   typeof getGlossaryTerms
@@ -84,6 +119,38 @@ const RELATION_TYPES = [
     rdfPredicate: 'https://open-metadata.org/ontology/partOf',
   }),
 ];
+
+const nativeOntology: Ontology = {
+  id: 'native-owner',
+  name: 'Retail',
+  fullyQualifiedName: 'Retail',
+  iri: 'urn:retail',
+  namespace: 'urn:retail:',
+};
+const nativeConcepts = ['Customer', 'Party', 'Organization'].map(
+  (name): OntologyConcept => ({
+    id: name,
+    name,
+    fullyQualifiedName: `Retail.${name}`,
+    iri: `urn:retail:${name}`,
+    conceptType: OntologyConceptType.OwlClass,
+    ontology: { id: nativeOntology.id, type: 'ontology' },
+  })
+);
+const subclass: OntologyAxiom = {
+  id: 'subclass',
+  name: 'subclass',
+  fullyQualifiedName: 'Retail.subclass',
+  displayName: 'Customer is a Party',
+  description: '',
+  axiomType: AxiomType.SubclassOf,
+  subjectIri: 'urn:retail:Customer',
+  expressions: [
+    { kind: ExpressionKind.NamedClass, classIri: 'urn:retail:Party' },
+  ],
+  provenance: Provenance.Manual,
+  ontology: { id: nativeOntology.id, type: 'ontology' },
+};
 
 describe('OntologyVisualQueryBuilder component', () => {
   beforeEach(() => {
@@ -190,6 +257,113 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     expect(await screen.findByTestId('ontology-builder-result')).toBeVisible();
+  });
+
+  it('queries native selections through the owner endpoint and reports a missing active release', async () => {
+    mockListOntologyConcepts.mockResolvedValue({
+      data: nativeConcepts,
+      paging: { total: 3 },
+    });
+    mockListOntologyProperties.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    mockListOntologyAxioms.mockResolvedValue({
+      data: [
+        subclass,
+        {
+          ...subclass,
+          id: 'disjoint',
+          name: 'disjoint',
+          fullyQualifiedName: 'Retail.disjoint',
+          axiomType: AxiomType.DisjointWith,
+          expressions: [
+            {
+              kind: ExpressionKind.NamedClass,
+              classIri: 'urn:retail:Organization',
+            },
+          ],
+        },
+      ],
+      paging: { total: 2 },
+    });
+    const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
+    post.mockResolvedValue({
+      headers: { 'content-type': 'application/sparql-results+json' },
+      data: JSON.stringify({
+        head: { vars: ['concept', 'label'] },
+        results: {
+          bindings: [
+            {
+              concept: { type: Type.URI, value: 'urn:retail:Customer' },
+              label: { type: Type.Literal, value: 'Customer result' },
+            },
+          ],
+        },
+      }),
+    });
+    render(<OntologyVisualQueryBuilder ontology={nativeOntology} />);
+    const target = await screen.findByRole('combobox', {
+      name: 'label.concept',
+    });
+    await waitFor(() => expect(target).toHaveValue('Party'));
+
+    expect(
+      screen.getByText('message.ontology-native-builder-scope')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-builder-find-metrics')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-builder-find-any')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label\.relationship-type/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: /disjoint/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Organization' })
+    );
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(generated).toHaveTextContent(
+      'VALUES ?target { <urn:retail:Organization> }'
+    );
+    expect(generated).toHaveTextContent('?concept owl:disjointWith ?target');
+    expect(generated).not.toHaveTextContent('GlossaryTerm');
+    expect(generated).not.toHaveTextContent('fullyQualifiedName');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-run'));
+
+    expect(await screen.findByText('Customer result')).toBeVisible();
+    expect(post).toHaveBeenCalledWith(
+      '/ontologies/native-owner/sparql',
+      {
+        query: expect.stringContaining(
+          'VALUES ?target { <urn:retail:Organization> }'
+        ),
+        format: 'json',
+        inference: 'none',
+      },
+      expect.anything()
+    );
+    expect(mockRunGlossarySparqlQuery).not.toHaveBeenCalled();
+    expect(mockRunSparqlQuery).not.toHaveBeenCalled();
+
+    post.mockRejectedValue(
+      new AxiosError('Ontology has no active release', '409')
+    );
+    fireEvent.click(screen.getByTestId('ontology-builder-run'));
+
+    expect(
+      await screen.findByText('Ontology has no active release')
+    ).toBeVisible();
+    expect(screen.queryByText('Customer result')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-builder-result')
+    ).not.toBeInTheDocument();
   });
 
   it('hands the generated query to onEditAsSparql', async () => {

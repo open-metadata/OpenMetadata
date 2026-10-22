@@ -96,6 +96,10 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+jest.mock('../../../../assets/svg/close.svg', () => ({
+  ReactComponent: (props: Record<string, unknown>) => <svg {...props} />,
+}));
+
 describe('WhatsNewAlert', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -254,7 +258,7 @@ describe('WhatsNewAlert', () => {
     expect(alertCard).toHaveClass('whats-new-alert-card');
 
     // Check for the three columns structure
-    const columns = alertCard.querySelectorAll('.ant-col');
+    const columns = alertCard.querySelectorAll('.layout-column');
 
     expect(columns).toHaveLength(3);
 

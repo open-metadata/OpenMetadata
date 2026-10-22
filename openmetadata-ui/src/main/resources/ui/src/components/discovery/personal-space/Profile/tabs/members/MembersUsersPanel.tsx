@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   PaginationCardWithControls,
   SimpleModal,
   TableCard,
@@ -64,6 +63,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
@@ -268,7 +268,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         <Button
           color="primary"
           data-testid="add-user"
-          size="sm"
+          size="xs"
           onPress={() =>
             onNavigate({ type: 'user-create', isAdmin: Boolean(isAdmin) })
           }>
@@ -427,7 +427,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
                   align="center"
                   className="tw:min-h-32 tw:relative"
                   justify="center">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     title={t('label.no-entity-found', {
                       entity: t('label.user-plural'),
                     })}

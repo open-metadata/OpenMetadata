@@ -18,20 +18,21 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import WorksheetDetails from '../../components/DriveService/Worksheet/WorksheetDetails';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Worksheet } from '../../generated/entity/data/worksheet';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
+import { useSub } from '../../hooks/usePubSub';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import {
   addDriveAssetFollower,
@@ -307,6 +308,25 @@ const WorksheetDetailsPage = () => {
     });
   };
 
+  // Not on React Query, so the provider's cache invalidation can't reach this page.
+  useSub(
+    'updateDetails',
+    async () => {
+      try {
+        setWorksheetDetails(
+          await getDriveAssetByFqn<Worksheet>(
+            worksheetDetails.fullyQualifiedName ?? '',
+            EntityType.WORKSHEET,
+            defaultFields
+          )
+        );
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [worksheetDetails.fullyQualifiedName]
+  );
+
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDriveAssetVotes<Worksheet>(id, data, EntityType.WORKSHEET);
@@ -372,20 +392,24 @@ const WorksheetDetailsPage = () => {
   }
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('worksheet', decodedWorksheetFQN)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={getEntityMissingError('worksheet', decodedWorksheetFQN)}
+        />
+      </div>
     );
   }
   if (!hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.worksheet'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.worksheet'),
+          })}
+        />
+      </div>
     );
   }
 

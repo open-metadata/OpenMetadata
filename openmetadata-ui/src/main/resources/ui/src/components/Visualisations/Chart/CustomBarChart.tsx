@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import {
   BarChart,
   type ChartSeries,
   type ChartTooltipRenderProps,
   type ChartYAxisProps,
 } from '@openmetadata/ui-core-components/charts';
-import { Col, Row } from 'antd';
+
 import { useMemo } from 'react';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
@@ -26,7 +27,7 @@ import {
   DQTooltipContent,
 } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { CustomBarChartProps } from './Chart.interface';
 
 type OperationRow = CustomBarChartProps['chartCollection']['data'][number];
@@ -78,14 +79,20 @@ const CustomBarChart = ({
 
   if (data.length === 0) {
     return (
-      <Row align="middle" className="h-full w-full" justify="center">
-        <Col>
-          <ErrorPlaceHolder
-            className="mt-0-important"
-            placeholderText={noDataPlaceholderText}
-          />
-        </Col>
-      </Row>
+      <Box
+        align="center"
+        className="layout-row h-full w-full"
+        justify="center"
+        wrap="wrap">
+        <Box className="layout-column tw:block tw:w-full">
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              description={noDataPlaceholderText}
+            />
+          </div>
+        </Box>
+      </Box>
     );
   }
 

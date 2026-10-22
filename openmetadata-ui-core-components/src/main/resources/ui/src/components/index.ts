@@ -64,11 +64,13 @@ export * from './base/form/hook-form';
 export * from './base/grid/grid';
 export * from './base/input/hint-text';
 export * from './base/input/input';
+export * from './base/input/number-input';
 export * from './base/input/input-group';
 export * from './base/input/label';
 export * from './base/input/password-input';
 export * from './base/progress-indicators/progress-circles';
 export * from './base/progress-indicators/progress-indicators';
+export * from './base/progress-indicators/run-history-bar';
 export * from './base/progress-indicators/simple-circle';
 export * from './base/radio-buttons/radio-buttons';
 export * from './base/select/combobox';
@@ -165,6 +167,12 @@ export * from './application/popover/popover';
 export * from './application/progress-steps/progress-steps';
 export { SlideoutMenu } from './application/slideout-menus/slideout-menu';
 export * from './application/table/table';
+export {
+  GridList,
+  GridListItem,
+  ListLayout,
+  Virtualizer,
+} from 'react-aria-components';
 export * from './application/tabs/tabs';
 export * from './application/toast/toast';
 export * from './application/toast/toast-provider';
@@ -205,3 +213,5 @@ export type {
   OwnerChipProps,
   OwnerAvatarStackProps,
 } from './application/owner/owner.types';
+
+export * from './base/input/number-input';

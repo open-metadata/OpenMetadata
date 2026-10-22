@@ -13,6 +13,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { Ontology } from '../../generated/entity/data/ontology';
 import OntologyImportExportMenu from './OntologyImportExportMenu';
 
 jest.mock('./OntologyImportExportModal', () => ({
@@ -20,7 +21,22 @@ jest.mock('./OntologyImportExportModal', () => ({
   default: () => <div data-testid="ontology-import-export-modal-stub" />,
 }));
 
+jest.mock(
+  '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="ontology-release-export-modal-stub" />,
+  })
+);
+
 const glossaries = [{ id: 'g1', name: 'FIBO' }] as Glossary[];
+const ontology = {
+  fullyQualifiedName: 'Sales',
+  id: 'ontology-id',
+  iri: 'urn:sales',
+  name: 'Sales',
+  namespace: 'urn:sales:',
+} satisfies Ontology;
 
 describe('OntologyImportExportMenu', () => {
   it('opens the import/export modal from the header trigger', () => {
@@ -28,6 +44,7 @@ describe('OntologyImportExportMenu', () => {
       <OntologyImportExportMenu
         isAdminUser
         glossaries={glossaries}
+        kind="glossary"
         relationCount="7"
         termCount="20"
       />
@@ -37,10 +54,34 @@ describe('OntologyImportExportMenu', () => {
       screen.queryByTestId('ontology-import-export-modal-stub')
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('ontology-import-export-trigger'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
 
     expect(
       screen.getByTestId('ontology-import-export-modal-stub')
     ).toBeInTheDocument();
+  });
+
+  it('opens the active-release export modal for a native ontology', () => {
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(
+      screen.getByTestId('ontology-release-export-modal-stub')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-import-export-modal-stub')
+    ).not.toBeInTheDocument();
   });
 });

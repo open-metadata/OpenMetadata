@@ -50,6 +50,17 @@ export const isCoverageNode = (node: GraphNode) =>
   ].includes(node.type.toLowerCase());
 
 export const getGraphNodeLabel = (node: GraphNode) => {
+  // The RDF projection can return an empty label (seen on glossary terms),
+  // which left the ontology concept picker and the node card blank.
+  if (!node.label?.trim()) {
+    return (
+      node.name ||
+      (node.fullyQualifiedName
+        ? Fqn.split(node.fullyQualifiedName).slice(-1)[0]
+        : '') ||
+      node.id
+    );
+  }
   if (node.type.toLowerCase() !== 'column') {
     return node.label;
   }
@@ -129,6 +140,8 @@ export const getMappingCoverage = (
       return 'mapped';
     }
     if (data.truncated || (inspectedIds && !inspectedIds.has(id))) {
+      // Outside the current traversal depth or truncated — we didn't look,
+      // so this is an "unknown" bucket, not a missing-data gap.
       return 'unknown';
     }
 
@@ -195,55 +208,28 @@ export const restrictToEntityLevel = (
   };
 };
 
-export const filterGraphPresentation = (
-  data: GraphData | null,
-  rootId: string,
-  excludedFamilies: RelationCategory[],
-  coverage: Map<string, MappingCoverage>,
-  coverageMode: string
-): GraphData | null => {
+export const relabelGraphNodes = (data: GraphData | null): GraphData | null => {
   if (!data) {
     return null;
   }
-  const nodeTypes = new Map(data.nodes.map((node) => [node.id, node.type]));
-  const edges = data.edges.filter(
-    (edge) =>
-      !excludedFamilies.includes(getGraphRelationCategory(edge, nodeTypes))
-  );
-  const connected = new Set([
-    rootId,
-    ...edges.flatMap((edge) => [edge.from, edge.to]),
-  ]);
-  const matchesCoverage = (node: GraphNode) =>
-    node.id === rootId ||
-    !isCoverageNode(node) ||
-    !['mapped', 'unmapped'].includes(coverageMode) ||
-    coverage.get(node.id) === coverageMode;
-  const nodes = data.nodes.filter(
-    (node) =>
-      (!excludedFamilies.length || connected.has(node.id)) &&
-      matchesCoverage(node)
-  );
-  const visible = new Set(nodes.map((node) => node.id));
 
   return {
     ...data,
-    nodes: nodes.map((node) => ({ ...node, label: getGraphNodeLabel(node) })),
-    edges: edges.filter(
-      (edge) => visible.has(edge.from) && visible.has(edge.to)
-    ),
+    nodes: data.nodes.map((node) => ({
+      ...node,
+      label: getGraphNodeLabel(node),
+    })),
   };
 };
 
 export const annotateGraphCoverage = (
   data: GraphData,
   coverage: Map<string, MappingCoverage>,
-  rootId: string,
-  highlight: boolean
+  rootId: string
 ): GraphData => ({
   ...data,
   nodes: data.nodes.map((node) => {
-    if (!node.presentation || (!highlight && node.id !== rootId)) {
+    if (!node.presentation || node.id !== rootId) {
       return node;
     }
     const members = node.presentation.members ?? [node];

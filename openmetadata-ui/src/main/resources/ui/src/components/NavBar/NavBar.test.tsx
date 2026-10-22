@@ -76,11 +76,6 @@ jest.mock('../../utils/FqnUtils', () => ({
 jest.mock('../../utils/RouterUtils', () => ({
   refreshPage: jest.fn(),
   getEntityDetailLink: jest.fn(),
-  isLandingPagePath: jest
-    .fn()
-    .mockImplementation(
-      (pathname: string) => pathname === '/' || pathname === '/my-data'
-    ),
 }));
 jest.mock('../../utils/FeedUtilsPure', () => ({
   getEntityFQN: jest.fn().mockReturnValue('entityFQN'),
@@ -226,7 +221,7 @@ describe('Test NavBar Component', () => {
   it('Should render NavBar component', async () => {
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
     expect(await screen.findByTestId('user-profile-icon')).toBeInTheDocument();
     expect(
       await screen.findByTestId('whats-new-alert-card')
@@ -245,27 +240,29 @@ describe('Test NavBar Component', () => {
     expect(getHelpDropdownItems).toHaveBeenCalled();
   });
 
-  it('should hide global search bar and domain dropdown on my-data route', () => {
+  // The landing page carries neither a search bar nor a domain control of its
+  // own any more, so the navbar is the only place either one can live there.
+  it('should show global search bar and domain dropdown on my-data route', async () => {
     mockUseCustomLocation.pathname = '/my-data';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on the root landing route', () => {
+  it('should show global search bar and domain dropdown on the root landing route', async () => {
     mockUseCustomLocation.pathname = '/';
     mockUseCustomLocation.search = 'search';
 
     render(<NavBarComponent />);
 
-    expect(screen.queryByTestId('global-search-bar')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-dropdown')).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-bar')).toBeInTheDocument();
+    expect(await screen.findByTestId('domain-dropdown')).toBeInTheDocument();
   });
 
-  it('should hide global search bar and domain dropdown on customize-page route', async () => {
+  it('should show global search bar and domain dropdown on customize-page route', async () => {
     mockUseCustomLocation.pathname = '/customize-page/test-domain/test-page';
     mockUseCustomLocation.search = 'search';
 

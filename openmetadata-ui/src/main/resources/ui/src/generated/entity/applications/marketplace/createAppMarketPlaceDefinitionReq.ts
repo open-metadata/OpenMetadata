@@ -328,7 +328,7 @@ export interface CollateAIAppConfig {
     /**
      * Force cache warmup even if another instance is detected (use with caution).
      *
-     * Materialize every enabled rule even when its durable dirty flag is clear.
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -366,7 +366,8 @@ export interface CollateAIAppConfig {
      */
     relationshipIsolationMaxFailures?: number;
     /**
-     * Optional rule name for an on-demand single-rule run.
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
      */
     ruleName?: string;
     /**
@@ -1358,6 +1359,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }
@@ -1399,7 +1401,9 @@ export interface CreateEventSubscription {
      */
     batchSize?: number;
     /**
-     * Consumer Class for the Event Subscription. Will use 'AlertPublisher' if not provided.
+     * Id of the registered consumer that runs this Event Subscription. Will use `alert`, the
+     * consumer that sends its notifications, if not provided. A Java class name a consumer was
+     * once stored under is accepted and saved as its id; any other name is rejected.
      */
     className?: string;
     config?:    { [key: string]: any };

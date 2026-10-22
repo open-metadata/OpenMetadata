@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import {
   Control,
@@ -29,12 +23,8 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import {
   ContextMemory,
-  EntityStatus,
+  ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
-import {
-  getMemoryOntologyProposalStatus,
-  proposeTermFromMemory,
-} from '../../../rest/ontologyAPI';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({
@@ -65,11 +55,6 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   createContextMemory: jest.fn(),
   updateContextMemory: jest.fn(),
   deleteContextMemory: jest.fn(),
-}));
-
-jest.mock('../../../rest/ontologyAPI', () => ({
-  getMemoryOntologyProposalStatus: jest.fn(),
-  proposeTermFromMemory: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -130,9 +115,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
-  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
+  Box: jest.fn(
+    ({
+      children,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      'data-testid'?: string;
+    }) => <div data-testid={testId}>{children}</div>
+  ),
   Button: jest.fn(
     ({
       children,
@@ -335,9 +326,6 @@ describe('CreateMemoryModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (getMemoryOntologyProposalStatus as jest.Mock).mockImplementation(
-      () => new Promise(() => {})
-    );
   });
 
   it('renders the content input', () => {
@@ -376,14 +364,13 @@ describe('CreateMemoryModal', () => {
       </MemoryRouter>
     );
 
-    const derivedOntology = screen.getByTestId('memory-derived-ontology');
+    const derivedTerm = screen.getByTestId('memory-derived-term');
 
-    expect(derivedOntology).toBeInTheDocument();
+    expect(derivedTerm).toHaveTextContent('label.derived-term');
     expect(
       screen
         .getByTestId('memory-metadata-section')
-        .compareDocumentPosition(derivedOntology) &
-        Node.DOCUMENT_POSITION_FOLLOWING
+        .compareDocumentPosition(derivedTerm) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
 
     const termLink = screen.getByRole('link', {
@@ -400,7 +387,7 @@ describe('CreateMemoryModal', () => {
     expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('hides Propose Term when the memory already has an applied term', async () => {
+  it('shows no derived term section when no glossary term came from the memory', () => {
     const memory = {
       id: 'memory-id',
       name: 'churn-risk-score',
@@ -408,369 +395,60 @@ describe('CreateMemoryModal', () => {
       shareConfig: { visibility: 'Entity' },
       derivedEntities: [
         {
-          id: 'term-id',
-          type: 'glossaryTerm',
+          id: 'concept-id',
+          type: 'ontologyConcept',
           name: 'churn_risk_score',
           fullyQualifiedName: 'business.churn_risk_score',
         },
       ],
     } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: false,
-    });
 
     render(
       <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          isAdminUser
-          viewOnly
-          memoryToEdit={memory}
-        />
+        <CreateMemoryModal {...defaultProps} viewOnly memoryToEdit={memory} />
       </MemoryRouter>
     );
 
-    expect(
-      await screen.findByRole('link', { name: 'churn_risk_score' })
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('memory-metadata-section')).toBeInTheDocument();
+    expect(screen.queryByTestId('memory-derived-term')).not.toBeInTheDocument();
   });
 
-  it('lets the creator propose a restricted memory for Studio review', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      entityStatus: EntityStatus.Approved,
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (proposeTermFromMemory as jest.Mock).mockResolvedValue({ id: 42 });
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: false,
-    });
+  it.each<[ContextMemoryStatus, string]>([
+    [ContextMemoryStatus.Deprecated, 'label.deprecated'],
+    [ContextMemoryStatus.Superseded, 'label.superseded'],
+  ])(
+    'shows why a %s memory was replaced and links to its successor',
+    (status, label) => {
+      render(
+        <MemoryRouter>
+          <CreateMemoryModal
+            {...defaultProps}
+            viewOnly
+            memoryToEdit={{
+              id: 'old-memory',
+              name: 'old-memory',
+              entityStatus: status,
+              statusReason: 'The replacement has the corrected definition.',
+              supersededBy: {
+                id: 'new-memory',
+                type: 'contextMemory',
+                name: 'new-memory',
+              },
+            }}
+          />
+        </MemoryRouter>
+      );
 
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    const proposeButton = await screen.findByRole('button', {
-      name: 'label.propose-term',
-    });
-
-    expect(
-      screen.getByText('message.memory-proposal-reviewer-visibility')
-    ).toBeInTheDocument();
-
-    fireEvent.click(proposeButton);
-    await waitFor(() =>
-      expect(proposeTermFromMemory).toHaveBeenCalledWith('memory-id')
-    );
-  });
-
-  it('links an open Studio draft and hides the proposal action', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [
-        {
-          changeSet: {
-            id: 'draft-id',
-            name: 'memory-glossary-16',
-            type: 'ontologyChangeSet',
-          },
-          terms: ['Inactive Customer'],
-        },
-      ],
-      queued: false,
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    const draftLink = await screen.findByRole('link', {
-      name: 'label.draft: Inactive Customer',
-    });
-
-    expect(draftLink).toHaveAttribute(
-      'href',
-      '/governance/ontology?draft=draft-id'
-    );
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('message.no-derived-ontology')
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(draftLink);
-
-    expect(defaultProps.onClose).toHaveBeenCalledTimes(1);
-  });
-
-  it('offers proposal for a file-derived entity memory with no draft', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'metrics.md-f02e2a5c',
-      entityStatus: 'Approved',
-      shareConfig: { visibility: 'Entity' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: false,
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          isAdminUser
-          viewOnly
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByRole('button', { name: 'label.propose-term' })
-    ).toBeInTheDocument();
-  });
-
-  it.each([
-    EntityStatus.Draft,
-    EntityStatus.Archived,
-    EntityStatus.Deprecated,
-    EntityStatus.Rejected,
-  ])('hides proposal action for status %s', async (status) => {
-    const memory = {
-      id: 'memory-id',
-      name: 'retired-memory',
-      entityStatus: status,
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Entity' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: false,
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          isAdminUser
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() =>
-      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
-    );
-    await act(async () => Promise.resolve());
-
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('keeps proposal action unavailable while derivation is queued', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: true,
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('label.queued')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('hides proposal actions when memory derivation is disabled', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: false,
-      proposals: [],
-      queued: false,
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() =>
-      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
-    );
-
-    expect(
-      screen.queryByTestId('memory-derived-ontology')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('explains why the last proposal attempt produced nothing', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockResolvedValue({
-      enabled: true,
-      proposals: [],
-      queued: false,
-      lastJob: { result: 'NO_NEW_TERMS', completedAt: 1 },
-    });
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    expect(
-      await screen.findByText('message.memory-proposal-no-new-terms')
-    ).toBeInTheDocument();
-  });
-
-  it('keeps the memory readable when proposal status cannot load', async () => {
-    const memory = {
-      id: 'memory-id',
-      name: 'inactive-customer',
-      owners: [{ id: 'admin-id', type: 'user', name: 'admin' }],
-      shareConfig: { visibility: 'Shared' },
-      derivedEntities: [],
-    } as ContextMemory;
-    (getMemoryOntologyProposalStatus as jest.Mock).mockRejectedValue(
-      new Error('forbidden')
-    );
-
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          currentUserName="admin"
-          memoryToEdit={memory}
-        />
-      </MemoryRouter>
-    );
-
-    await waitFor(() =>
-      expect(getMemoryOntologyProposalStatus).toHaveBeenCalledWith('memory-id')
-    );
-
-    expect(
-      screen.queryByText('server.unexpected-error')
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: 'label.propose-term' })
-    ).not.toBeInTheDocument();
-  });
-
-  it('shows why a memory was superseded and links to its successor', () => {
-    render(
-      <MemoryRouter>
-        <CreateMemoryModal
-          {...defaultProps}
-          viewOnly
-          memoryToEdit={{
-            id: 'old-memory',
-            name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
-            statusReason: 'The replacement has the corrected definition.',
-            supersededBy: {
-              id: 'new-memory',
-              type: 'contextMemory',
-              name: 'new-memory',
-            },
-          }}
-        />
-      </MemoryRouter>
-    );
-
-    expect(screen.getByText('label.deprecated')).toBeInTheDocument();
-    expect(
-      screen.getByText('The replacement has the corrected definition.')
-    ).toBeInTheDocument();
-    expect(screen.getByText('new-memory')).toHaveAttribute(
-      'href',
-      '/context-center/memories?memory=new-memory'
-    );
-  });
+      expect(screen.getByText(label)).toBeInTheDocument();
+      expect(
+        screen.getByText('The replacement has the corrected definition.')
+      ).toBeInTheDocument();
+      expect(screen.getByText('new-memory')).toHaveAttribute(
+        'href',
+        '/context-center/memories?memory=new-memory'
+      );
+    }
+  );
 
   it('keeps the other Context Center parameters when opening the successor', () => {
     render(
@@ -782,7 +460,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',
@@ -808,7 +486,7 @@ describe('CreateMemoryModal', () => {
           memoryToEdit={{
             id: 'old-memory',
             name: 'old-memory',
-            entityStatus: EntityStatus.Deprecated,
+            entityStatus: ContextMemoryStatus.Deprecated,
             supersededBy: {
               id: 'new-memory',
               type: 'contextMemory',

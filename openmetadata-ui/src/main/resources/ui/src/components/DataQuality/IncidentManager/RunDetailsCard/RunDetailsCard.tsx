@@ -11,22 +11,38 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   BadgeWithDot,
   Box,
+  Button,
   Card,
+  ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { isUndefined } from 'lodash';
+import type { TFunction } from 'i18next';
+import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   TestCase,
   TestCaseErrorDetails,
+  TestCaseEvaluationScope,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  getRunScopeBadges,
+  getRunThresholdData,
+  RunThresholdData,
+  ThresholdNoun,
+  ThresholdSamplingKind,
+  ThresholdTestSemantic,
+  THRESHOLD_COUNT_NOUN_KEYS,
+} from '../../../../utils/observability/data-quality/testCaseThreshold.utils';
+import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
+import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -50,13 +66,14 @@ interface RunDetailsCardProps {
 
 const RunDuration = ({
   duration,
-  errorType,
+  errorDetails,
 }: {
-  duration: number;
-  errorType?: string;
+  duration?: number;
+  errorDetails?: TestCaseErrorDetails;
 }) => {
   const { t } = useTranslation();
-  const text = formatRunDuration(duration);
+  // The slot stays for a run with no duration yet, a queued one, as in the mock.
+  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
 
   return (
     <Box
@@ -66,7 +83,7 @@ const RunDuration = ({
       gap={1}>
       <Clock aria-hidden className="tw:size-3.5" />
       <Typography size="text-xs">
-        {isTimeoutError(errorType)
+        {isTimeoutError(errorDetails?.errorType, errorDetails?.message)
           ? t('label.duration-with-timeout', { duration: text })
           : text}
       </Typography>
@@ -74,12 +91,17 @@ const RunDuration = ({
   );
 };
 
+const quietWhenUnknown = (text: string, className: string) =>
+  text === NO_VALUE ? 'tw:text-quaternary' : className;
+
 const ComparisonBars = ({
   bars,
   barClassName,
+  valueClassName,
 }: {
   bars: ComparisonBar[];
   barClassName: string;
+  valueClassName: string;
 }) => {
   const { t } = useTranslation();
 
@@ -96,27 +118,257 @@ const ComparisonBars = ({
               {t(`label.${kind}`)}
             </Typography>
             <Typography
-              className="tw:font-mono tw:text-secondary"
+              className={classNames(
+                'tw:font-mono',
+                kind === 'found' ? valueClassName : 'tw:text-secondary'
+              )}
+              data-testid={`run-details-${kind}-value`}
               size="text-xs">
               {value.toLocaleString()}
             </Typography>
           </Box>
           {/* Decorative: the numbers are already stated in text. */}
-          <div
+          <Box
             aria-hidden
-            className="tw:h-2.5 tw:overflow-hidden tw:rounded-full tw:bg-quaternary">
-            <div
-              className={classNames(
-                'tw:h-full tw:rounded-full',
+            data-testid={`run-details-${kind}-bar`}
+            direction="col">
+            <ProgressBarBase
+              className="tw:h-2.5 tw:rounded-full"
+              progressClassName={classNames(
+                'tw:rounded-full',
                 kind === 'found' ? barClassName : 'tw:bg-fg-quaternary'
               )}
-              style={{ width: `${width}%` }}
+              value={width}
             />
-          </div>
+          </Box>
         </Box>
       ))}
     </Box>
   );
+};
+
+interface DetailCell {
+  className: string;
+  labelKey: string;
+  testId: string;
+  value: string;
+  weight?: 'medium' | 'semibold';
+}
+
+const DetailCells = ({ cells }: { cells: DetailCell[] }) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      {cells.map(({ className, labelKey, testId, value, weight }) => (
+        <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
+          <Typography
+            className="tw:text-quaternary"
+            size="text-xs"
+            weight="medium">
+            {t(labelKey)}
+          </Typography>
+          <Typography
+            className={classNames('tw:font-mono', className)}
+            data-testid={testId}
+            size="text-xs"
+            weight={weight ?? 'semibold'}>
+            {value}
+          </Typography>
+        </Box>
+      ))}
+    </>
+  );
+};
+
+/**
+ * Which rows the run read, when that was not the whole table. Read from the
+ * run's own record, so an older run keeps the scope it actually had.
+ */
+const RunScopeBadges = ({ scope }: { scope?: TestCaseEvaluationScope }) => {
+  const { t } = useTranslation();
+  const badges = getRunScopeBadges(scope);
+
+  if (!badges) {
+    return null;
+  }
+
+  const { sample, isPartitioned, partitionColumn } = badges;
+  let sampleLabel = t('label.sampled');
+  if (sample && !isUndefined(sample.value)) {
+    sampleLabel =
+      sample.kind === ThresholdSamplingKind.StaticRows
+        ? t('label.row-sample-of', { value: formatNumber(sample.value) })
+        : t('label.percentage-sample-of', { value: sample.value });
+  }
+
+  return (
+    <Box align="center" gap={2}>
+      {sample && (
+        <Badge
+          color="blue"
+          data-testid="run-details-sampled-badge"
+          size="sm"
+          type="pill-color">
+          {sampleLabel}
+        </Badge>
+      )}
+      {isPartitioned && (
+        <Badge
+          color="blue"
+          data-testid="run-details-partitioned-badge"
+          size="sm"
+          type="pill-color">
+          {partitionColumn
+            ? t('label.partitioned-on', { column: partitionColumn })
+            : t('label.partitioned')}
+        </Badge>
+      )}
+    </Box>
+  );
+};
+
+const PRIMARY_VALUE = 'tw:text-primary';
+
+const knownOrQuiet = (
+  labelKey: string,
+  testId: string,
+  value: string | undefined,
+  className = PRIMARY_VALUE
+): DetailCell => ({
+  className: quietWhenUnknown(value ?? NO_VALUE, className),
+  labelKey,
+  testId,
+  value: value ?? NO_VALUE,
+});
+
+/** "1.20% (120 row(s))", led by the threshold's own unit so the two read alike. */
+const formatFailed = (
+  { isPercentage, failedRows, failedPercentage }: RunThresholdData,
+  countOf: (value: number) => string,
+  t: TFunction
+): string | undefined => {
+  const share = isUndefined(failedPercentage)
+    ? undefined
+    : t('label.percentage-value', { value: failedPercentage.toFixed(2) });
+  const count = isUndefined(failedRows) ? undefined : countOf(failedRows);
+  const [lead, aside] = isPercentage ? [share, count] : [count, share];
+
+  return lead && aside ? `${lead} (${aside})` : lead ?? aside;
+};
+
+const getRowCountableCells = (
+  data: RunThresholdData,
+  valueClassName: string,
+  t: TFunction
+): DetailCell[] => {
+  const { evaluatedRows, populationNoun = ThresholdNoun.Rows } = data;
+  const countOf = (value: number) =>
+    t('message.threshold-amount-absolute', {
+      value: formatNumber(value),
+      noun: t(THRESHOLD_COUNT_NOUN_KEYS[populationNoun]),
+    });
+
+  return [
+    knownOrQuiet(
+      'label.failed',
+      'run-details-failed',
+      formatFailed(data, countOf, t),
+      valueClassName
+    ),
+    knownOrQuiet(
+      'label.evaluated',
+      'run-details-evaluated',
+      isUndefined(evaluatedRows) ? undefined : countOf(evaluatedRows)
+    ),
+  ];
+};
+
+const getStatisticalCells = ({
+  threshold,
+  configuredRange,
+  effectiveRange,
+}: RunThresholdData): DetailCell[] => {
+  const cells = [
+    knownOrQuiet(
+      'label.configured-range',
+      'run-details-configured-range',
+      configuredRange
+    ),
+  ];
+  // Without a tolerance the effective range is the configured one.
+  if (threshold > 0) {
+    cells.push(
+      knownOrQuiet(
+        'label.effective-range',
+        'run-details-effective-range',
+        effectiveRange
+      )
+    );
+  }
+
+  return cells;
+};
+
+/**
+ * The threshold the run was judged by, beside what it measured against it:
+ * the failing share and the population for a row tolerance, the configured
+ * and widened bound for a deviation. Nothing for a test that reads no
+ * tolerance, or a run that computed no verdict.
+ */
+const RunThreshold = ({
+  testCase,
+  result,
+  valueClassName,
+}: {
+  testCase: TestCase;
+  result: RunResult;
+  valueClassName: string;
+}) => {
+  const { t } = useTranslation();
+  const data = getRunThresholdData(testCase, result);
+
+  if (!data) {
+    return null;
+  }
+
+  const { semantic, threshold, isPercentage, noun } = data;
+  const cells: DetailCell[] = [
+    {
+      className: PRIMARY_VALUE,
+      labelKey: 'label.threshold',
+      testId: 'run-details-threshold',
+      value:
+        threshold > 0
+          ? formatThresholdAmount(threshold, isPercentage, noun, t)
+          : t('label.no-tolerance'),
+    },
+    ...(semantic === ThresholdTestSemantic.RowCountable
+      ? getRowCountableCells(data, valueClassName, t)
+      : getStatisticalCells(data)),
+  ];
+
+  return (
+    <div
+      className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:border-t tw:border-secondary tw:pt-4 tw:@lg:grid-cols-4"
+      data-testid="run-details-threshold-section">
+      <DetailCells cells={cells} />
+    </div>
+  );
+};
+
+/** A sampled verdict says so in words, not only in the header's badge. */
+const RunSampleNote = ({ scope }: { scope?: TestCaseEvaluationScope }) => {
+  const { t } = useTranslation();
+
+  return scope?.sampled ? (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="run-details-sample-note"
+      size="text-xs">
+      {t('message.run-evaluated-on-sample')}
+    </Typography>
+  ) : null;
 };
 
 const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
@@ -154,7 +406,14 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const selectedRunTimestamp = useTestCaseStore(
     (state) => state.selectedRunTimestamp
   );
+  const setSelectedRunTimestamp = useTestCaseStore(
+    (state) => state.setSelectedRunTimestamp
+  );
   const result = getSelectedRun(results, selectedRunTimestamp);
+  // A run picked on the chart that is not the newest says so, with the way back.
+  const isOlderRunSelected =
+    !isUndefined(result) &&
+    result.timestamp !== maxBy(results, 'timestamp')?.timestamp;
   const status = result?.testCaseStatus;
 
   if (!result || !status) {
@@ -170,18 +429,19 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
     result
   );
   const valueClassName = (text: string) =>
-    text === NO_VALUE ? 'tw:text-quaternary' : style.valueClassName;
+    quietWhenUnknown(text, style.valueClassName);
 
-  const details = [
+  const details: DetailCell[] = [
     {
       // A camel-case name may break anywhere; numbers below only between words.
       className: 'tw:break-words tw:font-medium tw:text-primary',
-      labelKey: 'label.test-definition',
+      weight: 'medium',
+      labelKey: 'label.test-definition-sentence',
       testId: 'run-details-definition',
       value: testCase.testDefinition?.name ?? NO_VALUE,
     },
     {
-      className: 'tw:text-primary',
+      className: quietWhenUnknown(expectedText, PRIMARY_VALUE),
       labelKey: 'label.expected',
       testId: 'run-details-expected',
       value: expectedText,
@@ -209,7 +469,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
       data-testid="run-details-card">
       <Box
         align="center"
-        className="tw:border-b tw:border-inherit tw:px-4 tw:py-3"
+        className="tw:border-b tw:border-inherit tw:px-4 tw:py-4"
         gap={3}
         wrap="wrap">
         {/* White on the tinted header, as in the mock; text, border and dot keep the status colour. */}
@@ -229,40 +489,55 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
           weight="semibold">
           {t('label.run-details')}
         </Typography>
-        <Typography className="tw:text-tertiary" size="text-sm">
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="run-details-date"
+          size="text-sm">
           {formatDateTime(result.timestamp)}
         </Typography>
-        {!isUndefined(duration) && (
-          <RunDuration
-            duration={duration}
-            errorType={errorDetails?.errorType}
-          />
+        {isOlderRunSelected && (
+          <Box align="center" gap={2}>
+            <Badge
+              color="gray"
+              data-testid="run-details-selected"
+              size="sm"
+              type="pill-color">
+              {t('label.selected-run')}
+            </Badge>
+            <Button
+              color="link-color"
+              data-testid="run-details-back-to-latest"
+              size="sm"
+              onPress={() => setSelectedRunTimestamp(undefined)}>
+              {t('label.back-to-latest')}
+            </Button>
+          </Box>
         )}
+        <RunScopeBadges scope={result.evaluationScope} />
+        <RunDuration duration={duration} errorDetails={errorDetails} />
       </Box>
       <Box
         className="tw:@container tw:bg-surface tw:p-4"
         direction="col"
         gap={4}>
-        <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:@lg:grid-cols-[max-content_repeat(3,minmax(min-content,1fr))]">
-          {details.map(({ className, labelKey, testId, value }) => (
-            <Box className="tw:min-w-0" direction="col" gap={1} key={labelKey}>
-              <Typography
-                className="tw:text-quaternary"
-                size="text-xs"
-                weight="medium">
-                {t(labelKey)}
-              </Typography>
-              <Typography
-                className={classNames('tw:font-mono', className)}
-                data-testid={testId}
-                size="text-sm">
-                {value}
-              </Typography>
-            </Box>
-          ))}
+        {/* Four columns, as the mock sets them, but the definition's never
+            narrower than its name, or a camel-case name breaks mid-word.
+            Two in a narrow card. */}
+        <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
+          <DetailCells cells={details} />
         </div>
+        <RunThreshold
+          result={result}
+          testCase={testCase}
+          valueClassName={style.valueClassName}
+        />
+        <RunSampleNote scope={result.evaluationScope} />
         {bars.length > 0 && (
-          <ComparisonBars barClassName={style.barClassName} bars={bars} />
+          <ComparisonBars
+            barClassName={style.barClassName}
+            bars={bars}
+            valueClassName={style.valueClassName}
+          />
         )}
         {status === TestCaseStatus.Aborted ? (
           <RunExecutionError

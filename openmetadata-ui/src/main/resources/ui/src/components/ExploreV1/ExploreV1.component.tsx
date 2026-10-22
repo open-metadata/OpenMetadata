@@ -59,7 +59,7 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE, SORT_ORDER } from '../../enums/common.enum';
+import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -79,11 +79,12 @@ import {
 import searchClassBase from '../../utils/SearchClassBase';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import { DomainFilterChip } from '../common/DomainFilterChip/DomainFilterChip.component';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   CSV_JOBS_REFRESH_EVENT,
   markCsvJobOwned,
 } from '../common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
-import FilterErrorPlaceHolder from '../common/ErrorWithPlaceholder/FilterErrorPlaceHolder';
 import Loader from '../common/Loader/Loader';
 import ResizableLeftPanels from '../common/ResizablePanels/ResizableLeftPanels';
 import {
@@ -217,7 +218,7 @@ const ExploreExportScopeModal = ({
           onClose={onCancel}>
           <Dialog.Header
             className={classNames(
-              'tw:border-b tw:border-[var(--om-legacy-color-dde3ea)] tw:px-6 tw:py-4',
+              'tw:border-b tw:border-secondary tw:px-6 tw:py-4',
               'tw:sm:px-6 tw:sm:pt-4 tw:*:font-medium! tw:*:leading-[22px]!',
               'tw:*:text-black/85! tw:dark:border-subtle tw:dark:*:text-primary!'
             )}>
@@ -331,7 +332,7 @@ const ExploreExportScopeModal = ({
               </CoreCard>
             </RadioGroup>
           </Dialog.Content>
-          <Dialog.Footer className="tw:mt-0 tw:border-[var(--om-legacy-color-dde3ea)] tw:sm:mt-0 tw:dark:border-subtle tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
+          <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
               className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
               color="tertiary"
@@ -409,6 +410,7 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
+          <DomainFilterChip className="tw:mt-2" />
         </div>
       )}
       {isElasticSearchIssue ? (
@@ -892,7 +894,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   );
   const sortProps = useMemo(
     () => ({
-      className: 'text-base',
+      className: 'text-base tw:text-fg-secondary',
       'data-testid': 'last-updated',
     }),
     []
@@ -1094,10 +1096,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
       return loading ? (
         <Loader />
       ) : (
-        <FilterErrorPlaceHolder
-          className="h-min-80 d-flex flex-col justify-center border-none"
-          size={SIZE.MEDIUM}
-        />
+        <div className="tw:relative tw:min-h-80">
+          <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+        </div>
       );
     }
 
@@ -1263,7 +1264,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
               }
               fields={quickFilterFields}
               fieldsWithNullValues={SUPPORTED_EMPTY_FILTER_FIELDS}
-              helperText={t('message.pick-values-to-refine')}
               index={activeTabKey}
               showDeleted={showDeleted}
               onAdvanceSearch={() => toggleModal(true)}
@@ -1289,9 +1289,9 @@ const ExploreV1: React.FC<ExploreProps> = ({
               data-testid="sort-order-button"
               iconLeading={
                 isAscSortOrder ? (
-                  <IconAscending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconAscending {...sortProps} />
                 ) : (
-                  <IconDescending style={{ fontSize: '14px' }} {...sortProps} />
+                  <IconDescending {...sortProps} />
                 )
               }
               size="sm"
@@ -1317,7 +1317,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Button
                 hideFocusOutline
                 color="tertiary"
-                iconTrailing={<ChevronDown size={14} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.tool-plural')}
               </Button>

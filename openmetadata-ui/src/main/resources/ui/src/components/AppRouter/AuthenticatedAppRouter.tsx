@@ -28,11 +28,6 @@ import AdminProtectedRoute from './AdminProtectedRoute';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
 
 // Previously statically imported — lazify so they stay out of the main chunk
-const AddCustomMetricPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/AddCustomMetricPage/AddCustomMetricPage')
-  )
-);
 
 const CustomizablePage = withPageSuspenseFallback(
   React.lazy(() =>
@@ -233,6 +228,12 @@ const RequestDescriptionPage = withPageSuspenseFallback(
       import(
         '../../pages/TasksPage/RequestDescriptionPage/RequestDescriptionPage'
       )
+  )
+);
+
+const TaskDetailsPage = withPageSuspenseFallback(
+  React.lazy(
+    () => import('../../pages/entity/tasks/TaskDetailsPage/TaskDetailsPage')
   )
 );
 
@@ -507,23 +508,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={
           <AdminProtectedRoute
             hasPermission={checkPermission(
-              Operation.EditDataProfile,
-              ResourceEntity.TABLE,
-              permissions
-            )}>
-            <AddCustomMetricPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.custom-metric'),
-              })}
-            />
-          </AdminProtectedRoute>
-        }
-        path={ROUTES.ADD_CUSTOM_METRIC}
-      />
-      <Route
-        element={
-          <AdminProtectedRoute
-            hasPermission={checkPermission(
               Operation.Create,
               ResourceEntity.USER,
               permissions
@@ -542,6 +526,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.CREATE_USER_WITH_BOT}
       />
       <Route element={<BotDetailsPage />} path={ROUTES.BOTS_PROFILE} />
+      <Route element={<TaskDetailsPage />} path={ROUTES.TASK_DETAIL} />
       <Route
         element={<AddCustomProperty />}
         path={ROUTES.ADD_CUSTOM_PROPERTY}

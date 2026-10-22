@@ -40,6 +40,8 @@ interface NodeFormSidebarProps {
   setNodes?: (nodes: Node[] | ((nodes: Node[]) => Node[])) => void;
   setEdges?: (edges: Edge[] | ((edges: Edge[]) => Edge[])) => void;
   triggerFieldsConfig: WorkflowTriggerFieldsConfig;
+  isEnforceMode?: boolean;
+  hasGitSinkNode?: boolean;
   currentWorkflowConfig?: {
     dataAssets?: string[];
     triggerType?: string;
@@ -133,6 +135,8 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   setNodes,
   setEdges,
   triggerFieldsConfig,
+  isEnforceMode,
+  hasGitSinkNode,
   currentWorkflowConfig,
 }) => {
   const { t } = useTranslation();
@@ -181,6 +185,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
   if (isStartNode(node)) {
     return (
       <NodeConfigSidebar
+        hasGitSinkNode={hasGitSinkNode}
         isOpen={isOpen}
         node={node}
         setEdges={setEdges}
@@ -225,6 +230,7 @@ export const NodeFormSidebar: React.FC<NodeFormSidebarProps> = ({
             <Divider orientation="horizontal" />
             <TaskNodeFormRenderer
               entityTypes={entityTypes}
+              isEnforceMode={isEnforceMode}
               node={node}
               onClose={close}
               onDelete={setNodes && setEdges ? handleDeleteNode : undefined}

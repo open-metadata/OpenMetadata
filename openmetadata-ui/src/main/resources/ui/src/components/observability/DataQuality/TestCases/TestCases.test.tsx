@@ -26,6 +26,8 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Box: ({ children, direction, gap, className }: any) => (
     <div
       className={className}
@@ -38,23 +40,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   Plus: () => <span data-testid="plus-icon" />,
 }));
 
 jest.mock('pages/DataQuality/DataQualityProvider', () => ({
   useDataQualityProvider: () => mockUseDataQualityProvider(),
-}));
-
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: ({ type, permissionValue }: any) => (
-    <div
-      data-permission-value={permissionValue}
-      data-testid="error-placeholder"
-      data-type={type}>
-      error-placeholder
-    </div>
-  ),
 }));
 
 jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
@@ -63,11 +54,9 @@ jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
     isLoading,
     testCases,
     enableBulkActions,
-    editVariant,
     emptyStateAction,
   }: any) => (
     <div
-      data-edit-variant={editVariant}
       data-enable-bulk-actions={String(enableBulkActions)}
       data-is-loading={String(isLoading)}
       data-test-cases-count={testCases?.length ?? 0}
@@ -198,10 +187,9 @@ describe('TestCases', () => {
 
     render(<TestCases />);
 
-    const placeholder = screen.getByTestId('error-placeholder');
-
-    expect(placeholder).toBeInTheDocument();
-    expect(placeholder).toHaveAttribute('data-type', 'PERMISSION');
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('data-quality-tab')).not.toBeInTheDocument();
   });
 
@@ -214,7 +202,11 @@ describe('TestCases', () => {
     render(<TestCases />);
 
     expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).not.toBeInTheDocument();
   });
 
   it('should forward summary loading flag and summary to the summary panel', () => {
@@ -243,15 +235,6 @@ describe('TestCases', () => {
 
     expect(tab).toHaveAttribute('data-is-loading', 'true');
     expect(tab).toHaveAttribute('data-test-cases-count', '2');
-  });
-
-  it('should forward the modal edit variant to the data quality tab', () => {
-    render(<TestCases />);
-
-    expect(screen.getByTestId('data-quality-tab')).toHaveAttribute(
-      'data-edit-variant',
-      'modal'
-    );
   });
 
   it('should disable bulk actions when test suite create permission is missing', () => {

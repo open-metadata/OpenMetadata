@@ -10,17 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
 import {
   BadgeWithButton,
   Box,
+  Button,
+  Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Button, Col, Row, Space } from 'antd';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { Pressable } from 'react-aria-components';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n from '../../../utils/i18next/LocalUtil';
 
 interface RelatedDataAssetsFormProps {
@@ -83,30 +85,40 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
 
   return (
     <div data-testid="dataAssetsForm">
-      <Row gutter={[0, 8]}>
-        <Col className="gutter-row d-flex justify-end" span={24}>
-          <Space align="center">
+      <Grid
+        className="layout-row layout-grid"
+        style={{ ...getLayoutGutter(0, 8) }}>
+        <Grid.Item
+          className="layout-column gutter-row d-flex justify-end"
+          span={24}>
+          <Box
+            inline
+            align="center"
+            className="layout-space layout-space-horizontal"
+            gap={2}
+            itemClassName="layout-space-item">
             <Button
-              className="p-x-05"
+              aria-label={t('label.cancel')}
+              color="secondary"
               data-testid="cancelDataAssets"
-              disabled={isSubmitLoading}
-              icon={<CloseOutlined size={12} />}
-              size="small"
+              iconLeading={<XClose size={12} />}
+              isDisabled={isSubmitLoading}
+              size="xs"
               onClick={onCancel}
             />
             <Button
-              className="p-x-05"
+              aria-label={t('label.save')}
+              color="primary"
               data-testid="saveDataAssets"
-              icon={<CheckOutlined size={12} />}
-              loading={isSubmitLoading}
-              size="small"
-              type="primary"
+              iconLeading={<Check size={12} />}
+              isLoading={isSubmitLoading}
+              size="xs"
               onClick={handleSubmit}
             />
-          </Space>
-        </Col>
+          </Box>
+        </Grid.Item>
 
-        <Col className="gutter-row" span={24}>
+        <Grid.Item className="layout-column gutter-row" span={24}>
           <DataAssetSelectList
             initialOptions={initialOptions}
             placeholder={placeholder}
@@ -116,7 +128,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
               <Pressable onClick={open}>
                 <Box
                   align="center"
-                  className="tw:relative tw:w-full tw:bg-primary tw:px-3 tw:py-1.5 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
+                  className="tw:relative tw:w-full tw:min-h-10 tw:rounded-lg tw:bg-primary tw:shadow-xs tw:px-3 tw:py-2 tw:outline-1 tw:-outline-offset-1 tw:outline-primary"
                   gap={2}
                   wrap="wrap">
                   {chipItems.length > 0 ? (
@@ -158,8 +170,8 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
             value={selected}
             onChange={handleChange}
           />
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
     </div>
   );
 };

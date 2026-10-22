@@ -414,6 +414,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
 
         const { data, paging } = await listConversations({
           entityLink: getConversationsEntityLink(entityType, fqn),
+          includeFields: true,
           after,
           filterType: getConversationsFilterType(feedFilterType, userId),
           userId,

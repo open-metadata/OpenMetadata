@@ -44,7 +44,6 @@ import {
   IMPACT_ANALYSIS_STATIC_COLUMNS,
 } from '../../constants/Lineage.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SIZE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../generated/tests/testCase';
@@ -83,7 +82,7 @@ import searchClassBase from '../../utils/SearchClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { DomainLabel } from '../common/DomainLabel/DomainLabel.component';
-import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
 import { ColumnsType } from '../common/Table/Table.interface';
@@ -337,7 +336,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           const value = [...(keys as Set<LineageDirection>)][0];
           if (value) {
             handlePageChange(1);
-            updateURLParams({ dir: value });
+            updateURLParams({
+              dir: value,
+              depth:
+                value === LineageDirection.Upstream
+                  ? lineageConfig.upstreamDepth
+                  : lineageConfig.downstreamDepth,
+            });
           }
         }}>
         {radioGroupOptions.map((option) => (
@@ -350,7 +355,14 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ))}
       </ButtonGroup>
     );
-  }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
+  }, [
+    handlePageChange,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+    lineageDirection,
+    radioGroupOptions,
+    updateURLParams,
+  ]);
 
   // Column-level filter keys used for column_filter post-processing
   // On Table-level: only COLUMN goes to column_filter (for Column dropdown in post-processing)
@@ -635,21 +647,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   useEffect(() => {
     updateEntityDataRef.current(entityType, entity, false);
   }, [entityType, entity]);
-
-  // Sync node depth with lineageConfig
-  useEffect(() => {
-    updateURLParams({
-      depth:
-        lineageDirection === LineageDirection.Upstream
-          ? lineageConfig.upstreamDepth
-          : lineageConfig.downstreamDepth,
-    });
-  }, [
-    lineageConfig.downstreamDepth,
-    lineageConfig.upstreamDepth,
-    lineageDirection,
-    updateURLParams,
-  ]);
 
   const nodeDepthOptions = useMemo(() => {
     return (
@@ -1034,7 +1031,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
           loading={loading}
           locale={{
-            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+            emptyText: (
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                <NoDataPlaceholder data-testid="no-data-placeholder" />
+              </div>
+            ),
           }}
           pagination={false}
           rowKey={

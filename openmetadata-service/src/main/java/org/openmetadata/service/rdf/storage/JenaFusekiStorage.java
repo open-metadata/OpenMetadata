@@ -1652,9 +1652,25 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   @Override
+  public void replaceGraph(final String graphUri, final Model model) {
+    throwIfCircuitOpen("replaceGraph");
+    final String graph = requireAbsoluteGraphUri(graphUri).toString();
+    try {
+      runWriteWithRetry(() -> connection.put(graph, model), "replaceGraph");
+      recordSuccess();
+    } catch (RuntimeException failure) {
+      if (isCircuitBreakerFailure(failure)) {
+        recordFailure();
+      }
+      throw failure;
+    }
+  }
+
+  @Override
   public List<String> getAllGraphs() {
     throwIfCircuitOpen("getAllGraphs");
-    String query = "SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }";
+    // An empty GRAPH pattern lists graph names from the index instead of matching every quad.
+    String query = "SELECT ?g WHERE { GRAPH ?g { } }";
     List<String> graphs = new ArrayList<>();
 
     try (QueryExecution qexec = connection.query(query)) {

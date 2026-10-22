@@ -25,7 +25,6 @@ import { ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -50,8 +49,9 @@ import {
 } from '../../../utils/RouterUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -100,6 +100,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     hasViewPermission,
     hasDeletePermission,
     editDisplayNamePermission,
+    canRestorePermission,
     displayName,
     tabs,
     activeTab,
@@ -118,6 +119,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     extraDropdownContent,
     handleOwnerChange,
     handleDisplayNameChange,
+    handleRestore,
     getEntityFeedCount,
     setTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
@@ -156,9 +158,10 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         {key === TestCasePageTabs.TEST_CASE_RESULTS &&
           !isVersionPage &&
           !dimensionKey && (
-            <div
-              className="tw:pt-4 tw:pb-2.5"
-              data-testid="test-case-last-run-banner-tab-container">
+            <Box
+              className="tw:pt-4 tw:pb-5.5"
+              data-testid="test-case-last-run-banner-tab-container"
+              direction="col">
               <TestCaseLastRunBanner
                 hasEditStatusPermission={
                   incidentHeaderData.hasEditStatusPermission
@@ -172,9 +175,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 testCaseStatusData={incidentHeaderData.testCaseStatusData}
                 onAcknowledge={incidentHeaderData.handleAcknowledgeIncident}
               />
-            </div>
+            </Box>
           )}
-        <Tab editVariant="modal" showSidePanel={isTabExpanded} />
+        <Tab showSidePanel={isTabExpanded} />
       </>
     );
   }, [
@@ -295,18 +298,23 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-case'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-case'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testCase)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   const getPageTitle = () =>
@@ -458,8 +466,9 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                             observabilityRouterClassBase.getDataQualityPagePath()
                           )
                         }
-                        allowSoftDelete={false}
                         canDelete={hasDeletePermission}
+                        canRestore={canRestorePermission}
+                        deleted={testCase.deleted}
                         displayName={testCase.displayName}
                         editDisplayNamePermission={editDisplayNamePermission}
                         entityFQN={testCase.fullyQualifiedName}
@@ -468,6 +477,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                         entityType={EntityType.TEST_CASE}
                         extraDropdownContent={extraDropdownContent}
                         onEditDisplayName={handleDisplayNameChange}
+                        onRestoreEntity={handleRestore}
                       />
                     </>
                   )}
@@ -535,7 +545,6 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
         <TestCaseFormDrawer
           open={isDimensionEdit}
           testCase={testCase}
-          variant="modal"
           onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />

@@ -41,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -117,13 +118,15 @@ public class BundleWarmupBatcher {
   public record BatchResult(int success, int failed) {}
 
   public BatchResult warmupBatch(
-      final String entityType, final List<? extends EntityInterface> entities, final Duration ttl) {
+      final String entityType,
+      final List<? extends EntityInterface<?>> entities,
+      final Duration ttl) {
     if (entities == null || entities.isEmpty()) {
       return new BatchResult(0, 0);
     }
-    final Map<String, EntityInterface> entitiesByFqnHash = new HashMap<>(entities.size() * 2);
+    final Map<String, EntityInterface<?>> entitiesByFqnHash = new HashMap<>(entities.size() * 2);
     final List<String> fqnHashes = new ArrayList<>(entities.size());
-    for (final EntityInterface entity : entities) {
+    for (final EntityInterface<?> entity : entities) {
       if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
         continue;
       }
@@ -152,10 +155,10 @@ public class BundleWarmupBatcher {
     }
 
     final Map<String, String> bundleKeyValues = new HashMap<>(entitiesByFqnHash.size() * 2);
-    final String certClassification = resolveCertificationClassification();
+    final String certClassification = resolveCertificationClassification(entityType);
     int failed = 0;
-    for (final Map.Entry<String, EntityInterface> entry : entitiesByFqnHash.entrySet()) {
-      final EntityInterface entity = entry.getValue();
+    for (final Map.Entry<String, EntityInterface<?>> entry : entitiesByFqnHash.entrySet()) {
+      final EntityInterface<?> entity = entry.getValue();
       try {
         final CachedReadBundle.Dto dto = new CachedReadBundle.Dto();
         final Map<String, List<EntityReference>> warmedRelations =
@@ -208,7 +211,20 @@ public class BundleWarmupBatcher {
     return normal;
   }
 
-  private static String resolveCertificationClassification() {
+  private static String resolveCertificationClassification(String entityType) {
+    EntityRepository<? extends EntityInterface<?>> repository;
+    try {
+      repository = Entity.getEntityRepository(entityType);
+    } catch (Exception e) {
+      LOG.debug(
+          "Bundle warmup: no repository for entity type {}; cert tags will not be filtered",
+          entityType,
+          e);
+      return null;
+    }
+    if (!repository.isSupportsCertification()) {
+      return null;
+    }
     try {
       return SettingsCache.getSettingOrDefault(
               SettingsType.ASSET_CERTIFICATION_SETTINGS,
@@ -224,7 +240,7 @@ public class BundleWarmupBatcher {
   }
 
   private Map<UUID, Map<String, List<EntityReference>>> warmRelationships(
-      final String entityType, final Collection<EntityInterface> entities) {
+      final String entityType, final Collection<EntityInterface<?>> entities) {
     if (!warmRelationships) {
       return Collections.emptyMap();
     }
@@ -240,12 +256,12 @@ public class BundleWarmupBatcher {
     return relationsByEntity;
   }
 
-  private static List<String> entityIds(final Collection<EntityInterface> entities) {
-    return entities.stream().map(EntityInterface::getId).map(UUID::toString).toList();
+  private static List<String> entityIds(final Collection<EntityInterface<?>> entities) {
+    return entities.stream().map(EntityInterface<?>::getId).map(UUID::toString).toList();
   }
 
   private static Map<UUID, Map<String, List<EntityReference>>> initRelationsByEntity(
-      final Collection<EntityInterface> entities) {
+      final Collection<EntityInterface<?>> entities) {
     final Map<UUID, Map<String, List<EntityReference>>> relationsByEntity =
         new HashMap<>(entities.size() * 2);
     entities.forEach(entity -> relationsByEntity.put(entity.getId(), emptyRelationshipMap()));

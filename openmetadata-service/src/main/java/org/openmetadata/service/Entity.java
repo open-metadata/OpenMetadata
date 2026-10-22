@@ -15,7 +15,8 @@ package org.openmetadata.service;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTagsGracefully;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
@@ -79,6 +80,8 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.EssentialSeeds;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -94,7 +97,7 @@ public final class Entity {
   public static final String SEPARATOR = "."; // Fully qualified name separator
 
   // Canonical entity name to corresponding EntityRepository map
-  private static final Map<String, EntityRepository<? extends EntityInterface>>
+  private static final Map<String, EntityRepository<? extends EntityInterface<?>>>
       ENTITY_REPOSITORY_MAP = new HashMap<>();
   private static final Map<String, EntityTimeSeriesRepository<? extends EntityTimeSeriesInterface>>
       ENTITY_TS_REPOSITORY_MAP = new HashMap<>();
@@ -111,6 +114,10 @@ public final class Entity {
   @Getter @Setter private static AuditLogRepository auditLogRepository;
   @Getter @Setter private static TypeRepository typeRepository;
   @Getter @Setter private static EntityRelationshipRepository entityRelationshipRepository;
+
+  /** The configured authorizer, for checks that run where a write is stored. Null outside the server. */
+  @Getter @Setter private static Authorizer authorizer;
+
   // List of all the entities
   private static final Set<String> ENTITY_LIST = new TreeSet<>();
 
@@ -212,6 +219,10 @@ public final class Entity {
   public static final String GLOSSARY = "glossary";
   public static final String GLOSSARY_TERM = "glossaryTerm";
   public static final String RELATIONSHIP_TYPE = "relationshipType";
+  public static final String ONTOLOGY = "ontology";
+  public static final String ONTOLOGY_CONCEPT = "ontologyConcept";
+  public static final String ONTOLOGY_PROPERTY = "ontologyProperty";
+  public static final String ONTOLOGY_RELEASE = "ontologyRelease";
   public static final String ONTOLOGY_AXIOM = "ontologyAxiom";
   public static final String ONTOLOGY_CHANGE_SET = "ontologyChangeSet";
   public static final String TAG = "tag";
@@ -449,12 +460,14 @@ public final class Entity {
     jobDAO = null;
     searchRepository = null;
     entityRelationshipRepository = null;
+    authorizer = null;
     ENTITY_REPOSITORY_MAP.clear();
     SeedDataGate.getInstance().reset();
+    EssentialSeeds.getInstance().reset();
     EntityIndexCapabilityRegistry.clear();
   }
 
-  public static <T extends EntityInterface> void registerEntity(
+  public static <T extends EntityInterface<?>> void registerEntity(
       Class<T> clazz, String entity, EntityRepository<T> entityRepository) {
     ENTITY_REPOSITORY_MAP.put(entity, entityRepository);
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(entity.toLowerCase(Locale.ROOT), entity);
@@ -506,7 +519,8 @@ public final class Entity {
    * request terminates unexpectedly before repository-level finally blocks run.
    */
   public static void clearRepositoryThreadLocals() {
-    for (EntityRepository<? extends EntityInterface> repository : ENTITY_REPOSITORY_MAP.values()) {
+    for (EntityRepository<? extends EntityInterface<?>> repository :
+        ENTITY_REPOSITORY_MAP.values()) {
       repository.clearParentCache();
     }
   }
@@ -533,7 +547,7 @@ public final class Entity {
     }
 
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReference(id, include);
   }
@@ -554,7 +568,7 @@ public final class Entity {
     }
 
     // For regular entities, use the standard repository
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     include = repository.supportsSoftDelete ? include : Include.ALL;
     return repository.getReferences(ids, include);
   }
@@ -564,12 +578,12 @@ public final class Entity {
     if (fqn == null) {
       return null;
     }
-    EntityRepository<? extends EntityInterface> repository = getEntityRepository(entityType);
+    EntityRepository<? extends EntityInterface<?>> repository = getEntityRepository(entityType);
     return repository.getReferenceByName(fqn, include);
   }
 
   public static List<EntityReference> getOwners(@NonNull EntityReference reference) {
-    EntityRepository<? extends EntityInterface> repository =
+    EntityRepository<? extends EntityInterface<?>> repository =
         getEntityRepository(reference.getType());
     return repository.getOwners(reference);
   }
@@ -762,9 +776,9 @@ public final class Entity {
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getEntityRepository(
+  public static EntityRepository<? extends EntityInterface<?>> getEntityRepository(
       @NonNull String entityType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         ENTITY_REPOSITORY_MAP.get(entityType);
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -786,7 +800,7 @@ public final class Entity {
    * never throw on an indexable but repository-less type. Returns {@code false} when the entity or
    * its reference is missing.
    */
-  public static boolean isSearchIndexable(EntityInterface entity) {
+  public static boolean isSearchIndexable(EntityInterface<?> entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isSearchIndexable);
   }
 
@@ -796,18 +810,18 @@ public final class Entity {
    * its chunk documents cannot carry the filters its privacy model requires. Defaults and
    * null-handling match {@link #isSearchIndexable}.
    */
-  public static boolean isVectorEmbeddable(EntityInterface entity) {
+  public static boolean isVectorEmbeddable(EntityInterface<?> entity) {
     return repositoryPolicyAllows(entity, EntityRepository::isVectorEmbeddable);
   }
 
   private static boolean repositoryPolicyAllows(
-      EntityInterface entity,
-      BiPredicate<EntityRepository<? extends EntityInterface>, EntityInterface> policy) {
+      EntityInterface<?> entity,
+      BiPredicate<EntityRepository<? extends EntityInterface<?>>, EntityInterface<?>> policy) {
     boolean allowed = false;
     EntityReference entityReference = entity == null ? null : entity.getEntityReference();
     String entityType = entityReference == null ? null : entityReference.getType();
     if (entityType != null) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           ENTITY_REPOSITORY_MAP.get(entityType);
       allowed = repository == null || policy.test(repository, entity);
     }
@@ -841,9 +855,9 @@ public final class Entity {
   }
 
   /** Retrieve the corresponding entity repository for a given entity name. */
-  public static EntityRepository<? extends EntityInterface> getServiceEntityRepository(
+  public static EntityRepository<? extends EntityInterface<?>> getServiceEntityRepository(
       @NonNull ServiceType serviceType) {
-    EntityRepository<? extends EntityInterface> entityRepository =
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
         ENTITY_REPOSITORY_MAP.get(SERVICE_TYPE_ENTITY_MAP.get(serviceType));
     if (entityRepository == null) {
       throw EntityNotFoundException.byMessage(
@@ -862,8 +876,9 @@ public final class Entity {
     return List.copyOf(SERVICE_TYPE_ENTITY_MAP.values());
   }
 
-  public static List<TagLabel> getEntityTags(String entityType, EntityInterface entity) {
-    EntityRepository<? extends EntityInterface> entityRepository = getEntityRepository(entityType);
+  public static List<TagLabel> getEntityTags(String entityType, EntityInterface<?> entity) {
+    EntityRepository<? extends EntityInterface<?>> entityRepository =
+        getEntityRepository(entityType);
     return listOrEmpty(entityRepository.getAllTags(entity));
   }
 
@@ -893,7 +908,7 @@ public final class Entity {
         object.getClass().getSimpleName().toLowerCase(Locale.ROOT));
   }
 
-  public static Class<? extends EntityInterface> getEntityClassFromType(String entityType) {
+  public static Class<? extends EntityInterface<?>> getEntityClassFromType(String entityType) {
     return EntityInterface.ENTITY_TYPE_TO_CLASS_MAP.get(entityType.toLowerCase(Locale.ROOT));
   }
 
@@ -995,21 +1010,60 @@ public final class Entity {
     // Get Flattened Fields
     List<T> flattenedFields = getFlattenedEntityField(fields);
 
-    // Fetch All tags belonging to Prefix
-    Map<String, List<TagLabel>> allTags = repository.getTagsByPrefix(fqnPrefix, ".%");
+    // Fetch all tags belonging to the prefix. "%" rather than ".%" so the parent's own row arrives
+    // in the same query: fields inherit its glossary terms below. The DAO returns null for an
+    // entity type that does not support tags.
+    Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(fqnPrefix, "%");
+    Map<String, List<TagLabel>> allTags = prefixTags == null ? Map.of() : prefixTags;
+    String parentHash = FullyQualifiedName.buildHash(fqnPrefix);
+    List<TagLabel> inheritedTerms = inheritedParentTerms(allTags.get(parentHash));
+    // Prefetched once for the whole entity, so derived tags cost one query rather than one per
+    // field.
+    Map<String, List<TagLabel>> derivedTags =
+        batchFetchDerivedTagsGracefully(
+            allTags.entrySet().stream()
+                .filter(entry -> !entry.getKey().equals(parentHash))
+                .flatMap(entry -> entry.getValue().stream())
+                .collect(Collectors.toList()));
     for (T c : listOrEmpty(flattenedFields)) {
       if (setTags) {
-        List<TagLabel> columnTag =
-            allTags.get(FullyQualifiedName.buildHash(c.getFullyQualifiedName()));
-        if (columnTag == null) {
-          c.setTags(new ArrayList<>());
-        } else {
-          c.setTags(addDerivedTagsGracefully(columnTag));
-        }
+        setFieldTags(c, allTags, inheritedTerms, derivedTags);
       } else {
         c.setTags(c.getTags());
       }
     }
+  }
+
+  /**
+   * A glossary term applied to an entity (table, topic, API endpoint, data model, ...) also applies
+   * to every field beneath it. The terms are inherited on read instead of being stored per field in
+   * {@code tag_usage}, so fields ingested after the entity was tagged pick them up with no backfill
+   * and no per-field write amplification.
+   *
+   * <p>They are marked {@code DERIVED}, the way an entity inherits its parent's tags in {@code
+   * EntityRepository#inheritTags}: never persisted, ignored by mutual-exclusivity checks, and what
+   * the search cascade stamps on child documents. {@code PROPAGATED} means something else -- a label
+   * propagated along lineage and stored for the asset itself.
+   */
+  public static List<TagLabel> inheritedParentTerms(List<TagLabel> parentTags) {
+    return EntityRepository.inheritedTagLabels(
+        listOrEmpty(parentTags).stream()
+            .filter(tag -> TagLabel.TagSource.GLOSSARY.equals(tag.getSource()))
+            .filter(tag -> !TagLabel.LabelType.DERIVED.equals(tag.getLabelType()))
+            .toList());
+  }
+
+  /** A field's own labels and the tags its own terms imply, then the terms it inherits. */
+  private static <T extends FieldInterface> void setFieldTags(
+      T field,
+      Map<String, List<TagLabel>> allTags,
+      List<TagLabel> inheritedTerms,
+      Map<String, List<TagLabel>> derivedTags) {
+    List<TagLabel> ownTags =
+        listOrEmpty(allTags.get(FullyQualifiedName.buildHash(field.getFullyQualifiedName())));
+    field.setTags(
+        EntityRepository.mergeInheritedTags(
+            addDerivedTagsWithPreFetched(ownTags, derivedTags), inheritedTerms));
   }
 
   public static SearchIndex buildSearchIndex(String entityType, Object entity) {
@@ -1061,7 +1115,7 @@ public final class Entity {
     serviceTypes.remove(ServiceType.METADATA);
 
     for (ServiceType serviceType : serviceTypes) {
-      EntityRepository<? extends EntityInterface> repository =
+      EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getServiceEntityRepository(serviceType);
       ListFilter filter = new ListFilter(Include.ALL);
       List<ServiceEntityInterface> services =

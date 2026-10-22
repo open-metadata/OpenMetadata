@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -37,6 +36,7 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -79,7 +79,10 @@ import {
   postKnowledgePage,
 } from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
+import {
+  createArticleKnowledgePage,
+  getMemoryCitations,
+} from '../../../utils/ContextCenterPureUtils';
 import {
   CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
   CONTEXT_CENTER_DOCUMENTS_COUNT_QUERY_KEY,
@@ -252,7 +255,7 @@ const ContextCenterDashboardPage: FC = () => {
     try {
       const response = await getListContextMemories({
         limit: MOST_CITED_MEMORIES_LIMIT,
-        sortBy: 'usageCount',
+        sortBy: 'appliedCount',
         sortOrder: 'desc',
       });
       setMostCitedMemories(response.data);
@@ -397,10 +400,14 @@ const ContextCenterDashboardPage: FC = () => {
     () =>
       memories.map((memory) => ({
         title: memory.title ?? getEntityName(memory),
-        meta: [`cited ${memory.usageCount}×`],
+        meta: [
+          t('label.cited-n-times', {
+            count: getMemoryCitations(memory).count ?? 0,
+          }),
+        ],
         onClick: () => handleOpenMemory(memory.name),
       })),
-    [memories, handleOpenMemory]
+    [memories, handleOpenMemory, t]
   );
 
   const mostCitedItems = useMemo(
@@ -408,7 +415,7 @@ const ContextCenterDashboardPage: FC = () => {
       mostCitedMemories.map((memory) => ({
         id: memory.id,
         title: memory.title ?? getEntityName(memory),
-        citedCount: memory.usageCount ?? 0,
+        citedCount: getMemoryCitations(memory).count ?? 0,
         onClick: () => handleOpenMemory(memory.name),
       })),
     [mostCitedMemories, handleOpenMemory]
@@ -416,7 +423,7 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout
@@ -479,7 +486,7 @@ const ContextCenterDashboardPage: FC = () => {
           data-testid="dashboard-detail-card">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={
                   hasCreatePermission
                     ? [
@@ -532,7 +539,6 @@ const ContextCenterDashboardPage: FC = () => {
                   },
                 ]}
                 title={t('label.give-your-ai-something-to-know')}
-                variant="features"
               />
             </div>
           ) : (
@@ -602,7 +608,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {recentlyViewedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"
@@ -671,7 +677,7 @@ const ContextCenterDashboardPage: FC = () => {
                     {mostCitedItems.map((item) => (
                       <Box
                         align="center"
-                        className="tw:cursor-pointer tw:rounded tw:py-1.5 tw:hover:bg-primary_hover"
+                        className="tw:cursor-pointer tw:rounded tw:px-2 tw:py-1.5 tw:hover:bg-primary_hover tw:focus-visible:bg-primary_hover"
                         gap={2}
                         key={item.id}
                         role="button"

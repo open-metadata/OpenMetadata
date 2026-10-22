@@ -13,14 +13,14 @@
 
 import {
   Box,
-  EmptyPlaceholder,
+  ButtonUtility,
   Skeleton,
   Table,
   Toggle,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FileShield02 } from '@openmetadata/ui-core-components/icons';
-import { Button, Space, Tooltip } from 'antd';
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -155,15 +156,13 @@ const TestDefinitionTable = ({
     }
 
     return (
-      <Tooltip title={tooltipTitle}>
-        <div className="new-form-style d-inline-flex">
-          <Toggle
-            data-testid={`enable-switch-${record.name}`}
-            isDisabled={isExternal || !hasEditPermission || isRefetching}
-            isSelected={record.enabled ?? true}
-            onChange={(isSelected) => onEnableToggle(record, isSelected)}
-          />
-        </div>
+      <Tooltip isDisabled={!tooltipTitle} title={tooltipTitle}>
+        <Toggle
+          data-testid={`enable-switch-${record.name}`}
+          isDisabled={isExternal || !hasEditPermission || isRefetching}
+          isSelected={record.enabled ?? true}
+          onChange={(isSelected) => onEnableToggle(record, isSelected)}
+        />
       </Tooltip>
     );
   };
@@ -198,28 +197,35 @@ const TestDefinitionTable = ({
       deleteTooltip = t('message.no-permission-for-action');
     }
 
+    // The Tooltip, not ButtonUtility's own, so the reason still shows while the button is disabled.
     return (
-      <Space size={0}>
+      <Box align="center">
         <Tooltip title={editTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.edit')}
+            color="tertiary"
             data-testid={`edit-test-definition-${record.name}`}
-            disabled={!hasEditPermission || isRefetching}
             icon={<IconEdit height={16} width={16} />}
-            type="text"
+            isDisabled={!hasEditPermission || isRefetching}
+            size="xs"
             onClick={() => onEdit(record)}
           />
         </Tooltip>
 
         <Tooltip title={deleteTooltip}>
-          <Button
+          <ButtonUtility
+            aria-label={t('label.delete')}
+            color="tertiary"
             data-testid={`delete-test-definition-${record.name}`}
-            disabled={isSystemProvider || !hasDeletePermission || isRefetching}
             icon={<IconDelete height={16} width={16} />}
-            type="text"
+            isDisabled={
+              isSystemProvider || !hasDeletePermission || isRefetching
+            }
+            size="xs"
             onClick={() => onDelete(record)}
           />
         </Tooltip>
-      </Space>
+      </Box>
     );
   };
 
@@ -291,7 +297,7 @@ const TestDefinitionTable = ({
                 loadingSkeletons
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     actions={
                       hasActiveFilters && onClearFilters
                         ? [
@@ -311,7 +317,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                        <FilterOffIcon />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )
@@ -321,7 +327,6 @@ const TestDefinitionTable = ({
                         ? 'message.no-results-for-filters'
                         : 'message.no-test-definitions-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )

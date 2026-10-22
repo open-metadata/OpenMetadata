@@ -20,6 +20,12 @@ export interface DimensionResult {
      */
     dimensionValues: DimensionValue[];
     /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
+    /**
      * Number of rows that failed for this dimension
      */
     failedRows?: number;

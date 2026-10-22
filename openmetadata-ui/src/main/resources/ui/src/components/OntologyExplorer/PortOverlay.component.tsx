@@ -34,6 +34,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
   isEditMode,
   nodeLabels,
   onCreateRelation,
+  relationTypeGroups,
+  canCreateRelationType,
 }) => {
   const { t } = useTranslation();
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -153,7 +155,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
           style={{ overflow: 'visible' }}>
           <line
             data-testid="ontology-connection-line"
-            stroke="var(--color-bg-brand-solid)"
+            stroke="var(--tw-color-bg-brand-solid)"
             strokeDasharray="6 5"
             strokeWidth={2.4}
             x1={lineStart.x}
@@ -174,6 +176,8 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
             transform: 'translate(-50%, 16px)',
           }}>
           <RelationshipTypePicker
+            canCreateType={canCreateRelationType}
+            groups={relationTypeGroups}
             sourceLabel={getNodeLabel(pendingRelation.fromId)}
             targetLabel={getNodeLabel(pendingRelation.toId)}
             onCancel={dismissPending}

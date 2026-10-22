@@ -11,8 +11,13 @@
  *  limitations under the License.
  */
 
-import { Toggle, Typography } from '@openmetadata/ui-core-components';
-import { Button, Space } from 'antd';
+import {
+  Box,
+  Button,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -28,7 +33,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -41,6 +45,7 @@ import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -53,10 +58,6 @@ const TaskTabNew = withSuspenseFallback(
       default: module.TaskTabNew,
     }))
   )
-);
-
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
 );
 
 const FeedPanelHeader = withSuspenseFallback(
@@ -226,9 +227,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         <Button
-          className="m-b-sm p-0"
-          size="small"
-          type="link"
+          className="tw:mb-3"
+          color="link-color"
+          size="xs"
           onClick={onBack}>
           {t('label.back')}
         </Button>
@@ -246,7 +247,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="m-b-sm p-0" size="small" type="link" onClick={onBack}>
+      <Button className="tw:mb-3" color="link-color" size="xs" onClick={onBack}>
         {t('label.back')}
       </Button>
       <ActivityFeedCardNew
@@ -260,13 +261,17 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
-      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p">
-          {isTaskClosed
-            ? t('message.no-closed-task')
-            : t('message.no-open-task')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={
+            isTaskClosed
+              ? t('message.no-closed-task')
+              : t('message.no-open-task')
+          }
+          icon={<MessageChatSquare />}
+        />
+      </div>
     ) : (
       <div className={classNames(className, 'd-flex flex-col gap-3')}>
         {tasks.map((task) => (
@@ -302,7 +307,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     return (
       <Fragment>
         {(showNewConversation || hasNoConversations) && isConversationType && (
-          <Space className="w-full" direction="vertical">
+          <Box
+            inline
+            align="stretch"
+            className="layout-space w-full"
+            direction="col"
+            gap={2}
+            itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
             <ActivityFeedEditor
               // Shown on demand (new conversation, or an empty panel just
@@ -314,7 +325,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
               })}
               onSave={onPostConversation}
             />
-          </Space>
+          </Box>
         )}
 
         {isTaskType ? renderTaskList() : renderConversationList()}
@@ -352,10 +363,12 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           />
         )}
         {isTaskType && (
-          <Space
+          <Box
+            inline
             align="center"
-            className="w-full justify-end p-r-xs m-t-xs"
-            size={4}>
+            className="layout-space layout-space-horizontal w-full justify-end p-r-xs m-t-xs"
+            gap={1}
+            itemClassName="layout-space-item">
             <Toggle
               label={t('label.closed-task-plural')}
               size="sm"
@@ -365,7 +378,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
                 )
               }
             />
-          </Space>
+          </Box>
         )}
 
         {renderMainContent()}

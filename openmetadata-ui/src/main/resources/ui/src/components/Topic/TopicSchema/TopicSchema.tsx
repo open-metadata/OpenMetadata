@@ -13,11 +13,12 @@
 
 import {
   Badge,
+  Box,
   ButtonGroup,
   ButtonGroupItem,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Col, Row, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -57,6 +58,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -78,8 +80,8 @@ import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { ColumnsType } from '../../common/Table/Table.interface';
@@ -300,7 +302,11 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
         style={{ maxWidth: '80%' }}>
-        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          title={getEntityName(record)}
+          triggerClassName="tw:inline-flex">
           <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
@@ -488,7 +494,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     }
 
     return (
-      <Col>
+      <Box className="layout-column tw:block">
         <Typography color="secondary">{t('label.schema')}</Typography>
         {schemaTypePlaceholder ?? (
           <Badge
@@ -499,17 +505,18 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             {messageSchema.schemaType}
           </Badge>
         )}
-      </Col>
+      </Box>
     );
   };
 
+  // These helpers return flex-row siblings, so full-width sections need explicit widths.
   const renderViewToggle = () => {
     if (isEmpty(messageSchema?.schemaFields) || isVersionView) {
       return null;
     }
 
     return (
-      <Col span={24}>
+      <Box className="layout-column tw:block tw:flex-none tw:w-full">
         <ButtonGroup
           disallowEmptySelection
           className={SEGMENT_TOGGLE_GROUP_CLASS}
@@ -530,7 +537,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             </ButtonGroupItem>
           ))}
         </ButtonGroup>
-      </Col>
+      </Box>
     );
   };
 
@@ -585,19 +592,28 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   const renderSchemaBody = () => {
     if (hasNoSchemaContent) {
-      return <ErrorPlaceHolder />;
+      return (
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder data-testid="no-data-placeholder" />
+        </div>
+      );
     }
 
     return (
       <>
         {renderViewToggle()}
-        <Col span={24}>{renderSchemaContent()}</Col>
+        <Box className="layout-column tw:block tw:flex-none tw:w-full">
+          {renderSchemaContent()}
+        </Box>
       </>
     );
   };
 
   return (
-    <Row gutter={[16, 16]}>
+    <Box
+      className="layout-row"
+      style={{ ...getLayoutGutter(16, 16) }}
+      wrap="wrap">
       {renderSchemaTypeBadge()}
       {renderSchemaBody()}
       {editFieldDescription && (
@@ -618,7 +634,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </Box>
   );
 };
 

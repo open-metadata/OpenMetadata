@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Owner,
   PageHeader,
   Tooltip,
@@ -84,6 +83,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import { useGenericDomainLabel } from '../../common/DomainLabel/useGenericDomainLabel';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -105,21 +105,6 @@ import EntityHeaderTitle from '../../Entity/EntityHeaderTitle/EntityHeaderTitle.
 import './classification-details.less';
 import { ClassificationDetailsProps } from './ClassificationDetails.interface';
 import { useTagUsageCounts } from './useTagUsageCounts';
-
-// Stretch the antd table so its body fills the panel height even with only a
-// few rows — otherwise the body shrinks to its content (scroll.y sets
-// max-height, not height) and the horizontal scrollbar floats mid-panel with
-// empty space below it.
-const TAG_TABLE_FILL_CLASSNAME = [
-  'tw:h-full',
-  'tw:[&_.ant-spin-nested-loading]:h-full',
-  'tw:[&_.ant-spin-container]:h-full',
-  'tw:[&_.ant-table]:h-full tw:[&_.ant-table]:flex tw:[&_.ant-table]:flex-col',
-  'tw:[&_.ant-table-container]:flex-1 tw:[&_.ant-table-container]:min-h-0',
-  'tw:[&_.ant-table-container]:flex tw:[&_.ant-table-container]:flex-col',
-  'tw:[&_.ant-table-header]:shrink-0',
-  'tw:[&_.ant-table-body]:flex-1 tw:[&_.ant-table-body]:!max-h-none',
-].join(' ');
 
 function computeEditDescriptionPermission(
   isVersionView: boolean,
@@ -179,7 +164,7 @@ function computeClassificationPermissionFlags(
     deletePermission:
       classificationPermissions.Delete && !isSystemClassification,
     editOwnerPermission: computeEditOwnerPermission(isEditable, flags),
-    editDomainPermission: isEditable && flags.canEditAll,
+    editDomainPermission: isEditable && flags.canEditDomains,
   };
 }
 
@@ -733,7 +718,7 @@ const ClassificationDetails = forwardRef(
     function renderTagsPanel() {
       return isEmpty(tags) && !isLoading ? (
         <Box className="tw:relative tw:min-h-[360px]">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               createPermission
                 ? [
@@ -755,9 +740,9 @@ const ClassificationDetails = forwardRef(
         </Box>
       ) : (
         <Table
-          className={TAG_TABLE_FILL_CLASSNAME}
+          sticky
           columns={tableColumn}
-          containerClassName="tw:rounded-xl tw:border-subtle"
+          containerClassName="tw:flex tw:flex-col tw:rounded-xl tw:border-subtle"
           customPaginationProps={{
             currentPage,
             isLoading,
@@ -772,10 +757,8 @@ const ClassificationDetails = forwardRef(
           loading={isLoading}
           pagination={false}
           rowKey="id"
-          scroll={{
-            x: 'max-content',
-            y: 'calc(100vh - 380px - var(--ant-navbar-height))',
-          }}
+          scroll={{ x: 'max-content' }}
+          scrollContainerClassName="tw:flex-1 tw:min-h-0 tw:overflow-y-auto"
           size="small"
         />
       );

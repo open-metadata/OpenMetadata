@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -14,12 +15,15 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
+import org.openmetadata.it.util.CustomPropertyTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.ContractSLA;
@@ -62,6 +66,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
@@ -75,6 +80,7 @@ import org.openmetadata.schema.type.DmlOperationType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.SystemProfile;
@@ -113,7 +119,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     supportsDataContract = false;
     supportsDomains = false;
     supportsPatchDomains = false;
-    supportsSearchIndex = false; // DataContract doesn't have a search index
+    supportsSearchIndex = true;
     supportsBulkAPI = false;
     supportsRecognizerFeedback = false;
     supportsConversations = false;
@@ -342,6 +348,25 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
 
     assertNotNull(fetched);
     assertEquals(contract.getId(), fetched.getId());
+  }
+
+  @Test
+  void testTableInheritsApprovedSchemaContract(TestNamespace ns) {
+    Table table = createTestTable(ns);
+
+    DataContract schemaContract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("schema_contract"))
+                .withEntity(table.getDatabaseSchema())
+                .withEntityStatus(EntityStatus.APPROVED));
+
+    DataContract effective =
+        SdkClients.adminClient().dataContracts().getByEntityId(table.getId(), "table");
+
+    assertEquals(schemaContract.getName(), effective.getName());
+    assertEquals(table.getId(), effective.getEntity().getId());
+    assertTrue(effective.getInherited());
   }
 
   @Test
@@ -2706,6 +2731,49 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
 
     assertTrue(updated.getReviewers() == null || updated.getReviewers().isEmpty());
+  }
+
+  @Test
+  void testContractResultsPreserveMetadata(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String propertyName = ns.prefix("contractNote");
+    CustomPropertyTestSupport.registerStringProperty(client, "dataContract", propertyName);
+    try {
+      Map<String, String> extension = Map.of(propertyName, "Keep this note");
+      CreateDataContract request =
+          createMinimalRequest(ns)
+              .withExtension(extension)
+              .withReviewers(List.of(SharedEntities.get().USER1_REF));
+      DataContract contract = client.dataContracts().create(request);
+      // A subsequent edit gives session consolidation a previous version with the extension.
+      request.setDescription("Reviewed contract");
+      contract = client.dataContracts().createOrUpdate(request);
+      assertTrue(contract.getVersion() > 0.1);
+
+      DataContractResult result =
+          new DataContractResult()
+              .withDataContractFQN(contract.getFullyQualifiedName())
+              .withTimestamp(System.currentTimeMillis())
+              .withExecutionTime(100L);
+      for (ContractExecutionStatus status :
+          List.of(ContractExecutionStatus.Running, ContractExecutionStatus.Success)) {
+        result =
+            client
+                .dataContracts()
+                .addResult(contract.getId(), result.withContractExecutionStatus(status));
+        DataContract stored =
+            client.dataContracts().get(contract.getId().toString(), "extension,reviewers");
+        assertEquals(
+            extension, stored.getExtension(), "Recording a result must preserve custom properties");
+        assertEquals("Reviewed contract", stored.getDescription());
+        assertEquals(
+            SharedEntities.get().USER1_REF.getId(), stored.getReviewers().getFirst().getId());
+        assertEquals(result.getId(), stored.getLatestResult().getResultId());
+        assertEquals(status, stored.getLatestResult().getStatus());
+      }
+    } finally {
+      CustomPropertyTestSupport.removeProperty(client, "dataContract", propertyName);
+    }
   }
 
   @Test
@@ -7429,6 +7497,233 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             });
   }
 
+  /**
+   * Regression guard for the contract-update NPE that fired when the contract's logical TestSuite
+   * was soft-deleted through the Data Quality API. {@code getOrCreateTestSuite} resolved the
+   * {@code DataContract.testSuite} reference with {@code Include.NON_DELETED}, got {@code null}
+   * for the soft-deleted suite, returned it, and {@code updateTestSuiteTests} dereferenced it — a
+   * permanent {@code NullPointerException} / HTTP 500 on every subsequent PUT/PATCH of the
+   * contract, even unrelated edits. The fix restores the soft-deleted suite (or re-creates it when
+   * the reference is fully dangling) and re-links the contract, so the update succeeds.
+   *
+   * <p>Reproduces the original trigger: create a contract with qualityExpectations (which mints a
+   * logical TestSuite + DQ pipeline), soft-delete that suite directly via the DQ API (which does
+   * <em>not</em> clear {@code DataContract.testSuite}), then PATCH the contract's display name.
+   * Pre-fix the PATCH returned HTTP 500; with the fix it returns 200 and the suite is restored.
+   */
+  @Test
+  void testUpdateContractAfterTestSuiteSoftDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    // Create a test case referenced by the contract's qualityExpectations.
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_dangling_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "0")
+            .parameter("maxValue", "100")
+            .create();
+    TestCase deletedTest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_deleted_before_suite"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    // Create the contract with quality expectations; this mints a logical TestSuite and a DQ
+    // ingestion pipeline (postCreateOrUpdate) and links the contract's testSuite reference.
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_dangling_suite"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(
+                List.of(tc.getEntityReference(), deletedTest.getEntityReference()))
+            .withDescription(
+                "Guard: contract update must survive its test suite being soft-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+    UUID suiteId = contract.getTestSuite().getId();
+
+    // Sanity: the suite is live and resolvable before the soft-delete.
+    TestSuite suite = client.testSuites().get(suiteId.toString(), "tests,pipelines");
+    assertNotNull(suite);
+    assertFalse(Boolean.TRUE.equals(suite.getDeleted()), "Suite must start non-deleted");
+    assertNotNull(suite.getPipelines());
+    assertEquals(1, suite.getPipelines().size());
+    UUID pipelineId = suite.getPipelines().getFirst().getId();
+
+    client.testCases().delete(deletedTest.getId().toString());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted());
+
+    // Soft-delete the suite through the standard Data Quality DELETE endpoint. This flips
+    // deleted=true on the suite (and its DQ pipeline) but leaves DataContract.testSuite pointing
+    // at it — the dangling reference the bug turns into a permanent HTTP 500.
+    client.testSuites().delete(suiteId.toString());
+
+    // Confirm the suite is now soft-deleted (NON_DELETED no longer finds it), while the contract
+    // still carries the reference. This pins the trigger condition the bug relies on.
+    OpenMetadataException notFound =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+            "Soft-deleted suite must be invisible to the default NON_DELETED fetch");
+    assertTrue(
+        notFound.getMessage().contains("404") || notFound.getMessage().contains("not found"),
+        "Fetch of soft-deleted suite should surface a 404/not-found error, got: " + notFound);
+    DataContract preUpdate = getEntity(contract.getId().toString());
+    assertNotNull(
+        preUpdate.getTestSuite(),
+        "Contract must still carry the dangling testSuite reference after the suite is "
+            + "soft-deleted (the DELETE endpoint does not clear it)");
+
+    // PATCH the contract on a field unrelated to DQ (display name). Pre-fix this throws because
+    // getOrCreateTestSuite returns null into updateTestSuiteTests; with the fix it succeeds and
+    // re-links a live suite.
+    DataContract toPatch = getEntity(contract.getId().toString());
+    toPatch.setDisplayName("Updated after suite soft-delete");
+    DataContract updated = patchEntity(contract.getId().toString(), toPatch);
+    assertEquals(
+        "Updated after suite soft-delete",
+        updated.getDisplayName(),
+        "The contract PATCH must succeed after its test suite was soft-deleted");
+    assertNotNull(
+        updated.getTestSuite(),
+        "The updated contract must still carry a test suite reference (the fix re-links it)");
+    assertEquals(
+        suiteId,
+        updated.getTestSuite().getId(),
+        "The restored suite keeps the same id, so the contract reference stays stable");
+
+    // The suite is back as a live, non-deleted entity (the fix restored it).
+    TestSuite restoredSuite = client.testSuites().get(suiteId.toString(), "tests,pipelines");
+    assertNotNull(restoredSuite, "Restored suite must be visible again to NON_DELETED fetches");
+    assertFalse(
+        Boolean.TRUE.equals(restoredSuite.getDeleted()), "Restored suite must have deleted=false");
+    assertEquals(
+        List.of(pipelineId),
+        restoredSuite.getPipelines().stream().map(EntityReference::getId).toList());
+    assertFalse(client.ingestionPipelines().get(pipelineId.toString()).getDeleted());
+    assertTrue(
+        client
+            .testCases()
+            .get(deletedTest.getId().toString(), null, Include.ALL.value())
+            .getDeleted(),
+        "Recovering the contract's suite must not restore independently deleted tests");
+    assertEquals(
+        List.of(tc.getId()),
+        restoredSuite.getTests().stream().map(EntityReference::getId).toList());
+
+    // A second update still succeeds — the recovery is not a one-shot side effect that leaves the
+    // contract stuck on the next edit.
+    DataContract toPatch2 = getEntity(contract.getId().toString());
+    toPatch2.setDescription("Second update after suite soft-delete");
+    DataContract updated2 = patchEntity(contract.getId().toString(), toPatch2);
+    assertEquals("Second update after suite soft-delete", updated2.getDescription());
+
+    // The test case referenced by the contract is still linked to the restored suite, so DQ
+    // validation works against the same tests.
+    TestSuite suiteWithTests = client.testSuites().get(suiteId.toString(), "tests");
+    assertNotNull(
+        suiteWithTests.getTests(),
+        "Restored suite must retain its test case associations (soft-delete keeps the rows)");
+    assertTrue(
+        suiteWithTests.getTests().stream().anyMatch(t -> tc.getId().equals(t.getId())),
+        "The DQ test case referenced by the contract's qualityExpectations must still be linked "
+            + "to the restored suite");
+
+    // Removing the qualityExpectations (the only previously-working escape hatch) must still
+    // clean the suite up — guard against a regression that flips the suite back from soft-deleted
+    // but then forgets to hard-delete it when the user drops the qualityExpectations.
+    DataContract toPatch3 = getEntity(contract.getId().toString());
+    toPatch3.setQualityExpectations(List.of());
+    DataContract droppedQE = patchEntity(contract.getId().toString(), toPatch3);
+    assertNull(
+        droppedQE.getTestSuite(),
+        "Removing all qualityExpectations must clear DataContract.testSuite");
+    OpenMetadataException suiteGone =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+            "After dropping the contract's qualityExpectations the contract's suite must be gone");
+    assertTrue(
+        suiteGone.getMessage().contains("404") || suiteGone.getMessage().contains("not found"),
+        "Suite must be unretrievable once the qualityExpectations drop hard-deletes it");
+  }
+
+  /**
+   * Variant of {@link #testUpdateContractAfterTestSuiteSoftDeleted} for the harder-to-hit case
+   * where the suite is hard-deleted out-of-band (e.g. by an admin running a hard-delete on the DQ
+   * API), leaving a fully dangling reference. The fix must fall through to mint a brand-new
+   * logical suite and re-link the contract, rather than crashing on the missing row.
+   */
+  @Test
+  void testUpdateContractAfterTestSuiteHardDeleted(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("qe_dangling_hard_delete"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "0")
+            .parameter("maxValue", "100")
+            .create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dc_dangling_hard_delete"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withDescription(
+                "Guard: contract update must survive its test suite being hard-deleted");
+    DataContract contract = createEntity(request);
+    assertNotNull(contract.getTestSuite());
+    UUID suiteId = contract.getTestSuite().getId();
+
+    // Hard-delete the suite through the DQ DELETE endpoint (recursive hard-delete, since a logical
+    // suite does not own the test cases it aggregates).
+    java.util.Map<String, String> hardDeleteParams = new java.util.HashMap<>();
+    hardDeleteParams.put("hardDelete", "true");
+    client.testSuites().delete(suiteId.toString(), hardDeleteParams);
+
+    // The row is gone, but the contract still references it.
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.testSuites().get(suiteId.toString(), "tests,pipelines"),
+        "Hard-deleted suite must be gone entirely");
+    DataContract preUpdate = getEntity(contract.getId().toString());
+    assertNotNull(preUpdate.getTestSuite(), "The contract still carries the dangling reference");
+
+    // The fix must mint a brand-new suite (no fqnHash collision because the row is gone) and
+    // re-link the contract to it. Update must not crash.
+    DataContract toPatch = getEntity(contract.getId().toString());
+    toPatch.setDisplayName("Updated after suite hard-delete");
+    DataContract updated = patchEntity(contract.getId().toString(), toPatch);
+    assertEquals("Updated after suite hard-delete", updated.getDisplayName());
+    assertNotNull(updated.getTestSuite(), "The fix must re-link a new suite to the contract");
+    assertNotEquals(
+        suiteId,
+        updated.getTestSuite().getId(),
+        "Hard-deleted suite is gone, so the fix mints a new suite with a different id");
+
+    // The new suite is live and the contract references it consistently.
+    TestSuite newSuite =
+        client.testSuites().get(updated.getTestSuite().getId().toString(), "tests");
+    assertNotNull(newSuite);
+    assertFalse(Boolean.TRUE.equals(newSuite.getDeleted()));
+  }
+
   private void putPipelineStatus(
       OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
     PipelineStatus status =
@@ -8294,6 +8589,74 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 issue ->
                     issue.getSeverity() == ODCSImportIssueSeverity.BLOCKING
                         && issue.getMessage().contains(missingTable.toString())));
+  }
+
+  @Test
+  void patchOwners_reindexesContract(TestNamespace ns) throws Exception {
+    DataContract contract = createEntity(createMinimalRequest(ns));
+    String ownerName = ("dc_owner_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ownerName)
+                    .withEmail(ownerName + "@test.openmetadata.org"));
+    EntityReference ownerRef = owner.getEntityReference();
+
+    contract.setOwners(List.of(ownerRef));
+    SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
+
+    String assetFqn = contract.getEntity().getFullyQualifiedName();
+    Awaitility.await("contract doc reflects new owner and asset")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response = searchForEntity(contract.getId().toString());
+              assertTrue(response.contains(ownerRef.getId().toString()), "owner id indexed");
+              assertTrue(response.contains(assetFqn), "entity.fullyQualifiedName indexed");
+              assertTrue(response.contains("\"type\":\"table\""), "entity.type indexed");
+            });
+  }
+
+  @Test
+  void addResult_keepsOwnersInSearchDoc(TestNamespace ns) throws Exception {
+    DataContract contract = createEntity(createMinimalRequest(ns));
+    String ownerName = ("dc_result_owner_" + ns.uniqueShortId()).toLowerCase(Locale.ROOT);
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ownerName)
+                    .withEmail(ownerName + "@test.openmetadata.org"));
+    String ownerId = owner.getId().toString();
+    contract.setOwners(List.of(owner.getEntityReference()));
+    SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
+
+    String marker = "keep-owners-" + ns.uniqueShortId();
+    SdkClients.adminClient()
+        .dataContracts()
+        .addResult(
+            contract.getId(),
+            new DataContractResult()
+                .withDataContractFQN(contract.getFullyQualifiedName())
+                .withTimestamp(System.currentTimeMillis())
+                .withContractExecutionStatus(ContractExecutionStatus.Failed)
+                .withResult(marker)
+                .withExecutionTime(1L));
+
+    Awaitility.await("contract doc reflects the new result")
+        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(searchForEntity(contract.getId().toString()).contains(marker)));
+    assertTrue(
+        searchForEntity(contract.getId().toString()).contains(ownerId),
+        "recording a result must not drop owners from the search doc");
   }
 
   // ---------------------------------------------------------------------------------------------

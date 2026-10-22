@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -31,6 +31,7 @@ import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
@@ -39,11 +40,11 @@ import {
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
-  APPLICATION_NAV_ITEMS,
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
   ProfileHeaderOverride,
@@ -266,21 +267,11 @@ const ProfilePage: React.FC = () => {
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    const applicationItems = APPLICATION_NAV_ITEMS.filter(
-      (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
-    );
-
     const featuresItems = FEATURES_NAV_ITEMS.filter(
       (item) => !item.isVisible || item.isVisible(permissions, isAdmin)
     );
 
-    return [
-      ...coreItems,
-      ...workspaceItems,
-      ...applicationItems,
-      ...featuresItems,
-      ...contributed,
-    ];
+    return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
   }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items. The profile tab
@@ -291,15 +282,21 @@ const ProfilePage: React.FC = () => {
       if (id === selectedId) {
         return;
       }
-      setSelectedId(id);
-      setHeaderOverride(null);
-      setHash(
-        id,
-        // Encode so usernames containing `%`/`?` round-trip through the hash.
-        id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
-          ? encodeURIComponent(currentUser.name)
-          : undefined
-      );
+      const switchTab = () => {
+        setSelectedId(id);
+        setHeaderOverride(null);
+        setHash(
+          id,
+          // Encode so usernames containing `%`/`?` round-trip through the hash.
+          id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
+            ? encodeURIComponent(currentUser.name)
+            : undefined
+        );
+      };
+      // A dirty in-modal editor (e.g. persona customize) may prompt first.
+      if (!usePersonalSpaceStore.getState().exitGuard?.(switchTab)) {
+        switchTab();
+      }
     },
     [selectedId, setHash, currentUser?.name]
   );
@@ -330,7 +327,7 @@ const ProfilePage: React.FC = () => {
       if (isUserNotFound) {
         return (
           <Box className="tw:relative tw:flex-1">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               icon={User01}
               title={t('label.no-entity-found', { entity: t('label.user') })}
             />
@@ -365,6 +362,8 @@ const ProfilePage: React.FC = () => {
             description={headerDescription}
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}
+            meta={headerOverride?.meta}
+            tabs={headerOverride?.tabs}
             title={headerTitle}
             titleInput={headerOverride?.titleInput}
             titleSuffix={headerOverride?.titleSuffix}

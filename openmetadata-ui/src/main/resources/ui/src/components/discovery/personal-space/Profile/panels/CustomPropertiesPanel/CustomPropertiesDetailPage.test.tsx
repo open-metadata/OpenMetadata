@@ -12,11 +12,30 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import { useState } from 'react';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
+import type { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
+
+// The add button is pushed up to the modal header, so render it alongside.
+const DetailPageWithHeader = (
+  props: Omit<CustomPropertiesDetailPageProps, 'onSetHeaderActions'>
+) => {
+  const [headerActions, setHeaderActions] = useState<ReactNode>();
+
+  return (
+    <>
+      {headerActions}
+      <CustomPropertiesDetailPage
+        {...props}
+        onSetHeaderActions={setHeaderActions}
+      />
+    </>
+  );
+};
 
 const mockProperty1 = {
   name: 'stringProp',
@@ -247,6 +266,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </div>
     ),
+    ButtonUtility: ({
+      icon,
+      tooltip: _tooltip,
+      ...props
+    }: {
+      icon?: ReactNode;
+      tooltip?: ReactNode;
+    } & ButtonHTMLAttributes<HTMLButtonElement>) => (
+      <button {...props}>{icon}</button>
+    ),
     Button: ({
       children,
       onPress,
@@ -320,7 +349,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('renders the component with table', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('custom-property-table')).toBeInTheDocument();
@@ -328,7 +357,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('renders a row for each custom property after loading', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -337,7 +366,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('renders property display names in the table', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByText('String Property')).toBeInTheDocument();
@@ -346,7 +375,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('shows Add Property button when user has EditAll permission', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('add-custom-property-btn')).toBeInTheDocument();
@@ -356,7 +385,7 @@ describe('CustomPropertiesDetailPage', () => {
   it('hides Add Property button when user lacks EditAll permission', async () => {
     mockGetEntityPermission.mockResolvedValueOnce({ EditAll: false });
 
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(
@@ -366,7 +395,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('calls onAddProperty when Add Property button is clicked', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('add-custom-property-btn')).toBeInTheDocument();
@@ -377,7 +406,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('calls onEditProperty when edit button is clicked for a row', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -390,7 +419,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('opens delete modal when delete button is clicked', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -403,7 +432,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('deletes the selected property by name when delete is confirmed', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -422,7 +451,7 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('closes delete modal when cancel is clicked', async () => {
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -442,7 +471,7 @@ describe('CustomPropertiesDetailPage', () => {
     const mockError = new Error('API Error');
     mockGetTypeByFQN.mockRejectedValueOnce(mockError);
 
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
@@ -452,7 +481,7 @@ describe('CustomPropertiesDetailPage', () => {
   it('drops the property locally when it was already removed elsewhere', async () => {
     mockDeleteCustomPropertyByName.mockResolvedValueOnce(undefined);
 
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -472,7 +501,7 @@ describe('CustomPropertiesDetailPage', () => {
     const mockError = new Error('Delete failed');
     mockDeleteCustomPropertyByName.mockRejectedValueOnce(mockError);
 
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
@@ -492,7 +521,7 @@ describe('CustomPropertiesDetailPage', () => {
     mockGetTypeByFQN.mockResolvedValueOnce(emptyEntityType);
 
     render(
-      <CustomPropertiesDetailPage
+      <DetailPageWithHeader
         entityType={emptyEntityType as unknown as Type}
         onAddProperty={mockOnAddProperty}
         onEditProperty={mockOnEditProperty}
@@ -511,7 +540,7 @@ describe('CustomPropertiesDetailPage', () => {
       Delete: true,
     });
 
-    render(<CustomPropertiesDetailPage {...defaultProps} />);
+    render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();

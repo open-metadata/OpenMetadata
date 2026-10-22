@@ -13,7 +13,7 @@
 
 import {
   Box,
-  EmptyPlaceholder,
+  Button,
   Table,
   TableCard,
 } from '@openmetadata/ui-core-components';
@@ -24,10 +24,11 @@ import {
   Plus,
   ZapFast,
 } from '@openmetadata/ui-core-components/icons';
-import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
@@ -110,10 +111,9 @@ function ObservabilityAlertsTable({
           )}>
           {onViewAlert ? (
             <Button
-              className="tw:h-auto tw:p-0"
+              color="link-color"
               data-testid="alert-name"
-              type="link"
-              onClick={() => onViewAlert(record)}>
+              onPress={() => onViewAlert(record)}>
               {alertName}
             </Button>
           ) : (
@@ -160,7 +160,7 @@ function ObservabilityAlertsTable({
 
   const emptyStatePlaceholder = (
     <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           hasCreatePermission
             ? [
@@ -179,7 +179,6 @@ function ObservabilityAlertsTable({
         description={t('message.observability-alert-empty-description')}
         features={emptyStateFeatures}
         title={t('message.observability-alert-empty-heading')}
-        variant="features"
       />
     </Box>
   );
@@ -189,7 +188,7 @@ function ObservabilityAlertsTable({
   // cue instead of the create-less onboarding.
   const errorStatePlaceholder = (
     <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-      <EmptyPlaceholder
+      <SomethingWentWrongPlaceholder
         actions={
           onRetryPermission
             ? [
@@ -205,7 +204,6 @@ function ObservabilityAlertsTable({
         description={t('server.unexpected-error')}
         icon={<AlertTriangle className="tw:text-fg-error-primary" />}
         title={t('message.something-went-wrong')}
-        variant="blank"
       />
     </Box>
   );

@@ -11,14 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
-import { ReactElement } from 'react';
+import { Box, Button } from '@openmetadata/ui-core-components';
+import { Database01 } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { ReactElement, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import './widget-empty-state.less';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 export interface WidgetEmptyStateProps {
   icon?: ReactElement;
@@ -45,48 +43,45 @@ const WidgetEmptyState = ({
 }: WidgetEmptyStateProps) => {
   const { t } = useTranslation();
 
-  const handleActionClick = () => {
-    if (onActionClick) {
-      onActionClick();
-    }
-  };
+  const buttonLabel = actionButtonText || t('label.explore');
 
-  const actionButton = showActionButton && (
-    <Button className="m-t-md" type="primary" onClick={handleActionClick}>
-      {actionButtonText || t('label.explore')}
-    </Button>
-  );
-
-  const actionLink = actionButtonLink && (
-    <Link to={actionButtonLink}>
-      <Button className="m-t-md" type="primary">
-        {actionButtonText || t('label.explore')}
-      </Button>
-    </Link>
-  );
+  let actionButton: ReactNode;
+  if (showActionButton || actionButtonLink) {
+    actionButton = (
+      <>
+        {showActionButton && (
+          <Button size="sm" onPress={onActionClick}>
+            {buttonLabel}
+          </Button>
+        )}
+        {actionButtonLink && (
+          <Button href={actionButtonLink} size="sm">
+            {buttonLabel}
+          </Button>
+        )}
+      </>
+    );
+  }
 
   return (
-    <div className={`widget-empty-state ${className}`} data-testid={dataTestId}>
-      <ErrorPlaceHolder
-        className="border-none"
-        icon={icon}
-        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <div className="d-flex flex-col items-center">
-          {title && (
-            <Typography className="empty-state-title text-md font-semibold m-b-sm">
-              {title}
-            </Typography>
-          )}
-          {description && (
-            <Typography className="empty-state-placeholder text-sm font-regular">
-              {description}
-            </Typography>
-          )}
-          {actionButton}
-          {actionLink}
-        </div>
-      </ErrorPlaceHolder>
-    </div>
+    <Box
+      align="center"
+      className={classNames(
+        'widget-empty-state tw:h-full tw:min-h-50 tw:p-6',
+        className
+      )}
+      data-testid={dataTestId}
+      justify="center">
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={description}
+          footer={actionButton}
+          icon={icon ?? <Database01 />}
+          title={title}
+        />
+      </div>
+    </Box>
   );
 };
 

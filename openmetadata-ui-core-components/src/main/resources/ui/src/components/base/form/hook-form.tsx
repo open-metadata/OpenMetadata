@@ -118,6 +118,8 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
                 `formClassName` when their form needs more room than the
                 default. */}
             <AriaForm
+              // react-hook-form owns validation; native `required` would block submit before it runs.
+              validationBehavior="aria"
               {...props}
               className={cx(
                 'tw:min-w-95 tw:flex-1 tw:overflow-y-auto',
@@ -146,7 +148,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
           </div>
         ) : (
           <>
-            <AriaForm {...props} />
+            <AriaForm validationBehavior="aria" {...props} />
             {showFieldDocs ? (
               <FieldDocPopover
                 header={fieldDocHeader}

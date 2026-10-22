@@ -74,7 +74,7 @@ const TaskActionSplitButton = ({
           className="tw:-ml-px tw:rounded-l-none"
           color="secondary"
           data-testid={`${testIdPrefix}-trigger`}
-          iconLeading={<ChevronDown size={14} />}
+          iconLeading={ChevronDown}
           isDisabled={isDisabled || isLoading}
           size="sm"
         />

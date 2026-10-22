@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { Divider } from '@openmetadata/ui-core-components';
-import { Col, Form, Row } from 'antd';
-import { useForm } from 'antd/lib/form/Form';
+import { Box, Divider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -26,25 +25,20 @@ import {
   ProviderType,
 } from '../../../../generated/entity/events/notificationTemplate';
 import { AlertType as CapabilitiesAlertType } from '../../../../generated/events/api/alertCapabilitiesRequest';
-import { FilterResourceDescriptor } from '../../../../generated/events/filterResourceDescriptor';
 import {
   AlertSelectionProvider,
   useAlertSelection,
 } from '../../../../hooks/useAlertSelection';
-import { ModifiedCreateEventSubscription } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getResourceFunctions as getNotificationResourceFunctions } from '../../../../rest/alertsAPI';
 import { getAllNotificationTemplates } from '../../../../rest/notificationtemplateAPI';
-import { getResourceFunctions } from '../../../../rest/observabilityAPI';
+import { getClassicAlertInitialValues } from '../../../../utils/Alerts/ClassicAlertForm.utils';
 import alertsClassBase from '../../../../utils/AlertsClassBase';
-import Fqn from '../../../../utils/Fqn';
+import { ModifiedCreateEventSubscription } from '../../../../utils/AlertsClassBase.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItemFormBridge, {
-  DestinationFormFieldRegistrar,
-} from '../../DestinationFormItem/DestinationFormItemFormBridge';
+import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import './alert-config-details.less';
@@ -58,21 +52,24 @@ function AlertConfigDetails({
   isNotificationAlert,
 }: AlertConfigDetailsProps) {
   const { t } = useTranslation();
-  const [form] = useForm<ModifiedCreateEventSubscription>();
-  const destinations = Form.useWatch('destinations', form);
-  const timeout = Form.useWatch('timeout', form);
-  const readTimeout = Form.useWatch('readTimeout', form);
   const { getResourcePermission } = usePermissionProvider();
-  const modifiedAlertData =
-    alertsClassBase.getModifiedAlertDataForForm(alertDetails);
+  const modifiedAlertData = useMemo(
+    () =>
+      getClassicAlertInitialValues(
+        alertsClassBase.getModifiedAlertDataForForm(alertDetails)
+      ),
+    [alertDetails]
+  );
+  const form = useForm<ModifiedCreateEventSubscription>({
+    defaultValues: modifiedAlertData,
+  });
+  const values = form.watch();
+  const { reset } = form;
+  useEffect(() => reset(modifiedAlertData), [modifiedAlertData, reset]);
   const [loadingState, setLoadingState] = useState<AlertConfigLoadingState>({
     templates: false,
-    functions: false,
   });
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [filterResources, setFilterResources] = useState<
-    FilterResourceDescriptor[]
-  >([]);
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
@@ -80,32 +77,12 @@ function AlertConfigDetails({
     () => alertDetails.filteringRules?.resources ?? [],
     [alertDetails]
   );
-  // Showing an alert asks nothing of the user, so a server that cannot answer is not reported.
   const selection = useAlertSelection({
     alertType: isNotificationAlert
       ? CapabilitiesAlertType.Notification
       : CapabilitiesAlertType.Observability,
     sources: savedSources,
-    catalog: filterResources,
-    quiet: true,
   });
-
-  const fetchFunctions = useCallback(async () => {
-    try {
-      setLoadingState((prev) => ({ ...prev, functions: true }));
-      const filterResources = await (isNotificationAlert
-        ? getNotificationResourceFunctions()
-        : getResourceFunctions());
-
-      setFilterResources(filterResources.data);
-    } catch (error) {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoadingState((prev) => ({ ...prev, functions: false }));
-    }
-  }, [isNotificationAlert]);
 
   const extraFormWidgets = useMemo(
     () => alertsClassBase.getAddAlertFormExtraWidgets(),
@@ -144,13 +121,10 @@ function AlertConfigDetails({
     }
   }, [extraFormWidgets]);
 
-  useEffect(() => {
-    fetchFunctions();
-  }, [Fqn]);
-
+  // The configuration shows what the server says the sources support, so it waits for it.
   const isLoading = useMemo(
-    () => Object.values(loadingState).some((val) => val),
-    [loadingState]
+    () => Object.values(loadingState).some((val) => val) || !selection.ready,
+    [loadingState, selection.ready]
   );
 
   if (isLoading) {
@@ -159,101 +133,80 @@ function AlertConfigDetails({
 
   return (
     <AlertSelectionProvider value={selection}>
-      <Form<ModifiedCreateEventSubscription>
-        disabled
-        className="alert-config-details"
-        form={form}
-        initialValues={{
-          ...modifiedAlertData,
-          resources: modifiedAlertData?.filteringRules?.resources,
-        }}>
-        <Row justify="center">
-          <Col span={24}>
-            <AlertFormSourceItem isViewMode />
-          </Col>
-          {!isEmpty(modifiedAlertData.input?.filters) && (
-            <>
-              <Col>
-                <Divider
-                  dashed
-                  className="tw:mx-2 tw:h-6 tw:border-r"
-                  orientation="vertical"
-                />
-              </Col>
-              <Col span={24}>
-                <ObservabilityFormFiltersItem isViewMode />
-              </Col>
-            </>
-          )}
-          {!isEmpty(modifiedAlertData.input?.actions) && (
-            <>
-              <Col>
-                <Divider
-                  dashed
-                  className="tw:mx-2 tw:h-6 tw:border-r"
-                  orientation="vertical"
-                />
-              </Col>
-              <Col span={24}>
-                <ObservabilityFormTriggerItem isViewMode />
-              </Col>
-            </>
-          )}
-          <Col>
-            <Divider
-              dashed
-              className="tw:mx-2 tw:h-6 tw:border-r"
-              orientation="vertical"
-            />
-          </Col>
-          <Col span={24}>
-            <DestinationFormItemFormBridge
-              isViewMode
-              renderValidationField={(validate) => (
-                <Form.Item
-                  hidden
-                  name="destinations"
-                  rules={[{ validator: validate }]}>
-                  <DestinationFormFieldRegistrar />
-                </Form.Item>
-              )}
-              values={{ destinations, readTimeout, timeout }}
-              onChange={(values) => {
-                // Keep this adapter replacement-based even in view mode so the
-                // core form cannot be rehydrated with stale nested config.
-                Object.entries(values).forEach(([name, value]) =>
-                  form.setFieldValue(name, value)
-                );
-              }}
-            />
-          </Col>
-          {!isEmpty(extraFormWidgets) && (
-            <>
-              {Object.entries(extraFormWidgets).map(([name, Widget]) => (
-                <Fragment key={name}>
-                  <Col>
-                    <Divider
-                      dashed
-                      className="tw:mx-2 tw:h-6 tw:border-r"
-                      orientation="vertical"
-                    />
-                  </Col>
-                  <Col span={24}>
-                    <Widget
-                      isViewMode
-                      alertDetails={modifiedAlertData}
-                      formRef={form}
-                      loading={isLoading}
-                      templateResourcePermission={templateResourcePermission}
-                      templates={templates}
-                    />
-                  </Col>
-                </Fragment>
-              ))}
-            </>
-          )}
-        </Row>
-      </Form>
+      <FormProvider {...form}>
+        <Box className="alert-config-details" direction="col">
+          <Box className="layout-row" justify="center" wrap="wrap">
+            <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+              <AlertFormSourceItem isViewMode value={values.resources} />
+            </Box>
+            {!isEmpty(modifiedAlertData.input?.filters) && (
+              <>
+                <Box className="layout-column tw:block">
+                  <Divider
+                    dashed
+                    className="tw:mx-2 tw:h-6 tw:border-r"
+                    orientation="vertical"
+                  />
+                </Box>
+                <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                  <ObservabilityFormFiltersItem isViewMode value={values} />
+                </Box>
+              </>
+            )}
+            {!isEmpty(modifiedAlertData.input?.actions) && (
+              <>
+                <Box className="layout-column tw:block">
+                  <Divider
+                    dashed
+                    className="tw:mx-2 tw:h-6 tw:border-r"
+                    orientation="vertical"
+                  />
+                </Box>
+                <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                  <ObservabilityFormTriggerItem isViewMode value={values} />
+                </Box>
+              </>
+            )}
+            <Box className="layout-column tw:block">
+              <Divider
+                dashed
+                className="tw:mx-2 tw:h-6 tw:border-r"
+                orientation="vertical"
+              />
+            </Box>
+            <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+              <DestinationFormItem isViewMode />
+            </Box>
+            {!isEmpty(extraFormWidgets) && (
+              <>
+                {Object.entries(extraFormWidgets).map(([name, Widget]) => (
+                  <Fragment key={name}>
+                    <Box className="layout-column tw:block">
+                      <Divider
+                        dashed
+                        className="tw:mx-2 tw:h-6 tw:border-r"
+                        orientation="vertical"
+                      />
+                    </Box>
+                    <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
+                      <Widget
+                        isViewMode
+                        alertDetails={alertsClassBase.getModifiedAlertDataForForm(
+                          alertDetails
+                        )}
+                        loading={isLoading}
+                        templateResourcePermission={templateResourcePermission}
+                        templates={templates}
+                        values={values}
+                      />
+                    </Box>
+                  </Fragment>
+                ))}
+              </>
+            )}
+          </Box>
+        </Box>
+      </FormProvider>
     </AlertSelectionProvider>
   );
 }

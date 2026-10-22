@@ -17,10 +17,10 @@ import { useCallback, useMemo } from 'react';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { pluralize } from '../../utils/StringUtils';
-import ErrorPlaceHolderES from '../common/ErrorWithPlaceholder/ErrorPlaceHolderES';
 import Loader from '../common/Loader/Loader';
 import ExploreSearchCard from '../ExploreV1/ExploreSearchCard/ExploreSearchCard';
 import { SearchedDataProps } from './SearchedData.interface';
+import SearchEmptyState from './SearchEmptyState/SearchEmptyState';
 
 const ASSETS_NAME = new Set([
   'table_name',
@@ -132,7 +132,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
           ) : (
             <div className="flex-center h-full">
               {children}
-              <ErrorPlaceHolderES
+              <SearchEmptyState
                 query={filter}
                 type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
               />

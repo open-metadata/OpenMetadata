@@ -15,7 +15,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.fernet.Fernet.encryptWebhookSecretKey;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import jakarta.ws.rs.BadRequestException;
@@ -25,6 +24,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.events.Argument;
@@ -32,19 +32,20 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.bundles.changeEvent.AbstractEventConsumer;
-import org.openmetadata.service.apps.bundles.changeEvent.ConsumerKind;
-import org.openmetadata.service.events.scheduled.AlertJobs;
-import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
-import org.openmetadata.service.events.subscription.AlertDefinitionPolicy;
-import org.openmetadata.service.events.subscription.DestinationValidation;
-import org.openmetadata.service.events.subscription.ledger.AlertRecord;
+import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.DestinationValidation;
+import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
+import org.openmetadata.service.events.consumer.Consumers;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -55,6 +56,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       "trigger,enabled,batchSize,notificationTemplate,destinations";
   static final String ALERT_UPDATE_FIELDS =
       "trigger,enabled,batchSize,input,filteringRules,notificationTemplate,destinations";
+  private static final String FIELD_ENABLED = "enabled";
 
   public EventSubscriptionRepository() {
     super(
@@ -70,8 +72,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   public void setFields(
       EventSubscription entity, Fields fields, RelationIncludes relationIncludes) {
     if (fields.contains("statusDetails") && !entity.getDestinations().isEmpty()) {
-      entity.withDestinations(
-          new ArrayList<>(EventSubscriptionScheduler.getInstance().destinationsWithStatus(entity)));
+      entity.withDestinations(new ArrayList<>(AlertDiagnostics.destinationsWithStatus(entity)));
     }
     entity.setNotificationTemplate(templateOf(entity.getId()));
   }
@@ -96,7 +97,29 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   @Override
   protected void postUpdate(EventSubscription original, EventSubscription updated) {
     super.postUpdate(original, updated);
+    // Before the job is back, so its first tick already starts from now.
+    if (switchedOn(updated)) {
+      AlertRecord.skipBacklog(updated.getId());
+    }
     AlertJobs.convergeAfterCommit(updated.getId());
+  }
+
+  /**
+   * An alert switched back on sends what happens from then on, not what happened while it was off.
+   * Read from this save's own change: when the save is merged into the user's session, {@code
+   * original} is the version from before that session.
+   */
+  private static boolean switchedOn(EventSubscription updated) {
+    ChangeDescription change = updated.getIncrementalChangeDescription();
+    return !Boolean.FALSE.equals(updated.getEnabled())
+        && change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsUpdated()).stream(),
+                listOrEmpty(change.getFieldsDeleted()).stream())
+            .anyMatch(
+                field ->
+                    FIELD_ENABLED.equals(field.getName())
+                        && Boolean.FALSE.equals(field.getOldValue()));
   }
 
   // Every hard delete reaches this, inside the delete's own transaction, including deleteInternal,
@@ -158,7 +181,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
     // An update is validated by the updater, which knows what the alert looked like before.
     if (!update) {
-      requireLoadableConsumer(entity);
+      requireRegistered(entity);
       DestinationValidation.ofANewAlert(entity);
       AlertDefinitionPolicy.ofNew(entity).prepareNew(entity);
     }
@@ -177,17 +200,10 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
-  // A save naming a consumer this server cannot load fails here, not at every tick.
-  private static void requireLoadableConsumer(EventSubscription alert) {
-    if (alert.getClassName() != null) {
-      try {
-        ConsumerKind.of(
-            Class.forName(alert.getClassName()).asSubclass(AbstractEventConsumer.class));
-      } catch (ClassNotFoundException | ClassCastException e) {
-        throw new BadRequestException("Consumer class cannot be loaded: " + alert.getClassName());
-      } catch (IllegalArgumentException e) {
-        throw new BadRequestException(e.getMessage());
-      }
+  // A save naming a consumer this server does not have fails here, not at every tick.
+  private static void requireRegistered(EventSubscription alert) {
+    if (alert.getClassName() != null && Consumers.find(alert.getClassName()).isEmpty()) {
+      throw new BadRequestException("No consumer is registered as " + alert.getClassName());
     }
   }
 
@@ -287,14 +303,15 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                     updated.getFilteringRules(),
                     true));
         compareAndUpdate(
-            "enabled", () -> recordChange("enabled", original.getEnabled(), updated.getEnabled()));
+            FIELD_ENABLED,
+            () -> recordChange(FIELD_ENABLED, original.getEnabled(), updated.getEnabled()));
         compareAndUpdate(
             "destinations",
             () ->
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    encryptWebhookSecretKey(updated.getDestinations()),
+                    DestinationSecrets.encrypt(updated.getDestinations()),
                     true,
                     objectMatch,
                     false));

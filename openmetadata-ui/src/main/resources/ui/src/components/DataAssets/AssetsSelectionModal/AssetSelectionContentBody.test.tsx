@@ -16,6 +16,45 @@ import AssetSelectionContentBody, {
 } from './AssetSelectionContentBody';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
+  Alert: ({
+    children,
+    title,
+    variant,
+    onClose,
+  }: {
+    children?: React.ReactNode;
+    title?: React.ReactNode;
+    variant: string;
+    onClose?: () => void;
+  }) => (
+    <div data-variant={variant} role="alert">
+      <span>{title}</span>
+      <span>{children}</span>
+      {onClose && (
+        <button data-testid="alert-close-button" onClick={onClose}>
+          close
+        </button>
+      )}
+    </div>
+  ),
+  Checkbox: ({
+    label,
+    onChange,
+  }: {
+    label?: React.ReactNode;
+    onChange?: (isSelected: boolean) => void;
+  }) => (
+    <>
+      <input
+        aria-label="select-all"
+        type="checkbox"
+        onChange={(e) => onChange?.(e.target.checked)}
+      />
+      <span>{label}</span>
+    </>
+  ),
   Box: ({
     children,
     onScroll,
@@ -29,7 +68,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </div>
   ),
-  Divider: () => <div data-testid="divider" />,
+  Button: ({
+    children,
+    onClick,
+    'data-testid': testId,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+    'data-testid'?: string;
+  }) => (
+    <button data-testid={testId} onClick={onClick}>
+      {children}
+    </button>
+  ),
   Typography: ({
     children,
     onClick,
@@ -44,20 +95,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </span>
   ),
 }));
-
-jest.mock('../../common/Banner/Banner', () => {
-  return jest.fn(({ type, message }: { type: string; message: string }) => (
-    <div data-testid="banner" data-type={type}>
-      {message}
-    </div>
-  ));
-});
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div data-testid="error-placeholder">{children}</div>
-  ));
-});
 
 jest.mock('../../common/Loader/Loader', () => {
   return jest.fn(() => <div data-testid="loader" />);
@@ -87,15 +124,18 @@ jest.mock('../../common/TableDataCardV2/TableDataCardV2', () => {
     ({
       id,
       checked,
+      errorMessage,
       source,
       handleSummaryPanelDisplay,
     }: {
       id: string;
       checked?: boolean;
+      errorMessage?: string;
       source: { id?: string };
       handleSummaryPanelDisplay?: (source: unknown) => void;
     }) => (
       <div data-checked={checked ? 'true' : 'false'} data-testid={id}>
+        {errorMessage}
         <button
           data-testid={`${id}-select`}
           onClick={() => handleSummaryPanelDisplay?.(source)}>
@@ -186,7 +226,7 @@ describe('AssetSelectionContentBody', () => {
     });
   });
 
-  it('should show error banner when exportJob has an error', () => {
+  it('should show error alert when exportJob has an error', () => {
     render(
       <AssetSelectionContentBody
         {...defaultProps}
@@ -194,10 +234,11 @@ describe('AssetSelectionContentBody', () => {
       />
     );
 
-    expect(screen.getByTestId('banner')).toHaveAttribute('data-type', 'error');
+    expect(screen.getByRole('alert')).toHaveAttribute('data-variant', 'error');
+    expect(screen.getByText('export failed')).toBeInTheDocument();
   });
 
-  it('should show success/loading banner when assetJobResponse is present without export error', () => {
+  it('should show success alert when assetJobResponse is present without export error', () => {
     render(
       <AssetSelectionContentBody
         {...defaultProps}
@@ -205,16 +246,17 @@ describe('AssetSelectionContentBody', () => {
       />
     );
 
-    expect(screen.getByTestId('banner')).toHaveAttribute(
-      'data-type',
+    expect(screen.getByRole('alert')).toHaveAttribute(
+      'data-variant',
       'success'
     );
+    expect(screen.getByText('job started')).toBeInTheDocument();
   });
 
-  it('should not show banner when no exportJob or assetJobResponse', () => {
+  it('should not show an alert when no exportJob or assetJobResponse', () => {
     render(<AssetSelectionContentBody {...defaultProps} />);
 
-    expect(screen.queryByTestId('banner')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('should render info banner when infoBannerText is provided', () => {
@@ -269,6 +311,25 @@ describe('AssetSelectionContentBody', () => {
     expect(
       screen.getByText('label.validation-error-plural')
     ).toBeInTheDocument();
+  });
+
+  it('should hide the validation error alert once it is closed', () => {
+    render(
+      <AssetSelectionContentBody
+        {...defaultProps}
+        failedStatus={
+          {
+            failedRequest: [{ request: { id: '1' }, message: 'failed' }],
+          } as never
+        }
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('alert-close-button'));
+
+    expect(
+      screen.queryByText('label.validation-error-plural')
+    ).not.toBeInTheDocument();
   });
 
   it('should not show validation error alert when failedStatus has no failed requests', () => {
@@ -375,7 +436,11 @@ describe('AssetSelectionContentBody', () => {
       />
     );
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText('no data found')).toBeInTheDocument();
   });
 
@@ -383,7 +448,11 @@ describe('AssetSelectionContentBody', () => {
     render(<AssetSelectionContentBody {...defaultProps} isLoading />);
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
-    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).not.toBeInTheDocument();
   });
 
   it('should render dry run modal when dryRunWarnings is defined', () => {
@@ -421,15 +490,14 @@ describe('AssetSelectionContentBody', () => {
   it('should call onScroll when the scrollable container is scrolled', () => {
     const items = [buildItem('1')];
 
-    const { container } = render(
+    render(
       <AssetSelectionContentBody {...defaultProps} items={items as never} />
     );
 
-    const scrollableContainer = screen
-      .getByTestId('tabledatacard-1')
-      .closest('.asset-list-wrapper')?.parentElement;
+    const scrollableContainer = screen.getByTestId('tabledatacard-1')
+      .parentElement?.parentElement as HTMLElement;
 
-    fireEvent.scroll(scrollableContainer ?? container, {
+    fireEvent.scroll(scrollableContainer, {
       target: { scrollTop: 100 },
     });
 

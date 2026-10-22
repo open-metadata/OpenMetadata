@@ -11,9 +11,8 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Typography } from '@openmetadata/ui-core-components';
-import { Col, Row } from 'antd';
+import { Grid, Typography } from '@openmetadata/ui-core-components';
+
 import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import { HELP_ITEMS_ENUM, SupportItem } from '../constants/Navbar.constants';
@@ -35,15 +34,13 @@ const getHelpDropdownLabelContentRenderer = (
     : undefined;
 
   return (
-    <Row className="cursor-pointer" onClick={item.handleSupportItemClick}>
-      <Col span={4}>
-        <Icon
-          className="align-middle"
-          component={item.icon}
-          style={{ fontSize: '18px' }}
-        />
-      </Col>
-      <Col className="flex items-center" span={20}>
+    <Grid
+      className="layout-row layout-grid cursor-pointer"
+      onClick={item.handleSupportItemClick}>
+      <Grid.Item className="layout-column" span={4}>
+        <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
+      </Grid.Item>
+      <Grid.Item className="layout-column flex items-center" span={20}>
         {isVersion ? (
           <div className="flex flex-col">
             <Typography className="text-base-color">
@@ -60,14 +57,10 @@ const getHelpDropdownLabelContentRenderer = (
         )}
 
         {item.isExternal && (
-          <Icon
-            className="m-l-xss text-base-color"
-            component={IconExternalLink}
-            style={{ fontSize: '16px' }}
-          />
+          <IconExternalLink className="tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0" />
         )}
-      </Col>
-    </Row>
+      </Grid.Item>
+    </Grid>
   );
 };
 

@@ -21,16 +21,23 @@ import {
   DEFAULT_APP_MODE,
 } from '../../../constants/appMode.constants';
 import { REDIRECT_PATHNAME } from '../../../constants/router.constants';
-import { AuthProvider as AuthProviderProps } from '../../../generated/configuration/authenticationConfiguration';
+import {
+  AuthProvider as AuthProviderProps,
+  ClientType,
+} from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
 import { useAppModeStore } from '../../../hooks/useAppMode';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
+import { getAppConfiguration } from '../../../rest/settingConfigAPI';
 import { getLoggedInUser } from '../../../rest/userAPI';
 import {
   decideReauth,
+  hasSignedOutSince,
   markReauthAttempt,
+  markSignedOut,
+  SIGNED_OUT_AT_KEY,
   waitForSiblingToken,
 } from '../../../utils/Auth/AuthCoordinator/ReauthGuard';
 import { ReauthRequiredError } from '../../../utils/Auth/AuthCoordinator/ReauthRequiredError';
@@ -38,6 +45,7 @@ import { RefreshFailedError } from '../../../utils/Auth/AuthCoordinator/RefreshQ
 import type { RefreshFailedPayload } from '../../../utils/Auth/AuthCoordinator/types';
 import { isRefreshableAuthError } from '../../../utils/AuthProvider.util';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
+import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
 import AuthProvider, { useAuthProvider } from './AuthProvider';
 import { OidcUser } from './AuthProvider.interface';
 
@@ -111,7 +119,10 @@ jest.mock('../../../utils/Auth/AuthCoordinator/ReauthGuard', () => ({
   hasReplacedToken: jest.requireActual(
     '../../../utils/Auth/AuthCoordinator/ReauthGuard'
   ).hasReplacedToken,
+  hasSignedOutSince: jest.fn().mockReturnValue(false),
   markReauthAttempt: jest.fn(),
+  markSignedOut: jest.fn(),
+  SIGNED_OUT_AT_KEY: 'om-signed-out-at',
   waitForSiblingToken: jest.fn(),
 }));
 
@@ -160,6 +171,10 @@ jest.mock('../../../utils/ToastUtils', () => ({
 // this mock) working — they call startTokenExpiryTimer during mount, which
 // destructures isExpired/timeoutExpiry from the return value.
 const mockGetOidcToken = jest.fn().mockResolvedValue('');
+// Default resolves so the normal logout path is unaffected; individual
+// tests override with `mockRejectedValueOnce` to exercise the
+// `onLogoutHandler` try/finally.
+const mockClearOidcToken = jest.fn().mockResolvedValue(undefined);
 const mockExtractDetailsFromToken = jest.fn().mockReturnValue({
   exp: 0,
   isExpired: true,
@@ -172,6 +187,7 @@ jest.mock('../../../utils/SwTokenStorageUtils', () => {
   return {
     ...actual,
     getOidcToken: (...args: unknown[]) => mockGetOidcToken(...args),
+    clearOidcToken: (...args: unknown[]) => mockClearOidcToken(...args),
   };
 });
 
@@ -208,6 +224,8 @@ jest.mock('../../../hooks/useApplicationStore', () => {
   const setIsAuthenticated = jest.fn();
   const setIsAuthenticating = jest.fn();
   const setApplicationLoading = jest.fn();
+  const setAppPreferences = jest.fn();
+  const setTimeFormat = jest.fn();
   const useApplicationStoreMock = Object.assign(
     jest.fn().mockImplementation(() => ({
       setCurrentUser: jest.fn(),
@@ -242,7 +260,13 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     // `handledVerifiedUser` reads `useApplicationStore.getState()` directly
     // (outside the hook call) — provide it so any code path that exercises
     // that branch doesn't blow up with "getState is not a function".
-    { getState: jest.fn().mockReturnValue({ currentUser: { name: 'test' } }) }
+    {
+      getState: jest.fn().mockReturnValue({
+        currentUser: { name: 'test' },
+        setAppPreferences,
+        setTimeFormat,
+      }),
+    }
   );
 
   return {
@@ -250,6 +274,8 @@ jest.mock('../../../hooks/useApplicationStore', () => {
     __mockSetIsAuthenticated: setIsAuthenticated,
     __mockSetIsAuthenticating: setIsAuthenticating,
     __mockSetApplicationLoading: setApplicationLoading,
+    __mockSetAppPreferences: setAppPreferences,
+    __mockSetTimeFormat: setTimeFormat,
   };
 });
 
@@ -294,6 +320,8 @@ const {
   __mockSetIsAuthenticated: mockSetIsAuthenticated,
   __mockSetIsAuthenticating: mockSetIsAuthenticating,
   __mockSetApplicationLoading: mockSetApplicationLoading,
+  __mockSetAppPreferences: mockSetAppPreferences,
+  __mockSetTimeFormat: mockSetTimeFormat,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 } = jest.requireMock('../../../hooks/useApplicationStore') as any;
 
@@ -486,6 +514,29 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
       expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
     );
   });
+
+  // Renders the provider and hands back its onLogoutHandler. Declared at
+  // this scope (rather than further down) so the 'while a sibling tab
+  // re-authenticates' tests, which interleave a logout with a refresh
+  // failure, can reach it without tripping @typescript-eslint/no-use-before-define.
+  const renderForLogout = async () => {
+    let logout: (() => void) | undefined;
+    const LogoutConsumer = () => {
+      logout = useAuthProvider().onLogoutHandler;
+
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <AuthProvider childComponentType={LogoutConsumer}>
+          <LogoutConsumer />
+        </AuthProvider>
+      );
+    });
+
+    return () => logout?.();
+  };
 
   describe('refresh failure → one silent re-authentication, then sign-out', () => {
     let onFailed: ((payload?: RefreshFailedPayload) => void) | undefined;
@@ -723,28 +774,111 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
         expect(reload).not.toHaveBeenCalled();
       });
+
+      it('does NOT reload over an in-flight logout when the sibling succeeds', async () => {
+        // The headline manifestation: a Sign-out click during the
+        // seconds-to-minutes `waitForSiblingToken` poll must not be undone
+        // by the reload that fires once the sibling stores a fresh token.
+        // Before the fix `waitForSiblingReauth` reloaded without re-reading
+        // `isSigningOutRef`, aborting the in-flight `/logout` and re-
+        // establishing the session from the sibling's token.
+        let resolveSibling!: (v: boolean) => void;
+        (waitForSiblingToken as jest.Mock).mockReturnValueOnce(
+          new Promise<boolean>((resolve) => {
+            resolveSibling = resolve;
+          })
+        );
+        mockInvokeLogout.mockReturnValueOnce(new Promise(() => undefined));
+        mockGetOidcToken.mockResolvedValue('stored-token');
+        const logout = await renderForLogout();
+        const onFailed = getOnHandler('refresh-failed');
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED); // parks at waitForSiblingToken
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        // User clicks Sign out while the poll is running.
+        await act(async () => {
+          logout();
+        });
+        // Sibling completes silent reauth and stores a fresh token.
+        await act(async () => {
+          resolveSibling(true);
+        });
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(mockInvokeLogout).toHaveBeenCalled();
+      });
+
+      it('signs out instead of reloading when a sign-out finished during the wait', async () => {
+        // The logout (here or in another tab) completed while this tab
+        // waited, so the sibling's fresh token belongs to an ended session.
+        (waitForSiblingToken as jest.Mock).mockResolvedValue(true);
+        (hasSignedOutSince as jest.Mock).mockReturnValueOnce(true);
+        await mountWithStoredToken();
+
+        await reportFailure(REAUTH_REQUIRED);
+
+        await waitFor(() =>
+          expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+        );
+
+        expect(reload).not.toHaveBeenCalled();
+      });
+
+      it('handles the next refresh failure after standing down for a logout', async () => {
+        // The recovery that stood down for the logout returned without
+        // navigating, and logout lands on /signin without a reload. If the
+        // in-progress flag survived, every later refresh failure in this tab
+        // would be dropped at the coalescing guard.
+        let resolveSibling!: (v: boolean) => void;
+        (waitForSiblingToken as jest.Mock)
+          .mockReturnValueOnce(
+            new Promise<boolean>((resolve) => {
+              resolveSibling = resolve;
+            })
+          )
+          .mockResolvedValueOnce(false);
+        let finishLogout!: () => void;
+        mockInvokeLogout.mockReturnValueOnce(
+          new Promise<void>((resolve) => {
+            finishLogout = resolve;
+          })
+        );
+        mockGetOidcToken.mockResolvedValue('stored-token');
+        const logout = await renderForLogout();
+        const onFailed = getOnHandler('refresh-failed');
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED); // parks at waitForSiblingToken
+          await Promise.resolve();
+          await Promise.resolve();
+        });
+        await act(async () => {
+          logout();
+        });
+        await act(async () => {
+          resolveSibling(true);
+        });
+        await act(async () => {
+          finishLogout();
+        });
+        await waitFor(() =>
+          expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+        );
+
+        expect(reload).not.toHaveBeenCalled();
+        expect(waitForSiblingToken).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          onFailed?.(REAUTH_REQUIRED);
+        });
+
+        await waitFor(() =>
+          expect(waitForSiblingToken).toHaveBeenCalledTimes(2)
+        );
+      });
     });
   });
-
-  // Renders the provider and hands back its onLogoutHandler.
-  const renderForLogout = async () => {
-    let logout: (() => void) | undefined;
-    const LogoutConsumer = () => {
-      logout = useAuthProvider().onLogoutHandler;
-
-      return null;
-    };
-
-    await act(async () => {
-      render(
-        <AuthProvider childComponentType={LogoutConsumer}>
-          <LogoutConsumer />
-        </AuthProvider>
-      );
-    });
-
-    return () => logout?.();
-  };
 
   it('never re-authenticates a user who is signing out', async () => {
     // The server has already revoked the session while the SSO logout is
@@ -765,6 +899,168 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     expect(mockInvokeSilentReauth).not.toHaveBeenCalled();
     expect(decideReauth).not.toHaveBeenCalled();
+
+    mockGetOidcToken.mockResolvedValue('');
+  });
+
+  it('does NOT re-authenticate when a logout starts while a refresh failure is already being handled', async () => {
+    // Reverse ordering of the test above: here a refresh failure is ALREADY
+    // being handled (parked at the `await getOidcToken()`) when the user
+    // clicks Sign out. The entry guard saw the flag clear; only a re-check
+    // after the await can honour the logout that started while the handler
+    // was suspended. Before the fix the handler resumed straight into
+    // `invokeSilentReauth`, silently re-authenticating over the in-flight
+    // `/logout`.
+    mockSupportsSilentReauth = true;
+    (decideReauth as jest.Mock).mockReturnValue('reauth');
+    (markReauthAttempt as jest.Mock).mockReturnValue(true);
+    mockInvokeLogout.mockReturnValueOnce(new Promise(() => undefined));
+    const logout = await renderForLogout();
+    const onFailed = getOnHandler('refresh-failed');
+    let resolveStoredToken!: (v: string) => void;
+    mockGetOidcToken.mockReturnValueOnce(
+      new Promise<string>((resolve) => {
+        resolveStoredToken = resolve;
+      })
+    );
+    await act(async () => {
+      onFailed?.(REAUTH_REQUIRED); // handleRefreshFailed parks at await getOidcToken()
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    await act(async () => {
+      logout(); // user clicks Sign out while the handler is parked
+    });
+    await act(async () => {
+      resolveStoredToken('stored-token'); // handler resumes; must re-check the flag
+    });
+
+    expect(mockInvokeSilentReauth).not.toHaveBeenCalled();
+    expect(decideReauth).not.toHaveBeenCalled();
+
+    mockGetOidcToken.mockResolvedValue('');
+  });
+
+  describe('signing out in one tab signs out every tab', () => {
+    const { useApplicationStore: applicationStore } = jest.requireMock(
+      '../../../hooks/useApplicationStore'
+    ) as { useApplicationStore: { getState: jest.Mock } };
+
+    const signOutInAnotherTab = () =>
+      act(async () => {
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: SIGNED_OUT_AT_KEY,
+            newValue: String(Date.now()),
+          })
+        );
+      });
+
+    afterEach(() => {
+      applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
+        currentUser: { name: 'test' },
+      });
+    });
+
+    it('records the sign-out for other tabs before ending the identity provider session', async () => {
+      const logout = await renderForLogout();
+
+      await act(async () => {
+        logout();
+      });
+
+      expect(markSignedOut).toHaveBeenCalledTimes(1);
+      expect(
+        (markSignedOut as jest.Mock).mock.invocationCallOrder[0]
+      ).toBeLessThan(mockInvokeLogout.mock.invocationCallOrder[0]);
+    });
+
+    it('signs this tab out locally when another tab signs out', async () => {
+      applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
+        currentUser: { name: 'test' },
+        isAuthenticated: true,
+      });
+      await renderForLogout();
+      mockSetIsAuthenticated.mockClear();
+      mockClearOidcToken.mockClear();
+
+      await signOutInAnotherTab();
+
+      await waitFor(() =>
+        expect(mockSetIsAuthenticated).toHaveBeenCalledWith(false)
+      );
+
+      expect(mockClearOidcToken).toHaveBeenCalled();
+      // The other tab already ended the provider session and recorded it.
+      expect(mockInvokeLogout).not.toHaveBeenCalled();
+      expect(markSignedOut).not.toHaveBeenCalled();
+    });
+
+    it('ignores another tab signing out when this tab is not signed in', async () => {
+      applicationStore.getState.mockReturnValue({
+        setAppPreferences: mockSetAppPreferences,
+        setTimeFormat: mockSetTimeFormat,
+        currentUser: {},
+        isAuthenticated: false,
+      });
+      await renderForLogout();
+      mockSetIsAuthenticated.mockClear();
+
+      await signOutInAnotherTab();
+
+      expect(mockSetIsAuthenticated).not.toHaveBeenCalledWith(false);
+    });
+  });
+
+  it('clears isSigningOutRef even when a logout cleanup step throws (try/finally)', async () => {
+    // Defense in depth for the same flag: if a step inside `onLogoutHandler`
+    // throws partway through, the `finally` must still clear
+    // `isSigningOutRef` — otherwise a later refresh failure would be blocked
+    // forever at the entry guard. Observed here by driving a refresh failure
+    // AFTER a throwing logout and asserting `decideReauth` runs (it is only
+    // reached once the entry guard passes, i.e. once the flag is clear).
+    mockSupportsSilentReauth = true;
+    (decideReauth as jest.Mock).mockReturnValue('reauth');
+    (markReauthAttempt as jest.Mock).mockReturnValue(true);
+    mockInvokeSilentReauth.mockResolvedValue(undefined);
+    mockClearOidcToken.mockRejectedValueOnce(new Error('storage gone'));
+
+    let logoutHandler: (() => Promise<void>) | undefined;
+    const ThrowingLogoutConsumer = () => {
+      // The context types `onLogoutHandler` as `() => void`, but the
+      // implementation is async — cast to the runtime shape so the `.catch`
+      // below can swallow the rejection from the throwing cleanup step.
+      logoutHandler = useAuthProvider().onLogoutHandler as () => Promise<void>;
+
+      return null;
+    };
+
+    await act(async () => {
+      render(
+        <AuthProvider childComponentType={ThrowingLogoutConsumer}>
+          <ThrowingLogoutConsumer />
+        </AuthProvider>
+      );
+    });
+
+    // Run the logout and swallow the rejection from the throwing cleanup
+    // step so it does not surface as an unhandled promise rejection.
+    await act(async () => {
+      await logoutHandler?.().catch(() => undefined);
+    });
+
+    // A subsequent refresh failure must NOT be blocked at the entry guard.
+    mockGetOidcToken.mockResolvedValue('stored-token');
+    const onFailed = getOnHandler('refresh-failed');
+    await act(async () => {
+      onFailed?.(REAUTH_REQUIRED);
+    });
+
+    expect(decideReauth).toHaveBeenCalled();
 
     mockGetOidcToken.mockResolvedValue('');
   });
@@ -1165,6 +1461,69 @@ describe('Sign-in routing', () => {
     });
 
     await waitFor(() => expect(useNavigate()).toHaveBeenCalledWith('/'));
+  });
+
+  it('stores the tenant default column order from the app configuration at login', async () => {
+    (getAppConfiguration as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        defaultAppMode: null,
+        defaultColumnOrder: 'sourceOrder',
+      })
+    );
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(mockSetAppPreferences).toHaveBeenCalledWith({
+        defaultColumnOrder: 'sourceOrder',
+      })
+    );
+  });
+
+  it('leaves the profile to the server after a confidential-client login', async () => {
+    const defaults = defaultStoreImplementation();
+    const confidentialStore = {
+      ...defaults,
+      jwtPrincipalClaims: [],
+      jwtPrincipalClaimsMapping: [],
+      authConfig: {
+        ...defaults.authConfig,
+        provider: AuthProviderProps.Google,
+        clientType: ClientType.Confidential,
+      },
+    };
+    useApplicationStoreMock.mockImplementation(() => confidentialStore);
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(confidentialStore.setCurrentUser).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1', name: 'aaron' })
+      )
+    );
+
+    expect(checkIfUpdateRequired).not.toHaveBeenCalled();
+  });
+
+  it('reconciles the profile in the browser after a public-client login', async () => {
+    renderProvider();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('login'));
+    });
+
+    await waitFor(() =>
+      expect(checkIfUpdateRequired).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'user-1' }),
+        expect.anything()
+      )
+    );
   });
 });
 

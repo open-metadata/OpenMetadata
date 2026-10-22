@@ -1,7 +1,9 @@
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
+import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import { DotsVertical } from '../../../icons';
+import { forwardRef } from 'react';
 import type { FC, HTMLAttributes, RefAttributes } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
@@ -34,6 +36,13 @@ interface DropdownItemProps extends AriaMenuItemProps {
   showCheckbox?: boolean;
   /** Size of that checkbox. */
   checkboxSize?: 'xs' | 'sm';
+  /** If true, shows a radio on the left to indicate single selection state. */
+  showRadio?: boolean;
+  /**
+   * `lg` is for navigation flyouts (the collapsed sidebar's group menus): a 24px icon in the
+   * sidebar's rest colour and a larger label, so the flyout reads like the sidebar it opens from.
+   */
+  size?: 'sm' | 'lg';
 }
 
 const DropdownItem = ({
@@ -44,8 +53,12 @@ const DropdownItem = ({
   unstyled,
   showCheckbox,
   checkboxSize = 'sm',
+  showRadio,
+  size = 'sm',
   ...props
 }: DropdownItemProps) => {
+  const isLarge = size === 'lg';
+
   if (unstyled) {
     return (
       <AriaMenuItem id={label} textValue={label} {...props}>
@@ -69,7 +82,8 @@ const DropdownItem = ({
       {(state) => (
         <div
           className={cx(
-            'tw:relative tw:flex tw:items-center tw:gap-2 tw:rounded-md tw:px-2.5 tw:py-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            'tw:relative tw:flex tw:items-center tw:rounded-md tw:px-2.5 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            isLarge ? 'tw:gap-3 tw:py-2.5' : 'tw:gap-2 tw:py-2',
             // Selected matches the sidebar's selected nav item and keeps its
             // tint under hover/focus, like the sidebar does.
             state.isSelected
@@ -89,15 +103,26 @@ const DropdownItem = ({
             />
           )}
 
+          {showRadio && (
+            <RadioButtonBase
+              isDisabled={state.isDisabled}
+              isFocusVisible={state.isFocusVisible}
+              isSelected={state.isSelected}
+            />
+          )}
+
           {Icon && (
             <Icon
               aria-hidden="true"
               className={cx(
-                'tw:size-4 tw:shrink-0 tw:stroke-[2.25px]',
+                'tw:shrink-0',
+                isLarge ? 'tw:size-6' : 'tw:size-4 tw:stroke-[2.25px]',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
                   ? 'tw:text-fg-brand-secondary_alt'
+                  : isLarge
+                  ? 'tw:text-fg-tertiary'
                   : 'tw:text-fg-quaternary'
               )}
             />
@@ -105,7 +130,8 @@ const DropdownItem = ({
 
           <span
             className={cx(
-              'tw:grow tw:truncate tw:text-sm',
+              'tw:grow tw:truncate',
+              isLarge ? 'tw:text-md' : 'tw:text-sm',
               state.isDisabled
                 ? 'tw:text-disabled'
                 : state.isSelected
@@ -143,7 +169,7 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:py-1 tw:outline-hidden tw:select-none',
+          'tw:max-h-[min(24rem,40vh)] tw:overflow-y-auto tw:py-1 tw:outline-hidden tw:select-none',
           typeof props.className === 'function'
             ? props.className(state)
             : props.className
@@ -156,10 +182,11 @@ const DropdownMenu = <T extends object>(props: DropdownMenuProps<T>) => {
 type DropdownPopoverProps = AriaPopoverProps;
 
 const DropdownPopover = (props: DropdownPopoverProps) => {
-  const { placement = 'bottom right', ...rest } = props;
+  const { placement = 'bottom right', offset = 4, ...rest } = props;
 
   return (
     <AriaPopover
+      offset={offset}
       placement={placement}
       {...rest}
       className={(state) =>
@@ -191,30 +218,36 @@ const DropdownSeparator = (props: AriaSeparatorProps) => {
   );
 };
 
-const DropdownDotsButton = (
-  props: AriaButtonProps & RefAttributes<HTMLButtonElement>
-) => {
-  const { t } = useCoreTranslation();
+// forwardRef so callers can anchor popovers to the button; React 18 drops a
+// plain `ref` prop on function components.
+const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
+  (props, ref) => {
+    const { t } = useCoreTranslation();
 
-  return (
-    <AriaButton
-      {...props}
-      aria-label={t('label.open-menu', 'Open menu')}
-      className={(state) =>
-        cx(
-          'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-          (state.isPressed || state.isHovered) && 'tw:text-fg-quaternary_hover',
-          (state.isPressed || state.isFocusVisible) &&
-            'tw:outline-2 tw:outline-offset-2',
-          typeof props.className === 'function'
-            ? props.className(state)
-            : props.className
-        )
-      }>
-      <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
-    </AriaButton>
-  );
-};
+    return (
+      <AriaButton
+        {...props}
+        aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
+        className={(state) =>
+          cx(
+            'tw:cursor-pointer tw:rounded-md tw:text-fg-quaternary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+            (state.isPressed || state.isHovered) &&
+              'tw:text-fg-quaternary_hover',
+            (state.isPressed || state.isFocusVisible) &&
+              'tw:outline-2 tw:outline-offset-2',
+            typeof props.className === 'function'
+              ? props.className(state)
+              : props.className
+          )
+        }
+        ref={ref}>
+        <DotsVertical className="tw:size-5 tw:transition-inherit-all" />
+      </AriaButton>
+    );
+  }
+);
+
+DropdownDotsButton.displayName = 'DropdownDotsButton';
 
 export type DropdownSectionHeaderProps = HTMLAttributes<HTMLElement> &
   RefAttributes<HTMLElement>;

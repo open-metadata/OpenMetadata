@@ -17,7 +17,7 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
+  Card,
   Input,
   SelectItemType,
   Skeleton,
@@ -57,6 +57,7 @@ import {
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -202,62 +203,64 @@ const BotDescriptionSection: FC<BotDescriptionSectionProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="tw:border tw:border-subtle tw:rounded-xl tw:p-5 tw:px-6">
-      <Box align="center" direction="row" justify="between">
-        <Typography size="text-sm" weight="medium">
-          {t('label.description')}
-        </Typography>
-        {canEditAll && !isEditingDesc && (
-          <Button
-            color="link-color"
-            data-testid="edit-description-btn"
-            size="sm"
-            onPress={() => setIsEditingDesc(true)}>
-            {t('label.edit')}
-          </Button>
-        )}
-      </Box>
-
-      {isEditingDesc ? (
-        <Box
-          className="tw:mt-2"
-          data-testid="edit-description-modal"
-          direction="col"
-          gap={2}>
-          <RichTextEditor
-            className="new-form-style"
-            initialValue={botData.description ?? ''}
-            ref={descEditorRef}
-          />
-          <Box direction="row" gap={2} justify="end">
+    <Card variant="muted">
+      <Card.Content>
+        <Box align="center" direction="row" justify="between">
+          <Typography size="text-sm" weight="medium">
+            {t('label.description')}
+          </Typography>
+          {canEditAll && !isEditingDesc && (
             <Button
-              color="tertiary"
-              isDisabled={isSavingDesc}
+              color="link-color"
+              data-testid="edit-description-btn"
               size="sm"
-              onPress={() => setIsEditingDesc(false)}>
-              {t('label.cancel')}
+              onPress={() => setIsEditingDesc(true)}>
+              {t('label.edit')}
             </Button>
-            <Button
-              color="primary"
-              isLoading={isSavingDesc}
-              size="sm"
-              onPress={handleSaveDescription}>
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
-      ) : (
-        <div className="tw:mt-1.5">
-          {botData.description ? (
-            <RichTextEditorPreviewerV1 markdown={botData.description} />
-          ) : (
-            <Typography className="tw:text-tertiary" size="text-sm">
-              --
-            </Typography>
           )}
-        </div>
-      )}
-    </div>
+        </Box>
+
+        {isEditingDesc ? (
+          <Box
+            className="tw:mt-2"
+            data-testid="edit-description-modal"
+            direction="col"
+            gap={2}>
+            <RichTextEditor
+              className="new-form-style"
+              initialValue={botData.description ?? ''}
+              ref={descEditorRef}
+            />
+            <Box direction="row" gap={2} justify="end">
+              <Button
+                color="tertiary"
+                isDisabled={isSavingDesc}
+                size="sm"
+                onPress={() => setIsEditingDesc(false)}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                isLoading={isSavingDesc}
+                size="sm"
+                onPress={handleSaveDescription}>
+                {t('label.save')}
+              </Button>
+            </Box>
+          </Box>
+        ) : (
+          <Box className="tw:mt-1.5">
+            {botData.description ? (
+              <RichTextEditorPreviewerV1 markdown={botData.description} />
+            ) : (
+              <Typography className="tw:text-tertiary" size="text-sm">
+                --
+              </Typography>
+            )}
+          </Box>
+        )}
+      </Card.Content>
+    </Card>
   );
 };
 
@@ -299,7 +302,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
         weight="medium">
         {t('label.access')}
       </Typography>
-      <div className="tw:border tw:border-subtle tw:rounded-xl">
+      <Card variant="muted">
         {/* Roles */}
         <div className="tw:p-4 tw:px-6 tw:border-b tw:border-subtle">
           <Box align="center" direction="row" justify="between">
@@ -374,7 +377,11 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
-                <Badge key={role.id} size="md" type="modern">
+                <Badge
+                  key={role.id}
+                  size="md"
+                  tooltip={getEntityName(role)}
+                  type="modern">
                   {getEntityName(role)}
                 </Badge>
               ))}
@@ -399,14 +406,19 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
               </Typography>
             ) : (
               botUserData.inheritedRoles?.map((role) => (
-                <Badge color="gray" key={role.id} size="sm" type="pill-color">
+                <Badge
+                  color="gray"
+                  key={role.id}
+                  size="sm"
+                  tooltip={getEntityName(role)}
+                  type="pill-color">
                   {getEntityName(role)}
                 </Badge>
               ))
             )}
           </Box>
         </div>
-      </div>
+      </Card>
     </>
   );
 };
@@ -669,7 +681,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   if (!botData || !botUserData) {
     return (
       <div className="tw:relative tw:h-full tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           title={t('label.no-entity-found', {
             entity: t('label.bot'),
           })}

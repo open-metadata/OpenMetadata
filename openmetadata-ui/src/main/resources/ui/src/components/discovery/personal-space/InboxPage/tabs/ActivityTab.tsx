@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   FilterFunnel01,
   Hourglass01,
@@ -25,9 +21,13 @@ import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import searchClassBase from '../../../../../utils/SearchClassBase';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import ActivityFeedItem from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
@@ -40,6 +40,7 @@ import {
   getActivityDayLabel,
   getActivityTypeKey,
   InboxDateRange,
+  INBOX_ENTITY_ICON_CLASS,
 } from '../inbox.utils';
 import {
   getInboxItemId,
@@ -60,12 +61,37 @@ const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
 const getItemActor = ({ activity, feed }: InboxActivityItem) =>
   activity?.actor ?? feed?.createdBy;
 
-// How each grouping keys an item and titles its group.
+// An Asset group leads with its asset's icon, a User group with the user.
+const AssetGroupIcon = ({ item }: { item: InboxActivityItem }) => {
+  const type = getItemEntity(item)?.type;
+
+  return type ? (
+    <span className={INBOX_ENTITY_ICON_CLASS}>
+      {searchClassBase.getEntityIcon(type)}
+    </span>
+  ) : null;
+};
+
+const UserGroupIcon = ({ item }: { item: InboxActivityItem }) => {
+  const actor = getItemActor(item);
+
+  return actor?.name ? (
+    <ProfilePicture
+      borderless
+      displayName={getEntityName(actor)}
+      name={actor.name}
+      size="xs"
+    />
+  ) : null;
+};
+
+// How each grouping keys an item, titles its group and marks its header.
 const GROUPING: Record<
   ActivityGrouping,
   {
     key: (item: InboxActivityItem) => string;
     title: (item: InboxActivityItem, t: TFunction) => string;
+    Icon?: React.FC<{ item: InboxActivityItem }>;
   }
 > = {
   [ActivityGrouping.Day]: {
@@ -75,10 +101,12 @@ const GROUPING: Record<
   [ActivityGrouping.Asset]: {
     key: (item) => getItemEntity(item)?.id ?? '',
     title: (item) => getEntityName(getItemEntity(item)),
+    Icon: AssetGroupIcon,
   },
   [ActivityGrouping.User]: {
     key: (item) => getItemActor(item)?.name ?? '',
     title: (item) => getEntityName(getItemActor(item)),
+    Icon: UserGroupIcon,
   },
 };
 
@@ -153,11 +181,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
     return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
       key: key(groupItems[0]),
+      first: groupItems[0],
       title: title(groupItems[0], t),
       items: groupItems,
       total: totals[key(groupItems[0])],
     }));
   }, [filteredItems, visibleItems, grouping, t]);
+  const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day
       ? ACTIVITY_CLOCK_FORMAT
@@ -165,22 +195,20 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   const emptyPlaceholder =
     isFiltered || typeKeys.length ? (
-      <EmptyPlaceholder
+      <NoFilteredResultsPlaceholder
         data-testid="inbox-activity-no-results"
         description={t('message.activity-feed-no-results-description')}
         icon={
           <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
         }
         title={t('label.no-activity-in-period')}
-        variant="blank"
       />
     ) : (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-activity-empty"
         description={t('message.activity-feed-empty-description')}
         icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
         title={t('label.activity-feed-starts-here')}
-        variant="blank"
       />
     );
 
@@ -199,20 +227,22 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
             gap={3}
             key={group.key}>
             <Box align="center" gap={2}>
+              {GroupIcon && <GroupIcon item={group.first} />}
               <Typography
-                className="tw:text-primary"
+                className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
                 size="text-xs"
                 weight="semibold">
                 {group.title}
               </Typography>
-              <Typography className="tw:text-quaternary" size="text-sm">
+              <Typography
+                className="tw:shrink-0 tw:text-quaternary"
+                size="text-xs">
                 {group.total === 1
                   ? t('label.one-update')
                   : t('label.number-update-plural', {
                       number: group.total,
                     })}
               </Typography>
-              <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
             </Box>
             {group.items.map((item) => {
               const itemId = getInboxItemId(item);
@@ -251,7 +281,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
           'tw:relative tw:z-10 tw:-mx-3 tw:px-3 tw:py-3 tw:transition-shadow',
           isScrolled && 'tw:shadow-md'
         )}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-220">
+        <div className="tw:mx-auto tw:w-full tw:max-w-230">
           <ActivityToolbar
             counts={counts}
             datePreset={dateRange?.key ?? DEFAULT_INBOX_DATE_PRESET}
@@ -272,7 +302,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
         data-testid="inbox-activity-tab"
         ref={scrollRef}
         onScroll={onScroll}>
-        <div className="tw:mx-auto tw:w-full tw:max-w-220">
+        <div className="tw:mx-auto tw:w-full tw:max-w-230">
           {activityContent}
         </div>
       </div>

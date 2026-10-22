@@ -11,21 +11,21 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
 import {
-  Button as CoreButton,
+  Button,
   Dropdown,
-  Typography,
+  EmptyPlaceholder,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
-import { Button, Card } from 'antd';
+import {
+  ChevronDown,
+  ClipboardCheck,
+  NoSearch,
+  Plus as PlusIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { toLower } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_LABELS,
@@ -53,7 +53,7 @@ import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import './contract-quality-form-tab.less';
+import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
 const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
@@ -75,13 +75,35 @@ export const ContractQualityFormTab: React.FC<{
     prevLabel?: string;
     isNextVisible?: boolean;
   };
-}> = ({ selectedQuality, onChange, onNext, onPrev, buttonProps }) => {
+}> = ({
+  selectedQuality,
+  onChange,
+  onNext,
+  onPrev,
+  initialValues,
+  buttonProps,
+}) => {
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState('');
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>(
     selectedQuality ?? []
+  );
+
+  // Stored quality-expectation references keyed by id, seeded from the saved
+  // contract. The test-case list is server-paged and filterable, so a seeded
+  // expectation whose test case lives on a later page (or is excluded by the
+  // testType filter, or was deleted) is never in `allTestCases`. Without this
+  // fallback, rebuilding `qualityExpectations` from `allTestCases` alone would
+  // silently drop those off-page selections whenever the user toggles any row.
+  const storedRefsById = useMemo(
+    () =>
+      new Map(
+        (initialValues?.qualityExpectations ?? []).map((q) => [q.id ?? '', q])
+      ),
+    [initialValues?.qualityExpectations]
   );
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] =
     useState<boolean>(false);
@@ -172,6 +194,10 @@ export const ContractQualityFormTab: React.FC<{
     []
   );
 
+  const isFiltered = Boolean(searchValue) || testType !== TestCaseType.all;
+  // Nothing to narrow down until the table has at least one test.
+  const hasNoTests = !isFiltered && allTestCases.length === 0;
+
   const paginationProps = useMemo(
     () => ({
       currentPage,
@@ -198,13 +224,22 @@ export const ContractQualityFormTab: React.FC<{
     const qualityExpectations = selectedRowKeys.map((id) => {
       const testCase = allTestCases.find((test) => test.id === id);
 
-      return {
-        description: testCase?.description,
-        name: testCase?.name,
-        id: testCase?.id,
-        type: EntityType.TEST_CASE,
-      } as EntityReference;
-    });
+      // When the test case is in the currently fetched (paged/filtered) list,
+      // resolve the full reference from it. Otherwise fall back to the stored
+      // reference seeded from the saved contract so off-page, filtered-out, or
+      // deleted test cases are preserved rather than silently dropped.
+      return testCase
+        ? {
+            description: testCase.description,
+            name: testCase.name,
+            id: testCase.id,
+            type: EntityType.TEST_CASE,
+          }
+        : storedRefsById.get(id) ?? {
+            id,
+            type: EntityType.TEST_CASE,
+          };
+    }) as EntityReference[];
 
     onChange({
       qualityExpectations,
@@ -216,41 +251,38 @@ export const ContractQualityFormTab: React.FC<{
   }, [testType]);
 
   return (
-    <Card className="contract-quality-form-tab-container container bg-grey p-box">
-      <div className="d-flex justify-between">
-        <div>
-          <Typography className="contract-detail-form-tab-title">
-            {t('label.quality')}
-          </Typography>
-          <Typography className="contract-detail-form-tab-description">
-            {t('message.quality-contract-description')}
-          </Typography>
-        </div>
-
+    <ContractFormStep
+      description={t('message.quality-contract-description')}
+      extra={
         <Button
-          className="contract-export-button"
+          color="secondary"
           data-testid="add-test-button"
-          icon={<Icon className="anticon" component={PlusIcon} />}
-          onClick={handleOpenTestCaseDrawer}>
-          {t('label.add-entity', {
-            entity: t('label.test'),
-          })}
+          iconLeading={PlusIcon}
+          onPress={handleOpenTestCaseDrawer}>
+          {t('label.add-entity', { entity: t('label.test') })}
         </Button>
-      </div>
-
-      <div className="contract-form-content-container ">
+      }
+      isNextVisible={buttonProps.isNextVisible}
+      nextLabel={buttonProps.nextLabel}
+      prevLabel={buttonProps.prevLabel}
+      title={t('label.quality')}
+      onNext={onNext}
+      onPrev={onPrev}>
+      <div className="contract-form-content-container">
         <Table
           columns={columns}
           customPaginationProps={paginationProps}
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <CoreButton
+              <Button
                 color="secondary"
-                iconTrailing={<ChevronDown size={14} />}
+                data-testid="quality-filter-button"
+                iconTrailing={ChevronDown}
+                isDisabled={hasNoTests}
                 size="sm">
                 {t('label.filter-plural')}
-              </CoreButton>
+              </Button>
               <Dropdown.Popover className="tw:w-auto">
                 <Dropdown.Menu
                   aria-label={t('label.filter-plural')}
@@ -266,6 +298,24 @@ export const ContractQualityFormTab: React.FC<{
             </Dropdown.Root>
           }
           loading={isTestsLoading}
+          locale={{
+            emptyText: isFiltered ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<ClipboardCheck className="tw:text-fg-quaternary" />}
+                title={t('label.no-entity-available', {
+                  entity: t('label.test-case-plural'),
+                })}
+                variant="blank"
+              />
+            ),
+          }}
           pagination={false}
           rowKey="id"
           rowSelection={{
@@ -274,12 +324,14 @@ export const ContractQualityFormTab: React.FC<{
               setSelectedKeys(selectedRowKeys as string[]);
               handleSelection(selectedRowKeys as string[]);
             },
+            preserveSelectedRowKeys: true, // Preserve selections across page changes
           }}
           searchProps={{
             placeholder: t('label.search-by-type', {
               type: t('label.name'),
             }),
             onSearch: (value) => {
+              setSearchValue(value);
               fetchAllTests({
                 offset: 0,
                 limit: pageSize,
@@ -290,22 +342,6 @@ export const ContractQualityFormTab: React.FC<{
         />
       </div>
 
-      <div className="d-flex justify-between m-t-md">
-        <Button
-          className="contract-prev-button"
-          icon={<LeftOutlined height={22} width={20} />}
-          onClick={onPrev}>
-          {buttonProps.prevLabel ?? t('label.previous')}
-        </Button>
-        <Button
-          className="contract-next-button"
-          type="primary"
-          onClick={onNext}>
-          {buttonProps.nextLabel ?? t('label.next')}
-          <Icon component={RightIcon} />
-        </Button>
-      </div>
-
       <TestCaseFormDrawer
         open={isTestCaseDrawerOpen}
         table={table}
@@ -313,6 +349,6 @@ export const ContractQualityFormTab: React.FC<{
         onClose={handleCloseTestCaseDrawer}
         onFormSubmit={handleTestCaseSubmit}
       />
-    </Card>
+    </ContractFormStep>
   );
 };

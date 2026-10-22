@@ -52,8 +52,14 @@ describe('RunDetailsCard utils', () => {
       expect(formatDifference(10120, 10000)).toBe('+120 (+1.2%)');
     });
 
-    it('shows no sign for a zero difference', () => {
-      expect(formatDifference(10000, 10000)).toBe('0 (0.0%)');
+    it('signs a zero difference too, as the mock does', () => {
+      expect(formatDifference(10000, 10000)).toBe('+0 (+0.0%)');
+    });
+
+    it('gives the percent the sign of the difference for a negative expected value', () => {
+      // -5 is 5 above -10: half of the expected value's size.
+      expect(formatDifference(-5, -10)).toBe('+5 (+50.0%)');
+      expect(formatDifference(-15, -10)).toBe('-5 (-50.0%)');
     });
 
     it('drops the percent when the expected value is zero', () => {
@@ -292,7 +298,10 @@ describe('RunDetailsCard utils', () => {
   });
 
   it.each([
-    [0.4, '1ms'],
+    // Under a millisecond, neither "0ms" nor "1ms" would be true.
+    [0, '<1ms'],
+    [0.4, '<1ms'],
+    [1, '1ms'],
     [2.31, '2ms'],
     [999.6, '1.0s'],
     [2600, '2.6s'],
@@ -305,13 +314,54 @@ describe('RunDetailsCard utils', () => {
     expect(formatRunDuration(milliseconds)).toBe(text);
   });
 
+  it('shows no duration for a negative one, which only clock skew produces', () => {
+    expect(formatRunDuration(-500)).toBe('—');
+  });
+
   it.each([
-    ['TimeoutError', true],
-    ['QueryTimedOut', true],
-    ['QueryCanceled', true],
-    ['OperationalError', false],
-    [undefined, false],
-  ])('treats %s as a timeout: %s', (errorType, expected) => {
-    expect(isTimeoutError(errorType)).toBe(expected);
+    ['TimeoutError', undefined, true],
+    ['QueryTimedOut', undefined, true],
+    ['QueryCanceled', undefined, true],
+    // A driver's catch-all: a timeout only when its message says so.
+    ['OperationalError', undefined, false],
+    ['OperationalError', 'relation "orders" does not exist', false],
+    [
+      'OperationalError',
+      'Snowflake connection timed out after 300 seconds',
+      true,
+    ],
+    ['OperationalError', 'canceling statement due to statement timeout', true],
+    [
+      'ProgrammingError',
+      'Statement reached its statement or warehouse timeout of 3600 second(s)',
+      true,
+    ],
+    // A catch-all whose words only look like a timeout: a range, a piece of
+    // a name, a quoted identifier.
+    ['OperationalError', 'time out of range', false],
+    ['OperationalError', 'runtime out of memory', false],
+    ['OperationalError', 'datetime out of range', false],
+    [
+      'OperationalError',
+      'could not connect: connect_timeout=10 invalid',
+      false,
+    ],
+    [
+      'OperationalError',
+      'invalid value for parameter "statement_timeout": "abc"',
+      false,
+    ],
+    [
+      'ProgrammingError',
+      'SQL compilation error: invalid identifier TIMEOUT_MS',
+      false,
+    ],
+    ['ProgrammingError', 'column "timeout" does not exist', false],
+    ['OperationalError', "Unknown column 'timeout' in 'field list'", false],
+    // Any other type's message is not read.
+    ['UndefinedFunction', 'function timeout(integer) does not exist', false],
+    [undefined, undefined, false],
+  ])('treats %s (%s) as a timeout: %s', (errorType, message, expected) => {
+    expect(isTimeoutError(errorType, message)).toBe(expected);
   });
 });

@@ -16,12 +16,10 @@ package org.openmetadata.service.util;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.jsonpatch.JsonPatchException;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -38,13 +36,14 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Slf4j
 public class JsonPatchUtils {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final String FROM_MEMBER = "from";
 
   private JsonPatchUtils() {}
 
   public static Set<MetadataOperation> getMetadataOperations(
       ResourceContextInterface resourceContextInterface, JsonPatch jsonPatch) {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
-    EntityInterface originalEntity = resourceContextInterface.getEntity();
+    EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
     String resourceType = resourceContextInterface.getResource();
     boolean tagsAffected = false;
 
@@ -60,40 +59,40 @@ public class JsonPatchUtils {
       }
     }
     if (tagsAffected) {
-      try {
-        JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
-        JsonNode patchedEntityJson = applyPatch(originalEntityJson, jsonPatch);
-        Set<TagLabel> originalTags = extractTags(originalEntityJson);
-        Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
-        Set<TagLabel> addedTags = new HashSet<>(patchedTags);
-        addedTags.removeAll(originalTags);
+      JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
+      // Same engine as EntityRepository.patch, so the tags checked are the tags that get written.
+      JsonNode patchedEntityJson =
+          JsonUtils.readTree(JsonUtils.applyPatch(originalEntity, jsonPatch).toString());
+      Set<TagLabel> originalTags = extractTags(originalEntityJson);
+      Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
+      Set<TagLabel> addedTags = new HashSet<>(patchedTags);
+      addedTags.removeAll(originalTags);
 
-        Set<TagLabel> removedTags = new HashSet<>(originalTags);
-        removedTags.removeAll(patchedTags);
+      Set<TagLabel> removedTags = new HashSet<>(originalTags);
+      removedTags.removeAll(patchedTags);
 
-        for (TagLabel addedTag : addedTags) {
-          uniqueOperations.add(mapTagToOperation(addedTag));
-        }
-        for (TagLabel removedTag : removedTags) {
-          uniqueOperations.add(mapTagToOperation(removedTag));
-        }
-        LOG.debug("Returning patch operations {}", uniqueOperations);
-      } catch (JsonPatchException | IOException e) {
-        LOG.error("Failed to process JSON Patch for MetadataOperations", e);
-        throw new RuntimeException("Error processing JSON Patch", e);
+      for (TagLabel addedTag : addedTags) {
+        uniqueOperations.add(mapTagToOperation(addedTag));
       }
+      for (TagLabel removedTag : removedTags) {
+        uniqueOperations.add(mapTagToOperation(removedTag));
+      }
+      LOG.debug("Returning patch operations {}", uniqueOperations);
     }
 
     return uniqueOperations;
   }
 
-  private static JsonNode applyPatch(JsonNode targetJson, JsonPatch patch)
-      throws JsonPatchException, IOException {
-    String patchString = patch.toString();
-    JsonNode patchNode = OBJECT_MAPPER.readTree(patchString);
-    com.github.fge.jsonpatch.JsonPatch jacksonPatch =
-        com.github.fge.jsonpatch.JsonPatch.fromJson(patchNode);
-    return jacksonPatch.apply(targetJson);
+  /**
+   * Whether an operation of {@code jsonPatch} reads a value from another location of the document,
+   * as {@code copy} and {@code move} do through their {@code from} member.
+   */
+  public static boolean readsFromAnotherPath(JsonPatch jsonPatch) {
+    // jakarta JsonPatch exposes its operations as untyped JsonValues; each operation is a JSON
+    // object.
+    return jsonPatch.toJsonArray().stream()
+        .anyMatch(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
   }
 
   private static Set<TagLabel> extractTags(JsonNode entityJson) {

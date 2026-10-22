@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Owner, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { Button } from 'antd';
+import {
+  Owner,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { capitalize } from 'lodash';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +24,6 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
@@ -30,7 +33,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -178,50 +181,28 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      <div className="lineage-filter-buttons">
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          data-testid={`upstream-button-${
-            filter === 'upstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('upstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="upstream-button-text">
-            {t('label.upstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'upstream' ? 'active' : ''
-            }`}>
-            {upstreamCount}
-          </span>
-        </Button>
-        <Button
-          className={`lineage-filter-button ${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          data-testid={`downstream-button-${
-            filter === 'downstream' ? 'active' : ''
-          }`}
-          size="small"
-          onClick={() => onFilterChange('downstream')}>
-          <span
-            className="lineage-filter-button-text"
-            data-testid="downstream-button-text">
-            {t('label.downstream')}
-          </span>
-          <span
-            className={`lineage-filter-button-count ${
-              filter === 'downstream' ? 'active' : ''
-            }`}>
-            {downstreamCount}
-          </span>
-        </Button>
-      </div>
+      <Tabs
+        className="tw:sticky tw:top-0 tw:z-2 tw:mb-3 tw:pt-2"
+        selectedKey={filter}
+        onSelectionChange={(key) =>
+          onFilterChange(key as LineageTabContentProps['filter'])
+        }>
+        <Tabs.List size="sm" type="button-border">
+          {(['upstream', 'downstream'] as const).map((direction) => (
+            <Tabs.Item
+              badge={direction === 'upstream' ? upstreamCount : downstreamCount}
+              data-testid={`${direction}-button-${
+                filter === direction ? 'active' : ''
+              }`}
+              id={direction}
+              key={direction}>
+              <span data-testid={`${direction}-button-text`}>
+                {t(`label.${direction}`)}
+              </span>
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
       <SearchBarComponent
         containerClassName="searchbar-container"
         placeholder={t('label.search-for-type', {
@@ -301,14 +282,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <div>
-            <ErrorPlaceHolderNew
-              className="text-grey-14 m-t-lg"
-              icon={<AddPlaceHolderIcon height={100} width={100} />}
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography as="p" className="text-center  no-data-placeholder">
-                {t('label.lineage-not-found')}
-              </Typography>
-            </ErrorPlaceHolderNew>
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder
+                data-testid="no-data-placeholder"
+                description={t('label.lineage-not-found')}
+                icon={<AddPlaceHolderIcon height={100} width={100} />}
+              />
+            </div>
           </div>
         )}
       </div>
