@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import React from 'react';
 import BotsPanel from './BotsPanel';
 
@@ -41,9 +41,15 @@ jest.mock('../../../../../../hoc/LimitWrapper', () => ({
   ),
 }));
 
+const mockBotsListPanel = jest.fn();
+
 jest.mock('./BotsListPanel', () => ({
   __esModule: true,
-  default: () => <div data-testid="bots-list-panel-mock" />,
+  default: (props: { refreshKey?: number }) => {
+    mockBotsListPanel(props);
+
+    return <div data-testid="bots-list-panel-mock" />;
+  },
 }));
 
 jest.mock('./BotAddForm', () => ({
@@ -80,5 +86,24 @@ describe('BotsPanel', () => {
         ]),
       })
     );
+  });
+
+  it('does not reload the bots list when the Settings crumb is clicked', () => {
+    render(<BotsPanel onHeaderChange={mockOnHeaderChange} />);
+    const { onBreadcrumbAction } =
+      mockOnHeaderChange.mock.calls[
+        mockOnHeaderChange.mock.calls.length - 1
+      ][0];
+    const refreshKeyBefore =
+      mockBotsListPanel.mock.calls[mockBotsListPanel.mock.calls.length - 1][0]
+        .refreshKey;
+
+    act(() => onBreadcrumbAction('settings'));
+
+    expect(mockSetHash).not.toHaveBeenCalled();
+    expect(
+      mockBotsListPanel.mock.calls[mockBotsListPanel.mock.calls.length - 1][0]
+        .refreshKey
+    ).toBe(refreshKeyBefore);
   });
 });

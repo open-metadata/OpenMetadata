@@ -276,12 +276,12 @@ describe('AIUserMenu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('routes to #profile/<username> when the profile item is clicked', () => {
+  it('routes to #profile without a username when the profile item is clicked', () => {
     renderMenu();
 
     fireEvent.click(screen.getByTestId('ai-user-menu-profile'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile', 'test-user');
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
   });
 
   it('opens My Data in the personal-space modal', () => {

@@ -15,7 +15,9 @@ import {
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
+  hasDirectDomainChanges,
   hashSubPathToView,
+  mergeDomainEdits,
   viewToSubPath,
 } from './Members.utils';
 
@@ -42,6 +44,29 @@ describe('hash <-> view round-trip', () => {
     );
 
     expect(view).toEqual({ type: 'team-detail', fqn, name: fqn });
+  });
+
+  it('round-trips the edit-user view for a name with special characters', () => {
+    const name = 'jane.doe@acme.io';
+    const subPath = viewToSubPath({ type: 'user-edit', name });
+
+    expect(subPath).toBe(`user/${encodeURIComponent(name)}`);
+    expect(hashSubPathToView(subPath as string)).toEqual({
+      type: 'user-edit',
+      name,
+    });
+  });
+
+  it('keeps users/create as the create form, even next to a user named "create"', () => {
+    expect(hashSubPathToView('users/create')).toEqual({
+      type: 'user-create',
+      isAdmin: false,
+    });
+    expect(hashSubPathToView('user/create')).toEqual({
+      type: 'user-edit',
+      name: 'create',
+    });
+    expect(hashSubPathToView('user')).toEqual({ type: 'users' });
   });
 
   it('maps teams/add to the add view (not a team named "add")', () => {
@@ -161,6 +186,42 @@ describe('contributed section hash routing', () => {
       type: 'team-detail',
       fqn: 'section',
       name: 'section',
+    });
+  });
+});
+
+describe('mergeDomainEdits', () => {
+  const inherited = {
+    id: 'd-team',
+    type: 'domain',
+    name: 'TeamDomain',
+    inherited: true,
+  };
+  const direct = { id: 'd1', type: 'domain', name: 'Sales' };
+
+  it('returns the stored list unchanged when the direct ids are the same', () => {
+    const current = [inherited, direct];
+
+    expect(mergeDomainEdits(current, ['d1'])).toBe(current);
+  });
+
+  it('replaces only the direct domains and keeps inherited refs untouched', () => {
+    expect(mergeDomainEdits([inherited, direct], ['d2'])).toEqual([
+      inherited,
+      { id: 'd2', type: 'domain' },
+    ]);
+  });
+
+  describe('hasDirectDomainChanges', () => {
+    const current = [
+      { id: 'd-team', type: 'domain', inherited: true },
+      { id: 'd1', type: 'domain' },
+    ];
+
+    it('compares only the direct domains, by id', () => {
+      expect(hasDirectDomainChanges(current, ['d1'])).toBe(false);
+      expect(hasDirectDomainChanges(current, [])).toBe(true);
+      expect(hasDirectDomainChanges(current, ['d1', 'd2'])).toBe(true);
     });
   });
 });
