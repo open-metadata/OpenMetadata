@@ -7770,23 +7770,7 @@ public class WorkflowDefinitionResourceIT {
     OpenMetadataClient admin = SdkClients.adminClient();
     DataProduct product = reviewedDataProduct(admin, ns, "portBothKinds");
     Table table = portTable(admin, ns, "portBothKinds");
-    // A data product takes assets of its own domain only.
-    admin
-        .tables()
-        .patch(
-            table.getId().toString(),
-            MAPPER.valueToTree(
-                List.of(
-                    Map.of(
-                        "op",
-                        "add",
-                        "path",
-                        "/domains",
-                        "value",
-                        List.of(
-                            Map.of(
-                                "id", product.getDomains().get(0).getId(), "type", "domain"))))));
-    admin.dataProducts().bulkAddAssets(product.getFullyQualifiedName(), portsOf(table));
+    addAsAsset(admin, product, table);
     deployHookWorkflow(
         admin, DATA_PRODUCT, product.getFullyQualifiedName(), List.of(INPUT_PORTS, OUTPUT_PORTS));
 
@@ -7875,6 +7859,8 @@ public class WorkflowDefinitionResourceIT {
     DataProduct product = reviewedDataProduct(admin, ns, "portExclude");
     Table inputTable = portTable(admin, ns, "portExcludeIn");
     Table outputTable = portTable(admin, ns, "portExcludeOut");
+    // An output port must be one of the data product's own assets.
+    addAsAsset(admin, product, outputTable);
     deployHookWorkflow(
         admin,
         DATA_PRODUCT,
@@ -7948,6 +7934,26 @@ public class WorkflowDefinitionResourceIT {
                     null,
                     RequestOptions.builder().build()))
         .get("data");
+  }
+
+  // A data product takes assets of its own domain only.
+  private static void addAsAsset(OpenMetadataClient admin, DataProduct product, Table table) {
+    admin
+        .tables()
+        .patch(
+            table.getId().toString(),
+            MAPPER.valueToTree(
+                List.of(
+                    Map.of(
+                        "op",
+                        "add",
+                        "path",
+                        "/domains",
+                        "value",
+                        List.of(
+                            Map.of(
+                                "id", product.getDomains().get(0).getId(), "type", "domain"))))));
+    admin.dataProducts().bulkAddAssets(product.getFullyQualifiedName(), portsOf(table));
   }
 
   private static List<String> outputPortIds(OpenMetadataClient client, DataProduct product) {
