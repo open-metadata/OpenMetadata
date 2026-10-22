@@ -499,7 +499,6 @@ ensure_node() {
   local major found_display
   major="$(node_major || true)"
   if [ "$major" = "$NODE_VERSION" ]; then
-    NODE_BIN_DIR="$(dirname "$(command -v node)")"
     node_meets_min
     return
   fi

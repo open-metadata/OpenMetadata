@@ -133,9 +133,13 @@ for dependency in python docker java maven jq node yarn antlr; do
     version=$(eval ${dependency["version_command"]})
     required_version=${dependency["required_version"]}
     minimum_version=${dependency["minimum_version"]:-}
-    check_version "$tool_name" "$version" "$required_version"
     if [[ -n "$minimum_version" ]]; then
-      check_minimum_version "$tool_name" "$version" "$minimum_version"
+      # Errors go to stderr; drop only the major check's ✓ so a pass prints once.
+      prev_code=$code
+      check_version "$tool_name" "$version" "$required_version" > /dev/null
+      [[ $code -eq $prev_code ]] && check_minimum_version "$tool_name" "$version" "$minimum_version"
+    else
+      check_version "$tool_name" "$version" "$required_version"
     fi
 done
 if [[ $code -eq 0 ]]; then
