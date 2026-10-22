@@ -730,6 +730,58 @@ opts = sf_options
 """
         assert _sources(script) == []
 
+    def test_alias_replaced_before_the_change_leaves_the_original(self):
+        script = f"""
+{SALES_RAW}
+opts = sf_options
+opts = {{}}
+opts["sfSchema"] = "STAGE"
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
+    def test_alias_assigned_just_before_the_change_is_unknown(self):
+        script = f"""
+{SALES_RAW}
+opts = {{}}
+opts = sf_options
+opts["sfSchema"] = "STAGE"
+{READ_ORDERS}
+"""
+        assert _sources(script) == []
+
+    def test_string_concatenation_on_an_alias_leaves_the_original(self):
+        """`+=` on a str rebinds the alias; only `|=` changes a dict in place."""
+        script = f"""
+{SALES_RAW}
+FORMAT = "snowflake"
+table = "ORDERS"
+f = FORMAT
+f += "_suffix"
+t = table
+t += "_V2"
+spark.read.format(FORMAT).options(**sf_options).option("dbtable", table).load()
+"""
+        assert _sources(script) == ORDERS
+
+    def test_function_annotation_keeps_the_name_local(self):
+        """`name: dict` in a function makes it local: a nested nonlocal assignment is not the global's."""
+        script = f"""
+{SALES_RAW}
+
+def unrelated():
+    sf_options: dict
+
+    def fill():
+        nonlocal sf_options
+        sf_options = {{}}
+
+    fill()
+
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
     def test_copy_changed_in_place_leaves_the_original(self):
         script = f"""
 {SALES_RAW}

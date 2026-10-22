@@ -113,6 +113,7 @@ class _Scope:
         self.bindings: dict[str, list[_Binding]] = {}
         self.declarations: dict[str, type] = {}  # name -> ast.Global / ast.Nonlocal
         self.changed: set[str] = set()  # names whose dict is changed in place
+        self.annotated: set[str] = set()  # `name: dict` in a function: local, with no value
 
 
 class _ScopeBuilder(ast.NodeVisitor):
@@ -122,7 +123,7 @@ class _ScopeBuilder(ast.NodeVisitor):
         self.module = _Scope(tree, None)
         self.reads: dict[ast.Name, _Scope] = {}
         self.events: list[tuple[_Scope, str, _Binding]] = []
-        self.changes: list[tuple[_Scope, str]] = []
+        self.changes: list[tuple[_Scope, ast.Name]] = []  # where a name's dict is changed in place
         self._scope = self.module
         self.visit(tree)
 
@@ -146,7 +147,7 @@ class _ScopeBuilder(ast.NodeVisitor):
         while isinstance(node, (ast.Subscript, ast.Attribute)):
             node = node.value
         if isinstance(node, ast.Name):
-            self.changes.append((self._scope, node.id))
+            self.changes.append((self._scope, node))
 
     def _bind_arguments(self, arguments: ast.arguments) -> None:
         for argument in (*arguments.posonlyargs, *arguments.args, *arguments.kwonlyargs):
@@ -214,8 +215,10 @@ class _ScopeBuilder(ast.NodeVisitor):
 
     def visit_AnnAssign(self, node: ast.AnnAssign) -> None:
         if isinstance(node.target, ast.Name):
-            if node.value is not None:  # `name: dict` alone binds nothing
+            if node.value is not None:
                 self._bind(node.target.id, _Assignment(node.value, node))
+            elif isinstance(self._scope.node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                self._scope.annotated.add(node.target.id)  # local to the function, unbound
         else:
             self.visit(node.target)
         self._visit_all([node.annotation, node.value])
@@ -228,8 +231,9 @@ class _ScopeBuilder(ast.NodeVisitor):
         self.visit(node.value)
 
     def visit_AugAssign(self, node: ast.AugAssign) -> None:
-        if isinstance(node.target, ast.Name):  # d |= {...} changes the dict in place, and rebinds d
-            self.changes.append((self._scope, node.target.id))
+        # only `d |= {...}` changes a dict in place; `s += "x"` on a str just rebinds s (see visit_Name)
+        if isinstance(node.target, ast.Name) and isinstance(node.op, ast.BitOr):
+            self.changes.append((self._scope, node.target))
         self.generic_visit(node)
 
     def visit_Name(self, node: ast.Name) -> None:
@@ -293,12 +297,14 @@ class _Bindings:
       it (so `if`/`else` branches or an `if` body read after the `if` are
       unknown): the latest one wins.
     A class body is read in order: before its own binding runs, a read sees the
-    enclosing one. A bare annotation (`name: dict`) binds nothing.
+    enclosing one. A bare annotation (`name: dict`) binds nothing, though in a
+    function it still makes the name local.
     A global with several bindings read from inside a function is unknown, since
     its value depends on when the function is called. A dict changed in place
-    (d["k"] = v, d.update(...), d |= ...), directly or through a name assigned
-    from it, is unknown in the scope it belongs to; a dict handed to a function
-    that changes it, or stored on an object, is not tracked.
+    (d["k"] = v, d.update(...), d |= ...) is unknown in the scope it belongs to,
+    and so is the dict it was assigned from (opts = sf_options) when that
+    assignment may be the one in effect where the change happens; a dict handed
+    to a function that changes it, or stored on an object, is not tracked.
     """
 
     def __init__(self, tree: ast.Module):
@@ -319,21 +325,30 @@ class _Bindings:
             builder.events, key=lambda event: event[0].declarations.get(event[1]) is ast.Nonlocal
         ):
             self._binding_owner(scope, name).bindings.setdefault(name, []).append(binding)
-        # a change through an alias (opts = sf_options; opts["k"] = v) changes the dict it names too
-        pending = list(builder.changes)
+        pending, followed = list(builder.changes), set()
         while pending:
-            scope, name = pending.pop()
-            owner = self._owner(scope, name)
-            if name not in owner.changed:
-                owner.changed.add(name)
-                pending.extend(self._aliased(owner.bindings.get(name, [])))
+            scope, site = pending.pop()
+            owner = self._owner(scope, site.id)
+            owner.changed.add(site.id)
+            for source in self._aliased_at(owner, scope, site):
+                if source not in followed:
+                    followed.add(source)
+                    pending.append((self._reads[source], source))
 
-    def _aliased(self, bindings: list[_Binding]) -> list[tuple[_Scope, str]]:
-        """The names these bindings make an alias of: `opts = sf_options`."""
+    def _aliased_at(self, owner: _Scope, scope: _Scope, site: ast.Name) -> list[ast.Name]:
+        """
+        The names `site` may share its dict with: those of `name = other` assignments
+        that can be in effect at `site`. When the one in effect is known, only it.
+        """
+        bindings = owner.bindings.get(site.id, [])
+        assignments = [binding for binding in bindings if binding is not None]
+        if owner is scope and len(assignments) == len(bindings) > 1:
+            reaching = self._reaching(site, assignments)
+            assignments = [reaching] if reaching else assignments
         return [
-            (self._reads[binding.value], binding.value.id)
-            for binding in bindings
-            if binding is not None and isinstance(binding.value, ast.Name) and binding.value in self._reads
+            assignment.value
+            for assignment in assignments
+            if isinstance(assignment.value, ast.Name) and assignment.value in self._reads
         ]
 
     def _binding_owner(self, scope: _Scope, name: str) -> _Scope:
@@ -349,7 +364,7 @@ class _Bindings:
         declaration = scope.declarations.get(name)
         if declaration is ast.Global or scope.parent is None:
             return self._module
-        if declaration is None and name in scope.bindings:
+        if declaration is None and (name in scope.bindings or name in scope.annotated):
             return scope
         return self._enclosing_owner(scope.parent, name)
 
@@ -357,7 +372,7 @@ class _Bindings:
     def _enclosing_owner(scope: _Scope, name: str) -> _Scope:
         """The nearest enclosing function binding `name`, else the module; class bodies are skipped."""
         while scope.parent is not None:
-            if not isinstance(scope.node, ast.ClassDef) and name in scope.bindings:
+            if not isinstance(scope.node, ast.ClassDef) and (name in scope.bindings or name in scope.annotated):
                 return scope
             scope = scope.parent
         return scope
@@ -378,18 +393,20 @@ class _Bindings:
             return self._class_body_value(owner, name, assignments)
         if len(assignments) == 1:
             return assignments[0].value
-        return self._reaching(name, assignments) if owner is scope else None
+        reaching = self._reaching(name, assignments) if owner is scope else None
+        return reaching.value if reaching else None
 
     def _class_body_value(self, scope: _Scope, name: ast.Name, assignments: list[_Assignment]) -> ast.expr | None:
         """A class body reads its own binding once one has run, and the enclosing one before that."""
         read_at = self._statement_of(name)
         if any(_position(assignment.statement) < _position(read_at) for assignment in assignments):
-            return self._reaching(name, assignments)
+            reaching = self._reaching(name, assignments)
+            return reaching.value if reaching else None
         if any(self._in_loop(assignment.statement) for assignment in assignments) or scope.parent is None:
             return None
         return self._value(self._enclosing_owner(scope.parent, name.id), scope, name)
 
-    def _reaching(self, name: ast.Name, assignments: list[_Assignment]) -> ast.expr | None:
+    def _reaching(self, name: ast.Name, assignments: list[_Assignment]) -> _Assignment | None:
         """The latest assignment before the read, when no other one could have run in between."""
         if any(self._in_loop(assignment.statement) for assignment in assignments):
             return None
@@ -402,7 +419,7 @@ class _Bindings:
             if self._blocks.get(assignment.statement) not in enclosing:
                 return None
             reaching = assignment
-        return reaching.value if reaching else None
+        return reaching
 
     def _statement_of(self, node: ast.AST) -> ast.stmt:
         while not isinstance(node, ast.stmt):
