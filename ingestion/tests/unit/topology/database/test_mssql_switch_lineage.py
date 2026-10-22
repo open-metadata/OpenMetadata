@@ -37,7 +37,7 @@ from metadata.ingestion.source.database.lineage_processors import (
     _yield_procedure_lineage,
     is_lineage_query,
 )
-from metadata.ingestion.source.database.mssql import utils as mssql_utils
+from metadata.ingestion.source.database.mssql import lineage as mssql_lineage
 from metadata.ingestion.source.database.mssql.lineage import MssqlLineageSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 
@@ -113,10 +113,10 @@ class TestExtractSwitchStatements:
     """SWITCH statements are read out of a procedure body"""
 
     def test_reported_procedure(self):
-        assert mssql_utils.extract_switch_statements(REPORTED_PROCEDURE) == [REPORTED_SWITCH]
+        assert mssql_lineage.extract_switch_statements(REPORTED_PROCEDURE) == [REPORTED_SWITCH]
 
     def test_switch_with_wait_option_keeps_the_whole_statement(self):
-        assert mssql_utils.extract_switch_statements(MIXED_PROCEDURE) == [WAIT_OPTION_SWITCH]
+        assert mssql_lineage.extract_switch_statements(MIXED_PROCEDURE) == [WAIT_OPTION_SWITCH]
 
     def test_commented_out_switch_is_ignored(self):
         body = """CREATE PROCEDURE dbo.p AS
@@ -126,19 +126,19 @@ BEGIN
     SELECT 1;
 END"""
 
-        assert mssql_utils.extract_switch_statements(body) == []
+        assert mssql_lineage.extract_switch_statements(body) == []
 
     def test_repeated_switch_is_returned_once(self):
         body = "BEGIN ALTER TABLE a SWITCH TO b; ALTER TABLE a SWITCH TO b; ALTER TABLE b SWITCH TO c; END"
 
-        assert mssql_utils.extract_switch_statements(body) == [
+        assert mssql_lineage.extract_switch_statements(body) == [
             "ALTER TABLE a SWITCH TO b",
             "ALTER TABLE b SWITCH TO c",
         ]
 
     @pytest.mark.parametrize("body", [None, "", "CREATE PROCEDURE dbo.p AS SELECT 'switch'"])
     def test_body_without_switch(self, body):
-        assert mssql_utils.extract_switch_statements(body) == []
+        assert mssql_lineage.extract_switch_statements(body) == []
 
 
 def _row(data: dict) -> MagicMock:
@@ -295,9 +295,9 @@ class TestSwitchProcedureLineage:
                 )
             )
 
-        edges = [either.right.edge for either in lineage if either.right is not None]
-        assert [(edge.fromEntity.id, edge.toEntity.id) for edge in edges] == [
-            (tables["target_table"].id, tables["source_table"].id)
+        edges = [either.right for either in lineage if either.right is not None]
+        assert [(edge.from_entity_fqn, edge.to_entity_fqn) for edge in edges] == [
+            (tables["target_table"].fullyQualifiedName.root, tables["source_table"].fullyQualifiedName.root)
         ]
-        assert edges[0].lineageDetails.pipeline.id == procedure.id
-        assert edges[0].lineageDetails.pipeline.type == "storedProcedure"
+        assert edges[0].lineage_details.pipeline.id == procedure.id
+        assert edges[0].lineage_details.pipeline.type == "storedProcedure"

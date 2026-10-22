@@ -39,6 +39,7 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
@@ -111,6 +112,9 @@ def is_lineage_query(query_type: str, query_text: str) -> bool:
     logger.debug(f"Validating query lineage for type [{query_type}] and text [{query_text}]")
 
     if query_type in ("MERGE", "UPDATE", "CREATE_TABLE_AS_SELECT"):
+        return True
+
+    if TSQL_SWITCH_STATEMENT.match(query_text.strip()):
         return True
 
     if query_type == "INSERT" and re.search("^.*insert.*into.*select.*$", query_text.replace("\n", " "), re.IGNORECASE):  # noqa: SIM103
