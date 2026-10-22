@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   FilterFunnel01,
   Hourglass01,
@@ -30,6 +26,8 @@ import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStor
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import ActivityFeedItem from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
@@ -197,22 +195,20 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   const emptyPlaceholder =
     isFiltered || typeKeys.length ? (
-      <EmptyPlaceholder
+      <NoFilteredResultsPlaceholder
         data-testid="inbox-activity-no-results"
         description={t('message.activity-feed-no-results-description')}
         icon={
           <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
         }
         title={t('label.no-activity-in-period')}
-        variant="blank"
       />
     ) : (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-activity-empty"
         description={t('message.activity-feed-empty-description')}
         icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
         title={t('label.activity-feed-starts-here')}
-        variant="blank"
       />
     );
 

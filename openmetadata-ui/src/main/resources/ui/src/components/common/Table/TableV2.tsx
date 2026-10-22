@@ -41,7 +41,6 @@
  */
 
 import {
-  EmptyPlaceholder,
   PaginationCardWithControls,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
@@ -81,6 +80,7 @@ import {
 } from '../../../utils/CustomizeColumnUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar, {
@@ -2037,12 +2037,11 @@ const TableV2 = <T extends object>(
                         // `locale.emptyText` still win — most hand in their own
                         // ErrorPlaceHolder or FilterTablePlaceHolder.
                         (rest.locale?.emptyText as ReactNode) ?? (
-                          <EmptyPlaceholder
+                          <NoDataPlaceholder
                             icon={
                               <Search className="tw:text-fg-brand-primary" />
                             }
                             title={t('label.no-data')}
-                            variant="blank"
                           />
                         )
                       }

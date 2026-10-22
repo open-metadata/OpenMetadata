@@ -44,6 +44,8 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { ContractDetail } from './ContractDetail';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Badge: jest.fn(({ children }: { children?: React.ReactNode }) => (
     <span>{children}</span>
   )),
@@ -262,22 +264,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
 jest.mock('../ContractStatusAlert/ContractStatusAlert', () => {
   return function MockContractStatusAlert({ message }: { message?: string }) {
     return <div data-testid="contract-status-alert">{message}</div>;
-  };
-});
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return function MockErrorPlaceHolder({
-    type,
-    children,
-  }: {
-    type?: string;
-    children?: React.ReactNode;
-  }) {
-    return (
-      <div data-testid="error-placeholder" data-type={type}>
-        {children}
-      </div>
-    );
   };
 });
 
@@ -513,7 +499,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
 
     it('should render contract details when contract is provided', async () => {
@@ -1170,7 +1160,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
     });
   });
 
@@ -1547,7 +1541,11 @@ describe('ContractDetail', () => {
         { wrapper: MemoryRouter }
       );
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(
         screen.getByText('No contract has been defined for this entity.')
       ).toBeInTheDocument();

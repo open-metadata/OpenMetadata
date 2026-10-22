@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dialog,
-  EmptyPlaceholder,
   Modal,
   ModalOverlay,
   Typography,
@@ -62,6 +61,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -523,7 +523,7 @@ const AppRunsHistory = forwardRef(
           locale={{
             emptyText: (
               <Box className="tw:relative tw:min-h-60">
-                <EmptyPlaceholder
+                <NoDataPlaceholder
                   icon={ClockRewind}
                   title={t('message.no-data-available')}
                 />
