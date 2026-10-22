@@ -18,7 +18,6 @@ describe('BrandClassBase', () => {
       glow: 'purple-500',
       button: 'purple-600',
       buttonHover: 'purple-700',
-      darkGlowMix: '100%',
     });
   });
 

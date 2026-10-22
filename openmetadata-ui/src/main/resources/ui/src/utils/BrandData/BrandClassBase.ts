@@ -23,13 +23,12 @@ import { t } from '../i18next/LocalUtil';
 
 /**
  * Core palette shades (`--tw-color-<shade>`) for the welcome screen's glow and
- * primary button, and how strongly the glow shows in dark mode.
+ * primary button.
  */
 export interface WelcomeTheme {
   glow: string;
   button: string;
   buttonHover: string;
-  darkGlowMix: string;
 }
 
 class BrandClassBase {
@@ -88,7 +87,6 @@ class BrandClassBase {
       glow: 'purple-500',
       button: 'purple-600',
       buttonHover: 'purple-700',
-      darkGlowMix: '100%',
     };
   }
 
