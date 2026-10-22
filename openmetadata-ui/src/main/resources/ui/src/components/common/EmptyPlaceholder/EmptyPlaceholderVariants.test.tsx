@@ -156,9 +156,15 @@ describe('NoDataPlaceholder', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('should allow overriding the description', () => {
-    render(<NoDataPlaceholder description="custom description" />);
+  it('should allow overriding the title and description', () => {
+    render(
+      <NoDataPlaceholder
+        description="custom description"
+        title="custom title"
+      />
+    );
 
+    expect(screen.getByText('custom title')).toBeInTheDocument();
     expect(screen.getByText('custom description')).toBeInTheDocument();
     expect(
       screen.queryByText('message.no-data-available')
@@ -271,13 +277,31 @@ describe('Caller copy replaces wrapper defaults', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a caller description as the no-data title', () => {
-    render(<NoDataPlaceholder description="Nothing here yet" />);
+  it('keeps a caller description as body copy under the default title', () => {
+    render(
+      <NoDataPlaceholder description="Enable the profiler to see data." />
+    );
 
-    expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
+    const title = screen.getByText('message.no-data-available');
+    const description = screen.getByText('Enable the profiler to see data.');
+
+    expect(title).toHaveClass('tw:font-semibold');
+    expect(description).toHaveClass('tw:text-secondary');
+    expect(description).not.toHaveClass('tw:font-semibold');
+  });
+
+  it('keeps the default title above a description that has a footer', () => {
+    render(
+      <NoDataPlaceholder
+        description="Adding a new insight is easy."
+        footer={<span>doc link</span>}
+      />
+    );
+
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
     expect(
-      screen.queryByText('message.no-data-available')
-    ).not.toBeInTheDocument();
+      screen.getByText('Adding a new insight is easy.')
+    ).toBeInTheDocument();
   });
 
   it.each([

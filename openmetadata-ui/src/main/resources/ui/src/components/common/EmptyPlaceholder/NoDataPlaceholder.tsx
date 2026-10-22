@@ -31,18 +31,18 @@ const NoDataPlaceholder = ({
   ...props
 }: EmptyPlaceholderVariantProps) => {
   const { t } = useTranslation();
-  // A caller that renders its own copy in `footer` replaces the default
-  // message instead of getting it stacked above.
-  const defaultTitle = footer ? undefined : t('message.no-data-available');
+  // Like the sibling placeholders: a default heading over the caller's
+  // description. Only a caller whose `footer` carries all of its copy gets
+  // no heading stacked above it.
+  const defaultTitle =
+    footer && !description ? undefined : t('message.no-data-available');
 
   return (
-    // Without a title the message is the headline, styled like the sibling
-    // placeholders' titles rather than as secondary description text.
     <EmptyPlaceholder
-      description={title ? description : undefined}
+      description={description}
       footer={footer}
       icon={icon ?? <Database01 />}
-      title={title ?? description ?? defaultTitle}
+      title={title ?? defaultTitle}
       variant="blank"
       {...props}
     />

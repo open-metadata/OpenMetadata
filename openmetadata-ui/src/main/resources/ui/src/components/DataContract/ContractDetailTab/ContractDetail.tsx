@@ -567,8 +567,8 @@ const ContractDetail: React.FC<{
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-90 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={t('message.no-contract-description')}
             icon={DataContractIcon}
+            title={t('message.no-contract-description')}
           />
         </div>
       );
