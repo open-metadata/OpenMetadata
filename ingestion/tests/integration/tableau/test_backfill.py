@@ -100,10 +100,6 @@ def backfilling_site(metadata, run_ingestion, tableau_site: FakeTableauSite) -> 
 
 class TestIngestionDuringBackfill:
     def test_a_run_that_deletes_stale_data_models_fails_and_keeps_them(self, metadata, run_ingestion, backfilling_site):
-        """
-        Before #16038 this run succeeded, soft-deleted the Ops data model and unlinked it from
-        its dashboard.
-        """
         with pytest.raises(WorkflowFatalError, match="BACKFILL_RUNNING"):
             run_ingestion()
 
@@ -111,7 +107,12 @@ class TestIngestionDuringBackfill:
         assert _ops_dashboard_data_models(metadata) == [OPS_DATA_MODEL]
 
     def test_without_data_model_deletion_the_run_ingests_and_warns(self, metadata, run_ingestion, backfilling_site):
+        """
+        The cost the fatal message states for this setting: the Ops dashboard is sent without
+        the data model the store has not reached, so it loses the link until a later run.
+        """
         workflow = run_ingestion(markDeletedDataModels=False)
 
         assert [list(warning) for warning in workflow.source.status.warnings] == [["Tableau Metadata API"]]
         assert _ops_data_model_is_live(metadata)
+        assert _ops_dashboard_data_models(metadata) == []

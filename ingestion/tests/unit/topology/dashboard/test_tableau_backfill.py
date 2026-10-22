@@ -182,7 +182,17 @@ def tableau_source(
             name=f"Workbook {workbook_id}",
             project_id="p-1",
             project_name="Sales",
-            views=[],
+            views=[
+                SimpleNamespace(
+                    id=f"v-{workbook_id}",
+                    name=f"Sheet {workbook_id}",
+                    tags=set(),
+                    owner_id=None,
+                    content_url=f"{workbook_id}/sheets/Sheet",
+                    sheet_type="worksheet",
+                    total_views=1,
+                )
+            ],
             owner_id=None,
             description=None,
             tags=set(),
@@ -283,7 +293,7 @@ class TestIngestionDuringBackfill:
 
         assert created(records, CreateDashboardRequest) == ingested
         assert created(records, CreateDashboardDataModelRequest) == [f"ds-{workbook}" for workbook in ingested]
-        assert created(records, CreateChartRequest) == []
+        assert created(records, CreateChartRequest) == [f"v-{workbook}" for workbook in ingested]
         metadata.delete_stale_entities.assert_not_called()
         assert "markDeletedDataModels" in str(error.value), "the operator needs to know how to ingest anyway"
         assert [failure.name for failure in source.status.failures] == ["Tableau Metadata API"]
@@ -297,8 +307,9 @@ class TestIngestionDuringBackfill:
     )
     def test_without_data_model_reconciliation_the_partial_results_are_ingested(self, source_config, data_models):
         """
-        The partial listing cannot delete anything, so the run goes on as #16038 asks and
-        only warns. Workbooks and views are complete, so their reconciliation still runs.
+        Here the backfill cannot change what is deleted, so the run goes on and only warns;
+        #16038 asks for the error only when deletion is on. Workbooks and views are complete,
+        so their reconciliation still runs.
         """
         with tableau_source(WORKBOOKS, BACKFILL_EVERYWHERE, not_indexed={"wb-2"}, **source_config) as (
             source,
@@ -307,6 +318,7 @@ class TestIngestionDuringBackfill:
             records = list(source.run())
 
         assert created(records, CreateDashboardRequest) == WORKBOOKS
+        assert created(records, CreateChartRequest) == [f"v-{workbook}" for workbook in WORKBOOKS]
         assert created(records, CreateDashboardDataModelRequest) == data_models
         assert {Dashboard, Chart} <= deleted_entity_types(metadata)
         assert source.status.failures == []
@@ -317,6 +329,7 @@ class TestIngestionDuringBackfill:
             records = list(source.run())
 
         assert created(records, CreateDashboardRequest) == WORKBOOKS
+        assert created(records, CreateChartRequest) == ["v-wb-1", "v-wb-2", "v-wb-3"]
         assert created(records, CreateDashboardDataModelRequest) == ["ds-wb-1", "ds-wb-2", "ds-wb-3"]
         assert deleted_entity_types(metadata) == {Dashboard, DashboardDataModel, Chart}
         assert source.status.warnings == []

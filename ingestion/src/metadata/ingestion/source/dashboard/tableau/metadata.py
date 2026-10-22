@@ -202,16 +202,18 @@ class TableauSource(DashboardServiceSource):
                 f"Tableau's Metadata API is still building its store ({BACKFILL_RUNNING}), so its "
                 "results may be incomplete. The run stopped there and marked nothing as deleted: with "
                 "markDeletedDataModels on, it would soft-delete data models that still exist in Tableau. "
-                "Re-run once the backfill completes, or turn off markDeletedDataModels to ingest the "
-                "partial results without deleting data models."
+                "Re-run once the backfill completes. To ingest meanwhile, turn off markDeletedDataModels; "
+                "dashboards then lose their links to the data models the store has not reached, until a "
+                "run after the backfill."
             )
             self.status.failed(StackTraceError(name=METADATA_API_STATUS, error=message))
             raise WorkflowFatalError(message)
         if self.client.metadata_api_backfill_running:
             self.status.warning(
                 METADATA_API_STATUS,
-                f"Tableau's Metadata API is still building its store ({BACKFILL_RUNNING}), so data models "
-                "and lineage ingested in this run may be incomplete. Re-run once the backfill completes.",
+                f"Tableau's Metadata API is still building its store ({BACKFILL_RUNNING}), so data models, "
+                "their links to dashboards and lineage ingested in this run may be incomplete. Re-run once "
+                "the backfill completes.",
             )
 
     def _stops_for_backfill(self) -> bool:
