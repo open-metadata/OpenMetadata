@@ -136,7 +136,9 @@ function useClipboardHandlers(
       // CRLF still matches and pastes back cell for cell.
       copiedCells.current = { text: text.replaceAll('\r\n', '\n'), cells };
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text);
+        navigator.clipboard
+          .writeText(text)
+          .catch(() => showErrorToast(t('message.clipboard-not-available')));
 
         return undefined;
       } else {
@@ -709,7 +711,7 @@ export function useGridEditController({
     if (gridRowIds !== undefined) {
       setSelectedRange(null);
     }
-  }, [gridRowIds]);
+  }, [gridRowIds, setSelectedRange]);
   // Clipboard
   const { handleCopy, handlePaste } = useClipboardHandlers(
     selectedRange,
@@ -1078,7 +1080,7 @@ export function useGridEditController({
         endCol: colIdx,
       });
     },
-    [gridRows]
+    [gridRows, setSelectedRange]
   );
 
   const handleRowSelect = useCallback(
