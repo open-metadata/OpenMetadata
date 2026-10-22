@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigratio
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
+import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 
@@ -69,6 +70,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(ConversationReferenceMigration.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<OntologyMigration> ontologyMigration = mockStatic(OntologyMigration.class);
+        MockedStatic<OntologyConceptBindingMigration> bindingMigration =
+            mockStatic(OntologyConceptBindingMigration.class);
         MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
             mockStatic(DataContractEntityReferenceMigration.class);
         MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
@@ -102,6 +105,8 @@ class IngestionPipelineMigrationEntryPointTest {
           "MySQL".equals(database) ? ConnectionType.MYSQL : ConnectionType.POSTGRES;
       referenceMigration.verify(
           () -> CustomPropertyReferenceMigration.migrate(handle, collectionDAO, connectionType));
+      bindingMigration.verify(
+          () -> OntologyConceptBindingMigration.copyConceptBindingsToRows(handle, connectionType));
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
