@@ -15,9 +15,13 @@ import { ReactNode } from 'react';
 import FieldRow from './FieldRow';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children, className }: { children?: ReactNode; className?: string }) => (
-    <div className={className}>{children}</div>
-  ),
+  Box: ({
+    children,
+    className,
+  }: {
+    children?: ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>,
   Typography: ({ children }: { children?: ReactNode }) => (
     <span>{children}</span>
   ),

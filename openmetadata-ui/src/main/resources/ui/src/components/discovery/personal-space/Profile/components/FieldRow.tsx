@@ -28,7 +28,11 @@ interface FieldRowProps {
  * control takes the room it needs instead of overflowing. It has no padding of
  * its own — the caller (a padded card or wrapper) provides it.
  */
-const FieldRow: React.FC<FieldRowProps> = ({ title, description, children }) => (
+const FieldRow: React.FC<FieldRowProps> = ({
+  title,
+  description,
+  children,
+}) => (
   <Box className="tw:grid tw:grid-cols-[3fr_1fr]" gap={8}>
     <Box className="tw:gap-0.5" direction="col">
       <Typography className="tw:text-primary" size="text-sm" weight="medium">
