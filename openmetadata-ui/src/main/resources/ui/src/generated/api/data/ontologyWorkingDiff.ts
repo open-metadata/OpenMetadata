@@ -14,9 +14,14 @@
  * A paginated comparison of the current working ontology with its active release.
  */
 export interface OntologyWorkingDiff {
-    data:   MemberChange[];
-    paging: Paging;
-    state:  OntologyState;
+    data: MemberChange[];
+    /**
+     * Changes grouped by concept, present when the request groups by concept. Data is then
+     * empty and paging counts groups.
+     */
+    groups?: ConceptChange[];
+    paging:  Paging;
+    state:   OntologyState;
 }
 
 export interface MemberChange {
@@ -34,9 +39,13 @@ export interface MemberChange {
     ontologyId:       string;
 }
 
+/**
+ * Change type of the concept member, or CHANGED when only its axioms or properties changed.
+ */
 export enum ChangeType {
     Added = "ADDED",
     Changed = "CHANGED",
+    Deprecated = "DEPRECATED",
     Removed = "REMOVED",
 }
 
@@ -105,6 +114,11 @@ export interface EntityReference {
  * Link to the entity resource.
  *
  * URI that points to a resource.
+ *
+ * Semantic IRI of the concept.
+ *
+ * Absolute semantic IRI, preserved exactly without URL normalization, case folding, or
+ * percent encoding.
  */
 export enum MemberKind {
     Association = "ASSOCIATION",
@@ -113,6 +127,35 @@ export enum MemberKind {
     Ontology = "ONTOLOGY",
     Property = "PROPERTY",
     Shape = "SHAPE",
+}
+
+/**
+ * Member changes grouped under the concept they define: the concept itself, axioms whose
+ * subject is the concept, and properties whose first domain in this ontology is the
+ * concept. A change that belongs to no concept forms its own group without a concept.
+ */
+export interface ConceptChange {
+    changes: MemberChange[];
+    /**
+     * Change type of the concept member, or CHANGED when only its axioms or properties changed.
+     */
+    changeType: ChangeType;
+    /**
+     * Label of the concept: its display name, or its name when it has none.
+     */
+    concept?: string;
+    /**
+     * Semantic IRI of the concept.
+     */
+    iri?: string;
+    /**
+     * Labels of the named superclasses from the concept's SUBCLASS_OF axioms.
+     */
+    parents: string[];
+    /**
+     * Number of properties whose domain includes the concept.
+     */
+    propertyCount: number;
 }
 
 /**

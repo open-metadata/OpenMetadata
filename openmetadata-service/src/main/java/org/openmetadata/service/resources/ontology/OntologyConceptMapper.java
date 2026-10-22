@@ -18,6 +18,10 @@ public final class OntologyConceptMapper
         .withConceptType(request.getConceptType())
         .withSynonyms(request.getSynonyms())
         .withConceptMappings(request.getConceptMappings())
+        .withAbstract(request.getAbstract())
+        .withDefinitionSource(request.getDefinitionSource())
+        .withDeprecated(request.getDeprecated())
+        .withReplacedBy(request.getReplacedBy())
         .withProvider(request.getProvider());
   }
 }

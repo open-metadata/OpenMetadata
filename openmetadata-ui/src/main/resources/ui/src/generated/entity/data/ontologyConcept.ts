@@ -15,10 +15,23 @@
  * terms.
  */
 export interface OntologyConcept {
+    /**
+     * An abstract class has no direct instances; data is classified by its subclasses.
+     */
+    abstract?:          boolean;
     changeDescription?: ChangeDescription;
     conceptMappings?:   ConceptMapping[];
     conceptType:        OntologyConceptType;
-    deleted?:           boolean;
+    /**
+     * IRI of the document or standard this definition is taken from.
+     */
+    definitionSource?: string;
+    deleted?:          boolean;
+    /**
+     * A deprecated definition stays resolvable for existing references but should not be used
+     * for new ones.
+     */
+    deprecated?:        boolean;
     description?:       string;
     displayName?:       string;
     fullyQualifiedName: string;
@@ -40,6 +53,10 @@ export interface OntologyConcept {
     ontology:  EntityReference;
     owners?:   EntityReference[];
     provider?: ProviderType;
+    /**
+     * IRI of the concept in the same ontology that replaces this one.
+     */
+    replacedBy?: string;
     /**
      * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
      * stored or independently editable.
