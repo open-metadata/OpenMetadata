@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Tabs, useTabItemState } from './tabs';
 
@@ -174,6 +174,35 @@ describe('useTabItemState', () => {
       renderTabs('card');
 
       expect(screen.getByRole('tablist').style.maskImage).toBe('');
+    });
+
+    it('fades the end edge once tabs added after mount overflow the list', async () => {
+      mockScrollBox(600, 600);
+      const renderList = (ids: string[]) => (
+        <Tabs defaultSelectedKey="one">
+          <Tabs.List aria-label="Sections" type="underline" variant="card">
+            {ids.map((id) => (
+              <Tabs.Item id={id} key={id}>
+                {id}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+      );
+      const { rerender } = render(renderList(['one', 'two']));
+
+      expect(screen.getByRole('tablist').style.maskImage).toBe('');
+
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        1000
+      );
+      rerender(renderList(['one', 'two', 'three', 'four']));
+
+      await waitFor(() =>
+        expect(screen.getByRole('tablist').style.maskImage).toContain(
+          'transparent'
+        )
+      );
     });
   });
 });

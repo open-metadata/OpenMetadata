@@ -55,11 +55,24 @@ const useOverflowEdges = (enabled: boolean) => {
     const observer = new ResizeObserver(update);
     observer.observe(el);
     Array.from(el.children).forEach((child) => observer.observe(child));
+    // Tabs added after mount can overflow the list without resizing it.
+    const childObserver = new MutationObserver((records) => {
+      records.forEach((record) =>
+        record.addedNodes.forEach((node) => {
+          if (node instanceof Element) {
+            observer.observe(node);
+          }
+        })
+      );
+      update();
+    });
+    childObserver.observe(el, { childList: true });
     el.addEventListener('scroll', update, { passive: true });
     update();
 
     return () => {
       observer.disconnect();
+      childObserver.disconnect();
       el.removeEventListener('scroll', update);
     };
   }, [enabled]);
