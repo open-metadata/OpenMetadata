@@ -1,0 +1,31 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ontologyPackSource.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackSource",
+  "description": "Verified library pack selection that a native ontology change set installs.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.OntologyPackSource",
+  "properties": {
+    "packId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "moduleIds": {
+      "description": "Selected modules with their dependencies, in catalogue order.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": ["packId", "version", "moduleIds"],
+  "additionalProperties": false
+}

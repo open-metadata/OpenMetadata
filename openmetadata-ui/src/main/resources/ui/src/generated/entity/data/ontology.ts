@@ -28,6 +28,11 @@ export interface Ontology {
     impersonatedBy?:               string;
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Verified library packs installed into this ontology, one entry per pack ID. The server
+     * records an entry when a change set with a source pack applies.
+     */
+    installedPacks?: OntologyPackInstallation[];
+    /**
      * Stable semantic identity of this ontology; independent of its name and catalog record IRI.
      */
     iri:    string;
@@ -107,6 +112,28 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Durable provenance and version state for an installed ontology library pack.
+ */
+export interface OntologyPackInstallation {
+    installedAt: number;
+    installedBy: string;
+    license:     string;
+    licenseUrl:  string;
+    modules:     OntologyPackModuleInstallation[];
+    packId:      string;
+    sourceUrl:   string;
+    version:     string;
+}
+
+/**
+ * Verified ontology pack module recorded as installation provenance.
+ */
+export interface OntologyPackModuleInstallation {
+    moduleId: string;
+    sha256:   string;
 }
 
 /**

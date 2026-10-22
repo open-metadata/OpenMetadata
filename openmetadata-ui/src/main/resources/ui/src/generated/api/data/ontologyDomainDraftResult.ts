@@ -41,6 +41,10 @@ export interface CreateOntologyChangeSetRequest {
     operations?: OntologyChangeOperation[];
     owners?:     EntityReference[];
     provider?:   ProviderType;
+    /**
+     * Library pack selection this native proposal installs, as stamped by the library preview.
+     */
+    sourcePack?: OntologyPackSource;
     state?:      DraftState;
     undoCursor?: number;
 }
@@ -1162,6 +1166,20 @@ export interface TermRelation {
      * Reference to the related glossary term.
      */
     term: EntityReference;
+}
+
+/**
+ * Library pack selection this native proposal installs, as stamped by the library preview.
+ *
+ * Verified library pack selection that a native ontology change set installs.
+ */
+export interface OntologyPackSource {
+    /**
+     * Selected modules with their dependencies, in catalogue order.
+     */
+    moduleIds: string[];
+    packId:    string;
+    version:   string;
 }
 
 export enum DraftState {

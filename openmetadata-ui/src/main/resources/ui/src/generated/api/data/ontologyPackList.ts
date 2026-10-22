@@ -28,13 +28,44 @@ export interface OntologyPackManifest {
     bundled:     boolean;
     description: string;
     id:          string;
-    license:     string;
-    licenseUrl:  string;
-    modules:     OntologyPackModule[];
-    name:        string;
-    sourceUrl:   string;
-    standard:    string;
-    version:     string;
+    /**
+     * Industry the pack models. The library catalogue filters packs by it.
+     */
+    industry: Industry;
+    /**
+     * Governance layer of a new ontology created to hold this pack.
+     */
+    layer:      Layer;
+    license:    string;
+    licenseUrl: string;
+    modules:    OntologyPackModule[];
+    name:       string;
+    sourceUrl:  string;
+    standard:   string;
+    version:    string;
+}
+
+/**
+ * Industry the pack models. The library catalogue filters packs by it.
+ */
+export enum Industry {
+    Finance = "finance",
+    Healthcare = "healthcare",
+    HumanResources = "human-resources",
+    Manufacturing = "manufacturing",
+    Retail = "retail",
+    SupplyChain = "supply-chain",
+}
+
+/**
+ * Governance layer of a new ontology created to hold this pack.
+ *
+ * Governance layer of an ontology model.
+ */
+export enum Layer {
+    L1 = "L1",
+    L2 = "L2",
+    L3 = "L3",
 }
 
 /**
