@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { User } from '../../../../generated/entity/teams/user';
-import { EMPTY_STATE_COPY, TYPE_OPTIONS } from './UserAssets.constants';
+import { SearchSourceAlias } from '../../../../interface/search.interface';
 import {
   getOwnerIdsKey,
+  getSelectedAsset,
   getUserAssetsQueryFilter,
   suffixedTestId,
 } from './UserAssets.utils';
@@ -40,6 +41,12 @@ const termValues = (filter: Record<string, unknown>, field: string) =>
 describe('getOwnerIdsKey', () => {
   it('joins the user and team ids sorted', () => {
     expect(getOwnerIdsKey(user)).toBe('t1,t9,u2');
+  });
+
+  it('is the same for the same ids in any team order', () => {
+    expect(
+      getOwnerIdsKey({ ...user, teams: [...(user.teams ?? [])].reverse() })
+    ).toBe(getOwnerIdsKey(user));
   });
 
   it('is empty without a user', () => {
@@ -71,20 +78,19 @@ describe('suffixedTestId', () => {
   });
 });
 
-describe('UserAssets constants', () => {
-  it('exposes label/value type options only', () => {
-    expect(TYPE_OPTIONS.length).toBeGreaterThan(0);
+describe('getSelectedAsset', () => {
+  const assets = [{ id: 'a' }, { id: 'b' }] as SearchSourceAlias[];
 
-    TYPE_OPTIONS.forEach((option) =>
-      expect(Object.keys(option).sort()).toEqual(['label', 'value'])
-    );
+  it('defaults to the first asset until one is picked', () => {
+    expect(getSelectedAsset(assets, undefined)?.id).toBe('a');
+    expect(getSelectedAsset(assets, 'gone')?.id).toBe('a');
   });
 
-  it('has a title and description key per kind and audience', () => {
-    (['owned', 'following'] as const).forEach((kind) =>
-      (['self', 'other'] as const).forEach((who) =>
-        expect(EMPTY_STATE_COPY[kind][who]).toHaveLength(2)
-      )
-    );
+  it('returns the picked asset', () => {
+    expect(getSelectedAsset(assets, 'b')?.id).toBe('b');
+  });
+
+  it('selects nothing once the panel is closed', () => {
+    expect(getSelectedAsset(assets, null)).toBeUndefined();
   });
 });

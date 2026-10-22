@@ -643,7 +643,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
     canLoadMore
   );
 
-  // A user's two merged sources page apart, so one task can land on two pages.
+  // Pages are fetched at different times, so a task that changes in between
+  // (say, assigned to the user after it loaded as one they created) can land
+  // on two of them.
   const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
 
   useEffect(() => {

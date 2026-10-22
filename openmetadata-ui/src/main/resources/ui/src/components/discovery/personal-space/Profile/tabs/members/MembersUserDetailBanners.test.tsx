@@ -17,6 +17,11 @@ import type { UserDetailTab } from './Members.types';
 import MembersUserDetailBanners from './MembersUserDetailBanners';
 
 const mockSetHash = jest.fn();
+let mockIsAdmin = true;
+
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdmin }),
+}));
 
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({ setHash: mockSetHash }),
@@ -32,20 +37,23 @@ const ALICE = {
 const renderBanners = (
   user: Partial<User>,
   activeTab: UserDetailTab = 'overview',
-  canManage = true,
+  canRestore = true,
   onRestore = jest.fn()
 ) =>
   render(
     <MembersUserDetailBanners
       activeTab={activeTab}
-      canManage={canManage}
+      canRestore={canRestore}
       user={{ ...ALICE, ...user }}
       onRestore={onRestore}
     />
   );
 
 describe('MembersUserDetailBanners', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockIsAdmin = true;
+  });
 
   it('renders nothing for an active, human, non-admin user', () => {
     const { container } = renderBanners({});
@@ -66,7 +74,7 @@ describe('MembersUserDetailBanners', () => {
     expect(onRestore).toHaveBeenCalled();
   });
 
-  it('hides the restore button from viewers who cannot manage', () => {
+  it('hides the restore button from viewers who cannot restore', () => {
     renderBanners({ deleted: true }, 'overview', false);
 
     expect(screen.getByTestId('user-deleted-banner')).toBeInTheDocument();
@@ -80,7 +88,16 @@ describe('MembersUserDetailBanners', () => {
 
     fireEvent.click(screen.getByTestId('open-in-bots'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('bots', 'alice%20bot');
+    // BotsPanel matches the raw name, so it must not be percent-encoded.
+    expect(mockSetHash).toHaveBeenCalledWith('bots', 'alice bot');
+  });
+
+  it('offers no Open in Bots link to a non-admin, who has no Bots page', () => {
+    mockIsAdmin = false;
+    renderBanners({ isBot: true });
+
+    expect(screen.getByTestId('user-bot-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('open-in-bots')).not.toBeInTheDocument();
   });
 
   it('hides the bot banner off the overview tab', () => {

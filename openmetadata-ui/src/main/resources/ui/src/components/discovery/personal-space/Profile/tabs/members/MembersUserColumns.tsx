@@ -19,19 +19,19 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
+import { getMembersAccess } from './Members.utils';
 import {
   profileHash,
   ProfileHashTarget,
   toHashLocation,
 } from './profileHash.utils';
-import { getMembersAccess } from './Members.utils';
 import ProfileHashLink from './ProfileHashLink';
 
 type GoTo = (target: ProfileHashTarget) => void;

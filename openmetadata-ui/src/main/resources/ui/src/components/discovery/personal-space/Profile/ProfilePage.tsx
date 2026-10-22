@@ -41,7 +41,7 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { profileSubPathToUserView } from './tabs/members/Members.utils';
+import { profileSubPathToUserView } from './tabs/members/membersRoute.utils';
 import { useUserProfile } from './useUserProfile';
 
 const ProfilePage: React.FC = () => {
@@ -53,8 +53,14 @@ const ProfilePage: React.FC = () => {
 
   // Every nav item is about the signed-in user; another user deep-linked as
   // `#profile/<username>` is loaded by the profile tab's own user detail.
-  const { userData, isProfileLoading, isUserNotFound, updateUserDetails } =
-    useUserProfile(currentUser?.name);
+  const {
+    userData,
+    isProfileLoading,
+    isUserNotFound,
+    loadError,
+    updateUserDetails,
+    refetch,
+  } = useUserProfile(currentUser?.name);
   const isViewingOtherUser =
     hashState.tab === DEFAULT_PROFILE_NAV_ID &&
     Boolean(currentUser?.name) &&
@@ -98,7 +104,7 @@ const ProfilePage: React.FC = () => {
     const context: PluginEntityDetailsContext & { username: string } = {
       userData,
       username: userData.name,
-      isLoggedInUser: userData.name === currentUser?.name,
+      isLoggedInUser: true,
       isAiMode: true,
     };
     const contributed: ProfileNavItem[] = extensionRegistry
@@ -133,13 +139,7 @@ const ProfilePage: React.FC = () => {
     );
 
     return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
-  }, [
-    currentUser?.isAdmin,
-    currentUser?.name,
-    extensionRegistry,
-    permissions,
-    userData,
-  ]);
+  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
 
   // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback(
@@ -201,6 +201,8 @@ const ProfilePage: React.FC = () => {
     const panel = activeItem.render({
       userData,
       isProfileLoading,
+      loadError,
+      onReload: refetch,
       updateUserDetails,
       onHeaderChange: setHeaderOverride,
     });

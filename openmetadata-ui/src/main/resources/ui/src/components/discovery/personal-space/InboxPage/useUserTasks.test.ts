@@ -33,24 +33,16 @@ const isCreatedQuery = (params: { createdById?: string }) =>
 describe('fetchUserTasksPage', () => {
   beforeEach(() => mockListTasks.mockReset());
 
-  it('merges the assigned and created pages newest-first, once each', async () => {
+  const task = (n: number) => ({ id: `id-${n}`, name: `TASK-0000${n}` });
+  const ids = (page: { data: { id?: string }[] }) =>
+    page.data.map(({ id }) => id);
+
+  it('merges both sources in server order, once each', async () => {
     mockListTasks.mockImplementation((params) =>
       Promise.resolve(
         isCreatedQuery(params)
-          ? {
-              data: [
-                { id: 'b', createdAt: 2 },
-                { id: 'a', createdAt: 1 },
-              ],
-              paging: { after: 'created-2', total: 4 },
-            }
-          : {
-              data: [
-                { id: 'c', createdAt: 3 },
-                { id: 'a', createdAt: 1 },
-              ],
-              paging: { total: 2 },
-            }
+          ? { data: [task(1), task(2)], paging: { total: 2 } }
+          : { data: [task(1), task(3)], paging: { total: 4 } }
       )
     );
 
@@ -62,22 +54,43 @@ describe('fetchUserTasksPage', () => {
     expect(mockListTasks).toHaveBeenCalledWith(
       expect.objectContaining({ createdById: 'u1', limit: 25 })
     );
-    expect(page.data.map((task) => task.id)).toEqual(['c', 'b', 'a']);
-    expect(page.paging?.after).toBeDefined();
+    expect(ids(page)).toEqual(['id-1', 'id-2', 'id-3']);
+    expect(page.paging).toEqual({ after: undefined, total: 4 });
+  });
 
-    // The assigned source ran out, so the next page asks only the created one.
+  // The assigned source still has TASK-00004 on its next page, so the created
+  // source's TASK-00005 must wait for it rather than land on page one.
+  it('holds back a task a later page of the other source sorts before', async () => {
+    mockListTasks.mockImplementation((params) => {
+      if (isCreatedQuery(params)) {
+        return Promise.resolve({ data: [task(2), task(5)], paging: {} });
+      }
+
+      return Promise.resolve(
+        params.after
+          ? { data: [task(4)], paging: {} }
+          : { data: [task(1), task(3)], paging: { after: 'assigned-2' } }
+      );
+    });
+
+    const first = await fetchUserTasksPage(user, { limit: 2 });
+
+    expect(ids(first)).toEqual(['id-1', 'id-2', 'id-3']);
+
     mockListTasks.mockClear();
-    const next = await fetchUserTasksPage(
+    const second = await fetchUserTasksPage(
       user,
-      { limit: 25 },
-      page.paging?.after
+      { limit: 2 },
+      first.paging?.after
     );
 
+    // Only the assigned source is asked again; the created one is buffered.
     expect(mockListTasks).toHaveBeenCalledTimes(1);
     expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ createdById: 'u1', after: 'created-2' })
+      expect.objectContaining({ after: 'assigned-2' })
     );
-    expect(next.data.map((task) => task.id)).toEqual(['b', 'a']);
+    expect(ids(second)).toEqual(['id-4', 'id-5']);
+    expect(second.paging?.after).toBeUndefined();
   });
 
   it('stops paging once both sources are exhausted', async () => {

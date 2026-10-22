@@ -164,9 +164,8 @@ public class ActivityResource {
 
   /**
    * The user a personal feed is computed for: the caller, or {@code userId} when another user's
-   * feed is requested (e.g. an admin opening a member's Activity tab). Reading someone else's feed
-   * needs the same ViewBasic as reading that user; the events themselves are still filtered to what
-   * the caller may view.
+   * feed is requested. Reading someone else's feed needs the same ViewBasic as reading that user;
+   * the events themselves are still filtered to what the caller may view.
    */
   private User feedSubject(SecurityContext securityContext, UUID userId) {
     String callerName = securityContext.getUserPrincipal().getName();
@@ -176,7 +175,8 @@ public class ActivityResource {
         userId == null
             ? Entity.getEntityByName(Entity.USER, callerName, "teams", Include.NON_DELETED)
             : Entity.getEntity(Entity.USER, userId, "teams", Include.ALL);
-    if (!subject.getName().equals(callerName)) {
+    // The principal name comes from the token unmodified while user names are stored lower case.
+    if (!subject.getName().equalsIgnoreCase(callerName)) {
       authorizeTargetView(
           securityContext, new ResourceContext<>(Entity.USER, subject.getId(), null, Include.ALL));
     }

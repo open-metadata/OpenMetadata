@@ -96,7 +96,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   if (compact) {
     return (
       <Box
-        className="ai-profile-page__content-header tw:shrink-0 tw:px-6 tw:pt-4 tw:pb-4"
+        className="ai-profile-page__content-header tw:shrink-0 tw:px-6 tw:py-4"
         data-testid="profile-content-header"
         direction="col">
         {breadcrumbRow}

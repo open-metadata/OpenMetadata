@@ -151,8 +151,7 @@ const getTeamMenuItems = (
   };
 };
 
-// The manage items (make public/private, restore, delete) split out to keep
-// buildTeamActionsMenu's branching under the complexity budget.
+// Renders only the items getTeamMenuItems allows, in menu order.
 const buildTeamActionsMenu = (
   t: TranslateFn,
   items: TeamMenuItems,

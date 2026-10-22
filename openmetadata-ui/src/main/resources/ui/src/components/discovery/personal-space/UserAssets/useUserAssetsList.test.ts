@@ -14,11 +14,16 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserAssetsKind } from './UserAssets.utils';
 import { useUserAssetsList } from './useUserAssetsList';
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 const mockSearchQuery = searchQuery as jest.Mock;
@@ -49,7 +54,10 @@ const renderList = (
   );
 
 describe('useUserAssetsList', () => {
-  beforeEach(() => mockSearchQuery.mockReset());
+  beforeEach(() => {
+    mockSearchQuery.mockReset();
+    (showErrorToast as jest.Mock).mockReset();
+  });
 
   it('loads the first page of owned assets over every data asset', async () => {
     mockSearchQuery.mockResolvedValue(page(['a', 'b'], 2));
@@ -106,7 +114,9 @@ describe('useUserAssetsList', () => {
     await waitFor(() => expect(result.current.hasMore).toBe(true));
 
     mockSearchQuery.mockResolvedValueOnce(page(['c'], 3));
-    act(() => result.current.loadMore());
+    act(() => {
+      result.current.loadMore();
+    });
 
     await waitFor(() =>
       expect(result.current.assets.map((a) => a.id)).toEqual(['a', 'b', 'c'])
@@ -122,7 +132,9 @@ describe('useUserAssetsList', () => {
     await waitFor(() => expect(result.current.hasMore).toBe(true));
 
     mockSearchQuery.mockResolvedValueOnce(page(['b'], 2));
-    act(() => result.current.loadMore());
+    act(() => {
+      result.current.loadMore();
+    });
     await waitFor(() => expect(result.current.assets).toHaveLength(2));
 
     mockSearchQuery.mockResolvedValueOnce(page(['z'], 1));
@@ -137,13 +149,116 @@ describe('useUserAssetsList', () => {
     );
   });
 
-  it('empties the list when the first page fails', async () => {
+  it('escapes Elasticsearch reserved characters in the search text', async () => {
+    mockSearchQuery.mockResolvedValue(page([], 0));
+    const { result } = renderList('owned', 'a:b');
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(lastRequest().query).toBe(String.raw`*a\:b*`);
+  });
+
+  it('drops assets repeated across pages', async () => {
+    mockSearchQuery.mockResolvedValueOnce(page(['a', 'b'], 4));
+    const { result } = renderList();
+    await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+    mockSearchQuery.mockResolvedValueOnce(page(['b', 'c'], 4));
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() =>
+      expect(result.current.assets.map((a) => a.id)).toEqual(['a', 'b', 'c'])
+    );
+  });
+
+  it('never reports a finished empty list while a new search is pending', async () => {
+    const snapshots: Array<{ isLoading: boolean; count: number }> = [];
+    const allIndexes: string[] = [];
+    mockSearchQuery.mockResolvedValueOnce(page(['a'], 1));
+    const { result, rerender } = renderHook(
+      (props: { search: string }) => {
+        const state = useUserAssetsList(
+          'owned',
+          user,
+          props.search,
+          allIndexes
+        );
+        snapshots.push({
+          isLoading: state.isLoading,
+          count: state.assets.length,
+        });
+
+        return state;
+      },
+      { initialProps: { search: '' } }
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    snapshots.length = 0;
+    mockSearchQuery.mockResolvedValueOnce(page(['z'], 1));
+    rerender({ search: 'z' });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(
+      snapshots.filter((snap) => !snap.isLoading && snap.count === 0)
+    ).toEqual([]);
+  });
+
+  it('reports an error, not an empty list, when the first page fails', async () => {
     mockSearchQuery.mockRejectedValue(new Error('boom'));
     const { result } = renderList();
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
+    expect(result.current.error).toEqual(new Error('boom'));
     expect(result.current.assets).toEqual([]);
-    expect(result.current.total).toBe(0);
+    expect(result.current.hasMore).toBe(false);
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('retries the first page after an error', async () => {
+    mockSearchQuery.mockRejectedValueOnce(new Error('boom'));
+    const { result } = renderList();
+    await waitFor(() => expect(result.current.error).toBeDefined());
+
+    mockSearchQuery.mockResolvedValueOnce(page(['a'], 1));
+    act(() => {
+      result.current.retry();
+    });
+
+    await waitFor(() =>
+      expect(result.current.assets.map((a) => a.id)).toEqual(['a'])
+    );
+
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it('keeps the page and the list when load more fails, then retries the same page', async () => {
+    mockSearchQuery.mockResolvedValueOnce(page(['a', 'b'], 3));
+    const { result } = renderList();
+    await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+    mockSearchQuery.mockRejectedValueOnce(new Error('boom'));
+    act(() => {
+      result.current.loadMore();
+    });
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(result.current.hasMore).toBe(true));
+
+    expect(result.current.assets.map((a) => a.id)).toEqual(['a', 'b']);
+    expect(result.current.error).toBeUndefined();
+
+    mockSearchQuery.mockResolvedValueOnce(page(['c'], 3));
+    act(() => {
+      result.current.loadMore();
+    });
+
+    await waitFor(() =>
+      expect(result.current.assets.map((a) => a.id)).toEqual(['a', 'b', 'c'])
+    );
+
+    expect(lastRequest().pageNumber).toBe(2);
   });
 });

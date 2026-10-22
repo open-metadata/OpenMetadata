@@ -23,8 +23,6 @@ import TaskDetailPanel from './TaskDetailPanel';
 
 export interface TaskDetailPageProps {
   taskId: string;
-  // The caller's breadcrumbs lead back; kept so a host without them can.
-  onBack: () => void;
   onTaskChanged?: () => void;
 }
 

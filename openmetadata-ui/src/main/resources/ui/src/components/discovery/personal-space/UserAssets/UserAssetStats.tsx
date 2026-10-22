@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Grid } from '@openmetadata/ui-core-components';
 import {
   AlertTriangle,
   CodeSquare02,
@@ -25,6 +25,7 @@ import { ROUTES } from '../../../../constants/constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import StatCard from './StatCard';
 import { useUserAssetStats } from './useUserAssetStats';
 
@@ -37,6 +38,8 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
     requireAttention,
     dataHealthScore,
     isLoading,
+    error,
+    refetch,
   } = useUserAssetStats(user);
   const { mostViewed, mostViewedFqn } = queryStats;
 
@@ -58,63 +61,82 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
     t('label.most-viewed-entity', { entity: mostViewed })
   );
 
+  if (error) {
+    return (
+      <Box className="tw:relative tw:h-40 tw:shrink-0">
+        <SomethingWentWrongPlaceholder onReload={refetch} />
+      </Box>
+    );
+  }
+
   return (
-    <Box className="tw:grid tw:shrink-0 tw:grid-cols-4 tw:gap-4">
-      <StatCard
-        isSelected
-        breakdown={[
-          { label: t('label.table-plural'), value: assetStats.tables },
-          { label: t('label.dashboard-plural'), value: assetStats.dashboards },
-          { label: t('label.pipeline-plural'), value: assetStats.pipelines },
-        ]}
-        icon={<Star04 data-icon className="tw:stroke-[1.2px]" />}
-        label={t('label.asset-owned-plural')}
-        loading={isLoading}
-        testId="stat-card-assets-owned"
-        value={assetStats.total}
-      />
-      <StatCard
-        icon={<HeartRounded data-icon className="tw:stroke-[1.2px]" />}
-        label={t('label.data-health-score')}
-        loading={isLoading}
-        subtitle={t('label.asset-require-attention-count', {
-          count: requireAttention,
-        })}
-        testId="stat-card-data-health"
-        to={ROUTES.DATA_QUALITY}
-        value={dataHealthScore}
-      />
-      <StatCard
-        icon={<AlertTriangle data-icon className="tw:stroke-[1.2px]" />}
-        label={t('label.open-incidents')}
-        loading={isLoading}
-        subtitle={t('label.severity-incidents-open', {
-          severeCount: incidentStats.severity1,
-        })}
-        testId="stat-card-open-incidents"
-        to={ROUTES.INCIDENT_MANAGER}
-        value={incidentStats.total}
-      />
-      <StatCard
-        icon={<CodeSquare02 data-icon className="tw:stroke-[1.2px]" />}
-        label={t('label.queries')}
-        loading={isLoading}
-        subtitle={mostViewedSubtitle}
-        testId="stat-card-queries"
-        // Queries have no global page; the most-viewed table's tab is the
-        // closest place that lists them.
-        to={
-          mostViewedFqn
-            ? getEntityDetailsPath(
-                EntityType.TABLE,
-                mostViewedFqn,
-                EntityTabs.TABLE_QUERIES
-              )
-            : undefined
-        }
-        value={queryStats.count}
-      />
-    </Box>
+    <Grid className="tw:shrink-0" gap="4">
+      <Grid.Item span={6}>
+        <StatCard
+          isSelected
+          breakdown={[
+            { label: t('label.table-plural'), value: assetStats.tables },
+            {
+              label: t('label.dashboard-plural'),
+              value: assetStats.dashboards,
+            },
+            { label: t('label.pipeline-plural'), value: assetStats.pipelines },
+          ]}
+          icon={<Star04 data-icon />}
+          label={t('label.asset-owned-plural')}
+          loading={isLoading}
+          testId="stat-card-assets-owned"
+          value={assetStats.total}
+        />
+      </Grid.Item>
+      <Grid.Item span={6}>
+        <StatCard
+          icon={<HeartRounded data-icon />}
+          label={t('label.data-health-score')}
+          loading={isLoading}
+          subtitle={t('label.asset-require-attention-count', {
+            count: requireAttention,
+          })}
+          testId="stat-card-data-health"
+          to={ROUTES.DATA_QUALITY}
+          value={dataHealthScore}
+        />
+      </Grid.Item>
+      <Grid.Item span={6}>
+        <StatCard
+          icon={<AlertTriangle data-icon />}
+          label={t('label.open-incidents')}
+          loading={isLoading}
+          subtitle={t('label.severity-incidents-open', {
+            severeCount: incidentStats.severity1,
+          })}
+          testId="stat-card-open-incidents"
+          to={ROUTES.INCIDENT_MANAGER}
+          value={incidentStats.total}
+        />
+      </Grid.Item>
+      <Grid.Item span={6}>
+        <StatCard
+          icon={<CodeSquare02 data-icon />}
+          label={t('label.queries')}
+          loading={isLoading}
+          subtitle={mostViewedSubtitle}
+          testId="stat-card-queries"
+          // Queries have no global page; the most-viewed table's tab is the
+          // closest place that lists them.
+          to={
+            mostViewedFqn
+              ? getEntityDetailsPath(
+                  EntityType.TABLE,
+                  mostViewedFqn,
+                  EntityTabs.TABLE_QUERIES
+                )
+              : undefined
+          }
+          value={queryStats.count}
+        />
+      </Grid.Item>
+    </Grid>
   );
 };
 

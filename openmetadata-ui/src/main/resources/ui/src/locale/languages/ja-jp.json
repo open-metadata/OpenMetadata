@@ -6246,6 +6246,7 @@
     "you-can-also-set-up-the-metadata-ingestion": "メタデータ取り込みの設定も行えます。",
     "you-can-edit-memories-you-created": "作成したメモリは編集できます",
     "you-do-not-own-any-assets": "アセットを所有していません",
+    "your-description-description": "あなたについての短いメモ。",
     "your-owned-assets-appear-here": "あなたが所有者であるアセットがここに表示されます。",
     "your-platform-is-ready": "{{platform}}の<0>準備が整いました</0>",
     "yours-and-followed-empty-description": "所有しているアセットとフォロー中のアセットが、最新ステータスとともにここに表示されます。アセットをフォローして監視を始めましょう。",

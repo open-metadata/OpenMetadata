@@ -12,61 +12,83 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
-
-jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Divider: () => <hr />,
-  FeaturedIcon: ({ children }: { children?: ReactNode }) => (
-    <span>{children}</span>
-  ),
-  Typography: ({
-    children,
-    className,
-  }: {
-    children?: ReactNode;
-    className?: string;
-  }) => <span className={className}>{children}</span>,
-}));
-
+import { MemoryRouter } from 'react-router-dom';
 import StatCard from './StatCard';
+
+const renderCard = (props: Partial<Parameters<typeof StatCard>[0]> = {}) =>
+  render(
+    <MemoryRouter>
+      <StatCard
+        icon={<span />}
+        label="Assets Owned"
+        testId="stat"
+        value={42}
+        {...props}
+      />
+    </MemoryRouter>
+  );
 
 describe('StatCard', () => {
   it('renders value, label, subtitle and breakdown', () => {
-    render(
-      <StatCard
-        breakdown={[
-          { label: 'Tables', value: 3 },
-          { label: 'Dashboards', value: 1 },
-        ]}
-        icon={<span />}
-        label="Assets Owned"
-        subtitle="0 Require Attention"
-        value={42}
-      />
-    );
+    renderCard({
+      breakdown: [
+        { label: 'Tables', value: 3 },
+        { label: 'Dashboards', value: 1 },
+      ],
+      subtitle: '0 Require Attention',
+    });
 
-    expect(screen.getByText('42')).toBeInTheDocument();
+    expect(screen.getByTestId('stat-value')).toHaveTextContent('42');
     expect(screen.getByText('Assets Owned')).toBeInTheDocument();
-    expect(screen.getByText('0 Require Attention')).toBeInTheDocument();
-    expect(screen.getByText('Tables')).toBeInTheDocument();
+    expect(screen.getByTestId('stat-subtitle')).toHaveTextContent(
+      '0 Require Attention'
+    );
+    expect(screen.getByTestId('stat-breakdown')).toHaveTextContent(
+      '3Tables1Dashboards'
+    );
   });
 
   it('truncates a long subtitle instead of overflowing', () => {
-    render(
-      <StatCard
-        icon={<span />}
-        label="Assets Owned"
-        subtitle="A very long subtitle that would otherwise overflow its card"
-        value={42}
-      />
-    );
+    renderCard({ subtitle: 'A long subtitle' });
 
-    const subtitle = screen.getByText(
-      'A very long subtitle that would otherwise overflow its card'
+    expect(screen.getByTestId('stat-subtitle')).toHaveClass(
+      'tw:truncate',
+      'tw:max-w-full'
     );
+  });
 
-    expect(subtitle.className).toContain('truncate');
-    expect(subtitle.className).toContain('max-w-full');
+  it('marks only the selected tile as selected', () => {
+    const { unmount } = renderCard({ isSelected: true });
+
+    expect(screen.getByTestId('stat')).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByTestId('stat')).toHaveClass('tw:border-brand');
+
+    unmount();
+    renderCard();
+
+    expect(screen.getByTestId('stat')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+    expect(screen.getByTestId('stat')).not.toHaveClass('tw:border-brand');
+  });
+
+  it('links the whole tile when a destination is given', () => {
+    renderCard({ to: '/incidents' });
+
+    expect(screen.getByTestId('stat-link')).toHaveAttribute(
+      'href',
+      '/incidents'
+    );
+    expect(screen.getByTestId('stat-link')).toHaveAccessibleName(
+      'Assets Owned'
+    );
+  });
+
+  it('shows skeletons instead of the value and subtitle while loading', () => {
+    renderCard({ loading: true, subtitle: 'sub' });
+
+    expect(screen.queryByTestId('stat-value')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stat-subtitle')).not.toBeInTheDocument();
   });
 });

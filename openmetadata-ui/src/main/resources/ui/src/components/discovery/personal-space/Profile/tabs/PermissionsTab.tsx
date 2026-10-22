@@ -44,6 +44,8 @@ import TeamPermissionsSection from './permissions/TeamPermissionsSection';
 interface PermissionsTabProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  /** Overrides the Teams row's admin-only default (e.g. EditAll on the user). */
+  canEditTeams?: boolean;
 }
 
 interface SectionBlockProps {
@@ -142,6 +144,7 @@ const getPermissionSummaryStats = (
 const PermissionsTab: React.FC<PermissionsTabProps> = ({
   userData,
   updateUserDetails,
+  canEditTeams,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -175,6 +178,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
   const sections: React.ReactNode[] = [
     <SectionBlock key="membership" title={t('label.membership')}>
       <MembershipSection
+        canEditTeams={canEditTeams}
         updateUserDetails={updateUserDetails}
         userData={userData}
       />

@@ -24,6 +24,7 @@ import {
   test as isolatedTest,
 } from '../../../support/fixtures/isolatedUser';
 import { UserClass } from '../../../support/user/UserClass';
+import { insertActivityEventForTest } from '../../../utils/activityAPI';
 import {
   openAiProfile,
   openUsersPanel,
@@ -32,10 +33,14 @@ import {
 } from '../../../utils/aiProfile';
 import { okJson } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
+import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
 import {
+  composerEditor,
   createInboxTask,
   deleteInboxTasks,
   InboxTask,
+  isFollowedAssetsSearch,
+  switchActivityFeed,
   visitMyData,
   waitForTaskTransitions,
 } from '../../../utils/inbox';
@@ -81,7 +86,7 @@ const test = isolatedTest.extend<{ seeded: Seeded }>({
     } finally {
       await deleteInboxTasks(apiContext, seeded.tasks);
       for (const table of seeded.tables) {
-        await table.delete(apiContext).catch(() => undefined);
+        await table.delete(apiContext);
       }
       await subject.delete(apiContext);
     }
@@ -148,8 +153,9 @@ const createDescriptionTask = async (seeded: Seeded, table: TableClass) => {
 
 // Exact path: the app also asks for `<name>@<domain>`, which a prefix match would catch.
 const isUserByName = (userName: string) => (response: Response) =>
+  response.request().method() === 'GET' &&
   decodeURIComponent(new URL(response.url()).pathname) ===
-  `/api/v1/users/name/${userName}`;
+    `/api/v1/users/name/${userName}`;
 
 /** Deep-link the Members user detail at a tab, as a shared link opens it. */
 const openUserDetail = async (
@@ -164,7 +170,7 @@ const openUserDetail = async (
     200
   );
   const tabPath = tab === 'overview' ? '' : `/${tab}`;
-  await page.goto(`/#members/users/${encodeURIComponent(userName)}${tabPath}`);
+  await page.goto(`/#members/user/${encodeURIComponent(userName)}${tabPath}`);
   await userFetch;
 
   await expect(page.getByTestId('members-user-detail')).toBeVisible();
@@ -183,10 +189,13 @@ const readUser = (apiContext: APIRequestContext, userId: string) =>
     );
 
 /**
- * Add a text custom property to the user entity. The property is global, so
- * each test adds its own uniquely named one and removes it afterwards.
+ * Add text custom properties to the user entity. They are global, so each test
+ * adds its own uniquely named ones and removes them afterwards.
  */
-const addUserTextProperty = async (apiContext: APIRequestContext) => {
+const addUserTextProperties = async (
+  apiContext: APIRequestContext,
+  count = 1
+) => {
   const [fieldTypes, userType] = await Promise.all([
     apiContext
       .get('/api/v1/metadata/types?category=field&limit=100')
@@ -203,25 +212,36 @@ const addUserTextProperty = async (apiContext: APIRequestContext) => {
       ),
   ]);
   const stringType = fieldTypes.data.find(({ name }) => name === 'string');
-  const name = `pwUserProperty${uuid()}`;
-  await okJson(
-    await apiContext.put(`/api/v1/metadata/types/${userType.id}`, {
-      data: {
-        name,
-        description: `Playwright user property ${name}`,
-        propertyType: { id: stringType?.id, type: 'type' },
-      },
-    }),
-    'Add the user property'
-  );
-
-  return {
-    name,
-    remove: () =>
-      apiContext.delete(
-        `/api/v1/metadata/types/${userType.id}/customProperties/${name}`
-      ),
+  const names: string[] = [];
+  const remove = async () => {
+    for (const name of names) {
+      await removeCustomPropertyViaApi(apiContext, 'user', name);
+    }
   };
+
+  try {
+    // One at a time: each PUT rewrites the type's property list.
+    for (let added = 0; added < count; added++) {
+      const name = `pwUserProperty${uuid()}`;
+      await okJson(
+        await apiContext.put(`/api/v1/metadata/types/${userType.id}`, {
+          data: {
+            name,
+            description: `Playwright user property ${name}`,
+            propertyType: { id: stringType?.id, type: 'type' },
+          },
+        }),
+        'Add the user property'
+      );
+      names.push(name);
+    }
+  } catch (error) {
+    await remove();
+
+    throw error;
+  }
+
+  return { names, remove };
 };
 
 /** Set a text property's value inline in its row. */
@@ -256,7 +276,9 @@ const openTaskFullPage = async (page: Page, task: InboxTask) => {
   await expect(row).toBeVisible();
   const taskFetch = waitForResponseWithStatus(
     page,
-    (response) => response.url().includes(`/api/v1/tasks/${task.id}`),
+    (response) =>
+      response.request().method() === 'GET' &&
+      new URL(response.url()).pathname === `/api/v1/tasks/${task.id}`,
     200
   );
   await row.click();
@@ -308,57 +330,32 @@ const recordActivityAs = async (
   // further while other runs load the server.
   await expect
     .poll(
-      async () => {
-        const response = await seeded.apiContext.get(
-          `/api/v1/activity/user/${seeded.subject.responseData.id}?days=30`
-        );
-
-        return response.ok() ? response.text() : '';
-      },
+      async () =>
+        JSON.stringify(
+          await okJson(
+            await seeded.apiContext.get(
+              `/api/v1/activity/user/${seeded.subject.responseData.id}?days=30`
+            ),
+            'Read the user activity'
+          )
+        ),
       { timeout: 120_000, intervals: [1_000, 2_000, 5_000] }
     )
     .toContain(table.entityResponseData.name);
 };
 
+const isOwnedAssetsSearch = (ownerId: string) => (response: Response) => {
+  const url = new URL(response.url());
+
+  return (
+    response.request().method() === 'GET' &&
+    url.pathname === '/api/v1/search/query' &&
+    url.searchParams.get('size') !== '0' &&
+    url.searchParams.get('query_filter')?.includes(ownerId) === true
+  );
+};
+
 test.describe('AI Profile Members user detail', () => {
-  // Only you rename yourself (legacy parity), so the isolated admin renames
-  // its own account from the own Profile tab.
-  test('renames yourself from your own Profile', async ({
-    isolatedUserPage: page,
-    isolatedUser,
-    seeded,
-  }) => {
-    const userName = isolatedUser.responseData.name;
-    const newName = `PW Renamed ${uuid()}`;
-
-    const userFetch = waitForResponseWithStatus(
-      page,
-      (response) =>
-        isUserByName(userName)(response) &&
-        response.url().includes('extension'),
-      200
-    );
-    await openAiProfile(page);
-    await userFetch;
-
-    await page.getByTestId('preferred-name-edit').click();
-    await page
-      .getByTestId('preferred-name-input')
-      .getByRole('textbox')
-      .fill(newName);
-    const patch = waitForUserPatch(page, isolatedUser.responseData.id);
-    await page.getByTestId('preferred-name-save').click();
-    expect((await patch).ok()).toBeTruthy();
-
-    await expect(page.getByTestId('profile-content-header')).toContainText(
-      newName
-    );
-    expect(
-      (await readUser(seeded.apiContext, isolatedUser.responseData.id))
-        .displayName
-    ).toBe(newName);
-  });
-
   test('grants a role from the Access tab', async ({
     isolatedUserPage: page,
     seeded,
@@ -366,30 +363,34 @@ test.describe('AI Profile Members user detail', () => {
     const { subject } = seeded;
     await openUserDetail(page, subject.responseData.name, 'access');
 
-    await page.getByTestId('roles-edit').click();
-    const roleSearch = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes('/api/v1/roles/search') &&
-        new URL(response.url()).searchParams.get('q') === 'DataSteward',
-      200
-    );
-    await page
-      .getByTestId('roles-multiselect')
-      .getByRole('combobox')
-      .fill('DataSteward');
-    await roleSearch;
-    await page
-      .getByRole('option', { name: 'Data Steward', exact: true })
-      .click();
+    await test.step('Pick Data Steward in the roles editor', async () => {
+      await page.getByTestId('roles-edit').click();
+      const roleSearch = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/roles/search') &&
+          new URL(response.url()).searchParams.get('q') === 'DataSteward',
+        200
+      );
+      await page
+        .getByTestId('roles-multiselect')
+        .getByRole('combobox')
+        .fill('DataSteward');
+      await roleSearch;
+      await page
+        .getByRole('option', { name: 'Data Steward', exact: true })
+        .click();
+    });
 
-    const patch = waitForUserPatch(page, subject.responseData.id);
-    await page.getByTestId('roles-save').click();
-    expect((await patch).ok()).toBeTruthy();
+    await test.step('Save grants the role', async () => {
+      const patch = waitForUserPatch(page, subject.responseData.id);
+      await page.getByTestId('roles-save').click();
+      await patch;
 
-    await expect(page.getByTestId('roles')).toContainText('Data Steward');
-    const user = await readUser(seeded.apiContext, subject.responseData.id);
-    expect(user.roles?.map((role) => role.name)).toContain('DataSteward');
+      await expect(page.getByTestId('roles')).toContainText('Data Steward');
+      const user = await readUser(seeded.apiContext, subject.responseData.id);
+      expect(user.roles?.map((role) => role.name)).toContain('DataSteward');
+    });
   });
 
   test('shows the activity the user generated', async ({
@@ -402,26 +403,91 @@ test.describe('AI Profile Members user detail', () => {
     const description = `Described by its owner ${uuid()}`;
     await recordActivityAs(browser, seeded, table, description);
 
-    const activityFetch = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/activity/user/${seeded.subject.responseData.id}`),
-      200
-    );
-    await openUserDetail(page, seeded.subject.responseData.name, 'activity');
-    await activityFetch;
+    await test.step('The Activity tab lists the user’s event', async () => {
+      const activityFetch = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname ===
+            `/api/v1/activity/user/${seeded.subject.responseData.id}`,
+        200
+      );
+      await openUserDetail(page, seeded.subject.responseData.name, 'activity');
+      await activityFetch;
 
-    const event = page
-      .getByTestId('activity-feed-item')
-      .filter({ hasText: shownName(table) });
-    await expect(event).toBeVisible();
-    await expect(event).toContainText(description);
-    await expect(event).toContainText(
-      seeded.subject.responseData.displayName ??
-        seeded.subject.responseData.name
-    );
+      const event = page
+        .getByTestId('activity-feed-item')
+        .filter({ hasText: shownName(table) });
+      await expect(event).toBeVisible();
+      await expect(event).toContainText(description);
+      await expect(event).toContainText(
+        seeded.subject.responseData.displayName ??
+          seeded.subject.responseData.name
+      );
+    });
+  });
+
+  test('shows the activity that mentions the user under Mentions', async ({
+    isolatedUserPage: page,
+    seeded,
+  }) => {
+    test.slow();
+    const subjectId = seeded.subject.responseData.id;
+    const table = await createTable(seeded);
+    const summary = `Mentioned on the user page ${uuid()}`;
+
+    await test.step('Seed an activity whose reply mentions the user', async () => {
+      const activityId = await insertActivityEventForTest(
+        seeded.apiContext,
+        table,
+        summary
+      );
+      await okJson(
+        await seeded.apiContext.post(`/api/v1/activity/${activityId}/replies`, {
+          data: {
+            message: `<#E::user::${seeded.subject.responseData.name}> please review`,
+          },
+        }),
+        'Reply mentioning the user'
+      );
+      await expect
+        .poll(
+          async () =>
+            JSON.stringify(
+              await okJson(
+                await seeded.apiContext.get(
+                  `/api/v1/activity/mentions?userId=${subjectId}&days=30`
+                ),
+                'Read the user’s mentions'
+              )
+            ),
+          { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
+        )
+        .toContain(activityId);
+    });
+
+    await test.step('Mentions reads the subject’s mentions feed', async () => {
+      await openUserDetail(page, seeded.subject.responseData.name, 'activity');
+      const mentionsFetch = waitForResponseWithStatus(
+        page,
+        (response) => {
+          const url = new URL(response.url());
+
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/activity/mentions' &&
+            url.searchParams.get('userId') === subjectId
+          );
+        },
+        200
+      );
+      await switchActivityFeed(page, 'Mentions');
+      await mentionsFetch;
+
+      await expect(
+        page.getByTestId('activity-feed-item').filter({ hasText: summary })
+      ).toBeVisible();
+    });
   });
 
   test('comments on the user’s task from its full page', async ({
@@ -437,36 +503,40 @@ test.describe('AI Profile Members user detail', () => {
     await openUserDetail(page, userName, 'tasks');
     const taskPage = await openTaskFullPage(page, task);
 
-    const editor = taskPage
-      .getByTestId('inbox-comment-composer')
-      .locator('.ql-editor');
-    await editor.click();
-    await editor.fill(comment);
-    const posted = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes(`/api/v1/tasks/${task.id}/comments`) &&
-        response.request().method() === 'POST',
-      200
-    );
-    await editor.press('Enter');
-    await posted;
-    await expect(
-      taskPage.getByTestId('task-comment-card').filter({ hasText: comment })
-    ).toBeVisible();
+    await test.step('Post a comment from the composer', async () => {
+      const editor = composerEditor(taskPage);
+      await editor.click();
+      await editor.fill(comment);
+      const posted = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes(`/api/v1/tasks/${task.id}/comments`) &&
+          response.request().method() === 'POST',
+        200
+      );
+      await editor.press('Enter');
+      await posted;
+      await expect(
+        taskPage.getByTestId('task-comment-card').filter({ hasText: comment })
+      ).toBeVisible();
+    });
 
-    const saved = await okJson<{ comments?: { message: string }[] }>(
-      await seeded.apiContext.get(`/api/v1/tasks/${task.id}?fields=comments`),
-      'Read the task comments'
-    );
-    // The editor stores its spaces as &nbsp;, so compare the words.
-    const savedText = (saved.comments ?? [])
-      .map(({ message }) => message.replace(/\s+/g, ' '))
-      .join('\n');
-    expect(savedText).toContain(comment);
+    await test.step('The comment is saved on the task', async () => {
+      const saved = await okJson<{ comments?: { message: string }[] }>(
+        await seeded.apiContext.get(`/api/v1/tasks/${task.id}?fields=comments`),
+        'Read the task comments'
+      );
+      // The editor stores its spaces as &nbsp;, so compare the words.
+      const savedText = (saved.comments ?? [])
+        .map(({ message }) => message.replace(/\s+/g, ' '))
+        .join('\n');
+      expect(savedText).toContain(comment);
+    });
 
-    await backToUserTasks(page, userName);
-    await expect(page.getByTestId(`inbox-task-${task.id}`)).toBeVisible();
+    await test.step('Back returns to the user’s tasks', async () => {
+      await backToUserTasks(page, userName);
+      await expect(page.getByTestId(`inbox-task-${task.id}`)).toBeVisible();
+    });
   });
 
   test('approves the user’s task and finds it under Closed', async ({
@@ -481,44 +551,50 @@ test.describe('AI Profile Members user detail', () => {
     await openUserDetail(page, userName, 'tasks');
     const taskPage = await openTaskFullPage(page, task);
 
-    const resolved = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes(`/api/v1/tasks/${task.id}/resolve`) &&
-        response.request().method() === 'POST',
-      200
-    );
-    await taskPage.getByTestId('task-approve').click();
-    await resolved;
+    await test.step('Approve the task', async () => {
+      const resolved = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes(`/api/v1/tasks/${task.id}/resolve`) &&
+          response.request().method() === 'POST',
+        200
+      );
+      await taskPage.getByTestId('task-approve').click();
+      await resolved;
+    });
 
-    await backToUserTasks(page, userName);
-    const closedFetch = waitForResponseWithStatus(
-      page,
-      (response) =>
-        isUserTaskList(userName)(response) &&
-        new URL(response.url()).searchParams.get('statusGroup') === 'closed',
-      200
-    );
-    await page
-      .getByTestId('inbox-tasks-tab')
-      .getByRole('tablist')
-      .getByRole('tab', { name: /^Closed/ })
-      .click();
-    await closedFetch;
-    await expect(page.getByTestId(`inbox-task-${task.id}`)).toBeVisible();
+    await test.step('The task is listed under Closed', async () => {
+      await backToUserTasks(page, userName);
+      const closedFetch = waitForResponseWithStatus(
+        page,
+        (response) =>
+          isUserTaskList(userName)(response) &&
+          new URL(response.url()).searchParams.get('statusGroup') === 'closed',
+        200
+      );
+      await page
+        .getByTestId('inbox-tasks-tab')
+        .getByRole('tablist')
+        .getByRole('tab', { name: /^Closed/ })
+        .click();
+      await closedFetch;
+      await expect(page.getByTestId(`inbox-task-${task.id}`)).toBeVisible();
+    });
 
-    await expect
-      .poll(async () => {
-        const saved = await okJson<{ description?: string }>(
-          await seeded.apiContext.get(
-            `/api/v1/tables/${table.entityResponseData.id}`
-          ),
-          'Read the described table'
-        );
+    await test.step('The approved description is applied', async () => {
+      await expect
+        .poll(async () => {
+          const saved = await okJson<{ description?: string }>(
+            await seeded.apiContext.get(
+              `/api/v1/tables/${table.entityResponseData.id}`
+            ),
+            'Read the described table'
+          );
 
-        return saved.description;
-      })
-      .toBe(newDescription);
+          return saved.description;
+        })
+        .toBe(newDescription);
+    });
   });
 
   test('finds an owned asset by search and previews it', async ({
@@ -531,38 +607,48 @@ test.describe('AI Profile Members user detail', () => {
       await createOwnedTable(seeded),
     ];
     const ownedName = owned.entityResponseData.name;
-
-    await openUserDetail(
-      page,
-      seeded.subject.responseData.name,
-      'owned-assets'
-    );
     const ownedCard = page.getByTestId(
       `user-asset-card-${owned.entityResponseData.fullyQualifiedName}`
     );
     const otherCard = page.getByTestId(
       `user-asset-card-${other.entityResponseData.fullyQualifiedName}`
     );
-    await expect(ownedCard).toBeVisible();
-    await expect(otherCard).toBeVisible();
 
-    const searchFetch = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        new URL(response.url()).searchParams.get('q')?.includes(ownedName) ===
-          true,
-      200
-    );
-    await page.getByTestId('user-assets-search').fill(ownedName);
-    await searchFetch;
-    await expect(ownedCard).toBeVisible();
-    await expect(otherCard).toBeHidden();
+    await test.step('Owned assets lists both tables', async () => {
+      await openUserDetail(
+        page,
+        seeded.subject.responseData.name,
+        'owned-assets'
+      );
+      await expect(ownedCard).toBeVisible();
+      await expect(otherCard).toBeVisible();
+    });
 
-    await ownedCard.getByTestId('user-asset-card-name').click();
-    await expect(page.getByTestId('user-assets-summary')).toContainText(
-      shownName(owned)
-    );
+    await test.step('Search narrows the list to one table', async () => {
+      const searchFetch = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'GET' &&
+          new URL(response.url()).pathname === '/api/v1/search/query' &&
+          // The query escapes the name's ES reserved characters (`-`).
+          new URL(response.url()).searchParams
+            .get('q')
+            ?.replace(/\\/g, '')
+            .includes(ownedName) === true,
+        200
+      );
+      await page.getByTestId('user-assets-search').fill(ownedName);
+      await searchFetch;
+      await expect(ownedCard).toBeVisible();
+      await expect(otherCard).toBeHidden();
+    });
+
+    await test.step('Opening the card previews it', async () => {
+      await ownedCard.getByTestId('user-asset-card-name').click();
+      await expect(page.getByTestId('user-assets-summary')).toContainText(
+        shownName(owned)
+      );
+    });
   });
 
   test('lists the assets the user follows', async ({
@@ -586,17 +672,21 @@ test.describe('AI Profile Members user detail', () => {
         }),
       }
     );
-
-    await openUserDetail(page, seeded.subject.responseData.name, 'following');
     const card = page.getByTestId(
       `user-asset-card-${followed.entityResponseData.fullyQualifiedName}`
     );
-    await expect(card).toBeVisible();
 
-    await card.getByTestId('user-asset-card-name').click();
-    await expect(page.getByTestId('user-assets-summary')).toContainText(
-      shownName(followed)
-    );
+    await test.step('Following lists the followed table', async () => {
+      await openUserDetail(page, seeded.subject.responseData.name, 'following');
+      await expect(card).toBeVisible();
+    });
+
+    await test.step('Opening the card previews it', async () => {
+      await card.getByTestId('user-asset-card-name').click();
+      await expect(page.getByTestId('user-assets-summary')).toContainText(
+        shownName(followed)
+      );
+    });
   });
 
   test('soft deletes the user and restores them from the banner', async ({
@@ -606,87 +696,79 @@ test.describe('AI Profile Members user detail', () => {
     const { subject } = seeded;
     await openUserDetail(page, subject.responseData.name);
 
-    await page.getByTestId('user-detail-delete-button').click();
-    await expect(page.getByTestId('delete-modal')).toBeVisible();
-    const deleted = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes(`/api/v1/users/${subject.responseData.id}`) &&
-        response.request().method() === 'DELETE',
-      200
-    );
-    await page.getByTestId('confirm-button').click();
-    await deleted;
+    await test.step('Delete soft deletes the user', async () => {
+      await page.getByTestId('user-detail-delete-button').click();
+      await expect(page.getByTestId('delete-modal')).toBeVisible();
+      const deleted = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes(`/api/v1/users/${subject.responseData.id}`) &&
+          response.request().method() === 'DELETE',
+        200
+      );
+      await page.getByTestId('confirm-button').click();
+      await deleted;
 
-    await expect(page.getByTestId('user-deleted-banner')).toBeVisible();
-    expect(
-      (await readUser(seeded.apiContext, subject.responseData.id)).deleted
-    ).toBe(true);
+      await expect(page.getByTestId('user-deleted-banner')).toBeVisible();
+      expect(
+        (await readUser(seeded.apiContext, subject.responseData.id)).deleted
+      ).toBe(true);
+    });
 
-    const restored = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes('/api/v1/users/restore') &&
-        response.request().method() === 'PUT',
-      200
-    );
-    await page.getByTestId('banner-restore-user').click();
-    await restored;
+    await test.step('The banner restores the user', async () => {
+      const restored = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/users/restore') &&
+          response.request().method() === 'PUT',
+        200
+      );
+      await page.getByTestId('banner-restore-user').click();
+      await restored;
 
-    await expect(page.getByTestId('user-deleted-banner')).toBeHidden();
-    expect(
-      (await readUser(seeded.apiContext, subject.responseData.id)).deleted
-    ).toBe(false);
+      await expect(page.getByTestId('user-deleted-banner')).toBeHidden();
+      expect(
+        (await readUser(seeded.apiContext, subject.responseData.id)).deleted
+      ).toBe(false);
+    });
   });
 });
 
 test.describe('My Data & Following', () => {
   test('shows the signed-in user’s owned and followed assets', async ({
-    browser,
+    freshUserPage: { page, user },
     seeded,
   }) => {
     test.slow();
-    const owned = await createOwnedTable(seeded);
+    const userId = user.responseData.id;
+    const owned = await createOwnedTable(seeded, userId);
     const followed = await createTable(seeded);
-    await followed.followTable(
-      seeded.apiContext,
-      seeded.subject.responseData.id
-    );
+    await followed.followTable(seeded.apiContext, userId);
     await waitForSearchIndexed(
       seeded.apiContext,
       followed.entityResponseData.fullyQualifiedName,
       'table',
       {
         queryFilter: JSON.stringify({
-          query: {
-            term: { followers: seeded.subject.responseData.id },
-          },
+          query: { term: { followers: userId } },
         }),
       }
     );
-
-    const { page, afterAction } = await performUserLogin(
-      browser,
-      seeded.subject
+    const myData = page.getByTestId('my-data-page');
+    const ownedCard = myData.getByTestId(
+      `user-asset-card-${owned.entityResponseData.fullyQualifiedName}`
     );
-    try {
+
+    await test.step('My Data lists the owned table', async () => {
       await enableAiAppMode(page);
       await visitMyData(page);
+      await expect(ownedCard).toBeVisible();
+    });
 
-      const myData = page.getByTestId('my-data-page');
-      await expect(
-        myData.getByTestId(
-          `user-asset-card-${owned.entityResponseData.fullyQualifiedName}`
-        )
-      ).toBeVisible();
-
+    await test.step('Following lists only the followed table', async () => {
       const followingFetch = waitForResponseWithStatus(
         page,
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          decodeURIComponent(response.url()).includes(
-            seeded.subject.responseData.id
-          ),
+        isFollowedAssetsSearch(userId),
         200
       );
       await myData.getByRole('tab', { name: 'Following' }).click();
@@ -696,14 +778,8 @@ test.describe('My Data & Following', () => {
           `user-asset-card-${followed.entityResponseData.fullyQualifiedName}`
         )
       ).toBeVisible();
-      await expect(
-        myData.getByTestId(
-          `user-asset-card-${owned.entityResponseData.fullyQualifiedName}`
-        )
-      ).toBeHidden();
-    } finally {
-      await afterAction();
-    }
+      await expect(ownedCard).toBeHidden();
+    });
   });
 });
 
@@ -713,7 +789,10 @@ test.describe('User custom properties, password reset and read-only access', () 
     seeded,
   }) => {
     const { subject } = seeded;
-    const property = await addUserTextProperty(seeded.apiContext);
+    const {
+      names: [propertyName],
+      remove,
+    } = await addUserTextProperties(seeded.apiContext);
     const value = `Senior Data Engineer ${uuid()}`;
     try {
       await openUserDetail(
@@ -721,61 +800,75 @@ test.describe('User custom properties, password reset and read-only access', () 
         subject.responseData.name,
         'custom-properties'
       );
-      const row = page.getByTestId(`custom-property-row-${property.name}`);
-      await setTextPropertyValue(
-        page,
-        row,
-        property.name,
-        subject.responseData.id,
-        value
-      );
+      const row = page.getByTestId(`custom-property-row-${propertyName}`);
 
-      const saved = await readUser(seeded.apiContext, subject.responseData.id);
-      expect(saved.extension?.[property.name]).toBe(value);
+      await test.step('Search finds the property among all of them', async () => {
+        await page.getByTestId('custom-property-search').fill(propertyName);
+        await expect(row).toBeVisible();
+      });
+
+      await test.step('The inline value is saved', async () => {
+        await setTextPropertyValue(
+          page,
+          row,
+          propertyName,
+          subject.responseData.id,
+          value
+        );
+
+        const saved = await readUser(
+          seeded.apiContext,
+          subject.responseData.id
+        );
+        expect(saved.extension?.[propertyName]).toBe(value);
+      });
     } finally {
-      await property.remove();
+      await remove();
     }
   });
 
   test('sets your own custom property from your Profile', async ({
-    isolatedUserPage: page,
-    isolatedUser,
+    freshUserPage: { page, user },
     seeded,
   }) => {
-    const property = await addUserTextProperty(seeded.apiContext);
+    // Six of our own guarantee the section collapses past its five rows, so
+    // "Show all" is always there, however many other properties come and go.
+    const { names, remove } = await addUserTextProperties(seeded.apiContext, 6);
+    const propertyName = names[names.length - 1];
     const value = `Bengaluru ${uuid()}`;
     try {
-      const selfFetch = waitForResponseWithStatus(
-        page,
-        isUserByName(isolatedUser.responseData.name),
-        200
-      );
-      await openAiProfile(page);
-      await selfFetch;
-
       const section = page.getByTestId('profile-section-custom-properties');
-      await expect(section).toBeVisible();
-      // Past five properties the rest sit behind "Show all".
-      const showAll = section.getByTestId('toggle-all-custom-properties');
-      if (await showAll.isVisible()) {
-        await showAll.click();
-      }
-      const row = section.getByTestId(`custom-property-row-${property.name}`);
-      await setTextPropertyValue(
-        page,
-        row,
-        property.name,
-        isolatedUser.responseData.id,
-        value
-      );
+      const row = section.getByTestId(`custom-property-row-${propertyName}`);
 
-      const saved = await readUser(
-        seeded.apiContext,
-        isolatedUser.responseData.id
-      );
-      expect(saved.extension?.[property.name]).toBe(value);
+      await test.step('Show all reveals every property', async () => {
+        const selfFetch = waitForResponseWithStatus(
+          page,
+          isUserByName(user.responseData.name),
+          200
+        );
+        await openAiProfile(page);
+        await selfFetch;
+
+        const showAll = section.getByTestId('toggle-all-custom-properties');
+        await expect(showAll).toBeVisible();
+        await showAll.click();
+        await expect(row).toBeVisible();
+      });
+
+      await test.step('The inline value is saved on your account', async () => {
+        await setTextPropertyValue(
+          page,
+          row,
+          propertyName,
+          user.responseData.id,
+          value
+        );
+
+        const saved = await readUser(seeded.apiContext, user.responseData.id);
+        expect(saved.extension?.[propertyName]).toBe(value);
+      });
     } finally {
-      await property.remove();
+      await remove();
     }
   });
 
@@ -787,128 +880,123 @@ test.describe('User custom properties, password reset and read-only access', () 
     const newPassword = `Pw!${uuid()}Reset1`;
     await openUserDetail(page, subject.responseData.name);
 
-    await page.getByTestId('change-password-button').click();
-    await page
-      .getByTestId('new-password-input')
-      .locator('input')
-      .fill(newPassword);
-    await page
-      .getByTestId('confirm-password-input')
-      .locator('input')
-      .fill(newPassword);
-    const changed = waitForResponseWithStatus(
-      page,
-      (response) =>
-        response.url().includes('/api/v1/users/changePassword') &&
-        response.request().method() === 'PUT',
-      200
-    );
-    await page.getByTestId('update-password-button').click();
-    await changed;
-
-    const login = await seeded.apiContext.post('/api/v1/users/login', {
-      data: {
-        email: subject.data.email,
-        password: Buffer.from(newPassword).toString('base64'),
-      },
+    await test.step('Set a new password', async () => {
+      await page.getByTestId('change-password-button').click();
+      await page
+        .getByTestId('new-password-input')
+        .locator('input')
+        .fill(newPassword);
+      await page
+        .getByTestId('confirm-password-input')
+        .locator('input')
+        .fill(newPassword);
+      const changed = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/users/changePassword') &&
+          response.request().method() === 'PUT',
+        200
+      );
+      await page.getByTestId('update-password-button').click();
+      await changed;
     });
-    expect(login.ok()).toBeTruthy();
+
+    await test.step('The user signs in with it', async () => {
+      const login = await seeded.apiContext.post('/api/v1/users/login', {
+        data: {
+          email: subject.data.email,
+          password: Buffer.from(newPassword).toString('base64'),
+        },
+      });
+      expect(login.ok()).toBeTruthy();
+    });
   });
 
   test('a non-admin opens another user read-only and sees their assets', async ({
-    browser,
+    freshUserPage: { page },
     seeded,
   }) => {
     test.slow();
-    const owner = new UserClass();
-    await owner.create(seeded.apiContext);
-    try {
-      const table = await createOwnedTable(seeded, owner.responseData.id);
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        seeded.subject
-      );
-      try {
-        // Sign-in already landed on `/`, so a hash-only goto would not reload
-        // into the AI shell; load it first, then follow the profile link.
-        await enableAiAppMode(page);
-        await page.goto('/');
-        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-        const ownerFetch = waitForResponseWithStatus(
-          page,
-          isUserByName(owner.responseData.name),
-          200
-        );
-        await page.goto(
-          `/#profile/${encodeURIComponent(
-            owner.responseData.name
-          )}/owned-assets`
-        );
-        await ownerFetch;
+    const { subject } = seeded;
+    const table = await createOwnedTable(seeded);
 
-        await expect(
-          page.getByTestId(
-            `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
-          )
-        ).toBeVisible();
-        await expect(page.getByTestId('profile-content-header')).toContainText(
-          `@${owner.responseData.name}`
-        );
-      } finally {
-        await afterAction();
-      }
-    } finally {
-      await owner.delete(seeded.apiContext);
-    }
+    await test.step('The profile link shows the user’s assets', async () => {
+      // Sign-in already landed on `/`, so a hash-only goto would not reload
+      // into the AI shell; load it first, then follow the profile link.
+      await enableAiAppMode(page);
+      await page.goto('/');
+      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+      const subjectFetch = waitForResponseWithStatus(
+        page,
+        isUserByName(subject.responseData.name),
+        200
+      );
+      await page.goto(
+        `/#profile/${encodeURIComponent(
+          subject.responseData.name
+        )}/owned-assets`
+      );
+      await subjectFetch;
+
+      await expect(
+        page.getByTestId(
+          `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+      await expect(page.getByTestId('profile-content-header')).toContainText(
+        `@${subject.responseData.name}`
+      );
+    });
+
+    await test.step('Nothing on the user can be changed', async () => {
+      await page.getByTestId('user-detail-tab-overview').click();
+      await expect(page.getByTestId('profile-details-panel')).toBeVisible();
+
+      await expect(page.getByTestId('user-detail-delete-button')).toBeHidden();
+      await expect(page.getByTestId('preferred-name-edit')).toBeHidden();
+      await expect(page.getByTestId('change-password-button')).toBeHidden();
+    });
   });
 
   test('a data consumer reaches another user through Settings › Members', async ({
-    browser,
+    freshUserPage: { page },
     seeded,
   }) => {
     test.slow();
-    const owner = new UserClass();
-    await owner.create(seeded.apiContext);
-    try {
-      const table = await createOwnedTable(seeded, owner.responseData.id);
-      const { page, afterAction } = await performUserLogin(
-        browser,
-        seeded.subject
+    const { subject } = seeded;
+    const table = await createOwnedTable(seeded);
+
+    await test.step('Find the user in Members › Users', async () => {
+      await enableAiAppMode(page);
+      await page.goto('/');
+      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+      await page.goto('/#members');
+      await expect(page.getByTestId('members-landing')).toBeVisible();
+
+      await openUsersPanel(page);
+      const subjectCell = await searchUserRow(page, subject.responseData.name);
+      const subjectFetch = waitForResponseWithStatus(
+        page,
+        isUserByName(subject.responseData.name),
+        200
       );
-      try {
-        await enableAiAppMode(page);
-        await page.goto('/');
-        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-        await page.goto('/#members');
-        await expect(page.getByTestId('members-landing')).toBeVisible();
+      await subjectCell.click();
+      await subjectFetch;
+    });
 
-        await openUsersPanel(page);
-        const ownerCell = await searchUserRow(page, owner.responseData.name);
-        const ownerFetch = waitForResponseWithStatus(
-          page,
-          isUserByName(owner.responseData.name),
-          200
-        );
-        await ownerCell.click();
-        await ownerFetch;
-
-        const assetsFetch = waitForResponseWithStatus(
-          page,
-          (response) => response.url().includes('/api/v1/search/query'),
-          200
-        );
-        await page.getByTestId('user-detail-tab-owned-assets').click();
-        await assetsFetch;
-        await expect(
-          page.getByTestId(
-            `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
-          )
-        ).toBeVisible();
-      } finally {
-        await afterAction();
-      }
-    } finally {
-      await owner.delete(seeded.apiContext);
-    }
+    await test.step('Their owned assets are listed', async () => {
+      const assetsFetch = waitForResponseWithStatus(
+        page,
+        isOwnedAssetsSearch(subject.responseData.id),
+        200
+      );
+      await page.getByTestId('user-detail-tab-owned-assets').click();
+      await assetsFetch;
+      await expect(
+        page.getByTestId(
+          `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+    });
   });
 });

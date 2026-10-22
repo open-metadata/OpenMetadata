@@ -14,6 +14,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useCallback, useState } from 'react';
+import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersUserDetailView, MembersView } from './Members.types';
 import MembersUserDetail from './MembersUserDetail';
@@ -48,6 +51,37 @@ jest.mock('hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({ setHash: mockSetHash }),
 }));
 
+let mockUserGrants: Partial<OperationPermission> = {};
+let mockIsPermissionLoading = false;
+// Mock the hook, run the real derivation (incl. its `deleted` gating).
+jest.mock('hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (
+    _resource: string,
+    _fqn: string,
+    options?: { deleted?: boolean }
+  ) => {
+    const permissions = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      ...mockUserGrants,
+    } as OperationPermission;
+
+    return {
+      permissions,
+      isLoading: mockIsPermissionLoading,
+      error: null,
+      refresh: jest.fn(),
+      ...getDerivedPermissionFlags(permissions, options?.deleted),
+    };
+  },
+}));
+
+const ALL_GRANTS: Partial<OperationPermission> = {
+  ViewAll: true,
+  ViewBasic: true,
+  EditAll: true,
+  Delete: true,
+};
+
 const mockCustomPropertyAccess = {
   canView: true,
   canEdit: true,
@@ -60,9 +94,12 @@ jest.mock('../../customProperties/useUserCustomPropertyAccess', () => ({
 jest.mock('../../customProperties/UserCustomPropertiesList', () => () => (
   <div data-testid="tab-custom-properties" />
 ));
-jest.mock('../../ProfileDetailsPanel', () => () => (
-  <div data-testid="tab-overview" />
-));
+jest.mock(
+  '../../ProfileDetailsPanel',
+  () =>
+    ({ canEditAll }: { canEditAll?: boolean }) =>
+      <div data-can-edit-all={String(canEditAll)} data-testid="tab-overview" />
+);
 jest.mock('../PermissionsTab', () => () => <div data-testid="tab-access" />);
 jest.mock('../../../InboxPage/tabs/ActivityTab', () => () => (
   <div data-testid="tab-activity" />
@@ -177,6 +214,8 @@ describe('MembersUserDetail', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockIsAdmin = true;
+    mockUserGrants = { ...ALL_GRANTS };
+    mockIsPermissionLoading = false;
     mockGetUserByName.mockResolvedValue(ALICE);
     Object.assign(mockCustomPropertyAccess, {
       canView: true,
@@ -329,5 +368,105 @@ describe('MembersUserDetail', () => {
         'alice > label.task-plural > TASK-00170'
       )
     );
+  });
+
+  it('shows an error with a reload, not an endless skeleton, when the load fails', async () => {
+    mockGetUserByName.mockRejectedValueOnce({ response: { status: 500 } });
+    renderDetail();
+
+    expect(await screen.findByTestId('user-load-error')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('user-detail-skeleton')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-title')).toHaveTextContent('alice');
+
+    fireEvent.click(screen.getByText('label.reload'));
+
+    expect(await screen.findByTestId('tab-overview')).toBeInTheDocument();
+    expect(mockGetUserByName).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps your own profile read-only behind an error when it fails to load', async () => {
+    mockGetLoggedInUser.mockRejectedValue({ response: { status: 500 } });
+    renderDetail({ name: 'harsh', tab: 'custom-properties' });
+
+    expect(await screen.findByTestId('user-load-error')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('tab-custom-properties')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps a deep-linked Custom Properties tab while its access loads', async () => {
+    Object.assign(mockCustomPropertyAccess, {
+      canView: false,
+      isLoading: true,
+    });
+    renderDetail({ tab: 'custom-properties' });
+
+    expect(
+      await screen.findByTestId('tab-custom-properties')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('user-detail-tab-custom-properties')
+    ).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('lets a non-admin with EditAll and Delete on the user edit and delete them', async () => {
+    mockIsAdmin = false;
+    renderDetail();
+
+    expect(await screen.findByTestId('tab-overview')).toHaveAttribute(
+      'data-can-edit-all',
+      'true'
+    );
+    expect(screen.getByTestId('user-detail-delete-button')).toBeInTheDocument();
+  });
+
+  it('keeps an admin without EditAll or Delete on the user read-only', async () => {
+    mockUserGrants = { ViewAll: true, ViewBasic: true };
+    renderDetail();
+
+    expect(await screen.findByTestId('tab-overview')).toHaveAttribute(
+      'data-can-edit-all',
+      'false'
+    );
+    expect(
+      screen.queryByTestId('user-detail-delete-button')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers restore on a deleted user to an EditAll holder', async () => {
+    mockIsAdmin = false;
+    mockGetUserByName.mockResolvedValue({ ...ALICE, deleted: true });
+    renderDetail();
+
+    expect(
+      await screen.findByTestId('banner-restore-user')
+    ).toBeInTheDocument();
+    // Edits stay off on a deleted user.
+    expect(screen.getByTestId('tab-overview')).toHaveAttribute(
+      'data-can-edit-all',
+      'false'
+    );
+  });
+
+  it('hides restore from a viewer without EditAll on the user', async () => {
+    mockUserGrants = { ViewAll: true, ViewBasic: true, Delete: true };
+    mockGetUserByName.mockResolvedValue({ ...ALICE, deleted: true });
+    renderDetail();
+
+    expect(
+      await screen.findByTestId('user-deleted-banner')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('banner-restore-user')).not.toBeInTheDocument();
+  });
+
+  it('shows a permission placeholder without view access on the user', async () => {
+    mockUserGrants = {};
+    renderDetail();
+
+    expect(await screen.findByTestId('user-no-access')).toBeInTheDocument();
+    expect(screen.queryByTestId('tab-overview')).not.toBeInTheDocument();
   });
 });

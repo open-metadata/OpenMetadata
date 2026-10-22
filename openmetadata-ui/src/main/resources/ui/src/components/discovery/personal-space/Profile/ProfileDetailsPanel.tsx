@@ -24,7 +24,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { isMaskedEmail } from '../../../../utils/UsersPureUtils';
+import { getVisibleEmail } from '../../../../utils/UsersPureUtils';
 import ChangePasswordRow from './components/ChangePasswordRow';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';
@@ -32,6 +32,7 @@ import PersonaRow from './components/PersonaRow';
 import PreferredNameRow from './components/PreferredNameRow';
 import RowSkeleton from './components/RowSkeleton';
 import SettingsSection, { ReadOnlyRow } from './components/SettingsSection';
+import UserDescriptionRow from './components/UserDescriptionRow';
 import UserCustomPropertiesSection from './customProperties/UserCustomPropertiesSection';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 import { useProfileCopy } from './useUserProfile';
@@ -42,19 +43,12 @@ interface ProfileDetailsPanelProps {
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Only your own Profile tab lists custom properties; the user detail has a tab. */
   showCustomProperties?: boolean;
+  /**
+   * EditAll on the viewed user (already false for a deleted one). Omitted on
+   * your own Profile, where each row falls back to its own admin/self rule.
+   */
+  canEditAll?: boolean;
 }
-
-// Until the full profile lands, userData is the store's copy without
-// `extension`, and a save then would replace every other value.
-const LoadedCustomPropertiesSection: React.FC<
-  Pick<
-    ProfileDetailsPanelProps,
-    'isProfileLoading' | 'updateUserDetails' | 'userData'
-  >
-> = ({ isProfileLoading, updateUserDetails, userData }) =>
-  isProfileLoading ? null : (
-    <UserCustomPropertiesSection user={userData} onUpdate={updateUserDetails} />
-  );
 
 /**
  * Content for the `profile` nav item: a PROFILE section (photo, preferred name,
@@ -66,6 +60,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
   isProfileLoading,
   updateUserDetails,
   showCustomProperties,
+  canEditAll,
 }) => {
   const { t } = useTranslation();
   const copy = useProfileCopy(userData);
@@ -73,8 +68,9 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
   const { currentUser, authConfig } = useApplicationStore();
   const displayName = getEntityName(userData);
   const isSelf = currentUser?.name === userData.name;
-  // Legacy parity: only you rename yourself, admins included.
-  const canEditName = isSelf && !userData.deleted;
+  // You edit your own name and description; anyone else needs EditAll on you.
+  const canEditSelfFields =
+    Boolean(canEditAll) || (isSelf && !userData.deleted);
   const canChangePassword = canUserChangePassword({
     provider: authConfig?.provider,
     isSelf,
@@ -82,8 +78,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
     isDeleted: userData.deleted,
     isBot: userData.isBot,
   });
-  const visibleEmail =
-    userData.email && !isMaskedEmail(userData.email) ? userData.email : '';
+  const visibleEmail = getVisibleEmail(userData.email);
 
   return (
     <Box data-testid="profile-details-panel" direction="col" gap={6}>
@@ -104,11 +99,17 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
         </ReadOnlyRow>
 
         <PreferredNameRow
-          canEdit={canEditName}
+          canEdit={canEditSelfFields}
           description={copy(
             'message.preferred-name-description',
             'message.preferred-name-description-of-user'
           )}
+          updateUserDetails={updateUserDetails}
+          userData={userData}
+        />
+
+        <UserDescriptionRow
+          canEdit={canEditSelfFields}
           updateUserDetails={updateUserDetails}
           userData={userData}
         />
@@ -129,7 +130,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
                 iconLeading={Check}
                 size="xs"
                 type="pill-color">
-                <span className="tw:capitalize">{t('label.verified')}</span>
+                {t('label.verified-status')}
               </BadgeWithIcon>
             )}
           </Box>
@@ -151,6 +152,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           <RowSkeleton />
         ) : (
           <PersonaRow
+            canEdit={canEditAll}
             updateUserDetails={updateUserDetails}
             userData={userData}
           />
@@ -167,17 +169,19 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           <RowSkeleton chips={1} />
         ) : (
           <DomainsRow
+            canEdit={canEditAll}
             updateUserDetails={updateUserDetails}
             userData={userData}
           />
         )}
       </SettingsSection>
 
-      {showCustomProperties && (
-        <LoadedCustomPropertiesSection
-          isProfileLoading={isProfileLoading}
-          updateUserDetails={updateUserDetails}
-          userData={userData}
+      {/* Until the full profile lands userData lacks `extension`, and a save
+          would replace every other value. */}
+      {showCustomProperties && !isProfileLoading && (
+        <UserCustomPropertiesSection
+          user={userData}
+          onUpdate={updateUserDetails}
         />
       )}
     </Box>

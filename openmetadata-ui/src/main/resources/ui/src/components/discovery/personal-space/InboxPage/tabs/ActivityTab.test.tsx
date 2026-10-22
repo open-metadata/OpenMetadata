@@ -59,15 +59,22 @@ jest.mock('../useInboxActivity', () => ({
 jest.mock('../components/ActivityToolbar', () => ({
   __esModule: true,
   default: ({
+    datePreset,
+    onDatePresetChange,
     onFilterChange,
     onGroupingChange,
     onTypeKeysChange,
   }: {
+    datePreset: string;
+    onDatePresetChange: (key: string) => void;
     onFilterChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeKeysChange: (value: string[]) => void;
   }) => (
-    <div>
+    <div data-preset={datePreset} data-testid="toolbar">
+      <button onClick={() => onDatePresetChange('last7days')}>
+        last-7-days
+      </button>
       <button onClick={() => onFilterChange('following')}>following</button>
       <button onClick={() => onGroupingChange('user')}>by-user</button>
       <button onClick={() => onGroupingChange('asset')}>by-asset</button>
@@ -159,6 +166,7 @@ jest.mock('react-i18next', () => ({
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
+import { getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
 
 const alice = {
@@ -265,6 +273,47 @@ describe('ActivityTab', () => {
       defaultWindow,
       undefined
     );
+  });
+
+  // Without a window from the parent, the tab keeps and narrows its own.
+  it('narrows its own window when a preset is picked without a parent window', () => {
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      { ...getInboxDateRange(7), key: 'last7days' },
+      undefined
+    );
+    expect(screen.getByTestId('toolbar')).toHaveAttribute(
+      'data-preset',
+      'last7days'
+    );
+    // A narrowed window empties to "no activity in period", not first-run.
+    expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  it("uses the parent's window and hands it the preset when given one", () => {
+    const dateRange = { startTs: 100, endTs: 200, key: 'last30days' };
+    const onDatePresetChange = jest.fn();
+
+    render(
+      <ActivityTab
+        dateRange={dateRange}
+        onDatePresetChange={onDatePresetChange}
+      />
+    );
+    fireEvent.click(screen.getByText('last-7-days'));
+
+    expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      dateRange,
+      undefined
+    );
+    expect(
+      screen.getByText('label.activity-feed-starts-here')
+    ).toBeInTheDocument();
   });
 
   it("fetches another user's feeds when given a user", () => {

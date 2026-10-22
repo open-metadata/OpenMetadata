@@ -120,6 +120,9 @@ export interface ProfileHeaderOverride {
 export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
+  /** The full profile failed to load; userData is only the partial store copy. */
+  loadError?: boolean;
+  onReload?: () => void;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;

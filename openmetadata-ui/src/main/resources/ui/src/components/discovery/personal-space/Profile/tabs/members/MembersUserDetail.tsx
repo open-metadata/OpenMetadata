@@ -15,12 +15,9 @@ import { Box } from '@openmetadata/ui-core-components';
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, Key, useCallback, useMemo, useState } from 'react';
+import { FC, Key, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
-import { User } from '../../../../../../generated/entity/teams/user';
-import { useAuth } from '../../../../../../hooks/authHooks';
-import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -29,82 +26,19 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import TaskDetailPage from '../../../InboxPage/components/TaskDetailPage';
-import ActivityTab from '../../../InboxPage/tabs/ActivityTab';
-import TasksTab from '../../../InboxPage/tabs/TasksTab';
-import UserAssetsView from '../../../UserAssets/UserAssetsView';
-import UserCustomPropertiesList from '../../customProperties/UserCustomPropertiesList';
-import { useUserCustomPropertyAccess } from '../../customProperties/useUserCustomPropertyAccess';
-import ProfileDetailsPanel from '../../ProfileDetailsPanel';
 import { useUserProfile } from '../../useUserProfile';
-import PermissionsTab from '../PermissionsTab';
+import { SCROLLING_USER_DETAIL_TABS } from './Members.constants';
 import type { MembersUserDetailProps, UserDetailTab } from './Members.types';
-import { getHiddenUserDetailTabs } from './Members.utils';
 import MembersUserDetailBanners from './MembersUserDetailBanners';
 import MembersUserDetailSkeleton from './MembersUserDetailSkeleton';
+import { useMembersUserDetailAccess } from './useMembersUserDetailAccess';
 import { useMembersUserDetailHeader } from './useMembersUserDetailHeader';
+import UserDetailTabContent from './UserDetailTabContent';
 
-interface UserDetailTabContentProps {
-  user: User;
-  tab: UserDetailTab;
-  isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
-  onOpenTask: (taskId: string) => void;
-}
-
-const SCROLLING_TABS: ReadonlySet<UserDetailTab> = new Set([
-  'activity',
-  'tasks',
-  'owned-assets',
-  'following',
-]);
-
-// List tabs scroll inside a bounded body; the rest grow so the panel scrolls
-// and the bottom padding stays below the content.
-const detailBodyClass = (tab: UserDetailTab) =>
-  classNames(
-    'tw:px-8 tw:pb-8',
-    SCROLLING_TABS.has(tab) ? 'tw:min-h-0 tw:flex-1' : 'tw:shrink-0'
-  );
-
-const UserDetailTabContent: FC<UserDetailTabContentProps> = ({
-  user,
-  tab,
-  isProfileLoading,
-  updateUserDetails,
-  onOpenTask,
-}) => {
-  switch (tab) {
-    case 'access':
-      return (
-        <PermissionsTab updateUserDetails={updateUserDetails} userData={user} />
-      );
-    case 'activity':
-      return <ActivityTab user={user} />;
-    case 'tasks':
-      return <TasksTab user={user} onOpenTask={onOpenTask} />;
-    case 'owned-assets':
-      return <UserAssetsView kind="owned" user={user} />;
-    case 'following':
-      return <UserAssetsView kind="following" user={user} />;
-    case 'custom-properties':
-      return (
-        <UserCustomPropertiesList
-          isProfileLoading={isProfileLoading}
-          user={user}
-          onUpdate={updateUserDetails}
-        />
-      );
-    default:
-      return (
-        <ProfileDetailsPanel
-          isProfileLoading={isProfileLoading}
-          updateUserDetails={updateUserDetails}
-          userData={user}
-        />
-      );
-  }
-};
+const PLACEHOLDER_HOST_CLASS = 'tw:relative tw:min-h-90 tw:flex-1';
 
 /**
  * A member's detail inside Settings › Members › Users: the shared profile
@@ -117,35 +51,23 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
   onSetHeader,
 }) => {
   const { t } = useTranslation();
-  const { isAdminUser } = useAuth();
-  const { currentUser } = useApplicationStore();
   const {
     userData,
     isProfileLoading,
     isUserNotFound,
+    loadError,
     updateUserDetails,
     refetch,
   } = useUserProfile(view.name);
+  const {
+    canEditAll,
+    canDelete,
+    canRestore,
+    isNoAccess,
+    hiddenTabs,
+    activeTab,
+  } = useMembersUserDetailAccess(view, userData);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  // Legacy parity: admins manage every entry, their own included.
-  const canManage = Boolean(isAdminUser);
-  const customPropertyAccess = useUserCustomPropertyAccess(userData);
-  const canViewAccess = canManage || view.name === currentUser?.name;
-  const hiddenTabs = useMemo(
-    () =>
-      getHiddenUserDetailTabs({
-        isBot: userData?.isBot,
-        canViewAccess,
-        canViewCustomProperties: customPropertyAccess.canView,
-      }),
-    [userData?.isBot, canViewAccess, customPropertyAccess.canView]
-  );
-  // A stale link to a hidden tab lands on Overview, but not while custom
-  // property access is still resolving.
-  const isTabPending =
-    view.tab === 'custom-properties' && customPropertyAccess.isLoading;
-  const activeTab: UserDetailTab =
-    hiddenTabs.has(view.tab) && !isTabPending ? 'overview' : view.tab;
 
   const navigateTo = useCallback(
     (tab: UserDetailTab, taskId?: string) =>
@@ -178,53 +100,79 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
 
   useMembersUserDetailHeader({
     user: userData,
-    isUserNotFound,
+    hasLoadFailed: isUserNotFound || loadError || isNoAccess,
     view,
     activeTab,
-    canManage,
+    canDelete,
     hiddenTabs,
     onTabChange: handleTabChange,
     onDelete: openDelete,
     onSetHeader,
   });
 
-  if (!userData) {
-    return isUserNotFound ? (
-      <Box className="tw:relative tw:flex-1">
+  if (isUserNotFound) {
+    return (
+      <Box className={PLACEHOLDER_HOST_CLASS}>
         <NoDataPlaceholder
           icon={User01}
           title={t('label.no-entity-found', { entity: t('label.user') })}
         />
       </Box>
-    ) : (
-      <MembersUserDetailSkeleton />
+    );
+  }
+
+  // A 403/5xx/network failure; for yourself userData is still the partial
+  // store copy, which must not be edited.
+  if (loadError) {
+    return (
+      <Box className={PLACEHOLDER_HOST_CLASS}>
+        <SomethingWentWrongPlaceholder
+          data-testid="user-load-error"
+          onReload={refetch}
+        />
+      </Box>
+    );
+  }
+
+  if (!userData) {
+    return <MembersUserDetailSkeleton />;
+  }
+
+  if (isNoAccess) {
+    return (
+      <Box className={PLACEHOLDER_HOST_CLASS} data-testid="user-no-access">
+        <PermissionPlaceholder permissionValue={t('label.user')} />
+      </Box>
     );
   }
 
   if (view.taskId) {
     return (
       <Box className="tw:min-h-0 tw:flex-1" direction="col">
-        <TaskDetailPage
-          taskId={view.taskId}
-          onBack={() => navigateTo('tasks')}
-        />
+        <TaskDetailPage taskId={view.taskId} />
       </Box>
     );
   }
 
   return (
     <Box
-      className={detailBodyClass(activeTab)}
+      className={classNames(
+        'tw:px-8 tw:pb-8',
+        SCROLLING_USER_DETAIL_TABS.has(activeTab)
+          ? 'tw:min-h-0 tw:flex-1'
+          : 'tw:shrink-0'
+      )}
       data-testid="members-user-detail"
       direction="col"
       gap={7}>
       <MembersUserDetailBanners
         activeTab={activeTab}
-        canManage={canManage}
+        canRestore={canRestore}
         user={userData}
         onRestore={handleRestore}
       />
       <UserDetailTabContent
+        canEditAll={canEditAll}
         isProfileLoading={isProfileLoading}
         tab={activeTab}
         updateUserDetails={updateUserDetails}

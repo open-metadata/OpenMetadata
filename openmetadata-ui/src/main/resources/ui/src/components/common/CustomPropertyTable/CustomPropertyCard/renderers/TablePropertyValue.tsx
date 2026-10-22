@@ -27,8 +27,8 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { EditableRow, TableRow } from './TablePropertyValue.interface';
 import { useReportDirty } from '../useReportDirty';
+import { EditableRow, TableRow } from './TablePropertyValue.interface';
 
 const getColumns = (config: unknown): string[] =>
   (config as Config | undefined)?.columns ?? [];

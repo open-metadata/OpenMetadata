@@ -66,8 +66,18 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
 // the resolved user's display name so tests can assert which user loaded.
 jest.mock('./ProfileTabPanel', () => ({
   __esModule: true,
-  default: ({ userData }: { userData?: { displayName?: string } }) => (
-    <div data-testid="content-profile">{userData?.displayName}</div>
+  default: ({
+    userData,
+    loadError,
+  }: {
+    userData?: { displayName?: string };
+    loadError?: boolean;
+  }) => (
+    <div
+      data-load-error={String(Boolean(loadError))}
+      data-testid="content-profile">
+      {userData?.displayName}
+    </div>
   ),
 }));
 jest.mock('./components/AccessTokenPanel', () => ({
@@ -205,6 +215,11 @@ describe('ProfilePage', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalled();
     expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    // The panel gets the failure, so it won't edit the partial store copy.
+    expect(screen.getByTestId('content-profile')).toHaveAttribute(
+      'data-load-error',
+      'true'
+    );
   });
 
   it('loads the signed-in user for the nav even when the hash names another user', async () => {

@@ -49,10 +49,10 @@ const ALICE = {
 
 interface HarnessProps {
   user?: User;
-  isUserNotFound?: boolean;
+  hasLoadFailed?: boolean;
   view?: Partial<MembersUserDetailView>;
   activeTab?: UserDetailTab;
-  canManage?: boolean;
+  canDelete?: boolean;
   hiddenTabs?: ReadonlySet<UserDetailTab>;
   onTabChange?: jest.Mock;
   onDelete?: jest.Mock;
@@ -69,7 +69,7 @@ const Harness = (props: HarnessProps) => {
 
     return {
       user: 'user' in props ? props.user : ALICE,
-      isUserNotFound: props.isUserNotFound ?? false,
+      hasLoadFailed: props.hasLoadFailed ?? false,
       view: {
         type: 'user-detail' as const,
         name: 'alice',
@@ -77,7 +77,7 @@ const Harness = (props: HarnessProps) => {
         ...props.view,
       },
       activeTab,
-      canManage: props.canManage ?? true,
+      canDelete: props.canDelete ?? true,
       hiddenTabs: props.hiddenTabs ?? new Set<UserDetailTab>(),
       onTabChange: props.onTabChange ?? jest.fn(),
       onDelete: props.onDelete ?? jest.fn(),
@@ -192,8 +192,8 @@ describe('useMembersUserDetailHeader', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('omits the delete button when the viewer cannot manage the user', () => {
-    renderHeader({ canManage: false });
+  it('omits the delete button when the viewer cannot delete the user', () => {
+    renderHeader({ canDelete: false });
 
     expect(
       screen.queryByTestId('user-detail-delete-button')
@@ -280,12 +280,19 @@ describe('useMembersUserDetailHeader', () => {
     const onSetHeader = jest.fn();
     renderHeader({
       user: undefined,
-      isUserNotFound: true,
+      hasLoadFailed: true,
       view: { name: 'ghost' },
       onSetHeader,
     });
 
     expect(onSetHeader).toHaveBeenLastCalledWith({ title: 'ghost' });
+  });
+
+  it('pushes a title-only header, not the loading skeleton, when the load fails', () => {
+    const onSetHeader = jest.fn();
+    renderHeader({ hasLoadFailed: true, onSetHeader });
+
+    expect(onSetHeader).toHaveBeenLastCalledWith({ title: 'alice' });
   });
 
   it('collapses to breadcrumbs ending in the resolved readable task id', async () => {

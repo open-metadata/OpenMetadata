@@ -89,7 +89,13 @@ const HARSH = {
 
 const onHeaderSpy = jest.fn();
 
-const Harness = () => {
+const Harness = ({
+  loadError,
+  onReload,
+}: {
+  loadError?: boolean;
+  onReload?: () => void;
+}) => {
   const [header, setHeader] = useState<ProfileHeaderOverride | null>(null);
   const [onHeaderChange] = useState(
     () => (next: ProfileHeaderOverride | null) => {
@@ -116,9 +122,11 @@ const Harness = () => {
       {header?.actions}
       <ProfileTabPanel
         isProfileLoading={false}
+        loadError={loadError}
         updateUserDetails={jest.fn()}
         userData={HARSH}
         onHeaderChange={onHeaderChange}
+        onReload={onReload}
       />
     </>
   );
@@ -148,6 +156,21 @@ describe('ProfileTabPanel', () => {
     expect(screen.getByTestId('header-crumbs')).toBeEmptyDOMElement();
     expect(screen.queryByTestId('members-user-detail')).not.toBeInTheDocument();
     expect(screen.queryByTestId('own-profile-kebab')).not.toBeInTheDocument();
+  });
+
+  it('shows an error with a reload instead of the editable panel when your profile failed to load', () => {
+    const onReload = jest.fn();
+    render(<Harness loadError onReload={onReload} />);
+
+    expect(screen.getByTestId('profile-load-error')).toBeInTheDocument();
+    // No details panel, so no custom-property (or any other) edit control.
+    expect(
+      screen.queryByTestId('profile-details-panel')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.reload'));
+
+    expect(onReload).toHaveBeenCalled();
   });
 
   it('opens another user read-only with non-clickable crumbs for a non-admin', () => {

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -28,15 +33,11 @@ const MembersUserDetailSkeleton: FC = () => {
       direction="col"
       gap={3}>
       <Skeleton height={10} variant="rounded" width={90} />
-      <Box
-        className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary"
-        direction="col">
+      <Card
+        className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+        variant="muted">
         {SKELETON_ROW_KEYS.map((key) => (
-          <Box
-            align="center"
-            className="tw:border-b tw:border-secondary tw:p-5 tw:last:border-b-0"
-            justify="between"
-            key={key}>
+          <Box align="center" className="tw:p-5" justify="between" key={key}>
             <Box direction="col" gap={2}>
               <Skeleton height={12} variant="rounded" width={140} />
               <Skeleton height={10} variant="rounded" width={260} />
@@ -44,7 +45,7 @@ const MembersUserDetailSkeleton: FC = () => {
             <Skeleton height={24} variant="rounded" width={180} />
           </Box>
         ))}
-      </Box>
+      </Card>
       <Typography color="secondary" size="text-xs">
         {t('message.loading-user-details')}
       </Typography>

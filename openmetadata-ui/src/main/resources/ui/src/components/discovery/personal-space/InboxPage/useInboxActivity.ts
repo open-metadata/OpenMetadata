@@ -74,6 +74,17 @@ const ACTIVITY_REQUEST: Record<ActivityFilter, typeof getActivityEvents> = {
   [ActivityFilter.Mentions]: getMentionsActivityFeed,
 };
 
+// /activity/user/{id} takes no startTs and counts `days` back from now, so a
+// window starting at midnight needs the part-day before it too; clipToWindow
+// trims the excess. Capped at that endpoint's @Max(90).
+const USER_ACTIVITY_MAX_DAYS = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const getDaysSince = (startTs: number) =>
+  Math.min(
+    Math.max(Math.ceil((Date.now() - startTs) / DAY_MS), 1),
+    USER_ACTIVITY_MAX_DAYS
+  );
+
 interface ActivityWindowParams {
   days: number;
   startTs?: number;
@@ -89,8 +100,11 @@ const SCOPED_ACTIVITY_REQUEST: Record<
     params: ActivityWindowParams
   ) => ReturnType<typeof getActivityEvents>
 > = {
-  [ActivityFilter.All]: (userId, { days, limit }) =>
-    getUserActivity(userId, { days, limit }),
+  [ActivityFilter.All]: (userId, { days, startTs, limit }) =>
+    getUserActivity(userId, {
+      days: startTs ? getDaysSince(startTs) : days,
+      limit,
+    }),
   [ActivityFilter.MyAssets]: (userId, params) =>
     getMyActivityFeed({ ...params, userId }),
   [ActivityFilter.Following]: (userId, params) =>

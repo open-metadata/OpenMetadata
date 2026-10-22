@@ -32,17 +32,16 @@ import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
   getMembersAccess,
-  hashSubPathToView,
   isMembersViewAllowed,
   isTeamsOrDetailView,
   makeBreadcrumbAction,
-  viewToSubPath,
 } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersCreateUserForm from './MembersCreateUserForm';
 import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
+import { hashSubPathToView, viewToSubPath } from './membersRoute.utils';
 import MembersTeamDetail from './MembersTeamDetail';
 import MembersUserDetail from './MembersUserDetail';
 import MembersUsersPanel from './MembersUsersPanel';

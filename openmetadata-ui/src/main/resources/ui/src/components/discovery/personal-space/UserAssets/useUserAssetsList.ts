@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { AxiosError } from 'axios';
+import { uniqBy } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 import {
   getOwnerIdsKey,
@@ -37,8 +41,10 @@ export const useUserAssetsList = (
 ) => {
   const [assets, setAssets] = useState<SearchSourceAlias[]>([]);
   const [total, setTotal] = useState(0);
+  // The last page that loaded; a failed "load more" leaves it unchanged.
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<unknown>();
   const requestRef = useRef(0);
 
   const ownerIdsKey = getOwnerIdsKey(user);
@@ -49,32 +55,35 @@ export const useUserAssetsList = (
     [kind, ownerIdsKey]
   );
 
-  // Any change to what is listed starts again from the first page. Reset
-  // during render so the fetch effect never runs with a stale page.
+  // Clear the previous list during render, so the frame before the new
+  // request starts shows a loader rather than "no match".
   const listKey = `${kind}|${ownerIdsKey}|${search}|${indexes.join(',')}`;
   const [prevListKey, setPrevListKey] = useState(listKey);
   if (prevListKey !== listKey) {
     setPrevListKey(listKey);
     setPage(1);
     setAssets([]);
+    setError(undefined);
+    setIsLoading(true);
   }
 
-  useEffect(() => {
-    // Only the latest request may write state, so a slow earlier page or
-    // search can't overwrite a newer one.
-    const requestId = ++requestRef.current;
-    const isCurrent = () => requestId === requestRef.current;
-    setIsLoading(true);
-    searchQuery({
-      pageNumber: page,
-      pageSize: PAGE_SIZE,
-      query: search ? `*${search}*` : '',
-      queryFilter,
-      searchIndex: indexes.length
-        ? (indexes as SearchIndex[])
-        : SearchIndex.DATA_ASSET,
-    })
-      .then((res) => {
+  const fetchPage = useCallback(
+    async (pageNumber: number) => {
+      // Only the latest request may write state, so a slow earlier page or
+      // search can't overwrite a newer one.
+      const requestId = ++requestRef.current;
+      const isCurrent = () => requestId === requestRef.current;
+      setIsLoading(true);
+      try {
+        const res = await searchQuery({
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          query: search ? `*${escapeESReservedCharacters(search)}*` : '',
+          queryFilter,
+          searchIndex: indexes.length
+            ? (indexes as SearchIndex[])
+            : SearchIndex.DATA_ASSET,
+        });
         if (!isCurrent()) {
           return;
         }
@@ -82,26 +91,42 @@ export const useUserAssetsList = (
           (hit) => hit._source
         );
         setTotal(res.hits.total.value ?? 0);
-        setAssets((prev) => (page === 1 ? hits : [...prev, ...hits]));
-      })
-      .catch(() => {
-        if (isCurrent() && page === 1) {
+        setAssets((prev) =>
+          pageNumber === 1 ? hits : uniqBy([...prev, ...hits], 'id')
+        );
+        setPage(pageNumber);
+        setError(undefined);
+      } catch (err) {
+        if (!isCurrent()) {
+          return;
+        }
+        showErrorToast(err as AxiosError);
+        // A failed later page keeps the loaded list; only the first is fatal.
+        if (pageNumber === 1) {
           setAssets([]);
           setTotal(0);
+          setError(err);
         }
-      })
-      .finally(() => {
+      } finally {
         if (isCurrent()) {
           setIsLoading(false);
         }
-      });
-  }, [queryFilter, search, indexes, page]);
+      }
+    },
+    [queryFilter, search, indexes]
+  );
+
+  useEffect(() => {
+    fetchPage(1);
+  }, [fetchPage]);
 
   return {
     assets,
     total,
     isLoading,
-    hasMore: !isLoading && assets.length < total,
-    loadMore: () => setPage((current) => current + 1),
+    error,
+    hasMore: !isLoading && !error && assets.length < total,
+    loadMore: () => fetchPage(page + 1),
+    retry: () => fetchPage(1),
   };
 };

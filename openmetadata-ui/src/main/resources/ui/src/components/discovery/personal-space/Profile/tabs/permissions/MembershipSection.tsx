@@ -24,6 +24,7 @@ import { useProfileCopy } from '../../useUserProfile';
 export interface MembershipSectionProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  canEditTeams?: boolean;
 }
 
 /**
@@ -34,6 +35,7 @@ export interface MembershipSectionProps {
 const MembershipSection: React.FC<MembershipSectionProps> = ({
   userData,
   updateUserDetails,
+  canEditTeams,
 }) => {
   const { t } = useTranslation();
   const copy = useProfileCopy(userData);
@@ -43,7 +45,11 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
       className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
       data-testid="membership-section"
       variant="muted">
-      <TeamsRow updateUserDetails={updateUserDetails} userData={userData} />
+      <TeamsRow
+        canEdit={canEditTeams}
+        updateUserDetails={updateUserDetails}
+        userData={userData}
+      />
       <RolesRow updateUserDetails={updateUserDetails} userData={userData} />
       <div className="tw:px-5 tw:py-4">
         <FieldRow

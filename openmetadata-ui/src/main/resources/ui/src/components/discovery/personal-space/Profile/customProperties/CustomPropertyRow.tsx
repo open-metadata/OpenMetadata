@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Button,
   ButtonUtility,
@@ -21,19 +20,15 @@ import { Edit02 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
-import { getTextFromHtmlString } from '../../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import {
-  HEADER_BADGE_CLASS,
-  TYPE_ICON_TILE_CLASS,
-} from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.constants';
 import {
   getPropertyTypeMeta,
   isPropertyValueEmpty,
 } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyHeader } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyHeader';
 import { getPropertyRenderer } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
-import { EMPTY_VALUE } from './UserCustomProperties.constants';
 
 interface CustomPropertyRowProps {
   property: CustomProperty;
@@ -47,7 +42,7 @@ interface CustomPropertyRowProps {
 }
 
 /**
- * One custom property: type tile, name and type badge on the left, the
+ * One custom property: the shared property header on the left, the
  * value on the right. Editing happens in place; Save submits the type's own
  * editor form, so every type keeps its validation and value shape.
  */
@@ -66,17 +61,16 @@ const CustomPropertyRow = ({
   const [isDirty, setIsDirty] = useState(false);
   const typeName = property.propertyType.name;
   const meta = getPropertyTypeMeta(typeName);
-  const TypeIcon = meta.icon;
   const { View, Edit } = getPropertyRenderer(typeName);
   const label = getEntityName(property);
-  const description = getTextFromHtmlString(property.description);
 
   const editor = (
-    <div
+    <Box
       className={classNames(
         'tw:min-w-0',
-        meta.isWide ? 'tw:w-full' : 'tw:w-[480px] tw:max-w-full'
-      )}>
+        meta.isWide ? 'tw:w-full' : 'tw:w-120 tw:max-w-full'
+      )}
+      data-testid="custom-property-editor">
       <Edit
         formId={formId}
         isSaving={isSaving}
@@ -85,13 +79,13 @@ const CustomPropertyRow = ({
         onDirtyChange={setIsDirty}
         onSave={onSave}
       />
-    </div>
+    </Box>
   );
 
   const renderValue = () =>
     isPropertyValueEmpty(typeName, value) ? (
-      <Typography className="tw:text-tertiary" data-testid="no-value">
-        {EMPTY_VALUE}
+      <Typography color="secondary" data-testid="no-value">
+        {NO_DATA_PLACEHOLDER}
       </Typography>
     ) : (
       <View isCompact property={property} value={value} />
@@ -104,50 +98,19 @@ const CustomPropertyRow = ({
       direction="col"
       gap={4}>
       <Box align="center" gap={6}>
-        <Box align="start" className="tw:min-w-0 tw:flex-1" gap={3}>
-          <span
-            aria-hidden
-            className={`tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border ${
-              TYPE_ICON_TILE_CLASS[meta.color]
-            }`}>
-            <TypeIcon className="tw:size-5" />
-          </span>
-          <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
-            <Box align="center" className="tw:min-h-5" gap={2} wrap="wrap">
-              <Typography
-                className="tw:text-primary"
-                data-testid="property-name"
-                size="text-sm"
-                weight="semibold">
-                {label}
-              </Typography>
-              <Badge
-                className={HEADER_BADGE_CLASS}
-                color={meta.color}
-                data-testid="property-type-badge"
-                size="sm"
-                type="color">
-                {t(meta.labelKey)}
-              </Badge>
-            </Box>
-            {description && (
-              <Typography
-                className="tw:line-clamp-2 tw:text-tertiary"
-                size="text-xs"
-                title={description}>
-                {description}
-              </Typography>
-            )}
-          </Box>
-        </Box>
+        <CustomPropertyHeader
+          className="tw:min-w-0 tw:flex-1"
+          property={property}
+          value={value}
+        />
         {isEditing && !meta.isWide && editor}
         {!isEditing && (
           <Box
             align="center"
-            className="tw:min-w-0 tw:max-w-[60%]"
+            className="tw:min-w-0 tw:max-w-3/5"
             gap={3}
             justify="end">
-            <div className="tw:min-w-0">{renderValue()}</div>
+            <Box className="tw:min-w-0">{renderValue()}</Box>
             {canEdit && (
               <ButtonUtility
                 color="tertiary"

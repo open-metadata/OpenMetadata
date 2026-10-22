@@ -15,6 +15,16 @@ import { AssetsFilterOptions } from '../../../../constants/Assets.constants';
 import { UserAssetsKind } from './UserAssets.utils';
 
 export const SEARCH_DEBOUNCE_MS = 300;
+
+export const INCIDENT_PAGE_SIZE = 100;
+// Backstop for the incident paging loop: a cursor that never ends stops here.
+export const INCIDENT_MAX_PAGES = 50;
+
+// Queries relate to data via `queryUsedIn.id` (the tables they touch), not via
+// ownership, so the query count is scoped to the user's owned tables. Only the
+// 1000 most-used ones are fetched: queries on owned tables past that cap are
+// not counted.
+export const OWNED_TABLES_LIMIT = 1000;
 export const SKELETON_KEYS = [1, 2, 3];
 // Once the trail has collapsed to first + last, each crumb ellipsizes past this.
 export const CRUMB_MAX_WIDTH = 200;

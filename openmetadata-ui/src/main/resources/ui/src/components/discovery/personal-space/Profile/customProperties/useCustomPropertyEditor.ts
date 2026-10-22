@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
 import { buildUpdatedExtension } from '../../../../../utils/CustomProperty.utils';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 
 export interface CustomPropertyEditorOptions {
   entityType: EntityType;
@@ -43,20 +45,29 @@ export const useCustomPropertyEditor = ({
       if (!editingProperty) {
         return;
       }
+      const savedName = editingProperty.name;
       setIsSaving(true);
-      const saved = await onUpdate(
-        buildUpdatedExtension(
-          extension,
-          editingProperty.name,
-          editingProperty.propertyType.name ?? '',
-          value
-        )
-      );
-      setIsSaving(false);
-      // A failed save keeps the editor open with what the user typed; the
-      // update handler has already shown the error.
-      if (saved) {
-        setEditingProperty(undefined);
+      try {
+        const saved = await onUpdate(
+          buildUpdatedExtension(
+            extension,
+            savedName,
+            editingProperty.propertyType.name ?? '',
+            value
+          )
+        );
+        // A failed save keeps the editor open with what the user typed; the
+        // update handler has already shown the error. A row opened while this
+        // save was in flight stays open.
+        if (saved) {
+          setEditingProperty((current) =>
+            current?.name === savedName ? undefined : current
+          );
+        }
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsSaving(false);
       }
     },
     [editingProperty, extension, onUpdate]

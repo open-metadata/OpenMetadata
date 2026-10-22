@@ -14,9 +14,9 @@
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import React, { Key, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { User } from '../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import UserAssetsView, { UserAssetsKind } from '../UserAssets/UserAssetsView';
+import { UserAssetsKind } from '../UserAssets/UserAssets.utils';
+import UserAssetsView from '../UserAssets/UserAssetsView';
 
 /**
  * "My Data & Following": the current user's owned assets (with stat tiles)
@@ -33,16 +33,11 @@ const MyDataPage: React.FC = () => {
       data-testid="my-data-page"
       direction="col">
       {/* pt-6 / pr-14 keep the tab line and tabs clear of the close button's hover box. */}
-      <Box className="tw:shrink-0 tw:border-b tw:border-utility-gray-200 tw:px-6 tw:pt-6 tw:pr-14">
+      <Box className="tw:shrink-0 tw:px-6 tw:pt-6 tw:pr-14">
         <Tabs
-          className="tw:-mb-px"
           selectedKey={kind}
           onSelectionChange={(key: Key) => setKind(key as UserAssetsKind)}>
-          <Tabs.List
-            className="tw:before:hidden"
-            data-testid="my-data-tabs"
-            size="sm"
-            type="underline">
+          <Tabs.List data-testid="my-data-tabs" size="sm" type="underline">
             <Tabs.Item id="owned">{t('label.my-data')}</Tabs.Item>
             <Tabs.Item id="following">{t('label.following')}</Tabs.Item>
           </Tabs.List>
@@ -51,7 +46,7 @@ const MyDataPage: React.FC = () => {
       <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:p-6" direction="col">
         {currentUser && (
           // Remount per tab so search, filters and selection start fresh.
-          <UserAssetsView key={kind} kind={kind} user={currentUser as User} />
+          <UserAssetsView key={kind} kind={kind} user={currentUser} />
         )}
       </Box>
     </Box>

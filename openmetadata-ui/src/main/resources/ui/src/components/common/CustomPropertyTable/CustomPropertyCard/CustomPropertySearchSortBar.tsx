@@ -43,7 +43,7 @@ export const CustomPropertySearchSortBar = <T extends string>({
   const searchLabel = t('label.search-entity', {
     entity: t('label.property-plural'),
   });
-  const activeSort =
+  const activeSort: CustomPropertySortOption<T> | undefined =
     sortOptions.find((option) => option.id === sortMode) ?? sortOptions[0];
 
   return (
@@ -58,37 +58,39 @@ export const CustomPropertySearchSortBar = <T extends string>({
         value={searchText}
         onChange={onSearchChange}
       />
-      <Dropdown.Root>
-        <Button
-          color="secondary"
-          data-testid="custom-property-sort"
-          iconLeading={<FilterLines className="tw:size-4" />}
-          iconTrailing={<ChevronDown className="tw:size-4" />}
-          size="sm">
-          {t('label.sort-colon-value', { value: t(activeSort.labelKey) })}
-        </Button>
-        <Dropdown.Popover className="tw:w-48">
-          <Dropdown.Menu
-            disallowEmptySelection
-            aria-label={t('label.sort-by')}
-            selectedKeys={[sortMode]}
-            selectionMode="single"
-            onSelectionChange={(keys) => {
-              const [key] = Array.from(keys as Set<T>);
-              if (key) {
-                onSortChange(key);
-              }
-            }}>
-            {sortOptions.map((option) => (
-              <Dropdown.Item
-                id={option.id}
-                key={option.id}
-                label={t(option.labelKey)}
-              />
-            ))}
-          </Dropdown.Menu>
-        </Dropdown.Popover>
-      </Dropdown.Root>
+      {activeSort && (
+        <Dropdown.Root>
+          <Button
+            color="secondary"
+            data-testid="custom-property-sort"
+            iconLeading={<FilterLines className="tw:size-4" />}
+            iconTrailing={<ChevronDown className="tw:size-4" />}
+            size="sm">
+            {t('label.sort-colon-value', { value: t(activeSort.labelKey) })}
+          </Button>
+          <Dropdown.Popover className="tw:w-48">
+            <Dropdown.Menu
+              disallowEmptySelection
+              aria-label={t('label.sort-by')}
+              selectedKeys={[sortMode]}
+              selectionMode="single"
+              onSelectionChange={(keys) => {
+                const [key] = Array.from(keys as Set<T>);
+                if (key) {
+                  onSortChange(key);
+                }
+              }}>
+              {sortOptions.map((option) => (
+                <Dropdown.Item
+                  id={option.id}
+                  key={option.id}
+                  label={t(option.labelKey)}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      )}
     </Box>
   );
 };

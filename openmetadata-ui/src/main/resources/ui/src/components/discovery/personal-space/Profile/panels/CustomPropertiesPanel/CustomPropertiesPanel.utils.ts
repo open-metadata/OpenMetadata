@@ -152,6 +152,10 @@ export function parseCustomPropertiesHash(
   return { entityFqn, action: 'detail' };
 }
 
+/** Sub-path of an entity type's custom-property list, from its fqn alone. */
+export const entityTypeDetailSubPath = (entityTypeFqn: string): string =>
+  entityTypeFqn;
+
 export function viewToSubPath(
   view: CustomPropertiesSubView
 ): string | undefined {
@@ -159,7 +163,9 @@ export function viewToSubPath(
     case 'landing':
       return undefined;
     case 'detail':
-      return view.entityType.fullyQualifiedName ?? undefined;
+      return view.entityType.fullyQualifiedName
+        ? entityTypeDetailSubPath(view.entityType.fullyQualifiedName)
+        : undefined;
     case 'add':
       return `${view.entityType.fullyQualifiedName}/add-property`;
     case 'edit':

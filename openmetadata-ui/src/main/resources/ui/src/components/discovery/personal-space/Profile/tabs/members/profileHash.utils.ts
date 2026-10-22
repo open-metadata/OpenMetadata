@@ -12,7 +12,7 @@
  */
 
 import { viewToSubPath as acViewToSubPath } from '../access-control/AccessControl.utils';
-import { viewToSubPath as membersViewToSubPath } from './Members.utils';
+import { viewToSubPath as membersViewToSubPath } from './membersRoute.utils';
 
 /**
  * A destination inside the personal-space Profile modal, expressed as the

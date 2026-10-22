@@ -28,7 +28,7 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { getTaskById } from '../../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { isMaskedEmail } from '../../../../../../utils/UsersPureUtils';
+import { getVisibleEmail } from '../../../../../../utils/UsersPureUtils';
 import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
 import { useUserActivityCount } from '../../../InboxPage/useInboxActivity';
 import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
@@ -173,8 +173,7 @@ export const buildUserIdentityHeader = (
   isSelf: boolean
 ): Partial<ProfileHeaderOverride> => {
   const displayName = getEntityName(user);
-  const email =
-    user.email && !isMaskedEmail(user.email) ? user.email : undefined;
+  const email = getVisibleEmail(user.email);
 
   return {
     title: displayName,
@@ -208,10 +207,11 @@ const useTaskCrumbLabel = (taskId?: string): string | undefined => {
 
 interface UseMembersUserDetailHeaderParams {
   user?: User;
-  isUserNotFound: boolean;
+  /** Not found, failed to load, or not viewable: the header shows just the name. */
+  hasLoadFailed: boolean;
   view: MembersUserDetailView;
   activeTab: UserDetailTab;
-  canManage: boolean;
+  canDelete: boolean;
   hiddenTabs: ReadonlySet<UserDetailTab>;
   onTabChange: (key: Key) => void;
   onDelete: () => void;
@@ -225,10 +225,10 @@ interface UseMembersUserDetailHeaderParams {
  */
 export const useMembersUserDetailHeader = ({
   user,
-  isUserNotFound,
+  hasLoadFailed,
   view,
   activeTab,
-  canManage,
+  canDelete,
   hiddenTabs,
   onTabChange,
   onDelete,
@@ -254,8 +254,8 @@ export const useMembersUserDetailHeader = ({
   );
 
   useEffect(() => {
-    if (!user) {
-      onSetHeader(isUserNotFound ? { title: view.name } : buildLoadingHeader());
+    if (hasLoadFailed || !user) {
+      onSetHeader(hasLoadFailed ? { title: view.name } : buildLoadingHeader());
 
       return;
     }
@@ -273,18 +273,18 @@ export const useMembersUserDetailHeader = ({
     }
     onSetHeader({
       ...buildUserIdentityHeader(t, user, isSelf),
-      actions: canManage ? buildDeleteAction(t, user, onDelete) : undefined,
+      actions: canDelete ? buildDeleteAction(t, user, onDelete) : undefined,
       tabs: buildTabs(t, activeTab, counts, hiddenTabs, onTabChange),
     });
   }, [
     user,
     isSelf,
-    isUserNotFound,
+    hasLoadFailed,
     view,
     taskLabel,
     activeTab,
     counts,
-    canManage,
+    canDelete,
     hiddenTabs,
     onTabChange,
     onDelete,

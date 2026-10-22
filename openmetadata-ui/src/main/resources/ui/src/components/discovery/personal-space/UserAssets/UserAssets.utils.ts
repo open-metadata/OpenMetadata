@@ -12,6 +12,7 @@
  */
 
 import { User } from '../../../../generated/entity/teams/user';
+import { SearchSourceAlias } from '../../../../interface/search.interface';
 import { getTermQuery } from '../../../../utils/SearchPureUtils';
 
 export type UserAssetsKind = 'owned' | 'following';
@@ -43,3 +44,15 @@ export const getUserAssetsQueryFilter = (
 
 export const suffixedTestId = (testId: string | undefined, suffix: string) =>
   testId ? `${testId}-${suffix}` : undefined;
+
+/**
+ * The first asset stands selected until the user picks another; `null` means
+ * the user closed the summary panel, so nothing is selected.
+ */
+export const getSelectedAsset = (
+  assets: SearchSourceAlias[],
+  selectedId: string | null | undefined
+): SearchSourceAlias | undefined =>
+  selectedId === null
+    ? undefined
+    : assets.find((asset) => asset.id === selectedId) ?? assets[0];

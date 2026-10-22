@@ -21,6 +21,7 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../../generated/entity/teams/user';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { formatDate } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -30,7 +31,8 @@ import type { UserDetailTab } from './Members.types';
 interface MembersUserDetailBannersProps {
   user: User;
   activeTab: UserDetailTab;
-  canManage: boolean;
+  /** Ungated by `deleted`: restore is the way back for a deleted user. */
+  canRestore: boolean;
   onRestore: () => void;
 }
 
@@ -38,10 +40,12 @@ interface MembersUserDetailBannersProps {
 const MembersUserDetailBanners: FC<MembersUserDetailBannersProps> = ({
   user,
   activeTab,
-  canManage,
+  canRestore,
   onRestore,
 }) => {
   const { t } = useTranslation();
+  // The Bots nav item is admin-only (profileNavConfig).
+  const { isAdminUser } = useAuth();
   const { setHash } = useSettingsHash();
   const firstName = getUserFirstName(user);
 
@@ -53,12 +57,12 @@ const MembersUserDetailBanners: FC<MembersUserDetailBannersProps> = ({
           icon={Trash01}
           iconSize="sm"
           rightContent={
-            canManage && (
+            canRestore && (
               <Button
                 color="secondary-destructive"
                 data-testid="banner-restore-user"
                 size="sm"
-                onClick={onRestore}>
+                onPress={onRestore}>
                 {t('label.restore-entity', { entity: t('label.user') })}
               </Button>
             )
@@ -80,14 +84,17 @@ const MembersUserDetailBanners: FC<MembersUserDetailBannersProps> = ({
           icon={Server01}
           iconSize="sm"
           rightContent={
-            <Button
-              color="link-color"
-              data-testid="open-in-bots"
-              iconTrailing={ArrowUpRight}
-              size="sm"
-              onClick={() => setHash('bots', encodeURIComponent(user.name))}>
-              {t('label.open-in-bots')}
-            </Button>
+            isAdminUser && (
+              // BotsPanel reads the bot name from the hash as is.
+              <Button
+                color="link-color"
+                data-testid="open-in-bots"
+                iconTrailing={ArrowUpRight}
+                size="sm"
+                onPress={() => setHash('bots', user.name)}>
+                {t('label.open-in-bots')}
+              </Button>
+            )
           }
           variant="gray">
           <Typography as="span" size="text-sm" weight="medium">

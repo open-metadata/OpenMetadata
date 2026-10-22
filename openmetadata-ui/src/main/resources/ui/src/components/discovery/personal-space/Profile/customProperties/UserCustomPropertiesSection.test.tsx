@@ -17,6 +17,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
@@ -112,7 +113,9 @@ describe('UserCustomPropertiesSection', () => {
     expect(screen.getByText('Prop 0')).toBeInTheDocument();
     expect(screen.getByText('Description 0')).toBeInTheDocument();
     expect(screen.getByText('Senior Data Engineer')).toBeInTheDocument();
-    expect(screen.getAllByTestId('no-value')[0]).toHaveTextContent('—');
+    expect(screen.getAllByTestId('no-value')[0]).toHaveTextContent(
+      NO_DATA_PLACEHOLDER
+    );
   });
 
   it('shows the first 5 rows and toggles the rest', () => {

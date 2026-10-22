@@ -19,8 +19,8 @@ import {
   Role as RoleIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
-import { useAuth } from '../../../../../../hooks/authHooks';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../../../../../../hooks/authHooks';
 
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import type { AccessControlView, LandingCard } from './AccessControl.types';

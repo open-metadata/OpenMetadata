@@ -24,6 +24,10 @@ export const isMaskedEmail = (email: string) => {
   return email === MASKED_EMAIL;
 };
 
+/** The email to show, or undefined when it is missing or PII-masked. */
+export const getVisibleEmail = (email?: string): string | undefined =>
+  email && !isMaskedEmail(email) ? email : undefined;
+
 export const getUserCreationErrorMessage = ({
   error,
   entity,

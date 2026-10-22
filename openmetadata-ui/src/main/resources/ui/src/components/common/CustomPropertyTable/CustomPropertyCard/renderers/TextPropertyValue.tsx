@@ -25,8 +25,8 @@ import {
 } from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
-import { TextFieldConfig } from './TextPropertyValue.interface';
 import { useReportDirty } from '../useReportDirty';
+import { TextFieldConfig } from './TextPropertyValue.interface';
 
 const EMAIL_MIN_LENGTH = 6;
 const EMAIL_MAX_LENGTH = 127;

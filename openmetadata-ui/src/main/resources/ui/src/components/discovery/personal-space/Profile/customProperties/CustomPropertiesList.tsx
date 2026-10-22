@@ -141,7 +141,8 @@ const CustomPropertiesList = ({
         </Card>
       ) : (
         <Typography
-          className="tw:py-8 tw:text-center tw:text-tertiary"
+          className="tw:py-8 tw:text-center"
+          color="secondary"
           data-testid="no-matching-custom-properties"
           size="text-sm">
           {t('message.no-entity-found-for-name', {

@@ -26,10 +26,12 @@ import { clickFeedReaction } from '../../../utils/activityFeed';
 import { okJson, settleAll } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import {
+  composerEditor,
   createInboxTask,
   createPolicyUser,
   deleteInboxTasks,
   InboxTask,
+  isFollowedAssetsSearch,
   pickMenuItem,
   searchInboxTask,
   switchActivityFeed,
@@ -108,9 +110,6 @@ const isReplyPost = (r: Response) =>
 const isReplyChange = (method: 'PATCH' | 'DELETE') => (r: Response) =>
   /\/api\/v1\/conversations\/.+\/replies\/.+/.test(r.url()) &&
   r.request().method() === method;
-
-const composerEditor = (scope: Locator) =>
-  scope.getByTestId('inbox-comment-composer').locator('.ql-editor');
 
 const feedItem = (page: Page, text: string) =>
   page.getByTestId('activity-feed-item').filter({ hasText: text });
@@ -831,24 +830,34 @@ test.describe(
 
     test('switches My Data to the Following tab', async ({
       isolatedUserPage: page,
+      isolatedUser,
+      activity,
     }) => {
       await visitMyData(page);
 
       const myDataTab = page.getByRole('tab', { name: 'My Data' });
       const followingTab = page.getByRole('tab', { name: 'Following' });
       await expect(myDataTab).toHaveAttribute('aria-selected', 'true');
+      // The viewer owns the seeded table, so My Data shows the tile the
+      // Following tab must drop.
+      await expect(page.getByTestId('stat-card-assets-owned')).toBeVisible();
+      const ownedCard = page.getByTestId(
+        `user-asset-card-${activity.table.entityResponseData.fullyQualifiedName}`
+      );
+      await expect(ownedCard).toBeVisible();
 
-      const followedFetch = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          decodeURIComponent(response.url()).includes('followers')
+      const followedFetch = waitForResponseWithStatus(
+        page,
+        isFollowedAssetsSearch(isolatedUser.responseData.id),
+        200
       );
       await followingTab.click();
       await followedFetch;
 
       await expect(followingTab).toHaveAttribute('aria-selected', 'true');
       // Stat tiles belong to owned assets only.
-      await expect(page.getByTestId('stat-card-assets-owned')).toHaveCount(0);
+      await expect(page.getByTestId('stat-card-assets-owned')).toBeHidden();
+      await expect(ownedCard).toBeHidden();
       // The viewer follows nothing, so the self empty state offers Explore.
       await expect(page.getByTestId('user-assets-empty')).toContainText(
         "You aren't following anything"

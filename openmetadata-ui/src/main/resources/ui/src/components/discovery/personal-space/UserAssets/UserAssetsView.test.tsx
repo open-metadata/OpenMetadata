@@ -39,15 +39,30 @@ jest.mock(
     __esModule: true,
     default: ({
       entityDetails,
+      handleClosePanel,
     }: {
       entityDetails: { details: { name: string } };
-    }) => <div data-testid="summary-panel">{entityDetails.details.name}</div>,
+      handleClosePanel: () => void;
+    }) => (
+      <div data-testid="summary-panel">
+        {entityDetails.details.name}
+        <button
+          aria-label="close"
+          data-testid="summary-panel-close"
+          onClick={handleClosePanel}
+        />
+      </div>
+    ),
   })
 );
 
 jest.mock('./UserAssetStats', () => ({
   __esModule: true,
   default: () => <div data-testid="user-asset-stats" />,
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 const mockSearchQuery = searchQuery as jest.Mock;
@@ -151,6 +166,36 @@ describe('UserAssetsView', () => {
     expect(screen.getByTestId('summary-panel')).toHaveTextContent('customers');
   });
 
+  it('closes the summary panel instead of falling back to the first asset', async () => {
+    respondWith(['orders', 'customers']);
+    renderView({});
+
+    await screen.findByTestId('summary-panel');
+    fireEvent.click(screen.getByTestId('summary-panel-close'));
+
+    expect(screen.queryByTestId('summary-panel')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('user-asset-card-svc.db.schema.orders')
+    ).toHaveAttribute('data-selected', 'false');
+  });
+
+  it('shows an error with reload, not the empty state, when the list fails to load', async () => {
+    mockSearchQuery.mockRejectedValueOnce(new Error('boom'));
+    renderView({ kind: 'owned' });
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('user-assets-empty')).not.toBeInTheDocument();
+
+    respondWith(['orders']);
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(await screen.findByTestId('summary-panel')).toHaveTextContent(
+      'orders'
+    );
+  });
+
   it('searches by the typed text and says when nothing matches', async () => {
     respondWith(['orders']);
     renderView({});
@@ -167,13 +212,14 @@ describe('UserAssetsView', () => {
     expect(lastRequest().query).toBe('*zzz*');
   });
 
-  it('shows the other user empty state by first name', async () => {
+  it('shows the other user empty state by first name, keeping the stat tiles', async () => {
     respondWith([]);
     renderView({ kind: 'owned' });
 
     expect(await screen.findByTestId('user-assets-empty')).toHaveTextContent(
       'message.user-does-not-own-any-assets'
     );
+    expect(screen.getByTestId('user-asset-stats')).toBeInTheDocument();
   });
 
   it('offers to explore when the current user follows nothing', async () => {

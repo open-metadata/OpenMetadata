@@ -47,7 +47,7 @@ jest.mock('react-i18next', () => ({
 
 describe('useUserProfile', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   it('loads another user including deleted ones, without borrowing our isAdmin', async () => {
@@ -199,7 +199,7 @@ describe('useUserProfile', () => {
   });
 
   it('syncs the application store when you edit your own profile', async () => {
-    mockGetUserByName.mockResolvedValue({ id: 'me', name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ id: 'me', name: 'harsh' });
     mockUpdateUserDetail.mockResolvedValue({
       id: 'me',
       name: 'harsh',
@@ -216,9 +216,83 @@ describe('useUserProfile', () => {
       );
     });
 
+    expect(mockGetUserByName).not.toHaveBeenCalled();
+    expect(mockUpdateUserDetail).toHaveBeenCalledWith('me', expect.any(Array));
     expect(mockUpdateCurrentUser).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'harsh', displayName: 'Harsh V' })
     );
+  });
+
+  const loadAlice = async () => {
+    mockGetUserByName.mockResolvedValue({ id: 'u2', name: 'alice' });
+    const hook = renderHook(() => useUserProfile('alice'));
+    await waitFor(() => expect(hook.result.current.userData).toBeDefined());
+
+    return hook;
+  };
+
+  it('resolves false and toasts when the save is rejected', async () => {
+    const { result } = await loadAlice();
+    mockUpdateUserDetail.mockRejectedValue(new Error('boom'));
+
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current.updateUserDetails(
+        { displayName: 'A' },
+        'displayName'
+      );
+    });
+
+    expect(saved).toBe(false);
+    expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
+  it('resolves false and toasts when the save returns nothing', async () => {
+    const { result } = await loadAlice();
+    mockUpdateUserDetail.mockResolvedValue(undefined);
+
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current.updateUserDetails(
+        { displayName: 'A' },
+        'displayName'
+      );
+    });
+
+    expect(saved).toBe(false);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      'server.entity-updating-error'
+    );
+  });
+
+  it('toasts a non-404 load failure and flags it as a load error', async () => {
+    mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
+
+    const { result } = renderHook(() => useUserProfile('alice'));
+    await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
+
+    expect(result.current.loadError).toBe(true);
+    expect(result.current.isUserNotFound).toBe(false);
+    expect(result.current.userData).toBeUndefined();
+    expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
+  it('refuses to save your own partial seed copy after the load fails', async () => {
+    mockGetLoggedInUser.mockRejectedValue({ response: { status: 500 } });
+
+    const { result } = renderHook(() => useUserProfile('harsh'));
+    await waitFor(() => expect(result.current.loadError).toBe(true));
+
+    let saved: boolean | undefined;
+    await act(async () => {
+      saved = await result.current.updateUserDetails(
+        { extension: { costCenter: 'X' } },
+        'extension'
+      );
+    });
+
+    expect(saved).toBe(false);
+    expect(mockUpdateUserDetail).not.toHaveBeenCalled();
   });
 });
 

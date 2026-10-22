@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
@@ -135,7 +136,7 @@ describe('UserCustomPropertiesList', () => {
       within(screen.getByTestId('custom-property-row-notes')).getByTestId(
         'no-value'
       )
-    ).toHaveTextContent('—');
+    ).toHaveTextContent(NO_DATA_PLACEHOLDER);
   });
 
   it('hides the edit pencils without edit permission', () => {

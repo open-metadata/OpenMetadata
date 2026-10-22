@@ -54,17 +54,27 @@ jest.mock('./customProperties/UserCustomPropertiesSection', () => ({
   __esModule: true,
   default: () => <div data-testid="user-custom-properties-section" />,
 }));
+jest.mock('./components/UserDescriptionRow', () => ({
+  __esModule: true,
+  default: ({ canEdit }: { canEdit: boolean }) => (
+    <div data-can-edit={String(canEdit)} data-testid="user-description-row" />
+  ),
+}));
 jest.mock('./components/DefaultPersonaRow', () => ({
   __esModule: true,
   default: () => <div data-testid="default-persona-row" />,
 }));
 jest.mock('./components/DomainsRow', () => ({
   __esModule: true,
-  default: () => <div data-testid="domains-row" />,
+  default: ({ canEdit }: { canEdit?: boolean }) => (
+    <div data-can-edit={String(canEdit)} data-testid="domains-row" />
+  ),
 }));
 jest.mock('./components/PersonaRow', () => ({
   __esModule: true,
-  default: () => <div data-testid="persona-row" />,
+  default: ({ canEdit }: { canEdit?: boolean }) => (
+    <div data-can-edit={String(canEdit)} data-testid="persona-row" />
+  ),
 }));
 jest.mock('./components/RowSkeleton', () => ({
   __esModule: true,
@@ -128,11 +138,13 @@ const user: User = {
 const renderPanel = (
   overrides: Partial<User> = {},
   isLoading = false,
-  showCustomProperties = false
+  showCustomProperties = false,
+  canEditAll?: boolean
 ) => {
   const updateUserDetails = jest.fn().mockResolvedValue(undefined);
   render(
     <ProfileDetailsPanel
+      canEditAll={canEditAll}
       isProfileLoading={isLoading}
       showCustomProperties={showCustomProperties}
       updateUserDetails={updateUserDetails}
@@ -162,7 +174,7 @@ describe('ProfileDetailsPanel', () => {
       within(screen.getByTestId('preferred-name')).getByText('harsh vador')
     ).toBeInTheDocument();
     expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
-    expect(screen.getByText('label.verified')).toBeInTheDocument();
+    expect(screen.getByText('label.verified-status')).toBeInTheDocument();
     expect(screen.getByTestId('profile-section-security')).toBeInTheDocument();
     expect(screen.getByTestId('change-password-row')).toHaveTextContent(
       'harsh'
@@ -176,7 +188,7 @@ describe('ProfileDetailsPanel', () => {
     renderPanel({ displayName: undefined, email: undefined });
 
     expect(screen.getByTestId('profile-picture')).toHaveTextContent('harsh');
-    expect(screen.queryByText('label.verified')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.verified-status')).not.toBeInTheDocument();
   });
 
   it('hides the security section for another user or an external provider', () => {
@@ -207,11 +219,60 @@ describe('ProfileDetailsPanel', () => {
     );
   });
 
+  it('lets you edit your own description, read-only for anyone else', () => {
+    renderPanel();
+
+    expect(screen.getByTestId('user-description-row')).toHaveAttribute(
+      'data-can-edit',
+      'true'
+    );
+  });
+
+  it('lets a holder of EditAll on another user rename them and edit the rows', () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { name: 'steward' },
+      authConfig: { provider: AuthProvider.Google },
+    });
+    renderPanel({}, false, false, true);
+
+    expect(screen.getByTestId('enter-edit')).toBeInTheDocument();
+    expect(screen.getByTestId('user-description-row')).toHaveAttribute(
+      'data-can-edit',
+      'true'
+    );
+    expect(screen.getByTestId('persona-row')).toHaveAttribute(
+      'data-can-edit',
+      'true'
+    );
+    expect(screen.getByTestId('domains-row')).toHaveAttribute(
+      'data-can-edit',
+      'true'
+    );
+  });
+
+  it('keeps another user read-only without EditAll on them', () => {
+    mockUseApplicationStore.mockReturnValue({
+      currentUser: { name: 'steward' },
+      authConfig: { provider: AuthProvider.Google },
+    });
+    renderPanel({}, false, false, false);
+
+    expect(screen.queryByTestId('enter-edit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-description-row')).toHaveAttribute(
+      'data-can-edit',
+      'false'
+    );
+    expect(screen.getByTestId('persona-row')).toHaveAttribute(
+      'data-can-edit',
+      'false'
+    );
+  });
+
   it('hides a masked email and its verified badge', () => {
     renderPanel({ email: '********@masked.com' });
 
     expect(screen.queryByText('********@masked.com')).not.toBeInTheDocument();
-    expect(screen.queryByText('label.verified')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.verified-status')).not.toBeInTheDocument();
   });
 
   it('lists custom properties only when asked (own Profile tab)', () => {

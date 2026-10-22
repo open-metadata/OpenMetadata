@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Response } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
+import { test as isolatedTest } from '../../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../../support/persona/PersonaClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -25,9 +27,14 @@ import {
   searchUserRow,
   waitForUserPatch,
 } from '../../../utils/aiProfile';
-import { chooseSelectOption, uuid } from '../../../utils/common';
-import { performUserLogin } from '../../../utils/user';
+import { okJson } from '../../../utils/apiResponse';
+import {
+  chooseSelectOption,
+  getWorkerAdminAPIContext,
+  uuid,
+} from '../../../utils/common';
 import { getDomainNode } from '../../../utils/domainPicker';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -36,6 +43,10 @@ import { expect, test } from '../../fixtures/pages';
 // entity-detail & settings permission matrices; header persona-dropdown switcher;
 // team/role/description editing on the profile and delete/restore from the
 // profile (ProfileDetailsPanel does not expose these); the performance suite.
+
+const isCreateUserPost = (response: Response) =>
+  response.request().method() === 'POST' &&
+  new URL(response.url()).pathname === '/api/v1/users';
 
 // Instantiated in beforeAll (not at module scope) so a second beforeAll run in the
 // same worker rebuilds it, and created via the API (bypasses the UI intake form).
@@ -86,19 +97,17 @@ test.describe('AI Profile Users', () => {
 
     await page.getByTestId('email').getByRole('textbox').fill(email);
 
-    const createResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users') &&
-        response.request().method() === 'POST'
+    const createResponse = waitForResponseWithStatus(
+      page,
+      isCreateUserPost,
+      201
     );
     await page.getByTestId('save-user').click();
-    const created = await createResponse;
-
-    expect(created.ok()).toBeTruthy();
-    const body = await created.json();
+    const body = await (await createResponse).json();
     createdUsers.push(
       Object.assign(new UserClass(), { responseData: body }) as UserClass
     );
+    expect(body.email).toBe(email);
   });
 
   test('Should not allow creating a user with a duplicate email', async ({
@@ -116,15 +125,14 @@ test.describe('AI Profile Users', () => {
       .getByRole('textbox')
       .fill(existing.data.email);
 
-    const createResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users') &&
-        response.request().method() === 'POST'
+    const createResponse = waitForResponseWithStatus(
+      page,
+      isCreateUserPost,
+      409
     );
     await page.getByTestId('save-user').click();
-    const response = await createResponse;
+    await createResponse;
 
-    expect(response.status()).toBe(409);
     await expect(page.getByTestId('create-user-container')).toBeVisible();
   });
 
@@ -141,20 +149,17 @@ test.describe('AI Profile Users', () => {
 
     await page.getByTestId('email').getByRole('textbox').fill(email);
 
-    const createResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users') &&
-        response.request().method() === 'POST'
+    const createResponse = waitForResponseWithStatus(
+      page,
+      isCreateUserPost,
+      201
     );
     await page.getByTestId('save-user').click();
-    const created = await createResponse;
-
-    expect(created.ok()).toBeTruthy();
-    const body = await created.json();
-    expect(body.isAdmin).toBe(true);
+    const body = await (await createResponse).json();
     createdUsers.push(
       Object.assign(new UserClass(), { responseData: body }) as UserClass
     );
+    expect(body.isAdmin).toBe(true);
   });
 
   test('Should soft delete and restore a user from the list', async ({
@@ -214,36 +219,6 @@ test.describe('AI Profile Users', () => {
     await page.getByTestId('hard-delete').click();
     await page.getByTestId('confirm-button').click();
     await hardDelete;
-  });
-
-  // Legacy parity: only the user renames themselves, admins included.
-  test('Should let a user edit their own preferred name', async ({
-    browser,
-  }) => {
-    const { apiContext } = await performAdminLogin(browser);
-    const user = await trackUser(apiContext);
-    const newName = `${user.responseData.name}-edited`;
-    const { page, afterAction } = await performUserLogin(browser, user);
-
-    try {
-      await openAiProfile(page);
-      await page.getByTestId('preferred-name-edit').click();
-      await page
-        .getByTestId('preferred-name-input')
-        .getByRole('textbox')
-        .fill(newName);
-
-      const patch = waitForUserPatch(page, user.responseData.id ?? '');
-      await page.getByTestId('preferred-name-save').click();
-      expect((await patch).ok()).toBeTruthy();
-
-      const saved = await apiContext.get(
-        `/api/v1/users/${user.responseData.id}`
-      );
-      expect((await saved.json()).displayName).toBe(newName);
-    } finally {
-      await afterAction();
-    }
   });
 
   test("Should add a persona on a user's page", async ({ browser, page }) => {
@@ -323,3 +298,34 @@ test.describe('AI Profile Users', () => {
     await expect(dataConsumerPage.getByTestId('persona-edit')).toBeHidden();
   });
 });
+
+// Legacy parity: only the user renames themselves, admins included. The rename
+// mutates the signed-in account, so it gets its own.
+isolatedTest(
+  'Should let a user edit their own preferred name',
+  async ({ freshUserPage: { page, user } }) => {
+    const newName = `PW Renamed ${uuid()}`;
+
+    await openAiProfile(page);
+    await page.getByTestId('preferred-name-edit').click();
+    await page
+      .getByTestId('preferred-name-input')
+      .getByRole('textbox')
+      .fill(newName);
+
+    const patch = waitForUserPatch(page, user.responseData.id);
+    await page.getByTestId('preferred-name-save').click();
+    await patch;
+
+    await expect(page.getByTestId('profile-content-header')).toContainText(
+      newName
+    );
+    const saved = await okJson<{ displayName?: string }>(
+      await (
+        await getWorkerAdminAPIContext()
+      ).get(`/api/v1/users/${user.responseData.id}`),
+      'Read the renamed user'
+    );
+    expect(saved.displayName).toBe(newName);
+  }
+);

@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import type { MembersView } from './Members.types';
+import MembersPanel from './MembersPanel';
 
 // react-i18next is mocked globally in setupTests.js — no per-file mock needed.
 
@@ -144,7 +145,6 @@ jest.mock('./MembersCreateUserForm', () => () => (
 jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="online-users" />
 ));
-import MembersPanel from './MembersPanel';
 
 // useSettingsHash reads the hash from `window.location` (seeded on mount, then
 // driven by popstate) — BrowserRouter mirrors window in production, but
@@ -299,7 +299,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('deep-links a user and merges the detail header over the members header', async () => {
-    globalThis.location.hash = '#members/users/alice/access';
+    globalThis.location.hash = '#members/user/alice/access';
     const onHeaderChange = jest.fn();
 
     await act(async () => {

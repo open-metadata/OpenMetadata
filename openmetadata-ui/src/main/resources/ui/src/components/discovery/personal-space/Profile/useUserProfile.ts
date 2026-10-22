@@ -16,6 +16,7 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, pick } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ClientErrors } from '../../../../enums/Axios.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -58,12 +59,16 @@ export const useUserProfile = (username: string | undefined) => {
   const [userData, setUserData] = useState<User | undefined>(
     isSelf ? (currentUser as User) : undefined
   );
-  // The seeded currentUser lacks roles/teams/personas/domains; keep the detail
-  // cards in a skeleton state until the fetch backfills them.
+  // The seeded currentUser lacks roles/teams/personas/domains/extension; keep
+  // the detail cards in a skeleton state until the fetch backfills them.
   const [isProfileLoading, setIsProfileLoading] = useState(true);
   // An unknown username 404s — track it to show an empty placeholder instead of
   // a perpetual loader.
   const [isUserNotFound, setIsUserNotFound] = useState(false);
+  // Any other failure. Your own profile then still holds the partial seed copy,
+  // and saving a field it lacks (e.g. one custom property) would replace every
+  // stored value, so callers render an error with a reload instead.
+  const [loadError, setLoadError] = useState(false);
   // Monotonic request id: a target change bumps it so a slower earlier response
   // can't overwrite a faster later one and strand the wrong user's data.
   const requestRef = useRef(0);
@@ -81,6 +86,7 @@ export const useUserProfile = (username: string | undefined) => {
     const reqId = ++requestRef.current;
     setIsProfileLoading(true);
     setIsUserNotFound(false);
+    setLoadError(false);
     // Reset on every target change so a previously-viewed user's data — and
     // their id in updateUserDetails — can't linger.
     setUserData(isSelf ? (currentUserRef.current as User) : undefined);
@@ -110,9 +116,10 @@ export const useUserProfile = (username: string | undefined) => {
       }
       // A 404 is an expected miss (e.g. a hand-typed hash); surface everything
       // else as a toast rather than masquerading as "user not found".
-      if ((error as AxiosError).response?.status === 404) {
+      if ((error as AxiosError).response?.status === ClientErrors.NOT_FOUND) {
         setIsUserNotFound(true);
       } else {
+        setLoadError(true);
         showErrorToast(error as AxiosError);
       }
     } finally {
@@ -130,7 +137,8 @@ export const useUserProfile = (username: string | undefined) => {
     // Resolves to whether the save landed, so an editor closes only on success.
     async (data: Partial<User>, key: keyof User): Promise<boolean> => {
       const base = latestUserRef.current;
-      if (!base) {
+      // A failed load leaves only the partial seed copy to diff against.
+      if (!base || loadError) {
         return false;
       }
       // Diff only the fields being saved, so a concurrent save of another field
@@ -141,8 +149,16 @@ export const useUserProfile = (username: string | undefined) => {
       try {
         const response = await updateUserDetail(base.id, jsonPatch);
         if (!response) {
+          showErrorToast(
+            t('server.entity-updating-error', {
+              entity: isSelf ? t('label.profile') : t('label.user'),
+            })
+          );
+
           return false;
         }
+        // Some saves change other fields server-side: a roles change can flip
+        // isAdmin, and a teams change changes the domains inherited from them.
         const nonTeamKeyData =
           key === 'roles'
             ? { roles: response.roles, isAdmin: response.isAdmin }
@@ -181,13 +197,14 @@ export const useUserProfile = (username: string | undefined) => {
         return false;
       }
     },
-    [isSelf, updateCurrentUser, t]
+    [isSelf, loadError, updateCurrentUser, t]
   );
 
   return {
     userData,
     isProfileLoading,
     isUserNotFound,
+    loadError,
     updateUserDetails,
     refetch: fetchUser,
   };

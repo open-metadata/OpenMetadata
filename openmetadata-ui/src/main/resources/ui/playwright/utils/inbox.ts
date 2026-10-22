@@ -143,6 +143,23 @@ export const visitMyData = async (page: Page) => {
   }).toPass({ timeout: AI_SHELL_TIMEOUT });
 };
 
+/** The Following tab's search: the assets `userId` follows. */
+export const isFollowedAssetsSearch = (userId: string) => (r: Response) => {
+  const url = new URL(r.url());
+
+  return (
+    r.request().method() === 'GET' &&
+    url.pathname === '/api/v1/search/query' &&
+    url.searchParams
+      .get('query_filter')
+      ?.includes(`"followers":"${userId}"`) === true
+  );
+};
+
+/** The Quill editor of the Inbox comment/reply composer inside `scope`. */
+export const composerEditor = (scope: Locator) =>
+  scope.getByTestId('inbox-comment-composer').locator('.ql-editor');
+
 /** Pick one of the Activity feed's sub-tabs (All, Mentions, …). */
 export const switchActivityFeed = async (
   page: Page,

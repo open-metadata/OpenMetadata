@@ -26,9 +26,11 @@ import {
   openTeamTab,
   openUsersPanel,
   searchUserRow,
+  userDetailUrl,
 } from '../../../utils/aiProfile';
 import { uuid } from '../../../utils/common';
 import { getRowByName } from '../../../utils/scopedLocators';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 test.describe('AI Profile Members - navigation & basics', () => {
@@ -205,12 +207,15 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await teamUsersResponse;
 
     // Exact path: a prefix match would also catch `<name>@domain` lookups.
-    const userResponse = page.waitForResponse(
+    const userResponse = waitForResponseWithStatus(
+      page,
       (response) =>
+        response.request().method() === 'GET' &&
         new URL(response.url()).pathname ===
-        `/api/v1/users/name/${encodeURIComponent(
-          regularUser.responseData.name
-        )}`
+          `/api/v1/users/name/${encodeURIComponent(
+            regularUser.responseData.name
+          )}`,
+      200
     );
     await page
       .getByTestId('team-users-table')
@@ -222,9 +227,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await expect(page.getByTestId('profile-content-header')).toContainText(
       regularUser.responseData.email
     );
-    expect(new URL(page.url()).hash).toBe(
-      `#members/users/${encodeURIComponent(regularUser.responseData.name)}`
-    );
+    await expect(page).toHaveURL(userDetailUrl(regularUser.responseData.name));
   });
 
   test('Should navigate from team detail to a role detail', async ({

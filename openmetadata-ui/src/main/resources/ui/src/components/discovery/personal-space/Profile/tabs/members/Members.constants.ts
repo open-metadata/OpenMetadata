@@ -36,6 +36,15 @@ export const USER_DETAIL_TABS: UserDetailTab[] = [
   'custom-properties',
 ];
 
+// User-detail tabs whose list scrolls inside a bounded body; the rest grow so
+// the panel scrolls and the bottom padding stays below the content.
+export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+]);
+
 export const LANDING_CARDS: MembersLandingCard[] = [
   {
     id: 'teams',

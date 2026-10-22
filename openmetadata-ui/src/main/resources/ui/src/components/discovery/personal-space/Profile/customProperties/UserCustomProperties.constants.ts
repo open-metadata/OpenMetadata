@@ -11,7 +11,5 @@
  *  limitations under the License.
  */
 
-// Prototype placeholder for a property without a value.
-export const EMPTY_VALUE = '—';
-
+// Rows the Profile section shows before "Show all".
 export const COLLAPSED_ROW_COUNT = 5;

@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
+import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { User } from '../../../../../generated/entity/teams/user';
-import { useEntityPermissions } from '../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import {
+  useEntityPermissions,
+  UseEntityPermissionsOptions,
+} from '../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../utils/PermissionsUtils';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 jest.mock(
@@ -21,21 +27,37 @@ jest.mock(
   () => ({ useEntityPermissions: jest.fn() })
 );
 
-const mockPermissions = (flags: {
-  canViewCustomFields: boolean;
-  canEditCustomFields: boolean;
-  isLoading?: boolean;
-}) =>
-  (useEntityPermissions as jest.Mock).mockReturnValue({
-    isLoading: false,
-    ...flags,
-  });
+// Mock the hook, run the real derivation (incl. its `deleted` gating).
+const mockPermissions = (
+  grants: Partial<OperationPermission>,
+  isLoading = false
+) =>
+  (useEntityPermissions as jest.Mock).mockImplementation(
+    (
+      _resource: ResourceEntity,
+      _fqn: string,
+      options?: UseEntityPermissionsOptions
+    ) => {
+      const permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        ...grants,
+      } as OperationPermission;
+
+      return {
+        permissions,
+        isLoading,
+        error: null,
+        refresh: jest.fn(),
+        ...getDerivedPermissionFlags(permissions, options?.deleted),
+      };
+    }
+  );
 
 const USER = { id: 'u1', name: 'alice', email: 'a@x.io' } as User;
 
 describe('useUserCustomPropertyAccess', () => {
   it('reads the user entity permissions by name and passes the deleted flag', () => {
-    mockPermissions({ canViewCustomFields: true, canEditCustomFields: true });
+    mockPermissions({ ViewCustomFields: true, EditCustomFields: true });
 
     renderHook(() => useUserCustomPropertyAccess({ ...USER, deleted: true }));
 
@@ -47,7 +69,7 @@ describe('useUserCustomPropertyAccess', () => {
   });
 
   it('maps view and edit custom-field permissions', () => {
-    mockPermissions({ canViewCustomFields: true, canEditCustomFields: false });
+    mockPermissions({ ViewCustomFields: true, EditCustomFields: false });
 
     const { result } = renderHook(() => useUserCustomPropertyAccess(USER));
 
@@ -59,21 +81,19 @@ describe('useUserCustomPropertyAccess', () => {
   });
 
   it('never allows editing a deleted user', () => {
-    mockPermissions({ canViewCustomFields: true, canEditCustomFields: true });
+    mockPermissions({ ViewCustomFields: true, EditCustomFields: true });
 
     const { result } = renderHook(() =>
       useUserCustomPropertyAccess({ ...USER, deleted: true })
     );
 
-    expect(result.current.canEdit).toBe(false);
+    expect(result.current).toEqual(
+      expect.objectContaining({ canView: true, canEdit: false })
+    );
   });
 
   it('does not report loading without a user', () => {
-    mockPermissions({
-      canViewCustomFields: false,
-      canEditCustomFields: false,
-      isLoading: true,
-    });
+    mockPermissions({}, true);
 
     const { result } = renderHook(() => useUserCustomPropertyAccess());
 

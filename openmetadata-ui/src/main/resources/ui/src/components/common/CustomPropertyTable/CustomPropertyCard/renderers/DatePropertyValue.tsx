@@ -23,13 +23,13 @@ import {
 } from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
+import { useReportDirty } from '../useReportDirty';
 import { PickerDate } from './DatePropertyValue.interface';
 import {
   DateParts,
   fromDateTimeEditState,
   toDateTimeEditState,
 } from './DatePropertyValue.utils';
-import { useReportDirty } from '../useReportDirty';
 
 const DATE_CP = 'date-cp';
 const TIME_CP = 'time-cp';

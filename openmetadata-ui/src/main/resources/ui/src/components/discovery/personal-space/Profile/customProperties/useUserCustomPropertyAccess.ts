@@ -23,7 +23,7 @@ export const useUserCustomPropertyAccess = (user?: User) => {
 
   return {
     canView: canViewCustomFields,
-    canEdit: canEditCustomFields && !user?.deleted,
+    canEdit: canEditCustomFields,
     isLoading: Boolean(user?.name) && isLoading,
   };
 };

@@ -97,4 +97,19 @@ describe('UserAssetCard', () => {
 
     expect(onSelect).toHaveBeenCalledWith(source);
   });
+
+  it('draws the brand border only on the selected card', () => {
+    const { unmount } = renderCard(table(), true);
+
+    expect(
+      screen.getByTestId('user-asset-card-svc.db.schema.orders')
+    ).toHaveClass('tw:border-brand');
+
+    unmount();
+    renderCard(table(), false);
+
+    expect(
+      screen.getByTestId('user-asset-card-svc.db.schema.orders')
+    ).not.toHaveClass('tw:border-brand');
+  });
 });

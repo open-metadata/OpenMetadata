@@ -21,9 +21,9 @@ import {
 import { CustomPropertyCard } from './CustomPropertyCard';
 import { SORT_OPTIONS } from './CustomPropertyCard.constants';
 import { CustomPropertyCardListProps } from './CustomPropertyCard.interface';
-import { CustomPropertySearchSortBar } from './CustomPropertySearchSortBar';
 import { filterAndSortProperties } from './CustomPropertyCard.utils';
 import { CardListSortMode } from './CustomPropertyCardList.interface';
+import { CustomPropertySearchSortBar } from './CustomPropertySearchSortBar';
 
 const EMPTY_LAYOUT: CustomPropertyLayoutItem[] = [];
 

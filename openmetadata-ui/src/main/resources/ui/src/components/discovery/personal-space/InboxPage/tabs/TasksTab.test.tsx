@@ -417,6 +417,14 @@ describe('TasksTab', () => {
     expect(capturedCanLoadMore?.(scanned)).toBe(false);
   });
 
+  it('shows a task that landed on two loaded pages once', () => {
+    const task = { id: 't1', type: 'TestCaseResolution' } as unknown as Task;
+    hookState = { items: [task, task], isLoading: false, total: 1 };
+    renderTab();
+
+    expect(screen.getAllByTestId('task-t1')).toHaveLength(1);
+  });
+
   it('shows the skeleton while loading', () => {
     hookState = { items: [], isLoading: true, total: 0 };
     renderTab();

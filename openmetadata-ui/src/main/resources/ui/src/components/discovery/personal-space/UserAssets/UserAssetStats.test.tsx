@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { User } from '../../../../generated/entity/teams/user';
@@ -30,6 +30,8 @@ const stats = (queryStats: Record<string, unknown> = {}) => ({
   requireAttention: 2,
   dataHealthScore: 78,
   isLoading: false,
+  error: undefined,
+  refetch: jest.fn(),
 });
 
 const renderStats = () =>
@@ -100,5 +102,26 @@ describe('UserAssetStats', () => {
     expect(
       screen.queryByTestId('stat-card-assets-owned-value')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows an error with reload instead of zero tiles when the stats fail', () => {
+    const refetch = jest.fn();
+    mockStats.mockReturnValue({
+      ...stats(),
+      error: new Error('boom'),
+      refetch,
+    });
+    renderStats();
+
+    expect(
+      screen.queryByTestId('stat-card-assets-owned-value')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(refetch).toHaveBeenCalled();
   });
 });

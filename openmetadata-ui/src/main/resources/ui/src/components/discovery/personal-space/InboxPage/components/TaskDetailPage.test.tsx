@@ -38,11 +38,7 @@ const renderPage = (onTaskChanged = jest.fn()) => {
   const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
   render(
     <QueryClientProvider client={queryClient}>
-      <TaskDetailPage
-        taskId="task-1"
-        onBack={jest.fn()}
-        onTaskChanged={onTaskChanged}
-      />
+      <TaskDetailPage taskId="task-1" onTaskChanged={onTaskChanged} />
     </QueryClientProvider>
   );
 

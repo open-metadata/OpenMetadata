@@ -10,11 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import { INCIDENT_MAX_PAGES } from './UserAssets.constants';
 import { useUserAssetStats } from './useUserAssetStats';
 
 jest.mock('../../../../rest/searchAPI', () => ({
@@ -24,6 +26,10 @@ jest.mock('../../../../rest/searchAPI', () => ({
 jest.mock('../../../../rest/incidentManagerAPI', () => ({
   ...jest.requireActual('../../../../rest/incidentManagerAPI'),
   getListTestCaseIncidentStatus: jest.fn(),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
 }));
 
 const mockSearchQuery = searchQuery as jest.Mock;
@@ -102,6 +108,7 @@ describe('useUserAssetStats', () => {
   beforeEach(() => {
     mockSearchQuery.mockReset();
     mockIncidents.mockReset();
+    (showErrorToast as jest.Mock).mockReset();
     mockIncidents.mockResolvedValue({ data: [], paging: { total: 0 } });
   });
 
@@ -172,12 +179,24 @@ describe('useUserAssetStats', () => {
     expect(mockIncidents).toHaveBeenCalledTimes(2);
     expect(mockIncidents).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ assignee: 'u1', latest: true })
+      expect.objectContaining({ assignee: 'alice', latest: true })
     );
     expect(mockIncidents).toHaveBeenNthCalledWith(
       2,
-      expect.objectContaining({ after: 'next' })
+      expect.objectContaining({ offset: 'next' })
     );
+  });
+
+  it('stops paging incidents after the max page count when the cursor never ends', async () => {
+    respond();
+    mockIncidents.mockResolvedValue({
+      data: [{ severity: 'Severity1' }],
+      paging: { total: 1000, after: 'same' },
+    });
+    const result = await renderStats();
+
+    expect(mockIncidents).toHaveBeenCalledTimes(INCIDENT_MAX_PAGES);
+    expect(result.current.incidentStats.severity1).toBe(INCIDENT_MAX_PAGES);
   });
 
   it('counts queries on owned tables and names the most viewed one', async () => {
@@ -197,6 +216,17 @@ describe('useUserAssetStats', () => {
     expect(JSON.stringify(queryRequest.queryFilter)).toContain(
       '"queryUsedIn.id":"tbl-1"'
     );
+
+    const ownedTablesRequest = mockSearchQuery.mock.calls.find(
+      ([params]) => params.searchIndex === SearchIndex.TABLE
+    )[0];
+
+    expect(ownedTablesRequest).toEqual(
+      expect.objectContaining({
+        fetchSource: true,
+        includeFields: ['id', 'name', 'displayName', 'fullyQualifiedName'],
+      })
+    );
   });
 
   it('skips the query count when the user owns no tables', async () => {
@@ -215,21 +245,75 @@ describe('useUserAssetStats', () => {
     ).toBe(false);
   });
 
-  it('zeroes the stats when every request fails', async () => {
-    mockSearchQuery.mockRejectedValue(new Error('boom'));
+  it('reports an error instead of zero stats when a request fails', async () => {
+    respond();
     mockIncidents.mockRejectedValue(new Error('boom'));
     const result = await renderStats();
 
-    expect(result.current.assetStats.total).toBe(0);
-    expect(result.current.incidentStats).toEqual({ total: 0, severity1: 0 });
-    expect(result.current.queryStats.count).toBe(0);
-    expect(result.current.dataHealthScore).toBe(0);
+    expect(result.current.error).toEqual(new Error('boom'));
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
-  it('does not fetch without a user', () => {
+  it('has no error when every request succeeds', async () => {
+    respond();
+    const result = await renderStats();
+
+    expect(result.current.error).toBeUndefined();
+    expect(showErrorToast).not.toHaveBeenCalled();
+  });
+
+  it('refetches after an error and clears it', async () => {
+    respond();
+    mockIncidents.mockRejectedValueOnce(new Error('boom'));
+    const result = await renderStats();
+
+    expect(result.current.error).toBeDefined();
+
+    act(() => result.current.refetch());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.error).toBeUndefined();
+    expect(mockIncidents).toHaveBeenCalledTimes(2);
+  });
+
+  it("ignores the previous user's late responses after switching users", async () => {
+    const firstUserResolvers: Array<() => void> = [];
+    mockSearchQuery.mockImplementation((params: SearchParams) => {
+      const forFirstUser = JSON.stringify(params.queryFilter).includes('"u1"');
+      if (forFirstUser) {
+        return new Promise((resolve) => {
+          firstUserResolvers.push(() => resolve(withBuckets(99)));
+        });
+      }
+
+      return Promise.resolve(
+        params.pageSize > 0 ? { hits: { hits: [] } } : total(5)
+      );
+    });
+    const bob = { id: 'u2', name: 'bob' } as User;
+    const { result, rerender } = renderHook(
+      (props: { subject: User }) => useUserAssetStats(props.subject),
+      { initialProps: { subject: user } }
+    );
+
+    rerender({ subject: bob });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.assetStats.total).toBe(5);
+
+    await act(async () => firstUserResolvers.forEach((resolve) => resolve()));
+
+    expect(result.current.assetStats.total).toBe(5);
+  });
+
+  it('does not fetch or stay loading without a user', async () => {
     const { result } = renderHook(() => useUserAssetStats(undefined));
 
-    expect(result.current.isLoading).toBe(true);
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
     expect(mockSearchQuery).not.toHaveBeenCalled();
+    expect(mockIncidents).not.toHaveBeenCalled();
   });
 });

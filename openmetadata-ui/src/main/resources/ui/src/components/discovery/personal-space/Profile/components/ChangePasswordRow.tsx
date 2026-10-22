@@ -140,7 +140,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
           */}
           <Box className="tw:w-full" direction="col" gap={5}>
             {isSelf && (
-              <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+              <Box className={PASSWORD_FIELD_WIDTH_CLASS} direction="col">
                 <PasswordInput
                   isRequired
                   autoComplete="current-password"
@@ -149,10 +149,10 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
                   value={form.oldPassword}
                   onChange={setField('oldPassword')}
                 />
-              </div>
+              </Box>
             )}
             <Box className="tw:w-full" direction="col" gap={2}>
-              <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+              <Box className={PASSWORD_FIELD_WIDTH_CLASS} direction="col">
                 <PasswordInput
                   isRequired
                   autoComplete="new-password"
@@ -161,12 +161,12 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
                   value={form.newPassword}
                   onChange={setField('newPassword')}
                 />
-              </div>
+              </Box>
               {Boolean(form.newPassword) && (
                 <PasswordStrengthMeter password={form.newPassword} />
               )}
             </Box>
-            <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+            <Box className={PASSWORD_FIELD_WIDTH_CLASS} direction="col">
               <PasswordInput
                 isRequired
                 autoComplete="new-password"
@@ -177,7 +177,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
                 value={form.confirmPassword}
                 onChange={setField('confirmPassword')}
               />
-            </div>
+            </Box>
             <Box gap={3}>
               <Button
                 color="primary"

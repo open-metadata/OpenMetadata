@@ -17,15 +17,14 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../generated/entity/teams/user';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import UserAssetCardList from './UserAssetCardList';
 import { SEARCH_DEBOUNCE_MS, TYPE_OPTIONS } from './UserAssets.constants';
-import { UserAssetsKind } from './UserAssets.utils';
+import { getSelectedAsset, UserAssetsKind } from './UserAssets.utils';
 import UserAssetsEmpty from './UserAssetsEmpty';
 import UserAssetStats from './UserAssetStats';
 import { useUserAssetsList } from './useUserAssetsList';
-
-export type { UserAssetsKind } from './UserAssets.utils';
 
 export interface UserAssetsViewProps {
   user: User;
@@ -47,22 +46,16 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
   const [searchText, setSearchText] = useState('');
   const search = useDebouncedValue(searchText.trim(), SEARCH_DEBOUNCE_MS);
   const [indexes, setIndexes] = useState<string[]>([]);
-  const [selectedId, setSelectedId] = useState<string>();
-  const { assets, total, isLoading, hasMore, loadMore } = useUserAssetsList(
-    kind,
-    user,
-    search,
-    indexes
-  );
-  // The first asset stands selected until the user picks another.
-  const selected = assets.find((asset) => asset.id === selectedId) ?? assets[0];
+  // `null` once the summary panel is closed; undefined until a card is picked.
+  const [selectedId, setSelectedId] = useState<string | null>();
+  const { assets, total, isLoading, error, hasMore, loadMore, retry } =
+    useUserAssetsList(kind, user, search, indexes);
+  const selected = getSelectedAsset(assets, selectedId);
   const searchLabel = t('label.search-entity', {
     entity: t('label.asset-plural-lowercase'),
   });
-
-  if (!isLoading && total === 0 && !search && indexes.length === 0) {
-    return <UserAssetsEmpty kind={kind} user={user} />;
-  }
+  const isUnfiltered = !search && indexes.length === 0;
+  const hasNoAssets = !isLoading && !error && total === 0 && isUnfiltered;
 
   return (
     <Box
@@ -71,55 +64,65 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
       direction="col"
       gap={4}>
       {showStats && kind === 'owned' && <UserAssetStats user={user} />}
-      <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,1fr)_minmax(0,420px)] tw:gap-4">
-        <Box className="tw:min-h-0 tw:min-w-0" direction="col" gap={3}>
-          <Box align="center" className="tw:shrink-0" gap={2}>
-            <FilterSelect
-              bordered
-              hideCounts
-              data-testid="user-assets-type-filter"
-              label={t('label.type')}
-              options={TYPE_OPTIONS}
-              popoverClassName="tw:w-52"
-              selectedValues={indexes}
-              selectionMode="multiple"
-              triggerIcon={FilterLines}
-              triggerVariant="button"
-              onChange={setIndexes}
-            />
-            <Input
-              aria-label={searchLabel}
-              className="tw:min-w-0 tw:flex-1"
-              icon={Search}
-              inputDataTestId="user-assets-search"
-              placeholder={searchLabel}
-              value={searchText}
-              onChange={setSearchText}
-            />
+      {hasNoAssets ? (
+        <UserAssetsEmpty kind={kind} user={user} />
+      ) : (
+        <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,1fr)_minmax(0,420px)] tw:gap-4">
+          <Box className="tw:min-h-0 tw:min-w-0" direction="col" gap={3}>
+            <Box align="center" className="tw:shrink-0" gap={2}>
+              <FilterSelect
+                bordered
+                hideCounts
+                data-testid="user-assets-type-filter"
+                label={t('label.type')}
+                options={TYPE_OPTIONS}
+                popoverClassName="tw:w-52"
+                selectedValues={indexes}
+                selectionMode="multiple"
+                triggerIcon={FilterLines}
+                triggerVariant="button"
+                onChange={setIndexes}
+              />
+              <Input
+                aria-label={searchLabel}
+                className="tw:min-w-0 tw:flex-1"
+                icon={Search}
+                inputDataTestId="user-assets-search"
+                placeholder={searchLabel}
+                value={searchText}
+                onChange={setSearchText}
+              />
+            </Box>
+            {error ? (
+              <Box className="tw:relative tw:min-h-80 tw:flex-1">
+                <SomethingWentWrongPlaceholder onReload={retry} />
+              </Box>
+            ) : (
+              <UserAssetCardList
+                assets={assets}
+                hasMore={hasMore}
+                isLoading={isLoading}
+                selectedId={selected?.id}
+                onLoadMore={loadMore}
+                onSelect={(source) => setSelectedId(source.id)}
+              />
+            )}
           </Box>
-          <UserAssetCardList
-            assets={assets}
-            hasMore={hasMore}
-            isLoading={isLoading}
-            selectedId={selected?.id}
-            onLoadMore={loadMore}
-            onSelect={(source) => setSelectedId(source.id)}
-          />
+          {selected && (
+            <Box
+              className="tw:min-h-0 tw:min-w-0 tw:overflow-y-auto"
+              data-testid="user-assets-summary">
+              {/* "explore" keeps the panel's own container transparent, so the
+                  summary and rail sit on the dialog surface in both themes. */}
+              <EntitySummaryPanel
+                entityDetails={{ details: selected }}
+                handleClosePanel={() => setSelectedId(null)}
+                panelPath="explore"
+              />
+            </Box>
+          )}
         </Box>
-        {selected && (
-          <Box
-            className="tw:min-h-0 tw:min-w-0 tw:overflow-y-auto"
-            data-testid="user-assets-summary">
-            {/* "explore" keeps the panel's own container transparent, so the
-                summary and rail sit on the dialog surface in both themes. */}
-            <EntitySummaryPanel
-              entityDetails={{ details: selected }}
-              handleClosePanel={() => setSelectedId(undefined)}
-              panelPath="explore"
-            />
-          </Box>
-        )}
-      </Box>
+      )}
     </Box>
   );
 };

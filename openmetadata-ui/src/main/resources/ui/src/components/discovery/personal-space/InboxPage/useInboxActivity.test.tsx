@@ -42,7 +42,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
-import { ActivityFilter } from './inbox.utils';
+import { ActivityFilter, getDefaultInboxDateRange } from './inbox.utils';
 import {
   fetchInboxActivity,
   INBOX_ACTIVITY_QUERY_KEY,
@@ -299,8 +299,9 @@ describe('fetchInboxActivity for another user', () => {
   it("fetches the user's own activity and conversations for All", async () => {
     await fetchInboxActivity(ActivityFilter.All, 'u2', 100, 200, true);
 
+    // A window that started long ago asks for the endpoint's 90-day max.
     expect(mockGetUserActivity).toHaveBeenCalledWith('u2', {
-      days: 1,
+      days: 90,
       limit: 200,
     });
     expect(mockGetActivityEvents).not.toHaveBeenCalled();
@@ -310,6 +311,33 @@ describe('fetchInboxActivity for another user', () => {
         userId: 'u2',
       })
     );
+  });
+
+  // The endpoint counts `days` back from now, so 30 days would stop short of
+  // the default window's first midnight and drop that morning's events.
+  it("reaches the default window's first morning and clips what lies before it", async () => {
+    const { startTs = 0, endTs } = getDefaultInboxDateRange();
+    mockGetUserActivity.mockResolvedValue({
+      data: [
+        { id: 'first-morning', timestamp: startTs + 60 * 1000 },
+        { id: 'before-window', timestamp: startTs - 60 * 1000 },
+      ],
+    });
+
+    const result = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u2',
+      startTs,
+      endTs,
+      true
+    );
+
+    const [, { days }] = mockGetUserActivity.mock.calls[0];
+
+    expect(days * 24 * 60 * 60 * 1000).toBeGreaterThanOrEqual(
+      Date.now() - startTs
+    );
+    expect(result.activities.map(({ id }) => id)).toEqual(['first-morning']);
   });
 
   it.each([

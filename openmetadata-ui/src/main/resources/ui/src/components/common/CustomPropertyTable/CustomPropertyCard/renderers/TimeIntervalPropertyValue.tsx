@@ -35,6 +35,7 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
+import { useReportDirty } from '../useReportDirty';
 import {
   CalendarDateValue,
   CalendarRange,
@@ -59,7 +60,6 @@ import {
   toDateTimeParts,
   toEpochText,
 } from './TimeIntervalPropertyValue.utils';
-import { useReportDirty } from '../useReportDirty';
 
 const STATUS_BADGE: Record<
   TimeIntervalStatus,

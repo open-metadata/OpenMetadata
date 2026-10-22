@@ -24,15 +24,14 @@ import {
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { Type } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
-import { viewToSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
+import { entityTypeDetailSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
+import CustomPropertyRow from './CustomPropertyRow';
+import { useCustomPropertyEditor } from './useCustomPropertyEditor';
 import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
-import CustomPropertyRow from './CustomPropertyRow';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
-import { useCustomPropertyEditor } from './useCustomPropertyEditor';
 
 const CUSTOM_PROPERTIES_NAV_ID = 'custom-properties';
 
@@ -75,13 +74,7 @@ const UserCustomPropertiesSection = ({
     : customProperties.slice(0, COLLAPSED_ROW_COUNT);
 
   const openManageFields = () =>
-    setHash(
-      CUSTOM_PROPERTIES_NAV_ID,
-      viewToSubPath({
-        type: 'detail',
-        entityType: { fullyQualifiedName: EntityType.USER } as Type,
-      })
-    );
+    setHash(CUSTOM_PROPERTIES_NAV_ID, entityTypeDetailSubPath(EntityType.USER));
 
   return (
     <Box
@@ -95,7 +88,7 @@ const UserCustomPropertiesSection = ({
           weight="medium">
           {t('label.custom-property-plural')}
         </Typography>
-        <Typography className="tw:text-secondary" size="text-xs">
+        <Typography color="secondary" size="text-xs">
           {t('message.custom-properties-additional-details')}
         </Typography>
         {canManageFields && (

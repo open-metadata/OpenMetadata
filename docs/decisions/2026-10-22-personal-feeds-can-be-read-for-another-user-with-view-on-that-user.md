@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** Rohit Jain
-- **Guard:** `ActivityResourceIT#test_personalFeedsCanBeScopedToAnotherUser`, `#test_personalFeedsForAnotherUserRequireViewOnThatUser`, `#test_personalFeedsOfSoftDeletedUserStayReadable`
+- **Guard:** `ActivityResourceIT#test_personalFeedsCanBeScopedToAnotherUser`, `#test_personalFeedsOfAnotherUserAreFilteredToWhatTheCallerMayView`, `#test_personalFeedsForAnotherUserRequireViewOnThatUser`, `#test_personalFeedsOfSoftDeletedUserStayReadable`
 - **Related:** #35944
 
 ## Context
@@ -28,3 +28,8 @@ feed, so another user's sub-feeds could not be shown.
 - Seeing someone's mentions or followed-asset activity now depends on `ViewBasic` on that user, the
   same grant that shows their profile. Tightening it would need a dedicated operation and a new
   record.
+- `/v1/activity/user/{userId}` deliberately keeps no `ViewBasic` gate on the user. It returns only
+  what that user did, each event already filtered to what the caller may view, and the actor is
+  shown on those entities' own activity anyway; mentions and followed assets are not otherwise
+  visible. Gating it would turn a working read into a 403 for principals denied `ViewBasic` on
+  users.
