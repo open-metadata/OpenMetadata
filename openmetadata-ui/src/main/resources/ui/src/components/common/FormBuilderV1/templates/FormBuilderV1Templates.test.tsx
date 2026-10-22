@@ -190,6 +190,51 @@ describe('FormBuilderV1 templates', () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it('does not repeat a map entry key as the title of its list or object value', () => {
+    const { rerender } = render(
+      <CoreArrayFieldTemplate
+        {...({
+          canAdd: true,
+          idSchema: { $id: 'root/tagsByEntity/table' },
+          registry: {} as ArrayFieldTemplateProps['registry'],
+          schema: { type: 'array', __additional_property: true },
+          title: 'table',
+          onAddClick: jest.fn(),
+          items: [],
+        } as unknown as ArrayFieldTemplateProps)}
+      />
+    );
+
+    expect(screen.queryByText('table')).not.toBeInTheDocument();
+    expect(screen.getByTestId('add-item-table')).toBeInTheDocument();
+
+    rerender(
+      <CoreObjectFieldTemplate
+        {...({
+          idSchema: { $id: 'root/liveIndexSettingsByEntity/table' },
+          registry: {} as ObjectFieldTemplateProps['registry'],
+          schema: { type: 'object', __additional_property: true },
+          title: 'table',
+          description: 'Applies to live indexing only.',
+          onAddClick: jest.fn(() => jest.fn()),
+          properties: [
+            {
+              content: <div>batch size</div>,
+              hidden: false,
+              name: 'batchSize',
+            },
+          ],
+        } as unknown as ObjectFieldTemplateProps)}
+      />
+    );
+
+    expect(screen.getByText('batch size')).toBeInTheDocument();
+    expect(
+      screen.getByText('Applies to live indexing only.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('table')).not.toBeInTheDocument();
+  });
+
   it('renders array items and add/remove controls', () => {
     const onAddClick = jest.fn();
     const onDropIndexClick = jest.fn(() => jest.fn());
@@ -640,7 +685,7 @@ describe('FormBuilderV1 templates', () => {
 
     expect(screen.getByText('value child')).toBeInTheDocument();
     expect(screen.getByText('=')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('label.option')).toHaveValue('myKey');
+    expect(screen.getByPlaceholderText('label.key')).toHaveValue('myKey');
 
     const keyInput = screen.getByDisplayValue('myKey');
 

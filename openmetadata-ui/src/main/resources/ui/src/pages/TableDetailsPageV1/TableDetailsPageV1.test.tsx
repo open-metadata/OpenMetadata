@@ -179,13 +179,6 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
-  }
-);
-
 // Distinct sentinel so permission-loading (this) and entity-loading (mocked PageLoader
 // below) are unambiguous in assertions — both real components render
 // data-testid="loader", which would make "no loader" assertions ambiguous between the two.

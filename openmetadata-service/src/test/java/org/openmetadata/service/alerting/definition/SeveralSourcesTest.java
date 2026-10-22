@@ -13,6 +13,7 @@ import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.service.alerting.matching.AlertMatching;
 
@@ -110,6 +111,22 @@ class SeveralSourcesTest {
     assertEquals(
         "(matchAnySource({'table'}) && (!matchAnyFieldChange({'columns','dataModel','joins'})))",
         stored.getActions().getFirst().getCondition());
+  }
+
+  // The rule stored for a filter the sources name differently carries the catalog's own name.
+  @Test
+  void storedFilterTheSourcesNameDifferentlyCarriesTheCatalogsOwnName() {
+    AlertFilteringInput byName =
+        new AlertFilteringInput().withFilters(List.of(chosen("filterByFqn", "fqnList")));
+
+    for (List<String> picked :
+        List.of(
+            List.of("pipeline", "ingestionPipeline"), List.of("ingestionPipeline", "pipeline"))) {
+      EventFilterRule stored = build(AlertType.OBSERVABILITY, picked, byName).getRules().getFirst();
+
+      assertEquals("Entity FQN", stored.getDisplayName(), picked.toString());
+      assertEquals("Event Filtering By Entity FQN", stored.getDescription(), picked.toString());
+    }
   }
 
   // The text is checked against no event when it is saved, and must hold up there.

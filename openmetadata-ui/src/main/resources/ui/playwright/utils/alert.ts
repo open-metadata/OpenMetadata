@@ -31,6 +31,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  chooseSelectOption,
   clickOutside,
   fillDescriptionBox,
   getApiContext,
@@ -427,7 +428,10 @@ export const addEntityFQNFilter = async ({
   await searchResult.click();
 
   await expect(
-    page.getByTestId('fqn-list-select').getByTitle(entityFQN)
+    page
+      .getByTestId('fqn-list-select')
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: entityFQN })
   ).toBeAttached();
 
   if (exclude) {
@@ -960,29 +964,55 @@ export const inputBasicAlertInformation = async ({
   await getDescriptionBox(page).clear();
   await fillDescriptionBox(page, ALERT_DESCRIPTION);
 
-  const sourceOption = page
-    .getByTestId('drop-down-menu')
-    .getByTestId(`${sourceName}-option`);
+  // The source picker is open to several sources from the start; this alert gets one.
   const sourceSelect = page.getByTestId('source-select');
-  const sourceTrigger = page.getByTestId('add-source-button');
-  await sourceTrigger.click();
-  await expect(sourceOption).toBeVisible();
-  await sourceOption.click();
+  await chooseSelectOption(
+    sourceSelect,
+    page.getByRole('listbox').getByTestId(`${sourceName}-option`)
+  );
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('listbox')).toBeHidden();
 
   await expect(sourceSelect).toHaveText(sourceDisplayName);
 };
 
-// Resolves once the server has answered about exactly these sources, in any order.
+// Resolves once the server has answered about exactly these sources, in any order, and fails
+// legibly if that answer is an error. Only a capabilities request has a body worth reading.
 export const waitForCapabilitiesOf = (page: Page, sources: string[]) =>
-  page.waitForResponse((response) => {
-    const asked = response.request().postDataJSON()?.sources ?? [];
+  waitForResponseWithStatus(
+    page,
+    (response) => {
+      if (
+        !response.url().includes('/api/v1/events/subscriptions/capabilities')
+      ) {
+        return false;
+      }
+      const asked: string[] = response.request().postDataJSON()?.sources ?? [];
 
-    return (
-      response.url().includes('/api/v1/events/subscriptions/capabilities') &&
-      asked.length === sources.length &&
-      sources.every((source) => asked.includes(source))
-    );
+      return (
+        asked.length === sources.length &&
+        sources.every((source) => asked.includes(source))
+      );
+    },
+    200
+  );
+
+const PER_SOURCE_LIST =
+  /\/api\/v1\/events\/subscriptions\/(observability|notification)\/resources/;
+
+// Alert forms and views read only what the server says about the chosen sources together. The
+// returned check fails if any page asked for the deprecated list of every source's own rules.
+export const watchPerSourceListRequests = (page: Page) => {
+  const asked: string[] = [];
+  page.context().on('request', (request) => {
+    if (PER_SOURCE_LIST.test(request.url())) {
+      asked.push(request.url());
+    }
   });
+
+  return () =>
+    expect(asked, 'No page asks for the per-source list').toEqual([]);
+};
 
 // Adds a source to the ones already chosen, and waits for what the server says about them all.
 export const addAlertSource = async (
