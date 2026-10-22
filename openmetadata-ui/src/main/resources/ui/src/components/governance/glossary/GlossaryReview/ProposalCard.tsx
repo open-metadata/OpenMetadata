@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Avatar,
-  Box,
-  Button,
-  ProgressBarBase,
-  TextArea,
-  Typography,
+    Avatar,
+    Box,
+    Button,
+    ProgressBarBase,
+    TextArea,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  AskCollateSparkle,
-  Check,
+    AskCollateSparkle,
+    Check
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -33,13 +33,13 @@ import contextCenterClassBase from '../../../../utils/ContextCenterClassBase';
 import { getShortRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-  GlossaryProposal,
-  ProposalDecision,
+    GlossaryProposal,
+    ProposalDecision
 } from '../../../../utils/GlossaryReview/GlossaryReview.types';
 import {
-  getConfidencePercent,
-  getDeciders,
-  getProposalAuthor,
+    getConfidencePercent,
+    getDeciders,
+    getProposalAuthor
 } from '../../../../utils/GlossaryReview/GlossaryReview.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
@@ -65,18 +65,21 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   return (
     <Box align="center" gap={2} wrap="wrap">
       {proposal.source === 'ai' ? (
-        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700">
-          <AskCollateSparkle aria-hidden className="tw:size-3" />
+        <span className="tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:wrap-anywhere tw:text-utility-purple-700">
+          <AskCollateSparkle aria-hidden className="tw:size-3 tw:shrink-0" />
           {proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
         </span>
       ) : (
-        <Box align="center" gap={2}>
+        <Box align="center" className="tw:min-w-0" gap={2}>
           <Avatar
             alt={author}
             initials={author.charAt(0).toUpperCase()}
             size="xs"
           />
-          <Typography size="text-xs" weight="semibold">
+          <Typography
+            className="tw:min-w-0 tw:wrap-anywhere"
+            size="text-xs"
+            weight="semibold">
             {author}
           </Typography>
         </Box>

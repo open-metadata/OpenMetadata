@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Skeleton,
-  useTabItemState,
+    Badge,
+    Skeleton,
+    useTabItemState
 } from '@openmetadata/ui-core-components';
 
 import { isNil } from 'lodash';
