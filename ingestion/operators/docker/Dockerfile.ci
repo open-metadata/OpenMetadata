@@ -198,6 +198,14 @@ RUN python -c "import importlib.util as u; assert u.find_spec('datamodel_code_ge
 # DNS through it. apt-get needs root, so switch back briefly -- USER openmetadata
 # above has no sudo access -- then restore the non-root user for the runtime image.
 # The build fails if any src:mariadb binary survives the purge.
+# libxml2, the Cyrus SASL plugins and librdkafka go for the same reason: Debian
+# files CVEs against them with no trixie fix, and nothing here loads them. lxml
+# bundles its own libxml2 (shared-mime-info is its only Debian dependent), Hive and
+# Impala authenticate through pure-sasl + kerberos rather than Cyrus SASL, and the
+# confluent_kafka wheel bundles its own librdkafka. libsasl2-2 and its sasldb
+# plugin stay because libpq5 needs them through libldap2; the DIGEST-MD5 plugin
+# those CVEs are in lives in libsasl2-modules. dpkg --purge rather than apt-get:
+# apt-get would silently remove anything that still depends on these, dpkg refuses.
 #
 # The OS security upgrades ride along in the same root layer. trixie's base ships
 # util-linux 2.41-5, which carries CVE-2025-14104, CVE-2026-13595 and
@@ -267,6 +275,8 @@ RUN set -eu; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-mark manual libpq5 libgomp1 xz-utils bzip2; \
     apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
+    dpkg --purge libxml2 shared-mime-info libsasl2-dev libsasl2-modules libsasl2-modules-gssapi-mit \
+      librdkafka-dev librdkafka1 'librdkafka++1'; \
     apt-get -qq purge -y build-essential gcc; \
     apt-get -qq autoremove -y --purge; \
     mariadb_left="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="mariadb"{print $2}')"; \
@@ -283,6 +293,11 @@ USER openmetadata
 # compiled earlier, or from the DB2 driver on amd64. Modules that a slimmer
 # INGESTION_DEPENDENCY does not install are skipped.
 RUN python -c "import importlib, importlib.util as u; [importlib.import_module(m) for m in ('psycopg2', 'kerberos', '_mysql_connector', 'ibm_db') if u.find_spec(m)]"
+# The import check only covers modules we name. This catches any native library, in a wheel
+# or a vendor driver, that links one of the libraries purged above.
+RUN missing="$(find /home/openmetadata/.local /usr/local/lib /opt /instantclient -name '*.so*' -type f -exec ldd {} + 2>/dev/null \
+      | grep -E '(libxml2|libsasl2|librdkafka|libmariadb|libmysqlclient)[^ ]* => not found' | sort -u)"; \
+    [ -z "$missing" ] || { echo "native libraries link a purged library: $missing" >&2; exit 1; }
 
 # Models are opt-in so the default image remains unchanged. Run this after the
 # package installs and before the spaCy cleanup below, while using the runtime user.
