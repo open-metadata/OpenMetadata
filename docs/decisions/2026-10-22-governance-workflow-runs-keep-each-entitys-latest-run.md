@@ -21,16 +21,18 @@ what people debug a workflow from, so it cannot simply be truncated.
 
 - Data Retention deletes a governance workflow run, together with all of its states, only when
   **all** hold:
-  - it has ended: FINISHED, FAILURE, SUPERSEDED, CANCELLED, or EXCEPTION once
-    `variables.processEnded` is set. RUNNING runs, and EXCEPTION runs Flowable may still retry,
-    are never touched;
+  - it has ended: any status but RUNNING, **and** no Flowable process of the run is alive — no
+    `ACT_RU_EXECUTION` row whose `BUSINESS_KEY_` is the run id (indexed by `ACT_IDX_EXEC_BUSKEY`).
+    The status alone is not proof: a superseded or cancelled run is marked before its process is
+    deleted and that delete can fail, and an EXCEPTION run may still be retried. Every process a
+    run starts carries the run id as its business key;
   - its `timestamp` is older than now − `workflowInstanceRetentionPeriod` days (default **30**;
     **0 keeps history forever**). Every run inside the window is kept, however many;
   - a newer run of the **same workflow definition** exists for the **same entityLink**, so each
     entity keeps its latest run of every workflow forever. Runs with no entity are grouped per
     workflow (`entityLink` null and `''` hash alike).
 - States are deleted before their run, so an interruption leaves a run without states (found
-  again next pass), never orphaned states. Flowable's `ACT_*` tables are not touched.
+  again next pass), never orphaned states. Flowable's `ACT_*` tables are only read, never modified.
 - Runs are looked up by entity through `idx_wf_instance_entity_link`, keyed on
   `md5(COALESCE(entityLink, ''))`, then `workflowDefinitionId`, then `timestamp` — on MySQL the
   first key part is the `entityLinkHash` VIRTUAL column with that definition. **Any query that
@@ -47,7 +49,8 @@ what people debug a workflow from, so it cannot simply be truncated.
 
 - On upgrade, every install whose stored Data Retention config lacks the key starts expiring run
   history older than 30 days. Setting the period to 0 opts out.
-- 2.0.x has no `processEnded` mark, so EXCEPTION runs are never deleted there.
+- Retention reads Flowable's runtime table directly, so it depends on Flowable keeping the run id
+  as the business key of every process a run starts.
 - A page size near 1,000 keeps each delete a short transaction (about 6,000 state rows) while
   draining a multi-million-row backlog within a few weekly runs; revisit if runs average far more
   states than that.

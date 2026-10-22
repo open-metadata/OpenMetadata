@@ -226,7 +226,12 @@ public class DataRetentionAppIT {
     Set<String> keptRuns = TestSuiteBootstrap.getJdbi().withHandle(history::seedRunsToKeep);
     Set<String> expiredRuns = TestSuiteBootstrap.getJdbi().withHandle(history::seedExpiredRuns);
 
-    AppRunRecord run = triggerAppAndWaitForCompletion();
+    AppRunRecord run;
+    try {
+      run = triggerAppAndWaitForCompletion();
+    } finally {
+      TestSuiteBootstrap.getJdbi().useHandle(history::removeLiveProcesses);
+    }
 
     assertEquals(
         "success",
@@ -241,8 +246,8 @@ public class DataRetentionAppIT {
         history.remainingStatesPerRun(),
         "a kept run must keep every state and a deleted run must leave none behind");
     assertStatesEndpoint(history.workflowName(), keptRuns, expiredRuns);
-    // RUNNING, live EXCEPTION, and the two runs inside the retention period.
-    assertEquals(4, countRunsFromApi(history.workflowName(), history.busyEntity()));
+    // RUNNING, SUPERSEDED and EXCEPTION with a live process, and the two inside the period.
+    assertEquals(5, countRunsFromApi(history.workflowName(), history.busyEntity()));
     // A non-ASCII entity link: the hash computed in Java must match the database's md5.
     assertEquals(1, countRunsFromApi(history.workflowName(), history.nonAsciiEntity()));
   }
@@ -598,7 +603,7 @@ public class DataRetentionAppIT {
       String entityLink,
       WorkflowStatus status,
       long timestamp,
-      boolean processEnded) {
+      boolean liveProcess) {
     RunSpec(String workflowDefinitionId, String entityLink, WorkflowStatus status, long timestamp) {
       this(workflowDefinitionId, entityLink, status, timestamp, false);
     }
@@ -616,9 +621,11 @@ public class DataRetentionAppIT {
             WorkflowStatus.FINISHED,
             WorkflowStatus.FAILURE,
             WorkflowStatus.SUPERSEDED,
-            WorkflowStatus.CANCELLED);
+            WorkflowStatus.CANCELLED,
+            WorkflowStatus.EXCEPTION);
 
     private final String workflowName;
+    private final List<String> liveExecutionIds = new ArrayList<>();
     private final String workflowId = UUID.randomUUID().toString();
     private final String otherWorkflowId = UUID.randomUUID().toString();
     private final long expiredAt = System.currentTimeMillis() - NINETY_DAYS_MILLIS;
@@ -656,9 +663,13 @@ public class DataRetentionAppIT {
               new RunSpec(workflowId, null, WorkflowStatus.FINISHED, expiredAt + 1_000),
               // Old, but the latest run of another workflow for the busy entity.
               new RunSpec(otherWorkflowId, busyEntity, WorkflowStatus.FINISHED, expiredAt),
-              // Old and superseded, but their process may still be going.
+              // Old and superseded, but still running: by status, or by a Flowable process that
+              // outlived a supersede whose process delete failed, or an EXCEPTION being retried.
               new RunSpec(workflowId, busyEntity, WorkflowStatus.RUNNING, expiredAt + 600_500),
-              new RunSpec(workflowId, busyEntity, WorkflowStatus.EXCEPTION, expiredAt + 700_500),
+              new RunSpec(
+                  workflowId, busyEntity, WorkflowStatus.SUPERSEDED, expiredAt + 650_500, true),
+              new RunSpec(
+                  workflowId, busyEntity, WorkflowStatus.EXCEPTION, expiredAt + 700_500, true),
               // Superseded, but inside the retention period.
               new RunSpec(
                   workflowId, busyEntity, WorkflowStatus.FINISHED, now - TWENTY_DAYS_MILLIS),
@@ -672,8 +683,9 @@ public class DataRetentionAppIT {
         expired.add(new RunSpec(workflowId, busyEntity, status, expiredAt + i * 1_000L));
       }
       expired.add(new RunSpec(workflowId, null, WorkflowStatus.FINISHED, expiredAt));
+      // An EXCEPTION run whose process is gone is over, whatever marks it carries.
       expired.add(
-          new RunSpec(workflowId, busyEntity, WorkflowStatus.EXCEPTION, expiredAt + 800_500, true));
+          new RunSpec(workflowId, busyEntity, WorkflowStatus.EXCEPTION, expiredAt + 800_500));
       return seed(handle, expired);
     }
 
@@ -734,10 +746,34 @@ public class DataRetentionAppIT {
             .bind("hash", FullyQualifiedName.buildHash(nameOf(run)))
             .add();
         addStateRows(stateRows, runId, run);
+        if (run.liveProcess()) {
+          addLiveProcess(handle, runId);
+        }
       }
       runRows.execute();
       stateRows.execute();
       return runIds;
+    }
+
+    /** A Flowable process instance row keyed by the run id, as a live process of the run has. */
+    private void addLiveProcess(Handle handle, String runId) {
+      String executionId = UUID.randomUUID().toString();
+      handle
+          .createUpdate(
+              "INSERT INTO ACT_RU_EXECUTION (ID_, REV_, BUSINESS_KEY_) VALUES (:id, 1, :key)")
+          .bind("id", executionId)
+          .bind("key", runId)
+          .execute();
+      liveExecutionIds.add(executionId);
+    }
+
+    void removeLiveProcesses(Handle handle) {
+      if (!liveExecutionIds.isEmpty()) {
+        handle
+            .createUpdate("DELETE FROM ACT_RU_EXECUTION WHERE ID_ IN (<ids>)")
+            .bindList("ids", liveExecutionIds)
+            .execute();
+      }
     }
 
     private void addStateRows(PreparedBatch stateRows, String runId, RunSpec run) {
@@ -767,9 +803,6 @@ public class DataRetentionAppIT {
       ObjectNode variables = MAPPER.createObjectNode();
       if (run.entityLink() != null) {
         variables.put("global_relatedEntity", run.entityLink());
-      }
-      if (run.processEnded()) {
-        variables.put("processEnded", true);
       }
       ObjectNode json =
           MAPPER

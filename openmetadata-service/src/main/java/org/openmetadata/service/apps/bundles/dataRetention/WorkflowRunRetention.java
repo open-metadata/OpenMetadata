@@ -26,22 +26,22 @@ import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeS
  * page at a time.
  *
  * <p>The cursor only moves forward, so a pass reads every expired run once. Runs the pass must keep
- * (the latest run of each workflow per entity, and EXCEPTION runs whose process may still be
- * retried) are stepped over once instead of being rescanned on every page. The deletion rule is
+ * (the latest run of each workflow per entity, and any run whose Flowable process is still alive)
+ * are stepped over once instead of being rescanned on every page. The deletion rule is
  * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
  */
 final class WorkflowRunRetention {
 
+  // Every status but RUNNING; the query also requires that no Flowable process of the run is alive.
   private static final List<String> ENDED_STATUSES =
       Stream.of(
               WorkflowStatus.FINISHED,
               WorkflowStatus.FAILURE,
               WorkflowStatus.SUPERSEDED,
-              WorkflowStatus.CANCELLED)
+              WorkflowStatus.CANCELLED,
+              WorkflowStatus.EXCEPTION)
           .map(WorkflowStatus::value)
           .toList();
-
-  private static final String EXCEPTION_STATUS = WorkflowStatus.EXCEPTION.value();
 
   private final WorkflowInstanceTimeSeriesDAO runDAO;
   private final WorkflowInstanceStateTimeSeriesDAO stateDAO;
@@ -62,7 +62,7 @@ final class WorkflowRunRetention {
 
   /** Deletes the next page of expired runs with their states and returns how many runs went. */
   int deleteNextPage() {
-    final List<ExpiredRun> runs = runDAO.listExpiredRuns(page, ENDED_STATUSES, EXCEPTION_STATUS);
+    final List<ExpiredRun> runs = runDAO.listExpiredRuns(page, ENDED_STATUSES);
     drained = runs.size() < page.limit();
     int deletedRuns = 0;
     if (!runs.isEmpty()) {

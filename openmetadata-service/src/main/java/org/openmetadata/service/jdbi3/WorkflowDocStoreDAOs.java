@@ -896,11 +896,14 @@ public interface WorkflowDocStoreDAOs {
 
     /**
      * One keyset page, oldest first, of the runs Data Retention may delete: started before {@code
-     * cutoffTs}, past the {@code (afterTs, afterId)} cursor, ended, and followed by a newer run of
-     * the same workflow for the same entity, so every entity keeps its latest run of each workflow.
-     * An EXCEPTION run counts as ended only once its process has, since Flowable may still retry
-     * it. The newer-run probe matches the key of idx_wf_instance_entity_link (2.0.7 migration), so it
-     * is an index lookup rather than a scan. {@code timestamp >= :afterTs} repeats the cursor as a
+     * cutoffTs}, past the {@code (afterTs, afterId)} cursor, ended, with no live Flowable process,
+     * and followed by a newer run of the same workflow for the same entity, so every entity keeps
+     * its latest run of each workflow. The status alone does not prove a run has stopped: a
+     * superseded or cancelled run is marked before its process is deleted, and that delete may
+     * fail, while an EXCEPTION run may still be retried. Flowable keys every process a run starts
+     * by the run id, so no ACT_RU_EXECUTION row with that business key (ACT_IDX_EXEC_BUSKEY) means
+     * nothing can still write to the run. The newer-run probe matches the key of
+     * idx_wf_instance_entity_link (2.0.7 migration), so it is an index lookup rather than a scan. {@code timestamp >= :afterTs} repeats the cursor as a
      * plain range: PostgreSQL cannot start an index scan from the OR alone, and without it every
      * page would walk the timestamp index from the oldest run, past everything already deleted.
      */
@@ -909,8 +912,8 @@ public interface WorkflowDocStoreDAOs {
             "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
                 + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
                 + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
-                + "AND (i.status IN (<endedStatuses>) OR (i.status = :exceptionStatus "
-                + "AND JSON_EXTRACT(i.json, '$.variables.processEnded') IS NOT NULL)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
                 + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
                 + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
                 + "AND n.entityLinkHash = i.entityLinkHash AND n.timestamp > i.timestamp) "
@@ -921,8 +924,8 @@ public interface WorkflowDocStoreDAOs {
             "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
                 + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
                 + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
-                + "AND (i.status IN (<endedStatuses>) OR (i.status = :exceptionStatus "
-                + "AND i.json #> '{variables,processEnded}' IS NOT NULL)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
                 + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
                 + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
                 + "AND md5(COALESCE(n.entityLink, '')) = md5(COALESCE(i.entityLink, '')) "
@@ -931,9 +934,7 @@ public interface WorkflowDocStoreDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(ExpiredRunMapper.class)
     List<ExpiredRun> listExpiredRuns(
-        @BindMethods ExpiredRunPage page,
-        @BindList("endedStatuses") List<String> endedStatuses,
-        @Bind("exceptionStatus") String exceptionStatus);
+        @BindMethods ExpiredRunPage page, @BindList("endedStatuses") List<String> endedStatuses);
 
     @SqlUpdate("DELETE FROM workflow_instance_time_series WHERE id IN (<ids>)")
     int deleteByIds(@BindList("ids") List<String> ids);
