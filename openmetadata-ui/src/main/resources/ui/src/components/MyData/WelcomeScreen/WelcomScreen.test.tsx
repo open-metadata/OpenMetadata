@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import WelcomeScreen from './WelcomeScreen.component';
 
@@ -60,6 +61,18 @@ describe('WelcomeScreen', () => {
       root.style.getPropertyValue('--tw-background-color-brand-solid')
     ).toBe('#7147E8');
     expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('#7147E8');
+  });
+
+  it('should keep an admin-configured brand colour over the accent', () => {
+    useApplicationStore.setState({
+      applicationConfig: { customTheme: { primaryColor: '#E11D48' } },
+    } as never);
+
+    renderScreen();
+
+    expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
+
+    useApplicationStore.setState({ applicationConfig: undefined } as never);
   });
 
   it('should keep the theme colour when the brand has no welcome accent', () => {

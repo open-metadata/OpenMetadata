@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { getWelcomeAccentStyle } from './WelcomeScreen.constants';
+import {
+  getWelcomeAccentStyle,
+  isThemeDefaultPrimary,
+} from './WelcomeScreen.constants';
 
 describe('getWelcomeAccentStyle', () => {
   it('should keep the theme colour when no accent is given', () => {
@@ -24,5 +27,16 @@ describe('getWelcomeAccentStyle', () => {
       '--tw-background-color-brand-solid_hover':
         'color-mix(in srgb, #7147E8 85%, black)',
     });
+  });
+});
+
+describe('isThemeDefaultPrimary', () => {
+  it.each([
+    [undefined, true],
+    ['', true],
+    ['#1570EF', true],
+    ['#E11D48', false],
+  ])('should treat %s as default: %s', (color, expected) => {
+    expect(isThemeDefaultPrimary(color)).toBe(expected);
   });
 });

@@ -15,6 +15,7 @@
 // 65% of the panel; dark mode keeps it faint. `--tw-*` is the runtime name of
 // the core theme variables, and it follows the configured brand colour.
 import { CSSProperties } from 'react';
+import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
 
 const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
 const BRAND = 'var(--tw-color-brand-500)';
@@ -51,3 +52,8 @@ export const getWelcomeAccentStyle = (
         '--tw-background-color-brand-solid_hover': `color-mix(in srgb, ${accent} 85%, black)`,
       } as CSSProperties)
     : undefined;
+
+/** True when the theme's primary colour is unset or still the default. */
+export const isThemeDefaultPrimary = (primaryColor?: string) =>
+  !primaryColor ||
+  primaryColor.toLowerCase() === DEFAULT_THEME.primaryColor.toLowerCase();
