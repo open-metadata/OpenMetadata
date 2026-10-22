@@ -4166,6 +4166,14 @@ om:isIdentifier a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "isIdentifier" .
 
+om:abstract a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "abstract" .
+
+om:definitionSource a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "definitionSource" .
+
 om:unitAnnotation a owl:AnnotationProperty ;
     rdfs:label "unit annotation" ;
     rdfs:comment "Authored unit IRI or display symbol, without conversion semantics." .

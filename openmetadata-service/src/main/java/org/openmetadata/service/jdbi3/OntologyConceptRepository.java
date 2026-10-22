@@ -35,7 +35,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         OntologyConcept.class,
         Entity.getCollectionDAO().ontologyConceptDAO(),
         COLLECTION_PATH,
-        "ontology,iri,conceptType,synonyms,conceptMappings");
+        "ontology,iri,conceptType,synonyms,conceptMappings,abstract,definitionSource,deprecated,replacedBy");
     fieldFetchers.put(SUPER_CLASSES, this::fetchSuperClasses);
     fieldFetchers.put(SUB_CLASSES, this::fetchSubClasses);
   }

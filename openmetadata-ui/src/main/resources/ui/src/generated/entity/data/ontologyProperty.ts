@@ -18,7 +18,12 @@ export interface OntologyProperty {
     changeDescription?: ChangeDescription;
     characteristics?:   Characteristic[];
     deleted?:           boolean;
-    description?:       string;
+    /**
+     * A deprecated definition stays resolvable for existing references but should not be used
+     * for new ones.
+     */
+    deprecated?:  boolean;
+    description?: string;
     /**
      * Semantic IRIs of properties disjoint with this property.
      */
@@ -30,7 +35,8 @@ export interface OntologyProperty {
     domain?: string[];
     /**
      * Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent
-     * datatype denotes xsd:string. Empty means no enumeration constraint.
+     * datatype denotes xsd:string. Empty means no enumeration constraint; an enumeration needs
+     * at least two allowed values.
      */
     enumValues?:        Literal[];
     fullyQualifiedName: string;
@@ -70,6 +76,10 @@ export interface OntologyProperty {
      * Semantic IRIs of range classes or datatypes.
      */
     range?: string[];
+    /**
+     * IRI of the property in the same ontology that replaces this one.
+     */
+    replacedBy?: string;
     /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.
