@@ -14,13 +14,15 @@ Regression tests for LookML view refinements in BulkLkmlParser (#35684).
 Refinements use the `view: +name {}` syntax to extend an existing view:
   - override sql_table_name / derived_table
   - add dimensions, measures, dimension_groups
+  - change fields that already exist on the base view
 
 Previously BulkLkmlParser cached `+orders` as a separate view and never
 merged it into `orders`.
 """
 
 from pathlib import Path
-from unittest import TestCase
+
+import pytest
 
 from metadata.ingestion.source.dashboard.looker.bulk_parser import BulkLkmlParser
 from metadata.ingestion.source.dashboard.looker.models import ViewName
@@ -30,52 +32,120 @@ from metadata.utils.singleton import Singleton
 BASE_PATH = Path(__file__).parent.parent.parent / "resources/lkml"
 
 
-class TestBulkLkmlParserRefinements(TestCase):
-    """BulkLkmlParser merges +view refinements into the base view."""
+@pytest.fixture(autouse=True)
+def clear_singletons():
+    """BulkLkmlParser is a singleton: reset it around every test."""
+    Singleton.clear_all()
+    yield
+    Singleton.clear_all()
 
-    def setUp(self):
-        Singleton.clear_all()
 
-    def test_refinement_overrides_sql_table_name(self):
+@pytest.fixture
+def parser():
+    return BulkLkmlParser(reader=LocalReader(BASE_PATH))
+
+
+def _write_view(root: Path, name: str, content: str) -> None:
+    (root / f"{name}.view.lkml").write_text(content)
+
+
+def test_refinement_overrides_sql_table_name(parser):
+    """`view: +orders` changes sql_table_name from raw.orders to analytics.orders_clean."""
+    view = parser.get_view_from_cache(ViewName("orders"))
+
+    assert view is not None
+    assert view.sql_table_name == "analytics.orders_clean"
+
+
+def test_refinement_adds_dimensions_to_base_view(parser):
+    """The original `id` dimension is kept and the refinement's `status` is added."""
+    view = parser.get_view_from_cache(ViewName("orders"))
+
+    assert view is not None
+    dim_names = [d.name for d in view.dimensions]
+    assert "id" in dim_names
+    assert "status" in dim_names
+
+
+def test_refinement_view_not_stored_as_separate_cache_entry(parser):
+    """`+orders` must not appear as a standalone view in the cache."""
+    assert parser.get_view_from_cache(ViewName("+orders")) is None
+
+
+def test_refinement_updates_existing_field_instead_of_duplicating(tmp_path):
+    """Redeclaring an existing field changes it and keeps the attributes it does not set."""
+    _write_view(
+        tmp_path,
+        "users",
         """
-        orders_refinements.view.lkml contains `view: +orders` which changes
-        sql_table_name from raw.orders to analytics.orders_clean.
-        The merged view should reflect the refinement value.
+        view: users {
+          sql_table_name: raw.users ;;
+          dimension: id {
+            type: number
+            sql: ${TABLE}.id ;;
+          }
+        }
+        """,
+    )
+    _write_view(
+        tmp_path,
+        "users_refinements",
         """
-        reader = LocalReader(BASE_PATH)
-        parser = BulkLkmlParser(reader=reader)
+        view: +users {
+          dimension: id {
+            description: "Primary key"
+          }
+        }
+        """,
+    )
 
-        view = parser.get_view_from_cache(ViewName("orders"))
+    parser = BulkLkmlParser(reader=LocalReader(tmp_path))
+    view = parser.get_view_from_cache(ViewName("users"))
 
-        self.assertIsNotNone(view, "orders view should be cached")
-        self.assertEqual(view.sql_table_name, "analytics.orders_clean")
+    assert view is not None
+    assert [d.name for d in view.dimensions] == ["id"]
+    assert view.dimensions[0].description == "Primary key"
+    assert view.dimensions[0].type == "number"
+    assert view.dimensions[0].sql == "${TABLE}.id"
 
-    def test_refinement_adds_dimensions_to_base_view(self):
+
+def test_refinement_of_view_from_additional_reader(tmp_path):
+    """A refinement in the primary repository applies to a base view from an imported one."""
+    primary = tmp_path / "primary"
+    imported = tmp_path / "imported"
+    primary.mkdir()
+    imported.mkdir()
+    _write_view(
+        primary,
+        "customers_refinements",
         """
-        The refinement adds a `status` dimension. The merged view must contain
-        both the original `id` dimension and the new `status` dimension.
+        view: +customers {
+          sql_table_name: analytics.customers_clean ;;
+          dimension: tier {
+            type: string
+            sql: ${TABLE}.tier ;;
+          }
+        }
+        """,
+    )
+    _write_view(
+        imported,
+        "customers",
         """
-        Singleton.clear_all()
-        reader = LocalReader(BASE_PATH)
-        parser = BulkLkmlParser(reader=reader)
+        view: customers {
+          sql_table_name: raw.customers ;;
+          dimension: id {
+            type: number
+            sql: ${TABLE}.id ;;
+          }
+        }
+        """,
+    )
 
-        view = parser.get_view_from_cache(ViewName("orders"))
+    parser = BulkLkmlParser(reader=LocalReader(primary), additional_readers=[LocalReader(imported)])
+    view = parser.get_view_from_cache(ViewName("customers"))
 
-        self.assertIsNotNone(view)
-        dim_names = [d.name for d in view.dimensions]
-        self.assertIn("id", dim_names, "original dimension must be preserved")
-        self.assertIn("status", dim_names, "refinement dimension must be added")
-
-    def test_refinement_view_not_stored_as_separate_cache_entry(self):
-        """
-        `+orders` must NOT appear as a standalone view in the cache.
-        """
-        Singleton.clear_all()
-        reader = LocalReader(BASE_PATH)
-        parser = BulkLkmlParser(reader=reader)
-
-        refinement_entry = parser.get_view_from_cache(ViewName("+orders"))
-        self.assertIsNone(
-            refinement_entry,
-            "+orders should not be a separate cache entry after refinement merging",
-        )
+    assert view is not None
+    assert view.sql_table_name == "analytics.customers_clean"
+    assert [d.name for d in view.dimensions] == ["id", "tier"]
+    assert parser.get_view_from_cache(ViewName("+customers")) is None
