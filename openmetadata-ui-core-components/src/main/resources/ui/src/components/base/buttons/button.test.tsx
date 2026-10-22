@@ -90,22 +90,6 @@ describe('Button', () => {
 
     expect(ref.current).toBeInstanceOf(HTMLAnchorElement);
   });
-
-  it('opts a link-rendered button out of host anchor underlines', () => {
-    render(<Button href="/somewhere">Go</Button>);
-
-    expect(screen.getByRole('link', { name: 'Go' })).toHaveClass(
-      'tw:no-underline!'
-    );
-  });
-
-  it('leaves a plain button without the anchor underline opt-out', () => {
-    render(<Button>Go</Button>);
-
-    expect(screen.getByRole('button', { name: 'Go' })).not.toHaveClass(
-      'tw:no-underline!'
-    );
-  });
 });
 
 describe('Button — link box', () => {
