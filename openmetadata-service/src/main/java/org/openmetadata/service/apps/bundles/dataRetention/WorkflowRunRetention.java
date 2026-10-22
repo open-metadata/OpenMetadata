@@ -27,7 +27,8 @@ import org.openmetadata.service.jdbi3.WorkflowDocStoreDAOs.WorkflowInstanceTimeS
  *
  * <p>The cursor only moves forward, so a pass reads every expired run once. Runs the pass must keep
  * (the latest run of each workflow per entity, and EXCEPTION runs whose process may still be
- * retried) are stepped over once instead of being rescanned on every page.
+ * retried) are stepped over once instead of being rescanned on every page. The deletion rule is
+ * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
  */
 final class WorkflowRunRetention {
 

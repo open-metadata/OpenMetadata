@@ -534,7 +534,8 @@ public class ListFilter extends Filter<ListFilter> {
   /**
    * Matches workflow runs by the md5 of their entityLink, in the exact form the
    * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
-   * index lookup; entityLink is unbounded TEXT and has no index of its own.
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
    */
   private String getEntityLinkHashCondition() {
     String entityLinkHash = queryParams.get("entityLinkHash");
