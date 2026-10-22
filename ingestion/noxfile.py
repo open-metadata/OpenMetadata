@@ -43,6 +43,32 @@ def install(session, *args, **kwargs):
         session.install(*args, **kwargs)
 
 
+def install_group(session, group):
+    """Install a PEP 735 dependency group unless using the active environment."""
+    if not isinstance(session.virtualenv, PassthroughEnv):
+        session.run("uv", "pip", "install", "--group", f"pyproject.toml:{group}", external=True)
+
+
+def ensure_generated_models(session):
+    """Check generated files and regenerate them when stale."""
+    result = session.run(
+        "python",
+        "../scripts/check_generated_models.py",
+        "--check",
+        silent=True,
+        success_codes=[0, 1],
+    )
+    if result:
+        session.log(result.rstrip())
+    if result and not result.startswith("Generated models are up to date."):
+        session.run(
+            "python",
+            "../scripts/generate_ingestion_models.py",
+            "--python-only",
+            external=True,
+        )
+
+
 @nox.session(
     name="lint",
     reuse_venv=True,
@@ -51,59 +77,11 @@ def install(session, *args, **kwargs):
 def lint(session):
     # Single-tool replacement for the old black + isort + pycln stack.
     # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
-    install(session, ".[dev]")
+    install(session, "-e", ".")
+    install_group(session, "style")
     session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
     session.run("python", "scripts/check_ruff_suppressions.py", "--check")
     session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
-
-
-@nox.session(name="unit", reuse_venv=True, venv_backend="uv|venv", python=get_python_versions())
-def unit(session):
-    session.install(".[all-dev-env, test-unit]")
-    # TODO: we need to install pip so that spaCy can install its dependencies
-    #       we should find a way to avoid this
-    session.install("pip")
-
-    # TODO: We need to remove ignored test once they can be run properly within nox
-    # Run unit tests
-    ignored_tests = [
-        "test_ometa_endpoints.py",
-        "test_ometa_mlmodel.py",
-        "test_dbt.py",
-        "test_sample_usage.py",
-        "test_ssl_manager.py",
-        "test_usage_filter.py",
-        "test_suite/",
-        "profiler/test_profiler_partitions.py",
-        "profiler/test_workflow.py",
-        "workflow",
-        "topology",
-    ]
-    ignore_args = [f"--ignore=tests/unit/{test}" for test in ignored_tests]
-
-    # run pytest with the ignore arguments and in parallel mode
-    session.run("pytest", "tests/unit/", *ignore_args)
-
-
-# TEST PLUGINS
-PLUGINS_TESTS = {
-    "great-expectations": "tests/unit/great_expectations",
-}
-PLUGINS = list(PLUGINS_TESTS.keys())
-
-
-@nox.session(
-    name="unit-plugins",
-    reuse_venv=False,
-    venv_backend="uv|venv",
-    python=get_python_versions(),
-)
-@nox.parametrize("plugin", PLUGINS)
-def unit_plugins(session, plugin):
-    session.install(".[test-unit]")
-    session.install(f".[{plugin}]")
-    # Assuming the plugin has its own tests in a specific directory
-    session.run("pytest", PLUGINS_TESTS[plugin])
 
 
 # ---------------------------------------------------------------------------
@@ -116,7 +94,8 @@ def unit_plugins(session, plugin):
     python=get_python_versions(),
 )
 def static_checks(session):
-    install(session, ".[dev]")
+    install(session, "-e", ".")
+    install_group(session, "dev")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current
@@ -152,9 +131,9 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    install(session, ".[dev]")
-    install(session, ".[all]")
-    install(session, ".[test]")
+    install(session, "-e", ".[all,airflow,great-expectations]")
+    install_group(session, "test")
+    ensure_generated_models(session)
 
     # Separate test paths from pytest flags in posargs
     args = list(session.posargs)
@@ -202,8 +181,9 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    install(session, ".[all]")
-    install(session, ".[test]")
+    install(session, "-e", ".[all,airflow,great-expectations]")
+    install_group(session, "test")
+    ensure_generated_models(session)
 
     args = list(session.posargs)
     standalone = "--standalone" in args

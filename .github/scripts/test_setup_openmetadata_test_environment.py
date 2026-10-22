@@ -28,7 +28,7 @@ def test_full_dependency_install_repairs_and_validates_airflow() -> None:
     assert "from airflow.models import Connection" in install_step
     assert "--no-cache" in install_step
     assert "--reinstall-package apache-airflow-core" in install_step
-    assert install_step.index("ingestion[test]") < install_step.index("from airflow.models import Connection")
+    assert install_step.index("ingestion/pyproject.toml:test") < install_step.index("from airflow.models import Connection")
 
 
 if __name__ == "__main__":

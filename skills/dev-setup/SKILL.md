@@ -35,7 +35,7 @@ Everything is idempotent — re-running skips what is already correct. Useful fl
 | Flag | Effect |
 |---|---|
 | `--check` | Diagnose only, change nothing. Returns nonzero when issues are found. **Always start here** on an existing checkout. |
-| `--slim` | Install `ingestion[dev]` instead of `[all-dev-env]`. Minutes instead of tens of minutes; omits most connector deps. Right choice unless the work touches a specific connector. |
+| `--slim` | Install the `dev` dependency group instead of the full test environment. Minutes instead of tens of minutes; omits most connector deps. Right choice unless the work touches a specific connector. |
 | `-y` | Non-interactive (assumes yes for Homebrew/nvm/Docker prompts). |
 | `--with-build` | Also runs `mvn clean install -DskipTests -T 1C`. |
 | `--with-docker` | Also starts `docker/development/docker-compose.yml`. |
@@ -57,7 +57,7 @@ reports as already present.
 ### Step 2 — Choose the depth
 
 - Backend/UI work only, or a new worktree → `./scripts/dev_setup.sh --slim -y`
-- Connector or ingestion work → `./scripts/dev_setup.sh -y` (full `[all-dev-env]`)
+- Connector or ingestion work → `./scripts/dev_setup.sh -y` (full test environment)
 - Ask the user before running the full install if they are on a metered/slow link — it
   downloads every connector's dependencies.
 
@@ -92,7 +92,7 @@ cd openmetadata-ui/src/main/resources/ui && yarn tsc --noEmit --version  # UI de
    (libffi, openssl, sasl/gssapi, krb5, libpq, librdkafka, unixodbc, libxml2/xslt).
 3. Ensures Java 21, Maven ≥ 3.6, Node 22, Yarn 1.x, Python ≥ 3.10, ANTLR 4.9.2, Docker.
 4. Creates `env/`, then runs the CLAUDE.md bootstrap sequence:
-   `make install_dev_env` → `make generate` → `make yarn_install_cache` →
+   `make install_test` → `make generate` → `make yarn_install_cache` →
    `make install_test precommit_install` → `make prerequisites`.
 5. Writes `.dev-env.local.sh` and, when mise is active, a gitignored `.mise.local.toml` so mise's
    shell hook does not restore incompatible global Java/Node versions.
