@@ -3,3 +3,4 @@
 -- skips SQL statements it has already recorded on a retry, so a SET/PREPARE/EXECUTE guard whose
 -- EXECUTE failed or was interrupted could never succeed again. The Java step checks
 -- information_schema before each DDL and is rerun until it completes.
+-- See ADR:2026-10-22-guarded-mysql-ddl-runs-from-a-java-data-migration.

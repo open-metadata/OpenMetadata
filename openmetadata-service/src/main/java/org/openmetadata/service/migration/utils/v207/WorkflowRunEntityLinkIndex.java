@@ -19,11 +19,9 @@ import org.jdbi.v3.core.Handle;
  * Adds the MySQL half of idx_wf_instance_entity_link: the entityLinkHash VIRTUAL column and the
  * index over it. The PostgreSQL half is an expression index in 2.0.7/postgres/schemaChanges.sql.
  *
- * <p>This runs from Java rather than as SET/PREPARE/EXECUTE in schemaChanges.sql because the
- * migration runner records each SQL statement once it succeeds and skips it on a retry: an EXECUTE
- * that failed or was interrupted would rerun in a fresh session without its PREPARE and fail on
- * every retry. Each step here checks information_schema first, so a rerun carries on from wherever
- * the previous attempt stopped. See ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+ * <p>This runs from Java rather than as SET/PREPARE/EXECUTE in schemaChanges.sql, per
+ * ADR:2026-10-22-guarded-mysql-ddl-runs-from-a-java-data-migration: each step checks
+ * information_schema first, so a rerun carries on from wherever the previous attempt stopped.
  */
 public final class WorkflowRunEntityLinkIndex {
 
