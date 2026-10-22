@@ -91,6 +91,9 @@ DATA360_TABLE_TYPE_MAP = {
     MetadataTypesConstant.CALCULATED_INSIGHT: TableType.View,
 }
 
+# Data 360 reports date-time fields as DATE_TIME, which ColumnTypeParser does not know (UNKNOWN).
+DATA360_COLUMN_TYPE_MAP = {"DATE_TIME": "DATETIME"}
+
 
 class Data360Source(DatabaseServiceSource):
     """
@@ -384,7 +387,11 @@ class Data360Source(DatabaseServiceSource):
                 Column(
                     name=ColumnName(column[ResponseConstant.NAME]),
                     displayName=column[ResponseConstant.DISPLAY_NAME],
-                    dataType=DataType(ColumnTypeParser.get_column_type(column[ResponseConstant.TYPE])),
+                    dataType=DataType(
+                        ColumnTypeParser.get_column_type(
+                            DATA360_COLUMN_TYPE_MAP.get(column[ResponseConstant.TYPE], column[ResponseConstant.TYPE])
+                        )
+                    ),
                     tags=self.get_column_tag_labels(table_name, column),
                     dataTypeDisplay=column[ResponseConstant.BUSINESS_TYPE],
                     ordinalPosition=ordinal,
