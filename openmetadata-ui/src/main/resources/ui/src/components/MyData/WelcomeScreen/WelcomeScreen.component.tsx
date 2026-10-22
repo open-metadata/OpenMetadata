@@ -111,15 +111,27 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
         />
         <Box align="center" direction="col" gap={10}>
           <Box align="center" direction="col" gap={3}>
+            {/* not-prose: Typography wraps p/h1 in .prose, whose heading rules
+                override the weight and margins set here. */}
             <div className="tw:text-primary">
-              <p className="tw:m-0 tw:text-display-xs tw:leading-12.5 tw:font-medium">{`${greeting} 👋`}</p>
-              <h1 className="tw:m-0 tw:mt-5 tw:text-display-sm tw:font-normal tw:text-primary">
+              <Typography
+                as="p"
+                className="not-prose tw:m-0 tw:leading-12.5"
+                size="display-xs"
+                weight="medium">
+                {`${greeting} 👋`}
+              </Typography>
+              <Typography
+                as="h1"
+                className="not-prose tw:m-0 tw:mt-5 tw:text-primary"
+                size="display-sm"
+                weight="regular">
                 <Transi18next
                   i18nKey="message.your-platform-is-ready"
                   renderElement={<span />}
                   values={{ platform: brandClassBase.getPlatformName() }}
                 />
-              </h1>
+              </Typography>
             </div>
             <Typography as="p" className="tw:text-tertiary" size="text-md">
               {t('message.welcome-screen-message')}
