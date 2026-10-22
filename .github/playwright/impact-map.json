@@ -1119,9 +1119,10 @@
       ]
     },
     {
-      "_comment": "The AI-mode test case detail page header, including the Deleted badge. TestCaseSoftDeleteRestore is the only spec asserting the badge, and the generated map does not reach it from this file.",
+      "_comment": "The test case detail page header and its Deleted badge (Classic and AI mode). TestCaseSoftDeleteRestore is the only spec asserting the badge, and the generated map skips the deleted-badge test id (too many owners).",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail*",
+        "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/IncidentManagerDetailPage/TestCaseHeaderTitle.component*"
       ],
       "projects": ["chromium"],
       "specs": [
