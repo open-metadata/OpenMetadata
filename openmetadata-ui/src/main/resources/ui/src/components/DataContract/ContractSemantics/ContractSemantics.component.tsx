@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   MinusCircle,
@@ -98,7 +98,10 @@ const ContractSemantics: React.FC<{
         })}
       </div>
       {contractStatus && (
-        <div className="contract-status-container">
+        <Box
+          align="center"
+          className="contract-status-container tw:self-start"
+          gap={3}>
           <Typography className="contract-status-label">{`${t(
             'label.entity-status',
             {
@@ -110,7 +113,7 @@ const ContractSemantics: React.FC<{
             label={contractStatus}
             status={getContractStatusType(contractStatus)}
           />
-        </div>
+        </Box>
       )}
     </div>
   );
