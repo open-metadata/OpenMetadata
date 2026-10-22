@@ -20,6 +20,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -230,10 +231,14 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(1000) final int limit,
-      @QueryParam("after") final String after) {
+      @QueryParam("after") final String after,
+      @QueryParam("groupBy")
+          @Pattern(regexp = "concept", message = "Invalid groupBy. Allowed value: concept.")
+          final String groupBy) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
-    final var releases =
-        (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
+    final var comparison =
+        new OntologyReleaseComparison(
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
     final Consumer<List<? extends OntologyDefinition>> authorize =
         definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
     return releaseCapture
@@ -242,8 +247,9 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
             id,
             authorize,
             working ->
-                new OntologyReleaseComparison(releases)
-                    .compareWorking(working, limit, after, authorize));
+                groupBy == null
+                    ? comparison.compareWorking(working, limit, after, authorize)
+                    : comparison.compareWorkingByConcept(working, limit, after, authorize));
   }
 
   @POST

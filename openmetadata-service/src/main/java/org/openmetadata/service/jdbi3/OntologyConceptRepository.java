@@ -45,6 +45,12 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (entity.getConceptType() == null) {
       throw new BadRequestException("Ontology concept type is required");
     }
+    if (entity.getDefinitionSource() != null) {
+      requireAbsoluteIri(entity.getDefinitionSource(), "definitionSource");
+    }
+    if (entity.getReplacedBy() != null) {
+      requireAbsoluteIri(entity.getReplacedBy(), "replacedBy");
+    }
     entity.withSuperClasses(null).withSubClasses(null);
   }
 
