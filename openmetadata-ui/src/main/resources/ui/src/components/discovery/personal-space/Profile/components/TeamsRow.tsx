@@ -13,7 +13,7 @@
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { uniqBy } from 'lodash';
+import { isEmpty, uniqBy, xor } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../../generated/entity/teams/teamHierarchy';
@@ -26,7 +26,6 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 interface TeamOption {
   id: string;
@@ -43,13 +42,22 @@ const flattenTeams = (nodes: TeamHierarchy[]): TeamOption[] =>
 interface TeamsRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
 }
 
-const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
+const TeamsRow: React.FC<TeamsRowProps> = ({
+  userData,
+  updateUserDetails,
+  canEdit: canEditProp,
+  description,
+}) => {
   const { t } = useTranslation();
   const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
   const initialTeams = useMemo(
     () => getNonDeletedTeams(userData.teams ?? []),
@@ -62,13 +70,16 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
   const [draftTeamIds, setDraftTeamIds] = useState<string[]>(initialTeamIds);
   const [teamOptions, setTeamOptions] = useState<TeamOption[]>([]);
 
-  // The joinable-teams list only feeds the edit dropdown; fetch it lazily when
-  // the row enters edit mode rather than on every Permissions page load.
+  // The teams list only feeds the edit dropdown; fetch it lazily when the row
+  // enters edit mode rather than on every Permissions page load. Admins may add
+  // users to closed teams (the server allows it), so they get every team;
+  // everyone else only the joinable ones. Keyed on admin, not `canEdit`: a
+  // non-admin with EditAll on the user still can't add them to a closed team.
   const loadTeams = useCallback(() => {
-    getTeamsHierarchy(true)
+    getTeamsHierarchy(!isAdminUser)
       .then((res) => setTeamOptions(flattenTeams(res.data ?? [])))
       .catch((err) => showErrorToast(err as AxiosError));
-  }, []);
+  }, [isAdminUser]);
 
   // Merge fetched joinable teams with the user's current teams so a team not in
   // the joinable list is still shown and not silently dropped on save.
@@ -125,10 +136,14 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={copy(
-        'message.team-member-description',
-        'message.team-member-description-of-user'
-      )}
+      description={
+        description ??
+        copy(
+          'message.team-member-description',
+          'message.team-member-description-of-user'
+        )
+      }
+      isSaveDisabled={isEmpty(xor(draftTeamIds, initialTeamIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete
@@ -139,14 +154,6 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
           placeholder={t('label.select-entity', {
             entity: t('label.team-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`teams-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
           selectedItems={selectedItems}
           onItemCleared={handleItemCleared}
           onItemInserted={handleItemInserted}>

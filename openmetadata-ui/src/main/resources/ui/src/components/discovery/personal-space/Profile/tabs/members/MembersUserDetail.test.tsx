@@ -19,11 +19,13 @@ import type { MembersUserDetailView, MembersView } from './Members.types';
 import MembersUserDetail from './MembersUserDetail';
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 const mockRestoreUser = jest.fn();
 const mockSetHash = jest.fn();
 const mockGetTaskById = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   restoreUser: (...a: unknown[]) => mockRestoreUser(...a),
   updateUserDetail: jest.fn(),
@@ -284,7 +286,7 @@ describe('MembersUserDetail', () => {
 
   it('shows a non-admin their own Access tab', async () => {
     mockIsAdmin = false;
-    mockGetUserByName.mockResolvedValue({ ...ALICE, name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ ...ALICE, name: 'harsh' });
     renderDetail({ name: 'harsh', tab: 'access' });
 
     expect(await screen.findByTestId('tab-access')).toBeInTheDocument();
@@ -301,11 +303,13 @@ describe('MembersUserDetail', () => {
   });
 
   it('lets an admin delete their own entry (legacy parity)', async () => {
-    mockGetUserByName.mockResolvedValue({ ...ALICE, name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ ...ALICE, name: 'harsh' });
     renderDetail({ name: 'harsh' });
 
     expect(await screen.findByTestId('tab-overview')).toBeInTheDocument();
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.anything());
+    // Your own entry loads unmasked through the logged-in user endpoint.
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
     expect(screen.getByTestId('user-detail-delete-button')).toBeInTheDocument();
   });
 

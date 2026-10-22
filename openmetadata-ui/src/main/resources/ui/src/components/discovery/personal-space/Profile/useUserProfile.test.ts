@@ -15,11 +15,13 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { useProfileCopy, useUserProfile } from './useUserProfile';
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 const mockUpdateUserDetail = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockUpdateCurrentUser = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   updateUserDetail: (...a: unknown[]) => mockUpdateUserDetail(...a),
 }));
@@ -71,8 +73,12 @@ describe('useUserProfile', () => {
     });
   });
 
-  it('seeds your own profile from the store and keeps your isAdmin', async () => {
-    mockGetUserByName.mockResolvedValue({ id: 'me', name: 'harsh' });
+  it('seeds your own profile from the store, loads it unmasked and keeps your isAdmin', async () => {
+    mockGetLoggedInUser.mockResolvedValue({
+      id: 'me',
+      name: 'harsh',
+      email: 'harsh@acme.io',
+    });
 
     const { result } = renderHook(() => useUserProfile('harsh'));
 
@@ -80,7 +86,53 @@ describe('useUserProfile', () => {
 
     await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
 
-    expect(result.current.userData?.isAdmin).toBe(true);
+    // `/users/name/<you>` masks your email for non-admins; loggedInUser does not.
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
+    expect(result.current.userData).toEqual(
+      expect.objectContaining({ email: 'harsh@acme.io', isAdmin: true })
+    );
+  });
+
+  it('keeps both fields when two saves overlap', async () => {
+    mockGetUserByName.mockResolvedValue({
+      id: 'u2',
+      name: 'jane',
+      isAdmin: false,
+      description: '',
+    });
+    let resolveAdmin!: (value: unknown) => void;
+    mockUpdateUserDetail
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveAdmin = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ id: 'u2', name: 'jane', description: 'Hi' });
+
+    const { result } = renderHook(() => useUserProfile('jane'));
+    await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
+
+    let adminSave!: Promise<boolean>;
+    await act(async () => {
+      adminSave = result.current.updateUserDetails(
+        { isAdmin: true },
+        'isAdmin'
+      );
+      await result.current.updateUserDetails(
+        { description: 'Hi' },
+        'description'
+      );
+    });
+    await act(async () => {
+      resolveAdmin({ id: 'u2', name: 'jane', isAdmin: true });
+      await adminSave;
+    });
+
+    expect(result.current.userData).toEqual(
+      expect.objectContaining({ isAdmin: true, description: 'Hi' })
+    );
   });
 
   it('flags a 404 as not found instead of toasting', async () => {

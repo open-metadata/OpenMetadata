@@ -144,7 +144,6 @@ jest.mock('./MembersCreateUserForm', () => () => (
 jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="online-users" />
 ));
-
 import MembersPanel from './MembersPanel';
 
 // useSettingsHash reads the hash from `window.location` (seeded on mount, then
@@ -193,6 +192,31 @@ describe('MembersPanel', () => {
         expect.objectContaining({ title: 'Engineering Team' })
       )
     );
+  });
+});
+
+describe('MembersPanel legacy user links', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+  });
+
+  it("opens #members/user/<name> as that user's detail overview", async () => {
+    globalThis.location.hash = `#members/user/${encodeURIComponent(
+      'jane@acme.io'
+    )}`;
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={jest.fn()} />
+        </MemoryRouter>
+      );
+    });
+
+    const detail = screen.getByTestId('user-detail');
+
+    expect(detail).toHaveAttribute('data-name', 'jane@acme.io');
+    expect(detail).toHaveAttribute('data-tab', 'overview');
   });
 });
 

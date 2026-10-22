@@ -13,7 +13,7 @@
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce, uniqBy } from 'lodash';
+import { debounce, isEmpty, uniqBy, xor } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -30,27 +30,39 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 interface RolesRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
+  // Offer Admin as an editable pseudo-role; off where a dedicated admin toggle
+  // exists. The Admin chip in the view shows either way.
+  showAdminRole?: boolean;
 }
 
-const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
+const RolesRow: React.FC<RolesRowProps> = ({
+  userData,
+  updateUserDetails,
+  canEdit: canEditProp,
+  description,
+  showAdminRole = true,
+}) => {
   const { t } = useTranslation();
   const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
   const initialRoleIds = useMemo(() => {
     const ids = (userData.roles ?? []).map((r) => r.id);
-    if (userData.isAdmin) {
+    if (showAdminRole && userData.isAdmin) {
       ids.push(TERM_ADMIN);
     }
 
     return ids;
-  }, [userData.roles, userData.isAdmin]);
+  }, [userData.roles, userData.isAdmin, showAdminRole]);
 
   const [draftRoleIds, setDraftRoleIds] = useState<string[]>(initialRoleIds);
   const [roleOptions, setRoleOptions] = useState<Role[]>([]);
@@ -77,12 +89,13 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
       id: r.id,
       label: getEntityName(r),
     }));
-    const adminOption = isAdminUser
-      ? [{ id: TERM_ADMIN, label: t('label.admin') }]
-      : [];
+    const adminOption =
+      isAdminUser && showAdminRole
+        ? [{ id: TERM_ADMIN, label: t('label.admin') }]
+        : [];
 
     return uniqBy([...adminOption, ...existing, ...fetched], 'id');
-  }, [roleOptions, userData.roles, isAdminUser, t]);
+  }, [roleOptions, userData.roles, isAdminUser, showAdminRole, t]);
 
   const selectedItems = useMemo(
     () => options.filter((o) => draftRoleIds.includes(o.id)),
@@ -94,7 +107,9 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
   }, []);
 
   const handleSave = async () => {
-    const isAdmin = draftRoleIds.includes(TERM_ADMIN);
+    const isAdmin = showAdminRole
+      ? draftRoleIds.includes(TERM_ADMIN)
+      : userData.isAdmin;
     const currentRoles = userData.roles ?? [];
     const draftRoleIdSet = new Set(draftRoleIds);
     const currentRoleIdSet = new Set(currentRoles.map((role) => role.id));
@@ -130,10 +145,14 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={copy(
-        'message.role-granting-description',
-        'message.role-granting-description-of-user'
-      )}
+      description={
+        description ??
+        copy(
+          'message.role-granting-description',
+          'message.role-granting-description-of-user'
+        )
+      }
+      isSaveDisabled={isEmpty(xor(draftRoleIds, initialRoleIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete
@@ -145,14 +164,6 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
           placeholder={t('label.select-entity', {
             entity: t('label.role-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`roles-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
           selectedItems={selectedItems}
           onItemCleared={handleRoleCleared}
           onItemInserted={(key) =>

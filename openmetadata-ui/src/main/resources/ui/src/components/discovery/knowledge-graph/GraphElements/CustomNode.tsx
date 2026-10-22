@@ -12,7 +12,12 @@
  */
 
 import type { NodeData } from '@antv/g6';
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   BookClosed,
   CheckCircle,
@@ -42,6 +47,7 @@ import {
 import { GraphNodePresentation } from '../KnowledgeGraph.interface';
 import { normalizeRelationKey } from '../KnowledgeGraph.relations';
 import './custom-node.less';
+import MemberVisual from './MemberVisual';
 
 export type { CustomNodeProps };
 
@@ -123,17 +129,32 @@ function CustomNode({
     return key ? t(key) : getPluralizeEntityName(getSharedMemberType(bundled));
   };
   const label = members ? groupLabel(members) : rawLabel;
+  // Design: the subject card carries a soft brand halo so it reads as the
+  // centre of the graph at any zoom; a highlighted path drops it for emphasis.
+  const getNodeShadow = () => {
+    if (data.highlighted) {
+      return 'tw:shadow-md';
+    }
+    if (isRoot) {
+      return 'tw:shadow-md tw:outline-4 tw:outline-utility-brand-100';
+    }
+
+    return members ? 'tw:shadow-sm' : 'tw:shadow-xs';
+  };
 
   return (
-    <Box
-      className={classNames('knowledge-graph-custom-node', {
-        highlighted: data.highlighted,
-        dimmed: data.dimmed,
-        'kg-node-root': isRoot,
-        'kg-node-group': members,
-        'kg-node-gap': presentation?.coverage === 'unmapped',
-      })}
-      direction="col">
+    <div
+      className={classNames(
+        'knowledge-graph-custom-node tw:flex tw:flex-col',
+        getNodeShadow(),
+        {
+          highlighted: data.highlighted,
+          dimmed: data.dimmed,
+          'kg-node-root': isRoot,
+          'kg-node-group': members,
+          'kg-node-gap': presentation?.coverage === 'unmapped',
+        }
+      )}>
       <Button
         noTextPadding
         aria-label={t('label.kg-node-description', {
@@ -153,7 +174,10 @@ function CustomNode({
         <Box align="center" className="tw:w-full tw:min-w-0" gap={2}>
           <Box
             align="center"
-            className="node-icon tw:rounded-md"
+            className={classNames(
+              'tw:shrink-0 tw:rounded-md tw:text-tertiary',
+              isRoot ? 'tw:size-8' : 'tw:size-7'
+            )}
             justify="center"
             style={{
               color,
@@ -185,25 +209,25 @@ function CustomNode({
             </Typography>
           </Box>
           {members && (
-            <span
-              className="kg-node-count tw:rounded-full tw:border tw:px-1.5"
-              style={{
-                color,
-                backgroundColor: data.colorLight as string | undefined,
-                borderColor: color,
-              }}>
-              {members.length}
-            </span>
+            <Avatar
+              className="tw:shrink-0"
+              colorVariant="neutral"
+              data-testid="kg-node-member-count"
+              initials={String(members.length)}
+              size="xs"
+            />
           )}
         </Box>
       </Button>
       {mapped && (
         <Box
           align="center"
-          className="kg-node-note tw:px-3 tw:pb-2 tw:text-success-primary"
+          className="tw:px-3 tw:pb-2 tw:text-success-primary"
           gap={1}>
           <CheckCircle aria-hidden="true" size={12} />
-          <span>{t('label.kg-mapped-to-ontology')}</span>
+          <Typography color="success" size="text-xs" weight="semibold">
+            {t('label.kg-mapped-to-ontology')}
+          </Typography>
         </Box>
       )}
       {members && (
@@ -211,11 +235,33 @@ function CustomNode({
           className="tw:mx-3 tw:min-h-0 tw:border-t tw:border-secondary tw:pt-1"
           direction="col"
           gap={0}>
-          {members.slice(0, 3).map((member) => (
-            <span className="kg-node-member tw:truncate" key={member.id}>
-              {getGraphNodeLabel(member)}
-            </span>
-          ))}
+          {members.slice(0, 3).map((member) => {
+            const MemberIcon = getNodeIcon(member.type);
+
+            return (
+              <Box
+                align="center"
+                className="tw:min-w-0"
+                gap={2}
+                key={member.id}>
+                <MemberVisual
+                  icon={
+                    <MemberIcon
+                      aria-hidden="true"
+                      className="tw:shrink-0 tw:text-fg-quaternary"
+                      size={12}
+                    />
+                  }
+                  member={member}
+                />
+                <Typography
+                  className="tw:min-w-0 tw:truncate tw:text-secondary"
+                  size="text-xs">
+                  {getGraphNodeLabel(member)}
+                </Typography>
+              </Box>
+            );
+          })}
           <Box align="center" className="tw:mt-1" justify="between">
             <Button
               aria-expanded={Boolean(presentation.expanded)}
@@ -230,14 +276,17 @@ function CustomNode({
               )}
             </Button>
             {members.length > 3 && (
-              <span className="kg-node-more">
+              <Typography
+                className="tw:text-quaternary"
+                size="text-xs"
+                weight="medium">
                 {t('label.kg-more-count', { count: members.length - 3 })}
-              </span>
+              </Typography>
             )}
           </Box>
         </Box>
       )}
-    </Box>
+    </div>
   );
 }
 

@@ -20,13 +20,14 @@ import {
   navigateToMembersPanel,
   openAdminsPanel,
   openAiProfile,
-  openUserProfile,
+  openUserDetailView,
   openUsersPanel,
   searchUserRow,
   waitForUserPatch,
 } from '../../../utils/aiProfile';
 import { chooseSelectOption, uuid } from '../../../utils/common';
 import { performUserLogin } from '../../../utils/user';
+import { getDomainNode } from '../../../utils/domainPicker';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -46,7 +47,6 @@ const trackUser = (
   apiContext: Parameters<UserClass['create']>[0]
 ): Promise<UserClass> => createTrackedUser(apiContext, createdUsers);
 
-/** Open a user's profile view (#profile/<name>) from the Users list. */
 test.describe('AI Profile Users', () => {
   test.beforeAll(async ({ browser }) => {
     createdUsers = [];
@@ -246,11 +246,11 @@ test.describe('AI Profile Users', () => {
     }
   });
 
-  test('Should add a persona on a user profile', async ({ browser, page }) => {
+  test("Should add a persona on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserDetailView(page, user.responseData.name);
 
     await page.getByTestId('persona-edit').click();
     await chooseSelectOption(
@@ -270,29 +270,29 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should assign a domain on a user profile', async ({
-    browser,
-    page,
-  }) => {
+  test("Should assign a domain on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserDetailView(page, user.responseData.name);
 
     await page.getByTestId('domains-edit').click();
-    // The fixture may be outside the first page of domains. The selection helper
-    // also reopens the popup if scrolling the profile panel dismisses it.
-    await page
+    // The row uses the shared DomainSelect tree picker; searching keeps the
+    // fixture reachable even when it is outside the first page of domains.
+    const domainInput = page
       .getByTestId('domains-multiselect')
-      .getByRole('combobox')
-      .fill(domain.responseData.displayName);
-    await chooseSelectOption(
-      page.getByTestId('domains-multiselect'),
-      page.getByRole('option', {
-        name: domain.responseData.displayName,
-        exact: true,
-      })
-    );
+      .getByRole('combobox');
+    await domainInput.click();
+    await domainInput.fill(domain.responseData.displayName);
+    const domainNode = getDomainNode(page, {
+      name: domain.responseData.name,
+      fullyQualifiedName: domain.responseData.fullyQualifiedName,
+    });
+    await expect(domainNode).toBeVisible();
+    await domainNode.click();
+    // Multi-select commits each toggle immediately; close the tree before Save.
+    await page.keyboard.press('Escape');
+    await expect(domainNode).toBeHidden();
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('domains-save').click();
@@ -314,6 +314,8 @@ test.describe('AI Profile Users', () => {
     await expect(
       dataConsumerPage.getByTestId('profile-details-panel')
     ).toBeVisible();
+    // The Profile tab is always the logged-in user, so its hash carries no name.
+    expect(new URL(dataConsumerPage.url()).hash).toBe('#profile');
 
     await expect(
       dataConsumerPage.getByTestId('preferred-name-edit')

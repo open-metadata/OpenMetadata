@@ -21,6 +21,7 @@ import {
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty, xor } from 'lodash';
 import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -48,6 +49,44 @@ export const toDomainArray = (
   }
 
   return next ? [next] : [];
+};
+
+// Team-inherited domains aren't the user's to edit: they stay out of the
+// picker and go back to the server untouched (an `{ id, type }` rebuild would
+// drop `inherited` and turn them into direct assignments).
+export const getDirectDomains = (domains?: EntityReference[]) =>
+  (domains ?? []).filter((domain) => !domain.inherited);
+
+// Whether `directIds` differs from the user's directly assigned domains.
+export const hasDirectDomainChanges = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+) =>
+  !isEmpty(
+    xor(
+      directIds,
+      getDirectDomains(current).map((domain) => domain.id)
+    )
+  );
+
+// The stored domain list with its direct part replaced by `directIds`;
+// unchanged when the direct ids are the same.
+export const mergeDomainEdits = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+): EntityReference[] | undefined => {
+  if (!hasDirectDomainChanges(current, directIds)) {
+    return current;
+  }
+  const direct = getDirectDomains(current);
+
+  return [
+    ...(current ?? []).filter((domain) => domain.inherited),
+    ...directIds.map(
+      (id) =>
+        direct.find((domain) => domain.id === id) ?? { id, type: 'domain' }
+    ),
+  ];
 };
 
 // Flatten the full team hierarchy (not just direct children) so nested teams —
@@ -104,6 +143,8 @@ const { TEAMS, USERS, ADMINS, ONLINE_USERS } = GlobalSettingOptions;
 const ADD = 'add';
 const CREATE = 'create';
 const USER_CREATE = 'user-create';
+// Singular segment so a user named `create` can't collide with `users/create`.
+const USER = 'user';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
 // View-type discriminants reused across the route parser and the header maps;
@@ -175,17 +216,11 @@ function parseSectionSubPath(parts: string[]): MembersView {
 
 // `users/<name>[/<tab>[/<taskId>]]`. An unknown tab segment falls back to
 // overview, and a task id is only honoured under the tasks tab.
-// ponytail: a user literally named `create` routes to the create-user form.
-function parseUsersSubPath(parts: string[]): MembersView {
-  const [, name, tabPart, taskId] = parts;
-
-  if (!name) {
-    return { type: 'users' };
-  }
-  if (name === CREATE) {
-    return { type: USER_CREATE, isAdmin: false };
-  }
-
+function parseUserDetailSubPath(
+  name: string,
+  tabPart?: string,
+  taskId?: string
+): MembersView {
   const tab = USER_DETAIL_TABS.find((item) => item === tabPart) ?? 'overview';
 
   return {
@@ -196,6 +231,28 @@ function parseUsersSubPath(parts: string[]): MembersView {
       ? { taskId: safeDecodeURIComponent(taskId) }
       : {}),
   };
+}
+
+// `users[/create]`, `users/<name>/…`, `admins[/create]`, and the older
+// `user/<name>` links, which open that user's overview. `user/create` is also
+// the only way to reach a user literally named `create`.
+function parseUsersSubPath(parts: string[]): MembersView {
+  const [root, next, ...rest] = parts;
+  if (root === ADMINS) {
+    return next === CREATE
+      ? { type: USER_CREATE, isAdmin: true }
+      : { type: 'admins' };
+  }
+  if (!next) {
+    return { type: 'users' };
+  }
+  if (root === USER) {
+    return parseUserDetailSubPath(parts.slice(1).join('/'));
+  }
+
+  return next === CREATE
+    ? { type: USER_CREATE, isAdmin: false }
+    : parseUserDetailSubPath(next, rest[0], rest[1]);
 }
 
 export function hashSubPathToView(subPath: string): MembersView {
@@ -209,11 +266,9 @@ export function hashSubPathToView(subPath: string): MembersView {
     case TEAMS:
       return parseTeamsSubPath(parts);
     case USERS:
-      return parseUsersSubPath(parts);
     case ADMINS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: true }
-        : { type: 'admins' };
+    case USER:
+      return parseUsersSubPath(parts);
     case ONLINE_USERS:
       return { type: 'online-users' };
     case SECTION:
@@ -410,6 +465,11 @@ export const USER_DETAIL_BACK_TO_USERS = new Set<Key>([
   'users',
 ]);
 
+// The fetched display name wins once known; until then the sub-path's raw FQN
+// stands in.
+const getTeamDetailName = (view: MembersView, resolvedName: string) =>
+  view.type === TEAM_DETAIL ? resolvedName || view.name : '';
+
 export const makeBreadcrumbAction =
   (onNavigate: (view: MembersView) => void, view?: MembersView) =>
   (id: Key) => {
@@ -466,7 +526,9 @@ const userDetailCrumbs = (
 export const buildMembersHeaderMaps = (
   view: MembersView,
   t: (key: string, opts?: Record<string, unknown>) => string,
-  resolvedTeamName: string,
+  // Display name a detail view resolved after fetching (team or user); the
+  // sub-path alone only carries the FQN / username.
+  resolvedName: string,
   // A contributed section supplies its own label/description/icon (there is no
   // settings-menu entry to borrow them from), so the panel passes them in.
   section?: {
@@ -487,8 +549,7 @@ export const buildMembersHeaderMaps = (
   const importLabel = t('label.import-entity', {
     entity: importIsUser ? t('label.user') : t('label.team'),
   });
-  const teamName =
-    view.type === TEAM_DETAIL ? resolvedTeamName || view.name : '';
+  const teamName = getTeamDetailName(view, resolvedName);
 
   const settingsItem: BreadcrumbItemType = {
     id: 'settings',

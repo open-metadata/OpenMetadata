@@ -87,6 +87,7 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
         'message.default-persona-description',
         'message.default-persona-description-of-user'
       )}
+      isSaveDisabled={draftDefaultId === userData.defaultPersona?.id}
       renderEdit={() => (
         <Autocomplete
           aria-label={t('label.default-persona')}

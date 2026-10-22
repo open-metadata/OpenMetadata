@@ -45,6 +45,8 @@ interface InlineEditCardProps {
    * (e.g. "Admin-managed"). Omit to leave the row silently read-only.
    */
   lockedLabel?: string;
+  // Disables Save, e.g. while the draft still equals the saved value.
+  isSaveDisabled?: boolean;
 }
 
 // Reserve space on the right so the value never sits under the pencil
@@ -78,6 +80,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
   renderEdit,
   testId,
   lockedLabel,
+  isSaveDisabled,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -164,6 +167,7 @@ const InlineEditCard: React.FC<InlineEditCardProps> = ({
           <Button
             color="primary"
             data-testid={subTestId('save')}
+            isDisabled={isSaveDisabled}
             isLoading={isSaving}
             size="sm"
             onClick={save}>

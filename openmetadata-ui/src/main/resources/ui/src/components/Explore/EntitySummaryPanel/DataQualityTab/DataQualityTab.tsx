@@ -25,7 +25,6 @@ import { startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TestCaseType } from '../../../../enums/TestSuite.enum';
@@ -666,7 +665,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={t('message.no-data-quality-test-message')}
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
           />
         </div>
       );
@@ -721,8 +719,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              description={t('message.no-data-quality-test-message')}
-              icon={<AddPlaceHolderIcon height={100} width={100} />}
+              description={t('message.no-incident-found')}
             />
           </div>
         </div>

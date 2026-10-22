@@ -14,12 +14,10 @@
 import {
   BadgeWithIcon,
   Box,
-  Input,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Check } from '@openmetadata/ui-core-components/icons';
-import startCase from 'lodash/startCase';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import { User } from '../../../../generated/entity/teams/user';
@@ -30,8 +28,8 @@ import { isMaskedEmail } from '../../../../utils/UsersPureUtils';
 import ChangePasswordRow from './components/ChangePasswordRow';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';
-import InlineEditCard from './components/InlineEditCard';
 import PersonaRow from './components/PersonaRow';
+import PreferredNameRow from './components/PreferredNameRow';
 import RowSkeleton from './components/RowSkeleton';
 import SettingsSection, { ReadOnlyRow } from './components/SettingsSection';
 import UserCustomPropertiesSection from './customProperties/UserCustomPropertiesSection';
@@ -45,52 +43,6 @@ interface ProfileDetailsPanelProps {
   /** Only your own Profile tab lists custom properties; the user detail has a tab. */
   showCustomProperties?: boolean;
 }
-
-interface PreferredNameRowProps {
-  userData: User;
-  canEdit: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
-}
-
-const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
-  userData,
-  canEdit,
-  updateUserDetails,
-}) => {
-  const { t } = useTranslation();
-  const copy = useProfileCopy(userData);
-  const displayName = getEntityName(userData);
-  const [draft, setDraft] = useState(displayName);
-
-  return (
-    <InlineEditCard
-      canEdit={canEdit}
-      description={copy(
-        'message.preferred-name-description',
-        'message.preferred-name-description-of-user'
-      )}
-      renderEdit={() => (
-        <Input
-          data-testid="preferred-name-input"
-          size="sm"
-          value={draft}
-          onChange={setDraft}
-        />
-      )}
-      testId="preferred-name"
-      title={t('label.preferred-name')}
-      view={
-        <Typography className="tw:text-primary" size="text-sm" weight="regular">
-          {userData.displayName || startCase(userData.name)}
-        </Typography>
-      }
-      onEnterEdit={() => setDraft(displayName)}
-      onSave={() =>
-        updateUserDetails({ displayName: draft.trim() }, 'displayName')
-      }
-    />
-  );
-};
 
 // Until the full profile lands, userData is the store's copy without
 // `extension`, and a save then would replace every other value.
@@ -153,6 +105,10 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
 
         <PreferredNameRow
           canEdit={canEditName}
+          description={copy(
+            'message.preferred-name-description',
+            'message.preferred-name-description-of-user'
+          )}
           updateUserDetails={updateUserDetails}
           userData={userData}
         />

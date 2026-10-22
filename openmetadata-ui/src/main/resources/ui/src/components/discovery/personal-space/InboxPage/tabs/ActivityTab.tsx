@@ -174,9 +174,7 @@ const ActivityEmptyState = ({
       <NoFilteredResultsPlaceholder
         data-testid="inbox-activity-no-results"
         description={t('message.activity-feed-no-results-description')}
-        icon={
-          <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-        }
+        icon={<FilterFunnel01 className="tw:size-7" />}
         title={t('label.no-activity-in-period')}
       />
     );

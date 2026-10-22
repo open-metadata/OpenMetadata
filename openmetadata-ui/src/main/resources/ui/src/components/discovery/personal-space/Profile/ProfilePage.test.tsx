@@ -30,8 +30,10 @@ jest.mock('hooks/useSettingsHash', () => ({
 }));
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   updateUserDetail: jest.fn(),
 }));
@@ -140,6 +142,7 @@ describe('ProfilePage', () => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
 
@@ -184,16 +187,17 @@ describe('ProfilePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('refreshes user data on mount', async () => {
+  it('refreshes your own data from the logged-in user endpoint, which never masks your email', async () => {
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
   it('shows a toast on a non-404 profile fetch error', async () => {
-    mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
+    mockGetLoggedInUser.mockRejectedValue({ response: { status: 500 } });
 
     await act(async () => {
       render(<ProfilePage />);
@@ -210,8 +214,8 @@ describe('ProfilePage', () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledTimes(1);
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+    expect(mockGetLoggedInUser).toHaveBeenCalledTimes(1);
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
   it('passes the username and logged-in flag to contributed tabs', async () => {
@@ -240,7 +244,7 @@ describe('ProfilePage', () => {
       fireEvent.click(screen.getByTestId('profile-nav-profile'));
     });
 
-    expect(mockSetHash).toHaveBeenCalledWith('profile', 'harsh');
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
   });
 
   it('ignores a click on Profile while already on your own profile', async () => {

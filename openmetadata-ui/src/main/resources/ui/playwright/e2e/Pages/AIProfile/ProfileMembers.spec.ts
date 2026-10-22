@@ -194,9 +194,7 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await afterAction();
   });
 
-  test('Should navigate from team detail to a user profile', async ({
-    page,
-  }) => {
+  test('Should open the user detail from team detail', async ({ page }) => {
     await navigateToMembersPanel(page);
     await openOrganizationTeams(page);
 
@@ -206,14 +204,13 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
     await openTeamByLink(page, team.responseData.name);
     await teamUsersResponse;
 
-    const userResponse = page.waitForResponse((response) =>
-      response
-        .url()
-        .includes(
-          `/api/v1/users/name/${encodeURIComponent(
-            regularUser.responseData.name
-          )}`
-        )
+    // Exact path: a prefix match would also catch `<name>@domain` lookups.
+    const userResponse = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+        `/api/v1/users/name/${encodeURIComponent(
+          regularUser.responseData.name
+        )}`
     );
     await page
       .getByTestId('team-users-table')
@@ -221,10 +218,12 @@ test.describe('AI Profile Members - cross-surface navigation', () => {
       .click();
     await userResponse;
 
-    // The panel renders the displayName via startCase (spaced/capitalised), so
-    // assert on the email, which is shown verbatim and is unique per run.
-    await expect(page.getByTestId('profile-details-panel')).toContainText(
+    // The email is unique per run and shown verbatim in the user's header.
+    await expect(page.getByTestId('profile-content-header')).toContainText(
       regularUser.responseData.email
+    );
+    expect(new URL(page.url()).hash).toBe(
+      `#members/users/${encodeURIComponent(regularUser.responseData.name)}`
     );
   });
 

@@ -136,7 +136,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // The team-detail view's sub-path only carries the FQN; MembersTeamDetail
   // reports the fetched team's display name back here so the header/breadcrumb
   // show it (and update live on rename) instead of the raw FQN.
-  const [resolvedTeamName, setResolvedTeamName] = useState('');
+  const [resolvedName, setResolvedName] = useState('');
   // Header slots owned by the user-detail view (avatar, name, tabs, kebab…),
   // merged over the members header while that view is active.
   const [userDetailHeader, setUserDetailHeader] =
@@ -164,7 +164,9 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
-  const viewFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
+  // Identifies the detail team so switching between two teams also resets the
+  // header slots.
+  const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
 
   useEffect(() => {
     // Header actions are owned by each child panel (set + unmount-cleanup), so
@@ -173,8 +175,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     // same commit (the add-user button vanishing when isAdmin is already loaded).
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
-    setResolvedTeamName('');
-  }, [view.type, viewFqn]);
+    setResolvedName('');
+  }, [view.type, teamFqn]);
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -185,7 +187,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       buildMembersHeaderMaps(
         view,
         t,
-        resolvedTeamName,
+        resolvedName,
         activeSection && {
           title: t(activeSection.titleKey),
           description: activeSection.descriptionKey
@@ -216,7 +218,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     panelHeaderActions,
     detailHeaderTitleInput,
     detailHeaderTitleSuffix,
-    resolvedTeamName,
+    resolvedName,
     activeSection,
     userDetailHeader,
   ]);
@@ -346,7 +348,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
           fqn={view.fqn}
           key={view.fqn}
           onNavigate={onNavigate}
-          onRename={setResolvedTeamName}
+          onRename={setResolvedName}
           onSetHeader={setPanelHeader}
         />
       );

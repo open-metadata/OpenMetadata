@@ -379,6 +379,37 @@ describe('DataQualityTab', () => {
         expect(getListTestCaseIncidentStatus).toHaveBeenCalled();
       });
     });
+
+    it('should show the incidents empty message on the incidents tab', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+
+      getListTestCaseBySearch.mockResolvedValue({ data: [] });
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.no-data-quality-test-message')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole('tab', { name: /label.incident-plural/ })
+      );
+
+      expect(
+        await screen.findByText('message.no-incident-found')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-quality-test-message')
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe('Test Cases Rendering', () => {

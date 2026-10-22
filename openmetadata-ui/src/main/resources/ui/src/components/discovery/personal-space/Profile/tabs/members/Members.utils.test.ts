@@ -20,10 +20,12 @@ import {
   getCsvRowCount,
   getHiddenUserDetailTabs,
   getMembersAccess,
+  hasDirectDomainChanges,
   hashSubPathToView,
   isMembersCardAllowed,
   isMembersViewAllowed,
   makeBreadcrumbAction,
+  mergeDomainEdits,
   profileSubPathToUserView,
   userViewToProfileSubPath,
   viewToSubPath,
@@ -387,5 +389,62 @@ describe('Members access (classic parity)', () => {
     expect(isMembersViewAllowed({ type: 'online-users' }, access)).toBe(false);
     expect(isMembersViewAllowed({ type: 'users' }, access)).toBe(false);
     expect(isMembersViewAllowed({ type: 'landing' }, access)).toBe(true);
+  });
+});
+
+describe('legacy user/<name> links', () => {
+  it('open the user detail overview, decoding the name', () => {
+    expect(
+      hashSubPathToView(`user/${encodeURIComponent('jane.doe@acme.io')}`)
+    ).toEqual({
+      type: 'user-detail',
+      name: 'jane.doe@acme.io',
+      tab: 'overview',
+    });
+  });
+
+  it('reach a user named "create", which users/create cannot', () => {
+    expect(hashSubPathToView('user/create')).toEqual({
+      type: 'user-detail',
+      name: 'create',
+      tab: 'overview',
+    });
+    expect(hashSubPathToView('user')).toEqual({ type: 'users' });
+  });
+});
+
+describe('mergeDomainEdits', () => {
+  const inherited = {
+    id: 'd-team',
+    type: 'domain',
+    name: 'TeamDomain',
+    inherited: true,
+  };
+  const direct = { id: 'd1', type: 'domain', name: 'Sales' };
+
+  it('returns the stored list unchanged when the direct ids are the same', () => {
+    const current = [inherited, direct];
+
+    expect(mergeDomainEdits(current, ['d1'])).toBe(current);
+  });
+
+  it('replaces only the direct domains and keeps inherited refs untouched', () => {
+    expect(mergeDomainEdits([inherited, direct], ['d2'])).toEqual([
+      inherited,
+      { id: 'd2', type: 'domain' },
+    ]);
+  });
+
+  describe('hasDirectDomainChanges', () => {
+    const current = [
+      { id: 'd-team', type: 'domain', inherited: true },
+      { id: 'd1', type: 'domain' },
+    ];
+
+    it('compares only the direct domains, by id', () => {
+      expect(hasDirectDomainChanges(current, ['d1'])).toBe(false);
+      expect(hasDirectDomainChanges(current, [])).toBe(true);
+      expect(hasDirectDomainChanges(current, ['d1', 'd2'])).toBe(true);
+    });
   });
 });

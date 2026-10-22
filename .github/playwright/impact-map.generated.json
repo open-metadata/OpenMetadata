@@ -72,6 +72,7 @@
         "playwright/e2e/Features/ContextCenterDocument.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts",
+        "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterSoftDelete.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseStatusAfterReindex.spec.ts",
@@ -4106,6 +4107,7 @@
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
         "playwright/e2e/Pages/EntityDomainPropagation.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts"
@@ -4490,6 +4492,7 @@
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterNestedTerms.spec.ts",
@@ -8005,6 +8008,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/HomeLandingPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPage.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Features/WelcomeScreen.spec.ts"
@@ -10555,7 +10559,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx"
       ],
       "specs": [
-        "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
       ]
     },
@@ -10568,6 +10571,7 @@
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
@@ -10582,6 +10586,22 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/PersonaRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/PreferredNameRow.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/UserAdminRow.tsx"
       ],
       "specs": [
         "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts"
@@ -12854,6 +12874,7 @@
         "playwright/e2e/Features/Glossary/GlossaryNavigation.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP2Tests.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryP3Tests.spec.ts",
+        "playwright/e2e/Features/Glossary/GlossaryPagination.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryPersonaCustomization.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryRemoveOperations.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryStatusFilterLargeDataset.spec.ts",

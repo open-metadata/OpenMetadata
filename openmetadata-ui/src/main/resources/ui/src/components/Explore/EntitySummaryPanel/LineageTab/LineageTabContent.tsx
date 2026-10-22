@@ -285,8 +285,8 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
               <NoDataPlaceholder
                 data-testid="no-data-placeholder"
-                description={t('label.lineage-not-found')}
                 icon={<AddPlaceHolderIcon height={100} width={100} />}
+                title={t('label.lineage-not-found')}
               />
             </div>
           </div>

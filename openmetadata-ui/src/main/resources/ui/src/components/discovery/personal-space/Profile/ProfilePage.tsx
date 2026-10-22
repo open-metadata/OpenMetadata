@@ -141,9 +141,7 @@ const ProfilePage: React.FC = () => {
     userData,
   ]);
 
-  // Clear header override whenever the user switches nav items. The profile tab
-  // carries the current user's name as its sub-path (`#profile/<username>`) so
-  // the URL is shareable/deep-linkable; other tabs own their own sub-paths.
+  // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback(
     (id: ProfileNavId) => {
       // Profile stays clickable while another user's detail is open under it.
@@ -153,20 +151,14 @@ const ProfilePage: React.FC = () => {
       const switchTab = () => {
         setSelectedId(id);
         setHeaderOverride(null);
-        setHash(
-          id,
-          // Encode so usernames containing `%`/`?` round-trip through the hash.
-          id === DEFAULT_PROFILE_NAV_ID && currentUser?.name
-            ? encodeURIComponent(currentUser.name)
-            : undefined
-        );
+        setHash(id);
       };
       // A dirty in-modal editor (e.g. persona customize) may prompt first.
       if (!usePersonalSpaceStore.getState().exitGuard?.(switchTab)) {
         switchTab();
       }
     },
-    [selectedId, isViewingOtherUser, setHash, currentUser?.name]
+    [selectedId, isViewingOtherUser, setHash]
   );
 
   const activeItem =

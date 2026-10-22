@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Column } from 'react-data-grid';
-import { getCsvGridRowHeight } from './CSVPureUtils';
+import { getCsvGridRowHeight, getFailedImportRowIds } from './CSVPureUtils';
 
 type GridColumn = Column<Record<string, string>>;
 
@@ -75,5 +75,60 @@ describe('getCsvGridRowHeight columnWidth branch', () => {
     expect(getCsvGridRowHeight({ tags: FIVE_CHIP_VALUE }, columns, 60)).toBe(
       60
     );
+  });
+});
+
+describe('getFailedImportRowIds', () => {
+  const submittedCsv = [
+    'parent,name*,description',
+    ',Churn,first',
+    ',Customer,second',
+    ',Order,third',
+  ].join('\n');
+
+  it('matches failures by row values when the server writes them out of order', () => {
+    const importResultsCsv = [
+      'status,details,parent,name*,description',
+      'failure,Missing owner,,Order,third',
+      'success,Entity updated,,Churn,first',
+      'failure,"Tags a, b are mutually exclusive",,Customer,second',
+    ].join('\n');
+
+    expect(
+      [...getFailedImportRowIds({ importResultsCsv, submittedCsv })].sort()
+    ).toEqual(['1', '2']);
+  });
+
+  it('maps failures to the ids of the rows that were submitted', () => {
+    const importResultsCsv = [
+      'status,details,parent,name*,description',
+      'failure,Missing owner,,Customer,second',
+    ].join('\n');
+
+    expect([
+      ...getFailedImportRowIds({
+        importResultsCsv,
+        submittedCsv,
+        submittedRowIds: ['7', '12', '30'],
+      }),
+    ]).toEqual(['12']);
+  });
+
+  it('claims each identical failed record once', () => {
+    const duplicateCsv = ['name*,description', 'A,x', 'A,x'].join('\n');
+    const importResultsCsv = [
+      'status,details,name*,description',
+      'success,ok,A,x',
+      'failure,bad,A,x',
+    ].join('\n');
+
+    expect(
+      getFailedImportRowIds({ importResultsCsv, submittedCsv: duplicateCsv })
+        .size
+    ).toBe(1);
+  });
+
+  it('returns no ids without a result', () => {
+    expect(getFailedImportRowIds({ submittedCsv }).size).toBe(0);
   });
 });

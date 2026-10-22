@@ -13,14 +13,18 @@
 
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
+import { isUndefined, omitBy, pick } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
+import {
+  getLoggedInUser,
+  getUserByName,
+  updateUserDetail,
+} from '../../../../rest/userAPI';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { getUserFirstName } from './ProfileDetailsPanel.utils';
 
@@ -63,6 +67,10 @@ export const useUserProfile = (username: string | undefined) => {
   // Monotonic request id: a target change bumps it so a slower earlier response
   // can't overwrite a faster later one and strand the wrong user's data.
   const requestRef = useRef(0);
+  // Latest user state, kept in step with every update, so a save diffs against
+  // what the page shows now rather than the render its handler closed over.
+  const latestUserRef = useRef(userData);
+  latestUserRef.current = userData;
 
   const fetchUser = useCallback(async () => {
     if (!username) {
@@ -77,10 +85,14 @@ export const useUserProfile = (username: string | undefined) => {
     // their id in updateUserDetails — can't linger.
     setUserData(isSelf ? (currentUserRef.current as User) : undefined);
     try {
-      const res = await getUserByName(username, {
-        fields: USER_PROFILE_FIELDS,
-        include: Include.All,
-      });
+      // `/users/name/<you>` masks your own email for non-admins (server-side PII
+      // masking); the logged-in user endpoint returns it unmasked.
+      const res = isSelf
+        ? await getLoggedInUser({ fields: USER_PROFILE_FIELDS })
+        : await getUserByName(username, {
+            fields: USER_PROFILE_FIELDS,
+            include: Include.All,
+          });
       if (reqId === requestRef.current) {
         // isAdmin is not in the fields list but is used by contributed-tab
         // conditions. Fall back to the logged-in user's flag only for your own
@@ -117,13 +129,17 @@ export const useUserProfile = (username: string | undefined) => {
   const updateUserDetails = useCallback(
     // Resolves to whether the save landed, so an editor closes only on success.
     async (data: Partial<User>, key: keyof User): Promise<boolean> => {
-      if (!userData) {
+      const base = latestUserRef.current;
+      if (!base) {
         return false;
       }
-      const updatedDetails: User = { ...userData, ...data };
-      const jsonPatch = compare(userData, updatedDetails);
+      // Diff only the fields being saved, so a concurrent save of another field
+      // can't put stale (index-based array) operations for it in this patch.
+      const savedKeys = Object.keys(data) as (keyof User)[];
+      const current = pick(base, savedKeys);
+      const jsonPatch = compare(current, { ...current, ...data });
       try {
-        const response = await updateUserDetail(userData.id, jsonPatch);
+        const response = await updateUserDetail(base.id, jsonPatch);
         if (!response) {
           return false;
         }
@@ -135,12 +151,16 @@ export const useUserProfile = (username: string | undefined) => {
           key === 'teams'
             ? { teams: response.teams, domains: response.domains }
             : nonTeamKeyData;
-        setUserData(
-          omitBy(
-            { ...userData, ...updatedKeyData },
-            isUndefined
-          ) as unknown as User
-        );
+        // Merge into the latest state, not the copy this save started from, so
+        // two overlapping saves can't overwrite each other's field.
+        setUserData((prev) => {
+          const next =
+            prev &&
+            (omitBy({ ...prev, ...updatedKeyData }, isUndefined) as User);
+          latestUserRef.current = next;
+
+          return next;
+        });
         // The app chrome (avatar menu, greetings) reads the store's copy of you.
         if (isSelf && currentUserRef.current) {
           updateCurrentUser({
@@ -149,7 +169,9 @@ export const useUserProfile = (username: string | undefined) => {
           } as User);
         }
         showSuccessToast(
-          t('server.update-entity-success', { entity: t('label.profile') })
+          t('server.update-entity-success', {
+            entity: isSelf ? t('label.profile') : t('label.user'),
+          })
         );
 
         return true;
@@ -159,7 +181,7 @@ export const useUserProfile = (username: string | undefined) => {
         return false;
       }
     },
-    [userData, isSelf, updateCurrentUser, t]
+    [isSelf, updateCurrentUser, t]
   );
 
   return {

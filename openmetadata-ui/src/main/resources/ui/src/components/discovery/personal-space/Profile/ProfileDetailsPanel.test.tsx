@@ -88,6 +88,7 @@ jest.mock('./components/InlineEditCard', () => ({
     onEnterEdit,
     onSave,
     testId,
+    isSaveDisabled,
   }: {
     canEdit: boolean;
     view: ReactNode;
@@ -95,6 +96,7 @@ jest.mock('./components/InlineEditCard', () => ({
     onEnterEdit: () => void;
     onSave: () => Promise<void>;
     testId?: string;
+    isSaveDisabled?: boolean;
   }) => (
     <div data-testid={testId}>
       {view}
@@ -104,7 +106,10 @@ jest.mock('./components/InlineEditCard', () => ({
             edit
           </button>
           {renderEdit()}
-          <button data-testid="save-edit" onClick={onSave}>
+          <button
+            data-testid="save-edit"
+            disabled={isSaveDisabled}
+            onClick={onSave}>
             save
           </button>
         </>
@@ -268,6 +273,25 @@ describe('ProfileDetailsPanel', () => {
       { displayName: 'New Name' },
       'displayName'
     );
+  });
+
+  it.each([
+    ['unchanged', 'harsh vador'],
+    ['unchanged after trimming', '  harsh vador  '],
+    ['blank', '   '],
+  ])('disables save and skips the API when the name is %s', (_, value) => {
+    mockUseAuth.mockReturnValue({ isAdminUser: true });
+    const updateUserDetails = renderPanel();
+
+    fireEvent.click(screen.getByTestId('enter-edit'));
+    const input = screen
+      .getByTestId('preferred-name-input')
+      .querySelector('input') as HTMLInputElement;
+    fireEvent.change(input, { target: { value } });
+    fireEvent.click(screen.getByTestId('save-edit'));
+
+    expect(screen.getByTestId('save-edit')).toBeDisabled();
+    expect(updateUserDetails).not.toHaveBeenCalled();
   });
 
   it('blocks editing and password change for a deleted user', () => {

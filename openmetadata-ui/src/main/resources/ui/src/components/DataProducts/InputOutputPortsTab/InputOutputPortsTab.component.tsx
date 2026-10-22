@@ -213,7 +213,6 @@ const InputPortsAccordionSection = ({
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
                     data-testid="no-data-placeholder"
-                    description={t('message.no-input-ports-added')}
                     footer={
                       <>
                         {canEditAll && (
@@ -238,6 +237,7 @@ const InputPortsAccordionSection = ({
                         data-testid="no-input-ports-placeholder"
                       />
                     }
+                    title={t('message.no-input-ports-added')}
                   />
                 </div>
               ) : (
@@ -286,10 +286,11 @@ const OutputPortsAccordionSection = ({
   const { t } = useTranslation();
   const showHeaderAddButton =
     canEditAll && isOutputPortsExpanded && outputPortsCount > 0;
-  const emptyStateMessage =
+  // The no-assets copy is guidance (description); the other is a headline.
+  const emptyStateCopy =
     assetCount === 0
-      ? t('message.no-assets-for-output-ports')
-      : t('message.no-output-ports-added');
+      ? { description: t('message.no-assets-for-output-ports') }
+      : { title: t('message.no-output-ports-added') };
   const showEmptyStateAddButton = canEditAll && assetCount > 0;
 
   return (
@@ -339,7 +340,7 @@ const OutputPortsAccordionSection = ({
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
                     data-testid="no-data-placeholder"
-                    description={emptyStateMessage}
+                    {...emptyStateCopy}
                     footer={
                       <>
                         {showEmptyStateAddButton && (
