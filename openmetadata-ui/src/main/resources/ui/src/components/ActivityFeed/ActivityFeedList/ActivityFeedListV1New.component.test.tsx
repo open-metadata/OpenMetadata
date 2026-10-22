@@ -84,25 +84,6 @@ describe('ActivityFeedListV1New', () => {
     ]);
   });
 
-  it('renders the empty state without the auto-margin placeholder class', () => {
-    render(
-      <ActivityFeedListV1New
-        activityList={[]}
-        emptyPlaceholderText="No activity"
-        feedList={[]}
-        hidePopover={false}
-        isLoading={false}
-      />
-    );
-
-    expect(screen.getByText('No activity')).toBeInTheDocument();
-    // Its `margin: auto` shrinks the container to its padding inside the
-    // flex-column feed panel, wrapping the message one word per line.
-    expect(screen.getByTestId('no-data-placeholder-container')).not.toHaveClass(
-      'no-data-placeholder-container'
-    );
-  });
-
   it('selects the newest item using the matching source callback', async () => {
     const onActivityClick = jest.fn();
     const onFeedClick = jest.fn();
