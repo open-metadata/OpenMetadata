@@ -27,10 +27,19 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
@@ -39,6 +48,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.service.alerting.audience.EmailRecipient;
 import org.openmetadata.service.alerting.channel.SendStatus;
 import org.openmetadata.service.alerting.content.HandlebarsNotificationMessageEngine;
+import org.openmetadata.service.config.AlertingConfiguration;
 import org.openmetadata.service.events.consumer.AlertingSettings;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.util.email.EmailSender;
@@ -60,7 +70,7 @@ class EmailPublisherTest {
   @BeforeEach
   void awaitSmtpOutcome() {
     previous = AlertingSettings.current();
-    AlertingSettings.use(previous.withSending(new AlertingSettings.Sending(false, true, 1)));
+    AlertingSettings.use(AlertingSettings.from(new AlertingConfiguration()));
     SendStatus.take();
   }
 
@@ -147,6 +157,87 @@ class EmailPublisherTest {
     assertEquals(
         SubscriptionStatus.Status.ACTIVE,
         ((SubscriptionStatus) destination.getStatusDetails()).getStatus());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void delayedSmtpSuccessIsRecordedOnlyAfterCompletion(boolean singleRecipient) throws Exception {
+    ControlledSender sender = new ControlledSender();
+    try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+      try {
+        Future<?> delivery = executor.submit(() -> deliver(publisher(sender), singleRecipient));
+        assertPending(sender, delivery);
+        sender.outcome.complete(null);
+        delivery.get(5, TimeUnit.SECONDS);
+        SubscriptionStatus status = (SubscriptionStatus) destination.getStatusDetails();
+        assertEquals(SubscriptionStatus.Status.ACTIVE, status.getStatus());
+        assertNotNull(status.getLastSuccessfulAt());
+      } finally {
+        sender.outcome.complete(null);
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void delayedSmtpFailureNeverRecordsSuccess(boolean singleRecipient) throws Exception {
+    ControlledSender sender = new ControlledSender();
+    try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+      try {
+        Future<?> delivery = executor.submit(() -> deliver(publisher(sender), singleRecipient));
+        assertPending(sender, delivery);
+        sender.outcome.completeExceptionally(new IllegalStateException(SMTP_FAILURE));
+        ExecutionException failure =
+            assertThrows(ExecutionException.class, () -> delivery.get(5, TimeUnit.SECONDS));
+        assertTrue(failure.getCause() instanceof EventPublisherException);
+        assertTrue(failure.getCause().getMessage().contains(SMTP_FAILURE));
+        if (singleRecipient) {
+          assertNull(destination.getStatusDetails());
+        } else {
+          SubscriptionStatus status = (SubscriptionStatus) destination.getStatusDetails();
+          assertEquals(SubscriptionStatus.Status.FAILED, status.getStatus());
+          assertNull(status.getLastSuccessfulAt());
+        }
+      } finally {
+        sender.outcome.complete(null);
+      }
+    }
+  }
+
+  private Void deliver(EmailPublisher publisher, boolean singleRecipient)
+      throws EventPublisherException {
+    try {
+      if (singleRecipient) {
+        publisher.sendTo(MESSAGE, new EmailRecipient(RECIPIENT));
+      } else {
+        publisher.sendMessage(event, Set.of(new EmailRecipient(RECIPIENT)));
+      }
+      return null;
+    } finally {
+      SendStatus.take();
+    }
+  }
+
+  private void assertPending(ControlledSender sender, Future<?> delivery) throws Exception {
+    assertTrue(sender.started.await(5, TimeUnit.SECONDS));
+    assertThrows(TimeoutException.class, () -> delivery.get(100, TimeUnit.MILLISECONDS));
+    assertNull(destination.getStatusDetails());
+  }
+
+  private static final class ControlledSender implements EmailSender {
+    private final CompletableFuture<Void> outcome = new CompletableFuture<>();
+    private final CountDownLatch started = new CountDownLatch(1);
+
+    @Override
+    public boolean isEnabled() {
+      return true;
+    }
+
+    @Override
+    public CompletableFuture<Void> send(String to, String subject, String htmlContent) {
+      started.countDown();
+      return outcome;
+    }
   }
 
   private EmailPublisher publisher(EmailSender sender) {
