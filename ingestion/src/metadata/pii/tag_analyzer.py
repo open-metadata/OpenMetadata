@@ -11,6 +11,7 @@ from presidio_analyzer import (
     RecognizerResult,
 )
 from presidio_analyzer.nlp_engine import NlpEngine
+from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -275,6 +276,45 @@ class TagAnalyzer:
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
         return evidence
 
+    def _analyze_upper_cased_names(
+        self,
+        str_values: Sequence[str],
+        content_recognizers: list[EntityRecognizer],
+        context: list[str],
+        result_patcher: PresidioRecognizerResultPatcher,
+    ) -> list[_RecognitionEvidence]:
+        """Re-run spaCy NER on title-cased copies of ALL-CAPS values.
+
+        spaCy NER is trained on mixed-case text and misses names such as "SERGE DUPONT".
+        Only spaCy named-entity recognizers and only values whose casing changed are
+        re-analyzed: pattern recognizers must keep seeing the original casing, and
+        unchanged values would only repeat the first pass.
+        """
+        ner_recognizers: list[EntityRecognizer] = [
+            rec
+            for rec in content_recognizers
+            if isinstance(rec, SpacyRecognizer) and _NAMED_ENTITY_TYPES.intersection(rec.supported_entities)
+        ]
+        if not ner_recognizers:
+            return []
+        normalized_values = [
+            normalized
+            for original, normalized in zip(str_values, ner_normalize_values(list(str_values)), strict=True)
+            if normalized != original
+        ]
+        if not normalized_values:
+            return []
+        return [
+            evidence
+            for evidence in self._analyze_with(
+                normalized_values,
+                ner_recognizers,
+                context=context,
+                result_patcher=result_patcher,
+            )
+            if _is_spacy_named_entity(evidence.result)
+        ]
+
     def analyze(
         self,
         str_values: Sequence[str],
@@ -293,21 +333,9 @@ class TagAnalyzer:
                     context=context,
                     result_patcher=result_patcher,
                 )
-                # spaCy NER is trained on mixed-case text and misses ALL-CAPS names such as
-                # "SERGE DUPONT", so re-run on title-cased values. Only named entities are kept
-                # from that pass: pattern recognizers must keep seeing the original casing.
-                ner_values = ner_normalize_values(list(str_values))
-                if ner_values != list(str_values):
-                    content_evidence += [
-                        evidence
-                        for evidence in self._analyze_with(
-                            ner_values,
-                            content_recognizers,
-                            context=context,
-                            result_patcher=result_patcher,
-                        )
-                        if _is_spacy_named_entity(evidence.result)
-                    ]
+                content_evidence += self._analyze_upper_cased_names(
+                    str_values, content_recognizers, context, result_patcher
+                )
                 content_results = _corroborated_content_results(content_evidence)
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
