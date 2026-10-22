@@ -88,8 +88,12 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
         run: |
+          # Only these modules are published; the root pom skips everything else
+          # (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module).
           mvn \
             --no-transfer-progress \
             --batch-mode \
             -Dgpg.passphrase=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} \
+            -pl .,common,openmetadata-spec,openmetadata-sdk,openmetadata-clients,openmetadata-clients/openmetadata-java-client,openmetadata-shaded-deps,openmetadata-shaded-deps/elasticsearch-dep,openmetadata-shaded-deps/opensearch-dep,openmetadata-service \
+            -DskipPublishing=false \
             -DskipTests -Prelease clean deploy

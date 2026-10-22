@@ -205,8 +205,8 @@
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
     <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
-    <!-- Not published to Maven Central unless the module opts in with a .publish-to-maven-central
-         file (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
+    <!-- Nothing is published to Maven Central by default; publish-maven-package.yml publishes an
+         explicit module list (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
     <skipPublishing>true</skipPublishing>
   </properties>
 
@@ -1078,49 +1078,6 @@
       </build>
     </profile>
 
-    <profile>
-      <!-- Opts a module into Maven Central publishing (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
-      <id>publish-to-maven-central</id>
-      <activation>
-        <file>
-          <exists>${basedir}/.publish-to-maven-central</exists>
-        </file>
-      </activation>
-      <properties>
-        <skipPublishing>false</skipPublishing>
-      </properties>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-enforcer-plugin</artifactId>
-            <executions>
-              <execution>
-                <id>published-module-needs-published-parent</id>
-                <goals>
-                  <goal>enforce</goal>
-                </goals>
-                <configuration>
-                  <rules>
-                    <!-- A published jar whose parent pom is not on Central can't be resolved. The
-                         repository root has no parent and is the only module with .github. -->
-                    <requireFilesExist>
-                      <satisfyAny>true</satisfyAny>
-                      <files>
-                        <file>${project.parent.basedir}/.publish-to-maven-central</file>
-                        <file>${basedir}/.github</file>
-                      </files>
-                      <message>${project.artifactId} publishes to Maven Central, but its parent pom does not. Add .publish-to-maven-central to the parent module's folder.</message>
-                    </requireFilesExist>
-                  </rules>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
   </profiles>
   <reporting>
     <plugins>
@@ -1137,7 +1094,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-enforcer-plugin</artifactId>
-          <version>3.4.1</version>
+          <version>3.1.0</version>
           <executions>
             <execution>
               <id>enforce-maven</id>
