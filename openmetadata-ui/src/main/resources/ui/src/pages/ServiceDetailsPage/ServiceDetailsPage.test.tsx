@@ -65,6 +65,7 @@ import {
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
+  getEntityTypeFromServiceCategory,
   shouldTestConnection,
 } from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
@@ -487,14 +488,6 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
     )
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    ))
-);
-
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest
@@ -754,7 +747,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1407,7 +1400,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1650,7 +1643,7 @@ describe('ServiceDetailsPage', () => {
 
       // The component should show error placeholder when service fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
   });
@@ -1676,7 +1669,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       // Should not fetch permissions for OpenMetadata service
@@ -1713,7 +1708,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
 
@@ -1728,7 +1726,10 @@ describe('ServiceDetailsPage', () => {
       // AutoPilot creates at most one automation per template, so the list is
       // requested in a single unpaginated call scoped to the service.
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
 
       expect(getAiAutomationsByService).toHaveBeenCalledTimes(1);
@@ -1749,16 +1750,27 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should not fetch agents for non-database services', async () => {
-      // Set up messaging service context (CollateAI widgets not supported)
+    it('should fetch agents for non-database services too', async () => {
+      // AutoPilot creates AI Automations for services of every type, not only databases.
       (useRequiredParams as jest.Mock).mockReturnValue({
         serviceCategory: ServiceCategory.MESSAGING_SERVICES,
         tab: EntityTabs.INSIGHTS,
       });
+      (getEntityTypeFromServiceCategory as jest.Mock).mockImplementation(
+        (category: ServiceCategory) =>
+          category === ServiceCategory.MESSAGING_SERVICES
+            ? 'messagingService'
+            : 'database'
+      );
 
       await renderComponent();
 
-      expect(getAiAutomationsByService).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'messagingService'
+        );
+      });
     });
 
     it('should properly handle CollateAI widget support check', async () => {
@@ -1786,7 +1798,10 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(getAiAutomationsByService).toHaveBeenCalledWith('test-service');
+        expect(getAiAutomationsByService).toHaveBeenCalledWith(
+          'test-service',
+          'database'
+        );
       });
     });
   });
@@ -1844,7 +1859,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();

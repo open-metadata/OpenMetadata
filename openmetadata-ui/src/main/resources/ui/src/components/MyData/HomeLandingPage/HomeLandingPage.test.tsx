@@ -37,6 +37,27 @@ jest.mock('./HomeLandingPageSkeleton', () => {
   return jest.fn().mockImplementation(() => <div>HomeLandingPageSkeleton</div>);
 });
 
+let mockHasLiveCritical = false;
+
+// Stands in for the banner's own query: either a live critical banner, or
+// whatever the page handed it to show in its place.
+jest.mock('./CriticalAnnouncements', () => ({
+  __esModule: true,
+  default: ({ fallback }: { fallback?: React.ReactNode }) =>
+    mockHasLiveCritical ? (
+      <div data-testid="critical-announcements" />
+    ) : (
+      <>{fallback}</>
+    ),
+}));
+
+jest.mock('./HomeLandingPageHeader', () => ({
+  __esModule: true,
+  default: ({ headerColor }: { headerColor?: string }) => (
+    <div data-header-color={headerColor} data-testid="home-greeting" />
+  ),
+}));
+
 jest.mock('./AnnouncementsRail', () => {
   return jest
     .fn()
@@ -111,6 +132,7 @@ describe('HomeLandingPage', () => {
     });
     mockSelectedPersona = { fullyQualifiedName: mockPersonaName };
     mockCurrentUser = mockUserData;
+    mockHasLiveCritical = false;
     jest.clearAllMocks();
   });
 
@@ -148,13 +170,43 @@ describe('HomeLandingPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders no greeting header above the announcements', async () => {
+  it('greets the user above the announcements', async () => {
     renderHome();
 
-    await screen.findByTestId('react-grid-layout');
+    expect(await screen.findByTestId('home-greeting')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('critical-announcements')
+    ).not.toBeInTheDocument();
+  });
 
-    expect(screen.queryByTestId('page-header')).not.toBeInTheDocument();
-    expect(screen.queryByText('message.hi-user')).not.toBeInTheDocument();
+  it('gives the greeting slot to a live critical announcement', async () => {
+    mockHasLiveCritical = true;
+    renderHome();
+
+    expect(
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('home-greeting')).not.toBeInTheDocument();
+  });
+
+  it("tints the greeting with the user's own Header Theme for the persona", async () => {
+    mockSelectedPersona = { fullyQualifiedName: mockPersonaName, id: 'p1' };
+    mockCurrentUser = {
+      ...mockUserData,
+      personaPreferences: [
+        {
+          personaId: 'p1',
+          personaName: mockPersonaName,
+          landingPageSettings: { headerColor: '#123456' },
+        },
+      ],
+    };
+    renderHome();
+
+    expect(await screen.findByTestId('home-greeting')).toHaveAttribute(
+      'data-header-color',
+      '#123456'
+    );
   });
 
   it('offers no Customize entry point without a persona to edit', async () => {

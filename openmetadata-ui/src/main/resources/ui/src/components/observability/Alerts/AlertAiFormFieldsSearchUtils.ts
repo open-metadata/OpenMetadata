@@ -13,21 +13,13 @@
 
 import { SelectItemType } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, uniqBy } from 'lodash';
+import { uniqBy } from 'lodash';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
-import { UUID_REGEX } from '../../../constants/regex.constants';
 import { SearchIndex } from '../../../enums/search.enum';
-import { ObservabilityFilterResourceDescriptor } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import { searchEntity } from '../../../utils/Alerts/AlertsUtil';
-import alertsClassBase from '../../../utils/AlertsClassBase';
-import { EntityIconSize } from '../../../utils/EntityIconUtils';
-import {
-  getEntityName,
-  getEntityNameLabel,
-} from '../../../utils/EntityNameUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
@@ -60,183 +52,47 @@ export const getAlertAiTeamOptions = (
 ): Promise<AlertAiSearchOption[]> =>
   searchEntity({ searchText, searchIndex: SearchIndex.TEAM });
 
-const searchAlertAiEntityIdOptions = async ({
-  queryFilter,
-  searchIndex,
-  searchText,
-}: {
-  queryFilter?: Record<string, unknown>;
-  searchIndex: SearchIndex | SearchIndex[];
-  searchText: string;
-}): Promise<SelectItemType[]> => {
-  try {
-    const response = await searchQuery({
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_LARGE,
-      query: searchText,
-      queryFilter,
-      searchIndex,
-    });
-
-    return uniqBy(
-      (response.hits.hits as AlertAiSearchHit[]).map(({ _source }) => {
-        const id = _source.id ?? '';
-        const fullyQualifiedName = _source.fullyQualifiedName ?? '';
-
-        return {
-          id,
-          label: id,
-          supportingText: fullyQualifiedName,
-        };
-      }),
-      'id'
-    ).filter((item) => Boolean(item.id));
-  } catch (error) {
-    showErrorToast(error as AxiosError);
-
-    return [];
-  }
-};
-
 const toSearchSelectItems = (
   hits: AlertAiSearchHit[],
-  {
-    showDisplayNameAsLabel = true,
-    useIdAsValue = false,
-    wildcardEntityTypes,
-  }: {
-    showDisplayNameAsLabel?: boolean;
-    useIdAsValue?: boolean;
-    wildcardEntityTypes?: string[];
-  } = {}
+  showDisplayNameAsLabel: boolean
 ): SelectItemType[] =>
   uniqBy(
-    hits.map((hit) => {
-      const source = hit._source;
+    hits.map(({ _source: source }) => {
       const fqn = source.fullyQualifiedName ?? '';
-      const displayName = showDisplayNameAsLabel ? getEntityName(source) : fqn;
-      const isContainerOption =
-        Boolean(source.entityType) &&
-        (wildcardEntityTypes ?? []).includes(source.entityType ?? '');
-      const label = isContainerOption ? `${displayName}.*` : displayName;
-      const id = useIdAsValue ? source.id ?? '' : fqn;
+      const label = showDisplayNameAsLabel ? getEntityName(source) : fqn;
 
-      return {
-        id,
-        label: label || id,
-      };
+      return { id: fqn, label: label || fqn };
     }),
     'id'
   ).filter((item) => Boolean(item.id));
 
-export const getAlertAiFqnSearchIndexes = (
-  selectedSource?: string,
-  containerEntities: string[] = []
-): SearchIndex[] => {
-  const mapping = searchClassBase.getEntityTypeSearchIndexMapping();
-  const sourceIndex = selectedSource ? mapping[selectedSource] : undefined;
-
-  if (!sourceIndex) {
-    return [];
-  }
-
-  if (sourceIndex === SearchIndex.ALL) {
-    return [sourceIndex];
-  }
-
-  return [selectedSource, ...containerEntities]
-    .filter((type): type is string => Boolean(type))
-    .map((type) => mapping[type])
-    .filter((index): index is SearchIndex => Boolean(index));
-};
-
-const searchAlertAiEntityOptions = async ({
-  queryFilter,
-  searchIndex,
-  searchText,
-  showDisplayNameAsLabel,
-  wildcardEntityTypes,
-}: {
-  queryFilter?: Record<string, unknown>;
-  searchIndex: SearchIndex | SearchIndex[];
-  searchText: string;
-  showDisplayNameAsLabel?: boolean;
-  wildcardEntityTypes?: string[];
-}): Promise<SelectItemType[]> => {
-  try {
-    const response = await searchQuery({
-      pageNumber: 1,
-      pageSize: PAGE_SIZE_LARGE,
-      query: searchText,
-      queryFilter,
-      searchIndex,
-    });
-
-    return toSearchSelectItems(response.hits.hits as AlertAiSearchHit[], {
-      showDisplayNameAsLabel,
-      wildcardEntityTypes,
-    });
-  } catch (error) {
-    showErrorToast(error as AxiosError);
-
-    return [];
-  }
-};
-
-type AlertAiArgumentContext = {
-  containerEntities: string[];
-  selectedSource?: string;
-  trimmedSearchText: string;
-};
-
 type AlertAiArgumentConfig = {
-  searchIndex?: SearchIndex | SearchIndex[];
+  searchIndex: SearchIndex | SearchIndex[];
   queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
-  wildcardEntityTypes?: string[];
 };
 
-const ALERT_AI_ARGUMENT_CONFIG_BUILDERS: Record<
-  string,
-  (context: AlertAiArgumentContext) => AlertAiArgumentConfig
-> = {
-  fqnList: ({ selectedSource, containerEntities }) => ({
-    searchIndex: getAlertAiFqnSearchIndexes(selectedSource, containerEntities),
-    showDisplayNameAsLabel: false,
-    wildcardEntityTypes: containerEntities,
-  }),
-  domainList: () => ({ searchIndex: SearchIndex.DOMAIN }),
-  tableNameList: () => ({
+// The arguments that search what the chosen sources hold go through the source search instead.
+const ALERT_AI_ARGUMENT_CONFIGS: Record<string, AlertAiArgumentConfig> = {
+  domainList: { searchIndex: SearchIndex.DOMAIN },
+  tableNameList: {
     searchIndex: SearchIndex.TABLE,
     showDisplayNameAsLabel: false,
-  }),
-  entityNameList: () => ({
+  },
+  entityNameList: {
     searchIndex: SearchIndex.TABLE,
     showDisplayNameAsLabel: false,
-  }),
-  ownerNameList: () => ({
+  },
+  ownerNameList: {
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
     queryFilter: getTermQuery({ isBot: 'false' }),
-  }),
-  updateByUserList: () => ({ searchIndex: SearchIndex.USER }),
-  userList: () => ({
+  },
+  updateByUserList: { searchIndex: SearchIndex.USER },
+  userList: {
     searchIndex: SearchIndex.USER,
     queryFilter: getTermQuery({ isBot: 'false' }),
-  }),
-  entityIdList: ({ selectedSource, trimmedSearchText }) => {
-    const searchIndexMapping =
-      searchClassBase.getEntityTypeSearchIndexMapping();
-
-    return {
-      searchIndex: selectedSource
-        ? searchIndexMapping[selectedSource]
-        : undefined,
-      queryFilter: UUID_REGEX.test(trimmedSearchText)
-        ? getTermQuery({ id: trimmedSearchText })
-        : undefined,
-    };
   },
-  testSuiteList: () => ({ searchIndex: SearchIndex.TEST_SUITE }),
+  testSuiteList: { searchIndex: SearchIndex.TEST_SUITE },
 };
 
 const SOURCE_ARGUMENT_SEARCHERS: Record<
@@ -255,119 +111,55 @@ const SOURCE_ARGUMENT_SEARCHERS: Record<
       supportingText: fullyQualifiedName,
     })),
 };
-const getSourceArgumentOptions = (
-  argument: string,
-  text: string,
-  search?: AlertSourceSearch
-) => {
-  if (!search) {
-    return undefined;
-  }
 
-  return SOURCE_ARGUMENT_SEARCHERS[argument]?.(search, text).catch((error) => {
-    showErrorToast(error as AxiosError);
-
-    return [];
-  });
-};
-
-export const searchAlertAiArgumentOptions = async ({
-  argument,
-  containerEntities = [],
-  searchText,
-  selectedSource,
-  sourceSearch,
-}: {
-  argument: string;
-  containerEntities?: string[];
-  searchText: string;
-  selectedSource?: string;
-  sourceSearch?: AlertSourceSearch;
-}): Promise<SelectItemType[]> => {
-  const trimmedSearchText = searchText.trim();
-  const sourceOptions = getSourceArgumentOptions(
-    argument,
-    trimmedSearchText,
-    sourceSearch
-  );
-  if (sourceOptions) {
-    return sourceOptions;
-  }
-
-  // A source whose names are not in the search indexes, such as a data contract, has a search of its own.
-  const ownSearch = selectedSource
-    ? alertsClassBase.getSourceNameSearch()[selectedSource]
-    : undefined;
-  if (argument === 'fqnList' && ownSearch) {
-    const names = await ownSearch(trimmedSearchText);
-
-    return names.map(({ value }) => ({ id: value, label: value }));
-  }
-
-  const buildConfig = ALERT_AI_ARGUMENT_CONFIG_BUILDERS[argument];
-
-  if (!buildConfig) {
-    return [];
-  }
-
-  const {
+const searchIndexedOptions = async (
+  {
     searchIndex,
     queryFilter,
     showDisplayNameAsLabel = true,
-    wildcardEntityTypes,
-  } = buildConfig({ containerEntities, selectedSource, trimmedSearchText });
-
-  if (!searchIndex || isEmpty(searchIndex)) {
-    return [];
-  }
-
-  if (argument === 'entityIdList') {
-    return searchAlertAiEntityIdOptions({
-      queryFilter,
-      searchIndex,
-      searchText: trimmedSearchText,
-    });
-  }
-
-  return searchAlertAiEntityOptions({
+  }: AlertAiArgumentConfig,
+  searchText: string
+): Promise<SelectItemType[]> => {
+  const response = await searchQuery({
+    pageNumber: 1,
+    pageSize: PAGE_SIZE_LARGE,
+    query: searchText,
     queryFilter,
     searchIndex,
-    searchText: trimmedSearchText,
-    showDisplayNameAsLabel,
-    wildcardEntityTypes,
   });
+
+  return toSearchSelectItems(
+    response.hits.hits as AlertAiSearchHit[],
+    showDisplayNameAsLabel
+  );
 };
 
-/** Builds source dropdown items and preserves a selected source that is not in the current descriptors. */
-export const getAlertAiSourceItems = (
-  filterResources: ObservabilityFilterResourceDescriptor[],
-  selectedSource?: string
-) => {
-  const items = filterResources
-    .map((resource) => resource.name)
-    .filter((name): name is string => Boolean(name))
-    .map((name) => ({
-      icon:
-        searchClassBase.getEntityIconWithBg(name, EntityIconSize.Size14) ??
-        undefined,
-      id: name,
-      label: getEntityNameLabel(name),
-    }));
+/**
+ * The options a rule argument offers for what has been typed. Names and ids come from what the
+ * chosen sources hold, through their search; the other arguments search a fixed index.
+ */
+export const searchAlertAiArgumentOptions = async ({
+  argument,
+  searchText,
+  sourceSearch,
+}: {
+  argument: string;
+  searchText: string;
+  sourceSearch: AlertSourceSearch;
+}): Promise<SelectItemType[]> => {
+  const trimmedSearchText = searchText.trim();
+  const searchSources = SOURCE_ARGUMENT_SEARCHERS[argument];
+  const config = ALERT_AI_ARGUMENT_CONFIGS[argument];
 
-  if (
-    selectedSource &&
-    !items.some((sourceItem) => sourceItem.id === selectedSource)
-  ) {
-    items.push({
-      icon:
-        searchClassBase.getEntityIconWithBg(
-          selectedSource,
-          EntityIconSize.Size14
-        ) ?? undefined,
-      id: selectedSource,
-      label: getEntityNameLabel(selectedSource),
-    });
+  try {
+    if (searchSources) {
+      return await searchSources(sourceSearch, trimmedSearchText);
+    }
+
+    return config ? await searchIndexedOptions(config, trimmedSearchText) : [];
+  } catch (error) {
+    showErrorToast(error as AxiosError);
+
+    return [];
   }
-
-  return items;
 };

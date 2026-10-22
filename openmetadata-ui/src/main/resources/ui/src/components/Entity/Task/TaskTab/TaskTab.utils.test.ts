@@ -14,6 +14,7 @@ import { Task } from '../../../../generated/entity/tasks/task';
 import {
   computeTaskEditAccessFlags,
   computeTaskOwnershipFlags,
+  computeWorkflowTaskAccess,
 } from './TaskTab.utils';
 
 const task = {
@@ -61,5 +62,40 @@ describe('TaskTab.utils', () => {
 
   it('does not let anyone else decide', () => {
     expect(canDecide({ id: 'u-x', name: 'x' })).toBe(false);
+  });
+});
+
+describe('computeWorkflowTaskAccess', () => {
+  const access = (
+    overrides: Partial<Parameters<typeof computeWorkflowTaskAccess>[0]>
+  ) =>
+    computeWorkflowTaskAccess({
+      isRequestApproval: true,
+      hasChangeRequest: false,
+      isAssignee: false,
+      isPartOfAssigneeTeam: false,
+      hasEditAccess: true,
+      isCreator: false,
+      ...overrides,
+    });
+
+  it('shows a workflow approval only to its assignees, not to an admin or owner', () => {
+    expect(access({})).toEqual({
+      hasWorkflowAccess: false,
+      showsWorkflowActions: false,
+    });
+    expect(access({ isAssignee: true }).showsWorkflowActions).toBe(true);
+    expect(access({ isPartOfAssigneeTeam: true }).hasWorkflowAccess).toBe(true);
+    expect(
+      access({ isRequestApproval: false, hasChangeRequest: true })
+        .showsWorkflowActions
+    ).toBe(false);
+  });
+
+  it('keeps edit access for other workflow tasks', () => {
+    expect(access({ isRequestApproval: false })).toEqual({
+      hasWorkflowAccess: true,
+      showsWorkflowActions: true,
+    });
   });
 });

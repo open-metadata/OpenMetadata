@@ -89,7 +89,7 @@ class ChangeRequestDecisionIT {
   }
 
   @Test
-  void adminCannotApproveOwnChangeRequest(TestNamespace ns) {
+  void anAdminWhoIsNotAssignedCannotApproveTheirOwnChangeRequest(TestNamespace ns) {
     Glossary glossary = gatedGlossary(ns);
     deployHookWorkflow(
         ns, INCLUDE_DESCRIPTION, "", filterScopedTo(glossary.getFullyQualifiedName()));
@@ -101,7 +101,7 @@ class ChangeRequestDecisionIT {
             () ->
                 resolveAs(
                     SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved, 1));
-    assertTrue(error.getMessage().contains("your own change request"));
+    assertTrue(error.getMessage().contains("is not an assignee of this approval"));
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
   }
 

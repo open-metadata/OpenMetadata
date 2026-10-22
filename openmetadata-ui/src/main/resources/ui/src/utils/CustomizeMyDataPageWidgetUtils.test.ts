@@ -45,10 +45,13 @@ describe('MY_DATA_WIDGET_KEYS', () => {
   // Pinned rather than derived: the picker offers this set and the grid renders
   // it, so gaining or losing one is a product change that should have to be
   // stated here, not something a stray registry edit does quietly.
-  it('is the ten landing-page widgets, in default layout order', () => {
+  it('is the thirteen landing-page widgets, in default layout order', () => {
     expect(MY_DATA_WIDGET_KEYS).toEqual([
       LandingPageWidgetKeys.PLATFORM_HEALTH,
       LandingPageWidgetKeys.DATA_ESTATE,
+      LandingPageWidgetKeys.TOTAL_DATA_ASSETS,
+      LandingPageWidgetKeys.MY_TASK,
+      LandingPageWidgetKeys.PIPELINE_STATUS,
       LandingPageWidgetKeys.ACTIVITY_FEED,
       LandingPageWidgetKeys.YOURS_AND_FOLLOWED,
       LandingPageWidgetKeys.KNOWLEDGE_CENTER,
@@ -64,6 +67,18 @@ describe('MY_DATA_WIDGET_KEYS', () => {
     expect(DEFAULT_LANDING_PAGE_LAYOUT.map(({ i }) => i)).toEqual([
       ...MY_DATA_WIDGET_KEYS,
     ]);
+  });
+
+  // Keys resolve by prefix, so a key that prefixes another — `MyTask` and a
+  // `MyTasks` — would render the wrong card and be excluded with the other.
+  it('holds no key that is a prefix of another', () => {
+    const collisions = MY_DATA_WIDGET_KEYS.filter((key) =>
+      MY_DATA_WIDGET_KEYS.some(
+        (other) => other !== key && other.startsWith(key)
+      )
+    );
+
+    expect(collisions).toEqual([]);
   });
 });
 

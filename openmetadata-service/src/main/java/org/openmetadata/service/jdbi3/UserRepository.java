@@ -842,6 +842,14 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * Name lookup for an authentication flow that updates the account it finds. Reads it fresh, with
+   * the {@link #getAuthUpdateFields} a PUT of the result writes back.
+   */
+  public User getUserByNameForAuthUpdate(String name) {
+    return getByName(null, name, getAuthUpdateFields(), NON_DELETED, false);
+  }
+
+  /**
    * Streams the accounts whose email sits in {@code domain}, ordered by name, in pages. The
    * {@code change-email} ops flow uses this to find accounts still holding a
    * {@code user@principalDomain} address that the legacy identity flow synthesized rather than the
@@ -1211,35 +1219,9 @@ public class UserRepository extends EntityRepository<User> {
                       Include.ALL);
     }
 
-    // Map user to owned entities
-    Map<UUID, List<EntityReference>> userToOwns = new HashMap<>();
-
-    // Add directly owned entities
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID userId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        userToOwns.computeIfAbsent(userId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
-
-    // Add team-owned entities
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : teamOwnsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for team-owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> userToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
+    Map<UUID, List<EntityReference>> teamToOwns =
+        resolveTargetsBySource(teamOwnsRecords, Include.ALL);
 
     // Combine user and team owned entities
     for (User user : users) {
@@ -1529,8 +1511,32 @@ public class UserRepository extends EntityRepository<User> {
               .withTeams(getTeams(printer, csvRecord, csvRecord.get(0)))
               .withRoles(getEntityReferences(printer, csvRecord, 7, ROLE));
       rejectPrivilegedFieldsFromNonAdmin(printer, csvRecord, user);
+      rejectEmailOutsideSignInDomains(printer, csvRecord, user);
       if (processRecord) {
         createUserEntity(printer, csvRecord, user);
+      }
+    }
+
+    /**
+     * Rows that create a user get the sign-in email-domain check the REST create paths apply.
+     * Rows that update an existing user don't, because an update never changes the stored email.
+     * Runs before the write, so a dry run reports the row as well.
+     * ADR:2026-10-16-users-created-through-the-api-must-pass-the-sign-in-domain-rule
+     */
+    private void rejectEmailOutsideSignInDomains(CSVPrinter printer, CSVRecord csvRecord, User user)
+        throws IOException {
+      if (!processRecord
+          || ((UserRepository) Entity.getEntityRepository(USER)).isUpdateForImport(user)) {
+        return;
+      }
+      Optional<String> rejection =
+          UserUtil.emailDomainRejection(
+              user,
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
+      if (rejection.isPresent()) {
+        importFailure(printer, rejection.get(), csvRecord);
+        processRecord = false;
       }
     }
 
@@ -1816,39 +1822,55 @@ public class UserRepository extends EntityRepository<User> {
     PostCommitActionQueue.runOrDefer(evict);
   }
 
+  /**
+   * A user is assigned the domains an update sends, deleted ones dropped; the domains its teams
+   * give it are inherited and never written. Only a bot's PUT keeps a non-empty assignment.
+   */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      final User original, final User updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
+            .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+            .collect(Collectors.toList());
+  }
+
+  /**
+   * Filter domain references to remove deleted domains, then populate valid ones.
+   * This prevents EntityNotFoundException when domains are deleted between updates.
+   */
+  private static List<EntityReference> filterValidDomains(List<EntityReference> domains) {
+    if (domains == null || domains.isEmpty()) {
+      return domains;
+    }
+
+    // First filter out deleted domains, then populate valid references
+    List<EntityReference> validDomains =
+        domains.stream()
+            .filter(
+                domain -> {
+                  try {
+                    Entity.getEntityReference(domain, ALL);
+                    return true;
+                  } catch (EntityNotFoundException e) {
+                    LOG.warn(
+                        "Removing deleted domain {} from user update",
+                        domain.getFullyQualifiedName());
+                    return false;
+                  }
+                })
+            .collect(Collectors.toList());
+
+    return EntityUtil.populateEntityReferences(validDomains);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class UserUpdater extends EntityUpdater {
     public UserUpdater(User original, User updated, Operation operation) {
       super(original, updated, operation);
-    }
-
-    /**
-     * Filter domain references to remove deleted domains, then populate valid ones.
-     * This prevents EntityNotFoundException when domains are deleted between updates.
-     */
-    private List<EntityReference> filterValidDomains(List<EntityReference> domains) {
-      if (domains == null || domains.isEmpty()) {
-        return domains;
-      }
-
-      // First filter out deleted domains, then populate valid references
-      List<EntityReference> validDomains =
-          domains.stream()
-              .filter(
-                  domain -> {
-                    try {
-                      Entity.getEntityReference(domain, ALL);
-                      return true;
-                    } catch (EntityNotFoundException e) {
-                      LOG.warn(
-                          "Removing deleted domain {} from user update",
-                          domain.getFullyQualifiedName());
-                      return false;
-                    }
-                  })
-              .collect(Collectors.toList());
-
-      return EntityUtil.populateEntityReferences(validDomains);
     }
 
     /**
@@ -1966,21 +1988,15 @@ public class UserRepository extends EntityRepository<User> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           filterValidDomains(listOrEmptyMutable(original.getDomains()));
-      // Skip domains inherited from teams,they are handled in setInheritedFields().
-      List<EntityReference> updatedDomains =
-          filterValidDomains(listOrEmptyMutable(updated.getDomains())).stream()
-              .filter(domain -> domain.getInherited() == null || !domain.getInherited())
-              .collect(Collectors.toList());
       updated.setDomains(updatedDomains);
 
       // Remove Domains for the user

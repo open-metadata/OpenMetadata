@@ -151,6 +151,8 @@ const CustomPropertyEditForm: FC<CustomPropertyEditFormProps> = ({
       allowsCreation: true,
       items: existingEnumItems,
       maxVisibleItems: ENUM_CONFIG_MAX_VISIBLE_VALUES,
+      // Up to 20 values do not fit on one line.
+      wrapSelectedItems: true,
     },
   };
 

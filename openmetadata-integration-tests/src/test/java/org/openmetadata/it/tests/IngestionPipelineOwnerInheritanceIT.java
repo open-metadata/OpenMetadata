@@ -41,6 +41,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -107,6 +108,67 @@ public class IngestionPipelineOwnerInheritanceIT {
           assertTrue(
               Boolean.TRUE.equals(inherited.getInherited()),
               "Owner inherited from the parent service must be marked inherited=true");
+        } finally {
+          adminClient.ingestionPipelines().delete(pipeline.getId().toString());
+        }
+      } finally {
+        adminClient
+            .dashboardServices()
+            .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      adminClient.users().delete(serviceOwner.getId());
+    }
+  }
+
+  @Test
+  void test_listedPipelinesInheritServiceOwner(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String unique = UUID.randomUUID().toString().substring(0, 8);
+    String userName = "iplistowner_" + unique;
+    User serviceOwner =
+        adminClient
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    try {
+      DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+      DashboardService fetchedService =
+          adminClient.dashboardServices().get(service.getId().toString());
+      fetchedService.setOwners(List.of(serviceOwner.getEntityReference()));
+      adminClient.dashboardServices().update(service.getId().toString(), fetchedService);
+
+      try {
+        IngestionPipeline pipeline =
+            adminClient
+                .ingestionPipelines()
+                .create(
+                    new CreateIngestionPipeline()
+                        .withName(ns.prefix("iplistPipeline"))
+                        .withPipelineType(PipelineType.METADATA)
+                        .withService(service.getEntityReference())
+                        .withSourceConfig(
+                            new SourceConfig().withConfig(new DashboardServiceMetadataPipeline()))
+                        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+
+        try {
+          ListParams params =
+              new ListParams().setFields("owners").setService(service.getFullyQualifiedName());
+          IngestionPipeline listed =
+              adminClient.ingestionPipelines().list(params).getData().stream()
+                  .filter(candidate -> candidate.getId().equals(pipeline.getId()))
+                  .findFirst()
+                  .orElseThrow(() -> new AssertionError("Pipeline missing from its service list"));
+
+          List<EntityReference> owners = listed.getOwners();
+          assertNotNull(owners, "Listed pipeline should carry its service's owners");
+          assertTrue(
+              owners.stream().anyMatch(owner -> serviceOwner.getId().equals(owner.getId())),
+              "Service owner missing from listed pipeline owners " + owners);
+          assertTrue(
+              owners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+              "Owners inherited from the service must be marked inherited=true: " + owners);
         } finally {
           adminClient.ingestionPipelines().delete(pipeline.getId().toString());
         }

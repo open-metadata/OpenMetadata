@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   FormFields,
   HookForm,
   Skeleton,
@@ -43,6 +42,7 @@ import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };
@@ -211,7 +211,7 @@ const PersonaUsersTab = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.user-plural'),
             })}
@@ -251,18 +251,24 @@ const PersonaUsersTab = ({
           </Card.Content>
         </Card>
       )}
-      {canEdit && !isAdding && (
-        <Box justify="end">
-          <Button
-            color="primary"
-            data-testid="add-persona-user"
-            size="xs"
-            onPress={() => setIsAdding(true)}>
-            {t('label.add-entity', { entity: t('label.user') })}
-          </Button>
-        </Box>
-      )}
-      <TableCard.Root className="tw:flex tw:flex-col" size="compact">
+      <TableCard.Root
+        className="tw:flex tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+        size="compact">
+        {canEdit && !isAdding && (
+          <TableCard.Header
+            className="tw:py-3"
+            contentTrailing={
+              <Button
+                color="primary"
+                data-testid="add-persona-user"
+                size="xs"
+                onPress={() => setIsAdding(true)}>
+                {t('label.add-entity', { entity: t('label.user') })}
+              </Button>
+            }
+            title=""
+          />
+        )}
         <div className="tw:overflow-y-auto">
           <Table
             aria-label={t('label.user-plural')}

@@ -127,6 +127,8 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
     descriptionKey: 'message.learning-resources-management-description',
     hasEditView: true,
     hasFieldHints: false,
+    hasItemViews: true,
+    getItemTitle: (t) => t('label.preview'),
     getEditTitle: (t, itemId) =>
       t(itemId ? 'label.edit-resource' : 'label.add-resource'),
   },

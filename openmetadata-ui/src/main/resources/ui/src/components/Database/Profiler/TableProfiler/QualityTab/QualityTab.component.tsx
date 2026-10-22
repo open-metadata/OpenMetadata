@@ -34,7 +34,6 @@ import {
 import { INITIAL_TEST_SUMMARY } from '../../../../../constants/TestSuite.constant';
 import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { TestCaseType } from '../../../../../enums/TestSuite.enum';
@@ -44,14 +43,15 @@ import { TestCaseStatus } from '../../../../../generated/tests/testCase';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
+import { getTestCaseExportFilters } from '../../../../../utils/DataQuality/DataQualityPureUtils';
 import { getBreadcrumbForTable } from '../../../../../utils/EntityDataBreadcrumbUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
@@ -133,6 +133,17 @@ export const QualityTab = () => {
   const [searchValue, setSearchValue] = useState<string>();
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const testCaseParams = useMemo<ListTestCaseParamsBySearch>(
+    () => ({
+      ...sortOptions,
+      testCaseType: selectedTestType,
+      testCaseStatus: isEmpty(selectedTestCaseStatus)
+        ? undefined
+        : selectedTestCaseStatus,
+      q: searchValue,
+    }),
+    [sortOptions, selectedTestType, selectedTestCaseStatus, searchValue]
+  );
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
@@ -201,11 +212,7 @@ export const QualityTab = () => {
   }) => {
     if (currentPage) {
       fetchAllTests({
-        ...sortOptions,
-        testCaseType: selectedTestType,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
+        ...testCaseParams,
         offset: (currentPage - 1) * pageSize,
       });
     }
@@ -215,17 +222,18 @@ export const QualityTab = () => {
   const handleSearchTestCase = (value?: string) => {
     setSearchValue(value);
     fetchAllTests({
-      testCaseType: selectedTestType,
-      testCaseStatus: isEmpty(selectedTestCaseStatus)
-        ? undefined
-        : selectedTestCaseStatus,
+      ...testCaseParams,
       q: value,
     });
   };
 
   const handleSortTestCase = async (apiParams?: ListTestCaseParamsBySearch) => {
     setSortOptions(apiParams ?? DEFAULT_SORT_ORDER);
-    await fetchAllTests({ ...(apiParams ?? DEFAULT_SORT_ORDER), offset: 0 });
+    await fetchAllTests({
+      ...testCaseParams,
+      ...(apiParams ?? DEFAULT_SORT_ORDER),
+      offset: 0,
+    });
     handlePageChange(INITIAL_PAGING_VALUE);
   };
 
@@ -254,7 +262,7 @@ export const QualityTab = () => {
     if (value !== selectedTestCaseStatus) {
       setSelectedTestCaseStatus(value);
       fetchAllTests({
-        testCaseType: selectedTestType,
+        ...testCaseParams,
         testCaseStatus: isEmpty(value) ? undefined : value,
       });
     }
@@ -283,19 +291,18 @@ export const QualityTab = () => {
           table?.deleted ?? false,
           navigate,
           showModal,
-          EntityType.TABLE
+          EntityType.TABLE,
+          getTestCaseExportFilters(testCaseParams)
         )
       : [];
-  }, [globalPermissions, table, navigate, showModal]);
+  }, [globalPermissions, table, navigate, showModal, testCaseParams]);
 
   const handleTestCaseTypeChange = (value: TestCaseType) => {
     if (value !== selectedTestType) {
       setSelectedTestType(value);
       fetchAllTests({
+        ...testCaseParams,
         testCaseType: value,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
       });
     }
   };
@@ -370,12 +377,14 @@ export const QualityTab = () => {
 
   if (permissions && !permissions?.ViewTests) {
     return (
-      <ErrorPlaceHolder
-        permissionValue={t('label.view-entity', {
-          entity: t('label.data-observability'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.data-observability'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -517,10 +526,9 @@ export const QualityTab = () => {
         {qualityTab === EntityTabs.TEST_CASES && (
           <DataQualityTab
             removeTableBorder
-            afterDeleteAction={async (...params) => {
-              await fetchAllTests(...params);
-              params?.length &&
-                (await getResourceLimit('dataQuality', true, true));
+            afterDeleteAction={async () => {
+              await fetchAllTests(testCaseParams);
+              await getResourceLimit('dataQuality', true, true);
             }}
             breadcrumbData={tableBreadcrumb}
             entityPermissions={allTestCasesPermissions}

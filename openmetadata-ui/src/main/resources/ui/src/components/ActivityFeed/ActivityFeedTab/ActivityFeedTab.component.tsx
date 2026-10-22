@@ -18,6 +18,7 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -35,7 +36,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
 import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/ic-feeds-filter.svg';
 import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
 import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
@@ -50,7 +50,6 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -75,7 +74,7 @@ import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -156,7 +155,11 @@ const startFeedCountRequests = ({
           userId,
           limit: 1,
         }
-      : { entityLink: getEntityFeedLink(entityType, fqn), limit: 1 }
+      : {
+          entityLink: getEntityFeedLink(entityType, fqn),
+          includeFields: true,
+          limit: 1,
+        }
   ),
   mentions: isUserEntity
     ? listConversations({
@@ -287,12 +290,12 @@ const TaskFilterBar = ({
       : `${t('label.closed')} (${countData?.closedTaskCount ?? 0})`;
 
   return (
-    <div className="d-flex gap-4 task-filter-container  justify-between items-center ">
+    <div className="d-flex gap-4 task-filter-container justify-between items-center tw:flex-wrap">
       <Dropdown.Root>
         <Button
           color="secondary"
           data-testid="user-profile-page-task-filter-icon"
-          iconLeading={<FilterIcon aria-hidden height={16} width={16} />}
+          iconLeading={FilterLines}
           isDisabled={isMentionTabSelected}
           size="sm">
           {filterLabel}
@@ -415,15 +418,13 @@ const ActivityFeedTabRightPanel = ({
           ? content
           : !loading && (
               <div className="p-x-md no-data-placeholder-container-right-panel d-flex justify-center items-center h-full">
-                <ErrorPlaceHolderNew
-                  icon={<NoConversationsIcon />}
-                  type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                  <Typography
-                    as="div"
-                    className="placeholder-text tw:mb-4 tw:break-words">
-                    {placeholder}
-                  </Typography>
-                </ErrorPlaceHolderNew>
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-data-placeholder"
+                    description={placeholder}
+                    icon={<NoConversationsIcon />}
+                  />
+                </div>
               </div>
             )}
       </div>

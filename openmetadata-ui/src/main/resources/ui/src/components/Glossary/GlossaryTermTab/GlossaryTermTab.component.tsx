@@ -34,6 +34,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from '@openmetadata/ui-core-components/icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
@@ -42,6 +43,7 @@ import { debounce, isEmpty, isUndefined, uniqBy } from 'lodash';
 import {
   lazy,
   MouseEvent,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -83,6 +85,10 @@ import {
   GlossaryTerm,
 } from '../../../generated/entity/data/glossaryTerm';
 import { User } from '../../../generated/entity/teams/user';
+import {
+  GLOSSARY_PROPOSALS_QUERY_KEY,
+  useTermDerivations,
+} from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
@@ -109,9 +115,16 @@ import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import Fqn from '../../../utils/Fqn';
 import {
   buildTree,
+  getGlossaryEntityLink,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
+  updateGlossaryTermStatus,
 } from '../../../utils/GlossaryPureUtils';
+import {
+  collectAiDraftIds,
+  getProposalSource,
+  getRequestAuthor,
+} from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
@@ -132,6 +145,8 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
+import ProposalSourceMark from '../../governance/glossary/GlossaryReview/ProposalSourceMark';
+import ProposalStatusBadge from '../../governance/glossary/GlossaryReview/ProposalStatusBadge';
 import { SynonymBadge } from '../GlossaryTermBadges/GlossaryTermBadges';
 import { ModifiedGlossary, useGlossaryStore } from '../useGlossary.store';
 import GlossaryTermEmptyPlaceholder from './GlossaryTermEmptyPlaceholder.component';
@@ -419,6 +434,7 @@ const GlossaryTermNameCell = ({
   );
   const termCountKey =
     totalNested === 1 ? 'label.count-term' : 'label.count-term-plural';
+  const proposalSource = getProposalSource(record);
 
   return (
     <div className="tw:flex tw:min-w-0 tw:items-center">
@@ -429,6 +445,11 @@ const GlossaryTermNameCell = ({
         imageClassName="tw:block"
         size={18}
       />
+      {proposalSource && (
+        <span className="tw:mr-1.5 tw:inline-flex">
+          <ProposalSourceMark source={proposalSource} />
+        </span>
+      )}
       <Link
         className="cursor-pointer tw:inline-block tw:max-w-50 tw:truncate"
         data-testid={name}
@@ -456,11 +477,13 @@ const GlossaryTermNameCell = ({
 interface GlossaryTermStatusCellProps {
   record: ModifiedGlossaryTerm;
   status: EntityStatus;
+  children?: ReactNode;
 }
 
 const GlossaryTermStatusCell = ({
   record,
   status,
+  children,
 }: GlossaryTermStatusCellProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -512,15 +535,14 @@ const GlossaryTermStatusCell = ({
     <PopoverTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
       <AriaButton
         className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+        data-testid={`${record.fullyQualifiedName ?? ''}-status`}
         ref={triggerRef}
         onHoverEnd={closePopover}
         onHoverStart={openPopover}
         onKeyDown={(event) => event.key === 'Escape' && setIsOpen(false)}>
-        <StatusBadge
-          dataTestId={`${record.fullyQualifiedName ?? ''}-status`}
-          label={status}
-          status={EntityStatusClass[status]}
-        />
+        {children ?? (
+          <StatusBadge label={status} status={EntityStatusClass[status]} />
+        )}
       </AriaButton>
       <Popover isNonModal placement="top start">
         <div
@@ -552,7 +574,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
-
+  const selectedProposalId = useGlossaryStore(
+    (state) => state.selectedProposalId
+  );
+  const queryClient = useQueryClient();
   // Consumer via useGenericContext(). No `deleted` argument: the old expression here
   // (bare permissions.EditAll, bulk-edit button gate) never referenced a deleted
   // concept, so getDerivedPermissionFlags defaults to its `deleted = false` — nothing
@@ -582,6 +607,20 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       'fullyQualifiedName'
     );
   }, [glossaryChildTerms]);
+
+  // The evidence behind the AI drafts among the loaded rows, for their status badges.
+  const aiDraftIds = useMemo(
+    () => collectAiDraftIds(glossaryTerms),
+    [glossaryTerms]
+  );
+  const derivations = useTermDerivations(aiDraftIds);
+  const derivationByTermId = useMemo(
+    () =>
+      new Map(
+        derivations.map((derivation) => [derivation.entity.id, derivation])
+      ),
+    [derivations]
+  );
 
   // Precompute each term's loaded-descendant count once per data change (the
   // API's childrenCount is the whole subtree size, so this must be recursive).
@@ -923,7 +962,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         type: TaskEntityType.RequestApproval,
         aboutEntity: fqn,
         limit: PAGE_SIZE_LARGE,
-        fields: 'about,assignees',
+        fields: 'about,assignees,createdBy',
       });
       lastFetchedTaskFqnRef.current = fqn;
 
@@ -1002,34 +1041,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [isGlossary, activeGlossary]);
 
   const tableColumnsWidth = useMemo(() => glossaryTermTableColumnsWidth(), []);
-
-  const updateGlossaryTermStatus = (
-    terms: ModifiedGlossary[],
-    targetFqn: string,
-    newStatus: EntityStatus
-  ): ModifiedGlossary[] => {
-    return terms.map((term) => {
-      if (term.fullyQualifiedName === targetFqn) {
-        return {
-          ...term,
-          entityStatus: newStatus,
-        };
-      }
-
-      if (term.children && term.children.length > 0) {
-        return {
-          ...term,
-          children: updateGlossaryTermStatus(
-            term.children as ModifiedGlossary[],
-            targetFqn,
-            newStatus
-          ),
-        };
-      }
-
-      return term;
-    }) as ModifiedGlossary[];
-  };
 
   const updateGlossaryTermTask = (
     tasks: Record<string, Task[]>,
@@ -1120,6 +1131,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         });
         const isPendingFurtherApproval =
           isTaskPendingFurtherApproval(updatedTask);
+        queryClient.invalidateQueries({
+          queryKey: GLOSSARY_PROPOSALS_QUERY_KEY,
+        });
 
         showSuccessToast(
           isPendingFurtherApproval
@@ -1302,8 +1316,31 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
               />
             );
           }
+          const proposalSource = getProposalSource(record);
+          if (!proposalSource) {
+            return <GlossaryTermStatusCell record={record} status={status} />;
+          }
+          const approvalTask =
+            termTaskThreads[
+              getGlossaryEntityLink(record.fullyQualifiedName ?? '')
+            ]?.[0];
 
-          return <GlossaryTermStatusCell record={record} status={status} />;
+          const proposalBadge = (
+            <ProposalStatusBadge
+              author={getRequestAuthor(approvalTask, record.updatedBy)}
+              derivation={derivationByTermId.get(record.id)}
+              source={proposalSource}
+              updatedAt={record.updatedAt}
+            />
+          );
+
+          return proposalSource === 'person' ? (
+            <GlossaryTermStatusCell record={record} status={status}>
+              {proposalBadge}
+            </GlossaryTermStatusCell>
+          ) : (
+            proposalBadge
+          );
         },
         onFilter: (value, record) => record.entityStatus === value,
       },
@@ -1425,6 +1462,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     loadingChildren,
     expandedRowKeys,
     loadedNestedCountByFqn,
+    derivationByTermId,
   ]);
 
   const handleCheckboxChange = useCallback(
@@ -1637,10 +1675,21 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       if (isNested || isExpanded) {
         rowClasses.push('glossary-nested-row');
       }
+      const proposalSource = getProposalSource(record);
+      if (proposalSource) {
+        rowClasses.push(
+          proposalSource === 'ai'
+            ? 'glossary-ai-draft-row'
+            : 'glossary-person-proposal-row'
+        );
+      }
+      if (proposalSource && record.id === selectedProposalId) {
+        rowClasses.push('glossary-proposal-row-selected');
+      }
 
       return rowClasses.join(' ');
     },
-    [expandedRowKeys]
+    [expandedRowKeys, selectedProposalId]
   );
 
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(

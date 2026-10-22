@@ -19,6 +19,7 @@ import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.inte
 import LineageTabContent from './LineageTabContent';
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
   ChevronRight: jest
     .fn()
     .mockImplementation((props: React.SVGProps<SVGSVGElement>) => (
@@ -33,8 +34,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
 
 // Mock react-i18next
 jest.mock('@openmetadata/ui-core-components', () => ({
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
-  Typography: jest.requireActual('@openmetadata/ui-core-components').Typography,
   Tooltip: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
@@ -42,6 +44,31 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
   Owner: jest.fn().mockReturnValue(<></>),
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick, className, size, ...props }) => (
+      <button
+        className={className}
+        data-size={size}
+        onClick={onClick}
+        {...props}>
+        {children}
+      </button>
+    )),
+  Typography: jest
+    .fn()
+    .mockImplementation(
+      ({ children, className, as: Component = 'span', ...props }) => (
+        <Component
+          className={className}
+          data-testid={
+            Component === 'p' ? 'typography-paragraph' : 'typography-text'
+          }
+          {...props}>
+          {children}
+        </Component>
+      )
+    ),
   Breadcrumbs: jest
     .fn()
     .mockImplementation(
@@ -140,16 +167,6 @@ jest.mock('../../../../assets/svg/ic-task-empty.svg', () => ({
 }));
 
 // Mock ErrorPlaceHolderNew component
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ children, icon }) => (
-    <div data-testid="error-placeholder">
-      {icon}
-      {children}
-    </div>
-  )),
-}));
-
 // Mock ERROR_PLACEHOLDER_TYPE enum
 jest.mock('../../../../enums/common.enum', () => ({
   ...jest.requireActual('../../../../enums/common.enum'),
@@ -496,7 +513,11 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} />);
 
-      expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+        )
+      ).toBeInTheDocument();
       expect(screen.getByTestId('no-data-icon')).toBeInTheDocument();
       expect(screen.getByText('label.lineage-not-found')).toBeInTheDocument();
     });
@@ -509,11 +530,9 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} />);
 
-      const paragraph = screen.getByText('label.lineage-not-found');
-
-      expect(paragraph).toBeInTheDocument();
-      expect(paragraph).toHaveClass('text-center');
-      expect(paragraph).toHaveClass('no-data-placeholder');
+      expect(screen.getByTestId('no-data-placeholder')).toContainElement(
+        screen.getByText('label.lineage-not-found')
+      );
     });
   });
 

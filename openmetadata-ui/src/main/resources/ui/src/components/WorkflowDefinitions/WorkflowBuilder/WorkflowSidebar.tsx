@@ -107,8 +107,7 @@ const WorkflowSidebar = ({ isNodeDragEnabled }: WorkflowSidebarProps) => {
   const automatedTasks = Object.entries(NODE_TYPE_MAPPINGS)
     .filter(
       ([, mapping]) =>
-        mapping.type === NodeType.AutomatedTask &&
-        !('category' in mapping && mapping.category === 'sink')
+        mapping.type === NodeType.AutomatedTask && !('category' in mapping)
     )
     .map(([subType, mapping]) => ({
       icon: getNodeIcon(subType as NodeSubType, {

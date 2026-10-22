@@ -20,7 +20,10 @@ import {
 } from '@testing-library/react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
-import { IngestionWorkflowData } from '../../../../../interface/service.interface';
+import {
+  IngestionWorkflowData,
+  IngestionWorkflowFormProps,
+} from '../../../../../interface/service.interface';
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
@@ -53,6 +56,14 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(await screen.findByText('Catalog Mapping')).toBeInTheDocument();
     expect(screen.getByDisplayValue('bq_catalog')).toBeInTheDocument();
     expect(screen.getByDisplayValue('my-gcp-project')).toBeInTheDocument();
+    // the key is the editable input beside the value, not a label above it
+    expect(screen.queryByText('bq_catalog')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'bq_catalog' })).toHaveValue(
+      'my-gcp-project'
+    );
+    expect(screen.getByRole('textbox', { name: 'label.key' })).toHaveValue(
+      'bq_catalog'
+    );
   });
 
   it('adds a catalog entry to the workflow data', async () => {
@@ -65,11 +76,57 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     });
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
-    const { catalogMapping } = onChange.mock.lastCall[0];
+    const { catalogMapping } = onChange.mock.calls.at(-1)[0];
 
     expect(catalogMapping).toEqual(
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
     );
     expect(Object.keys(catalogMapping)).toHaveLength(2);
+    // RJSF's visible default, so an untouched row is noticed before it is saved
+    expect(catalogMapping.newKey).toBe('New Value');
+  });
+});
+
+type ServiceData = IngestionWorkflowFormProps['serviceData'];
+
+const renderProfilerForm = (serviceData: ServiceData) =>
+  render(
+    <IngestionWorkflowForm
+      hideFooter
+      pipeLineType={PipelineType.Profiler}
+      serviceCategory={ServiceCategory.DATABASE_SERVICES}
+      serviceData={serviceData}
+      workflowData={{} as IngestionWorkflowData}
+      onCancel={jest.fn()}
+      onFocus={jest.fn()}
+      onSubmit={jest.fn()}
+    />
+  );
+
+const getAutoPartitionField = async () => {
+  fireEvent.click(
+    await screen.findByTestId('ingestion-section-advanced-toggle')
+  );
+
+  return (await screen.findByText('Enable Auto Partition Detection')).closest(
+    '[data-field-name="enableAutoPartitionDetection"]'
+  );
+};
+
+describe('IngestionWorkflowForm auto partition detection', () => {
+  it('shows the setting for services that support auto partition detection', async () => {
+    renderProfilerForm({
+      connection: { config: { supportsAutoPartitionDetection: true } },
+    } as ServiceData);
+
+    expect(await getAutoPartitionField()).not.toHaveClass('tw:hidden');
+  });
+
+  it('hides the setting for services that do not support auto partition detection', async () => {
+    renderProfilerForm({
+      connection: { config: {} },
+    } as ServiceData);
+
+    expect(await getAutoPartitionField()).toHaveClass('tw:hidden');
   });
 });

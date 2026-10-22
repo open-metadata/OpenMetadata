@@ -21,6 +21,7 @@ import {
   SkeletonParagraph,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { FilterLines } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isObject } from 'lodash';
@@ -37,9 +38,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EmptyAssetIcon } from '../../../../assets/svg/action-icons/empty-asset.svg';
 import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { ES_UPDATE_DELAY } from '../../../../constants/constants';
+import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
@@ -95,11 +95,11 @@ import {
 import { getTagAssetsQueryFilter } from '../../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   ManageMenu,
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -115,6 +115,7 @@ import {
 } from '../../../SearchedData/SearchedData.interface';
 import './assets-tabs.less';
 import { AssetsTabsProps } from './AssetsTabs.interface';
+import { removeAndReportRefusals } from './AssetsTabs.utils';
 
 type AssetsTabEntity = Domain | DataProduct | GlossaryTerm | Tag | Metric;
 
@@ -143,13 +144,12 @@ const removePortsHandler =
       | AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
       | AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
   ) =>
-  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) => {
-    await removePortsFromDataProduct(
+  async (activeEntity: AssetsTabEntity, entities: EntityReference[]) =>
+    removePortsFromDataProduct(
       activeEntity.fullyQualifiedName ?? '',
       entities,
       portType
     );
-  };
 
 const removeAssetsHandlers: Partial<
   Record<
@@ -157,41 +157,36 @@ const removeAssetsHandlers: Partial<
     (
       activeEntity: AssetsTabEntity,
       entities: EntityReference[]
-    ) => Promise<void>
+    ) => Promise<unknown>
   >
 > = {
-  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) => {
-    await removeAssetsFromDataProduct(
+  [AssetsOfEntity.DATA_PRODUCT]: async (activeEntity, entities) =>
+    removeAssetsFromDataProduct(
       activeEntity.fullyQualifiedName ?? '',
       entities
-    );
-  },
+    ),
   [AssetsOfEntity.DATA_PRODUCT_INPUT_PORT]: removePortsHandler(
     AssetsOfEntity.DATA_PRODUCT_INPUT_PORT
   ),
   [AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT]: removePortsHandler(
     AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
   ),
-  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) => {
-    await removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities);
-  },
-  [AssetsOfEntity.TAG]: async (activeEntity, entities) => {
-    await removeAssetsFromTags(activeEntity.id ?? '', entities);
-  },
-  [AssetsOfEntity.METRIC]: async (activeEntity, entities) => {
-    await removeMetricTabAssets(
-      activeEntity.fullyQualifiedName ?? '',
-      entities
-    );
-  },
+  [AssetsOfEntity.GLOSSARY]: async (activeEntity, entities) =>
+    removeAssetsFromGlossaryTerm(activeEntity as GlossaryTerm, entities),
+  [AssetsOfEntity.TAG]: async (activeEntity, entities) =>
+    removeAssetsFromTags(activeEntity.id ?? '', entities),
+  [AssetsOfEntity.METRIC]: async (activeEntity, entities) =>
+    removeMetricTabAssets(activeEntity.fullyQualifiedName ?? '', entities),
   [AssetsOfEntity.DOMAIN]: async (activeEntity, entities) => {
-    await removeAssetsFromDomain(
+    const response = await removeAssetsFromDomain(
       activeEntity.fullyQualifiedName ?? '',
       entities
     );
     queryClient.invalidateQueries({
       queryKey: domainAssetsCountQueryKey,
     });
+
+    return response;
   },
 };
 
@@ -199,9 +194,7 @@ const removeAssetsByType = async (
   type: AssetsOfEntity,
   activeEntity: AssetsTabEntity,
   entities: EntityReference[]
-) => {
-  await removeAssetsHandlers[type]?.(activeEntity, entities);
-};
+) => removeAssetsHandlers[type]?.(activeEntity, entities);
 
 type AssetsQueryFilter = AssetsTabsProps['queryFilter'];
 
@@ -300,7 +293,7 @@ const AssetsFilterBar = ({
             className="tw:size-9"
             color="secondary"
             data-testid="asset-filter-button"
-            icon={FilterIcon}
+            icon={FilterLines}
             size="sm"
             tooltip={t('label.filter-plural')}
           />
@@ -430,6 +423,7 @@ const AssetsTabs = forwardRef(
     const [quickFilterQuery, setQuickFilterQuery] =
       useState<QueryFilterInterface>();
     const { t } = useTranslation();
+    const { socket } = useWebSocketConnector();
     const [totalAssetCount, setTotalAssetCount] = useState<number>(
       assetCount ?? 0
     );
@@ -790,7 +784,10 @@ const AssetsTabs = forwardRef(
             }
           }
 
-          await removeAssetsByType(type, activeEntity, entities);
+          await removeAndReportRefusals(
+            () => removeAssetsByType(type, activeEntity, entities),
+            socket
+          );
 
           await new Promise((resolve) => {
             setTimeout(() => {
@@ -812,7 +809,7 @@ const AssetsTabs = forwardRef(
           }
         }
       },
-      [type, activeEntity, entityFqn, fetchOutputPorts]
+      [type, activeEntity, entityFqn, fetchOutputPorts, socket]
     );
 
     const confirmDomainAssetRemove = useCallback(async () => {
@@ -821,9 +818,11 @@ const AssetsTabs = forwardRef(
       }
       setAssetRemoving(true);
       try {
-        await removeAssetsFromDomain(
-          activeEntity.fullyQualifiedName ?? '',
-          pendingRemoveEntities
+        await removeAndReportRefusals(() =>
+          removeAssetsFromDomain(
+            activeEntity.fullyQualifiedName ?? '',
+            pendingRemoveEntities
+          )
         );
         queryClient.invalidateQueries({ queryKey: domainAssetsCountQueryKey });
         setRemoveDryRunWarnings(undefined);
@@ -895,29 +894,23 @@ const AssetsTabs = forwardRef(
 
     const assetErrorPlaceHolder = useMemo(() => {
       if (isObject(noDataPlaceholder) || searchValue) {
+        const searchMessage =
+          searchValue && type !== AssetsOfEntity.MY_DATA
+            ? t('label.no-matching-data-asset')
+            : undefined;
+
         return (
-          <ErrorPlaceHolderNew
-            className="p-lg "
-            icon={
-              <AddPlaceHolderIcon
-                className="text-grey-14"
-                height={140}
-                width={140}
-              />
-            }>
-            {searchValue && type !== AssetsOfEntity.MY_DATA && (
-              <div className="gap-4">
-                <Typography as="p">
-                  {t('label.no-matching-data-asset')}
-                </Typography>
-              </div>
-            )}
-            {isObject(noDataPlaceholder) && (
-              <div className="gap-4">
-                <Typography as="p">{noDataPlaceholder.message}</Typography>
-              </div>
-            )}
-          </ErrorPlaceHolderNew>
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoDataPlaceholder
+              data-testid="no-data-placeholder"
+              description={
+                searchMessage ??
+                (isObject(noDataPlaceholder)
+                  ? noDataPlaceholder.message
+                  : undefined)
+              }
+            />
+          </div>
         );
       } else {
         return (

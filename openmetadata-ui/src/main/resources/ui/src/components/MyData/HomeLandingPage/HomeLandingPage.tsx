@@ -20,6 +20,7 @@ import type { ReactGridLayoutProps } from 'react-grid-layout';
 import RGL, { WidthProvider } from 'react-grid-layout';
 import { useNavigate } from 'react-router-dom';
 import { PageType } from '../../../generated/system/ui/page';
+import type { PersonaPreferences } from '../../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import type { WidgetConfig } from '../../../interface/customization.interface';
@@ -39,7 +40,9 @@ import { getCustomizePagePath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DeferredWidget from '../../common/DeferredWidget/DeferredWidget.component';
 import { TopicCollapseContext } from '../Widgets/Common/TopicWidget/TopicCollapseContext';
+import HomeLandingPageHeader from './HomeLandingPageHeader';
 import HomeLandingPageSkeleton from './HomeLandingPageSkeleton';
+import { resolveLandingPageHeaderColor } from './landingPageHeaderColor';
 import TopicsSectionHeader from './TopicsSectionHeader';
 import { useTopicsView } from './useTopicsView';
 
@@ -53,9 +56,9 @@ const AnnouncementsRail = withSuspenseFallback(
   lazy(() => import('./AnnouncementsRail'))
 );
 
-const CriticalAnnouncements = withSuspenseFallback(
-  lazy(() => import('./CriticalAnnouncements'))
-);
+// Not wrapped in withSuspenseFallback: the greeting it replaces is its
+// Suspense fallback too, so the header shows before the chunk lands.
+const CriticalAnnouncements = lazy(() => import('./CriticalAnnouncements'));
 
 const ReactGridLayout = WidthProvider(RGL) as React.ComponentType<
   ReactGridLayoutProps & { children?: ReactNode }
@@ -119,13 +122,22 @@ const usePersonaLandingPage = () => {
     [docData]
   );
 
-  return { isLoading, layout, selectedPersona };
+  // The user's own Header Theme for this persona wins over the one the
+  // persona's admin set.
+  const headerColor = resolveLandingPageHeaderColor(
+    selectedPersona?.id,
+    currentUser?.personaPreferences,
+    docData?.data?.personPreferences as PersonaPreferences[] | undefined
+  );
+
+  return { headerColor, isLoading, layout, selectedPersona };
 };
 
 /**
  * The home page, shared by both app modes.
  *
- * Fixed shell top to bottom — announcements rail, the deployment's "Needs you
+ * Fixed shell top to bottom — the greeting (or, while one is live, the
+ * critical announcement banner in its place), announcements rail, the deployment's "Needs you
  * now" section when it supplies one, then the persona's widget grid. Which
  * widgets appear and where is entirely the persona's landing-page layout
  * (docStore), edited through `CustomizeMyData`; nothing
@@ -134,7 +146,8 @@ const usePersonaLandingPage = () => {
  */
 const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   const navigate = useNavigate();
-  const { isLoading, layout, selectedPersona } = usePersonaLandingPage();
+  const { headerColor, isLoading, layout, selectedPersona } =
+    usePersonaLandingPage();
 
   const {
     collapseValue,
@@ -174,6 +187,7 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
   );
 
   const personaFqn = selectedPersona?.fullyQualifiedName;
+  const greeting = <HomeLandingPageHeader headerColor={headerColor} />;
   const NeedsYouNowSection =
     customizeMyDataPageClassBase.getNeedsYouNowSection();
 
@@ -188,7 +202,9 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
         scroll="page">
         <PageLayout.Content className={contentClassName(Boolean(footerSlot))}>
           <div className="tw:flex tw:flex-col tw:gap-10 tw:px-4 tw:pt-8">
-            <CriticalAnnouncements />
+            <Suspense fallback={greeting}>
+              <CriticalAnnouncements fallback={greeting} />
+            </Suspense>
             <AnnouncementsRail />
 
             {NeedsYouNowSection && (

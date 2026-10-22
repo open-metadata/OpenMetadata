@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -40,6 +40,7 @@ import {
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
@@ -326,7 +327,7 @@ const ProfilePage: React.FC = () => {
       if (isUserNotFound) {
         return (
           <Box className="tw:relative tw:flex-1">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               icon={User01}
               title={t('label.no-entity-found', { entity: t('label.user') })}
             />
@@ -362,6 +363,7 @@ const ProfilePage: React.FC = () => {
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}
             meta={headerOverride?.meta}
+            tabs={headerOverride?.tabs}
             title={headerTitle}
             titleInput={headerOverride?.titleInput}
             titleSuffix={headerOverride?.titleSuffix}

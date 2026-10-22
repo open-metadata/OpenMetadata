@@ -39,6 +39,8 @@ import {
   DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
+  EDGE_LABEL_FONT_FAMILY,
+  EDGE_LABEL_FONT_SIZE,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
@@ -73,6 +75,7 @@ import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
   adaptiveSpacing,
   getLayoutConfig,
+  getNodeSize,
   NODE_HEIGHT,
   NODE_WIDTH,
   shouldUseComboGridLayout,
@@ -83,6 +86,7 @@ import {
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
   buildStudioMetricNodeStyle,
+  buildStudioProposedNodeStyle,
   CARDINALITY_AWARE_LINE_EDGE_TYPE,
   CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE,
   getCanvasColor,
@@ -91,7 +95,16 @@ import {
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
+import {
+  EdgeRoute,
+  routeRelationsGraphEdges,
+} from '../utils/relationsGraphRouting';
 import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
+import { measureTextWidth } from '../utils/textMeasure';
+
+// Matches the relation badge's [4, 8, 4, 8] padding around 10px text.
+const RELATIONS_EDGE_LABEL_PADDING_X = 16;
+const RELATIONS_EDGE_LABEL_HEIGHT = 20;
 
 /**
  * Starts a G6 layout and waits for it to actually finish.
@@ -209,6 +222,12 @@ export function isDataModeLoadMoreBadgeShape(originalTarget: unknown): boolean {
   const idx = findBadgeIndex(originalTarget);
 
   return idx === 1;
+}
+
+// A proposal is not a concept yet, so it cannot end a drawn relationship;
+// clicking one drops the connection and opens its review instead.
+export function canEndRelationship(node: OntologyNode): boolean {
+  return !node.proposal;
 }
 
 export function stripNodePositionsForDataMode<T extends { style?: unknown }>(
@@ -491,12 +510,12 @@ function buildDataModeTermStyle(
     badges,
     labelFill: NODE_FILL_DEFAULT,
     ...(d?.isSelected && {
-      stroke: NODE_SELECTED_STROKE,
+      stroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       lineWidth: NODE_SELECTED_LINE_WIDTH,
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
@@ -519,7 +538,7 @@ function getStudioNodeKindStyle(
   };
 }
 
-function buildStudioNodeStyle(
+export function buildStudioNodeStyle(
   datum: NodeData,
   d: GraphNodeMeta,
   ontNode: OntologyNode | undefined
@@ -530,7 +549,7 @@ function buildStudioNodeStyle(
   const size = (datum.style?.size as [number, number] | undefined) ?? [150, 36];
   const label = d?.label ?? datum.id;
 
-  return {
+  const style = {
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
     ...kindStyle,
     label: false,
@@ -538,16 +557,27 @@ function buildStudioNodeStyle(
     studioAccentColor: accentColor,
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : kindStyle.stroke,
+    stroke: d?.isSelected
+      ? getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK)
+      : kindStyle.stroke,
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
     ...(d?.isSelected && {
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
+
+  // A selected proposal shows its own solid purple border, not the brand halo.
+  return ontNode?.proposal
+    ? {
+        ...style,
+        ...buildStudioProposedNodeStyle(getCanvasColor, Boolean(d?.isSelected)),
+        haloLineWidth: 0,
+      }
+    : style;
 }
 
 function computeHierarchyBadgeColor(
@@ -622,7 +652,10 @@ function buildDefaultNodeStyle(
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+    stroke: getCanvasColor(
+      d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+      BRAND_BLUE_FALLBACK
+    ),
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : 1,
     ...(hasHierarchyBadge && {
       radius: [0, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS],
@@ -836,6 +869,44 @@ function computeLayoutContext(
   });
 
   return { layoutOptions, useComboGridLayout, isModelView };
+}
+
+// Reads positions from the graph's own node data, so it reflects both the
+// grid layout and any term the user has since dragged.
+function computeRelationsEdgeRoutes(graph: Graph): Map<string, EdgeRoute> {
+  const nodes = graph.getNodeData().flatMap((node) => {
+    const x = Number(node.style?.x);
+    const y = Number(node.style?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return [];
+    }
+    const [width, height] = getNodeSize(node);
+
+    return [{ id: String(node.id), x, y, width, height }];
+  });
+  const edges = graph.getEdgeData().map((edge) => {
+    const style = (edge.style ?? {}) as Record<string, unknown>;
+    const labelText =
+      typeof style.labelText === 'string' ? style.labelText : '';
+
+    return {
+      id: String(edge.id),
+      source: String(edge.source),
+      target: String(edge.target),
+      labelWidth: labelText
+        ? measureTextWidth(
+            labelText,
+            `700 ${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`,
+            7
+          ) + RELATIONS_EDGE_LABEL_PADDING_X
+        : 0,
+      labelHeight: RELATIONS_EDGE_LABEL_HEIGHT,
+      labelOffsetX: Number(style.labelOffsetX) || 0,
+      labelOffsetY: Number(style.labelOffsetY) || 0,
+    };
+  });
+
+  return routeRelationsGraphEdges(nodes, edges);
 }
 
 function attemptInPlacePatch(
@@ -1085,6 +1156,7 @@ export function useOntologyGraph({
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
+  const relationsEdgeRoutesRef = useRef<Map<string, EdgeRoute>>(new Map());
 
   settingsRef.current = settings;
 
@@ -1409,6 +1481,7 @@ export function useOntologyGraph({
     if (updates.length > 0) {
       graph.updateNodeData(updates);
     }
+    relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
   }, []);
 
   const positionStudioNodes = useCallback(
@@ -1684,7 +1757,7 @@ export function useOntologyGraph({
       },
       edge: {
         type: () =>
-          studioMode && !isDataMode
+          (studioMode || useComboGridLayout) && !isDataMode
             ? CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE
             : CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
@@ -1698,6 +1771,11 @@ export function useOntologyGraph({
             datum.style ? { ...base, ...datum.style } : { ...base }
           ) as Record<string, unknown>;
           applyEdgeLabelVisibility(merged, settingsRef.current.showEdgeLabels);
+          if (useComboGridLayout && !studioMode && !isDataMode) {
+            const route = relationsEdgeRoutesRef.current.get(String(datum.id));
+            merged.curveOffset = route?.curveOffset ?? 0;
+            merged.labelPlacement = route?.labelPlacement ?? 'center';
+          }
 
           return merged;
         },
@@ -1763,10 +1841,15 @@ export function useOntologyGraph({
     // click was fully handled by the edit gesture (edit port, or a listener
     // that cancelled the event) and should not fall through to onNodeClick.
     const dispatchStudioEditClick = (
-      id: string,
+      node: OntologyNode,
       position: { x: number; y: number },
       e: IElementEvent
     ): boolean => {
+      if (!canEndRelationship(node)) {
+        container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
+
+        return false;
+      }
       const isEditPort = hasShapeClass(
         e.originalTarget,
         STUDIO_EDIT_PORT_CLASS_NAME
@@ -1775,7 +1858,7 @@ export function useOntologyGraph({
         clientX: e.clientX ?? position.x,
         clientY: e.clientY ?? position.y,
         isPort: isEditPort,
-        nodeId: id,
+        nodeId: node.id,
       };
       const editEvent = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
         cancelable: true,
@@ -1800,7 +1883,7 @@ export function useOntologyGraph({
         y: e.clientY ?? 0,
       });
       if (studioMode && isEditModeRef.current) {
-        const shouldStop = dispatchStudioEditClick(id, position, e);
+        const shouldStop = dispatchStudioEditClick(node, position, e);
         if (shouldStop) {
           return;
         }
@@ -1828,7 +1911,29 @@ export function useOntologyGraph({
     const cancelEditGesture = () => {
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
     };
+    // A dragged term can land on an edge routed for the old layout, so the
+    // Relations Graph re-routes from the current positions once the drag ends.
+    const rerouteRelationsEdgesAfterDrag = () => {
+      if (studioMode || isDataMode || !useComboGridLayout) {
+        return;
+      }
+      relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
+      graph.updateEdgeData(
+        graph.getEdgeData().map((edge) => ({ id: edge.id }))
+      );
+      graph.draw().catch(() => {
+        // the graph may already be destroyed if the tab changed mid-drag
+      });
+    };
     const writeGraphSnapshot = () => {
+      // A viewport animation started before a rebuild can finish after the
+      // graph is torn down, when it no longer has a viewport to read.
+      let zoom: number;
+      try {
+        zoom = graph.getZoom();
+      } catch {
+        return;
+      }
       const positions = Object.fromEntries(
         graph.getNodeData().flatMap((node) => {
           try {
@@ -1843,13 +1948,14 @@ export function useOntologyGraph({
           }
         })
       );
-      container.dataset.graphZoom = String(graph.getZoom());
+      container.dataset.graphZoom = String(zoom);
       container.dataset.nodePositions = JSON.stringify(positions);
     };
 
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
     graph.on(NodeEvent.DRAG_START, cancelEditGesture);
+    graph.on(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
     graph.on(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
     graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
@@ -2045,6 +2151,7 @@ export function useOntologyGraph({
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
       graph.off(NodeEvent.DRAG_START, cancelEditGesture);
+      graph.off(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
       graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
       graph.off('edge:click', handleEdgeClick);
