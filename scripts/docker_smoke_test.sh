@@ -159,17 +159,16 @@ for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
 done
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
-# Runs bootstrap/openmetadata-ops.sh exactly the way compose and the helm chart
-# do -- through the shell entrypoint -- so this covers the launch script, the
-# classpath it assembles from libs/, and every JDK module the app touches in one
-# shot. It
+# Run through `-c` so the script's shebang is resolved, matching the Kubernetes
+# init container rather than having BusyBox read the script directly. This also
+# covers the classpath it assembles and every JDK module it touches. It
 # cannot reach a database and is expected to fail on that; what matters is that
 # it does not fail on a missing module or an unresolvable class.
-ops="$(docker run --rm "$IMAGE" \
-  /opt/openmetadata/bootstrap/openmetadata-ops.sh --help 2>&1 || true)"
-if echo "$ops" | grep -qE 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
-  echo "$ops" | grep -E 'NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
-  fail "openmetadata-ops.sh hit a class-loading or module error -- the image is missing a class or a JDK module"
+ops="$(docker run --rm "$IMAGE" -c \
+  '/opt/openmetadata/bootstrap/openmetadata-ops.sh --help' 2>&1 || true)"
+if echo "$ops" | grep -qE 'openmetadata-ops\.sh: not found|NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found'; then
+  echo "$ops" | grep -E 'openmetadata-ops\.sh: not found|NoClassDefFoundError|ClassNotFoundException|UnsatisfiedLinkError|FindException|module .* not found' | head -5
+  fail "openmetadata-ops.sh could not start or resolve every class it needs"
 else
   pass "openmetadata-ops.sh runs through the shell and resolves every class it needs"
 fi

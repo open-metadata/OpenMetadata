@@ -80,6 +80,7 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
     <InlineEditCard
       canEdit={canEdit}
       description={t('message.default-persona-description')}
+      isSaveDisabled={draftDefaultId === userData.defaultPersona?.id}
       renderEdit={() => (
         <Autocomplete
           aria-label={t('label.default-persona')}

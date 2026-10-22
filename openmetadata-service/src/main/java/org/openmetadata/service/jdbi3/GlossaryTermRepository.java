@@ -88,6 +88,7 @@ import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -126,6 +127,7 @@ import org.openmetadata.service.jdbi3.OntologyDAO.TermAssetCountRow;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.TermRelationMutator;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -923,9 +925,28 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     if (!update) {
       checkDuplicateTerms(entity);
+      keepAutomationToBots(entity);
     }
 
     IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
+  }
+
+  /**
+   * An automation's term starts in Draft and is decided by people, so only an automation, which
+   * writes as a bot, may say it provides a term; a person's request for it gets a person's term.
+   */
+  private static void keepAutomationToBots(GlossaryTerm entity) {
+    if (isProvidedByAutomation(entity) && !isWrittenByBot(entity.getUpdatedBy())) {
+      entity.setProvider(ProviderType.USER);
+    }
+  }
+
+  private static boolean isWrittenByBot(String userName) {
+    User writer =
+        userName == null
+            ? null
+            : Entity.findByNameOrNull(Entity.USER, userName, Include.NON_DELETED);
+    return writer != null && Boolean.TRUE.equals(writer.getIsBot());
   }
 
   /**
@@ -1003,16 +1024,32 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * A term whose parent term or glossary has reviewers starts in Draft until they approve it;
-   * without reviewers there is nothing to approve and it starts Approved, unless a lifecycle playbook
-   * owns its stage and onboards it from Draft. Applied to every new term
-   * whatever stage its request asked for, so creating a term cannot skip the review.
+   * A term whose parent term or glossary has reviewers starts in Draft until they approve it, and so
+   * does a term an automation provides, such as one an AI agent derived from a memory, until a
+   * person accepts it. Otherwise there is nothing to approve and it starts Approved, unless a
+   * lifecycle playbook owns its stage and onboards it from Draft. Applied to every new term whatever
+   * stage its request asked for, so creating a term cannot skip the review.
    */
   @Override
   protected EntityStatus initialEntityStatus(GlossaryTerm entity) {
     final boolean awaitsReview =
-        !nullOrEmpty(inheritedReviewers(entity)) || playbookOwnsStage(entity);
+        isProvidedByAutomation(entity)
+            || !nullOrEmpty(inheritedReviewers(entity))
+            || playbookOwnsStage(entity);
     return awaitsReview ? EntityStatus.DRAFT : EntityStatus.APPROVED;
+  }
+
+  /**
+   * An automation's Draft term is usually written by a bot, and bot changes never start the approval
+   * workflow, so people decide it directly instead of waiting for a task that is never opened.
+   */
+  @Override
+  protected boolean isStageDecidedByPeople(GlossaryTerm current, String from) {
+    return isProvidedByAutomation(current) && EntityStatus.DRAFT.value().equals(from);
+  }
+
+  private static boolean isProvidedByAutomation(GlossaryTerm term) {
+    return ProviderType.AUTOMATION.equals(term.getProvider());
   }
 
   private List<EntityReference> inheritedReviewers(GlossaryTerm term) {
@@ -2350,6 +2387,27 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      restrictAutomationProviderChange();
+    }
+
+    /**
+     * Only a bot may make a term an automation's or stop it being one: either way it decides who
+     * approves the term. A PATCH asking for it is refused; a PUT, whose provider defaults to user
+     * when omitted, keeps the stored provider instead, as for system entities.
+     */
+    private void restrictAutomationProviderChange() {
+      boolean changesAutomation =
+          !Objects.equals(original.getProvider(), updated.getProvider())
+              && (isProvidedByAutomation(original) || isProvidedByAutomation(updated));
+      if (changesAutomation && !isWrittenByBot(updated.getUpdatedBy())) {
+        if (operation.isPatch()) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Only a bot can change whether an automation provides glossary term '%s'",
+                  original.getFullyQualifiedName()));
+        }
+        updated.setProvider(original.getProvider());
+      }
     }
 
     /**
@@ -2782,62 +2840,37 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .delete(from, GLOSSARY_TERM, to, GLOSSARY_TERM, Relationship.RELATED_TO.ordinal());
   }
 
-  public ResultList<GlossaryTerm> searchGlossaryTermsById(
-      UUID glossaryId,
+  /** One page of a glossary-term listing or text search, with the filters it applies. */
+  public record TermSearch(
       String query,
       int limit,
       int offset,
-      String fieldsParam,
+      String fields,
       Include include,
-      String entityStatus) {
+      String entityStatus,
+      String provider,
+      String excludeProvider) {}
+
+  public ResultList<GlossaryTerm> searchGlossaryTermsById(UUID glossaryId, TermSearch search) {
     Glossary glossary =
-        Entity.getEntity(GLOSSARY, glossaryId, "id,name,fullyQualifiedName", include);
-    return searchGlossaryTermsInternal(
-        glossary.getFullyQualifiedName(), query, limit, offset, fieldsParam, include, entityStatus);
+        Entity.getEntity(GLOSSARY, glossaryId, "id,name,fullyQualifiedName", search.include());
+    return searchGlossaryTermsInternal(glossary.getFullyQualifiedName(), search);
   }
 
-  public ResultList<GlossaryTerm> searchGlossaryTermsByFQN(
-      String glossaryFqn,
-      String query,
-      int limit,
-      int offset,
-      String fieldsParam,
-      Include include,
-      String entityStatus) {
-    return searchGlossaryTermsInternal(
-        glossaryFqn, query, limit, offset, fieldsParam, include, entityStatus);
+  public ResultList<GlossaryTerm> searchGlossaryTermsByFQN(String glossaryFqn, TermSearch search) {
+    return searchGlossaryTermsInternal(glossaryFqn, search);
   }
 
-  public ResultList<GlossaryTerm> searchGlossaryTermsByParentId(
-      UUID parentId,
-      String query,
-      int limit,
-      int offset,
-      String fieldsParam,
-      Include include,
-      String entityStatus) {
+  public ResultList<GlossaryTerm> searchGlossaryTermsByParentId(UUID parentId, TermSearch search) {
     GlossaryTerm parentTerm =
-        Entity.getEntity(GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", include);
-    return searchGlossaryTermsInternal(
-        parentTerm.getFullyQualifiedName(),
-        query,
-        limit,
-        offset,
-        fieldsParam,
-        include,
-        entityStatus);
+        Entity.getEntity(
+            GLOSSARY_TERM, parentId, "id,name,fullyQualifiedName,glossary", search.include());
+    return searchGlossaryTermsInternal(parentTerm.getFullyQualifiedName(), search);
   }
 
   public ResultList<GlossaryTerm> searchGlossaryTermsByParentFQN(
-      String parentFqn,
-      String query,
-      int limit,
-      int offset,
-      String fieldsParam,
-      Include include,
-      String entityStatus) {
-    return searchGlossaryTermsInternal(
-        parentFqn, query, limit, offset, fieldsParam, include, entityStatus);
+      String parentFqn, TermSearch search) {
+    return searchGlossaryTermsInternal(parentFqn, search);
   }
 
   private String prepareSearchTerm(String query) {
@@ -2846,56 +2879,40 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private ResultList<GlossaryTerm> searchGlossaryTermsInternal(
-      String parentFqn,
-      String query,
-      int limit,
-      int offset,
-      String fieldsParam,
-      Include include,
-      String entityStatus) {
+      String parentFqn, TermSearch search) {
+    return search.query() == null || search.query().trim().isEmpty()
+        ? listGlossaryTerms(parentFqn, search)
+        : findGlossaryTerms(parentFqn, search);
+  }
 
+  // Without a search query, list with offset-based pagination and an exact total.
+  private ResultList<GlossaryTerm> listGlossaryTerms(String parentFqn, TermSearch search) {
+    ListFilter filter = new ListFilter(search.include());
+    addQueryParamIfPresent(filter, "parent", parentFqn);
+    addQueryParamIfPresent(filter, "entityStatus", search.entityStatus());
+    addQueryParamIfPresent(filter, "provider", search.provider());
+    addQueryParamIfPresent(filter, "excludeProvider", search.excludeProvider());
+    return listAfterWithOffset(
+        null, getFields(search.fields()), filter, search.limit(), search.offset());
+  }
+
+  private static void addQueryParamIfPresent(ListFilter filter, String name, String value) {
+    if (!nullOrEmpty(value)) {
+      filter.addQueryParam(name, value);
+    }
+  }
+
+  private ResultList<GlossaryTerm> findGlossaryTerms(String parentFqn, TermSearch search) {
     CollectionDAO.GlossaryTermDAO dao = daoCollection.glossaryTermDAO();
-
-    // Build the parent hash for filtering
     String parentHash = parentFqn != null ? FullyQualifiedName.buildHash(parentFqn) + ".%" : "%";
-
-    // If no search query, use regular listing with offset-based pagination
-    if (query == null || query.trim().isEmpty()) {
-      ListFilter filter = new ListFilter(include);
-      if (parentFqn != null) {
-        filter.addQueryParam("parent", parentFqn);
-      }
-      if (entityStatus != null && !entityStatus.isEmpty()) {
-        filter.addQueryParam("entityStatus", entityStatus);
-      }
-
-      return listAfterWithOffset(null, getFields(fieldsParam), filter, limit, offset);
-    }
-
-    // For search queries, fetch limit+1 to determine if there are more pages
-    // Prepare search term for full-text search
-    String searchTerm = prepareSearchTerm(query.trim());
-
-    // Build status condition (validate against enum to prevent SQL injection)
-    String statusCondition = "";
-    if (entityStatus != null && !entityStatus.isBlank()) {
-      Set<String> validStatuses =
-          Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
-      String validatedStatuses =
-          Arrays.stream(entityStatus.split(","))
-              .map(String::trim)
-              .filter(Predicate.not(String::isEmpty))
-              .filter(validStatuses::contains)
-              .map(s -> "'" + s + "'")
-              .collect(Collectors.joining(","));
-      if (!validatedStatuses.isEmpty()) {
-        statusCondition = "AND entityStatus IN (" + validatedStatuses + ")";
-      }
-    }
+    String searchTerm = prepareSearchTerm(search.query().trim());
+    String filterConditions = statusCondition(search.entityStatus()) + providerConditions(search);
+    int limit = search.limit();
+    int offset = search.offset();
 
     // Fetch limit+1 records to check if there's a next page
     List<String> jsons =
-        dao.searchGlossaryTerms(parentHash, searchTerm, statusCondition, limit + 1, offset);
+        dao.searchGlossaryTerms(parentHash, searchTerm, filterConditions, limit + 1, offset);
 
     // Check if we have more than limit results
     boolean hasMore = jsons.size() > limit;
@@ -2911,7 +2928,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     // Use bulk method for efficient field fetching
-    setFieldsInBulk(getFields(fieldsParam), terms);
+    setFieldsInBulk(getFields(search.fields()), terms);
 
     // Set up pagination info
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
@@ -2922,6 +2939,51 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     int knownTotal = offset + terms.size() + (hasMore ? 1 : 0);
 
     return new ResultList<>(terms, before, after, knownTotal);
+  }
+
+  // Statuses are validated against the enum to prevent SQL injection.
+  private static String statusCondition(String entityStatus) {
+    String condition = "";
+    if (entityStatus != null && !entityStatus.isBlank()) {
+      Set<String> validStatuses =
+          Arrays.stream(EntityStatus.values()).map(EntityStatus::value).collect(Collectors.toSet());
+      String validatedStatuses =
+          Arrays.stream(entityStatus.split(","))
+              .map(String::trim)
+              .filter(Predicate.not(String::isEmpty))
+              .filter(validStatuses::contains)
+              .map(s -> "'" + s + "'")
+              .collect(Collectors.joining(","));
+      if (!validatedStatuses.isEmpty()) {
+        condition = "AND entityStatus IN (" + validatedStatuses + ")";
+      }
+    }
+    return condition;
+  }
+
+  // Inlined values come from ProviderType, never from the request, so they cannot inject SQL. A
+  // term without a provider counts as none, like the listing's provider filters.
+  private static String providerConditions(TermSearch search) {
+    String provider =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.provider')), '')"
+            : "COALESCE(json->>'provider', '')";
+    StringBuilder conditions = new StringBuilder();
+    if (!nullOrEmpty(search.provider())) {
+      conditions.append(" AND ").append(provider).append(" = ").append(quoted(search.provider()));
+    }
+    if (!nullOrEmpty(search.excludeProvider())) {
+      conditions
+          .append(" AND ")
+          .append(provider)
+          .append(" <> ")
+          .append(quoted(search.excludeProvider()));
+    }
+    return conditions.toString();
+  }
+
+  private static String quoted(String provider) {
+    return "'" + ProviderType.fromValue(provider).value() + "'";
   }
 
   /**

@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  EmptyPlaceholder,
-  HookForm,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, HookForm, Typography } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,6 +33,7 @@ import {
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { ShowHintToggle } from '../../common/atoms/drawer/ShowHintToggle';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   TestDefinitionFormProps,
@@ -207,7 +203,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
         // width="100%" is required: EmptyPlaceholder's 300px default is
         // wider than the hint column's 260px minimum and would overflow
         // once the column shrinks on a narrow viewport.
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.form-hint-empty-state')}
           icon={Lightbulb05}
           title={t('label.no-entity-selected', {

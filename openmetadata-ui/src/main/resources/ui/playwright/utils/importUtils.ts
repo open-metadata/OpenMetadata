@@ -44,10 +44,7 @@ import {
   openCustomPropertyEditModal,
 } from './customProperty';
 import { setDomain } from './domainPicker';
-import {
-  escapeESReservedCharacters,
-  waitForAllLoadersToDisappear,
-} from './entity';
+import { waitForAllLoadersToDisappear } from './entity';
 import { searchGlossaryPicker } from './glossaryPicker';
 import { settingClick, SettingOptionsType } from './sidebar';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -397,9 +394,6 @@ const clickGridEditorSave = async (page: Page, testId: string) => {
   }).toPass({ timeout: 30_000 });
 };
 
-const clickInlineSave = async (page: Page) =>
-  clickGridEditorSave(page, 'inline-save-btn');
-
 const clickAssociatedTagSave = async (page: Page) =>
   clickGridEditorSave(page, 'saveAssociatedTag');
 
@@ -574,19 +568,19 @@ export const fillUserAndTeamOwnerDetails = async (
 };
 
 export const fillEntityTypeDetails = async (page: Page, entityType: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  const option = page.getByRole('option', { name: entityType, exact: true });
+  // A forced cell click can select without focusing, so a bare Enter may not open it.
+  await openActiveCellPopover(page, option, undefined);
 
-  // The editor opens its list as soon as the cell does; picking commits it.
-  await page.getByRole('option', { name: entityType, exact: true }).click();
+  // Picking an option commits it.
+  await option.click();
   await expect(page.getByTestId('entity-type-select')).toHaveCount(0);
 };
 
 export const fillTagDetails = async (page: Page, tag: string) => {
-  await page.keyboard.press('Enter', { delay: 100 });
-
   const bulkPicker = page.getByTestId('bulk-edit-tags-picker-editor');
-  const tagSelectorInput = page.getByTestId('tag-selector').locator('input');
-  await expect(bulkPicker.or(tagSelectorInput)).toBeVisible();
+  const tagsPicker = page.getByTestId('csv-tags-picker');
+  await openActiveCellPopover(page, bulkPicker.or(tagsPicker), undefined);
 
   if (await bulkPicker.isVisible()) {
     await bulkPicker.getByRole('textbox').fill(tag);
@@ -599,16 +593,17 @@ export const fillTagDetails = async (page: Page, tag: string) => {
     return;
   }
 
-  const waitForQueryResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*${encodeURIComponent(
-      escapeESReservedCharacters(tag)
-    )}*`
-  );
-  await page.keyboard.type(tag);
-  await waitForQueryResponse;
+  // The search box lives in the popover; clicking the trigger would close the cell.
+  const popover = page.getByTestId('csv-tags-picker-popover');
+  await popover.getByRole('textbox').fill(tag);
 
-  await page.click(`[data-testid="tag-${tag}"]`);
-  await clickInlineSave(page);
+  const row = popover.getByTestId(`tree-node-${tag}`);
+  await expect(row).toBeVisible();
+  await row.click();
+
+  // No save button: each toggle is already on the row, so dismissing commits.
+  await page.keyboard.press('Escape');
+  await expect(popover).toHaveCount(0);
 };
 
 export const fillGlossaryTermDetails = async (
@@ -688,7 +683,11 @@ export const fillCertificationDetails = async (
 };
 
 export const fillStoredProcedureCode = async (page: Page) => {
-  await page.keyboard.press('Enter', { delay: 100 });
+  await openActiveCellPopover(
+    page,
+    page.getByTestId('code-mirror-container'),
+    undefined
+  );
 
   // Wait for the loader to disappear
   await expect(page.locator('.ant-skeleton-content')).toHaveCount(0);
@@ -1237,12 +1236,14 @@ export const fillRowDetails = async (
   }
 
   await selectActiveRowCellByColumn(page, 'domains');
-  // The grid cell opens its picker on Enter, and bulk edit stages the whole
-  // sheet, so there is no PATCH for this cell to wait on.
+  // Bulk edit stages the whole sheet, so there is no PATCH for this cell to
+  // wait on.
   await setDomain(page, row.domains, {
     trigger: async () => {
-      await page.keyboard.press('Enter');
-      await page.click('[data-testid="domain-selectable-tree-search"]');
+      const domainSearch = page.getByTestId('domain-selectable-tree-search');
+      // A forced cell click can select without focusing, so a bare Enter may not open it.
+      await openActiveCellPopover(page, domainSearch, undefined);
+      await domainSearch.click();
     },
     awaitPatch: false,
     verify: 'none',

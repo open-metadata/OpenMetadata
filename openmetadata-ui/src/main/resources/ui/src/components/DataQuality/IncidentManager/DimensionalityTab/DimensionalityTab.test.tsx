@@ -59,6 +59,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest
+      .fn()
+      .mockImplementation(({ footer, ...props }) => (
+        <div data-testid={props['data-testid']}>{footer}</div>
+      )),
     Badge: jest
       .fn()
       .mockImplementation(({ children, ...props }) => (
@@ -148,10 +153,6 @@ jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () =>
 
 jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
   jest.fn().mockImplementation(() => <span>Last run</span>)
-);
-
-jest.mock('../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew', () =>
-  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
 );
 
 jest.mock('./DimensionalityHeatmap/DimensionalityHeatmap.component', () =>

@@ -526,6 +526,12 @@ public class TaskRepository extends EntityRepository<Task> {
     return new ArrayList<>(byId.values());
   }
 
+  /** A task takes its domains from the entity it is about on every write, never from its author. */
+  @Override
+  protected boolean authorDecidesDomains() {
+    return false;
+  }
+
   /**
    * Inherit domains from the target entity that this task is about.
    * Tasks must belong to the same domains as their target entity for proper data isolation.

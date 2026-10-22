@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   Input,
   Table,
   TableCard,
@@ -67,6 +66,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -326,7 +326,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
             align="center"
             className="tw:min-h-32 tw:relative"
             justify="center">
-            <EmptyPlaceholder title={emptyTitle} />
+            <NoDataPlaceholder title={emptyTitle} />
           </Box>
         )}>
         {(item) => (

@@ -11,16 +11,13 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
-import * as SearchPureUtils from '../../../../utils/SearchPureUtils';
-import * as StringUtils from '../../../../utils/StringUtils';
-import * as TagsPureUtils from '../../../../utils/TagsPureUtils';
 import AssetsTabs from './AssetsTabs.component';
 
 const buildOperationPermission = (
@@ -99,20 +96,6 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
     .mockImplementation(() => <div>NextPrevious.component</div>),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
-}));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
-}));
-
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,
   default: jest
@@ -159,16 +142,23 @@ const mockGetEncodedFqn = jest.fn((fqn) => fqn);
 const mockEscapeESReservedCharacters = jest.fn((fqn) => fqn);
 const mockGetTagAssetsQueryFilter = jest.fn();
 
-jest
-  .spyOn(SearchPureUtils, 'getTermQuery')
-  .mockImplementation(mockGetTermQuery);
-jest.spyOn(StringUtils, 'getEncodedFqn').mockImplementation(mockGetEncodedFqn);
-jest
-  .spyOn(StringUtils, 'escapeESReservedCharacters')
-  .mockImplementation(mockEscapeESReservedCharacters);
-jest
-  .spyOn(TagsPureUtils, 'getTagAssetsQueryFilter')
-  .mockImplementation(mockGetTagAssetsQueryFilter);
+jest.mock('../../../../utils/SearchPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/SearchPureUtils'),
+  getTermQuery: (...args: unknown[]) => mockGetTermQuery(...args),
+}));
+
+jest.mock('../../../../utils/StringUtils', () => ({
+  ...jest.requireActual('../../../../utils/StringUtils'),
+  getEncodedFqn: (...args: unknown[]) => mockGetEncodedFqn(...args),
+  escapeESReservedCharacters: (...args: unknown[]) =>
+    mockEscapeESReservedCharacters(...args),
+}));
+
+jest.mock('../../../../utils/TagsPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/TagsPureUtils'),
+  getTagAssetsQueryFilter: (...args: unknown[]) =>
+    mockGetTagAssetsQueryFilter(...args),
+}));
 
 const mockOnAddAsset = jest.fn();
 const mockOnAssetClick = jest.fn();
@@ -552,6 +542,26 @@ describe('AssetsTabs queryParam logic', () => {
           'tags.tagFQN': '',
         });
       });
+    });
+  });
+
+  describe('Empty state', () => {
+    it('shows the caller message as the description instead of the generic text', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="test.domain"
+          noDataPlaceholder={{ message: 'No assets in this domain' }}
+          type={AssetsOfEntity.DOMAIN}
+        />
+      );
+
+      expect(
+        await screen.findByText('No assets in this domain')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-available')
+      ).not.toBeInTheDocument();
     });
   });
 });

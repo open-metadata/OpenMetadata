@@ -35,17 +35,6 @@ export const getClassicAlertInitialValues = (
   notificationTemplate: alert.notificationTemplate,
 });
 
-export const getAlertSourceChanges = (
-  next: string[],
-  previous: string[]
-): Partial<ModifiedCreateEventSubscription> => ({
-  resources: next,
-  input: {},
-  ...(previous.some((source) => !next.includes(source))
-    ? { destinations: [] }
-    : {}),
-});
-
 /**
  * Merges a widget's partial update into the alert form key by key. A full
  * `reset` would also replace the form's default values on every keystroke of

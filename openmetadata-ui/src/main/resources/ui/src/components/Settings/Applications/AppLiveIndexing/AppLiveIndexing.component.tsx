@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -29,6 +25,7 @@ import {
   SearchIndexRetryRecord,
 } from '../../../../rest/applicationAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -177,7 +174,7 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
       locale={{
         emptyText: (
           <Box className="tw:relative tw:min-h-60">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               icon={CheckCircle}
               title={t('message.no-retry-queue-records')}
             />

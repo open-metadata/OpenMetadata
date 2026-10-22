@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { ReactComponent as DescriptionPlaceholderIcon } from '../assets/svg/ic-flat-doc.svg';
 import { ReactComponent as TablePlaceholderIcon } from '../assets/svg/ic-large-table.svg';
@@ -20,12 +19,11 @@ import { ReactComponent as OwnersPlaceholderIcon } from '../assets/svg/key-hand.
 import { ReactComponent as TierPlaceholderIcon } from '../assets/svg/no-tier.svg';
 import { ReactComponent as PiiPlaceholderIcon } from '../assets/svg/security-safe.svg';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import type { AgentsStatusWidgetProps } from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget.interface';
 import type { PlatformInsightsWidgetProps } from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget.interface';
 import type { TotalAssetsWidgetProps } from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget.interface';
 import type { MetadataAgentsWidgetProps } from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget.interface';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../enums/common.enum';
 import { SystemChartType } from '../enums/DataInsight.enum';
 import { ServiceInsightsWidgetType } from '../enums/ServiceInsights.enum';
 import type { ThemeConfiguration } from '../generated/configuration/uiThemePreference';
@@ -207,14 +205,12 @@ const getServiceInsightsPlaceholderConfig = (
 export const getServiceInsightsWidgetPlaceholder = ({
   chartType,
   iconClassName = 'text-grey-14',
-  placeholderClassName = '',
   height = 60,
   width = 60,
   theme,
 }: {
   chartType?: SystemChartType | ServiceInsightsWidgetType;
   iconClassName?: string;
-  placeholderClassName?: string;
   height?: number;
   width?: number;
   theme: ThemeConfiguration;
@@ -224,30 +220,26 @@ export const getServiceInsightsWidgetPlaceholder = ({
   const docsLink = getDocsLink();
 
   return (
-    <ErrorPlaceHolder
-      className={placeholderClassName}
-      icon={<Icon className={iconClassName} height={height} width={width} />}
-      size={SIZE.MEDIUM}
-      type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-      <Typography as="p" className="w-max-350 tw:mb-3.5! tw:text-primary">
-        <Tooltip title={t('label.learn-more')}>
-          <span>
-            <Transi18next
-              i18nKey={localizationKey}
-              renderElement={
-                <a
-                  aria-label={t('label.learn-more')}
-                  href={docsLink}
-                  rel="noreferrer"
-                  style={{ color: theme.primaryColor }}
-                  target="_blank"
-                />
-              }
-            />
-          </span>
-        </Tooltip>
-      </Typography>
-    </ErrorPlaceHolder>
+    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+      <NoDataPlaceholder
+        data-testid="no-data-placeholder"
+        description={
+          <Transi18next
+            i18nKey={localizationKey}
+            renderElement={
+              <a
+                aria-label={t('label.learn-more')}
+                href={docsLink}
+                rel="noreferrer"
+                style={{ color: theme.primaryColor }}
+                target="_blank"
+              />
+            }
+          />
+        }
+        icon={<Icon className={iconClassName} height={height} width={width} />}
+      />
+    </div>
   );
 };
 
