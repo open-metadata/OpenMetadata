@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-@quick-filters-container-height: 86px;
 
 .explore-page {
   margin-bottom: var(--om-space-20);
@@ -32,17 +31,6 @@
   // containers (the page background is set by the AI-mode wrapper).
   .dark-mode & [data-testid='search-results'] .explore-search-card {
     background: var(--om-color-bg-secondary);
-  }
-
-  .content-height-with-resizable-panel {
-    // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
-    --content-panel-offset: 94px;
-    overflow-y: auto;
-
-    &.filter-applied {
-      // + 40px applied-filters row
-      --content-panel-offset: 134px;
-    }
   }
 
   .explore-page-right-panel {

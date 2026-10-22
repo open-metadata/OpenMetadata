@@ -601,12 +601,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       // actually clip the cell height. Chromium/Firefox are unaffected.
       <div className="tw:max-h-11 tw:overflow-hidden">
         <Tooltip
-          containerClassName="tw:break-all"
+          containerClassName="tw:wrap-break-word"
           placement="top"
           title={result.result}>
           <TooltipTrigger>
             <Typography
-              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:wrap-break-word tw:text-left tw:whitespace-normal"
               data-testid={`reason-text-${record.name}`}
               size="text-sm">
               {result.result}
@@ -848,7 +848,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word tw:min-w-0"
+                className="tw:block tw:min-w-0 tw:truncate"
                 data-testid="table-link"
                 title={tableFqn}
                 to={getEntityDetailsPath(
@@ -1184,7 +1184,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+      {pagingData && showPagination && pagingData.paging.total > 0 && (
+        <NextPrevious {...pagingData} />
+      )}
       {renderTestCaseModals()}
     </div>
   );
