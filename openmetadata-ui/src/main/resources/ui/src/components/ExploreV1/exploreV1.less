@@ -61,6 +61,9 @@
 // Classic full-height page (PageLayoutV1 `fullHeight`): the results panel takes
 // whatever height the filters card leaves, instead of a viewport calc with a
 // hard-coded filters height that drifted and pushed the page past the viewport.
+// The panel keeps a usable minimum; when many filter chips or a short window
+// leave less than that, the page scrolls inside itself so results stay
+// reachable, while the shell (navbar, sidebar) still never scrolls.
 .page-layout-v1-full-height .explore-page {
   display: flex;
   flex: 1;
@@ -68,11 +71,16 @@
   min-height: 0;
   margin-bottom: 0;
   padding-bottom: calc(var(--tw-spacing) * 5);
+  overflow-y: auto;
+
+  > * {
+    flex-shrink: 0;
+  }
 
   > .content-height-with-resizable-panel {
-    flex: 1 1 0;
+    flex: 1 0 calc(var(--tw-spacing) * 80);
     height: auto;
-    min-height: 0;
+    min-height: calc(var(--tw-spacing) * 80);
   }
 }
 
