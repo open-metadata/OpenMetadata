@@ -13,9 +13,11 @@
 import re
 import traceback
 from collections.abc import Iterable
+from contextlib import nullcontext
 from typing import cast
 
 from sqlalchemy import sql
+from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.sql import sqltypes
 
@@ -270,10 +272,12 @@ class StarRocksSource(CommonDbSourceService):
         writes on its own line. INFORMATION_SCHEMA returns the comment as stored.
         """
         try:
-            row = inspector.bind.execute(
-                sql.text(STARROCKS_TABLE_COMMENTS),
-                {"schema": schema_name, "table_name": table_name},
-            ).first()
+            bind = inspector.bind
+            with bind.connect() if isinstance(bind, Engine) else nullcontext(bind) as connection:
+                row = connection.execute(
+                    sql.text(STARROCKS_TABLE_COMMENTS),
+                    {"schema": schema_name, "table_name": table_name},
+                ).first()
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Table description error for table [{schema_name}.{table_name}]: {exc}")

@@ -19,6 +19,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
+from sqlalchemy import create_engine, inspect
 from sqlalchemy import types as sqltypes
 
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -457,6 +458,22 @@ class TestStarRocksTableDescription:
         assert str(query) == STARROCKS_TABLE_COMMENTS
         assert params == {"schema": "datadrone", "table_name": "fred_observations"}
         inspector.get_table_comment.assert_not_called()
+
+    @pytest.mark.parametrize("bind_to_engine", [True, False])
+    def test_reads_comment_with_sqlalchemy_inspector_bind(self, bind_to_engine):
+        engine = create_engine("sqlite://")
+        try:
+            with engine.connect() as connection:
+                inspector = inspect(engine if bind_to_engine else connection)
+                with patch(
+                    "metadata.ingestion.source.database.starrocks.metadata.STARROCKS_TABLE_COMMENTS",
+                    "SELECT :schema || '.' || :table_name",
+                ):
+                    description = StarRocksSource.get_table_description("datadrone", "fred_observations", inspector)
+
+            assert description == "datadrone.fred_observations"
+        finally:
+            engine.dispose()
 
     @pytest.mark.parametrize("row", [None, ("",), (None,)])
     def test_table_without_comment_has_no_description(self, row):
