@@ -38,6 +38,7 @@ import {
   EMPTY_DQ_INDICATOR_COUNTS,
   OPEN_INCIDENT_STATUSES,
 } from '../../components/DataQuality/DataQualityIndicator/DataQualityIndicator.utils';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -119,7 +120,6 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
-import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 // The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
