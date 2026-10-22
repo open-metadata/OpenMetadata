@@ -603,7 +603,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
     return (
       <div className="no-test-cases tw:px-4 tw:py-8 tw:text-center">
-        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME} size="text-xs">
+        <Typography
+          className={NO_DATA_PLACEHOLDER_CLASS_NAME}
+          data-testid="no-data-placeholder"
+          size="text-xs">
           {t('label.no-entity', {
             entity: t('label.test-case-plural'),
           })}

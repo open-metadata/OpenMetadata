@@ -13,6 +13,7 @@
 import { Button, Typography } from '@openmetadata/ui-core-components';
 import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
 import { EntityAttachmentProvider } from '../EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -20,7 +21,6 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import { DescriptionSectionProps } from './DescriptionSection.interface';
 import './DescriptionSection.less';
-import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>

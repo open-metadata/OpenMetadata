@@ -13,6 +13,7 @@
 import { Badge, Card, Divider } from '@openmetadata/ui-core-components';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import '../../../styles/variables.less';
 import '../OverviewSection/OverviewSection.less';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
@@ -20,7 +21,6 @@ import { DataQualityLegendItem } from './DataQualityLegendItem';
 import { DataQualityProgressSegment } from './DataQualityProgressSegment';
 import { DataQualitySectionProps } from './DataQualitySection.interface';
 import { DataQualityStatCard } from './DataQualityStatCard';
-import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,

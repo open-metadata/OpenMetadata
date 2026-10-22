@@ -17,6 +17,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
 import { updateEntityField } from '../../../utils/EntityUpdateUtils';
@@ -26,7 +27,6 @@ import { EditIconButton } from '../IconButtons/EditIconButton';
 import Loader from '../Loader/Loader';
 import { TagsSectionProps } from './TagsSection.interface';
 import './TagsSection.less';
-import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const getTagFqn = (tag: TagLabel) =>
   (tag.tagFQN || tag.name || tag.displayName || '').toString();

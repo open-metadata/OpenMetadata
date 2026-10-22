@@ -16,6 +16,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useEditableSection } from '../../../hooks/useEditableSection';
@@ -26,7 +27,6 @@ import Loader from '../Loader/Loader';
 import TierCard from '../TierCard/TierCard';
 import { TierSectionProps } from './TierSection.interface';
 import './TierSection.less';
-import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const TierSection: React.FC<TierSectionProps> = ({
   tier,

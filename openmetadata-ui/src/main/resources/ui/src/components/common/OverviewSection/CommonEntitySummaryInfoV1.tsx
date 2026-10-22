@@ -17,12 +17,12 @@ import { useTranslation } from 'react-i18next';
 import { createPath } from 'react-router-dom';
 import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
 import { ICON_DIMENSION } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
 } from './CommonEntitySummaryInfoV1.interface';
 import './OverviewSection.less';
-import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
 
 const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
   entityInfo,
