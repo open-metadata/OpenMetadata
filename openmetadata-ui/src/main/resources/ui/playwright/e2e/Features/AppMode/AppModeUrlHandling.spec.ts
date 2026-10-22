@@ -170,6 +170,37 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     }
   });
 
+  // /my-data is the personal-space My Data page in AI mode; the home landing
+  // page only renders at /, so the sidebar Home item has to point there.
+  test('opens the home landing page from the sidebar Home item in AI mode', async ({
+    page,
+  }) => {
+    await enableAiAppMode(page);
+    const homeNavItem = page.getByTestId('ask-nav-item-home');
+
+    await test.step('Start on a page Home does not own', async () => {
+      await page.goto('/explore', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(page);
+      await expect(homeNavItem).not.toHaveClass(/ask-nav-item--active/);
+    });
+
+    await test.step('Home opens the landing page at / and is highlighted', async () => {
+      await homeNavItem.click();
+
+      await expect(page).toHaveURL((url) => url.pathname === '/');
+      await expect(page.getByTestId('home-landing-page')).toBeVisible();
+      await expect(homeNavItem).toHaveClass(/ask-nav-item--active/);
+    });
+
+    await test.step('Home is not highlighted on the personal-space /my-data page', async () => {
+      await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page).toHaveURL(/\/my-data$/);
+      await expect(homeNavItem).not.toHaveClass(/ask-nav-item--active/);
+    });
+  });
+
   /**
    * Install-gated plugin modules register their routes only once
    * `/api/v1/apps/installed` resolves. Before that the route table is

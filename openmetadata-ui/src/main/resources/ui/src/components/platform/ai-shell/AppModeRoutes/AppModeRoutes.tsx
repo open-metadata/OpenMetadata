@@ -78,8 +78,8 @@ export const AppModeRoutes = () => {
   // (OSS `AuthenticatedAppRouter`, or `CollateRouter` in Collate), just wrapped
   // in the AI `AppShell` chrome instead of the classic sidebar. So every
   // canonical page (Explore, Glossary, Settings, entity details…) renders
-  // inside the shell, and `/` redirects to `/my-data` via that table's own
-  // ROUTES.HOME rule. A plugin-contributed fallback still takes precedence.
+  // inside the shell, including the home landing page at ROUTES.HOME. A
+  // plugin-contributed fallback still takes precedence.
   const RouteElements = applicationRoutesClass.getRouteElements();
 
   // A module that owns a `resolveRoutes` resolver (e.g. `connectionsModule`)
