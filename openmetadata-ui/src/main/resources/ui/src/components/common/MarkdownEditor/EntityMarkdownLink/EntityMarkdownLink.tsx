@@ -12,7 +12,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
@@ -84,24 +84,24 @@ const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   children,
   className,
 }) => {
-  const { parsedLink, entityPath } = useMemo(() => {
-    const parsed = parseEntityLink(href || '');
-    const path =
-      parsed.isEntityLink && parsed.entityInfo
-        ? entityUtilClassBase.getEntityLink(
-            parsed.entityInfo.entityType,
-            parsed.entityInfo.fullyQualifiedName,
-            undefined,
-            undefined,
-            undefined,
-            undefined,
-            parsed.entityInfo.serviceCategory,
-            parsed.entityInfo.serviceFqn
-          )
-        : '';
-
-    return { parsedLink: parsed, entityPath: path };
-  }, [href]);
+  const parsedLink = useMemo(() => parseEntityLink(href || ''), [href]);
+  // Settings links (team, role, bot, …) carry the page's query string in AI
+  // mode, so build the link on every render and re-render on navigation rather
+  // than memoizing it with the query string it first saw.
+  useLocation();
+  const entityPath =
+    parsedLink.isEntityLink && parsedLink.entityInfo
+      ? entityUtilClassBase.getEntityLink(
+          parsedLink.entityInfo.entityType,
+          parsedLink.entityInfo.fullyQualifiedName,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          parsedLink.entityInfo.serviceCategory,
+          parsedLink.entityInfo.serviceFqn
+        )
+      : '';
 
   const handleClick = useCallback(
     (e: React.MouseEvent) => {
