@@ -9935,7 +9935,6 @@
         "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
         "playwright/e2e/Features/GlobalPageSize.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
@@ -9966,7 +9965,6 @@
         "playwright/e2e/Features/DataQuality/TestDefinitionFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TestDefinitionSortAndSearch.spec.ts",
         "playwright/e2e/Features/DataQuality/TestLibrary.spec.ts",
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts",
         "playwright/e2e/Features/Glossary/LargeGlossaryPerformance.spec.ts",
         "playwright/e2e/Features/IncidentManagerPagination.spec.ts",
         "playwright/e2e/Features/IngestionListNameSorting.spec.ts",
@@ -11405,15 +11403,7 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/PendingReviewPanel.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/PendingReviewSummary.tsx"
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/GlossaryReviewTab.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
@@ -11422,6 +11412,14 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/GlossaryReview/ProposalDetail.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
