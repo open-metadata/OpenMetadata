@@ -11,10 +11,16 @@
  *  limitations under the License.
  */
 
-import { Box, Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Input,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
@@ -103,23 +109,29 @@ const CustomPropertiesSection = ({
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={
-              <Transi18next
-                i18nKey="message.no-custom-properties-entity"
-                renderElement={
-                  <a
-                    aria-label={t('label.documentation')}
-                    href={CUSTOM_PROPERTIES_DOCS}
-                    rel="noreferrer"
-                    target="_blank"
+              <Tooltip
+                title={t('label.documentation')}
+                triggerClassName="tw:block tw:whitespace-normal">
+                <span>
+                  <Transi18next
+                    i18nKey="message.no-custom-properties-entity"
+                    renderElement={
+                      <a
+                        aria-label={t('label.documentation')}
+                        href={CUSTOM_PROPERTIES_DOCS}
+                        rel="noreferrer"
+                        target="_blank"
+                      />
+                    }
+                    values={{
+                      entity: emptyStateMessage ?? t('label.entity'),
+                      docs: t('label.doc-plural-lowercase'),
+                    }}
                   />
-                }
-                values={{
-                  entity: emptyStateMessage ?? t('label.entity'),
-                  docs: t('label.doc-plural-lowercase'),
-                }}
-              />
+                </span>
+              </Tooltip>
             }
-            title={t('label.no-custom-properties-defined')}
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
           />
         </div>
       </div>
