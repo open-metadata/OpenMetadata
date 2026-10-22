@@ -143,6 +143,20 @@ const renderAndSave = async (
   return (putTableProfileConfig as jest.Mock).mock.calls[0][1];
 };
 
+const buildStaticSampleConfig = (
+  profileSample: number,
+  profileSampleType = ProfileSampleType.Percentage
+): TableProfilerConfig => ({
+  sampleDataCount: 500,
+  profileSampleConfig: {
+    sampleConfigType: SampleConfigType.Static,
+    config: {
+      profileSample,
+      profileSampleType,
+    },
+  },
+});
+
 describe('Test ProfilerSettingsModal component', () => {
   beforeEach(() => {
     cleanup();
@@ -360,34 +374,27 @@ describe('ProfilerSettingsModal partitioning round-trip', () => {
     expect(payload.partitioning).toBeUndefined();
   });
 
-  it('clears excluded columns without changing included metrics or partitioning', async () => {
-    const payload = await renderAndSave(mockTableProfilerConfig, () => {
-      fireEvent.click(screen.getByTestId('clear-excluded-columns'));
-    });
+  it('keeps one clear control, so clearing the sample value leaves the sample type and columns', async () => {
+    const payload = await renderAndSave(
+      {
+        ...buildStaticSampleConfig(60),
+        excludeColumns: mockTableProfilerConfig.excludeColumns,
+      },
+      () => {
+        expect(
+          screen.getAllByRole('button', { name: /label.clear/ })
+        ).toHaveLength(1);
 
-    expect(
-      screen.queryByTestId('clear-excluded-columns')
-    ).not.toBeInTheDocument();
-    expect(payload.excludeColumns).toBeUndefined();
-    expect(payload.includeColumns).toEqual(
-      mockTableProfilerConfig.includeColumns
+        fireEvent.click(screen.getByTestId('clear-slider-input'));
+
+        expect(screen.getByTestId('percentage-input')).toBeInTheDocument();
+      }
     );
-    expect(payload.partitioning).toEqual(mockTableProfilerConfig.partitioning);
-  });
-});
 
-const buildStaticSampleConfig = (
-  profileSample: number,
-  profileSampleType = ProfileSampleType.Percentage
-): TableProfilerConfig => ({
-  sampleDataCount: 500,
-  profileSampleConfig: {
-    sampleConfigType: SampleConfigType.Static,
-    config: {
-      profileSample,
-      profileSampleType,
-    },
-  },
+    expect(payload.excludeColumns).toEqual(
+      mockTableProfilerConfig.excludeColumns
+    );
+  });
 });
 
 describe('ProfilerSettingsModal profile-sample round-trip', () => {
