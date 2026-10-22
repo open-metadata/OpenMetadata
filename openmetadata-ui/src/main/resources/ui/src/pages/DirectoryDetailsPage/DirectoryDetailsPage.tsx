@@ -20,7 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import DirectoryDetails from '../../components/DriveService/Directory/DirectoryDetails';
 import { ROUTES } from '../../constants/constants';
@@ -293,14 +293,14 @@ const DirectoryDetailsPage = () => {
   }, [canViewBasic, directoryFQN]);
 
   if (isPermissionsLoading || (canViewBasic && isEntityLoading)) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError('directory', directoryFQN)}
+          title={getEntityMissingError('directory', directoryFQN)}
         />
       </div>
     );

@@ -934,7 +934,7 @@ const DomainTreeView = ({
     }
 
     return (
-      <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
+      <Typography className="tw:block tw:text-secondary tw:mt-2" size="text-sm">
         {t('label.no-entity-selected', {
           entity: t('label.domain'),
         })}
@@ -961,7 +961,7 @@ const DomainTreeView = ({
 
     if (hierarchy.length === 0) {
       return (
-        <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
+        <Typography className="tw:block tw:text-secondary tw:mt-2" size="text-sm">
           {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}

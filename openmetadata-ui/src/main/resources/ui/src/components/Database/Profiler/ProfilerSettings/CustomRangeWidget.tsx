@@ -21,10 +21,8 @@ export const CustomRangeWidget = (props: WidgetProps) => {
   const label = props.label || t('label.profile-sample');
 
   return (
-    <Grid
-      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
-      data-testid="percentage-input">
-      <Grid.Item className="layout-column" span={18}>
+    <Grid colGap="5" data-testid="percentage-input">
+      <Grid.Item span={18}>
         <Slider
           showRange
           aria-label={label}
@@ -37,7 +35,7 @@ export const CustomRangeWidget = (props: WidgetProps) => {
           onChange={props.onChange}
         />
       </Grid.Item>
-      <Grid.Item className="layout-column" span={6}>
+      <Grid.Item span={6}>
         <NumberInput
           aria-label={label}
           formatOptions={{ style: 'unit', unit: 'percent' }}

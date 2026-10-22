@@ -21,7 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import ChartDetails from '../../components/Chart/ChartDetails/ChartDetails.component';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
@@ -311,14 +311,14 @@ const ChartDetailsPage = () => {
   );
 
   if (permissionsLoading || chartLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isError) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError('chart', chartFQN)}
+          title={getEntityMissingError('chart', chartFQN)}
         />
       </div>
     );
@@ -336,7 +336,7 @@ const ChartDetailsPage = () => {
     );
   }
   if (!chartDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

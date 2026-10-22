@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import TopicDetails from '../../components/Topic/TopicDetails/TopicDetails.component';
 import { ROUTES } from '../../constants/constants';
@@ -314,14 +314,14 @@ const TopicDetailsPage: FunctionComponent = () => {
   );
 
   if (isPermissionsLoading || topicLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
   if (isMissing) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError('topic', topicFQN)}
+          title={getEntityMissingError('topic', topicFQN)}
         />
       </div>
     );
@@ -331,7 +331,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={t('server.entity-details-fetch-error', {
+          title={t('server.entity-details-fetch-error', {
             entityType: t('label.topic'),
             entityName: topicFQN,
           })}
@@ -352,7 +352,7 @@ const TopicDetailsPage: FunctionComponent = () => {
     );
   }
   if (!topicDetails) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

@@ -33,7 +33,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -2124,7 +2124,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const visitedTabs = useVisitedTabs(renderedActiveTab);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!flags.hasViewAccess) {
@@ -2148,7 +2148,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={getEntityMissingError(
+            title={getEntityMissingError(
               serviceCategory as string,
               decodedServiceFQN
             )}
