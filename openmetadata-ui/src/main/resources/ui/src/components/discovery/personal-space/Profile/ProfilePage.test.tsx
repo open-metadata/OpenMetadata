@@ -11,27 +11,31 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { getUserPath } from '../../../../utils/RouterUtils';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
   tab: null,
   subPath: '',
   params: {},
 };
+const mockSetHash = jest.fn();
 jest.mock('hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({
     state: mockHashState,
-    setHash: jest.fn(),
+    setHash: mockSetHash,
     clearHash: jest.fn(),
     updateParams: jest.fn(),
   }),
 }));
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   updateUserDetail: jest.fn(),
 }));
 
@@ -42,9 +46,18 @@ jest.mock('utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
+let mockIsAdmin = false;
+let mockHasCurrentUser = true;
 jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
-    currentUser: { id: 'u1', name: 'harsh' },
+    currentUser: mockHasCurrentUser
+      ? { id: 'u1', name: 'harsh', isAdmin: mockIsAdmin }
+      : undefined,
     updateCurrentUser: jest.fn(),
   }),
 }));
@@ -139,7 +152,10 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
+    mockIsAdmin = false;
+    mockHasCurrentUser = true;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
   });
 
@@ -184,99 +200,61 @@ describe('ProfilePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('refreshes user data on mount', async () => {
+  it('refreshes your own data from the logged-in user endpoint, which never masks your email', async () => {
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
-  it('shows an empty placeholder (no loader) when the profile username is unknown', async () => {
-    mockHashState = { tab: 'profile', subPath: 'does-not-exist', params: {} };
-    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
-
-    await act(async () => {
-      render(<ProfilePage />);
-    });
-
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.getByText('label.no-entity-found')).toBeInTheDocument();
-    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-  });
-
-  it('shows a toast (not the empty placeholder) on a non-404 profile fetch error', async () => {
+  it('loads only the logged-in user even when the hash names someone else', async () => {
     mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
-    mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
 
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    expect(mockShowErrorToast).toHaveBeenCalled();
-    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
-  it('ignores a stale profile response when the target changes mid-flight', async () => {
-    let resolveBob!: (value: unknown) => void;
-    const bobPromise = new Promise((resolve) => {
-      resolveBob = resolve;
-    });
-    mockGetUserByName.mockImplementation((name: string) =>
-      name === 'bob'
-        ? bobPromise
-        : Promise.resolve({
-            id: 'u-alice',
-            name: 'alice',
-            displayName: 'Alice',
-          })
-    );
-
-    mockHashState = { tab: 'profile', subPath: 'bob', params: {} };
-    const { rerender } = render(<ProfilePage />);
-
-    // Switch to alice before bob's (slower) request resolves.
-    mockHashState = { tab: 'profile', subPath: 'alice', params: {} };
-    await act(async () => {
-      rerender(<ProfilePage />);
-    });
-
-    // Now let bob resolve late — it must be discarded as stale.
-    await act(async () => {
-      resolveBob({ id: 'u-bob', name: 'bob', displayName: 'Bob' });
-      await bobPromise;
-    });
-
-    // Alice (the later target) wins; the stale Bob response is discarded.
-    const content = screen.getByTestId('content-profile');
-
-    expect(content).toHaveTextContent('Alice');
-    expect(content).not.toHaveTextContent('Bob');
-  });
-
-  it('always shows the static "Profile" header, never the user name, when viewing another user', async () => {
-    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
-    mockGetUserByName.mockResolvedValue({
-      id: 'u2',
-      name: 'jane',
-      displayName: 'Jane Doe',
-    });
+  it("redirects an admin's legacy #profile/<other user> link to that user's edit form", async () => {
+    mockIsAdmin = true;
+    mockHashState = { tab: 'profile', subPath: 'jane%40acme.io', params: {} };
 
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    const header = screen.getByTestId('profile-content-header');
-
-    // Header title + breadcrumb stay the static nav label; the user name never
-    // appears there.
-    expect(within(header).getAllByText('label.profile').length).toBeGreaterThan(
-      0
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'members',
+      `user/${encodeURIComponent('jane@acme.io')}`
     );
-    expect(within(header).queryByText('Jane Doe')).not.toBeInTheDocument();
+  });
 
-    // ...but the other user's data still loaded into the content panel.
-    expect(screen.getByTestId('content-profile')).toHaveTextContent('Jane Doe');
+  it("sends a non-admin's legacy #profile/<other user> link to the read-only user page, not Members", async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane%40acme.io', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith(getUserPath('jane@acme.io'), {
+      replace: true,
+    });
+    expect(mockSetHash).not.toHaveBeenCalledWith('members', expect.anything());
+  });
+
+  it('collapses a legacy #profile/<own name> link to #profile', async () => {
+    mockHashState = { tab: 'profile', subPath: 'harsh', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {
@@ -290,5 +268,17 @@ describe('ProfilePage', () => {
 
     expect(screen.getByTestId('content-permissions')).toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+  });
+
+  it('waits for the current user before redirecting a legacy #profile/<name> link', async () => {
+    mockHasCurrentUser = false;
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockSetHash).not.toHaveBeenCalledWith('members', expect.anything());
   });
 });

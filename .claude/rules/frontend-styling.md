@@ -6,9 +6,9 @@ paths: "openmetadata-ui/src/main/resources/ui/**/*.{ts,tsx,less,css}"
 # Frontend styling & design tokens
 
 Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.md`. Token source of truth: core
-`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the `--om-*` tokens.
+`globals.css` (`@theme`, dark values under `.dark-mode`); the app's `src/styles/tokens.css` holds the legacy `--om-*` tokens.
 
-## Tailwind & tokens (ADR:2026-10-16-less-colours-read-tailwind-bridge-vars)
+## Tailwind & tokens (ADR:2026-10-20-less-non-colour-values-read-tailwind-theme-vars)
 
 - **All Tailwind utility classes use the `tw:` prefix** (`tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to
   avoid collisions with existing Ant Design/Less styles.
@@ -28,10 +28,10 @@ Applies to UI `*.{ts,tsx,less,css}`; component choice is in `component-library.m
   in `@theme static`, so they are invalid, and transparent, in light.
   Never raw hex, `rgb()`, `@white`/`@black`, legacy palette vars (`--om-grey-*`) that never flip, or
   `--tw-color-bg-*`/`--tw-color-text-*`, which `.dark-mode` does not remap.
-- **Non-colour values keep `--om-*` tokens**: spacing, z-index, radius, shadow, font and motion.
-  `yarn token-audit` fails on colours and resolvable raw spacing; radius, font, z-index and duration
-  produce warnings that still need review. Add missing non-colour values to `tokens.css`, colour roles
-  to `globals.css`. Existing `variables.less` `@variable`s stay for antd theming only.
+- **Non-colour values read Tailwind theme vars**: `calc(var(--tw-spacing) * N)`, `--tw-radius-*`,
+  `--tw-shadow-*`, `--tw-text-*`, `--tw-font-weight-*`, `--tw-default-transition-duration`; off-scale
+  values round up a step, never new `--om-*` non-colour refs. `yarn token-audit` fails on colours and
+  raw spacing; radius, font, z-index and duration warn. Colour roles go to `globals.css`. Existing `variables.less` `@variable`s stay for antd theming only.
 
 ## Core components keep their own styling (ADR:2026-10-11-migrated-antd-components-adopt-core-styling)
 
