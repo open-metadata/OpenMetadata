@@ -64,7 +64,7 @@ const NextPreviousWithOffset = ({
   );
 
   const nextButtonDisabled = useMemo(() => {
-    return currentPage === totalPages;
+    return currentPage >= totalPages;
   }, [currentPage, totalPages]);
 
   return (

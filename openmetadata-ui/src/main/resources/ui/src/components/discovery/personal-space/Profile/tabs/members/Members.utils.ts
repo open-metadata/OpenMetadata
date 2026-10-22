@@ -21,6 +21,7 @@ import {
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty, xor } from 'lodash';
 import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { EntityReference } from '../../../../../../generated/entity/type';
@@ -42,6 +43,44 @@ export const toDomainArray = (
   }
 
   return next ? [next] : [];
+};
+
+// Team-inherited domains aren't the user's to edit: they stay out of the
+// picker and go back to the server untouched (an `{ id, type }` rebuild would
+// drop `inherited` and turn them into direct assignments).
+export const getDirectDomains = (domains?: EntityReference[]) =>
+  (domains ?? []).filter((domain) => !domain.inherited);
+
+// Whether `directIds` differs from the user's directly assigned domains.
+export const hasDirectDomainChanges = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+) =>
+  !isEmpty(
+    xor(
+      directIds,
+      getDirectDomains(current).map((domain) => domain.id)
+    )
+  );
+
+// The stored domain list with its direct part replaced by `directIds`;
+// unchanged when the direct ids are the same.
+export const mergeDomainEdits = (
+  current: EntityReference[] | undefined,
+  directIds: string[]
+): EntityReference[] | undefined => {
+  if (!hasDirectDomainChanges(current, directIds)) {
+    return current;
+  }
+  const direct = getDirectDomains(current);
+
+  return [
+    ...(current ?? []).filter((domain) => domain.inherited),
+    ...directIds.map(
+      (id) =>
+        direct.find((domain) => domain.id === id) ?? { id, type: 'domain' }
+    ),
+  ];
 };
 
 // Flatten the full team hierarchy (not just direct children) so nested teams —
@@ -98,6 +137,9 @@ const { TEAMS, USERS, ADMINS, ONLINE_USERS } = GlobalSettingOptions;
 const ADD = 'add';
 const CREATE = 'create';
 const USER_CREATE = 'user-create';
+// Singular segment so a user named `create` can't collide with `users/create`.
+const USER = 'user';
+const USER_EDIT = 'user-edit';
 const IMPORT_TEAM = 'import-team';
 const IMPORT_USER = 'import-user';
 // View-type discriminants reused across the route parser and the header maps;
@@ -165,6 +207,24 @@ function parseSectionSubPath(parts: string[]): MembersView {
     : { type: 'landing' };
 }
 
+// `users[/create]`, `admins[/create]` and `user/<name>` (the edit view).
+function parseUsersSubPath(parts: string[]): MembersView {
+  const [root, next] = parts;
+  if (root === USER) {
+    return next
+      ? {
+          type: USER_EDIT,
+          name: safeDecodeURIComponent(parts.slice(1).join('/')),
+        }
+      : { type: 'users' };
+  }
+  if (next === CREATE) {
+    return { type: USER_CREATE, isAdmin: root === ADMINS };
+  }
+
+  return root === ADMINS ? { type: 'admins' } : { type: 'users' };
+}
+
 export function hashSubPathToView(subPath: string): MembersView {
   if (!subPath) {
     return { type: 'landing' };
@@ -176,13 +236,9 @@ export function hashSubPathToView(subPath: string): MembersView {
     case TEAMS:
       return parseTeamsSubPath(parts);
     case USERS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: false }
-        : { type: 'users' };
     case ADMINS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: true }
-        : { type: 'admins' };
+    case USER:
+      return parseUsersSubPath(parts);
     case ONLINE_USERS:
       return { type: 'online-users' };
     case SECTION:
@@ -224,6 +280,9 @@ export function viewToSubPath(view: MembersView): string | undefined {
   }
   if (view.type === USER_CREATE) {
     return view.isAdmin ? `${ADMINS}/${CREATE}` : `${USERS}/${CREATE}`;
+  }
+  if (view.type === USER_EDIT) {
+    return `${USER}/${encodeURIComponent(view.name)}`;
   }
   if (view.type === SECTION) {
     return view.subPath
@@ -319,6 +378,7 @@ export const getMembersIcons = (
   users: User01,
   admins: ShieldTick,
   'user-create': createUserIsAdmin ? ShieldTick : User01,
+  [USER_EDIT]: User01,
   'online-users': Clock,
 });
 
@@ -338,7 +398,15 @@ export const getMembersDescriptions = (
   'user-create': createUserIsAdmin
     ? t('message.members-admins-description')
     : t('message.members-users-description'),
+  [USER_EDIT]: t('message.members-users-description'),
   'online-users': t('message.members-online-users-description'),
+});
+
+// The fetched display name wins once known; until then the sub-path's raw
+// FQN / username stands in.
+const getDetailNames = (view: MembersView, resolvedName: string) => ({
+  teamName: view.type === TEAM_DETAIL ? resolvedName || view.name : '',
+  userName: view.type === USER_EDIT ? resolvedName || view.name : '',
 });
 
 export const makeBreadcrumbAction =
@@ -362,7 +430,9 @@ export const isTeamsOrDetailView = (view: MembersView): boolean =>
 export const buildMembersHeaderMaps = (
   view: MembersView,
   t: (key: string, opts?: Record<string, unknown>) => string,
-  resolvedTeamName: string,
+  // Display name a detail view resolved after fetching (team or user); the
+  // sub-path alone only carries the FQN / username.
+  resolvedName: string,
   // A contributed section supplies its own label/description/icon (there is no
   // settings-menu entry to borrow them from), so the panel passes them in.
   section?: {
@@ -383,8 +453,7 @@ export const buildMembersHeaderMaps = (
   const importLabel = t('label.import-entity', {
     entity: importIsUser ? t('label.user') : t('label.team'),
   });
-  const teamName =
-    view.type === TEAM_DETAIL ? resolvedTeamName || view.name : '';
+  const { teamName, userName } = getDetailNames(view, resolvedName);
 
   const settingsItem: BreadcrumbItemType = {
     id: 'settings',
@@ -421,6 +490,7 @@ export const buildMembersHeaderMaps = (
       createUserIsAdmin ? adminsItem : usersItem,
       { id: 'current', label: createUserLabel },
     ],
+    [USER_EDIT]: [...base, usersItem, { id: 'current', label: userName }],
     'online-users': [...base, { id: 'current', label: onlineUsersLabel }],
     section: [...base, { id: 'current', label: section?.title ?? '' }],
   };
@@ -434,6 +504,7 @@ export const buildMembersHeaderMaps = (
     users: usersLabel,
     admins: adminsLabel,
     'user-create': createUserLabel,
+    [USER_EDIT]: userName,
     'online-users': onlineUsersLabel,
     section: section?.title ?? '',
   };

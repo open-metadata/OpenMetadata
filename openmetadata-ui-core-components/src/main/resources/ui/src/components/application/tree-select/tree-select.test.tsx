@@ -244,6 +244,89 @@ describe('TreeSelect', () => {
     expect(await screen.findByText('Node C')).toBeInTheDocument();
   });
 
+  it.each([
+    [false, '2'],
+    [true, '1'],
+  ])(
+    'counts a selected root in the badge only outside cascade mode (cascade=%s)',
+    async (cascadeSelection, expected) => {
+      const root = (id: string): TreeSelectNode => ({
+        id,
+        label: id,
+        value: id,
+        isLeaf: false,
+      });
+      const child: TreeSelectNode = {
+        id: 'Banking.Retail',
+        label: 'Retail',
+        value: 'Banking.Retail',
+        isLeaf: true,
+        parentId: 'Banking',
+      };
+      const fetchData = vi.fn().mockResolvedValue({
+        nodes: [root('Banking'), root('Clinical')],
+      });
+
+      render(
+        <TreeSelect
+          multiple
+          cascadeSelection={cascadeSelection}
+          fetchData={fetchData}
+          label="Domain"
+          triggerVariant="button"
+          value={
+            cascadeSelection
+              ? [root('Banking'), child]
+              : [root('Banking'), root('Clinical')]
+          }
+        />
+      );
+
+      await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+      expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+        expected
+      );
+    }
+  );
+
+  it('counts only the selected terms under unselectable glossary roots', async () => {
+    const term = (id: string): TreeSelectNode => ({
+      id,
+      label: id,
+      value: id,
+      isLeaf: true,
+      parentId: 'Glossary',
+    });
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [
+        {
+          id: 'Glossary',
+          label: 'Glossary',
+          value: 'Glossary',
+          isLeaf: false,
+          allowSelection: false,
+        },
+      ],
+    });
+
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        label="Glossary"
+        triggerVariant="button"
+        value={[term('Glossary.A'), term('Glossary.B')]}
+      />
+    );
+
+    await waitFor(() => expect(fetchData).toHaveBeenCalled());
+
+    expect(await screen.findByTestId('filter-count-badge')).toHaveTextContent(
+      '2'
+    );
+  });
+
   it('fetches on mount for the button variant, whose badge needs the roots', async () => {
     const fetchData = fetchNodes();
 

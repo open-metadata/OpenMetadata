@@ -29,10 +29,6 @@ jest.mock(
     jest.fn(({ onClick }) => <button onClick={onClick}>ApplicationCard</button>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(({ pagingHandler }) => (
     <button
@@ -172,7 +168,11 @@ describe('ApplicationPage', () => {
       expect(mockShowErrorToast).toHaveBeenCalledWith('ERROR')
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should call limitWrapper with app as resource', async () => {

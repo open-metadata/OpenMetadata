@@ -12,7 +12,6 @@
  */
 import {
   Box,
-  EmptyPlaceholder,
   Owner,
   Skeleton,
   Table,
@@ -43,6 +42,7 @@ import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../utils/RouterUtils';
 import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -306,11 +306,10 @@ const IncidentManagerTable = ({
               loadingSkeletons
             ) : (
               <Box className="tw:relative tw:min-h-80 tw:w-full">
-                <EmptyPlaceholder
+                <NoDataPlaceholder
                   description={t('message.no-active-incidents-description')}
                   icon={<ShieldTick className="tw:text-fg-brand-primary" />}
                   title={t('message.no-active-incidents')}
-                  variant="blank"
                 />
               </Box>
             )

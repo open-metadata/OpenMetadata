@@ -19,6 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
+import { ReactNode } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { TestCaseType } from '../../../enums/TestSuite.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -63,11 +64,15 @@ jest.mock('../../common/Table/TableV2', () => {
   return function MockTable({
     columns,
     dataSource,
+    extraTableFilters,
     loading,
+    locale,
     rowSelection,
     rowKey,
   }: {
     columns?: unknown[];
+    extraTableFilters?: ReactNode;
+    locale?: { emptyText?: ReactNode };
     dataSource?: Array<{ id: string; name: string; [key: string]: unknown }>;
     loading?: boolean;
     rowSelection?: {
@@ -108,6 +113,8 @@ jest.mock('../../common/Table/TableV2', () => {
 
     return (
       <div data-testid="mock-table">
+        {extraTableFilters}
+        {!dataSource?.length && locale?.emptyText}
         <div>Loading: {loading ? 'true' : 'false'}</div>
         <div>Row Selection: {rowSelection ? 'enabled' : 'disabled'}</div>
         <div>
@@ -475,6 +482,27 @@ describe('ContractQualityFormTab', () => {
   });
 
   describe('Test Case Types Filtering', () => {
+    it('should show the no-data placeholder and disable filters when the table has no tests', async () => {
+      (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      expect(
+        await screen.findByText('label.no-entity-available')
+      ).toBeInTheDocument();
+      expect(screen.getByTestId('quality-filter-button')).toBeDisabled();
+    });
+
+    it('should keep filters enabled once the table has tests', async () => {
+      render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
+
+      expect(await screen.findByTestId('table-row-test-1')).toBeInTheDocument();
+      expect(screen.getByTestId('quality-filter-button')).toBeEnabled();
+    });
+
     it('should filter by test case type', async () => {
       render(<ContractQualityFormTab selectedQuality={[]} {...commonProps} />);
 

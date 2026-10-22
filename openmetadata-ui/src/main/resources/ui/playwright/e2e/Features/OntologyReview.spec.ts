@@ -403,9 +403,12 @@ test.describe(
               exact: true,
             })
           ).toBeDisabled();
-          await expect(author.getByRole('alert')).toContainText(
-            'Logical consistency has not been checked'
-          );
+          await expect(
+            author
+              .getByTestId('ontology-release-definition')
+              .getByRole('alert')
+              .filter({ hasText: 'Logical consistency has not been checked' })
+          ).toBeVisible();
 
           const submission = author.waitForResponse(
             (response) =>
