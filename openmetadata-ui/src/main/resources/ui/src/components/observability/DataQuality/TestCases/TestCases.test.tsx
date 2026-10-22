@@ -55,9 +55,13 @@ jest.mock('components/Database/Profiler/DataQualityTab/DataQualityTab', () => ({
     testCases,
     enableBulkActions,
     emptyStateAction,
+    deletionMode,
+    hasActiveFilters,
   }: any) => (
     <div
+      data-deletion-mode={deletionMode}
       data-enable-bulk-actions={String(enableBulkActions)}
+      data-has-active-filters={String(hasActiveFilters)}
       data-is-loading={String(isLoading)}
       data-test-cases-count={testCases?.length ?? 0}
       data-testid="data-quality-tab">
@@ -77,10 +81,20 @@ jest.mock(
   'components/DataQuality/TestCases/TestCaseListTableHeader.component',
   () => ({
     __esModule: true,
-    default: ({ searchValue, onSearch }: any) => (
+    default: ({
+      searchValue,
+      showDeleted,
+      onSearch,
+      onShowDeletedChange,
+    }: any) => (
       <div data-search-value={searchValue} data-testid="test-case-list-header">
         <button data-testid="trigger-search" onClick={() => onSearch('abc')}>
           search
+        </button>
+        <button
+          data-testid="show-deleted"
+          onClick={() => onShowDeletedChange(!showDeleted)}>
+          show-deleted
         </button>
       </div>
     ),
@@ -131,6 +145,7 @@ jest.mock('../DqSummaryPanel', () => ({
 
 const handleSearchParam = jest.fn();
 const clearAll = jest.fn();
+const handleShowDeletedChange = jest.fn();
 
 const baseHookReturn = {
   testCasePermission: { ViewAll: true, ViewBasic: true },
@@ -154,6 +169,9 @@ const baseHookReturn = {
   handleTestCaseUpdate: jest.fn(),
   handleStatusSubmit: jest.fn(),
   extraDropdownContent: [],
+  showDeleted: false,
+  handleShowDeletedChange,
+  handleAfterDeleteAction: jest.fn(),
 };
 
 const onAddTestCase = jest.fn();
@@ -298,6 +316,34 @@ describe('TestCases', () => {
 
     render(<TestCases />);
 
+    expect(screen.queryByTestId('empty-state-action')).not.toBeInTheDocument();
+  });
+
+  it('should soft delete test cases and wire the show deleted toggle', () => {
+    render(<TestCases />);
+
+    expect(screen.getByTestId('data-quality-tab')).toHaveAttribute(
+      'data-deletion-mode',
+      'soft'
+    );
+
+    fireEvent.click(screen.getByTestId('show-deleted'));
+
+    expect(handleShowDeletedChange).toHaveBeenCalledWith(true);
+  });
+
+  it('should treat deleted visibility as a filter and disable bulk actions', () => {
+    mockUseTestCaseListPage.mockReturnValue({
+      ...baseHookReturn,
+      showDeleted: true,
+    });
+
+    render(<TestCases />);
+
+    const tab = screen.getByTestId('data-quality-tab');
+
+    expect(tab).toHaveAttribute('data-enable-bulk-actions', 'false');
+    expect(tab).toHaveAttribute('data-has-active-filters', 'true');
     expect(screen.queryByTestId('empty-state-action')).not.toBeInTheDocument();
   });
 });
