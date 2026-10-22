@@ -210,6 +210,8 @@ def test_quiet_window_still_posts(tmp_path, monkeypatch):
     slack, _ = build(tmp_path, monkeypatch, [run(9, "2026-09-30T06:00:00Z", 1)])
     assert "No flaky tests in the merge queue." in slack["initial_comment"]
     assert report_script.UI_TEAM not in slack["initial_comment"]
+    fallback = json.loads((tmp_path / "slack-fallback.json").read_text())["text"]
+    assert report_script.UI_TEAM not in fallback
 
 
 def test_window_over_48h_is_refused(monkeypatch):
