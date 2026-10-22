@@ -279,7 +279,9 @@ class HexSource(DashboardServiceSource):
                         logger.debug("Table entity is None or has no ID")
                         continue
 
-                    yield self._get_add_lineage_request(to_entity=dashboard, from_entity=table_entity)
+                    lineage = self._get_add_lineage_request(to_entity=dashboard, from_entity=table_entity)
+                    if lineage is not None:
+                        yield lineage
                     logger.debug(f"Added lineage: {table_entity.fullyQualifiedName.root} -> {dashboard_fqn}")
 
                 except Exception as e:
