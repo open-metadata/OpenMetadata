@@ -633,6 +633,26 @@ describe('TestDetailsPageV1 component', () => {
     });
   });
 
+  it('keeps the entity skeleton, not a spinner, while the table itself is still loading', async () => {
+    setMockPermissions({ ViewBasic: true });
+    // Never settles, so the page stays on its entity-loading branch.
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
+  });
+
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {
     setMockPermissions({ ViewBasic: true });
 
