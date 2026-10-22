@@ -190,6 +190,8 @@ const defaultProps: BulkEditEntityProps = {
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
