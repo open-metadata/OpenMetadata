@@ -181,11 +181,12 @@ class TestMssqlSwitchQueryHistory:
     """Executed procedures contribute their SWITCH statements to the stored procedure queries"""
 
     @staticmethod
-    def _source(procedure_runs):
+    def _source(procedure_runs, history=()):
         """
-        A lineage source whose statement history holds nothing for the procedures, as SQL
-        Server leaves it for a procedure that only switches partitions. `procedure_runs` is
-        what the procedure execution stats return, or the exception reading them raises.
+        A lineage source whose statement history holds only `history`: nothing, by default,
+        as SQL Server leaves it for a procedure that only switches partitions.
+        `procedure_runs` is what the procedure execution stats return, or the exception
+        reading them raises.
         """
         connection = MagicMock()
         executed = []
@@ -199,7 +200,7 @@ class TestMssqlSwitchQueryHistory:
                     raise procedure_runs
                 result.all.return_value = procedure_runs
             else:
-                result.all.return_value = []
+                result.all.return_value = list(history)
             return result
 
         connection.execute.side_effect = execute
@@ -249,10 +250,21 @@ class TestMssqlSwitchQueryHistory:
     def test_procedure_stats_without_permission_skip_switch_lineage_quietly(self):
         # Query Store needs only database-level grants; the procedure execution stats need
         # VIEW SERVER STATE. Lacking it must not turn every run into a reported failure.
-        source, _ = self._source(ProgrammingError("SELECT", {}, Exception("VIEW SERVER STATE permission denied")))
+        insert = "INSERT INTO dbo.archive_table SELECT * FROM dbo.stage_table"
+        history_row = _procedure_run(MIXED_PROCEDURE, name="LoadAndSwitchProc")
+        history_row._asdict.return_value = {**history_row._asdict(), "QUERY_TYPE": "INSERT", "QUERY_TEXT": insert}
+        source, _ = self._source(
+            ProgrammingError("SELECT", {}, Exception("VIEW SERVER STATE permission denied")),
+            history=[history_row],
+        )
 
-        assert self._queries(source) == []
+        with patch("metadata.ingestion.source.database.mssql.lineage.logger") as logger:
+            queries = self._queries(source)
+
+        assert [query.query_text for query in queries] == [insert]
         source.status.failed.assert_not_called()
+        logger.warning.assert_called_once()
+        assert "VIEW SERVER STATE permission denied" in str(logger.warning.call_args)
 
 
 class TestSwitchProcedureLineage:
