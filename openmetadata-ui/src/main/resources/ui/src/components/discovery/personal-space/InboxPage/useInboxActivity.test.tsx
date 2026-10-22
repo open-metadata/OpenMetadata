@@ -20,6 +20,7 @@ const mockGetActivityEvents = jest.fn();
 const mockGetMyActivityFeed = jest.fn();
 const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
+const mockGetUserActivity = jest.fn();
 const mockListConversations = jest.fn();
 let mockCurrentUser: { id?: string } | undefined;
 
@@ -30,6 +31,7 @@ jest.mock('rest/activityAPI', () => ({
     mockGetFollowingActivityFeed(...args),
   getMentionsActivityFeed: (...args: unknown[]) =>
     mockGetMentionsActivityFeed(...args),
+  getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
 }));
 
 jest.mock('rest/conversationsAPI', () => ({
@@ -46,6 +48,7 @@ import {
   INBOX_ACTIVITY_QUERY_KEY,
   useInboxActivity,
   useInboxActivityCounts,
+  useUserActivityCount,
   writeInboxReactions,
 } from './useInboxActivity';
 
@@ -77,6 +80,7 @@ beforeEach(() => {
     mockGetMyActivityFeed,
     mockGetFollowingActivityFeed,
     mockGetMentionsActivityFeed,
+    mockGetUserActivity,
   ].forEach((mock) => mock.mockResolvedValue(threeEvents));
   mockListConversations.mockResolvedValue(twoThreads);
 });
@@ -290,6 +294,43 @@ describe('fetchInboxActivity', () => {
   });
 });
 
+describe('fetchInboxActivity for another user', () => {
+  // Their "All" is what they did, not everything the viewer can see.
+  it("fetches the user's own activity and conversations for All", async () => {
+    await fetchInboxActivity(ActivityFilter.All, 'u2', 100, 200, true);
+
+    expect(mockGetUserActivity).toHaveBeenCalledWith('u2', {
+      days: 1,
+      limit: 200,
+    });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterType: ConversationFilterType.OwnerOrFollows,
+        userId: 'u2',
+      })
+    );
+  });
+
+  it.each([
+    [ActivityFilter.MyAssets, mockGetMyActivityFeed],
+    [ActivityFilter.Following, mockGetFollowingActivityFeed],
+    [ActivityFilter.Mentions, mockGetMentionsActivityFeed],
+  ])('asks the %s feed for the user', async (filter, activityRequest) => {
+    await fetchInboxActivity(filter, 'u2', undefined, undefined, true);
+
+    expect(activityRequest).toHaveBeenCalledWith({
+      days: 30,
+      limit: 200,
+      startTs: undefined,
+      userId: 'u2',
+    });
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u2' })
+    );
+  });
+});
+
 describe('writeInboxReactions', () => {
   // A card read back from any cached sub-tab after a switch keeps the change.
   it("writes a card's reactions into every cached feed that holds it", () => {
@@ -482,5 +523,60 @@ describe('useInboxActivityCounts', () => {
     });
 
     expect(result.current).toEqual({});
+  });
+});
+
+describe('scoping to another user', () => {
+  it("scopes the hook's requests to the given user", async () => {
+    const { result } = renderHook(
+      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u2'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetMyActivityFeed).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u2' })
+    );
+  });
+
+  // The viewer's own profile is their inbox, not a scoped view of it.
+  it('keeps the inbox requests when the user is the viewer', async () => {
+    const { result } = renderHook(
+      () => useInboxActivity(ActivityFilter.MyAssets, undefined, 'u1'),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetMyActivityFeed).toHaveBeenCalledWith({
+      days: 30,
+      limit: 200,
+      startTs: undefined,
+    });
+  });
+
+  it("counts the user's All feed", async () => {
+    // Inside the default window the count reads.
+    mockGetUserActivity.mockResolvedValue({
+      data: [{ id: '1', timestamp: Date.now() }],
+    });
+    const { result } = renderHook(() => useUserActivityCount('u2'), {
+      wrapper: createWrapper(),
+    });
+
+    // 1 event + 2 conversations.
+    await waitFor(() => expect(result.current).toBe(3));
+
+    expect(mockGetUserActivity).toHaveBeenCalledWith('u2', expect.anything());
+  });
+
+  it('counts nothing without a user', () => {
+    const { result } = renderHook(() => useUserActivityCount(undefined), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current).toBeUndefined();
+    expect(mockGetUserActivity).not.toHaveBeenCalled();
   });
 });

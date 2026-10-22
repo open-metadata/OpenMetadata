@@ -30,6 +30,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
+import { useProfileCopy } from '../useUserProfile';
 
 interface RolesRowProps {
   userData: User;
@@ -38,6 +39,7 @@ interface RolesRowProps {
 
 const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = Boolean(isAdminUser) && !userData.deleted;
 
@@ -127,7 +129,10 @@ const RolesRow: React.FC<RolesRowProps> = ({ userData, updateUserDetails }) => {
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.role-granting-description')}
+      description={copy(
+        'message.role-granting-description',
+        'message.role-granting-description-of-user'
+      )}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete

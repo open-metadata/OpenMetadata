@@ -50,6 +50,8 @@ export interface ProfileContentHeaderProps {
   meta?: React.ReactNode;
   /** Tab strip rendered flush with the header's bottom border. */
   tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   titleSuffix,
   meta,
   tabs,
+  compact,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -80,6 +83,27 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
 
   const resolvedBreadcrumbs = breadcrumbs ?? defaultBreadcrumbs;
 
+  const breadcrumbRow = (
+    <Breadcrumbs
+      divider="chevron"
+      items={resolvedBreadcrumbs}
+      size="xs"
+      type="text"
+      onAction={onBreadcrumbAction}
+    />
+  );
+
+  if (compact) {
+    return (
+      <Box
+        className="ai-profile-page__content-header tw:shrink-0 tw:px-6 tw:pt-4 tw:pb-4"
+        data-testid="profile-content-header"
+        direction="col">
+        {breadcrumbRow}
+      </Box>
+    );
+  }
+
   return (
     <Box
       className={classNames(
@@ -89,13 +113,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       data-testid="profile-content-header"
       direction="col"
       gap={5}>
-      <Breadcrumbs
-        divider="chevron"
-        items={resolvedBreadcrumbs}
-        size="xs"
-        type="text"
-        onAction={onBreadcrumbAction}
-      />
+      {breadcrumbRow}
       <Box align="center" direction="row" gap={3}>
         {iconNode ?? (
           <FeaturedIcon

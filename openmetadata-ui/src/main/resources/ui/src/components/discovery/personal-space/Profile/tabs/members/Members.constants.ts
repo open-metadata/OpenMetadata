@@ -22,7 +22,19 @@ import type {
   MembersLandingCard,
   StageState,
   TimeWindowOption,
+  UserDetailTab,
 } from './Members.types';
+
+// Order is the tab-strip order in the user-detail header.
+export const USER_DETAIL_TABS: UserDetailTab[] = [
+  'overview',
+  'access',
+  'activity',
+  'tasks',
+  'owned-assets',
+  'following',
+  'custom-properties',
+];
 
 export const LANDING_CARDS: MembersLandingCard[] = [
   {

@@ -25,11 +25,14 @@ import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { USER_DETAIL_TABS } from './Members.constants';
 import type {
+  MembersUserDetailView,
   MembersView,
   OnlineStatusInfo,
   ParsedImportResult,
   TeamNode,
+  UserDetailTab,
 } from './Members.types';
 
 // DomainSelect hands back a single ref, an array, or undefined (cleared);
@@ -106,6 +109,8 @@ const SECTION = 'section';
 const TEAM_DETAIL = 'team-detail';
 const TEAMS_ADD = 'teams-add';
 const TEAMS_IMPORT = 'teams-import';
+const USER_DETAIL = 'user-detail';
+const TASKS_TAB: UserDetailTab = 'tasks';
 
 // A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
 // decodeURIComponent throw URIError, which would unmount the whole panel; fall
@@ -165,6 +170,31 @@ function parseSectionSubPath(parts: string[]): MembersView {
     : { type: 'landing' };
 }
 
+// `users/<name>[/<tab>[/<taskId>]]`. An unknown tab segment falls back to
+// overview, and a task id is only honoured under the tasks tab.
+// ponytail: a user literally named `create` routes to the create-user form.
+function parseUsersSubPath(parts: string[]): MembersView {
+  const [, name, tabPart, taskId] = parts;
+
+  if (!name) {
+    return { type: 'users' };
+  }
+  if (name === CREATE) {
+    return { type: USER_CREATE, isAdmin: false };
+  }
+
+  const tab = USER_DETAIL_TABS.find((item) => item === tabPart) ?? 'overview';
+
+  return {
+    type: USER_DETAIL,
+    name: safeDecodeURIComponent(name),
+    tab,
+    ...(tab === TASKS_TAB && taskId
+      ? { taskId: safeDecodeURIComponent(taskId) }
+      : {}),
+  };
+}
+
 export function hashSubPathToView(subPath: string): MembersView {
   if (!subPath) {
     return { type: 'landing' };
@@ -176,9 +206,7 @@ export function hashSubPathToView(subPath: string): MembersView {
     case TEAMS:
       return parseTeamsSubPath(parts);
     case USERS:
-      return parts[1] === CREATE
-        ? { type: USER_CREATE, isAdmin: false }
-        : { type: 'users' };
+      return parseUsersSubPath(parts);
     case ADMINS:
       return parts[1] === CREATE
         ? { type: USER_CREATE, isAdmin: true }
@@ -209,12 +237,28 @@ function teamsViewToSubPath(view: MembersView): string {
   }
 }
 
+// Overview is the default tab, so it is left out of the hash.
+function userDetailViewToSubPath(view: MembersUserDetailView): string {
+  const tabPart = view.tab === 'overview' ? [] : [view.tab];
+  const taskPart =
+    view.tab === TASKS_TAB && view.taskId
+      ? [encodeURIComponent(view.taskId)]
+      : [];
+
+  return [USERS, encodeURIComponent(view.name), ...tabPart, ...taskPart].join(
+    '/'
+  );
+}
+
 export function viewToSubPath(view: MembersView): string | undefined {
   if (view.type === 'landing') {
     return undefined;
   }
   if (view.type === 'users') {
     return USERS;
+  }
+  if (view.type === USER_DETAIL) {
+    return userDetailViewToSubPath(view);
   }
   if (view.type === 'admins') {
     return ADMINS;
@@ -234,6 +278,19 @@ export function viewToSubPath(view: MembersView): string | undefined {
   // teams, team-detail, teams-add, teams-import
   return teamsViewToSubPath(view);
 }
+
+// Another user's detail opened from the Profile tab (`#profile/<name>[/<tab>
+// [/<taskId>]]`) reuses the Members `users/…` encoding, minus its prefix.
+export const profileSubPathToUserView = (
+  subPath: string
+): MembersUserDetailView | undefined => {
+  const view = hashSubPathToView(`${USERS}/${subPath}`);
+
+  return view.type === USER_DETAIL ? view : undefined;
+};
+
+export const userViewToProfileSubPath = (view: MembersUserDetailView): string =>
+  userDetailViewToSubPath(view).slice(USERS.length + 1);
 
 const MINUTES_IN_HOUR = 60;
 const MINUTES_IN_DAY = 1440;
@@ -317,6 +374,7 @@ export const getMembersIcons = (
   [TEAMS_ADD]: Users01,
   [TEAMS_IMPORT]: Users01,
   users: User01,
+  [USER_DETAIL]: User01,
   admins: ShieldTick,
   'user-create': createUserIsAdmin ? ShieldTick : User01,
   'online-users': Clock,
@@ -334,6 +392,8 @@ export const getMembersDescriptions = (
   [TEAMS_ADD]: t('message.members-teams-description'),
   [TEAMS_IMPORT]: t('message.members-teams-description'),
   users: t('message.members-users-description'),
+  // The user-detail header supplies its own `@username · email` line.
+  [USER_DETAIL]: '',
   admins: t('message.members-admins-description'),
   'user-create': createUserIsAdmin
     ? t('message.members-admins-description')
@@ -341,8 +401,26 @@ export const getMembersDescriptions = (
   'online-users': t('message.members-online-users-description'),
 });
 
+export const USER_DETAIL_BACK_TO_USERS = new Set<Key>([
+  'settings',
+  'members',
+  'users',
+]);
+
 export const makeBreadcrumbAction =
-  (onNavigate: (view: MembersView) => void) => (id: Key) => {
+  (onNavigate: (view: MembersView) => void, view?: MembersView) =>
+  (id: Key) => {
+    // Inside a user's detail every ancestor up to Users returns to the users
+    // list, and the user/Tasks crumbs above a task return to that user's tasks.
+    if (view?.type === USER_DETAIL) {
+      if (USER_DETAIL_BACK_TO_USERS.has(id)) {
+        onNavigate({ type: 'users' });
+      } else if (id === 'user' || id === 'user-tasks') {
+        onNavigate({ type: USER_DETAIL, name: view.name, tab: TASKS_TAB });
+      }
+
+      return;
+    }
     if (id === 'members') {
       onNavigate({ type: 'landing' });
     } else if (id === 'teams') {
@@ -356,6 +434,29 @@ export const makeBreadcrumbAction =
 
 export const isTeamsOrDetailView = (view: MembersView): boolean =>
   view.type === 'teams' || view.type === TEAM_DETAIL || view.type === TEAMS_ADD;
+
+const userDetailName = (view: MembersView): string =>
+  view.type === USER_DETAIL ? view.name : '';
+
+// `<username>` — or, on a task page, `<username> › Tasks › TASK-…`, where the
+// first two crumbs lead back to the user's task list.
+const userDetailCrumbs = (
+  view: MembersView,
+  t: (key: string) => string
+): BreadcrumbItemType[] => {
+  if (view.type !== USER_DETAIL) {
+    return [];
+  }
+  if (!view.taskId) {
+    return [{ id: 'current', label: view.name }];
+  }
+
+  return [
+    { id: 'user', label: view.name },
+    { id: 'user-tasks', label: t('label.task-plural') },
+    { id: 'current', label: view.taskId },
+  ];
+};
 
 // Builds the per-view breadcrumb/title/icon/description maps for the members
 // header. Pure, so the header effect stays within its complexity budget.
@@ -415,6 +516,7 @@ export const buildMembersHeaderMaps = (
     [TEAMS_ADD]: [...base, teamsItem, { id: 'current', label: addTeamLabel }],
     [TEAMS_IMPORT]: [...base, teamsItem, { id: 'current', label: importLabel }],
     users: [...base, { id: 'current', label: usersLabel }],
+    [USER_DETAIL]: [...base, usersItem, ...userDetailCrumbs(view, t)],
     admins: [...base, { id: 'current', label: adminsLabel }],
     'user-create': [
       ...base,
@@ -432,6 +534,7 @@ export const buildMembersHeaderMaps = (
     [TEAMS_ADD]: addTeamLabel,
     [TEAMS_IMPORT]: importLabel,
     users: usersLabel,
+    [USER_DETAIL]: userDetailName(view),
     admins: adminsLabel,
     'user-create': createUserLabel,
     'online-users': onlineUsersLabel,

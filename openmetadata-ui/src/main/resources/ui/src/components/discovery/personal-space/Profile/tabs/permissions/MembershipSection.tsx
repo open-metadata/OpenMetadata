@@ -19,6 +19,7 @@ import ChipBadgeList from '../../components/ChipBadgeList';
 import FieldRow from '../../components/FieldRow';
 import RolesRow from '../../components/RolesRow';
 import TeamsRow from '../../components/TeamsRow';
+import { useProfileCopy } from '../../useUserProfile';
 
 export interface MembershipSectionProps {
   userData: User;
@@ -35,6 +36,7 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
 
   return (
     <Card
@@ -45,7 +47,10 @@ const MembershipSection: React.FC<MembershipSectionProps> = ({
       <RolesRow updateUserDetails={updateUserDetails} userData={userData} />
       <div className="tw:px-5 tw:py-4">
         <FieldRow
-          description={t('message.inherited-role-description')}
+          description={copy(
+            'message.inherited-role-description',
+            'message.inherited-role-description-of-user'
+          )}
           title={t('label.inherited-role-plural')}>
           <ChipBadgeList
             color="gray"

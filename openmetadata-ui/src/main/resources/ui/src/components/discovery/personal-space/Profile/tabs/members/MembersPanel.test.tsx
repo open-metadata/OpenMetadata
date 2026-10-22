@@ -112,6 +112,29 @@ jest.mock(
     )
 );
 jest.mock('./MembersUsersPanel', () => () => <div data-testid="users-panel" />);
+jest.mock(
+  './MembersUserDetail',
+  () =>
+    (props: {
+      view: { name: string; tab: string };
+      onSetHeader: (header: { title: string }) => void;
+    }) => {
+      const React = require('react');
+      const { onSetHeader, view } = props;
+      React.useEffect(
+        () => onSetHeader({ title: 'Alice Johnson' }),
+        [onSetHeader]
+      );
+
+      return (
+        <div
+          data-name={view.name}
+          data-tab={view.tab}
+          data-testid="user-detail"
+        />
+      );
+    }
+);
 jest.mock('./MembersCreateUserForm', () => () => (
   <div data-testid="create-user" />
 ));
@@ -246,6 +269,32 @@ describe('MembersPanel hash navigation', () => {
       screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('import-form')).not.toBeInTheDocument();
+  });
+
+  it('deep-links a user and merges the detail header over the members header', async () => {
+    globalThis.location.hash = '#members/users/alice/access';
+    const onHeaderChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={onHeaderChange} />
+        </MemoryRouter>
+      );
+    });
+
+    const detail = screen.getByTestId('user-detail');
+
+    expect(detail).toHaveAttribute('data-name', 'alice');
+    expect(detail).toHaveAttribute('data-tab', 'access');
+    expect(onHeaderChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        title: 'Alice Johnson',
+        breadcrumbs: expect.arrayContaining([
+          expect.objectContaining({ id: 'current', label: 'alice' }),
+        ]),
+      })
+    );
   });
 
   it('gates the create-user form behind create permission', () => {

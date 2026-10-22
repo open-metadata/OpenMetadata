@@ -11,10 +11,11 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
+import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
 
@@ -45,9 +46,14 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 let mockCurrentUserIds: ReadonlySet<string> = new Set();
+const mockCurrentUserIdsFor = jest.fn();
 
 jest.mock('../useCurrentUserIds', () => ({
-  useCurrentUserIds: () => mockCurrentUserIds,
+  useCurrentUserIds: (user?: unknown) => {
+    mockCurrentUserIdsFor(user);
+
+    return mockCurrentUserIds;
+  },
 }));
 
 jest.mock('../useInboxInfiniteList', () => ({
@@ -847,6 +853,85 @@ describe('TasksTab', () => {
         'approved,rejected'
       );
       expect(screen.getByTestId('toolbar')).toHaveAttribute('data-status', '');
+    });
+  });
+
+  describe('scoped to a user', () => {
+    const user = {
+      id: 'u1',
+      name: 'alice',
+      teams: [{ id: 'team1', type: 'team', name: 'Finance' }],
+    } as unknown as User;
+
+    it('fetches the tasks assigned to them or their teams, or created by them', async () => {
+      renderTab({ user });
+
+      await capturedFetchPage(undefined);
+
+      expect(capturedQueryKey[1]).toBe('user:u1');
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assignee: 'alice,Finance',
+          statusGroup: 'open',
+        })
+      );
+      expect(mockListTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ createdById: 'u1', statusGroup: 'open' })
+      );
+      expect(mockListVisibleTasks).not.toHaveBeenCalled();
+    });
+
+    it('reads "pending approval" from their side, not the viewer\'s', () => {
+      renderTab({ user });
+
+      expect(mockCurrentUserIdsFor).toHaveBeenCalledWith(user);
+    });
+  });
+
+  describe('list-only layout', () => {
+    beforeEach(() => {
+      hookState = {
+        items: [{ id: 't1' } as Task, { id: 't2' } as Task],
+        isLoading: false,
+        total: 2,
+      };
+    });
+
+    it('opens a clicked task through onOpenTask, with no detail pane', () => {
+      const onOpenTask = jest.fn();
+      renderTab({ onOpenTask });
+
+      fireEvent.click(screen.getByTestId('task-t2'));
+
+      expect(onOpenTask).toHaveBeenCalledWith('t2');
+      expect(screen.queryByTestId('detail')).not.toBeInTheDocument();
+    });
+
+    it('shows the empty state in the list', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({ onOpenTask: jest.fn() });
+
+      expect(
+        within(screen.getByTestId('inbox-tasks-scroll')).getByText(
+          'label.no-open-tasks-yet'
+        )
+      ).toBeInTheDocument();
+    });
+
+    it("names another user in their empty state instead of 'you'", () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      expect(screen.getByTestId('inbox-tasks-user-empty')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.user-tasks-empty-description')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.no-open-tasks-yet')
+      ).not.toBeInTheDocument();
     });
   });
 });

@@ -84,15 +84,18 @@ jest.mock('../components/ActivityFeedItem', () => ({
     activity,
     feed,
     isMentioned,
+    mentionedName,
     timeFormat,
   }: {
     activity?: MockItem;
     feed?: MockItem;
     isMentioned?: boolean;
+    mentionedName?: string;
     timeFormat?: string;
   }) => (
     <div
       data-mentioned={isMentioned}
+      data-mentioned-name={mentionedName}
       data-testid="feed-item"
       data-time-format={timeFormat}>
       {activity?.id ?? feed?.id}
@@ -155,7 +158,14 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+import { User } from '../../../../../generated/entity/teams/user';
 import ActivityTab from './ActivityTab';
+
+const alice = {
+  id: 'alice-id',
+  name: 'alice.johnson',
+  displayName: 'Alice Johnson',
+} as User;
 
 describe('ActivityTab', () => {
   beforeEach(() => {
@@ -239,13 +249,53 @@ describe('ActivityTab', () => {
   it('fetches the sub-tab the toolbar selects', () => {
     render(<ActivityTab />);
 
-    expect(mockUseInboxActivity).toHaveBeenLastCalledWith('all', undefined);
+    // Uncontrolled, the tab keeps its own window at the default preset.
+    const defaultWindow = expect.objectContaining({ key: 'last30days' });
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      defaultWindow,
+      undefined
+    );
 
     fireEvent.click(screen.getByText('following'));
 
     expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
       'following',
+      defaultWindow,
       undefined
+    );
+  });
+
+  it("fetches another user's feeds when given a user", () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(mockUseInboxActivity).toHaveBeenLastCalledWith(
+      'all',
+      expect.anything(),
+      'alice-id'
+    );
+  });
+
+  it('names the viewed user, not "you", on mentions and the empty state', () => {
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByText('label.no-activity-yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.user-activity-empty-description')
+    ).toBeInTheDocument();
+
+    activityState = {
+      items: [{ feed: { id: 't1' } }],
+      total: 1,
+      isLoading: false,
+    };
+    mockMentionItems = [{ feed: { id: 't1' } }];
+    render(<ActivityTab user={alice} />);
+
+    expect(screen.getByTestId('feed-item')).toHaveAttribute(
+      'data-mentioned-name',
+      'Alice'
     );
   });
 

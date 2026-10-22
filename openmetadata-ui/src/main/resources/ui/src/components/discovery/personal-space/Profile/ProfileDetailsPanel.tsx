@@ -26,6 +26,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { isMaskedEmail } from '../../../../utils/UsersPureUtils';
 import ChangePasswordRow from './components/ChangePasswordRow';
 import DefaultPersonaRow from './components/DefaultPersonaRow';
 import DomainsRow from './components/DomainsRow';
@@ -33,12 +34,16 @@ import InlineEditCard from './components/InlineEditCard';
 import PersonaRow from './components/PersonaRow';
 import RowSkeleton from './components/RowSkeleton';
 import SettingsSection, { ReadOnlyRow } from './components/SettingsSection';
+import UserCustomPropertiesSection from './customProperties/UserCustomPropertiesSection';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
+import { useProfileCopy } from './useUserProfile';
 
 interface ProfileDetailsPanelProps {
   userData: User;
   isProfileLoading: boolean;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /** Only your own Profile tab lists custom properties; the user detail has a tab. */
+  showCustomProperties?: boolean;
 }
 
 interface PreferredNameRowProps {
@@ -53,13 +58,17 @@ const PreferredNameRow: React.FC<PreferredNameRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const displayName = getEntityName(userData);
   const [draft, setDraft] = useState(displayName);
 
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.preferred-name-description')}
+      description={copy(
+        'message.preferred-name-description',
+        'message.preferred-name-description-of-user'
+      )}
       renderEdit={() => (
         <Input
           data-testid="preferred-name-input"
@@ -92,18 +101,24 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
   userData,
   isProfileLoading,
   updateUserDetails,
+  showCustomProperties,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const { currentUser, authConfig } = useApplicationStore();
   const displayName = getEntityName(userData);
   const isSelf = currentUser?.name === userData.name;
-  const canEditName = (Boolean(isAdminUser) || isSelf) && !userData.deleted;
+  // Legacy parity: only you rename yourself, admins included.
+  const canEditName = isSelf && !userData.deleted;
   const canChangePassword = canUserChangePassword({
     provider: authConfig?.provider,
     isSelf,
+    isAdmin: isAdminUser,
     isDeleted: userData.deleted,
   });
+  const visibleEmail =
+    userData.email && !isMaskedEmail(userData.email) ? userData.email : '';
 
   return (
     <Box data-testid="profile-details-panel" direction="col" gap={6}>
@@ -111,7 +126,10 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
         testId="profile-section-profile"
         title={t('label.profile')}>
         <ReadOnlyRow
-          description={t('message.photo-description')}
+          description={copy(
+            'message.photo-description',
+            'message.photo-description-of-user'
+          )}
           title={t('label.photo')}>
           <ProfilePicture
             displayName={displayName}
@@ -134,15 +152,15 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
               className="tw:text-primary"
               size="text-sm"
               weight="regular">
-              {userData.email ?? ''}
+              {visibleEmail}
             </Typography>
-            {userData.email && (
+            {visibleEmail && (
               <BadgeWithIcon
                 color="success"
                 iconLeading={Check}
                 size="xs"
                 type="pill-color">
-                {t('label.success')}
+                <span className="tw:capitalize">{t('label.verified')}</span>
               </BadgeWithIcon>
             )}
           </Box>
@@ -153,7 +171,7 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
         <SettingsSection
           testId="profile-section-security"
           title={t('label.security')}>
-          <ChangePasswordRow username={userData.name} />
+          <ChangePasswordRow isSelf={isSelf} username={userData.name} />
         </SettingsSection>
       )}
 
@@ -185,6 +203,13 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
           />
         )}
       </SettingsSection>
+
+      {showCustomProperties && (
+        <UserCustomPropertiesSection
+          user={userData}
+          onUpdate={updateUserDetails}
+        />
+      )}
     </Box>
   );
 };

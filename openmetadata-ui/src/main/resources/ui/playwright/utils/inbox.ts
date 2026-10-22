@@ -108,7 +108,7 @@ export const visitTriage = async (page: Page) => {
 };
 
 /**
- * Open My Data from the user menu, which shows it in the personal-space panel.
+ * Open My Data & Following from the user menu, which shows it in the personal-space panel.
  * A direct `goto('/my-data')` races the AI-mode route registration as `/inbox`
  * does, and the sidebar brand leads Home, not here.
  */
@@ -125,7 +125,9 @@ export const visitMyData = async (page: Page) => {
   // open it covers the menu, and its content waits on the permission check and
   // a lazy chunk, so wait for the content instead of opening it again.
   const myDataItem = page.getByTestId('ai-user-menu-my-data');
-  const myDataDialog = page.getByRole('dialog', { name: 'My Data' });
+  const myDataDialog = page.getByRole('dialog', {
+    name: 'My Data & Following',
+  });
   const myDataPage = page.getByTestId('my-data-page');
   await expect(async () => {
     if (await myDataPage.isVisible()) {

@@ -30,6 +30,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
+import { useProfileCopy } from '../useUserProfile';
 
 interface DomainsRowProps {
   userData: User;
@@ -41,6 +42,7 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = Boolean(isAdminUser) && !userData.deleted;
 
@@ -117,7 +119,10 @@ const DomainsRow: React.FC<DomainsRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.domain-belong-description')}
+      description={copy(
+        'message.domain-belong-description',
+        'message.domain-belong-description-of-user'
+      )}
       renderEdit={() => (
         <Autocomplete
           multiple

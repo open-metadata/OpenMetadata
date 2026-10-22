@@ -13,33 +13,18 @@
 
 import { Box } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
-import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
-import { isUndefined, omitBy } from 'lodash';
-import React, {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { TabSpecificField } from '../../../../enums/entity.enum';
-import { User } from '../../../../generated/entity/teams/user';
-import { Include } from '../../../../generated/type/include';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
-import { getUserByName, updateUserDetail } from '../../../../rest/userAPI';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
@@ -56,52 +41,25 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { safeDecodeURIComponent } from './tabs/members/Members.utils';
+import { profileSubPathToUserView } from './tabs/members/Members.utils';
+import { useUserProfile } from './useUserProfile';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { permissions } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
-  // Seed userData from the application store so the page chrome renders
-  // immediately on tab switch. The getUserByName fetch below refreshes
-  // fields in the background.
-  const [userData, setUserData] = useState<User | undefined>(
-    currentUser as User | undefined
-  );
-  // The seeded currentUser lacks roles/teams/personas/domains; keep the
-  // detail cards in a skeleton state until getUserByName backfills them so
-  // the sections do not flash empty before the fetch resolves.
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
-  // A `#profile/<unknown-user>` deep link resolves to a target that getUserByName
-  // 404s on — track it to show an empty placeholder instead of a perpetual loader.
-  const [isUserNotFound, setIsUserNotFound] = useState(false);
-  // Monotonic request id: a target change (e.g. #profile/bob → #profile/alice,
-  // or back to the current user) bumps it so a slower earlier response can't
-  // overwrite a faster later one and strand the wrong user's data.
-  const requestRef = useRef(0);
-  // Read the latest currentUser inside fetchUser without listing it as a dep —
-  // the store object identity can change between renders and would otherwise
-  // re-fire the fetch effect in a loop.
-  const currentUserRef = useRef(currentUser);
-  currentUserRef.current = currentUser;
   const { state: hashState, setHash } = useSettingsHash();
 
-  // The `profile` tab may deep-link to another user via its sub-path
-  // (`#profile/<username>`); fall back to the current user when absent.
-  const { targetUsername, isViewingOtherUser } = useMemo(() => {
-    const username =
-      hashState.tab === 'profile' && hashState.subPath
-        ? safeDecodeURIComponent(hashState.subPath)
-        : currentUser?.name;
-
-    return {
-      targetUsername: username,
-      isViewingOtherUser: Boolean(
-        username && currentUser?.name && username !== currentUser.name
-      ),
-    };
-  }, [hashState, currentUser?.name]);
+  // Every nav item is about the signed-in user; another user deep-linked as
+  // `#profile/<username>` is loaded by the profile tab's own user detail.
+  const { userData, isProfileLoading, isUserNotFound, updateUserDetails } =
+    useUserProfile(currentUser?.name);
+  const isViewingOtherUser =
+    hashState.tab === DEFAULT_PROFILE_NAV_ID &&
+    Boolean(currentUser?.name) &&
+    (profileSubPathToUserView(hashState.subPath)?.name ?? currentUser?.name) !==
+      currentUser?.name;
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
@@ -123,105 +81,6 @@ const ProfilePage: React.FC = () => {
     }
   }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchUser = useCallback(async () => {
-    if (!targetUsername) {
-      setIsProfileLoading(false);
-
-      return;
-    }
-    const reqId = ++requestRef.current;
-    setIsProfileLoading(true);
-    setIsUserNotFound(false);
-    // Reset on every target change (not only when viewing another user): going
-    // back to your own profile must drop the previously-viewed user so their
-    // data — and their id in updateUserDetails — can't linger. For the current
-    // user we fall back to the store seed to avoid a flash of the loader.
-    setUserData(
-      isViewingOtherUser ? undefined : (currentUserRef.current as User)
-    );
-    try {
-      const res = await getUserByName(targetUsername, {
-        fields: [
-          TabSpecificField.PROFILE,
-          TabSpecificField.ROLES,
-          TabSpecificField.TEAMS,
-          TabSpecificField.PERSONAS,
-          TabSpecificField.DEFAULT_PERSONA,
-          TabSpecificField.DOMAINS,
-        ],
-        include: Include.All,
-      });
-      // Ignore a stale response superseded by a newer target.
-      if (reqId === requestRef.current) {
-        // isAdmin is not in the fields list but is used by contributed-tab
-        // conditions (e.g. billing tab). Keep the fetched value when present;
-        // fall back to the logged-in user's flag only for your own profile so
-        // viewing another user's profile doesn't overwrite their isAdmin with ours.
-        setUserData({
-          ...res,
-          isAdmin:
-            res.isAdmin ??
-            (isViewingOtherUser ? undefined : currentUserRef.current?.isAdmin),
-        });
-      }
-    } catch (error) {
-      if (reqId !== requestRef.current) {
-        return;
-      }
-      // A 404 is an expected miss (e.g. a hand-typed hash) — show the empty
-      // placeholder. Surface everything else (500s, network, 403) as a toast
-      // rather than silently masquerading as "user not found".
-      if ((error as AxiosError).response?.status === 404) {
-        setIsUserNotFound(true);
-      } else {
-        showErrorToast(error as AxiosError);
-      }
-    } finally {
-      if (reqId === requestRef.current) {
-        setIsProfileLoading(false);
-      }
-    }
-  }, [targetUsername, isViewingOtherUser]);
-
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
-  const updateUserDetails = useCallback(
-    async (data: Partial<User>, key: keyof User) => {
-      if (!userData) {
-        return;
-      }
-      const updatedDetails: User = { ...userData, ...data };
-      const jsonPatch = compare(userData, updatedDetails);
-      try {
-        const response = await updateUserDetail(userData.id, jsonPatch);
-        if (!response) {
-          return;
-        }
-        const nonTeamKeyData =
-          key === 'roles'
-            ? { roles: response.roles, isAdmin: response.isAdmin }
-            : { [key]: response[key] };
-        const updatedKeyData =
-          key === 'teams'
-            ? { teams: response.teams, domains: response.domains }
-            : nonTeamKeyData;
-        const newUserData = omitBy(
-          { ...userData, ...updatedKeyData },
-          isUndefined
-        ) as unknown as User;
-        setUserData(newUserData);
-        showSuccessToast(
-          t('server.update-entity-success', { entity: t('label.profile') })
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      }
-    },
-    [userData, t]
-  );
-
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
   // tabs through the `profile.tabs` extension point. Map each surviving
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
@@ -235,9 +94,11 @@ const ProfilePage: React.FC = () => {
     if (!userData) {
       return coreItems;
     }
-    const context: PluginEntityDetailsContext = {
+    // `username` matches the classic user page's plugin context.
+    const context: PluginEntityDetailsContext & { username: string } = {
       userData,
-      isLoggedInUser: true,
+      username: userData.name,
+      isLoggedInUser: userData.name === currentUser?.name,
       isAiMode: true,
     };
     const contributed: ProfileNavItem[] = extensionRegistry
@@ -272,14 +133,21 @@ const ProfilePage: React.FC = () => {
     );
 
     return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
-  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
+  }, [
+    currentUser?.isAdmin,
+    currentUser?.name,
+    extensionRegistry,
+    permissions,
+    userData,
+  ]);
 
   // Clear header override whenever the user switches nav items. The profile tab
   // carries the current user's name as its sub-path (`#profile/<username>`) so
   // the URL is shareable/deep-linkable; other tabs own their own sub-paths.
   const handleNavSelect = useCallback(
     (id: ProfileNavId) => {
-      if (id === selectedId) {
+      // Profile stays clickable while another user's detail is open under it.
+      if (id === selectedId && !isViewingOtherUser) {
         return;
       }
       const switchTab = () => {
@@ -298,7 +166,7 @@ const ProfilePage: React.FC = () => {
         switchTab();
       }
     },
-    [selectedId, setHash, currentUser?.name]
+    [selectedId, isViewingOtherUser, setHash, currentUser?.name]
   );
 
   const activeItem =
@@ -306,14 +174,14 @@ const ProfilePage: React.FC = () => {
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
-  // Always the static nav label (e.g. "Profile") — never the viewed user's name,
-  // for either your own or another user's profile.
+  // The static nav label unless a panel overrides it (the profile tab shows the
+  // user's identity instead).
   const headerTitle = headerOverride?.title ?? t(activeItem.label);
   const headerDescription =
     headerOverride?.description ?? t(activeItem.description);
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
   // Tie the breadcrumb to the nav item, not the (possibly user-name-overridden)
-  // title — so viewing another user's profile still reads "Settings > Profile".
+  // title — so your own profile reads "Account > Profile".
   const headerBreadcrumbs = headerOverride?.breadcrumbs ?? [
     { id: 'root', label: headerBreadcrumbRoot },
     { id: 'current', label: t(activeItem.label) },
@@ -359,6 +227,7 @@ const ProfilePage: React.FC = () => {
             actions={headerOverride?.actions}
             breadcrumbRoot={headerBreadcrumbRoot}
             breadcrumbs={headerBreadcrumbs}
+            compact={headerOverride?.compact}
             description={headerDescription}
             icon={headerIcon}
             iconNode={headerOverride?.iconNode}

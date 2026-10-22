@@ -15,7 +15,7 @@ import { AuthProvider } from '../../../../generated/settings/settings';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
 
 describe('canUserChangePassword', () => {
-  it.each([AuthProvider.Basic])(
+  it.each([AuthProvider.Basic, AuthProvider.LDAP])(
     'should allow the signed-in user on the %s provider',
     (provider) => {
       expect(canUserChangePassword({ provider, isSelf: true })).toBe(true);
@@ -26,7 +26,8 @@ describe('canUserChangePassword', () => {
   // AuthProvider later is asserted against instead of silently untested.
   it.each(
     Object.values(AuthProvider).filter(
-      (provider) => provider !== AuthProvider.Basic
+      (provider) =>
+        provider !== AuthProvider.Basic && provider !== AuthProvider.LDAP
     )
   )('should not allow an externally managed credential (%s)', (provider) => {
     expect(canUserChangePassword({ provider, isSelf: true })).toBe(false);
@@ -36,9 +37,30 @@ describe('canUserChangePassword', () => {
     expect(canUserChangePassword({ isSelf: true })).toBe(false);
   });
 
-  it('should not allow another user’s profile', () => {
+  it('should not allow a non-admin on another user’s profile', () => {
     expect(
       canUserChangePassword({ provider: AuthProvider.Basic, isSelf: false })
+    ).toBe(false);
+  });
+
+  it('should allow an admin on another user’s profile', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.Basic,
+        isSelf: false,
+        isAdmin: true,
+      })
+    ).toBe(true);
+  });
+
+  it('should not allow an admin on a deleted user', () => {
+    expect(
+      canUserChangePassword({
+        provider: AuthProvider.LDAP,
+        isSelf: false,
+        isAdmin: true,
+        isDeleted: true,
+      })
     ).toBe(false);
   });
 

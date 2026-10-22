@@ -23,6 +23,7 @@ import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
+import { useProfileCopy } from '../useUserProfile';
 
 interface DefaultPersonaRowProps {
   userData: User;
@@ -34,6 +35,7 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const { currentUser } = useApplicationStore();
   const isSelf = currentUser?.name === userData.name;
@@ -79,7 +81,10 @@ const DefaultPersonaRow: React.FC<DefaultPersonaRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.default-persona-description')}
+      description={copy(
+        'message.default-persona-description',
+        'message.default-persona-description-of-user'
+      )}
       renderEdit={() => (
         <Autocomplete
           aria-label={t('label.default-persona')}

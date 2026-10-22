@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
@@ -19,10 +19,11 @@ let mockHashState: { tab: string | null; subPath: string; params: object } = {
   subPath: '',
   params: {},
 };
+const mockSetHash = jest.fn();
 jest.mock('hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({
     state: mockHashState,
-    setHash: jest.fn(),
+    setHash: mockSetHash,
     clearHash: jest.fn(),
     updateParams: jest.fn(),
   }),
@@ -59,10 +60,9 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   default: () => <div data-testid="avatar" />,
 }));
 
-// Content leaf components mounted by the nav registry. ProfileDetailsPanel
-// echoes the resolved user's display name so tests can assert which user loaded
-// (the header title is static and never shows the name).
-jest.mock('./ProfileDetailsPanel', () => ({
+// Content leaf components mounted by the nav registry. The profile tab echoes
+// the resolved user's display name so tests can assert which user loaded.
+jest.mock('./ProfileTabPanel', () => ({
   __esModule: true,
   default: ({ userData }: { userData?: { displayName?: string } }) => (
     <div data-testid="content-profile">{userData?.displayName}</div>
@@ -192,21 +192,7 @@ describe('ProfilePage', () => {
     expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
   });
 
-  it('shows an empty placeholder (no loader) when the profile username is unknown', async () => {
-    mockHashState = { tab: 'profile', subPath: 'does-not-exist', params: {} };
-    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
-
-    await act(async () => {
-      render(<ProfilePage />);
-    });
-
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.getByText('label.no-entity-found')).toBeInTheDocument();
-    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-  });
-
-  it('shows a toast (not the empty placeholder) on a non-404 profile fetch error', async () => {
-    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+  it('shows a toast on a non-404 profile fetch error', async () => {
     mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
 
     await act(async () => {
@@ -217,66 +203,56 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
-  it('ignores a stale profile response when the target changes mid-flight', async () => {
-    let resolveBob!: (value: unknown) => void;
-    const bobPromise = new Promise((resolve) => {
-      resolveBob = resolve;
-    });
-    mockGetUserByName.mockImplementation((name: string) =>
-      name === 'bob'
-        ? bobPromise
-        : Promise.resolve({
-            id: 'u-alice',
-            name: 'alice',
-            displayName: 'Alice',
-          })
-    );
-
-    mockHashState = { tab: 'profile', subPath: 'bob', params: {} };
-    const { rerender } = render(<ProfilePage />);
-
-    // Switch to alice before bob's (slower) request resolves.
-    mockHashState = { tab: 'profile', subPath: 'alice', params: {} };
-    await act(async () => {
-      rerender(<ProfilePage />);
-    });
-
-    // Now let bob resolve late — it must be discarded as stale.
-    await act(async () => {
-      resolveBob({ id: 'u-bob', name: 'bob', displayName: 'Bob' });
-      await bobPromise;
-    });
-
-    // Alice (the later target) wins; the stale Bob response is discarded.
-    const content = screen.getByTestId('content-profile');
-
-    expect(content).toHaveTextContent('Alice');
-    expect(content).not.toHaveTextContent('Bob');
-  });
-
-  it('always shows the static "Profile" header, never the user name, when viewing another user', async () => {
+  it('loads the signed-in user for the nav even when the hash names another user', async () => {
     mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
-    mockGetUserByName.mockResolvedValue({
-      id: 'u2',
-      name: 'jane',
-      displayName: 'Jane Doe',
-    });
 
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    const header = screen.getByTestId('profile-content-header');
+    expect(mockGetUserByName).toHaveBeenCalledTimes(1);
+    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+  });
 
-    // Header title + breadcrumb stay the static nav label; the user name never
-    // appears there.
-    expect(within(header).getAllByText('label.profile').length).toBeGreaterThan(
-      0
+  it('passes the username and logged-in flag to contributed tabs', async () => {
+    const condition = jest.fn().mockReturnValue(true);
+    mockGetContributions.mockReturnValue([
+      { ...myConnectionsContribution, condition },
+    ]);
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(condition).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoggedInUser: true, username: 'harsh' })
     );
-    expect(within(header).queryByText('Jane Doe')).not.toBeInTheDocument();
+  });
 
-    // ...but the other user's data still loaded into the content panel.
-    expect(screen.getByTestId('content-profile')).toHaveTextContent('Jane Doe');
+  it('returns to your own profile when Profile is clicked on another user', async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-profile'));
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith('profile', 'harsh');
+  });
+
+  it('ignores a click on Profile while already on your own profile', async () => {
+    mockHashState = { tab: 'profile', subPath: 'harsh', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    fireEvent.click(screen.getByTestId('profile-nav-profile'));
+
+    expect(mockSetHash).not.toHaveBeenCalled();
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {

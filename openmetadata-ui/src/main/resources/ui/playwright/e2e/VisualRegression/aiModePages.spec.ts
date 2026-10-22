@@ -41,7 +41,8 @@ const PAGES: {
       '[data-testid^="stat-card-"][data-testid$="-value"]',
       '[data-testid^="stat-card-"][data-testid$="-subtitle"]',
       '[data-testid^="stat-card-"][data-testid$="-breakdown"]',
-      '[data-testid="my-data-assets"]',
+      '[data-testid="user-assets-list"]',
+      '[data-testid="user-assets-summary"]',
     ],
   },
   {

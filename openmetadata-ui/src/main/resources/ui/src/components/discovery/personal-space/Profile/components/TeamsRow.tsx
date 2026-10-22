@@ -26,6 +26,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
+import { useProfileCopy } from '../useUserProfile';
 
 interface TeamOption {
   id: string;
@@ -46,6 +47,7 @@ interface TeamsRowProps {
 
 const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = Boolean(isAdminUser) && !userData.deleted;
 
@@ -122,7 +124,10 @@ const TeamsRow: React.FC<TeamsRowProps> = ({ userData, updateUserDetails }) => {
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.team-member-description')}
+      description={copy(
+        'message.team-member-description',
+        'message.team-member-description-of-user'
+      )}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete

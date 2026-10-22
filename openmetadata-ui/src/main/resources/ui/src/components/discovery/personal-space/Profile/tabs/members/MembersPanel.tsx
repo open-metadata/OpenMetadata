@@ -27,6 +27,7 @@ import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
@@ -41,6 +42,7 @@ import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
 import MembersTeamDetail from './MembersTeamDetail';
+import MembersUserDetail from './MembersUserDetail';
 import MembersUsersPanel from './MembersUsersPanel';
 
 const TEAM_DETAIL = 'team-detail' as const;
@@ -48,6 +50,7 @@ const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
 const SECTION = 'section' as const;
+const USER_DETAIL = 'user-detail' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
@@ -132,6 +135,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // reports the fetched team's display name back here so the header/breadcrumb
   // show it (and update live on rename) instead of the raw FQN.
   const [resolvedTeamName, setResolvedTeamName] = useState('');
+  // Header slots owned by the user-detail view (avatar, name, tabs, kebab…),
+  // merged over the members header while that view is active.
+  const [userDetailHeader, setUserDetailHeader] =
+    useState<Partial<ProfileHeaderOverride>>();
 
   // One header setter for the children: a partial patch merged into the three
   // slots (only the keys present are touched, so a panel that owns just `actions`
@@ -193,10 +200,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       title: titleByType[view.type],
       description: descByType[view.type],
       icon: iconByType[view.type],
-      onBreadcrumbAction: makeBreadcrumbAction(onNavigate),
+      onBreadcrumbAction: makeBreadcrumbAction(onNavigate, view),
       actions: panelHeaderActions,
       titleInput: pick(detailHeaderTitleInput),
       titleSuffix: pick(detailHeaderTitleSuffix),
+      ...(view.type === USER_DETAIL ? userDetailHeader : undefined),
     });
   }, [
     view,
@@ -208,6 +216,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     detailHeaderTitleSuffix,
     resolvedTeamName,
     activeSection,
+    userDetailHeader,
   ]);
 
   const permissionPlaceholder = (
@@ -284,6 +293,17 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // defines its renderers during render, which react/no-unstable-nested-
   // components rejects.
   const renderSecondaryView = () => {
+    if (view.type === USER_DETAIL) {
+      return (
+        <MembersUserDetail
+          key={view.name}
+          view={view}
+          onNavigate={onNavigate}
+          onSetHeader={setUserDetailHeader}
+        />
+      );
+    }
+
     if (view.type === USER_CREATE) {
       return (
         <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />

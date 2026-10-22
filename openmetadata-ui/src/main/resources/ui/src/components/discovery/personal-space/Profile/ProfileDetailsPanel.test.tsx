@@ -44,9 +44,15 @@ jest.mock(
 
 jest.mock('./components/ChangePasswordRow', () => ({
   __esModule: true,
-  default: ({ username }: { username: string }) => (
-    <div data-testid="change-password-row">{username}</div>
+  default: ({ username, isSelf }: { username: string; isSelf: boolean }) => (
+    <div data-is-self={String(isSelf)} data-testid="change-password-row">
+      {username}
+    </div>
   ),
+}));
+jest.mock('./customProperties/UserCustomPropertiesSection', () => ({
+  __esModule: true,
+  default: () => <div data-testid="user-custom-properties-section" />,
 }));
 jest.mock('./components/DefaultPersonaRow', () => ({
   __esModule: true,
@@ -114,11 +120,16 @@ const user: User = {
   email: 'harsh@example.com',
 };
 
-const renderPanel = (overrides: Partial<User> = {}, isLoading = false) => {
+const renderPanel = (
+  overrides: Partial<User> = {},
+  isLoading = false,
+  showCustomProperties = false
+) => {
   const updateUserDetails = jest.fn().mockResolvedValue(undefined);
   render(
     <ProfileDetailsPanel
       isProfileLoading={isLoading}
+      showCustomProperties={showCustomProperties}
       updateUserDetails={updateUserDetails}
       userData={{ ...user, ...overrides }}
     />
@@ -146,7 +157,7 @@ describe('ProfileDetailsPanel', () => {
       within(screen.getByTestId('preferred-name')).getByText('harsh vador')
     ).toBeInTheDocument();
     expect(screen.getByText('harsh@example.com')).toBeInTheDocument();
-    expect(screen.getByText('label.success')).toBeInTheDocument();
+    expect(screen.getByText('label.verified')).toBeInTheDocument();
     expect(screen.getByTestId('profile-section-security')).toBeInTheDocument();
     expect(screen.getByTestId('change-password-row')).toHaveTextContent(
       'harsh'
@@ -160,7 +171,7 @@ describe('ProfileDetailsPanel', () => {
     renderPanel({ displayName: undefined, email: undefined });
 
     expect(screen.getByTestId('profile-picture')).toHaveTextContent('harsh');
-    expect(screen.queryByText('label.success')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.verified')).not.toBeInTheDocument();
   });
 
   it('hides the security section for another user or an external provider', () => {
@@ -176,12 +187,45 @@ describe('ProfileDetailsPanel', () => {
     expect(screen.queryByTestId('enter-edit')).not.toBeInTheDocument();
   });
 
-  it('lets an admin edit another user’s preferred name and saves the trimmed draft', () => {
+  it('lets an admin reset another user’s password but not rename them', () => {
     mockUseAuth.mockReturnValue({ isAdminUser: true });
     mockUseApplicationStore.mockReturnValue({
       currentUser: { name: 'admin' },
-      authConfig: { provider: AuthProvider.Basic },
+      authConfig: { provider: AuthProvider.LDAP },
     });
+    renderPanel();
+
+    expect(screen.queryByTestId('enter-edit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('change-password-row')).toHaveAttribute(
+      'data-is-self',
+      'false'
+    );
+  });
+
+  it('hides a masked email and its verified badge', () => {
+    renderPanel({ email: '********@masked.com' });
+
+    expect(screen.queryByText('********@masked.com')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.verified')).not.toBeInTheDocument();
+  });
+
+  it('lists custom properties only when asked (own Profile tab)', () => {
+    renderPanel();
+
+    expect(
+      screen.queryByTestId('user-custom-properties-section')
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the custom properties section on your own Profile tab', () => {
+    renderPanel({}, false, true);
+
+    expect(
+      screen.getByTestId('user-custom-properties-section')
+    ).toBeInTheDocument();
+  });
+
+  it('lets you edit your own preferred name and saves the trimmed draft', () => {
     const updateUserDetails = renderPanel();
 
     fireEvent.click(screen.getByTestId('enter-edit'));

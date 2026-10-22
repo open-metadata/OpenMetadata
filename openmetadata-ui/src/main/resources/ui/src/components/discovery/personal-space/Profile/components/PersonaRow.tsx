@@ -30,6 +30,7 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
+import { useProfileCopy } from '../useUserProfile';
 
 const personaToRef = (persona: Persona): EntityReference => ({
   id: persona.id,
@@ -60,6 +61,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   // Persona assignment is admin-managed (like teams/roles); users pick their
   // own default persona in DefaultPersonaRow, not the assignment here.
@@ -171,7 +173,10 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.persona-assigned-description')}
+      description={copy(
+        'message.persona-assigned-description',
+        'message.persona-assigned-description-of-user'
+      )}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete

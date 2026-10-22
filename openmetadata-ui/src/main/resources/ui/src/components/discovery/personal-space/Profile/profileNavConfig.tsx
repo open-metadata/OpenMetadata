@@ -37,7 +37,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
-import ProfileDetailsPanel from './ProfileDetailsPanel';
+import ProfileTabPanel from './ProfileTabPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
@@ -103,6 +103,8 @@ export interface ProfileHeaderOverride {
   meta?: React.ReactNode;
   /** Tab strip rendered at the bottom of the header (e.g. an app's detail tabs). */
   tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
 }
 
 /**
@@ -150,13 +152,9 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.profile',
     description: 'message.profile-page-description',
     icon: User01,
-    render: ({ userData, isProfileLoading, updateUserDetails }) => (
-      <ProfileDetailsPanel
-        isProfileLoading={isProfileLoading}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
-      />
-    ),
+    // Draws its own scroll body: another user's detail needs the Members layout.
+    selfContainedLayout: true,
+    render: (ctx) => <ProfileTabPanel {...ctx} />,
   },
   {
     id: 'permissions',

@@ -13,6 +13,7 @@
 
 import { Box, Button, PasswordInput } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RequestType } from '../../../../../generated/auth/changePasswordRequest';
@@ -28,8 +29,13 @@ import PasswordStrengthMeter, {
 } from './PasswordStrengthMeter';
 
 interface ChangePasswordRowProps {
-  /** `User.name` of the signed-in user whose password is being changed. */
+  /** `User.name` of the user whose password is being changed. */
   username: string;
+  /**
+   * An admin resetting someone else's password sends a `USER` request with no
+   * current password (legacy ChangePasswordForm); your own needs the current one.
+   */
+  isSelf: boolean;
 }
 
 const EMPTY_FORM = {
@@ -40,10 +46,13 @@ const EMPTY_FORM = {
 
 /**
  * The SECURITY section's only row. Collapsed it shows a "Change Password"
- * link; expanded it reveals the current / new / confirm fields with a live
- * strength meter, and PUTs `/users/changePassword` as a `SELF` request.
+ * link; expanded it reveals the (current) / new / confirm fields with a live
+ * strength meter, and PUTs `/users/changePassword`.
  */
-const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
+const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
+  username,
+  isSelf,
+}) => {
   const { t } = useTranslation();
   // Reused as the `entity` interpolation for the row title, submit button and
   // success toast.
@@ -60,7 +69,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
   );
 
   const canSubmit =
-    Boolean(form.oldPassword) &&
+    (!isSelf || Boolean(form.oldPassword)) &&
     isPasswordValid(form.newPassword) &&
     form.confirmPassword === form.newPassword;
 
@@ -80,11 +89,15 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
       event.preventDefault();
       setIsSaving(true);
       try {
-        await changePassword({
-          ...form,
-          username,
-          requestType: RequestType.Self,
-        });
+        await changePassword(
+          isSelf
+            ? { ...form, username, requestType: RequestType.Self }
+            : {
+                ...omit(form, 'oldPassword'),
+                username,
+                requestType: RequestType.User,
+              }
+        );
         showSuccessToast(
           t('server.update-entity-success', { entity: entityLabel })
         );
@@ -95,7 +108,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
         setIsSaving(false);
       }
     },
-    [form, username, closeForm, entityLabel, t]
+    [form, username, isSelf, closeForm, entityLabel, t]
   );
 
   return (
@@ -126,16 +139,18 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({ username }) => {
             the narrower field width instead.
           */}
           <Box className="tw:w-full" direction="col" gap={5}>
-            <div className={PASSWORD_FIELD_WIDTH_CLASS}>
-              <PasswordInput
-                isRequired
-                autoComplete="current-password"
-                data-testid="current-password-input"
-                label={t('label.current-password')}
-                value={form.oldPassword}
-                onChange={setField('oldPassword')}
-              />
-            </div>
+            {isSelf && (
+              <div className={PASSWORD_FIELD_WIDTH_CLASS}>
+                <PasswordInput
+                  isRequired
+                  autoComplete="current-password"
+                  data-testid="current-password-input"
+                  label={t('label.current-password')}
+                  value={form.oldPassword}
+                  onChange={setField('oldPassword')}
+                />
+              </div>
+            )}
             <Box className="tw:w-full" direction="col" gap={2}>
               <div className={PASSWORD_FIELD_WIDTH_CLASS}>
                 <PasswordInput

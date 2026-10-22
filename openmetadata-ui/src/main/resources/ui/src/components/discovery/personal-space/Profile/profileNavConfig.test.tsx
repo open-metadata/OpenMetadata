@@ -17,6 +17,10 @@ jest.mock('./ProfileDetailsPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
+jest.mock('./ProfileTabPanel', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 jest.mock('./components/AccessTokenPanel', () => ({
   __esModule: true,
   default: () => null,

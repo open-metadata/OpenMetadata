@@ -26,6 +26,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -47,6 +48,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -1259,6 +1261,51 @@ public class ActivityResourceIT {
     assertNotNull(events.getData());
   }
 
+  @Test
+  void test_personalFeedsCanBeScopedToAnotherUser(TestNamespace ns) throws Exception {
+    User member = SharedEntities.get().USER2;
+    Table table = createTestTable(ns, "scoped-feed-table");
+    table =
+        Tables.findByName(table.getFullyQualifiedName())
+            .fetch()
+            .withOwners(List.of(member.getEntityReference()))
+            .save()
+            .get();
+    addTableFollower(table.getId(), member.getId());
+    ActivityEvent activity =
+        createTestActivityEventWithAbout(
+            table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+    addActivityReply(
+        SdkClients.adminClient(),
+        activity.getId(),
+        "<#E::user::" + member.getName() + "> please review");
+
+    for (String feed : List.of("/my-feed", "/following", "/mentions")) {
+      assertTrue(
+          feedIds(SdkClients.adminClient(), feed, member.getId()).contains(activity.getId()),
+          feed + " scoped to the member must return the member's activity");
+      assertFalse(
+          feedIds(SdkClients.adminClient(), feed, null).contains(activity.getId()),
+          feed + " without userId must stay scoped to the caller");
+    }
+  }
+
+  @Test
+  void test_personalFeedsForAnotherUserRequireViewOnThatUser(TestNamespace ns) throws Exception {
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("feedview"), Entity.USER, MetadataOperation.VIEW_BASIC);
+    UUID otherUserId = SharedEntities.get().USER2.getId();
+
+    for (String feed : List.of("/my-feed", "/following", "/mentions")) {
+      assertThrows(
+          ForbiddenException.class,
+          () -> feedIds(denied, feed, otherUserId),
+          feed + " for another user must need ViewBasic on that user");
+      assertNotNull(feedIds(denied, feed, null), feed + " for the caller needs no user grant");
+    }
+  }
+
   // ==================== EntityLink (About) Tests ====================
 
   @Test
@@ -1622,6 +1669,21 @@ public class ActivityResourceIT {
         client
             .getHttpClient()
             .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options);
+    return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
+        .map(ActivityEvent::getId)
+        .toList();
+  }
+
+  private List<UUID> feedIds(OpenMetadataClient client, String feed, UUID userId) throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("days", "1").queryParam("limit", "200");
+    if (userId != null) {
+      options.queryParam("userId", userId.toString());
+    }
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, ACTIVITY_PATH + feed, null, options.build());
     return MAPPER.readValue(response, ActivityEventList.class).getData().stream()
         .map(ActivityEvent::getId)
         .toList();

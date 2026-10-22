@@ -11,11 +11,16 @@
  *  limitations under the License.
  */
 
+import type { MembersView } from './Members.types';
 import {
+  buildMembersHeaderMaps,
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
   hashSubPathToView,
+  makeBreadcrumbAction,
+  profileSubPathToUserView,
+  userViewToProfileSubPath,
   viewToSubPath,
 } from './Members.utils';
 
@@ -162,5 +167,154 @@ describe('contributed section hash routing', () => {
       fqn: 'section',
       name: 'section',
     });
+  });
+});
+
+describe('user-detail hash routing', () => {
+  it('keeps the overview tab out of the hash and encodes the name', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'john.doe@acme.io',
+      tab: 'overview',
+    };
+    const subPath = viewToSubPath(view);
+
+    expect(subPath).toBe(`users/${encodeURIComponent('john.doe@acme.io')}`);
+    expect(hashSubPathToView(subPath as string)).toEqual(view);
+  });
+
+  it('round-trips a non-default tab', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'owned-assets',
+    };
+
+    expect(viewToSubPath(view)).toBe('users/alice/owned-assets');
+    expect(hashSubPathToView('users/alice/owned-assets')).toEqual(view);
+  });
+
+  it('round-trips an open task under the tasks tab', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'tasks',
+      taskId: 'TASK-00170',
+    };
+
+    expect(viewToSubPath(view)).toBe('users/alice/tasks/TASK-00170');
+    expect(hashSubPathToView('users/alice/tasks/TASK-00170')).toEqual(view);
+  });
+
+  it('falls back to overview for an unknown tab and ignores a stray task id', () => {
+    expect(hashSubPathToView('users/alice/bogus/TASK-1')).toEqual({
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'overview',
+    });
+  });
+
+  it('still routes users and users/create', () => {
+    expect(hashSubPathToView('users')).toEqual({ type: 'users' });
+    expect(hashSubPathToView('users/create')).toEqual({
+      type: 'user-create',
+      isAdmin: false,
+    });
+  });
+});
+
+describe('user-detail header', () => {
+  it('ends the breadcrumbs at the username', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'access',
+    };
+    const { crumbsByType, titleByType } = buildMembersHeaderMaps(
+      view,
+      (key: string) => key,
+      ''
+    );
+
+    expect(crumbsByType['user-detail'].map((c) => c.label)).toEqual([
+      'label.setting-plural',
+      'label.member-plural',
+      'label.user-plural',
+      'alice',
+    ]);
+    expect(titleByType['user-detail']).toBe('alice');
+  });
+
+  it('adds Tasks and the task id on a task page', () => {
+    const view: MembersView = {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'tasks',
+      taskId: 'TASK-00170',
+    };
+    const { crumbsByType } = buildMembersHeaderMaps(
+      view,
+      (key: string) => key,
+      ''
+    );
+
+    expect(crumbsByType['user-detail'].map((c) => c.id)).toEqual([
+      'settings',
+      'members',
+      'users',
+      'user',
+      'user-tasks',
+      'current',
+    ]);
+    expect(crumbsByType['user-detail'][5].label).toBe('TASK-00170');
+  });
+
+  it('sends Settings/Members/Users to the users list and user/Tasks to the task list', () => {
+    const onNavigate = jest.fn();
+    const action = makeBreadcrumbAction(onNavigate, {
+      type: 'user-detail',
+      name: 'alice',
+      tab: 'tasks',
+      taskId: 'TASK-1',
+    });
+
+    ['settings', 'members', 'users'].forEach((id) => action(id));
+    action('user');
+    action('user-tasks');
+
+    expect(onNavigate.mock.calls.map(([view]) => view)).toEqual([
+      { type: 'users' },
+      { type: 'users' },
+      { type: 'users' },
+      { type: 'user-detail', name: 'alice', tab: 'tasks' },
+      { type: 'user-detail', name: 'alice', tab: 'tasks' },
+    ]);
+  });
+});
+
+describe('profile sub-path <-> user view', () => {
+  it('round-trips another user with a tab and task', () => {
+    const view = {
+      type: 'user-detail' as const,
+      name: 'a/b c',
+      tab: 'tasks' as const,
+      taskId: 'TASK-1',
+    };
+    const subPath = userViewToProfileSubPath(view);
+
+    expect(subPath).toBe(`${encodeURIComponent('a/b c')}/tasks/TASK-1`);
+    expect(profileSubPathToUserView(subPath)).toEqual(view);
+  });
+
+  it('defaults to overview and leaves an empty sub-path unresolved', () => {
+    expect(profileSubPathToUserView('jane')).toEqual({
+      type: 'user-detail',
+      name: 'jane',
+      tab: 'overview',
+    });
+    expect(profileSubPathToUserView('jane/custom-properties')?.tab).toBe(
+      'custom-properties'
+    );
+    expect(profileSubPathToUserView('')).toBeUndefined();
   });
 });

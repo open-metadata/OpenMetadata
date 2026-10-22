@@ -822,11 +822,37 @@ test.describe(
       await expect(page.getByTestId('stat-card-queries')).toBeVisible();
       // The viewer owns the seeded table, so the list renders, not the empty
       // state.
-      await expect(page.getByTestId('my-data-assets')).toContainText(
+      await expect(page.getByTestId('user-assets-list')).toContainText(
         activity.table.entityResponseData.displayName ??
           activity.table.entityResponseData.name
       );
-      await expect(page.getByTestId('my-data-empty')).toHaveCount(0);
+      await expect(page.getByTestId('user-assets-empty')).toHaveCount(0);
+    });
+
+    test('switches My Data to the Following tab', async ({
+      isolatedUserPage: page,
+    }) => {
+      await visitMyData(page);
+
+      const myDataTab = page.getByRole('tab', { name: 'My Data' });
+      const followingTab = page.getByRole('tab', { name: 'Following' });
+      await expect(myDataTab).toHaveAttribute('aria-selected', 'true');
+
+      const followedFetch = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/search/query') &&
+          decodeURIComponent(response.url()).includes('followers')
+      );
+      await followingTab.click();
+      await followedFetch;
+
+      await expect(followingTab).toHaveAttribute('aria-selected', 'true');
+      // Stat tiles belong to owned assets only.
+      await expect(page.getByTestId('stat-card-assets-owned')).toHaveCount(0);
+      // The viewer follows nothing, so the self empty state offers Explore.
+      await expect(page.getByTestId('user-assets-empty')).toContainText(
+        "You aren't following anything"
+      );
     });
   }
 );

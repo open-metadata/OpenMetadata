@@ -18,7 +18,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { ArrowUpRight } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import React from 'react';
+import { Link, To } from 'react-router-dom';
+import { suffixedTestId } from './UserAssets.utils';
 
 export interface StatCardBreakdownItem {
   label: string;
@@ -35,6 +39,9 @@ interface StatCardProps {
   valueClassName?: string;
   loading?: boolean;
   testId?: string;
+  isSelected?: boolean;
+  // Destination of the whole tile; shown as an arrow in its top-right corner.
+  to?: To;
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -46,12 +53,21 @@ const StatCard: React.FC<StatCardProps> = ({
   valueClassName = 'tw:text-primary-900',
   loading = false,
   testId,
+  isSelected = false,
+  to,
 }) => {
   const hasBreakdown = breakdown && breakdown.length > 0;
 
   return (
     <Box
-      className="tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-3.5 tw:shadow-xs"
+      className={classNames(
+        'tw:relative tw:min-w-0 tw:flex-1 tw:rounded-lg tw:border tw:p-3.5 tw:shadow-xs',
+        isSelected
+          ? 'tw:border-utility-brand-300 tw:bg-utility-brand-50'
+          : 'tw:border-secondary tw:bg-surface',
+        to && 'tw:hover:border-utility-brand-200'
+      )}
+      data-selected={isSelected}
       data-testid={testId}
       direction="col"
       gap={2}>
@@ -66,13 +82,13 @@ const StatCard: React.FC<StatCardProps> = ({
           theme="light">
           {icon}
         </FeaturedIcon>
-        <Box direction="col">
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
           {loading ? (
             <Skeleton height={24} variant="rounded" width={40} />
           ) : (
             <Typography
               className={valueClassName}
-              data-testid={testId ? `${testId}-value` : undefined}
+              data-testid={suffixedTestId(testId, 'value')}
               size="text-xl"
               weight="semibold">
               {value}
@@ -85,6 +101,16 @@ const StatCard: React.FC<StatCardProps> = ({
             {label}
           </Typography>
         </Box>
+        {to && (
+          // The arrow's ::after covers the tile, so the whole tile is one link.
+          <Link
+            aria-label={label}
+            className="tw:self-start tw:text-fg-quaternary tw:after:absolute tw:after:inset-0 tw:after:rounded-lg"
+            data-testid={suffixedTestId(testId, 'link')}
+            to={to}>
+            <ArrowUpRight className="tw:size-4" />
+          </Link>
+        )}
       </Box>
 
       <Divider className="tw:h-0 tw:bg-transparent tw:border-t tw:border-dashed tw:border-border-secondary tw:-mx-1" />
@@ -95,8 +121,8 @@ const StatCard: React.FC<StatCardProps> = ({
         <>
           {subtitle && (
             <Typography
-              className="tw:block tw:max-w-full tw:truncate tw:text-utility-gray-700"
-              data-testid={testId ? `${testId}-subtitle` : undefined}
+              className="tw:relative tw:z-10 tw:block tw:max-w-full tw:truncate tw:text-utility-gray-700"
+              data-testid={suffixedTestId(testId, 'subtitle')}
               size="text-xs">
               {subtitle}
             </Typography>
@@ -106,7 +132,7 @@ const StatCard: React.FC<StatCardProps> = ({
             <Box
               align="center"
               className="tw:flex-wrap"
-              data-testid={testId ? `${testId}-breakdown` : undefined}
+              data-testid={suffixedTestId(testId, 'breakdown')}
               gap={1}>
               {breakdown.map((item, idx) => (
                 <Box align="center" gap={1} key={item.label}>

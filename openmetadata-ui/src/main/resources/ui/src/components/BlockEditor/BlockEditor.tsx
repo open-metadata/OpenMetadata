@@ -78,6 +78,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      // Born read-only so a previewed "@name" can't open a mention popup before
+      // the deferred setEditable(false) below runs.
+      editable,
       extensions,
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
