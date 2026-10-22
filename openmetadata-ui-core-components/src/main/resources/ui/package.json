@@ -209,7 +209,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "engines": {
-    "node": ">=22.17.0",
+    "node": ">=22.23.4",
     "yarn": ">=1.22.0"
   }
 }
