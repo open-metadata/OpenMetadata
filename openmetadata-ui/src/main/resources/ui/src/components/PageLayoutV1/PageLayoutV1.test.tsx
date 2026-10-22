@@ -135,6 +135,20 @@ describe('PageLayoutV1', () => {
     expect(pageLayout).toHaveAttribute('data-variant', 'compact');
   });
 
+  it('Should apply no padding class when variant is flush', () => {
+    const { getByTestId } = render(
+      <PageLayoutV1 pageTitle="Test Page" variant="flush">
+        Center content
+      </PageLayoutV1>
+    );
+
+    const pageLayout = getByTestId('page-layout-v1');
+
+    expect(pageLayout).not.toHaveClass('tw:px-4');
+    expect(pageLayout).not.toHaveClass('tw:p-2');
+    expect(pageLayout).toHaveAttribute('data-variant', 'flush');
+  });
+
   it('Should append the consumer className after the base classes', () => {
     const centerText = 'Center content';
     const { getByTestId } = render(
