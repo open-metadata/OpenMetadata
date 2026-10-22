@@ -5740,7 +5740,6 @@
     "profiler-ingestion-description": "Ein Profiler-Workflow kann nach der Einrichtung einer Metadaten-Ingestion konfiguriert und bereitgestellt werden. Es können mehrere Profiler-Pipelines für denselben Datenbankdienst eingerichtet werden. Die Pipeline speist das Profiler-Tab der Tabellenentität und führt auch die für diese Entität konfigurierten Tests aus. Gib einen Namen, FQN und definiere das Filtermuster an, um zu starten.",
     "profiler-is-enabled-but-no-data-available": "Ihr Profiler ist eingerichtet und bereit! Die ersten Metriken erscheinen hier nach dem nächsten geplanten Lauf.",
     "profiler-timeout-seconds-message": "Für den Profiler füge optional die Dauer in Sekunden für den Timeout hinzu. Der Profiler wartet auf ausstehende Abfragen oder bricht sie ab, sobald der Timeout erreicht ist.",
-    "properties-defined-for-every-user": "Für jeden Benutzer definierte Eigenschaften",
     "property-description-placeholder": "Was diese Eigenschaft erfasst.",
     "property-name-placeholder": "z. B. Fälligkeitsdatum",
     "put-your-data-operations-on-autopilot": "Bringen Sie Ihre Datenprozesse auf Autopilot",

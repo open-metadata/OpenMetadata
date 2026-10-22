@@ -20,8 +20,8 @@ import { ROUTES } from '../../../../constants/constants';
 import { User } from '../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import { EMPTY_STATE_COPY } from './UserAssets.constants';
 import { getUserFirstName } from '../Profile/ProfileDetailsPanel.utils';
+import { EMPTY_STATE_COPY } from './UserAssets.constants';
 import { UserAssetsKind } from './UserAssets.utils';
 
 const UserAssetsEmpty: React.FC<{ kind: UserAssetsKind; user: User }> = ({

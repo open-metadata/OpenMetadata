@@ -21,9 +21,9 @@ import {
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { useProfileCopy } from '../useUserProfile';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
-import { useProfileCopy } from '../useUserProfile';
 
 interface DefaultPersonaRowProps {
   userData: User;

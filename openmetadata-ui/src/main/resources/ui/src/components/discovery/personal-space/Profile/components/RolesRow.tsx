@@ -27,10 +27,10 @@ import { useAuth } from '../../../../../hooks/authHooks';
 import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
-import { useProfileCopy } from '../useUserProfile';
 
 interface RolesRowProps {
   userData: User;

@@ -5740,7 +5740,6 @@
     "profiler-ingestion-description": "Un workflow di profiler può essere configurato e distribuito dopo aver impostato un'ingestion dei metadati. Per lo stesso servizio di database si possono configurare più pipeline di profiler. La pipeline alimenta la scheda Profiler dell'entità Tabella ed esegue anche i test configurati per quell'entità. Aggiungi un Nome, l'FQN e definisci il pattern di filtro per iniziare.",
     "profiler-is-enabled-but-no-data-available": "Il tuo profiler è configurato e pronto! Le prime metriche appariranno qui dopo la prossima esecuzione pianificata.",
     "profiler-timeout-seconds-message": "Per il Profiler, aggiungi la durata del timeout in secondi (facoltativo). Il profiler attenderà l'esecuzione delle query in sospeso, oppure le interromperà al raggiungimento del timeout.",
-    "properties-defined-for-every-user": "Proprietà definite per ogni utente",
     "property-description-placeholder": "Cosa rappresenta questa proprietà.",
     "property-name-placeholder": "es. Data di scadenza",
     "put-your-data-operations-on-autopilot": "Metti le tue operazioni sui dati in modalità pilota automatico",

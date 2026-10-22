@@ -23,10 +23,10 @@ import { getTeamsHierarchy } from '../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
-import { useProfileCopy } from '../useUserProfile';
 
 interface TeamOption {
   id: string;

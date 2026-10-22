@@ -29,18 +29,18 @@ import { useApplicationStore } from '../../../../../../hooks/useApplicationStore
 import { getTaskById } from '../../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { isMaskedEmail } from '../../../../../../utils/UsersPureUtils';
+import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
 import { useUserActivityCount } from '../../../InboxPage/useInboxActivity';
 import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
 import { useUserAssetCount } from '../../../UserAssets/useUserAssetCount';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
-import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
 import { USER_DETAIL_TABS } from './Members.constants';
-import { buildMembersHeaderMaps } from './Members.utils';
 import type {
   MembersUserDetailProps,
   MembersUserDetailView,
   UserDetailTab,
 } from './Members.types';
+import { buildMembersHeaderMaps } from './Members.utils';
 
 export type TranslateFn = (
   key: string,

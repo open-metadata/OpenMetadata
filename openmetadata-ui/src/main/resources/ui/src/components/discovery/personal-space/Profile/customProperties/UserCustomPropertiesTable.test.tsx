@@ -22,8 +22,8 @@ import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
 import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
-import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 import UserCustomPropertiesTable from './UserCustomPropertiesTable';
+import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -156,10 +156,6 @@ describe('UserCustomPropertiesTable', () => {
 
     renderTable();
 
-    expect(
-      screen.getByText('message.properties-defined-for-every-user')
-    ).toBeInTheDocument();
-
     const employeeRow = screen.getByTestId('custom-property-row-employeeId');
 
     expect(within(employeeRow).getByText('Employee ID')).toBeInTheDocument();
@@ -237,6 +233,30 @@ describe('UserCustomPropertiesTable', () => {
 
     expect(
       screen.getByTestId('custom-property-edit-modal')
+    ).toBeInTheDocument();
+  });
+
+  it('filters the rows by the search text and says when nothing matches', () => {
+    mockAccess(true, false);
+    renderTable();
+
+    fireEvent.change(screen.getByTestId('custom-property-search'), {
+      target: { value: 'employee' },
+    });
+
+    expect(
+      screen.getByTestId('custom-property-row-employeeId')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('custom-property-row-notes')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('custom-property-search'), {
+      target: { value: 'nothing-like-this' },
+    });
+
+    expect(
+      screen.getByTestId('no-matching-custom-properties')
     ).toBeInTheDocument();
   });
 });

@@ -22,7 +22,10 @@ import type { MembersView } from './Members.types';
 
 // react-i18next is mocked globally in setupTests.js — no per-file mock needed.
 
-let mockPermissions: Record<string, unknown> = { all: { Create: true } };
+// ViewAll keeps every Members view open; tests drop Create to check the gates.
+let mockPermissions: Record<string, unknown> = {
+  all: { Create: true, ViewAll: true },
+};
 jest.mock(
   '../../../../../../context/PermissionProvider/PermissionProvider',
   () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
@@ -160,7 +163,7 @@ const renderAt = (hash: string) => {
 describe('MembersPanel', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true } };
+    mockPermissions = { all: { Create: true, ViewAll: true } };
   });
 
   it('renders landing view by default', () => {
@@ -196,7 +199,7 @@ describe('MembersPanel', () => {
 describe('MembersPanel hash navigation', () => {
   beforeEach(() => {
     globalThis.location.hash = '';
-    mockPermissions = { all: { Create: true } };
+    mockPermissions = { all: { Create: true, ViewAll: true } };
   });
 
   it('landing -> teams updates the view', () => {
@@ -252,7 +255,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('gates the add-team form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/teams/add');
 
     expect(
@@ -262,7 +265,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('gates the team-import form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/teams/Engineering.Data/import-team');
 
     expect(
@@ -298,7 +301,7 @@ describe('MembersPanel hash navigation', () => {
   });
 
   it('gates the create-user form behind create permission', () => {
-    mockPermissions = {};
+    mockPermissions = { all: { ViewAll: true } };
     renderAt('#members/users/create');
 
     expect(

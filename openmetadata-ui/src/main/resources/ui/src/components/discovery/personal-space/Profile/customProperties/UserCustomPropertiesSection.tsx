@@ -25,25 +25,23 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Type } from '../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
+import { useAuth } from '../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
 import { getTextFromHtmlString } from '../../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { userPermissions } from '../../../../../utils/PermissionsUtils';
 import { isPropertyValueEmpty } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
-import { CustomPropertyEditModal } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
 import { getPropertyRenderer } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
 import FieldRow from '../components/FieldRow';
 import { viewToSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
-import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 import {
   COLLAPSED_ROW_COUNT,
   EMPTY_VALUE,
 } from './UserCustomProperties.constants';
+import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
+import UserCustomPropertyInlineEditor from './UserCustomPropertyInlineEditor';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 import { useUserCustomPropertyEditor } from './useUserCustomPropertyEditor';
 
@@ -52,7 +50,7 @@ const CUSTOM_PROPERTIES_NAV_ID = 'custom-properties';
 const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
   const { t } = useTranslation();
   const access = useUserCustomPropertyAccess(props.user);
-  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
   const { setHash } = useSettingsHash();
   const [isExpanded, setIsExpanded] = useState(false);
   const {
@@ -69,10 +67,8 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
     return null;
   }
 
-  const canManageFields = userPermissions.hasViewPermissions(
-    ResourceEntity.TYPE,
-    permissions
-  );
+  // The Custom Properties settings it opens are admin-only, as in classic.
+  const canManageFields = Boolean(isAdminUser);
   const visibleProperties = isExpanded
     ? customProperties
     : customProperties.slice(0, COLLAPSED_ROW_COUNT);
@@ -131,34 +127,45 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
       <Card
         className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
         variant="muted">
-        {visibleProperties.map((property) => (
-          <Box
-            align="center"
-            className="tw:px-5 tw:py-4"
-            data-testid={`custom-property-row-${property.name}`}
-            gap={3}
-            key={property.name}>
-            <div className="tw:min-w-0 tw:flex-1">
-              <FieldRow
-                description={getTextFromHtmlString(property.description)}
-                title={getEntityName(property)}>
-                {renderValue(property)}
-              </FieldRow>
-            </div>
-            {access.canEdit && (
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`edit-${property.name}`}
-                icon={Edit02}
-                size="xs"
-                tooltip={t('label.edit-entity', {
-                  entity: getEntityName(property),
-                })}
-                onClick={() => startEditing(property)}
-              />
-            )}
-          </Box>
-        ))}
+        {visibleProperties.map((property) =>
+          editingProperty?.name === property.name ? (
+            <UserCustomPropertyInlineEditor
+              isSaving={isSaving}
+              key={property.name}
+              property={property}
+              value={extension?.[property.name]}
+              onCancel={stopEditing}
+              onSave={saveValue}
+            />
+          ) : (
+            <Box
+              align="center"
+              className="tw:px-5 tw:py-4"
+              data-testid={`custom-property-row-${property.name}`}
+              gap={3}
+              key={property.name}>
+              <div className="tw:min-w-0 tw:flex-1">
+                <FieldRow
+                  description={getTextFromHtmlString(property.description)}
+                  title={getEntityName(property)}>
+                  {renderValue(property)}
+                </FieldRow>
+              </div>
+              {access.canEdit && (
+                <ButtonUtility
+                  color="tertiary"
+                  data-testid={`edit-${property.name}`}
+                  icon={Edit02}
+                  size="xs"
+                  tooltip={t('label.edit-entity', {
+                    entity: getEntityName(property),
+                  })}
+                  onClick={() => startEditing(property)}
+                />
+              )}
+            </Box>
+          )
+        )}
         {customProperties.length > COLLAPSED_ROW_COUNT && (
           <Box className="tw:px-5 tw:py-3.5">
             <Button
@@ -174,19 +181,6 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
           </Box>
         )}
       </Card>
-      {editingProperty && (
-        <CustomPropertyEditModal
-          isNewValue={isPropertyValueEmpty(
-            editingProperty.propertyType.name,
-            extension?.[editingProperty.name]
-          )}
-          isSaving={isSaving}
-          property={editingProperty}
-          value={extension?.[editingProperty.name]}
-          onCancel={stopEditing}
-          onSave={saveValue}
-        />
-      )}
     </Box>
   );
 };

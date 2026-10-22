@@ -58,7 +58,6 @@ jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
 }));
 
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
@@ -66,6 +65,7 @@ import {
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_GROUP_ORDER,
   PROFILE_NAV_ITEMS,
+  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
@@ -149,16 +149,47 @@ describe('profileNavConfig', () => {
     );
   });
 
-  it('lists Applications under Features for users who can view apps', () => {
-    const applications = FEATURES_NAV_ITEMS.find(
-      (item) => item.id === 'applications'
-    );
-    const canView = {
-      [ResourceEntity.APPLICATION]: { ViewAll: true },
-    } as unknown as UIPermission;
+  it('keeps Applications and Custom Properties to admins, as classic does', () => {
+    const items = [...FEATURES_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS];
+    const viewAll = { all: { ViewAll: true } } as unknown as UIPermission;
 
-    expect(applications?.group).toBe('features');
-    expect(applications?.isVisible?.(canView, false)).toBe(true);
-    expect(applications?.isVisible?.({} as UIPermission, false)).toBeFalsy();
+    for (const id of ['applications', 'custom-properties']) {
+      const item = items.find((navItem) => navItem.id === id);
+
+      expect(item?.isVisible?.(viewAll, false)).toBeFalsy();
+      expect(item?.isVisible?.({} as UIPermission, true)).toBe(true);
+    }
+  });
+
+  it('opens Members to anyone who can view teams or users', () => {
+    const members = WORKSPACE_NAV_ITEMS.find((item) => item.id === 'members');
+
+    expect(
+      members?.isVisible?.(
+        { team: { ViewAll: true } } as unknown as UIPermission,
+        false
+      )
+    ).toBe(true);
+    expect(
+      members?.isVisible?.(
+        { user: { ViewBasic: true } } as unknown as UIPermission,
+        false
+      )
+    ).toBe(true);
+    expect(members?.isVisible?.({} as UIPermission, false)).toBe(false);
+  });
+
+  it('opens Access Control to non-admins only with the AuditLogs permission', () => {
+    const accessControl = PROFILE_NAV_ITEMS.find(
+      (item) => item.id === 'access-control'
+    );
+
+    expect(accessControl?.isVisible?.({} as UIPermission, false)).toBeFalsy();
+    expect(
+      accessControl?.isVisible?.(
+        { auditLog: { AuditLogs: true } } as unknown as UIPermission,
+        false
+      )
+    ).toBe(true);
   });
 });

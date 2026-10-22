@@ -31,7 +31,9 @@ import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
+  getMembersAccess,
   hashSubPathToView,
+  isMembersViewAllowed,
   isTeamsOrDetailView,
   makeBreadcrumbAction,
   viewToSubPath,
@@ -371,7 +373,13 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     return renderSecondaryView();
   };
 
-  const content = isDeniedFormView ? permissionPlaceholder : renderView();
+  // A deep link to a view the landing would not offer this viewer.
+  const isDeniedView = !isMembersViewAllowed(
+    view,
+    getMembersAccess(permissions, Boolean(isAdminUser))
+  );
+  const content =
+    isDeniedFormView || isDeniedView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>

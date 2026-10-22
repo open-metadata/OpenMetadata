@@ -19,10 +19,12 @@ import {
   Role as RoleIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { useTranslation } from 'react-i18next';
 
 import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import type { AccessControlView, LandingCard } from './AccessControl.types';
+import { isAccessControlViewAllowed } from './AccessControl.utils';
 
 const LANDING_CARDS: LandingCard[] = [
   {
@@ -63,12 +65,16 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
   onNavigate,
 }) => {
   const { t } = useTranslation();
+  const { isAdminUser } = useAuth();
+  const cards = LANDING_CARDS.filter((card) =>
+    isAccessControlViewAllowed(card.view.type, Boolean(isAdminUser))
+  );
 
   return (
     <Box
       className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5 tw:pt-2 tw:px-8 tw:pb-8"
       data-testid="access-control-landing">
-      {LANDING_CARDS.map((card, index) => {
+      {cards.map((card, index) => {
         const Icon = card.icon;
 
         return (

@@ -33,8 +33,12 @@ import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg
 import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { Operation } from '../../../../generated/entity/policies/policy';
 import { User } from '../../../../generated/entity/teams/user';
-import { userPermissions } from '../../../../utils/PermissionsUtils';
+import {
+  checkPermission,
+  userPermissions,
+} from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileTabPanel from './ProfileTabPanel';
@@ -42,6 +46,7 @@ import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
+import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
@@ -191,7 +196,15 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    // Classic: Roles, Policies and the debugger are admin-only; Audit Logs
+    // also opens to holders of the AuditLogs permission.
+    isVisible: (permissions, isAdmin) =>
+      isAdmin ||
+      checkPermission(
+        Operation.AuditLogs,
+        ResourceEntity.AUDIT_LOG,
+        permissions
+      ),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <AccessControlPanel onHeaderChange={onHeaderChange} />
@@ -257,7 +270,8 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    isVisible: (permissions, isAdmin) =>
+      canOpenMembers(getMembersAccess(permissions, isAdmin)),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />
@@ -269,8 +283,8 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
     icon: Settings02 as FC<{ className?: string }>,
-    isVisible: (permissions) =>
-      userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
+    // Classic shows every custom property settings card to admins only.
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
@@ -297,11 +311,8 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.application-plural',
     description: 'message.application-settings-description',
     icon: GridView,
-    isVisible: (permissions) =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.APPLICATION,
-        permissions
-      ),
+    // Classic shows the Applications settings card to admins only.
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <ApplicationsPanel onHeaderChange={onHeaderChange} />

@@ -27,10 +27,10 @@ import {
   getEncodedFqn,
 } from '../../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { useProfileCopy } from '../useUserProfile';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 import RemovableChip from './RemovableChip';
-import { useProfileCopy } from '../useUserProfile';
 
 interface DomainsRowProps {
   userData: User;

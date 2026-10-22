@@ -5740,7 +5740,6 @@
     "profiler-ingestion-description": "Ett profilerararbetsflöde kan konfigureras och distribueras efter att en metadatainmatning har konfigurerats. Flera profilerarpipelines kan konfigureras för samma databastjänst. Pipelinen matar profileringsfliken för tabellentiteten och kör även de tester som konfigurerats för den entiteten. Lägg till ett namn, FQN och definiera filtermönstret för att börja.",
     "profiler-is-enabled-but-no-data-available": "Din profilerare är konfigurerad och redo! Den första uppsättningen mätvärden visas här efter nästa schemalagda körning.",
     "profiler-timeout-seconds-message": "För profileraren, lägg till varaktigheten i sekunder för timeout (valfritt). Profileraren väntar på att eventuella väntande frågor ska köras, eller avslutar dem när timeout uppnås.",
-    "properties-defined-for-every-user": "Egenskaper definierade för varje användare",
     "property-description-placeholder": "Vad den här egenskapen fångar.",
     "property-name-placeholder": "t.ex. Förfallodatum",
     "put-your-data-operations-on-autopilot": "Sätt dina dataoperationer på autopilot",

@@ -24,7 +24,12 @@ import {
   test as isolatedTest,
 } from '../../../support/fixtures/isolatedUser';
 import { UserClass } from '../../../support/user/UserClass';
-import { openAiProfile, waitForUserPatch } from '../../../utils/aiProfile';
+import {
+  openAiProfile,
+  openUsersPanel,
+  searchUserRow,
+  waitForUserPatch,
+} from '../../../utils/aiProfile';
 import { okJson } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import {
@@ -219,19 +224,24 @@ const addUserTextProperty = async (apiContext: APIRequestContext) => {
   };
 };
 
-/** Set a text property's value through its row's edit modal. */
+/**
+ * Set a text property's value from its row: the Custom Properties tab edits in
+ * a modal, the own-Profile section edits inline in the row.
+ */
 const setTextPropertyValue = async (
   page: Page,
   row: Locator,
   propertyName: string,
   userId: string,
-  value: string
+  value: string,
+  editor: 'modal' | 'inline'
 ) => {
   await row.getByTestId(`edit-${propertyName}`).click();
-  const modal = page.getByTestId('custom-property-edit-modal');
-  await modal.getByRole('textbox').fill(value);
+  const form =
+    editor === 'modal' ? page.getByTestId('custom-property-edit-modal') : row;
+  await form.getByRole('textbox').fill(value);
   const patch = waitForUserPatch(page, userId);
-  await modal.getByTestId('inline-save-btn').click();
+  await form.getByTestId('inline-save-btn').click();
   expect((await patch).ok()).toBeTruthy();
   await expect(row).toContainText(value);
 };
@@ -723,7 +733,8 @@ test.describe('User custom properties, password reset and read-only access', () 
         row,
         property.name,
         subject.responseData.id,
-        value
+        value,
+        'modal'
       );
 
       const saved = await readUser(seeded.apiContext, subject.responseData.id);
@@ -762,7 +773,8 @@ test.describe('User custom properties, password reset and read-only access', () 
         row,
         property.name,
         isolatedUser.responseData.id,
-        value
+        value,
+        'inline'
       );
 
       const saved = await readUser(
@@ -850,6 +862,56 @@ test.describe('User custom properties, password reset and read-only access', () 
         await expect(page.getByTestId('profile-content-header')).toContainText(
           `@${owner.responseData.name}`
         );
+      } finally {
+        await afterAction();
+      }
+    } finally {
+      await owner.delete(seeded.apiContext);
+    }
+  });
+
+  test('a data consumer reaches another user through Settings › Members', async ({
+    browser,
+    seeded,
+  }) => {
+    test.slow();
+    const owner = new UserClass();
+    await owner.create(seeded.apiContext);
+    try {
+      const table = await createOwnedTable(seeded, owner.responseData.id);
+      const { page, afterAction } = await performUserLogin(
+        browser,
+        seeded.subject
+      );
+      try {
+        await enableAiAppMode(page);
+        await page.goto('/');
+        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+        await page.goto('/#members');
+        await expect(page.getByTestId('members-landing')).toBeVisible();
+
+        await openUsersPanel(page);
+        const ownerCell = await searchUserRow(page, owner.responseData.name);
+        const ownerFetch = waitForResponseWithStatus(
+          page,
+          isUserByName(owner.responseData.name),
+          200
+        );
+        await ownerCell.click();
+        await ownerFetch;
+
+        const assetsFetch = waitForResponseWithStatus(
+          page,
+          (response) => response.url().includes('/api/v1/search/query'),
+          200
+        );
+        await page.getByTestId('user-detail-tab-owned-assets').click();
+        await assetsFetch;
+        await expect(
+          page.getByTestId(
+            `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
       } finally {
         await afterAction();
       }

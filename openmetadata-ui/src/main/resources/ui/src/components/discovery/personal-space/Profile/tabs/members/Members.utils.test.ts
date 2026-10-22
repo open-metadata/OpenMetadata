@@ -14,11 +14,15 @@
 import type { MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
+  canOpenMembers,
   formatOnlineStatus,
   getCsvFileSizeLabel,
   getCsvRowCount,
   getHiddenUserDetailTabs,
+  getMembersAccess,
   hashSubPathToView,
+  isMembersCardAllowed,
+  isMembersViewAllowed,
   makeBreadcrumbAction,
   profileSubPathToUserView,
   userViewToProfileSubPath,
@@ -347,5 +351,41 @@ describe('getHiddenUserDetailTabs', () => {
         canViewCustomProperties: false,
       })
     ).toEqual(new Set(['following', 'custom-properties']));
+  });
+});
+
+describe('Members access (classic parity)', () => {
+  const viewTeams = { team: { ViewAll: true } } as never;
+
+  it('lets an admin open everything', () => {
+    const access = getMembersAccess({} as never, true);
+
+    expect(access).toEqual({ teams: true, users: true, onlineUsers: true });
+    expect(canOpenMembers(access)).toBe(true);
+  });
+
+  it('opens Members to a non-admin who can view teams, without Online users', () => {
+    const access = getMembersAccess(viewTeams, false);
+
+    expect(canOpenMembers(access)).toBe(true);
+    expect(isMembersCardAllowed('teams', access)).toBe(true);
+    expect(isMembersCardAllowed('users', access)).toBe(false);
+    expect(isMembersCardAllowed('online-users', access)).toBe(false);
+    expect(isMembersCardAllowed('a-contributed-section', access)).toBe(true);
+  });
+
+  it('keeps Members closed to a viewer with neither team nor user view', () => {
+    expect(canOpenMembers(getMembersAccess({} as never, false))).toBe(false);
+  });
+
+  it('guards deep links to views the landing would not offer', () => {
+    const access = getMembersAccess(viewTeams, false);
+
+    expect(
+      isMembersViewAllowed({ type: 'team-detail', fqn: 'x', name: 'x' }, access)
+    ).toBe(true);
+    expect(isMembersViewAllowed({ type: 'online-users' }, access)).toBe(false);
+    expect(isMembersViewAllowed({ type: 'users' }, access)).toBe(false);
+    expect(isMembersViewAllowed({ type: 'landing' }, access)).toBe(true);
   });
 });

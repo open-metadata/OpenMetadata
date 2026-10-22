@@ -30,8 +30,8 @@ import {
   buildMembersHeaderMaps,
   makeBreadcrumbAction,
   profileSubPathToUserView,
-  USER_DETAIL_BACK_TO_USERS,
   userViewToProfileSubPath,
+  USER_DETAIL_BACK_TO_USERS,
   viewToSubPath,
 } from './tabs/members/Members.utils';
 import MembersUserDetail from './tabs/members/MembersUserDetail';

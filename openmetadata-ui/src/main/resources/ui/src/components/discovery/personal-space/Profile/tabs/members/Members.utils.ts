@@ -23,8 +23,11 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
+import type { UIPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { userPermissions } from '../../../../../../utils/PermissionsUtils';
 import { USER_DETAIL_TABS } from './Members.constants';
 import type {
   MembersUserDetailView,
@@ -579,4 +582,72 @@ export const getHiddenUserDetailTabs = ({
   }
 
   return hidden;
+};
+
+/**
+ * What a viewer may open under Members, as in the classic settings menu: Teams
+ * needs view on teams, Users and Admins need view on users, Online users is
+ * admin-only. Admins see everything.
+ */
+export interface MembersAccess {
+  teams: boolean;
+  users: boolean;
+  onlineUsers: boolean;
+}
+
+export const getMembersAccess = (
+  permissions: UIPermission,
+  isAdmin: boolean
+): MembersAccess => ({
+  teams:
+    isAdmin ||
+    Boolean(
+      userPermissions.hasViewPermissions(ResourceEntity.TEAM, permissions)
+    ),
+  users:
+    isAdmin ||
+    Boolean(
+      userPermissions.hasViewPermissions(ResourceEntity.USER, permissions)
+    ),
+  onlineUsers: isAdmin,
+});
+
+export const canOpenMembers = (access: MembersAccess): boolean =>
+  access.teams || access.users;
+
+const CARD_ACCESS: Record<string, keyof MembersAccess> = {
+  teams: 'teams',
+  users: 'users',
+  admins: 'users',
+  'online-users': 'onlineUsers',
+};
+
+/** Landing cards; contributed sections carry their own checks. */
+export const isMembersCardAllowed = (
+  cardId: string,
+  access: MembersAccess
+): boolean => {
+  const key = CARD_ACCESS[cardId];
+
+  return key ? access[key] : true;
+};
+
+const VIEW_ACCESS: Partial<Record<MembersView['type'], keyof MembersAccess>> = {
+  teams: 'teams',
+  'team-detail': 'teams',
+  'teams-add': 'teams',
+  users: 'users',
+  admins: 'users',
+  'user-detail': 'users',
+  'online-users': 'onlineUsers',
+};
+
+/** Guards a deep-linked view the landing would not have offered. */
+export const isMembersViewAllowed = (
+  view: MembersView,
+  access: MembersAccess
+): boolean => {
+  const key = VIEW_ACCESS[view.type];
+
+  return key ? access[key] : true;
 };

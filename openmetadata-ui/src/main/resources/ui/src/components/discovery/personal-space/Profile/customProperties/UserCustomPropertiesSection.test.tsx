@@ -10,16 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { ResourceEntity } from '../../../../../enums/permissions.enum';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
-import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 import UserCustomPropertiesSection from './UserCustomPropertiesSection';
+import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 const mockSetHash = jest.fn();
-let mockPermissions = {};
+let mockIsAdmin = false;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -40,29 +45,9 @@ jest.mock('../../../../../hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({ setHash: mockSetHash }),
 }));
 
-jest.mock(
-  '../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: () => ({ permissions: mockPermissions }),
-  })
-);
-
-jest.mock(
-  '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal',
-  () => ({
-    CustomPropertyEditModal: ({
-      onSave,
-    }: {
-      onSave: (value: unknown) => void;
-    }) => (
-      <button
-        data-testid="custom-property-edit-modal"
-        onClick={() => onSave('')}>
-        save
-      </button>
-    ),
-  })
-);
+jest.mock('../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdmin }),
+}));
 
 const PROPERTIES = Array.from({ length: 7 }, (_, index) => ({
   name: `prop${index}`,
@@ -97,7 +82,7 @@ const renderSection = (onUpdate = jest.fn().mockResolvedValue(true)) =>
 describe('UserCustomPropertiesSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPermissions = {};
+    mockIsAdmin = false;
     mockDefinitions(PROPERTIES);
     mockAccess(true, true);
   });
@@ -167,12 +152,20 @@ describe('UserCustomPropertiesSection', () => {
     expect(screen.queryByTestId('edit-prop0')).not.toBeInTheDocument();
   });
 
-  it('removes a cleared value from the extension on save', async () => {
+  const editInline = (value: string) => {
+    fireEvent.click(screen.getByTestId('edit-prop0'));
+    const row = screen.getByTestId('custom-property-row-prop0');
+    fireEvent.change(within(row).getByRole('textbox'), {
+      target: { value },
+    });
+    fireEvent.click(within(row).getByTestId('inline-save-btn'));
+  };
+
+  it('edits a value inline in its row and removes a cleared one on save', async () => {
     const onUpdate = jest.fn().mockResolvedValue(true);
 
     renderSection(onUpdate);
-    fireEvent.click(screen.getByTestId('edit-prop0'));
-    fireEvent.click(screen.getByTestId('custom-property-edit-modal'));
+    editInline('');
 
     await waitFor(() =>
       expect(onUpdate).toHaveBeenCalledWith(
@@ -180,9 +173,34 @@ describe('UserCustomPropertiesSection', () => {
         'extension'
       )
     );
+    await waitFor(() =>
+      expect(screen.queryByTestId('inline-save-btn')).not.toBeInTheDocument()
+    );
   });
 
-  it('hides "Manage fields" without type view permission', () => {
+  it('keeps the inline editor open when the save fails', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(false);
+
+    renderSection(onUpdate);
+    editInline('E-2');
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalled());
+
+    expect(screen.getByTestId('inline-save-btn')).toBeInTheDocument();
+  });
+
+  it('leaves the row untouched on cancel', () => {
+    const onUpdate = jest.fn();
+
+    renderSection(onUpdate);
+    fireEvent.click(screen.getByTestId('edit-prop0'));
+    fireEvent.click(screen.getByTestId('inline-cancel-btn'));
+
+    expect(onUpdate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('edit-prop0')).toBeInTheDocument();
+  });
+
+  it('hides "Manage fields" from non-admins, like its settings page', () => {
     renderSection();
 
     expect(
@@ -191,7 +209,7 @@ describe('UserCustomPropertiesSection', () => {
   });
 
   it('opens the user custom properties settings from "Manage fields"', () => {
-    mockPermissions = { [ResourceEntity.TYPE]: { ViewBasic: true } };
+    mockIsAdmin = true;
 
     renderSection();
     fireEvent.click(screen.getByTestId('manage-custom-properties'));

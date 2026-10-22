@@ -22,7 +22,7 @@ import {
 import { Edit01, Settings02 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { startCase } from 'lodash';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
@@ -30,40 +30,26 @@ import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
 import { TYPE_QUERY_STALE_TIME } from '../../../../../rest/queries/typeQuery';
 import { getTextFromHtmlString } from '../../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { SORT_OPTIONS } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.constants';
+import { CustomPropertySortMode } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.interface';
 import {
+  filterAndSortProperties,
   getPropertyTypeMeta,
   isPropertyValueEmpty,
 } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
 import { CustomPropertyEditModal } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
 import { getPropertyRenderer } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
+import { CustomPropertySearchSortBar } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertySearchSortBar';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
-import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 import { EMPTY_VALUE } from './UserCustomProperties.constants';
+import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 import { useUserCustomPropertyEditor } from './useUserCustomPropertyEditor';
 
 const MAX_ENTITY_TYPE_CHIPS = 3;
 
 type ColumnId = 'property' | 'type' | 'value' | 'entityTypes' | 'actions';
-
-const SectionHeader = () => {
-  const { t } = useTranslation();
-
-  return (
-    <Box align="center" gap={2} wrap="wrap">
-      <Typography
-        className="tw:text-primary tw:uppercase tw:tracking-[.02em]"
-        size="text-xs"
-        weight="medium">
-        {t('label.custom-property-plural')}
-      </Typography>
-      <Typography className="tw:text-tertiary" size="text-xs">
-        {t('message.properties-defined-for-every-user')}
-      </Typography>
-    </Box>
-  );
-};
 
 const UserCustomPropertiesTable = (props: UserCustomPropertiesProps) => {
   const { t } = useTranslation();
@@ -79,6 +65,19 @@ const UserCustomPropertiesTable = (props: UserCustomPropertiesProps) => {
     stopEditing,
     saveValue,
   } = useUserCustomPropertyEditor(props);
+  const [searchText, setSearchText] = useState('');
+  const [sortMode, setSortMode] = useState<CustomPropertySortMode>('name');
+  const visibleProperties = useMemo(
+    () =>
+      filterAndSortProperties(
+        customProperties,
+        extension,
+        searchText,
+        sortMode,
+        { groupWideLast: false }
+      ),
+    [customProperties, extension, searchText, sortMode]
+  );
 
   // Other entity types that define a property with the same name.
   const { data: propertiesByEntityType } = useQuery({
@@ -244,47 +243,67 @@ const UserCustomPropertiesTable = (props: UserCustomPropertiesProps) => {
 
   return (
     <Box data-testid="user-custom-properties-table" direction="col" gap={4}>
-      <SectionHeader />
-      <TableCard.Root
-        className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
-        size="compact">
-        <div className="tw:overflow-x-auto">
-          <Table
-            aria-label={t('label.custom-property-plural')}
-            className="tw:min-w-[720px] tw:table-fixed"
-            size="compact">
-            <Table.Header columns={columns}>
-              {(column) => (
-                <Table.Head
-                  className={column.className}
-                  id={column.id}
-                  isRowHeader={column.id === 'property'}
-                  key={column.id}
-                  label={column.label}
-                />
-              )}
-            </Table.Header>
-            <Table.Body dependencies={rowDependencies} items={customProperties}>
-              {(property) => (
-                <Table.Row
-                  columns={columns}
-                  data-testid={`custom-property-row-${property.name}`}
-                  dependencies={rowDependencies}
-                  id={property.name}
-                  key={property.name}>
-                  {(column) => (
-                    <Table.Cell
-                      className={`tw:align-top ${column.className ?? ''}`}
-                      key={column.id}>
-                      {renderCell(property, column.id)}
-                    </Table.Cell>
-                  )}
-                </Table.Row>
-              )}
-            </Table.Body>
-          </Table>
-        </div>
-      </TableCard.Root>
+      <CustomPropertySearchSortBar
+        searchText={searchText}
+        sortMode={sortMode}
+        sortOptions={SORT_OPTIONS}
+        onSearchChange={setSearchText}
+        onSortChange={setSortMode}
+      />
+      {visibleProperties.length ? (
+        <TableCard.Root
+          className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+          size="compact">
+          <div className="tw:overflow-x-auto">
+            <Table
+              aria-label={t('label.custom-property-plural')}
+              className="tw:min-w-[720px] tw:table-fixed"
+              size="compact">
+              <Table.Header columns={columns}>
+                {(column) => (
+                  <Table.Head
+                    className={column.className}
+                    id={column.id}
+                    isRowHeader={column.id === 'property'}
+                    key={column.id}
+                    label={column.label}
+                  />
+                )}
+              </Table.Header>
+              <Table.Body
+                dependencies={rowDependencies}
+                items={visibleProperties}>
+                {(property) => (
+                  <Table.Row
+                    columns={columns}
+                    data-testid={`custom-property-row-${property.name}`}
+                    dependencies={rowDependencies}
+                    id={property.name}
+                    key={property.name}>
+                    {(column) => (
+                      <Table.Cell
+                        className={`tw:align-top ${column.className ?? ''}`}
+                        key={column.id}>
+                        {renderCell(property, column.id)}
+                      </Table.Cell>
+                    )}
+                  </Table.Row>
+                )}
+              </Table.Body>
+            </Table>
+          </div>
+        </TableCard.Root>
+      ) : (
+        <Typography
+          className="tw:py-8 tw:text-center tw:text-tertiary"
+          data-testid="no-matching-custom-properties"
+          size="text-sm">
+          {t('message.no-entity-found-for-name', {
+            entity: t('label.property-plural'),
+            name: searchText,
+          })}
+        </Typography>
+      )}
       {editingProperty && (
         <CustomPropertyEditModal
           isNewValue={isPropertyValueEmpty(

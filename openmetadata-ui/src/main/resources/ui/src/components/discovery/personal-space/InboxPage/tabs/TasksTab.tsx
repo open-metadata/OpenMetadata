@@ -55,7 +55,6 @@ import TaskDetailSkeleton from '../components/TaskDetailSkeleton';
 import { TASK_TYPE_DOT_CLASS } from '../components/TaskTypeIcon';
 import { isTaskOpen } from '../inbox.utils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
-import { getTaskStatusLabel } from '../taskResolution.utils';
 import {
   filterTasksByStatus,
   filterTasksByTypes,
@@ -63,12 +62,12 @@ import {
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
+import { getTaskStatusLabel } from '../taskResolution.utils';
 import {
   filterTasksByTitleSearch,
   splitTaskTitleSearch,
 } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
-import { useViewedUserFirstName } from '../useViewedUserFirstName';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
 import { useLinkedTaskId } from '../useLinkedTaskId';
@@ -77,6 +76,7 @@ import {
   getUserTaskScope,
   userTaskCountQuery,
 } from '../useUserTasks';
+import { useViewedUserFirstName } from '../useViewedUserFirstName';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
