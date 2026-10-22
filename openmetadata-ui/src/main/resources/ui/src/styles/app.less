@@ -72,6 +72,17 @@ body {
   --login-card-shadow: none;
 }
 
+// Widget previews in the customize pickers are light-theme screenshots. Dark
+// mode inverts them; hue-rotate turns brand and status colours back to their
+// own hue.
+:root {
+  --widget-preview-filter: none;
+}
+
+:root.dark-mode {
+  --widget-preview-filter: invert(1) hue-rotate(180deg);
+}
+
 .main-container {
   display: flex;
   height: 100vh;

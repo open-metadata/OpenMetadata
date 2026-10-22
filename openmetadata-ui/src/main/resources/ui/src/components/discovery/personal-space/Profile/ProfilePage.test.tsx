@@ -80,7 +80,7 @@ jest.mock('./tabs/members/MembersPanel', () => ({
   __esModule: true,
   default: () => <div data-testid="content-members" />,
 }));
-jest.mock('components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
+jest.mock('components/common/EmptyPlaceholder/PermissionPlaceholder', () => ({
   __esModule: true,
   default: () => <div data-testid="permission-error-placeholder" />,
 }));

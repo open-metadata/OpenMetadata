@@ -32,6 +32,8 @@ import {
   setSliderValue,
 } from '../../utils/searchSettingUtils';
 import { settingClick } from '../../utils/sidebar';
+import { enableAiAppMode } from '../Utils/appMode';
+import { expectSurfaceTheme, expectTheme, seedTheme } from '../Utils/theme';
 
 let adminUser: AdminClass;
 
@@ -412,6 +414,34 @@ test.describe('Search Settings', () => {
       ).toHaveText('10000');
     });
   });
+
+  test.describe(
+    'Search Settings theme in AI mode',
+    PLAYWRIGHT_BASIC_TEST_TAG_OBJ,
+    () => {
+      // Classic mode is light-only, so dark surfaces are only reachable in AI mode.
+      test.beforeEach(async ({ page }) => {
+        await enableAiAppMode(page);
+      });
+
+      for (const theme of ['light', 'dark'] as const) {
+        // Regression for #35821: ranking cards stayed white in dark mode.
+        test(`ranking cards follow the ${theme} theme`, async ({ page }) => {
+          await seedTheme(page, theme);
+          await page.goto(`/${mockEntitySearchSettings.url}`, {
+            waitUntil: 'domcontentloaded',
+          });
+          await waitForAllLoadersToDisappear(page);
+
+          const rankingSignals = page.getByTestId('ranking-signals');
+
+          await expect(rankingSignals).toBeVisible();
+          await expectTheme(page, theme);
+          await expectSurfaceTheme(rankingSignals, theme);
+        });
+      }
+    }
+  );
 
   test.describe('Search Preview test', () => {
     const table1 = new TableClass();

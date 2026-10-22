@@ -68,7 +68,7 @@ import {
   ManageMenu,
   ManageMenuItem,
 } from '../../../common/EntityPageInfos/ManageButton/ManageMenu';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
@@ -656,16 +656,18 @@ const AppDetails = () => {
     // has nothing to manage.
     if (isEmpty(tabs)) {
       return (
-        <ErrorPlaceHolder
-          className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:p-8"
-          placeholderText={
-            isSchemaLoadFailed
-              ? t('server.no-application-schema-found', { appName: fqn })
-              : t('message.app-no-settings-to-manage', {
-                  app: getEntityName(appData),
-                })
-          }
-        />
+        <div className="tw:relative tw:min-h-60 tw:rounded-xl tw:border tw:border-secondary tw:bg-primary">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={
+              isSchemaLoadFailed
+                ? t('server.no-application-schema-found', { appName: fqn })
+                : t('message.app-no-settings-to-manage', {
+                    app: getEntityName(appData),
+                  })
+            }
+          />
+        </div>
       );
     }
 

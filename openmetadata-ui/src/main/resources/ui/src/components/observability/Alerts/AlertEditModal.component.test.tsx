@@ -113,11 +113,10 @@ const alert: ModifiedEventSubscription = {
 const getHookState = (overrides = {}) => ({
   alert,
   extraFormButtons: {},
-  filterResources: [],
   handleSave: jest.fn(),
   inlineAlertDetails: undefined,
   isLoading: false,
-  loadingState: { alerts: false, functions: false, templates: false },
+  loadingState: { alerts: false, templates: false },
   saving: false,
   shouldShowActionsSection: true,
   selection: { support: { supportedFilters: [], supportedTriggers: [] } },
@@ -133,7 +132,7 @@ describe('AlertEditModal', () => {
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
 
-  it('passes fqn, save callback, close callback and the chosen sources to the alert form hook', async () => {
+  it('passes fqn, save callback, close callback and the chosen sources and rules to the alert form hook', async () => {
     const onClose = jest.fn();
     const onSaved = jest.fn();
 
@@ -150,6 +149,7 @@ describe('AlertEditModal', () => {
       afterSaveAction: onSaved,
       alertType: AlertType.Observability,
       fqn: 'service.alert',
+      input: { actions: [], filters: [] },
       onCancel: onClose,
       sources: [],
     });
@@ -159,6 +159,7 @@ describe('AlertEditModal', () => {
         afterSaveAction: onSaved,
         alertType: AlertType.Observability,
         fqn: 'service.alert',
+        input: undefined,
         onCancel: onClose,
         sources: ['table'],
       })
@@ -319,7 +320,7 @@ describe('AlertEditModal', () => {
   it('passes the template permission and loading state to the form', () => {
     mockUseAlertFormData.mockReturnValue(
       getHookState({
-        loadingState: { alerts: false, functions: false, templates: true },
+        loadingState: { alerts: false, templates: true },
         templateResourcePermission: { Create: true },
       })
     );

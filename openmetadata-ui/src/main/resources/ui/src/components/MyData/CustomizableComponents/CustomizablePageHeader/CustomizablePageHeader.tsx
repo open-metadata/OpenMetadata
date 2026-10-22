@@ -16,6 +16,7 @@ import {
   Button,
   ButtonUtility,
   Card,
+  PageHeader,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -30,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { PersonaCustomizePageFqn } from '../../../../constants/Customize.constants';
 import { PageType } from '../../../../generated/system/ui/page';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
@@ -62,6 +64,7 @@ export const CustomizablePageHeader = ({
   const { currentPageType } = useCustomizeStore();
   const navigate = useNavigate();
   const chrome = useCustomizePageChrome();
+  const isAiMode = useIsAiMode();
   const [saving, setSaving] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
   // Crumb id the user tried to leave to while there were unsaved changes.
@@ -161,6 +164,54 @@ export const CustomizablePageHeader = ({
     <Link to={getSettingsLink(getPersonaDetailsPath(personaFqn))} />
   );
 
+  const headerActions = (
+    <>
+      {showWidgetActions && onAddWidget && (
+        <Button
+          color="primary"
+          data-testid="add-widget-button"
+          iconLeading={<Plus />}
+          onPress={onAddWidget}>
+          {t('label.add-widget-plural')}
+        </Button>
+      )}
+      <Button
+        color="secondary"
+        data-testid="reset-button"
+        iconLeading={<RefreshCcw01 />}
+        isDisabled={saving}
+        onPress={() => setResetModalOpen(true)}>
+        {t('label.reset')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-button"
+        isDisabled={disableSave}
+        isLoading={saving}
+        onPress={handleSave}>
+        {t('label.save')}
+      </Button>
+      <ButtonUtility
+        aria-label={t('label.cancel')}
+        color="tertiary"
+        data-testid="cancel-button"
+        icon={XClose}
+        isDisabled={saving}
+        onPress={handleClose}
+      />
+    </>
+  );
+
+  const headerTitle = t('label.customize-entity', { entity: pageEntityLabel });
+
+  const headerSubtitle = (
+    <Transi18next
+      i18nKey={subTitle}
+      renderElement={personaLink}
+      values={i18Values}
+    />
+  );
+
   return (
     <>
       {/* Breadcrumbs and card form one block so parent layouts (flex gap vs
@@ -189,64 +240,51 @@ export const CustomizablePageHeader = ({
             />
           </Box>
         )}
-        <Card
-          className="customize-page-header m-b-lg tw:p-6"
-          data-testid="customize-landing-page-header">
-          <Box align="center" direction="row" justify="between">
-            <Box direction="col" gap={1}>
+        {/* Same header the other pages render per mode (see usePageHeader):
+            the gradient PageHeader in AI mode, a plain card in Classic. */}
+        {isAiMode ? (
+          <PageHeader
+            actions={headerActions}
+            className="tw:mb-4"
+            data-testid="customize-landing-page-header"
+            subtitle={
+              <Typography color="secondary" size="text-sm">
+                {headerSubtitle}
+              </Typography>
+            }
+            title={
               <Typography
-                as="h5"
-                className="tw:m-0 tw:text-primary"
+                as="h3"
                 data-testid="customize-page-title"
-                size="text-md"
+                size="text-xl"
                 weight="semibold">
-                {t('label.customize-entity', { entity: pageEntityLabel })}
+                {headerTitle}
               </Typography>
-              <Typography as="p" className="tw:m-0 tw:text-tertiary">
-                <Transi18next
-                  i18nKey={subTitle}
-                  renderElement={personaLink}
-                  values={i18Values}
-                />
-              </Typography>
-            </Box>
-            <Box align="center" direction="row" gap={2}>
-              {showWidgetActions && onAddWidget && (
-                <Button
-                  color="primary"
-                  data-testid="add-widget-button"
-                  iconLeading={<Plus />}
-                  onPress={onAddWidget}>
-                  {t('label.add-widget-plural')}
-                </Button>
-              )}
-              <Button
-                color="secondary"
-                data-testid="reset-button"
-                iconLeading={<RefreshCcw01 />}
-                isDisabled={saving}
-                onPress={() => setResetModalOpen(true)}>
-                {t('label.reset')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="save-button"
-                isDisabled={disableSave}
-                isLoading={saving}
-                onPress={handleSave}>
-                {t('label.save')}
-              </Button>
-              <ButtonUtility
-                aria-label={t('label.cancel')}
-                color="tertiary"
-                data-testid="cancel-button"
-                icon={XClose}
-                isDisabled={saving}
-                onPress={handleClose}
-              />
-            </Box>
-          </Box>
-        </Card>
+            }
+            variant="gradient"
+          />
+        ) : (
+          <Card
+            className="tw:mb-5"
+            data-testid="customize-landing-page-header"
+            size="md">
+            <Card.Content>
+              <Box align="center" direction="row" justify="between">
+                <Box className="tw:gap-0.5" direction="col">
+                  <Typography as="h3" data-testid="customize-page-title">
+                    {headerTitle}
+                  </Typography>
+                  <Typography color="secondary" size="text-xs">
+                    {headerSubtitle}
+                  </Typography>
+                </Box>
+                <Box align="center" direction="row" gap={2}>
+                  {headerActions}
+                </Box>
+              </Box>
+            </Card.Content>
+          </Card>
+        )}
       </Box>
 
       <UnsavedChangesModal

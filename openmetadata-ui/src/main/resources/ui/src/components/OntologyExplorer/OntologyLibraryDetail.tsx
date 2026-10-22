@@ -100,7 +100,11 @@ const OntologyPackGraphPreview = ({
           className="tw:absolute tw:-translate-1/2"
           key={module.id}
           style={{ left: `${x}%`, top: `${y}%` }}>
-          <Badge color={isSelected ? 'brand' : 'gray'} size="md" type="color">
+          <Badge
+            color={isSelected ? 'brand' : 'gray'}
+            size="md"
+            tooltip={module.name}
+            type="color">
             {module.name}
           </Badge>
         </Box>

@@ -27,10 +27,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import { ManageMenuItem as ItemType } from '../../../components/common/EntityPageInfos/ManageButton/ManageMenu';
-import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -40,7 +40,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
-import { SIZE } from '../../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Persona } from '../../../generated/entity/teams/persona';
@@ -340,7 +339,11 @@ export const PersonaDetailsPage = () => {
   }
 
   if (isUndefined(personaDetails)) {
-    return <NoDataPlaceholder size={SIZE.LARGE} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

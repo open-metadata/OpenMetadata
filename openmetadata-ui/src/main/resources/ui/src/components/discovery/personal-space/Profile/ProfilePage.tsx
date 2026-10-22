@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -25,10 +25,8 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import ErrorPlaceHolder from '../../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { Include } from '../../../../generated/type/include';
@@ -43,6 +41,8 @@ import {
 } from '../../../../utils/ExtensionPointTypes';
 import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
@@ -336,7 +336,7 @@ const ProfilePage: React.FC = () => {
       if (isUserNotFound) {
         return (
           <Box className="tw:relative tw:flex-1">
-            <EmptyPlaceholder
+            <NoDataPlaceholder
               icon={User01}
               title={t('label.no-entity-found', { entity: t('label.user') })}
             />
@@ -364,11 +364,9 @@ const ProfilePage: React.FC = () => {
         onHeaderChange: setHeaderOverride,
       })
     ) : (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <Box className="tw:relative tw:flex-1">
+        <PermissionPlaceholder permissionValue={t('label.view')} />
+      </Box>
     );
 
     return (
