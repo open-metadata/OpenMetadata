@@ -33,7 +33,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { renderTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PanelEmptyPlaceholder from '../../../common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import SearchBarComponent from '../../../common/SearchBarComponent/SearchBar.component';
 import { BULLET_SEPARATOR } from './LineageTabContent.constants';
 import { LineageTabContentProps } from './LineageTabContent.interface';
@@ -281,15 +281,11 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </Link>
           ))
         ) : (
-          <div>
-            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-              <NoDataPlaceholder
-                data-testid="no-data-placeholder"
-                description={t('label.lineage-not-found')}
-                icon={<AddPlaceHolderIcon height={100} width={100} />}
-              />
-            </div>
-          </div>
+          <PanelEmptyPlaceholder
+            description={t('label.lineage-not-found')}
+            icon={<AddPlaceHolderIcon height={100} width={100} />}
+            searchText={searchText}
+          />
         )}
       </div>
     </div>

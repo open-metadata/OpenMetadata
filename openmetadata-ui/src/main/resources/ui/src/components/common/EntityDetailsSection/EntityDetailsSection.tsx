@@ -15,7 +15,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { getEntityChildDetailsV1 } from '../../../utils/EntitySummaryPanelUtilsV1';
-import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
+import PanelEmptyPlaceholder from '../EmptyPlaceholder/PanelEmptyPlaceholder';
 import Loader from '../Loader/Loader';
 import SearchBarComponent from '../SearchBarComponent/SearchBar.component';
 import { SEARCH_PLACEHOLDER_MAP } from './EntityDetailsSection.constants';
@@ -71,13 +71,10 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     </div>
   ) : (
     <div className="lineage-items-list empty-state">
-      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <NoDataPlaceholder
-          data-testid="no-data-placeholder"
-          description={t('message.no-schema-message')}
-          icon={<AddPlaceHolderIcon height={100} width={100} />}
-        />
-      </div>
+      <PanelEmptyPlaceholder
+        description={t('message.no-schema-message')}
+        icon={<AddPlaceHolderIcon height={100} width={100} />}
+      />
     </div>
   );
 };

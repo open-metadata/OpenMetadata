@@ -147,7 +147,7 @@ describe('CustomPropertiesSection', () => {
 
     expect(
       screen.getByTestId('no-matching-custom-properties')
-    ).toHaveTextContent('message.no-entity-found-for-name');
+    ).toHaveTextContent('label.no-matching-result-plural');
     expect(
       screen.queryByTestId('custom-properties-list')
     ).not.toBeInTheDocument();

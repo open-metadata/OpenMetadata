@@ -1231,7 +1231,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.TOPIC,
         mockTopicWithNestedFields,
@@ -1242,7 +1242,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1329,7 +1331,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.CONTAINER,
         mockContainerWithNestedColumns,
@@ -1340,7 +1342,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 
@@ -1427,7 +1431,7 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       ).not.toBeInTheDocument();
     });
 
-    it('should show no-data when search text matches nothing', () => {
+    it('should show no matching results when search text matches nothing', () => {
       const result = getEntityChildDetailsV1(
         EntityType.SEARCH_INDEX,
         mockSearchIndexWithNestedFields,
@@ -1438,7 +1442,9 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
 
       render(<div>{result}</div>);
 
-      expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
     });
   });
 

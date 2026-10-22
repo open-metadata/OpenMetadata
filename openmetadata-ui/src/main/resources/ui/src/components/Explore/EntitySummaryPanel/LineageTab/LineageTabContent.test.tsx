@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { LineageEntityReference } from '../../../../components/Lineage/Lineage.interface';
@@ -533,6 +533,21 @@ describe('LineageTabContent', () => {
       expect(screen.getByTestId('no-data-placeholder')).toContainElement(
         screen.getByText('label.lineage-not-found')
       );
+    });
+
+    it('reports no matching results when the search matches no lineage item', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      fireEvent.change(screen.getByTestId('search-input'), {
+        target: { value: 'zzz_no_match' },
+      });
+
+      expect(
+        screen.getByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('label.lineage-not-found')
+      ).not.toBeInTheDocument();
     });
   });
 

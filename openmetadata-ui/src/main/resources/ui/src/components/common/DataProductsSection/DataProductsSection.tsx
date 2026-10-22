@@ -171,11 +171,11 @@ const DataProductsSectionV1: React.FC<DataProductsSectionProps> = ({
     }
 
     return (
-      <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+      <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
         {t('label.no-entity-assigned', {
           entity: t('label.data-product-plural'),
         })}
-      </span>
+      </Typography>
     );
   }, [isLoading, displayActiveDomains, requireDomainForDataProduct, t]);
 

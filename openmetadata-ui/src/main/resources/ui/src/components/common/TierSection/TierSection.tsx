@@ -143,11 +143,11 @@ const TierSection: React.FC<TierSectionProps> = ({
             />
           </div>
         ) : (
-          <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+          <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
             {t('label.no-entity-assigned', {
               entity: t('label.tier'),
             })}
-          </span>
+          </Typography>
         )}
       </div>
     ),

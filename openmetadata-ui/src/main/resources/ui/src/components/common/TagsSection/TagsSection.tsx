@@ -175,11 +175,11 @@ const TagsSectionV1: React.FC<TagsSectionProps> = ({
 
     if (!nonTierTags.length) {
       return (
-        <span className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
+        <Typography className={NO_DATA_PLACEHOLDER_CLASS_NAME}>
           {t('label.no-entity-assigned', {
             entity: t('label.tag-plural'),
           })}
-        </span>
+        </Typography>
       );
     }
 
