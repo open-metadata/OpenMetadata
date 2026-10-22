@@ -41,6 +41,13 @@ jest.mock('@tanstack/react-query', () => ({
   },
 }));
 
+let mockLinkedTaskId: string | undefined;
+
+// A link's `?taskId=`: the URL is this hook's boundary.
+jest.mock('./useLinkedTaskId', () => ({
+  useLinkedTaskId: () => mockLinkedTaskId,
+}));
+
 jest.mock('./useCurrentUserIds', () => ({
   useCurrentUserIds: () => new Set(),
 }));
@@ -167,6 +174,18 @@ describe('useTaskQueue', () => {
     rerender({ status: 'closed' });
 
     expect(result.current.status).toBe('closed');
+  });
+
+  // A linked task may sit past the loaded page: it stays selected rather than
+  // falling back to the top row.
+  it('opens on a linked task even when it is not in the loaded list', () => {
+    mockLinkedTaskId = 't-elsewhere';
+    loadedTasks = tasksOf(3);
+    const { result } = renderHook(() => useTaskQueue());
+
+    expect(result.current.selectedTaskId).toBe('t-elsewhere');
+
+    mockLinkedTaskId = undefined;
   });
 
   // A narrowed list stops at a bounded scan; "Load more" scans one more.

@@ -62,6 +62,11 @@ export interface InputBaseProps extends TextFieldProps {
   trailingSlot?: ReactNode;
   /** Passes `data-testid` directly to the inner `<input>` element (not the wrapper). */
   inputDataTestId?: string;
+  /**
+   * Drop the field's own surface, border and focus outline, for an input that
+   * sits inside a container which already draws them (e.g. a search bar).
+   */
+  borderless?: boolean;
 }
 
 const TextFieldContext = createContext<TextFieldProps>({});
@@ -78,6 +83,7 @@ export const InputBase = forwardRef<
     groupRef,
     trailingSlot,
     inputDataTestId,
+    borderless,
     size = 'sm',
     fontSize = 'sm',
     isInvalid,
@@ -136,7 +142,7 @@ export const InputBase = forwardRef<
   return (
     <AriaGroup
       {...{ isDisabled, isInvalid }}
-      className={({ isFocusWithin, isDisabled, isInvalid }) =>
+      className={({ isFocusWithin, isFocusVisible, isDisabled, isInvalid }) =>
         cx(
           // Border is drawn with outline, not a ring: WebKit does not pixel-snap
           // box-shadow, so a ring thins/vanishes in Safari when zoomed out.
@@ -161,6 +167,11 @@ export const InputBase = forwardRef<
             'tw:outline-2 tw:-outline-offset-2 tw:outline-error',
           isFocusWithin &&
             'tw:group-invalid:outline-2 tw:group-invalid:-outline-offset-2 tw:group-invalid:outline-error',
+
+          // Like a borderless Select: no surface at rest, but keyboard focus
+          // keeps its outline so the field never loses its focus indicator.
+          borderless && 'tw:bg-transparent tw:shadow-none',
+          borderless && !isFocusVisible && 'tw:outline-0',
 
           context?.wrapperClassName,
           wrapperClassName
@@ -314,6 +325,7 @@ export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
       shortcut,
       trailingSlot,
       inputDataTestId,
+      borderless,
       hideRequiredIndicator,
       className,
       groupRef,
@@ -361,6 +373,7 @@ export const Input = forwardRef<HTMLInputElement, Omit<InputProps, 'ref'>>(
                 shortcut,
                 trailingSlot,
                 inputDataTestId,
+                borderless,
                 iconClassName,
                 inputClassName,
                 wrapperClassName,

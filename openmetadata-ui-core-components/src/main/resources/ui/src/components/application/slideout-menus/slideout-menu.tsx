@@ -134,7 +134,8 @@ const Content = ({ role = 'main', ...props }: ComponentPropsWithRef<'div'>) => {
       role={role}
       {...props}
       className={cx(
-        'tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
+        // `relative` clips absolute descendants (hidden inputs) here, not in the scrolling dialog.
+        'tw:relative tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
         props.className
       )}
     />
@@ -146,6 +147,8 @@ interface SlideoutHeaderProps extends ComponentPropsWithRef<'header'> {
   onClose?: () => void;
   /** Omit the built-in close control when the caller already supplies one. */
   showCloseButton?: boolean;
+  /** `data-testid` for the built-in close control. */
+  closeButtonTestId?: string;
 }
 
 const Header = ({
@@ -153,6 +156,7 @@ const Header = ({
   children,
   onClose,
   showCloseButton = true,
+  closeButtonTestId,
   ...props
 }: SlideoutHeaderProps) => {
   return (
@@ -166,6 +170,7 @@ const Header = ({
       {showCloseButton && (
         <CloseButton
           className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
+          data-testid={closeButtonTestId}
           size="md"
           onClick={onClose}
         />

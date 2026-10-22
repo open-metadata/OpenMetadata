@@ -15,6 +15,7 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { MY_TASKS_QUERY_KEY } from '../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
   listTasks,
@@ -22,7 +23,11 @@ import {
   Task,
   TaskStatusGroup,
 } from '../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../inbox.constants';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../inbox.constants';
 import type { InboxTaskGrouping } from './components/InboxTaskListToolbar';
 import { isTaskOpen } from './inbox.utils';
 import {
@@ -37,6 +42,7 @@ import {
 } from './taskTitle.utils';
 import { useCurrentUserIds } from './useCurrentUserIds';
 import { useInboxInfiniteList } from './useInboxInfiniteList';
+import { useLinkedTaskId } from './useLinkedTaskId';
 
 /**
  * Which tasks a queue holds: the viewer's visible ones (their Inbox), every
@@ -80,14 +86,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
-// React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
-const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 export type TaskStatusFilter = 'all' | 'open' | 'closed';
 
@@ -202,7 +201,13 @@ export const useTaskQueue = ({
 }: UseTaskQueueOptions = {}) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedTaskId, setSelectedTaskId] = useState<string>();
+  // A link from outside the inbox opens on its task. The task may sit past the
+  // loaded page, so the selection keeps it rather than falling back to the
+  // top row; the detail panel fetches it by id.
+  const linkedTaskId = useLinkedTaskId();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
+    linkedTaskId
+  );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>(initialStatus);
@@ -342,7 +347,7 @@ export const useTaskQueue = ({
 
   // Invalidate the cached badge totals so a task action re-fetches them.
   const refreshStatusCounts = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
     });
   }, [queryClient]);
@@ -355,7 +360,7 @@ export const useTaskQueue = ({
   // Inbox, and the Inbox must not show its old status from cache.
   const invalidateTaskLists = useCallback(
     (refetch = false) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [TASK_LIST_QUERY_KEY],
         refetchType: refetch ? 'active' : 'none',
       });
@@ -395,18 +400,23 @@ export const useTaskQueue = ({
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
+      prev &&
+      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+        ? prev
+        : firstTaskId
     );
-  }, [visibleTasks, firstTaskId]);
+  }, [visibleTasks, firstTaskId, linkedTaskId]);
 
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the
   // sidebar never unmounts, so it would not refetch until a navigation or a tab
-  // refocus.
-  const syncInboxCountBadge = useCallback(() => {
-    queryClient.invalidateQueries({
+  // refocus. The home page's My Tasks card caches the same open tasks, so a
+  // return home within its TTL would still offer actions on a resolved one.
+  const syncOpenTaskReaders = useCallback(() => {
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -430,7 +440,7 @@ export const useTaskQueue = ({
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
       refreshStatusCounts();
-      syncInboxCountBadge();
+      syncOpenTaskReaders();
       onTaskChange?.();
     },
     [
@@ -439,7 +449,7 @@ export const useTaskQueue = ({
       setTotal,
       invalidateTaskLists,
       refreshStatusCounts,
-      syncInboxCountBadge,
+      syncOpenTaskReaders,
       onTaskChange,
     ]
   );
@@ -450,12 +460,12 @@ export const useTaskQueue = ({
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
     refreshStatusCounts();
-    syncInboxCountBadge();
+    syncOpenTaskReaders();
     onTaskChange?.();
   }, [
     invalidateTaskLists,
     refreshStatusCounts,
-    syncInboxCountBadge,
+    syncOpenTaskReaders,
     onTaskChange,
   ]);
 

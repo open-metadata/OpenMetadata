@@ -39,6 +39,7 @@ import {
   SparqlPlaygroundInference,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import { downloadCsv } from '../../utils/Export/ExportUtils';
 import {
   getAvailableSparqlInferences,
   resolveSparqlInference,
@@ -785,7 +786,11 @@ const SparqlQueryConsole: React.FC<SparqlQueryConsoleProps> = ({
       return;
     }
     const filename = `sparql-result.${FORMAT_EXTENSIONS[result.format]}`;
-    downloadAsFile(result.body, result.contentType, filename);
+    if (result.format === 'csv') {
+      downloadCsv(result.body, filename);
+    } else {
+      downloadAsFile(result.body, result.contentType, filename);
+    }
   }, [result]);
 
   const handleInjectPrefixes = useCallback(() => {

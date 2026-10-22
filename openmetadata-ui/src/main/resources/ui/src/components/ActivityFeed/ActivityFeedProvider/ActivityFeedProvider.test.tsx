@@ -242,7 +242,7 @@ describe('ActivityFeedProvider', () => {
     );
   });
 
-  it('lists conversations through the conversation API', async () => {
+  it('lists the entity conversations, including those on its fields', async () => {
     render(
       <ActivityFeedProvider>
         <DummyChildrenEntityComponent />
@@ -251,7 +251,10 @@ describe('ActivityFeedProvider', () => {
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenCalledWith(
-        expect.objectContaining({ entityLink: '<#E::table::admin>' })
+        expect.objectContaining({
+          entityLink: '<#E::table::admin>',
+          includeFields: true,
+        })
       )
     );
   });

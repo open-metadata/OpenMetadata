@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button as CoreButton,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Button as CoreButton } from '@openmetadata/ui-core-components';
 import {
   BookOpen01,
   Data,
@@ -29,8 +26,9 @@ import { RefObject, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import { EntityDetailsObjectInterface } from '../../../components/Explore/ExplorePage.interface';
@@ -52,7 +50,6 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ClientErrors } from '../../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import {
   EntityAction,
   EntityType,
@@ -605,13 +602,14 @@ const GlossaryPage = () => {
   if (!(viewBasicGlossaryPermission || viewAllGlossaryPermission)) {
     return (
       <div className="d-flex justify-center items-center">
-        <ErrorPlaceHolder
-          className="mt-0-important border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.glossary'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.glossary'),
+            })}
+          />
+        </div>
       </div>
     );
   }
@@ -637,7 +635,7 @@ const GlossaryPage = () => {
     return (
       <div className="content-height-with-resizable-panel tw:relative tw:overflow-hidden tw:rounded-lg tw:bg-primary">
         {addGlossaryDrawer}
-        <EmptyPlaceholder
+        <FeaturesPlaceholder
           description={t('message.glossary-empty-description')}
           features={[
             {
@@ -661,7 +659,6 @@ const GlossaryPage = () => {
           ]}
           footer={renderEmptyStateFooter()}
           title={t('message.build-your-business-dictionary')}
-          variant="features"
         />
       </div>
     );
@@ -675,7 +672,7 @@ const GlossaryPage = () => {
       return (
         <div className="content-height-with-resizable-panel tw:relative">
           <NoDataPlaceholder
-            description={getEntityMissingMessage(
+            title={getEntityMissingMessage(
               isGlossaryNotFound
                 ? t('label.glossary')
                 : t('label.glossary-term'),

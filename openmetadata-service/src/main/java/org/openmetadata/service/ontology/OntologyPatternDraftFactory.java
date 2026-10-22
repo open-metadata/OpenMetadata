@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
-import org.openmetadata.schema.api.data.OntologyIriPreviewRequest;
 import org.openmetadata.schema.api.data.OntologyPatternTermInput;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -43,19 +42,16 @@ final class OntologyPatternDraftFactory {
   private static final double INITIAL_VERSION = 0.1D;
   private final OntologyPatternCatalog catalog;
   private final OntologyPatternRequestValidator validator;
-  private final OntologyIriMinter iriMinter;
   private final RelationshipTypeLookup relationshipTypes;
   private final Clock clock;
 
   OntologyPatternDraftFactory(
       final OntologyPatternCatalog catalog,
       final OntologyPatternRequestValidator validator,
-      final OntologyIriMinter iriMinter,
       final RelationshipTypeLookup relationshipTypes,
       final Clock clock) {
     this.catalog = catalog;
     this.validator = validator;
-    this.iriMinter = iriMinter;
     this.relationshipTypes = relationshipTypes;
     this.clock = clock;
   }
@@ -103,7 +99,6 @@ final class OntologyPatternDraftFactory {
         .withFullyQualifiedName(FullyQualifiedName.add(parentFqn, input.getName()))
         .withGlossary(glossary.getEntityReference())
         .withParent(parent)
-        .withIri(mintIri(glossary, input.getName(), id))
         .withVersion(INITIAL_VERSION)
         .withEntityStatus(EntityStatus.DRAFT)
         .withProvider(ProviderType.USER)
@@ -117,16 +112,6 @@ final class OntologyPatternDraftFactory {
             ? input.getName()
             : input.getDisplayName();
     return displayName;
-  }
-
-  private java.net.URI mintIri(
-      final Glossary glossary, final String termName, final UUID candidateId) {
-    final OntologyIriPreviewRequest request =
-        new OntologyIriPreviewRequest()
-            .withGlossaryId(glossary.getId())
-            .withTermName(termName)
-            .withCandidateId(candidateId);
-    return iriMinter.preview(glossary, request).getIri();
   }
 
   private static EntityReference parentReference(

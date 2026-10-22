@@ -32,6 +32,8 @@ type InheritedTreeSelectProps = Pick<
   | 'label'
   | 'placeholder'
   | 'required'
+  | 'offset'
+  | 'className'
   | 'data-testid'
 >;
 
@@ -52,6 +54,8 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   label,
   placeholder,
   required = false,
+  offset,
+  className,
   'data-testid': dataTestId,
 }) => {
   const { t } = useTranslation();
@@ -100,6 +104,7 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
   return (
     <TreeSelect
       searchable
+      className={className}
       commitMode={commitMode}
       data-testid={dataTestId}
       fetchData={fetchData}
@@ -110,6 +115,7 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
       noDataMessage={t('label.no-entity-available', {
         entity: t('label.tag-plural'),
       })}
+      offset={offset}
       placeholder={
         placeholder ?? t('label.select-field', { field: t('label.tag-plural') })
       }

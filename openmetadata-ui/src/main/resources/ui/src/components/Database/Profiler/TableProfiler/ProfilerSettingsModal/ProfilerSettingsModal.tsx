@@ -27,7 +27,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { lazy, useEffect, useMemo, useState } from 'react';
@@ -115,7 +115,7 @@ const ProfilerSettingsModal = ({
           partitionIntervalType &&
           SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
             partitionIntervalType
-          ].includes(column.dataType)
+          ]?.includes(column.dataType)
         ) {
           items.push({ id: column.name, label: column.name });
         }
@@ -256,48 +256,34 @@ const ProfilerSettingsModal = ({
                   required={isRequired && enablePartition}
                 />
               )}
-              <Box align="center" gap={1}>
-                {searchable ? (
-                  <ProfilerColumnSelect
-                    isDisabled={isDisabled}
-                    isInvalid={fieldState.invalid}
-                    items={completeItems}
-                    label={accessibleLabel}
-                    placeholder={placeholder}
-                    selectedKey={key}
-                    testId={testId}
-                    onBlur={field.onBlur}
-                    onSelectionChange={handleSelection}
-                  />
-                ) : (
-                  <Select
-                    aria-label={accessibleLabel}
-                    className="tw:min-w-0 tw:flex-1"
-                    data-testid={testId}
-                    fontSize="sm"
-                    isDisabled={isDisabled}
-                    isInvalid={fieldState.invalid}
-                    items={completeItems}
-                    placeholder={placeholder}
-                    value={key}
-                    onBlur={field.onBlur}
-                    onChange={handleSelection}>
-                    {content}
-                  </Select>
-                )}
-                {key !== null && !isDisabled && (
-                  <Button
-                    aria-label={`${t('label.clear')} ${accessibleLabel}`}
-                    color="tertiary"
-                    iconLeading={XClose}
-                    size="xs"
-                    onPress={() => {
-                      field.onChange(undefined);
-                      onChange?.();
-                    }}
-                  />
-                )}
-              </Box>
+              {searchable ? (
+                <ProfilerColumnSelect
+                  isDisabled={isDisabled}
+                  isInvalid={fieldState.invalid}
+                  items={completeItems}
+                  label={accessibleLabel}
+                  placeholder={placeholder}
+                  selectedKey={key}
+                  testId={testId}
+                  onBlur={field.onBlur}
+                  onSelectionChange={handleSelection}
+                />
+              ) : (
+                <Select
+                  aria-label={accessibleLabel}
+                  className="tw:min-w-0 tw:flex-1"
+                  data-testid={testId}
+                  fontSize="sm"
+                  isDisabled={isDisabled}
+                  isInvalid={fieldState.invalid}
+                  items={completeItems}
+                  placeholder={placeholder}
+                  value={key}
+                  onBlur={field.onBlur}
+                  onChange={handleSelection}>
+                  {content}
+                </Select>
+              )}
               {fieldState.error && (
                 <HintText isInvalid>{fieldState.error.message}</HintText>
               )}
@@ -356,13 +342,8 @@ const ProfilerSettingsModal = ({
       id="profiler-setting-form"
       validationBehavior="aria"
       onSubmit={form.handleSubmit(handleSave)}>
-      <Grid
-        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
-        rowGap="4">
-        <Grid.Item
-          className="layout-column"
-          data-testid="profile-sample-container"
-          span={24}>
+      <Grid colGap="4" rowGap="4">
+        <Grid.Item data-testid="profile-sample-container" span={24}>
           <Box
             className="profiler-settings-form"
             data-testid="configure-ingestion-container"
@@ -420,10 +401,7 @@ const ProfilerSettingsModal = ({
             )}
           </Box>
         </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          data-testid="sql-editor-container"
-          span={24}>
+        <Grid.Item data-testid="sql-editor-container" span={24}>
           <FormField control={form.control} name="profileQuery">
             {({ field }) => (
               <Box direction="col" gap={2}>
@@ -444,10 +422,7 @@ const ProfilerSettingsModal = ({
             )}
           </FormField>
         </Grid.Item>
-        <Grid.Item
-          className="layout-column"
-          data-testid="exclude-column-container"
-          span={24}>
+        <Grid.Item data-testid="exclude-column-container" span={24}>
           <Box direction="col" gap={1}>
             <Typography as="p">{t('message.enable-column-profile')}</Typography>
             <Typography as="p" size="text-xs">
@@ -455,51 +430,36 @@ const ProfilerSettingsModal = ({
             </Typography>
             <FormField control={form.control} name="excludeColumns">
               {({ field }) => (
-                <Box align="center" gap={2}>
-                  <Autocomplete
-                    aria-label={t('label.exclude')}
-                    className="tw:flex-1"
-                    data-testid="exclude-column-select"
-                    icon={null}
-                    items={columnItems}
-                    placeholder={t('label.select-column-plural-to-exclude')}
-                    selectedItems={field.value.map(
-                      (id) =>
-                        columnItems.find((item) => item.id === id) ?? {
-                          id,
-                          label: id,
-                        }
-                    )}
-                    onItemCleared={(id) =>
-                      field.onChange(
-                        field.value.filter((value) => value !== id)
-                      )
-                    }
-                    onItemInserted={(id) =>
-                      field.onChange([...new Set([...field.value, String(id)])])
-                    }>
-                    {(item) => (
-                      <Autocomplete.Item id={item.id} textValue={item.label}>
-                        {item.label}
-                      </Autocomplete.Item>
-                    )}
-                  </Autocomplete>
-                  {field.value.length > 0 && (
-                    <Button
-                      aria-label={t('label.clear')}
-                      color="tertiary"
-                      data-testid="clear-excluded-columns"
-                      iconLeading={XClose}
-                      size="xs"
-                      onPress={() => field.onChange([])}
-                    />
+                <Autocomplete
+                  aria-label={t('label.exclude')}
+                  data-testid="exclude-column-select"
+                  icon={null}
+                  items={columnItems}
+                  placeholder={t('label.select-column-plural-to-exclude')}
+                  selectedItems={field.value.map(
+                    (id) =>
+                      columnItems.find((item) => item.id === id) ?? {
+                        id,
+                        label: id,
+                      }
                   )}
-                </Box>
+                  onItemCleared={(id) =>
+                    field.onChange(field.value.filter((value) => value !== id))
+                  }
+                  onItemInserted={(id) =>
+                    field.onChange([...new Set([...field.value, String(id)])])
+                  }>
+                  {(item) => (
+                    <Autocomplete.Item id={item.id} textValue={item.label}>
+                      {item.label}
+                    </Autocomplete.Item>
+                  )}
+                </Autocomplete>
               )}
             </FormField>
           </Box>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
+        <Grid.Item span={24}>
           <Box direction="col" gap={2}>
             <Box align="center" gap={2}>
               <Typography as="p" size="text-xs">
@@ -524,10 +484,8 @@ const ProfilerSettingsModal = ({
               direction="col"
               gap={4}>
               {includeColumns.fields.map((row, index) => (
-                <Grid
-                  className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
-                  key={row.id}>
-                  <Grid.Item className="layout-column" span={12}>
+                <Grid colGap="4" key={row.id}>
+                  <Grid.Item span={12}>
                     {selectField({
                       name: `includeColumns.${index}.columnName`,
                       items: columnWithAll,
@@ -536,7 +494,7 @@ const ProfilerSettingsModal = ({
                       searchable: true,
                     })}
                   </Grid.Item>
-                  <Grid.Item className="layout-column" span={12}>
+                  <Grid.Item span={12}>
                     <Box align="start" gap={1}>
                       <Box className="tw:min-w-0 tw:flex-1">
                         <FormField
@@ -567,7 +525,7 @@ const ProfilerSettingsModal = ({
             </Box>
           </Box>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={24}>
+        <Grid.Item span={24}>
           <FormField control={form.control} name="enablePartitioning">
             {({ field }) => (
               <Box align="center" gap={3}>
@@ -587,7 +545,7 @@ const ProfilerSettingsModal = ({
             )}
           </FormField>
         </Grid.Item>
-        <Grid.Item className="layout-column" span={12}>
+        <Grid.Item span={12}>
           {selectField({
             name: 'partitionIntervalType',
             label: t('label.interval-type'),
@@ -602,7 +560,7 @@ const ProfilerSettingsModal = ({
             onChange: resetPartitionFields,
           })}
         </Grid.Item>
-        <Grid.Item className="layout-column" span={12}>
+        <Grid.Item span={12}>
           {selectField({
             name: 'partitionColumnName',
             label: t('label.column-entity', { entity: t('label.name') }),
@@ -617,7 +575,7 @@ const ProfilerSettingsModal = ({
         {partitionIntervalType &&
           TIME_BASED_PARTITION.includes(partitionIntervalType) && (
             <>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item span={12}>
                 {numberField(
                   'partitionInterval',
                   t('label.interval'),
@@ -627,7 +585,7 @@ const ProfilerSettingsModal = ({
                   true
                 )}
               </Grid.Item>
-              <Grid.Item className="layout-column" span={12}>
+              <Grid.Item span={12}>
                 {selectField({
                   name: 'partitionIntervalUnit',
                   label: t('label.interval-unit'),
@@ -645,7 +603,7 @@ const ProfilerSettingsModal = ({
           )}
         {partitionIntervalType === PartitionIntervalTypes.IntegerRange && (
           <>
-            <Grid.Item className="layout-column" span={12}>
+            <Grid.Item span={12}>
               {numberField(
                 'partitionIntegerRangeStart',
                 t('label.start-entity', { entity: t('label.range') }),
@@ -657,7 +615,7 @@ const ProfilerSettingsModal = ({
                 true
               )}
             </Grid.Item>
-            <Grid.Item className="layout-column" span={12}>
+            <Grid.Item span={12}>
               {numberField(
                 'partitionIntegerRangeEnd',
                 t('label.end-entity', { entity: t('label.range') }),
@@ -672,7 +630,7 @@ const ProfilerSettingsModal = ({
           </>
         )}
         {partitionIntervalType === PartitionIntervalTypes.ColumnValue && (
-          <Grid.Item className="layout-column" span={24}>
+          <Grid.Item span={24}>
             <Box direction="col" gap={4}>
               <Box align="center" gap={2}>
                 <Typography as="p" size="text-xs">

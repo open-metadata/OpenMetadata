@@ -14,26 +14,68 @@ const styles = sortCx({
   rootSelected: 'tw:bg-brand-primary_alt tw:hover:bg-brand-primary_alt',
 });
 
-export type NavItemSize = 'sm' | 'md';
+export type NavItemVariant = 'default' | 'solid';
+
+// `solid` fills the current item with the brand colour and opens a collapsible
+// group under a filled header; hover tints rest items brand instead of gray.
+const solidStyles = sortCx({
+  // Rest items sit on the sidebar surface instead of painting white boxes.
+  root: 'tw:bg-transparent tw:hover:bg-brand-primary_alt tw:dark:hover:bg-brand-primary_alt',
+  rootSelected:
+    'tw:bg-brand-solid tw:hover:bg-brand-solid tw:dark:bg-brand-solid tw:dark:hover:bg-brand-solid',
+  groupSelected:
+    'tw:bg-brand-solid_hover tw:hover:bg-brand-solid_hover tw:dark:bg-brand-solid_hover tw:dark:hover:bg-brand-solid_hover',
+  groupOpen:
+    'tw:in-open:rounded-b-none tw:in-open:bg-brand-solid_hover tw:in-open:hover:bg-brand-solid_hover tw:dark:in-open:bg-brand-solid_hover',
+  // Rest label and icon share one mid-gray, as in the pre-migration classic sidebar.
+  label: 'tw:text-tertiary tw:group-hover:text-brand-secondary',
+  labelSelected:
+    'tw:text-primary_on-brand tw:group-hover:text-primary_on-brand',
+  labelOpen:
+    'tw:in-open:text-primary_on-brand tw:in-open:group-hover:text-primary_on-brand',
+  icon: 'tw:text-fg-tertiary tw:group-hover:text-fg-brand-secondary_alt',
+  iconSelected: 'tw:text-fg-white tw:group-hover:text-fg-white',
+  iconOpen: 'tw:in-open:text-fg-white tw:in-open:group-hover:text-fg-white',
+});
+
+export type NavItemSize = 'sm' | 'md' | 'lg';
 
 const sizeStyles = sortCx({
   sm: {
-    padding: 'tw:py-1',
-    icon: 'tw:size-4',
+    root: 'tw:px-3 tw:py-1',
+    // Lines child labels up with the parent label: px-3 + icon + mr-2.
+    child: 'tw:py-1 tw:pr-3 tw:pl-9',
+    icon: 'tw:mr-2 tw:size-4',
     label: 'tw:text-sm tw:font-normal',
     labelCurrent: 'tw:font-semibold',
+    chevron: 'tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary',
   },
   md: {
-    padding: 'tw:py-2',
-    icon: 'tw:size-5',
+    root: 'tw:px-3 tw:py-2',
+    child: 'tw:py-2 tw:pr-3 tw:pl-10',
+    icon: 'tw:mr-2 tw:size-5',
     label: 'tw:text-md tw:font-semibold',
     labelCurrent: '',
+    chevron: 'tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary',
+  },
+  // Roomy primary navigation: 56px rows with 28px icons. Children keep their
+  // icon and sit flush inside the open group.
+  lg: {
+    root: 'tw:rounded-xl tw:p-3.5',
+    child: 'tw:rounded-none tw:px-4 tw:py-2.5',
+    icon: 'tw:mr-2.5 tw:size-7',
+    label: 'tw:text-sm tw:font-medium',
+    labelCurrent: 'tw:font-semibold',
+    // A small dark caret, as on the release 2.0 primary navigation.
+    chevron: 'tw:size-2.5 tw:stroke-[3.5px] tw:text-fg-primary',
   },
 });
 
 interface NavItemBaseProps {
-  /** Text and icon size. `sm` is for dense secondary lists. Defaults to `md`. */
+  /** Text and icon size. `sm` is for dense secondary lists, `lg` for roomy primary navigation. Defaults to `md`. */
   size?: NavItemSize;
+  /** `solid` fills the current item and an open group's header with the brand colour. Defaults to `default`. */
+  variant?: NavItemVariant;
   /** Whether the nav item shows only an icon. */
   iconOnly?: boolean;
   /** Whether the collapsible nav item is open. */
@@ -67,18 +109,40 @@ export const NavItemBase = ({
   children,
   truncate = true,
   size = 'md',
+  variant = 'default',
   dataTestId,
   onClick,
 }: NavItemBaseProps) => {
-  const iconElement = Icon && (
+  const isSolid = variant === 'solid';
+  const isGroup = type === 'collapsible';
+  // Children only show their icon at `lg`; smaller sizes indent instead.
+  const showIcon = type !== 'collapsible-child' || size === 'lg';
+
+  const iconElement = Icon && showIcon && (
     <Icon
       aria-hidden="true"
       className={cx(
-        'tw:mr-2 tw:shrink-0 tw:text-fg-quaternary tw:transition-inherit-all',
+        'tw:shrink-0 tw:text-fg-quaternary tw:transition-inherit-all',
         sizeStyles[size].icon,
-        current && 'tw:text-fg-brand-secondary_alt'
+        current && 'tw:text-fg-brand-secondary_alt',
+        isSolid && solidStyles.icon,
+        isSolid && current && solidStyles.iconSelected,
+        isSolid && isGroup && solidStyles.iconOpen
       )}
     />
+  );
+
+  const rootClassName = cx(
+    styles.root,
+    type === 'collapsible-child'
+      ? sizeStyles[size].child
+      : sizeStyles[size].root,
+    current && styles.rootSelected,
+    isSolid && solidStyles.root,
+    isSolid &&
+      current &&
+      (isGroup ? solidStyles.groupSelected : solidStyles.rootSelected),
+    isSolid && isGroup && solidStyles.groupOpen
   );
 
   const badgeElement =
@@ -97,7 +161,11 @@ export const NavItemBase = ({
         sizeStyles[size].label,
         current && sizeStyles[size].labelCurrent,
         truncate && 'tw:truncate',
-        current && 'tw:text-brand-secondary tw:group-hover:text-brand-secondary'
+        current &&
+          'tw:text-brand-secondary tw:group-hover:text-brand-secondary',
+        isSolid && solidStyles.label,
+        isSolid && current && solidStyles.labelSelected,
+        isSolid && isGroup && solidStyles.labelOpen
       )}>
       {children}
     </span>
@@ -110,14 +178,7 @@ export const NavItemBase = ({
 
   if (type === 'collapsible') {
     return (
-      <summary
-        className={cx(
-          'tw:px-3',
-          sizeStyles[size].padding,
-          styles.root,
-          current && styles.rootSelected
-        )}
-        onClick={onClick}>
+      <summary className={rootClassName} onClick={onClick}>
         {iconElement}
 
         {labelElement}
@@ -126,7 +187,12 @@ export const NavItemBase = ({
 
         <ChevronDown
           aria-hidden="true"
-          className="tw:ml-3 tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary tw:in-open:-scale-y-100"
+          className={cx(
+            'tw:ml-3 tw:shrink-0 tw:in-open:-scale-y-100',
+            sizeStyles[size].chevron,
+            isSolid && current && solidStyles.iconSelected,
+            isSolid && solidStyles.iconOpen
+          )}
         />
       </summary>
     );
@@ -136,17 +202,13 @@ export const NavItemBase = ({
     return (
       <AriaLink
         aria-current={current ? 'page' : undefined}
-        className={cx(
-          'tw:pr-3 tw:pl-10',
-          sizeStyles[size].padding,
-          styles.root,
-          current && styles.rootSelected
-        )}
+        className={rootClassName}
         data-testid={dataTestId}
         href={href!}
         rel="noopener noreferrer"
         target={isExternal ? '_blank' : '_self'}
         onClick={onClick}>
+        {iconElement}
         {labelElement}
         {externalIcon}
         {badgeElement}
@@ -154,17 +216,27 @@ export const NavItemBase = ({
     );
   }
 
+  // An item with nowhere to go (e.g. Logout) is an action, so it is a button.
+  if (!href) {
+    return (
+      <button
+        className={cx(rootClassName, 'tw:text-left')}
+        data-testid={dataTestId}
+        type="button"
+        onClick={onClick}>
+        {iconElement}
+        {labelElement}
+        {badgeElement}
+      </button>
+    );
+  }
+
   return (
     <AriaLink
       aria-current={current ? 'page' : undefined}
-      className={cx(
-        'tw:px-3',
-        sizeStyles[size].padding,
-        styles.root,
-        current && styles.rootSelected
-      )}
+      className={rootClassName}
       data-testid={dataTestId}
-      href={href!}
+      href={href}
       rel="noopener noreferrer"
       target={isExternal ? '_blank' : '_self'}
       onClick={onClick}>

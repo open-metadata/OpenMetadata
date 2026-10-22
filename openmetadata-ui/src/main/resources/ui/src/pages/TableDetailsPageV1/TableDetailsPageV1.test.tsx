@@ -177,19 +177,14 @@ jest.mock(
 jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(() => <p>testDescription</p>);
 });
+// Distinct sentinel so "skeleton shown" assertions don't collide with other components
+// that render data-testid="loader".
 jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
+  '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton',
   () => {
-    return jest.fn().mockImplementation(() => <p>testErrorPlaceHolder</p>);
+    return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
   }
 );
-
-// Distinct sentinel so permission-loading (this) and entity-loading (mocked PageLoader
-// below) are unambiguous in assertions — both real components render
-// data-testid="loader", which would make "no loader" assertions ambiguous between the two.
-jest.mock('./TableDetailsPageSkeleton.component', () => {
-  return jest.fn().mockImplementation(() => <p>testPermissionSkeleton</p>);
-});
 
 jest.mock('../../components/common/QueryViewer/QueryViewer.component', () => {
   return jest.fn().mockImplementation(() => <p>testQueryViewer</p>);
@@ -636,6 +631,26 @@ describe('TestDetailsPageV1 component', () => {
     expect(getTableDetailsByFQN).toHaveBeenCalledWith('fqn', {
       fields: `${COMMON_API_FIELDS},usageSummary,testSuite`,
     });
+  });
+
+  it('keeps the entity skeleton, not a spinner, while the table itself is still loading', async () => {
+    setMockPermissions({ ViewBasic: true });
+    // Never settles, so the page stays on its entity-loading branch.
+    (getTableDetailsByFQN as jest.Mock).mockImplementationOnce(
+      () => new Promise(() => undefined)
+    );
+
+    await act(async () => {
+      renderWithQueryClient(
+        <MemoryRouter>
+          <TableDetailsPageV1 />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.queryByText('testDataAssetsHeader')).not.toBeInTheDocument();
   });
 
   it('TableDetailsPageV1 should render page for ViewBasic permissions', async () => {

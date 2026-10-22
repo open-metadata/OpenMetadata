@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -26,6 +22,8 @@ import React, { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
 import { Task } from '../../../../../rest/tasksAPI';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskTypeGroup } from '../taskList.utils';
 import { useIsScrolled } from '../useIsScrolled';
@@ -69,7 +67,7 @@ export const TaskQueueEmptyState = ({
   };
 
   const noMatch = (
-    <EmptyPlaceholder
+    <NoFilteredResultsPlaceholder
       actions={
         isScanCapped
           ? [
@@ -90,46 +88,40 @@ export const TaskQueueEmptyState = ({
           ? t('message.no-match-in-first-tasks', { count: scannedCount })
           : t('message.no-results-for-filters-description')
       }
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
+      icon={<FilterFunnel01 className="tw:size-7" />}
       title={t('message.no-match-found')}
-      variant="blank"
     />
   );
 
   const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
     all: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-empty"
         description={
           isPersonal ? t('message.tasks-empty-description') : undefined
         }
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-tasks-right-now')}
-        variant="blank"
       />
     ),
     open: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-open-empty"
         description={
           isPersonal ? t('message.tasks-open-empty-description') : undefined
         }
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-open-tasks-yet')}
-        variant="blank"
       />
     ),
     closed: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-closed-empty"
         description={
           isPersonal ? t('message.tasks-closed-empty-description') : undefined
         }
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        icon={<Inbox01 className="tw:size-7" />}
         title={t('label.no-closed-tasks-yet')}
-        variant="blank"
       />
     ),
   };
@@ -239,7 +231,9 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
   });
 
   return (
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+    // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
+    // long unbreakable title would widen the list and push the detail off-screen.
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">

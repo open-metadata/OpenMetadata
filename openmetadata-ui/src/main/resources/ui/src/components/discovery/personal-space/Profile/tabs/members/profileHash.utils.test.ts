@@ -14,10 +14,10 @@
 import { profileHash, toHashLocation } from './profileHash.utils';
 
 describe('profileHash', () => {
-  it('builds the profile tab target for a user, encoding the name', () => {
+  it('builds the members edit-user target for a user, never the profile tab', () => {
     expect(profileHash.user('john.doe@acme.io')).toEqual({
-      tab: 'profile',
-      subPath: encodeURIComponent('john.doe@acme.io'),
+      tab: 'members',
+      subPath: `user/${encodeURIComponent('john.doe@acme.io')}`,
     });
   });
 

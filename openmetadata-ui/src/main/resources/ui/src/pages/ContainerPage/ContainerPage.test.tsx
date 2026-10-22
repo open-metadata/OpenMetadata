@@ -16,7 +16,6 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
@@ -117,16 +116,6 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
     .mockImplementation(({ onThreadLinkSelect }) => (
       <button onClick={onThreadLinkSelect}>Description</button>
     ))
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ type, children }) => (
-    <div>
-      ErrorPlaceHolder
-      <span>{type}</span>
-      <div>{children}</div>
-    </div>
-  ))
 );
 
 jest.mock(
@@ -419,7 +408,7 @@ describe('Container Page Component', () => {
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     expect(
-      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -430,9 +419,9 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     (getContainerByName as jest.Mock).mockResolvedValue(MOCK_CONTAINER_DATA);
 
@@ -470,13 +459,17 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {
@@ -488,7 +481,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
@@ -535,7 +528,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const followButton = await screen.findByRole('button', {
       name: 'Follow Container',
@@ -555,7 +548,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',
@@ -584,7 +577,7 @@ describe('Container Page Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Loader')).toBeVisible();
+    expect(screen.getByTestId('loader')).toBeVisible();
 
     const childrenTab = await screen.findByRole('tab', {
       name: 'label.container-plural',

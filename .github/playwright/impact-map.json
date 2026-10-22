@@ -117,12 +117,31 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
+        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
         "playwright/e2e/Pages/Lineage/**/*.spec.ts",
         "playwright/e2e/Flow/*Lineage*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The export modal and the PNG/CSV writers behind it: every spec that opens the export modal.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Export/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
+        "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
     {
@@ -298,7 +317,11 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -375,6 +398,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AppRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/SearchResource.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java"
@@ -384,7 +408,8 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
-        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {
@@ -684,6 +709,21 @@
       ]
     },
     {
+      "_comment": "What reaches an entity's activity feed is decided server-side: the ActivityFeedAlert seed filter and the repository that builds and lists activity events (an asset's feed includes its data contract's).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ActivityStreamRepository.java",
+        "openmetadata-service/src/main/resources/json/data/eventsubscription/ActivityFeedEvents.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/ActivityAPI.spec.ts",
+        "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts"
+      ]
+    },
+    {
       "_comment": "The customize-landing-page and widget-filter playwright helpers are shared by every landing-page/customization spec. Without this entry a helper-only change (e.g. a wait fix in customizeLandingPage.ts or widgetFilters.ts) counted as an unmapped file, so CustomizeWidgets/CustomizeLandingPage and the other specs that execute the changed helpers never ran on the PR. Specs listed are the exact importers of these modules; DataInsight.spec.ts runs in the Data Insight project.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
@@ -715,9 +755,17 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.test.tsx",
         "openmetadata-ui/src/main/resources/ui/src/mocks/MyDataPage.mock.tsx",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview*",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useOwnedAndFollowed.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useTotalDataAssets*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useMyTasks*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/usePipelineStatus*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/myTaskBuckets*",
+        "openmetadata-ui/src/main/resources/ui/src/rest/pipelineAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/enums/CustomizablePage.enum.ts",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/widgets/landing/**",
+        "openmetadata-service/src/main/resources/json/data/document/docs/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
         "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
@@ -855,6 +903,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/AppModeSwitcher/**",
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/home/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/SettingsAppModePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Settings/DefaultAppModePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
@@ -864,7 +913,8 @@
       ],
       "projects": ["chromium"],
       "specs": [
-        "playwright/e2e/Features/AppMode/**/*.spec.ts"
+        "playwright/e2e/Features/AppMode/**/*.spec.ts",
+        "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts"
       ]
     },
     {
@@ -1023,11 +1073,15 @@
       "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
-        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataContractRedirectPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contractAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContractRepository.java"
       ],
       "projects": ["chromium", "ImportExport"],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
@@ -1083,6 +1137,69 @@
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts"
       ]
+    },
+    {
+      "_comment": "The first-login welcome screen and the post-deploy upgrade screen (the chunk-load ErrorFallback), with the brand hooks and artwork they render. WelcomeScreen.spec.ts drives the welcome screen in classic and AI mode (shown once, close, both actions, stays dismissed on the kept-alive AI home); AppModeAiPersonaLandsAtRoot.spec.ts covers the AI-mode landing route the gate wraps. No spec forces a chunk-load failure, so the upgrade screen is covered by ErrorFallback.test.tsx.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useFirstLoginWelcome.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/personalSpace.module.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorBoundary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/BrandData/**",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/upgrade-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen.png",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/om-upgrade.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/WelcomeScreen.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The Lineage section of the entity summary panel (Upstream/Downstream counts). ExplorePageRightPanel.spec.ts opens the panel and navigates from its lineage section; the data product Assets tab renders the same panel.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/LineageSection/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Service Insights widgets and their empty-state placeholders. Pagination.spec.ts and ServiceEntityPermissions.spec.ts open a service's Insights tab; ConnectionServiceDetails.spec.ts covers it in AI mode.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The shared page pagers. Pagination.spec.ts and GlobalPageSize.spec.ts drive Next/Previous and the page size across list pages; the components' importers map them further.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPrevious/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPreviousWithOffset/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/GlobalPageSize.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The Context Center icon in the classic left sidebar (also the Context Center asset and knowledge-page logo). Navbar.spec.ts walks the classic sidebar that renders it; its stroke weight is otherwise only visible to the visual-regression baselines.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/context-center.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
     }
   ]
 }

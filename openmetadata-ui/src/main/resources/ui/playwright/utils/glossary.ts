@@ -208,10 +208,10 @@ export const selectActiveGlossary = async (
   const sidebar = page.getByTestId('glossary-left-panel');
   await sidebar.getByRole('link').first().waitFor();
 
-  const menuItem = sidebar.getByRole('link', {
-    name: glossaryLabel,
-    exact: true,
-  });
+  // A glossary with terms awaiting review shows their count inside its link, so match the label.
+  const menuItem = sidebar
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryLabel, { exact: true }) });
   await menuItem.waitFor({ state: 'visible' });
 
   const isSelected = (await menuItem.getAttribute('aria-current')) === 'page';
@@ -661,14 +661,15 @@ export const validateGlossaryTerm = async (
   } else {
     await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
-    await expect(page.locator(statusSelector)).toBeVisible();
-
-    // If status is Draft, then check for either Draft or In Review
-    if (status === 'Draft') {
-      await expect(page.locator(statusSelector)).toContainText(
-        /Draft|In Review/
-      );
+    if (status === 'Draft' || status === 'In Review') {
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-status-badge')
+      ).toContainText('Proposed by');
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-source-person')
+      ).toBeVisible();
     } else {
+      await expect(page.locator(statusSelector)).toBeVisible();
       await expect(page.locator(statusSelector)).toContainText(status);
     }
   }
@@ -2177,3 +2178,15 @@ export const includeGlossaryInApprovalWorkflow = (
   apiContext: APIRequestContext,
   glossary: Glossary
 ) => updateApprovalWorkflowExclusion(apiContext, glossary, false);
+
+// The glossary page also fires its own /glossaryTerms/search proposal-count
+// queries (no q), so match the user's search by its query text.
+export const waitForTermSearch = (page: Page, query: string) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms/search') &&
+      url.searchParams.get('q') === query
+    );
+  });

@@ -61,13 +61,11 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Recognizer;
 import org.openmetadata.schema.type.RecognizerFeedback;
-import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.aicontext.AIContextFinderAccess;
-import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.ClassificationRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -599,13 +597,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    TagLabel label = classificationLabel(id);
-    return bulkAddToAssetsAsync(
-        securityContext,
-        id,
-        request,
-        Boolean.TRUE.equals(request.getDryRun()),
-        asset -> asset.setTags(ApprovalGate.withTag(asset.getTags(), label)));
+    return bulkAddToAssetsAsync(securityContext, id, request);
   }
 
   @PUT
@@ -630,22 +622,7 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid AddTagToAssetsRequest request) {
-    String tagFqn = classificationLabel(id).getTagFQN();
-    return bulkRemoveFromAssetsAsync(
-        securityContext,
-        id,
-        request,
-        Boolean.TRUE.equals(request.getDryRun()),
-        asset -> asset.setTags(ApprovalGate.withoutTag(asset.getTags(), tagFqn)));
-  }
-
-  private static TagLabel classificationLabel(UUID tagId) {
-    return new TagLabel()
-        .withTagFQN(
-            Entity.getEntityReferenceById(Entity.TAG, tagId, Include.NON_DELETED)
-                .getFullyQualifiedName())
-        .withSource(TagLabel.TagSource.CLASSIFICATION)
-        .withLabelType(TagLabel.LabelType.MANUAL);
+    return bulkRemoveFromAssetsAsync(securityContext, id, request);
   }
 
   @GET

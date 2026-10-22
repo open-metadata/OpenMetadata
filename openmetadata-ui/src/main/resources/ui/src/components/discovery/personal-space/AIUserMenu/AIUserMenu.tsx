@@ -378,14 +378,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile"
             textValue={displayName}
-            onAction={() =>
-              setHash(
-                'profile',
-                currentUser?.name
-                  ? encodeURIComponent(currentUser.name)
-                  : undefined
-              )
-            }>
+            onAction={() => setHash('profile')}>
             <Box align="center" gap={3}>
               <ProfilePicture
                 className="tw:*:font-medium"
@@ -571,7 +564,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ask-user-menu-settings"
             id="settings"
             textValue={t('label.setting-plural')}
-            onAction={() => navigate('/settings')}>
+            onAction={() => setHash('preferences')}>
             <MenuRow icon={Settings} label={t('label.setting-plural')} />
           </Dropdown.Item>
 

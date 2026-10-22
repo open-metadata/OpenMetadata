@@ -13,6 +13,7 @@
 
 import { Badge, Box, Card, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { getLandingIconColor } from '../../components/LandingIcon.constants';
 import type {
   PlatformSettingsPage,
   PlatformSettingsView,
@@ -33,7 +34,7 @@ const PlatformSettingsLanding = ({
     <div
       className="tw:grid tw:grid-cols-1 tw:gap-5 tw:sm:grid-cols-2 tw:lg:grid-cols-3"
       data-testid="platform-settings-landing">
-      {pages.map((page) => {
+      {pages.map((page, index) => {
         const Icon = page.icon;
         const open = () =>
           onNavigate({ type: 'page', page: page.id, isEditing: false });
@@ -58,9 +59,11 @@ const PlatformSettingsLanding = ({
               <Box align="start" direction="row" gap={4}>
                 <Box
                   align="center"
-                  className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:bg-tertiary"
+                  className={`tw:size-10 tw:shrink-0 tw:rounded-lg ${getLandingIconColor(
+                    index
+                  )}`}
                   justify="center">
-                  <Icon className="tw:size-5 tw:text-secondary" />
+                  <Icon className="tw:size-5" />
                 </Box>
                 <Box className="tw:min-w-0" direction="col" gap={1}>
                   <Box align="center" direction="row" gap={2}>

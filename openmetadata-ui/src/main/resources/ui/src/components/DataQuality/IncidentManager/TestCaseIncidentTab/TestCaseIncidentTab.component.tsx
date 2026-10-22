@@ -186,7 +186,9 @@ const TestCaseIncidentTab = () => {
 
         <TaskListV1
           activeFeedId={selectedTask?.id}
-          emptyPlaceholderText={t('message.no-tasks-assigned')}
+          emptyPlaceholderText={t('label.no-entity', {
+            entity: t('label.task-plural'),
+          })}
           isLoading={loading && isEmpty(tasks)}
           selectedTask={selectedTask}
           taskList={tasks}

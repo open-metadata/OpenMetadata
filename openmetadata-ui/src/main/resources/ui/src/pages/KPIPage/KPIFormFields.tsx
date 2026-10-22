@@ -13,6 +13,7 @@
 
 import {
   Box,
+  DatePicker,
   FormField,
   FormItemLabel,
   Grid,
@@ -24,12 +25,21 @@ import {
 import { DateTime } from 'luxon';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import DatePicker from '../../components/common/DatePicker/DatePicker';
-import { KPI_DATE_PICKER_FORMAT } from '../../constants/DataInsight.constants';
 import { KpiTargetType } from '../../generated/dataInsight/kpi/kpi';
-import { getDisabledDates } from '../../utils/DataInsightPureUtils';
+import { useStagedPickerValue } from '../../hooks/useStagedPickerValue';
+import {
+  dateValueToMillis,
+  millisToPickerDateValue,
+  PickerDateValue,
+} from '../../utils/date-time/calendarDate.utils';
 import { KPIMetricTypeOptions } from '../../utils/KPI/KPIUtils';
 import { KPIFormValues } from './KPIPage.interface';
+
+const toPickerValue = (value: DateTime | null) =>
+  millisToPickerDateValue(value?.toMillis());
+
+const fromPickerValue = (value: PickerDateValue | null | undefined) =>
+  value ? DateTime.fromMillis(dateValueToMillis(value)) : null;
 
 interface KPIFormFieldsProps {
   form: UseFormReturn<KPIFormValues>;
@@ -48,6 +58,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
   const { t } = useTranslation();
   const metricType = form.watch('metricType');
   const startLabel = t('label.start-entity', { entity: t('label.date') });
+  const todayValue = toPickerValue(DateTime.now());
 
   // A start date counts from the start of its day; an end date before it moves the start back.
   const handleStartDate = (value: DateTime | null) => {
@@ -69,6 +80,15 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
     form.setValue('endDate', endDate, { shouldValidate: true });
   };
 
+  const startPicker = useStagedPickerValue(
+    toPickerValue(form.watch('startDate')),
+    (value) => handleStartDate(fromPickerValue(value))
+  );
+  const endPicker = useStagedPickerValue(
+    toPickerValue(form.watch('endDate')),
+    (value) => handleEndDate(fromPickerValue(value))
+  );
+
   return (
     <>
       <FormField
@@ -89,10 +109,8 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             items={chartItems}
             label={t('label.select-a-chart')}
             placeholder={t('label.select-a-chart')}
-            selectedKey={field.value}
-            onSelectionChange={(key) =>
-              key !== null && field.onChange(String(key))
-            }>
+            value={field.value}
+            onChange={(key) => key !== null && field.onChange(String(key))}>
             {(item) => <Select.Item id={item.id} label={item.label} />}
           </Select>
         )}
@@ -118,8 +136,8 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             isDisabled={isEditing}
             items={METRIC_TYPE_ITEMS}
             label={t('label.metric-type')}
-            selectedKey={field.value}
-            onSelectionChange={(key) =>
+            value={field.value}
+            onChange={(key) =>
               key !== null && field.onChange(key as KpiTargetType)
             }>
             {(item) => <Select.Item id={item.id} label={item.label} />}
@@ -160,7 +178,7 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
               type="number"
               value={String(field.value ?? '')}
               onChange={(value) =>
-                field.onChange(value === '' ? NaN : Number(value))
+                field.onChange(value === '' ? Number.NaN : Number(value))
               }
             />
           );
@@ -168,10 +186,11 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
           return (
             <Box direction="col">
               {isPercentage ? (
-                <Grid className="tw:items-center" colGap="8">
+                <Grid className="tw:items-center" colGap="2">
                   <Grid.Item span={20}>
                     <Slider
                       aria-label={t('label.metric-value')}
+                      className="tw:mx-3"
                       maxValue={100}
                       minValue={0}
                       value={Number.isNaN(field.value) ? 0 : field.value}
@@ -201,17 +220,17 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
             rules={{
               required: t('label.field-required', { field: startLabel }),
             }}>
-            {({ field, fieldState }) => (
+            {({ fieldState }) => (
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={startLabel} />
                 <DatePicker
-                  className="w-full"
+                  aria-label={startLabel}
                   data-testid="start-date"
-                  disabledDate={getDisabledDates}
-                  format={KPI_DATE_PICKER_FORMAT}
                   id="startDate"
-                  value={field.value}
-                  onChange={handleStartDate}
+                  isInvalid={Boolean(fieldState.error)}
+                  minValue={todayValue}
+                  triggerVariant="input"
+                  {...startPicker}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>
@@ -229,17 +248,17 @@ const KPIFormFields = ({ form, chartItems, isEditing }: KPIFormFieldsProps) => {
                 field: t('label.end-date'),
               }),
             }}>
-            {({ field, fieldState }) => (
+            {({ fieldState }) => (
               <Box className="tw:gap-1.5" direction="col">
                 <FormItemLabel required label={t('label.end-date')} />
                 <DatePicker
-                  className="w-full"
+                  aria-label={t('label.end-date')}
                   data-testid="end-date"
-                  disabledDate={getDisabledDates}
-                  format={KPI_DATE_PICKER_FORMAT}
                   id="endDate"
-                  value={field.value}
-                  onChange={handleEndDate}
+                  isInvalid={Boolean(fieldState.error)}
+                  minValue={todayValue}
+                  triggerVariant="input"
+                  {...endPicker}
                 />
                 {fieldState.error && (
                   <HintText isInvalid>{fieldState.error.message}</HintText>

@@ -61,7 +61,7 @@ public class RdfPropertyMapper {
 
   // Properties that should be mapped to structured RDF instead of JSON literals
   private static final Set<String> STRUCTURED_PROPERTIES =
-      Set.of("lifeCycle", "customProperties", "extension", "certification", "realizedIn");
+      Set.of("lifeCycle", "customProperties", "extension", "certification");
 
   // Properties that never belong in the graph, for three reasons:
   //   1. Audit/helper data with no place in the graph: changeDescription, votes.
@@ -157,11 +157,10 @@ public class RdfPropertyMapper {
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
           OM_NS + "hasCustomProperty",
-          // Concept realization roles. om:mappedTo itself comes from the MAPPED_TO relationship
-          // and belongs to the relationship writers.
-          RdfRealizationMapper.HAS_PRIMARY_STORE,
-          RdfRealizationMapper.HAS_DERIVED_ASSET,
-          RdfRealizationMapper.HAS_REPLICA);
+          // Remove stale roles from unreleased glossary realizations on the next entity write.
+          OM_NS + "hasPrimaryStore",
+          OM_NS + "hasDerivedAsset",
+          OM_NS + "hasReplica");
 
   private final String baseUri;
   private final ObjectMapper objectMapper;
@@ -705,7 +704,6 @@ public class RdfPropertyMapper {
           addCustomProperty(item, entityResource, property, model);
         }
       }
-      case "realizedIn" -> RdfRealizationMapper.emit(value, entityResource, model, baseUri);
       default -> LOG.warn("Unknown structured array property: {}", fieldName);
     }
   }

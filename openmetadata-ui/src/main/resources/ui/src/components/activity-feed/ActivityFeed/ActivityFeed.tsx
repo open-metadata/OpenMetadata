@@ -124,7 +124,9 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   // A task action can write activity (an approved description is a change),
   // so every cached Activity list, and the counts read from them, re-read.
   const handleTaskChange = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: [INBOX_ACTIVITY_QUERY_KEY] });
+    void queryClient.invalidateQueries({
+      queryKey: [INBOX_ACTIVITY_QUERY_KEY],
+    });
     onTaskChange?.();
   }, [queryClient, onTaskChange]);
 

@@ -19,9 +19,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  Database01,
   SortAscending,
   SortDescending,
-  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -45,7 +45,7 @@ import {
 } from '../../../constants/Query.constant';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE, SORT_ORDER } from '../../../enums/common.enum';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -71,10 +71,9 @@ import {
 } from '../../../utils/Query/QueryUtils';
 import { getAddQueryPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import DatePicker, {
-  RangePickerProps,
-} from '../../common/DatePicker/DatePicker';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DateRangeFilter from '../../common/DateRangeFilter/DateRangeFilter';
+import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import FilterSelectDropdown from '../../common/FilterSelectDropdown/FilterSelectDropdown';
 import Loader from '../../common/Loader/Loader';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
@@ -118,7 +117,6 @@ const TableQueries: FC<TableQueriesProp> = ({
   );
   const [isTagsLoading, setIsTagsLoading] = useState(false);
   const [isOwnerLoading, setIsOwnerLoading] = useState(false);
-  const [isClickedCalendar, setIsClickedCalendar] = useState(false);
   const [queryDateFilter, setQueryDateFilter] = useState<{
     startTs: number;
     endTs: number;
@@ -431,23 +429,9 @@ const TableQueries: FC<TableQueriesProp> = ({
     }
   };
 
-  const onDateChange: RangePickerProps['onChange'] = (values) => {
-    if (values) {
-      const startTs = values[0]?.startOf('day').valueOf();
-      const endTs = values[1]?.endOf('day').valueOf();
-
-      if (!isUndefined(startTs) && !isUndefined(endTs)) {
-        setQueryDateFilter({ startTs, endTs });
-        fetchFilteredQueries({
-          tags: tagsFilter.selected,
-          timeRange: { startTs, endTs },
-        });
-        setIsClickedCalendar(false);
-      }
-    } else {
-      setQueryDateFilter(undefined);
-      fetchFilteredQueries({ tags: tagsFilter.selected });
-    }
+  const onDateChange = (timeRange?: { startTs: number; endTs: number }) => {
+    setQueryDateFilter(timeRange);
+    void fetchFilteredQueries({ tags: tagsFilter.selected, timeRange });
   };
 
   const pagingHandler = (currentPage: number, pageSize: number) => {
@@ -518,28 +502,39 @@ const TableQueries: FC<TableQueriesProp> = ({
   }
   if (isError.page) {
     return (
-      <ErrorPlaceHolder
-        buttonId="add-query-btn"
-        doc={USAGE_DOCS}
-        heading={t('label.query-lowercase-plural')}
-        permission={permissions?.query.Create}
-        permissionValue={t('label.create-entity', {
-          entity: t('label.query'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-        onClick={handleAddQueryClick}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <CreatePlaceholder
+          buttonId="add-query-btn"
+          data-testid={`create-error-placeholder-${t(
+            'label.query-lowercase-plural'
+          )}`}
+          doc={USAGE_DOCS}
+          heading={t('label.query-lowercase-plural')}
+          permission={permissions?.query.Create}
+          permissionValue={t('label.create-entity', {
+            entity: t('label.query'),
+          })}
+          onCreate={handleAddQueryClick}
+        />
+      </div>
     );
   }
 
   if (isTableDeleted) {
     return (
       <div data-testid="no-queries">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          {t('message.field-data-is-not-available-for-deleted-entities', {
-            field: t('label.query-plural'),
-          })}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={t(
+              'message.field-data-is-not-available-for-deleted-entities',
+              {
+                field: t('label.query-plural'),
+              }
+            )}
+            icon={<Database01 />}
+          />
+        </div>
       </div>
     );
   }
@@ -549,13 +544,17 @@ const TableQueries: FC<TableQueriesProp> = ({
       className="layout-column flex-center font-medium mt-24 p-b-md"
       data-testid="no-queries"
       span={24}>
-      <ErrorPlaceHolder>
-        <Typography as="p">
-          {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-            entity: t('label.query-lowercase-plural'),
-          })}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          description={t(
+            'message.adding-new-entity-is-easy-just-give-it-a-spin',
+            {
+              entity: t('label.query-lowercase-plural'),
+            }
+          )}
+        />
+      </div>
     </Grid.Item>
   ) : (
     tableQueries.map((query) => (
@@ -633,32 +632,20 @@ const TableQueries: FC<TableQueriesProp> = ({
                         onGetInitialOptions={getInitialTagsOptions}
                         onSearch={handleTagsSearch}
                       />
-                      <span
-                        className="tw:inline-flex tw:cursor-pointer tw:items-center"
-                        role="presentation"
-                        onClick={() => {
-                          setIsClickedCalendar(true);
-                        }}>
-                        <span>
-                          <Typography>{t('label.created-date')}</Typography>
-                          <DatePicker.RangePicker
-                            allowClear
-                            showNow
-                            bordered={false}
-                            className="p-t-0"
-                            clearIcon={
-                              <XCircle className="tw:shrink-0" size={14} />
-                            }
-                            data-testid="data-range-picker"
-                            open={isClickedCalendar}
-                            suffixIcon={null}
-                            onChange={onDateChange}
-                            onOpenChange={(isOpen) => {
-                              setIsClickedCalendar(isOpen);
-                            }}
-                          />
-                        </span>
-                      </span>
+                      <Box
+                        inline
+                        align="center"
+                        data-testid="data-range-picker"
+                        gap={2}>
+                        <Typography>{t('label.created-date')}</Typography>
+                        <DateRangeFilter
+                          endTs={queryDateFilter?.endTs}
+                          size="sm"
+                          startTs={queryDateFilter?.startTs}
+                          onApply={onDateChange}
+                          onClear={() => onDateChange()}
+                        />
+                      </Box>
                     </Box>
 
                     <Box

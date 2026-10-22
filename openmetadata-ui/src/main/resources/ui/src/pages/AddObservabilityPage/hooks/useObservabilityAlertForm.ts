@@ -42,7 +42,6 @@ export type ObservabilityAlertFormFieldsProps = Pick<
   ObservabilityAlertFormProps,
   | 'alert'
   | 'extraFormWidgets'
-  | 'filterResources'
   | 'form'
   | 'isLoading'
   | 'shouldShowActionsSection'
@@ -60,7 +59,7 @@ export function useObservabilityAlertForm({
       resources: [],
       destinations: [],
       input: {},
-      alertType: AlertType.Observability,
+      alertType: options.alertType ?? AlertType.Observability,
       provider: ProviderType.User,
       timeout: 10,
       readTimeout: DEFAULT_READ_TIMEOUT,

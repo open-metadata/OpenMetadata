@@ -218,6 +218,7 @@ export const getDomainDetailTabs = ({
   setShowAddSubDomainModal,
   feedCount,
   onFeedUpdate,
+  onUpdateEntityDetails,
   onDeleteSubDomain,
   labelMap,
 }: DomainDetailPageTabProps) => {
@@ -312,7 +313,7 @@ export const getDomainDetailTabs = ({
                 owners={domain.owners}
                 urlFqn={domain.fullyQualifiedName}
                 onFeedUpdate={onFeedUpdate ?? noop}
-                onUpdateEntityDetails={noop}
+                onUpdateEntityDetails={onUpdateEntityDetails}
               />
             ),
           },

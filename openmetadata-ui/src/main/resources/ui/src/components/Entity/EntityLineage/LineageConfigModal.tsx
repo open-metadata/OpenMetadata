@@ -11,31 +11,22 @@
  *  limitations under the License.
  */
 import {
-  FieldProp,
-  FieldTypes,
-  FormFields,
-  HelperTextType,
+  Button,
+  Dialog,
   HookForm,
-  SimpleModal,
+  Input,
+  Modal,
+  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import React, { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { LINEAGE_CONFIG_FIELDS } from '../../../constants/Lineage.constants';
+import { getLineageConfigFormValues } from '../../../utils/EntityLineagePureUtils';
 import {
-  LineageConfig,
+  LineageConfigFormValues,
   LineageConfigModalProps,
 } from './EntityLineage.interface';
-
-type DepthField = 'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer';
-
-// Number inputs hold strings; the config stores numbers.
-type LineageConfigFormValues = Record<DepthField, string>;
-
-const toFormValues = (config: LineageConfig): LineageConfigFormValues => ({
-  upstreamDepth: String(config.upstreamDepth ?? ''),
-  downstreamDepth: String(config.downstreamDepth ?? ''),
-  nodesPerLayer: String(config.nodesPerLayer ?? ''),
-});
 
 const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
   visible,
@@ -45,84 +36,93 @@ const LineageConfigModal: React.FC<LineageConfigModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const form = useForm<LineageConfigFormValues>({
-    defaultValues: toFormValues(config),
+    defaultValues: getLineageConfigFormValues(config),
   });
 
-  // Callers keep the modal mounted and only toggle `visible`, so re-read the
-  // config on every open: it may have loaded since, or an edit was cancelled.
   useEffect(() => {
     if (visible) {
-      form.reset(toFormValues(config));
+      form.reset(getLineageConfigFormValues(config));
     }
-  }, [visible, config, form]);
+  }, [visible, config, form.reset, form]);
 
-  const getNumberField = (
-    name: DepthField,
-    label: string,
-    tooltip: string,
-    min: number,
-    testId: string
-  ): FieldProp => ({
-    name,
-    label,
-    type: FieldTypes.NUMBER,
-    required: true,
-    helperText: tooltip,
-    helperTextType: HelperTextType.TOOLTIP,
-    props: { inputDataTestId: testId },
-    rules: {
-      required: t('message.field-text-is-required', { fieldText: label }),
-      validate: (value) =>
-        Number(value) >= min ||
-        t('message.entity-size-less-than', { entity: label, min }),
-    },
-  });
-
-  const fields: FieldProp[] = [
-    getNumberField(
-      'upstreamDepth',
-      t('label.upstream-depth'),
-      t('message.upstream-depth-tooltip'),
-      0,
-      'field-upstream'
-    ),
-    getNumberField(
-      'downstreamDepth',
-      t('label.downstream-depth'),
-      t('message.downstream-depth-tooltip'),
-      0,
-      'field-downstream'
-    ),
-    getNumberField(
-      'nodesPerLayer',
-      t('label.nodes-per-layer'),
-      t('message.nodes-per-layer-tooltip'),
-      5,
-      'field-nodes-per-layer'
-    ),
-  ];
-
-  const handleSave = (values: LineageConfigFormValues) =>
+  // Keep the rest of the config (e.g. pipelineViewMode): callers store the
+  // saved object as a whole.
+  const onSubmit = (values: LineageConfigFormValues) =>
     onSave({
+      ...config,
       upstreamDepth: Number(values.upstreamDepth),
       downstreamDepth: Number(values.downstreamDepth),
       nodesPerLayer: Number(values.nodesPerLayer),
-    } as LineageConfig);
+    });
 
   return (
-    <SimpleModal
+    <ModalOverlay
       isDismissable={false}
       isOpen={visible}
-      title={t('label.lineage-config')}
-      onCancel={onCancel}
-      onOk={form.handleSubmit(handleSave)}>
-      <HookForm
-        className="tw:flex tw:flex-col tw:gap-4"
-        form={form}
-        onSubmit={form.handleSubmit(handleSave)}>
-        <FormFields fields={fields} />
-      </HookForm>
-    </SimpleModal>
+      onOpenChange={(isOpen) => !isOpen && onCancel()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          title={t('label.lineage-config')}
+          width={520}
+          onClose={onCancel}>
+          <Dialog.Content>
+            <HookForm<LineageConfigFormValues>
+              form={form}
+              onSubmit={form.handleSubmit(onSubmit)}>
+              {LINEAGE_CONFIG_FIELDS.map(
+                ({ name, label, tooltip, testId, min }) => (
+                  <Controller
+                    control={form.control}
+                    key={name}
+                    name={name}
+                    render={({ field, fieldState }) => (
+                      <Input
+                        isRequired
+                        hint={fieldState.error?.message}
+                        inputDataTestId={testId}
+                        isInvalid={Boolean(fieldState.error)}
+                        label={t(label)}
+                        name={field.name}
+                        ref={field.ref}
+                        tooltip={t(tooltip)}
+                        type="number"
+                        validationBehavior="aria"
+                        value={field.value}
+                        onBlur={field.onBlur}
+                        onChange={field.onChange}
+                      />
+                    )}
+                    rules={{
+                      required: t('message.field-text-is-required', {
+                        fieldText: t(label),
+                      }),
+                      min: {
+                        value: min,
+                        message: t('message.entity-size-less-than', {
+                          entity: t(label),
+                          min,
+                        }),
+                      },
+                    }}
+                  />
+                )
+              )}
+            </HookForm>
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button color="secondary" onPress={onCancel}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              onPress={() => form.handleSubmit(onSubmit)()}>
+              {t('label.ok')}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

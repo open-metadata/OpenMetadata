@@ -98,6 +98,7 @@ export interface ListTasksParams {
   createdBy?: string;
   createdById?: string;
   aboutEntity?: string;
+  aboutEntityIds?: string;
   aboutService?: string;
   approver?: string;
   approverId?: string;
