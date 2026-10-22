@@ -25,7 +25,7 @@ set -e
 declare -A python
 python["name"]="Python"
 python["version_command"]="python --version 2>&1 | awk '{print \$2}'"
-python["required_version"]=">=3.10"
+python["required_version"]="any"
 python["minimum_version"]="3.10"
 
 declare -A docker
@@ -91,7 +91,7 @@ check_version() {
         return
     fi
     for v in "${required_versions[@]}"; do
-        if [[ "$current" =~ $v.* ]]; then
+        if [[ "$current" =~ ^v?$v ]]; then
             echo "✓ $tool_name version $current is supported."
             return
         fi
@@ -133,10 +133,9 @@ for dependency in python docker java maven jq node yarn antlr; do
     version=$(eval ${dependency["version_command"]})
     required_version=${dependency["required_version"]}
     minimum_version=${dependency["minimum_version"]:-}
+    check_version "$tool_name" "$version" "$required_version"
     if [[ -n "$minimum_version" ]]; then
       check_minimum_version "$tool_name" "$version" "$minimum_version"
-    else
-      check_version "$tool_name" "$version" "$required_version"
     fi
 done
 if [[ $code -eq 0 ]]; then
