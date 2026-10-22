@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 /**
- * Current bindings filtered by canonical catalog visibility. Hidden and deleted assets
- * contribute no associations, paths, or counts.
+ * One page of a concept's bindings, ordered by asset id and filtered by canonical catalog
+ * visibility. Hidden and deleted assets contribute no associations, paths, cursors, or
+ * counts.
  */
 export interface OntologyConceptBindingsResponse {
+    /**
+     * Cursor for the next page of visible assets. Absent on the last page.
+     */
+    after?:   string;
     assets:   AssetBinding[];
     revision: number;
 }
@@ -24,6 +29,10 @@ export interface AssetBinding {
     assetId:   string;
     assetType: AssetType;
     columns:   ColumnBinding[];
+    /**
+     * Service type of the asset, for asset types that record one.
+     */
+    serviceType?: string;
 }
 
 /**

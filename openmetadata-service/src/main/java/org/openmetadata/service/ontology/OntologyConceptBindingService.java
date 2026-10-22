@@ -4,8 +4,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -24,7 +28,6 @@ import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyBoundColumn;
 import org.openmetadata.schema.type.OntologyColumnBinding;
 import org.openmetadata.schema.type.OntologyColumnBindingState;
-import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyHydratedAssetBinding;
 import org.openmetadata.schema.type.OntologyHydratedColumnBinding;
@@ -32,6 +35,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -39,9 +44,13 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FreshReadScope;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public final class OntologyConceptBindingService {
+  public static final int MAX_PAGE_SIZE = 100;
+  private static final int MAX_CURSOR_LENGTH = 256;
   private final OntologyConceptBindingStore store;
   private final Authorizer authorizer;
   private final Function<String, EntityRepository<?>> repositories;
@@ -57,11 +66,13 @@ public final class OntologyConceptBindingService {
     this.repositories = repositories;
   }
 
-  public OntologyConceptBindingsResponse get(final Access access, final UUID conceptId) {
+  public OntologyConceptBindingsResponse get(
+      final Access access, final UUID conceptId, final int limit, final String after) {
+    final UUID start = decodeCursor(after);
     try (final var ignored = FreshReadScope.enter()) {
       final var concept = concept(access, conceptId, MetadataOperation.VIEW_BASIC);
       store.requireLiveOntology(concept);
-      return hydrate(access, concept, store.read(conceptId));
+      return page(access, concept, store.revision(conceptId), start, limit);
     }
   }
 
@@ -73,11 +84,11 @@ public final class OntologyConceptBindingService {
     OntologyBindingRules.requireRevision(request.getExpectedRevision());
     OntologyBindingRules.validate(request.getAsset());
     final var concept = concept(access, conceptId, MetadataOperation.EDIT_ALL);
-    final var updated =
-        store.update(
-            concept,
-            (currentConcept, current) -> replace(access, currentConcept, current, request));
-    return hydrate(access, concept, updated);
+    store.update(
+        concept,
+        (lockedConcept, locked, current) ->
+            replace(access, lockedConcept, locked, current, request));
+    return firstPage(access, concept);
   }
 
   public OntologyConceptBindingsResponse remove(
@@ -89,67 +100,86 @@ public final class OntologyConceptBindingService {
     OntologyBindingRules.requireRevision(expectedRevision);
     final var type = assetType(assetType);
     final var concept = concept(access, conceptId, MetadataOperation.EDIT_ALL);
-    final var updated =
-        store.update(
-            concept,
-            (currentConcept, current) -> {
-              concept(access, currentConcept.getId(), MetadataOperation.EDIT_ALL);
-              authorized(access, type.value(), assetId, MetadataOperation.VIEW_BASIC);
-              final var live = liveTargets(access, current);
-              final var result = OntologyBindingRules.remove(live, type, assetId, expectedRevision);
-              return result == live ? current : result;
-            });
-    return hydrate(access, concept, updated);
+    store.update(
+        concept,
+        (lockedConcept, locked, current) -> {
+          concept(access, lockedConcept.getId(), MetadataOperation.EDIT_ALL);
+          authorized(access, type.value(), assetId, MetadataOperation.VIEW_BASIC);
+          if (locked.find(lockedConcept.getId(), assetId) == null) {
+            return current;
+          }
+          final long next = OntologyBindingRules.nextRevision(current, expectedRevision);
+          prune(locked, lockedConcept.getId());
+          locked.remove(lockedConcept.getId(), assetId);
+          return next;
+        });
+    return firstPage(access, concept);
   }
 
-  private OntologyConceptBindings replace(
+  private long replace(
       final Access access,
       final OntologyConcept concept,
-      final OntologyConceptBindings current,
+      final OntologyConceptBindingStore locked,
+      final long current,
       final UpdateOntologyConceptBinding request) {
     concept(access, concept.getId(), MetadataOperation.EDIT_ALL);
     final var asset = request.getAsset();
     final var target =
         authorized(
             access, asset.getAssetType().value(), asset.getAssetId(), MetadataOperation.VIEW_BASIC);
-    final var live = liveTargets(access, current);
-    final var updated = OntologyBindingRules.replace(live, asset, request.getExpectedRevision());
-    if (updated != live) {
-      validateColumns(access, concept, current, new Candidate(asset, target));
+    final var existing = locked.find(concept.getId(), asset.getAssetId());
+    if (existing != null
+        && existing.assetType() == asset.getAssetType()
+        && OntologyBindingRules.sameColumns(existing.columns(), asset.getColumns())) {
+      return current;
     }
-    return updated == live ? current : updated;
+    final long next = OntologyBindingRules.nextRevision(current, request.getExpectedRevision());
+    final var live = prune(locked, concept.getId());
+    final int retained =
+        live.stream()
+            .filter(row -> !row.assetId().equals(asset.getAssetId()))
+            .mapToInt(row -> row.columns().size())
+            .sum();
+    OntologyBindingRules.requireColumnCapacity(retained + listOrEmpty(asset.getColumns()).size());
+    validateColumns(
+        access, concept, existing == null ? List.of() : existing.columns(), asset, target);
+    locked.save(
+        concept.getId(), asset, FullyQualifiedName.buildHash(target.getFullyQualifiedName()));
+    return next;
   }
 
-  private OntologyConceptBindings liveTargets(
-      final Access access, final OntologyConceptBindings current) {
-    return new OntologyConceptBindings()
-        .withRevision(current.getRevision())
-        .withAssets(
-            current.getAssets().stream().filter(asset -> isLiveTarget(access, asset)).toList());
+  /** Drops rows whose asset is soft or hard deleted and returns the rows that remain. */
+  private List<BindingRow> prune(final OntologyConceptBindingStore locked, final UUID conceptId) {
+    final var rows = locked.rows(conceptId);
+    final var live = liveAssets(locked, rows).keySet();
+    locked.remove(
+        conceptId,
+        rows.stream().map(BindingRow::assetId).filter(assetId -> !live.contains(assetId)).toList());
+    return rows.stream().filter(row -> live.contains(row.assetId())).toList();
   }
 
-  private boolean isLiveTarget(final Access access, final OntologyAssetBinding asset) {
-    try {
-      final var target =
-          repositories
-              .apply(asset.getAssetType().value())
-              .get(access.uriInfo(), asset.getAssetId(), new Fields(Set.of()), Include.ALL, false);
-      return !Boolean.TRUE.equals(target.getDeleted());
-    } catch (final EntityNotFoundException missing) {
-      return false;
+  private static Map<UUID, LiveAsset> liveAssets(
+      final OntologyConceptBindingStore store, final List<BindingRow> rows) {
+    final Map<UUID, LiveAsset> live = new HashMap<>();
+    byType(rows).forEach((type, ids) -> live.putAll(store.liveAssets(type, ids)));
+    return live;
+  }
+
+  private static Map<OntologyBindingAssetType, List<UUID>> byType(final List<BindingRow> rows) {
+    final Map<OntologyBindingAssetType, List<UUID>> ids =
+        new EnumMap<>(OntologyBindingAssetType.class);
+    for (final var row : rows) {
+      ids.computeIfAbsent(row.assetType(), type -> new ArrayList<>()).add(row.assetId());
     }
+    return ids;
   }
 
   private void validateColumns(
       final Access access,
       final OntologyConcept concept,
-      final OntologyConceptBindings current,
-      final Candidate candidate) {
-    final var asset = candidate.binding();
-    final var existing =
-        OntologyBindingRules.find(current, asset.getAssetType(), asset.getAssetId());
-    final var retained =
-        existing == null ? List.<OntologyColumnBinding>of() : listOrEmpty(existing.getColumns());
+      final List<OntologyColumnBinding> retained,
+      final OntologyAssetBinding asset,
+      final EntityInterface<?> target) {
     final var additions =
         listOrEmpty(asset.getColumns()).stream()
             .filter(binding -> !retained.contains(binding))
@@ -164,7 +194,7 @@ public final class OntologyConceptBindingService {
                   binding.getPropertyId(),
                   MetadataOperation.VIEW_BASIC);
       if (!OntologyBindingRules.isApplicable(concept, property, ancestors)
-          || !(candidate.entity() instanceof Table table)
+          || !(target instanceof Table table)
           || OntologyBindingRules.resolveColumn(table, binding.getColumnPath()) == null) {
         throw new BadRequestException(
             "Bindings require an applicable same-ontology DATA property and an existing exact column path");
@@ -172,37 +202,103 @@ public final class OntologyConceptBindingService {
     }
   }
 
-  private OntologyConceptBindingsResponse hydrate(
-      final Access access, final OntologyConcept concept, final OntologyConceptBindings bindings) {
+  private OntologyConceptBindingsResponse firstPage(
+      final Access access, final OntologyConcept concept) {
     try (final var ignored = FreshReadScope.enter()) {
-      final var ancestors =
-          bindings.getAssets().stream()
-                  .anyMatch(asset -> !listOrEmpty(asset.getColumns()).isEmpty())
-              ? store.ancestors(concept)
-              : Set.<String>of();
-      final var hydration = new Hydration(access, concept, ancestors);
-      return new OntologyConceptBindingsResponse()
-          .withRevision(bindings.getRevision())
-          .withAssets(
-              bindings.getAssets().stream()
-                  .flatMap(asset -> hydrateAsset(hydration, asset).stream())
-                  .toList());
+      return page(access, concept, store.revision(concept.getId()), null, MAX_PAGE_SIZE);
     }
   }
 
-  private Optional<OntologyHydratedAssetBinding> hydrateAsset(
-      final Hydration hydration, final OntologyAssetBinding binding) {
-    return readable(hydration.access(), binding.getAssetType().value(), binding.getAssetId())
+  /**
+   * Walks rows in asset id order until one more visible asset than the page holds is found, so the
+   * cursor is only returned when a next page exists. Hidden and deleted rows take no slot.
+   */
+  private OntologyConceptBindingsResponse page(
+      final Access access,
+      final OntologyConcept concept,
+      final long revision,
+      final UUID after,
+      final int limit) {
+    final List<Visible> visible = new ArrayList<>();
+    UUID cursor = after;
+    while (visible.size() <= limit) {
+      final var batch = store.page(concept.getId(), cursor, limit + 1);
+      if (batch.isEmpty()) {
+        break;
+      }
+      visible.addAll(visibleAssets(access, batch));
+      if (batch.size() < limit + 1) {
+        break;
+      }
+      cursor = batch.getLast().assetId();
+    }
+    final boolean more = visible.size() > limit;
+    final var assets = visible.subList(0, Math.min(limit, visible.size()));
+    final var ancestors =
+        assets.stream().anyMatch(asset -> !asset.row().columns().isEmpty())
+            ? store.ancestors(concept)
+            : Set.<String>of();
+    final var hydration = new Hydration(access, concept, ancestors, new HashMap<>());
+    return new OntologyConceptBindingsResponse()
+        .withRevision(revision)
+        .withAssets(assets.stream().map(asset -> hydrateAsset(hydration, asset)).toList())
+        .withAfter(
+            more ? RestUtil.encodeCursor(assets.getLast().row().assetId().toString()) : null);
+  }
+
+  private List<Visible> visibleAssets(final Access access, final List<BindingRow> rows) {
+    final var live = liveAssets(store, rows);
+    final Map<UUID, EntityInterface<?>> viewable = new HashMap<>();
+    byType(rows)
+        .forEach(
+            (type, ids) ->
+                loadViewable(
+                    access,
+                    repositories.apply(type.value()),
+                    ids.stream().filter(live::containsKey).toList(),
+                    viewable));
+    return rows.stream()
+        .filter(row -> viewable.containsKey(row.assetId()))
         .map(
-            asset ->
-                new OntologyHydratedAssetBinding()
-                    .withAssetType(binding.getAssetType())
-                    .withAssetId(binding.getAssetId())
-                    .withAsset(asset.getEntityReference())
-                    .withColumns(
-                        listOrEmpty(binding.getColumns()).stream()
-                            .map(column -> hydrateColumn(hydration, asset, column))
-                            .toList()));
+            row ->
+                new Visible(
+                    row, viewable.get(row.assetId()), live.get(row.assetId()).serviceType()))
+        .toList();
+  }
+
+  private <T extends EntityInterface<?>> void loadViewable(
+      final Access access,
+      final EntityRepository<T> repository,
+      final List<UUID> ids,
+      final Map<UUID, EntityInterface<?>> viewable) {
+    if (ids.isEmpty()) {
+      return;
+    }
+    for (final T entity :
+        repository.get(access.uriInfo(), ids, fields(repository), Include.NON_DELETED)) {
+      try {
+        authorize(access, repository, entity, MetadataOperation.VIEW_BASIC);
+        viewable.put(entity.getId(), entity);
+      } catch (final AuthorizationException hidden) {
+        LOG.debug(
+            "Binding target {} {} is hidden from the reader",
+            repository.getEntityType(),
+            entity.getId());
+      }
+    }
+  }
+
+  private OntologyHydratedAssetBinding hydrateAsset(
+      final Hydration hydration, final Visible visible) {
+    return new OntologyHydratedAssetBinding()
+        .withAssetType(visible.row().assetType())
+        .withAssetId(visible.row().assetId())
+        .withAsset(visible.entity().getEntityReference())
+        .withServiceType(visible.serviceType())
+        .withColumns(
+            visible.row().columns().stream()
+                .map(column -> hydrateColumn(hydration, visible.entity(), column))
+                .toList());
   }
 
   private OntologyHydratedColumnBinding hydrateColumn(
@@ -210,8 +306,13 @@ public final class OntologyConceptBindingService {
       final EntityInterface<?> asset,
       final OntologyColumnBinding binding) {
     final var property =
-        readable(hydration.access(), Entity.ONTOLOGY_PROPERTY, binding.getPropertyId())
-            .map(OntologyProperty.class::cast);
+        hydration
+            .properties()
+            .computeIfAbsent(
+                binding.getPropertyId(),
+                id ->
+                    readable(hydration.access(), Entity.ONTOLOGY_PROPERTY, id)
+                        .map(OntologyProperty.class::cast));
     final var column =
         asset instanceof Table table
             ? OntologyBindingRules.resolveColumn(table, binding.getColumnPath())
@@ -268,18 +369,45 @@ public final class OntologyConceptBindingService {
       final EntityRepository<T> repository,
       final UUID id,
       final MetadataOperation operation) {
+    final T entity =
+        repository.get(access.uriInfo(), id, fields(repository), Include.NON_DELETED, false);
+    authorize(access, repository, entity, operation);
+    return entity;
+  }
+
+  private <T extends EntityInterface<?>> void authorize(
+      final Access access,
+      final EntityRepository<T> repository,
+      final T entity,
+      final MetadataOperation operation) {
+    authorizer.authorize(
+        access.securityContext(),
+        new OperationContext(repository.getEntityType(), operation),
+        new ResourceContext<>(repository.getEntityType(), entity, repository));
+  }
+
+  /** The fields authorization reads, plus columns on tables so bound paths can be resolved. */
+  private static Fields fields(final EntityRepository<?> repository) {
     final var fieldNames =
         new HashSet<>(ResourceContext.authorizationFields(repository).getFieldList());
     if (Entity.TABLE.equals(repository.getEntityType())) {
       fieldNames.add(Entity.FIELD_COLUMNS);
     }
-    final T entity =
-        repository.get(access.uriInfo(), id, new Fields(fieldNames), Include.NON_DELETED, false);
-    authorizer.authorize(
-        access.securityContext(),
-        new OperationContext(repository.getEntityType(), operation),
-        new ResourceContext<>(repository.getEntityType(), entity, repository));
-    return entity;
+    return new Fields(fieldNames);
+  }
+
+  private static UUID decodeCursor(final String after) {
+    if (after == null || after.isEmpty()) {
+      return null;
+    }
+    if (after.length() > MAX_CURSOR_LENGTH) {
+      throw new BadRequestException("Invalid ontology binding cursor");
+    }
+    try {
+      return UUID.fromString(RestUtil.decodeCursor(after));
+    } catch (final IllegalArgumentException invalid) {
+      throw new BadRequestException("Invalid ontology binding cursor", invalid);
+    }
   }
 
   private static OntologyBindingAssetType assetType(final String value) {
@@ -290,7 +418,11 @@ public final class OntologyConceptBindingService {
     }
   }
 
-  private record Candidate(OntologyAssetBinding binding, EntityInterface<?> entity) {}
+  private record Visible(BindingRow row, EntityInterface<?> entity, String serviceType) {}
 
-  private record Hydration(Access access, OntologyConcept concept, Set<String> ancestors) {}
+  private record Hydration(
+      Access access,
+      OntologyConcept concept,
+      Set<String> ancestors,
+      Map<UUID, Optional<OntologyProperty>> properties) {}
 }

@@ -121,12 +121,14 @@ public class OntologyConceptResource
   @Path("/{id}/bindings")
   @Operation(
       operationId = "getOntologyConceptBindings",
-      summary = "Get authorized catalog bindings for a concept")
+      summary = "Get one page of the catalog bindings of a concept the caller may view")
   public OntologyConceptBindingsResponse getBindings(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
-      @PathParam("id") final UUID id) {
-    return bindings.get(new Access(uriInfo, securityContext), id);
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("100") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    return bindings.get(new Access(uriInfo, securityContext), id, limit, after);
   }
 
   @PUT
