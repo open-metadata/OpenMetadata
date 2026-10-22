@@ -611,7 +611,7 @@ public interface EntityDAO<T extends EntityInterface<?>> {
   List<String> lockExistingIds(@Define("table") String table, @BindList("ids") List<String> ids);
 
   /** The delete's side of {@link #lockExistingIds}: an exclusive lock on rows about to go. */
-  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) FOR UPDATE")
+  @SqlQuery("SELECT id FROM <table> WHERE id IN (<ids>) ORDER BY id FOR UPDATE")
   List<String> lockIdsForUpdate(@Define("table") String table, @BindList("ids") List<String> ids);
 
   @SqlQuery("SELECT json FROM <table> WHERE <nameColumnHash> = :name <cond>")

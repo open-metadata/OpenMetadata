@@ -9972,7 +9972,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (!nullOrEmpty(dataProducts)) {
       EntityDAO<?> dataProductDao = daoCollection.dataProductDAO();
       List<String> ids =
-          dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+          dataProducts.stream()
+              .map(dataProduct -> dataProduct.getId().toString())
+              .distinct()
+              .toList();
       Set<String> existing =
           new HashSet<>(
               EntityDAO.queryInChunks(
