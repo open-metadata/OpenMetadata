@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -42,6 +37,8 @@ import {
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import {
   INBOX_OPEN_TASK_COUNT_QUERY_KEY,
   TASK_LIST_QUERY_KEY,
@@ -164,7 +161,7 @@ const TasksEmptyState = ({
   };
 
   const noMatch = (
-    <EmptyPlaceholder
+    <NoFilteredResultsPlaceholder
       actions={
         isScanCapped
           ? [
@@ -185,40 +182,34 @@ const TasksEmptyState = ({
           ? t('message.no-match-in-first-tasks', { count: scannedCount })
           : t('message.no-results-for-filters-description')
       }
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
+      icon={<FilterFunnel01 className="tw:size-7" />}
       title={t('message.no-match-found')}
-      variant="blank"
     />
   );
 
   const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
     all: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-empty"
         description={t('message.tasks-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-tasks-right-now')}
-        variant="blank"
       />
     ),
     open: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-open-empty"
         description={t('message.tasks-open-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-open-tasks-yet')}
-        variant="blank"
       />
     ),
     closed: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-closed-empty"
         description={t('message.tasks-closed-empty-description')}
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        icon={<Inbox01 className="tw:size-7" />}
         title={t('label.no-closed-tasks-yet')}
-        variant="blank"
       />
     ),
   };

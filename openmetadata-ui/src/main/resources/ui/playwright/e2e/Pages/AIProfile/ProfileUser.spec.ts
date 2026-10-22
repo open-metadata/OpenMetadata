@@ -20,12 +20,13 @@ import {
   navigateToMembersPanel,
   openAdminsPanel,
   openAiProfile,
-  openUserProfile,
+  openUserEditView,
   openUsersPanel,
   searchUserRow,
   waitForUserPatch,
 } from '../../../utils/aiProfile';
 import { chooseSelectOption, uuid } from '../../../utils/common';
+import { getDomainNode } from '../../../utils/domainPicker';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of Users.spec.ts + UserDetails.spec.ts onto the
@@ -45,7 +46,6 @@ const trackUser = (
   apiContext: Parameters<UserClass['create']>[0]
 ): Promise<UserClass> => createTrackedUser(apiContext, createdUsers);
 
-/** Open a user's profile view (#profile/<name>) from the Users list. */
 test.describe('AI Profile Users', () => {
   test.beforeAll(async ({ browser }) => {
     createdUsers = [];
@@ -215,14 +215,14 @@ test.describe('AI Profile Users', () => {
     await hardDelete;
   });
 
-  test('Should edit the preferred name on a user profile', async ({
+  test("Should edit the display name on a user's page", async ({
     browser,
     page,
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('preferred-name-edit').click();
     await page
@@ -235,11 +235,11 @@ test.describe('AI Profile Users', () => {
     await patch;
   });
 
-  test('Should add a persona on a user profile', async ({ browser, page }) => {
+  test("Should add a persona on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('persona-edit').click();
     await chooseSelectOption(
@@ -259,29 +259,29 @@ test.describe('AI Profile Users', () => {
     );
   });
 
-  test('Should assign a domain on a user profile', async ({
-    browser,
-    page,
-  }) => {
+  test("Should assign a domain on a user's page", async ({ browser, page }) => {
     const { apiContext } = await performAdminLogin(browser);
     const user = await trackUser(apiContext);
 
-    await openUserProfile(page, user.responseData.name);
+    await openUserEditView(page, user.responseData.name);
 
     await page.getByTestId('domains-edit').click();
-    // The fixture may be outside the first page of domains. The selection helper
-    // also reopens the popup if scrolling the profile panel dismisses it.
-    await page
+    // The row uses the shared DomainSelect tree picker; searching keeps the
+    // fixture reachable even when it is outside the first page of domains.
+    const domainInput = page
       .getByTestId('domains-multiselect')
-      .getByRole('combobox')
-      .fill(domain.responseData.displayName);
-    await chooseSelectOption(
-      page.getByTestId('domains-multiselect'),
-      page.getByRole('option', {
-        name: domain.responseData.displayName,
-        exact: true,
-      })
-    );
+      .getByRole('combobox');
+    await domainInput.click();
+    await domainInput.fill(domain.responseData.displayName);
+    const domainNode = getDomainNode(page, {
+      name: domain.responseData.name,
+      fullyQualifiedName: domain.responseData.fullyQualifiedName,
+    });
+    await expect(domainNode).toBeVisible();
+    await domainNode.click();
+    // Multi-select commits each toggle immediately; close the tree before Save.
+    await page.keyboard.press('Escape');
+    await expect(domainNode).toBeHidden();
 
     const patch = waitForUserPatch(page, user.responseData.id ?? '');
     await page.getByTestId('domains-save').click();
@@ -295,6 +295,54 @@ test.describe('AI Profile Users', () => {
     );
   });
 
+  test("Should edit the description on a user's page", async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+    const description = `Description ${uuid()}`;
+
+    await openUserEditView(page, user.responseData.name);
+
+    await page.getByTestId('user-description-edit').click();
+    await expect(page.getByTestId('user-description-save')).toBeDisabled();
+    const editor = page
+      .getByTestId('user-description')
+      .locator('[contenteditable="true"]');
+    await editor.click();
+    await editor.fill(description);
+
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
+    await page.getByTestId('user-description-save').click();
+    const response = await patch;
+
+    expect(response.ok()).toBeTruthy();
+    await expect(page.getByTestId('user-description')).toContainText(
+      description
+    );
+  });
+
+  test("Should grant admin from a user's page", async ({ browser, page }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const user = await trackUser(apiContext);
+
+    await openUserEditView(page, user.responseData.name);
+
+    const adminToggle = page.getByTestId('user-admin').getByRole('switch');
+    await expect(adminToggle).not.toBeChecked();
+
+    // The toggle saves on change: no edit mode, no Save button.
+    const patch = waitForUserPatch(page, user.responseData.id ?? '');
+    await page.getByTestId('user-admin-toggle').click();
+    const response = await patch;
+
+    expect(response.request().postDataJSON()).toEqual([
+      { op: 'replace', path: '/isAdmin', value: true },
+    ]);
+    await expect(adminToggle).toBeChecked();
+  });
+
   test('Non-admin can edit own name but not persona', async ({
     dataConsumerPage,
   }) => {
@@ -303,10 +351,30 @@ test.describe('AI Profile Users', () => {
     await expect(
       dataConsumerPage.getByTestId('profile-details-panel')
     ).toBeVisible();
+    // The Profile tab is always the logged-in user, so its hash carries no name.
+    expect(new URL(dataConsumerPage.url()).hash).toBe('#profile');
 
     await expect(
       dataConsumerPage.getByTestId('preferred-name-edit')
     ).toBeVisible();
     await expect(dataConsumerPage.getByTestId('persona-edit')).toBeHidden();
+  });
+
+  test("Non-admin's legacy #profile/<other user> link opens that user's read-only page", async ({
+    dataConsumerPage,
+  }) => {
+    await openAiProfile(dataConsumerPage);
+    await expect(
+      dataConsumerPage.getByTestId('profile-details-panel')
+    ).toBeVisible();
+
+    // Members (the edit form) is admin-only, so the link must not fall back to
+    // the viewer's own profile; it leaves for the classic user page instead.
+    await dataConsumerPage.evaluate(() => {
+      globalThis.location.hash = 'profile/admin';
+    });
+
+    await expect(dataConsumerPage).toHaveURL(/\/users\/admin(\/|$|\?)/);
+    await expect(dataConsumerPage.getByTestId('ai-profile-page')).toBeHidden();
   });
 });

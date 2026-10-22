@@ -731,7 +731,10 @@ export const checkAlertConfigDetails = async ({
     page.getByTestId('filter-select-0').getByRole('button')
   ).toHaveText('Table Name');
   await expect(
-    page.getByTestId('fqn-list-select').getByTitle(tableName)
+    page
+      .getByTestId('fqn-list-select')
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: tableName })
   ).toBeAttached();
 
   await expect(

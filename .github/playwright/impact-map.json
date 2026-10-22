@@ -317,8 +317,11 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -395,6 +398,7 @@
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AppRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/SearchResource.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java"
@@ -404,7 +408,8 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
-        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {
@@ -1149,6 +1154,42 @@
       "specs": [
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The Lineage section of the entity summary panel (Upstream/Downstream counts). ExplorePageRightPanel.spec.ts opens the panel and navigates from its lineage section; the data product Assets tab renders the same panel.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/LineageSection/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Service Insights widgets and their empty-state placeholders. Pagination.spec.ts and ServiceEntityPermissions.spec.ts open a service's Insights tab; ConnectionServiceDetails.spec.ts covers it in AI mode.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The shared page pagers. Pagination.spec.ts and GlobalPageSize.spec.ts drive Next/Previous and the page size across list pages; the components' importers map them further.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPrevious/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPreviousWithOffset/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/GlobalPageSize.spec.ts"
       ]
     }
   ]

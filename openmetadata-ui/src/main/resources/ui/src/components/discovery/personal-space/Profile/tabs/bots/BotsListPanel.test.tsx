@@ -439,4 +439,29 @@ describe('BotsListPanel', () => {
 
     expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'add' });
   });
+
+  it('clears a search with no results from the empty state', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({ hits: { hits: [] } });
+    renderPanel();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'missing' },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('clear-filters')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('clear-filters'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('bot-row-ingest')).toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('searchbar')).toHaveValue('');
+  });
 });

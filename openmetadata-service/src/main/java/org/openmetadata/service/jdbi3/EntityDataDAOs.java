@@ -941,13 +941,13 @@ public interface EntityDataDAOs {
             + "AND fqnHash LIKE :parentHash "
             + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
             + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
-            + "<statusCondition> "
+            + "<filterConditions> "
             + "ORDER BY name "
             + "LIMIT :limit OFFSET :offset")
     List<String> searchGlossaryTerms(
         @Bind("parentHash") String parentHash,
         @Bind("searchTerm") String searchTerm,
-        @Define("statusCondition") String statusCondition,
+        @Define("filterConditions") String filterConditions,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
   }

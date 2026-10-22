@@ -129,7 +129,7 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
     drawerContent = (
       <Box className="tw:relative tw:min-h-80">
         <NoDataPlaceholder
-          description={t('message.no-learning-resources-available')}
+          title={t('message.no-learning-resources-available')}
         />
       </Box>
     );
