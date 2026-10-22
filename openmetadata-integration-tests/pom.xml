@@ -468,6 +468,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -528,6 +529,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -618,6 +620,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -678,6 +681,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -769,6 +773,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -830,6 +835,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -921,6 +927,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -981,6 +988,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1071,6 +1079,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1131,6 +1140,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1220,6 +1230,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1281,6 +1292,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1387,6 +1399,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1449,6 +1462,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>
@@ -1545,6 +1559,7 @@
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
+                    <include>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</include>
                     <include>**/SessionMultiNodeIT.java</include>
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/TokenRevocationRedisMultiNodeIT.java</include>
@@ -1606,6 +1621,7 @@
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
+                    <exclude>**/GlossaryTermUnmigratedApprovalWorkflowIT.java</exclude>
                     <exclude>**/SessionMultiNodeIT.java</exclude>
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/TokenRevocationRedisMultiNodeIT.java</exclude>

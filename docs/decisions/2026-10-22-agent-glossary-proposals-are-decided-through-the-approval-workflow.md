@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowAutomationBranchTest`, `GlossaryAutomationProposalMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `useGlossaryProposals.test.tsx`, `GlossaryReviewTab.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowAutomationBranchTest`, `GlossaryAutomationProposalMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `GlossaryTermUnmigratedApprovalWorkflowIT`, `useGlossaryProposals.test.tsx`, `GlossaryReviewTab.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 
 ## Context
@@ -46,9 +46,9 @@ Rejecting a single AI proposal asks for a reason, as rejecting a person's always
 rejection sends none, since the server requires one only for data access requests. An AI term's
 requester is the agent's bot, so every assignee may decide it. A proposal whose request was closed
 or terminated without a decision opens a new one on its next edit. As for any term, the editor is
-left off its assignees while another reviewer or owner remains, and a sole reviewer or owner keeps
-it; the admin fallback never includes the editor, so a sole admin then needs another reviewer,
-owner or admin.
+left off its assignees while another of its reviewers (or owners, when it has none) remains, and a
+sole one keeps it; the admin fallback never includes the editor, so a sole admin then needs another
+reviewer, owner or admin.
 
 AI terms created between ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 and this change have no request: the next edit sends them to review, or deleting them lets the

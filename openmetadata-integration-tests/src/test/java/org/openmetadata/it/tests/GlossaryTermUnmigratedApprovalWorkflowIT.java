@@ -66,8 +66,9 @@ class GlossaryTermUnmigratedApprovalWorkflowIT {
   @Test
   void aWorkflowWithoutTheAutomationBranchNeverApprovesABotsProposal(TestNamespace ns) {
     JsonNode stored = storedWorkflow();
-    replaceGraph(withoutAutomationBranch(stored));
+    // Inside the try: a failed deploy can leave the stripped graph stored.
     try {
+      replaceGraph(withoutAutomationBranch(stored));
       Glossary glossary = createGlossaryWithoutReviewers(ns);
       GlossaryTerm proposal = createProposalAsBot(glossary, ns.prefix("proposal"));
 

@@ -659,6 +659,7 @@ describe('GlossaryHeader component', () => {
 
     it('waits for the approval request before anyone decides an AI draft', () => {
       mockContext.data = aiDraft;
+      mockLoadedProposal.current = { source: 'ai', term: aiDraft };
 
       render(
         <GlossaryHeader
@@ -670,6 +671,25 @@ describe('GlossaryHeader component', () => {
 
       expect(screen.getByTestId('ai-generated-term-card')).toBeInTheDocument();
       expect(screen.queryByTestId('approve-proposal')).not.toBeInTheDocument();
+      expect(
+        screen.getByText('message.waiting-for-approval-request')
+      ).toBeInTheDocument();
+    });
+
+    it('shows no card until the proposal and its approval request load', () => {
+      mockContext.data = aiDraft;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('ai-generated-term-card')
+      ).not.toBeInTheDocument();
     });
 
     it('shows no card once the term is approved or a person-made draft', () => {

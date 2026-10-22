@@ -153,7 +153,7 @@ const getTermDerivations = (termIds: string[]) =>
   ).then((derivations) => derivations.flat());
 
 const toExplainedProposals = async (terms: GlossaryTerm[]) => {
-  // Without its approval request a proposal still lists, waiting on the people who decide it.
+  // A proposal lists even when its approval request is missing or unreadable; it then offers no decision.
   const [derivations, approvalTasks] = await Promise.all([
     getTermDerivations(
       terms

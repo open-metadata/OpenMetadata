@@ -605,7 +605,9 @@ const GlossaryReviewTab = () => {
               renderItem={(proposal) => (
                 <QueueItem
                   canDecide={canDecide(proposal)}
-                  isChecked={checkedIds.has(proposal.term.id)}
+                  isChecked={
+                    checkedIds.has(proposal.term.id) && canDecide(proposal)
+                  }
                   isSelected={proposal.term.id === current?.term.id}
                   key={proposal.term.id}
                   proposal={proposal}

@@ -66,7 +66,6 @@ import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
 import { isAiGeneratedDraft } from '../../../utils/GlossaryPureUtils';
-import { GlossaryProposal } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import { canDecideProposal } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { checkPermission } from '../../../utils/PermissionsUtils';
@@ -485,15 +484,13 @@ const GlossaryTermAiDraftNotice = ({
   const { currentUser } = useApplicationStore();
   const isAiProposal =
     !isGlossary && !isVersionView && isAiGeneratedDraft(term);
-  const loadedProposal = useGlossaryProposal(
-    isAiProposal ? term.id : undefined
-  );
+  const proposal = useGlossaryProposal(isAiProposal ? term.id : undefined);
   const decide = useDecideProposal();
 
-  if (!isAiProposal) {
+  // Until its approval request loads, the card could not say who decides the proposal.
+  if (!isAiProposal || !proposal) {
     return null;
   }
-  const proposal: GlossaryProposal = loadedProposal ?? { source: 'ai', term };
 
   return (
     <div className="tw:mb-3" data-testid="ai-generated-term-card">
