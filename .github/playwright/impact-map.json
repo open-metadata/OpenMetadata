@@ -812,6 +812,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useGridEditController.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EntityImport/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",

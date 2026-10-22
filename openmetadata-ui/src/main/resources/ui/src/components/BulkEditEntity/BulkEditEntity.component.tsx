@@ -267,8 +267,8 @@ const BulkEditEntity = ({
   );
 
   // Hydrate the grid from a single export per entity. The ref guard keeps this
-  // idempotent so a re-run of the effect (React StrictMode in dev, or a
-  // provider value identity change) cannot spawn duplicate export jobs. On
+  // idempotent so a re-run of the effect (a provider value identity change)
+  // cannot spawn duplicate export jobs. On
   // failure the guard intentionally stays set so the effect can't auto-retry a
   // failing export; recovery is explicit via the Try Again button
   // (handleRetryExport), which re-runs the export directly.

@@ -228,6 +228,12 @@ test.describe('Bulk edit table grid interactions', () => {
     await page.keyboard.press('ControlOrMeta+v');
 
     await expect(targetTags).toContainText(TAG_FQN);
+
+    await page.getByTestId('bulk-edit-search').locator('input').fill('');
+
+    await expect(
+      await getGridCell(page, table.columnsName[0], 'Column Name')
+    ).toBeVisible();
   });
 
   test('pastes text copied outside the grid into the selected cell only', async ({
@@ -267,5 +273,28 @@ test.describe('Bulk edit table grid interactions', () => {
     await expect(description).toContainText('Customer id, primary key');
     await expect(dataTypeDisplay).toHaveText(dataTypeBefore ?? '');
     await expect(nextRowDescription).toHaveText(nextDescriptionBefore ?? '');
+  });
+
+  test('pastes multi-line text onto a column header one line per row', async ({
+    page,
+  }) => {
+    const header = page.getByRole('columnheader', {
+      name: 'Column Display Name',
+      exact: true,
+    });
+    const colIndex = await header.getAttribute('aria-colindex');
+    const displayNameInRow = (rowIndex: number) =>
+      page.locator(
+        `.rdg-row[aria-rowindex="${rowIndex}"] [role="gridcell"][aria-colindex="${colIndex}"]`
+      );
+
+    await page.evaluate(() =>
+      navigator.clipboard.writeText('PW first line\nPW second line')
+    );
+    await header.click();
+    await page.keyboard.press('ControlOrMeta+v');
+
+    await expect(displayNameInRow(2)).toHaveText('PW first line');
+    await expect(displayNameInRow(3)).toHaveText('PW second line');
   });
 });

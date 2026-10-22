@@ -478,12 +478,23 @@ const BulkEntityImportPage = () => {
     handleOnRowsChange,
     setGridContainer,
     handleAddRow,
+    setSelectedRange,
   } = useGridEditController({
     dataSource,
     setDataSource,
     columns: gridEditColumns,
     rows: bulkEditGridRows,
   });
+
+  // A selected range indexes the rows currently shown; once the search
+  // changes them it would point at different rows.
+  const handleBulkEditSearchTextChange = useCallback(
+    (searchText: string) => {
+      setBulkEditSearchText(searchText);
+      setSelectedRange(null);
+    },
+    [setSelectedRange]
+  );
 
   const bulkEditChangeSummary = useMemo(() => {
     const editableColumnKeys = filterColumns
@@ -2184,7 +2195,7 @@ const BulkEntityImportPage = () => {
             workflowHeaderConfig={bulkEditWorkflowProps.workflowHeaderConfig}
             workflowMode={bulkEditWorkflowProps.workflowMode}
             onCSVReadComplete={onCSVReadComplete}
-            onSearchTextChange={setBulkEditSearchText}
+            onSearchTextChange={handleBulkEditSearchTextChange}
           />
         ) : (
           <Fragment>

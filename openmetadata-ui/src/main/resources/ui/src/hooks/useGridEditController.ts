@@ -106,9 +106,10 @@ function useClipboardHandlers(
   columns: Column<Record<string, string>>[],
   pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
 ) {
-  // The cells of the last grid copy. Pasting text the grid did not copy (a
-  // description from another page) must land in one cell, not be split on
-  // commas and newlines across its neighbours and the rows below.
+  // The cells of the last grid copy, pasted as-is. Other text is split into
+  // rows and tab-separated columns (what spreadsheets copy) — except into a
+  // single selected cell, where a description with commas or newlines from
+  // another page must stay one value instead of overwriting its neighbours.
   const copiedCells = useRef<{ text: string; cells: string[][] } | null>(null);
 
   const handleCopy = useCallback(() => {
@@ -166,16 +167,20 @@ function useClipboardHandlers(
     const newRows = dataSource.map((row) => ({ ...row }));
 
     if (range && dataSource.length > 0) {
-      return navigator.clipboard
-        .readText()
-        .then((clipText) => {
+      return navigator.clipboard.readText().then(
+        (clipText) => {
           const { startRow, endRow, startCol, endCol } = range;
           const minRow = Math.min(startRow, endRow);
           const minCol = Math.min(startCol, endCol);
-          const pastedCells =
-            clipText === copiedCells.current?.text
-              ? copiedCells.current.cells
-              : [[clipText]];
+          const isSingleCell = startRow === endRow && startCol === endCol;
+          let pastedCells = clipText
+            .split(/\r?\n/)
+            .map((line) => line.split('\t'));
+          if (clipText === copiedCells.current?.text) {
+            pastedCells = copiedCells.current.cells;
+          } else if (isSingleCell) {
+            pastedCells = [[clipText]];
+          }
           for (let i = 0; i < pastedCells.length; i++) {
             const rowIdx = minRow + i;
             if (rowIdx >= dataSource.length) {
@@ -198,13 +203,14 @@ function useClipboardHandlers(
           pushToUndoStack(dataSource);
 
           return newRows;
-        })
-        .catch(() => {
+        },
+        () => {
           // Clipboard read was denied; the keystroke was already consumed.
           showErrorToast(t('message.clipboard-not-available'));
 
           return dataSource;
-        });
+        }
+      );
     }
 
     return dataSource;
