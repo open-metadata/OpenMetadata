@@ -10,9 +10,8 @@ RUN apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY ingestion/airflow-constraints-3.3.2.txt /opt/openmetadata/python-tls/airflow-constraints.txt
-ARG PIP_BOOTSTRAP="pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
 RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
-    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "${PIP_BOOTSTRAP}" \
+    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip==26.2.2" \
     && /usr/local/bin/python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
     && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
     && /usr/local/bin/python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
@@ -128,7 +127,7 @@ ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
 ARG RI_VERSION="2.0.0.0.dev0"
-RUN python -m pip install --no-cache-dir --upgrade "${PIP_BOOTSTRAP}" \
+RUN python -m pip install --no-cache-dir --upgrade "pip==26.2.2" \
     && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
     && pip install --upgrade "setuptools>=83"
 RUN pip install "openmetadata-managed-apis~=${RI_VERSION}" --constraint /opt/openmetadata/python-tls/airflow-constraints.txt
