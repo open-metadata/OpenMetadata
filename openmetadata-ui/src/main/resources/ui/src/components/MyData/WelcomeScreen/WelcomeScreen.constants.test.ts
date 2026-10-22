@@ -43,15 +43,27 @@ describe('getWelcomeThemeStyle', () => {
 });
 
 describe('welcome glow', () => {
-  it('should match the Figma light gradient', () => {
-    expect(WELCOME_GLOW_LIGHT).toBe(
-      'radial-gradient(168.55% 167.82% at 55.79% -31.38%, transparent 55%, var(--tw-color-brand-500) 100%)'
+  it("should sample Figma's t² curve on the approved light ellipse", () => {
+    expect(WELCOME_GLOW_LIGHT).toMatch(
+      /^radial-gradient\(168\.55% 167\.82% at 55\.79% -31\.38%, /
+    );
+    expect(WELCOME_GLOW_LIGHT).toContain(
+      'color-mix(in srgb, var(--tw-color-brand-500) 0%, transparent) 55%'
+    );
+    expect(WELCOME_GLOW_LIGHT).toContain(
+      'color-mix(in srgb, var(--tw-color-brand-500) 25%, transparent) 77.5%'
+    );
+    expect(WELCOME_GLOW_LIGHT).toContain(
+      'color-mix(in srgb, var(--tw-color-brand-500) 100%, transparent) 100%'
     );
   });
 
-  it('should use the wider dark ellipse at 20% unless an accent raises it', () => {
-    expect(WELCOME_GLOW_DARK).toBe(
-      'radial-gradient(220.28% 218.41% at 55.79% -31.38%, transparent 46.85%, color-mix(in srgb, var(--tw-color-brand-500) var(--welcome-glow-dark-mix, 20%), transparent) 100%)'
+  it('should use the wider dark ellipse, ending at the dark-mix strength', () => {
+    expect(WELCOME_GLOW_DARK).toMatch(
+      /^radial-gradient\(220\.28% 218\.41% at 55\.79% -31\.38%, /
+    );
+    expect(WELCOME_GLOW_DARK).toContain(
+      'calc(100% - (100% - var(--welcome-glow-dark-mix, 20%)) * 1), transparent) 100%'
     );
   });
 });
