@@ -5749,6 +5749,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /** Returns the holders whose custom-property values referenced the deleted entity. */
   private Set<UUID> cleanupFlushBody(String deletedBy, T entityInterface) {
+    lockRowsForDelete(List.of(entityInterface));
+
     // Perform Entity Specific Cleanup
     entitySpecificCleanup(deletedBy, entityInterface);
 
@@ -5832,6 +5834,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void entitySpecificCleanup(T entityInterface) {}
+
+  /**
+   * Runs first in a hard delete's cleanup transaction, single or bulk, before the relationship
+   * sweep. A repository whose rows writers share-lock before linking to them takes the delete's
+   * row locks here, so the sweep cannot run ahead of a writer's uncommitted edge.
+   */
+  protected void lockRowsForDelete(List<T> entities) {}
 
   protected boolean shouldCleanupFqnDependents() {
     return true;
@@ -8248,6 +8257,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
     flushInOneTransaction(
         () -> {
+          lockRowsForDelete(entities);
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
           // After the entity rows' X locks, like the single-entity cleanup.
