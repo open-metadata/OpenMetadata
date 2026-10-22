@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { getWidgetHint, getWidgetLabel } from './coreWidgetUtils';
+import {
+  getWidgetAriaProps,
+  getWidgetHint,
+  getWidgetLabel,
+} from './coreWidgetUtils';
 
 describe('coreWidgetUtils', () => {
   it('prefers raw errors over help text and schema description', () => {
@@ -64,6 +68,32 @@ describe('coreWidgetUtils', () => {
         label: 'Raw Field Name',
       } as never)
     ).toBe('Raw Field Name');
+  });
+
+  it('hides the label of a map entry, whose key is already shown beside it', () => {
+    expect(
+      getWidgetLabel({
+        hideLabel: false,
+        label: 'bq_catalog',
+        schema: { type: 'string', __additional_property: true },
+      } as never)
+    ).toBeUndefined();
+  });
+
+  it('names a map entry value by its key and leaves other fields alone', () => {
+    expect(
+      getWidgetAriaProps({
+        label: 'bq_catalog',
+        schema: { type: 'string', __additional_property: true },
+      } as never)
+    ).toEqual({ 'aria-label': 'bq_catalog' });
+
+    expect(
+      getWidgetAriaProps({
+        label: 'catalogMapping',
+        schema: { type: 'string' },
+      } as never)
+    ).toEqual({});
   });
 
   it('formats raw camelCase labels and preserves display labels', () => {
