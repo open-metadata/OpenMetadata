@@ -23,6 +23,7 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
+import { useReportDirty } from '../useReportDirty';
 
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../../../../Database/SchemaEditor/SchemaEditor'))
@@ -46,7 +47,12 @@ const SqlPropertyView = ({ value }: PropertyViewProps) => (
   </div>
 );
 
-const SqlPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
+const SqlPropertyEdit = ({
+  value,
+  onSave,
+  formId,
+  onDirtyChange,
+}: PropertyEditProps) => {
   const { t } = useTranslation();
   const formRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState(typeof value === 'string' ? value : '');
@@ -71,6 +77,8 @@ const SqlPropertyEdit = ({ value, onSave, formId }: PropertyEditProps) => {
     ],
     []
   );
+
+  useReportDirty(query.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

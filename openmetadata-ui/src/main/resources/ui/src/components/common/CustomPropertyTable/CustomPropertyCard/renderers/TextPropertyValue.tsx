@@ -26,6 +26,7 @@ import {
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
 import { TextFieldConfig } from './TextPropertyValue.interface';
+import { useReportDirty } from '../useReportDirty';
 
 const EMAIL_MIN_LENGTH = 6;
 const EMAIL_MAX_LENGTH = 127;
@@ -88,6 +89,7 @@ const TextPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const config = getTextFieldConfig(property.propertyType.name);
@@ -95,6 +97,8 @@ const TextPropertyEdit = ({
     isNil(value) ? '' : String(value)
   );
   const [error, setError] = useState<string>();
+
+  useReportDirty(inputValue.trim(), onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

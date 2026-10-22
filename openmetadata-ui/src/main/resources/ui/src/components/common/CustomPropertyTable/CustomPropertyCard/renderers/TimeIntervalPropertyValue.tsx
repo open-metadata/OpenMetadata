@@ -59,6 +59,7 @@ import {
   toDateTimeParts,
   toEpochText,
 } from './TimeIntervalPropertyValue.utils';
+import { useReportDirty } from '../useReportDirty';
 
 const STATUS_BADGE: Record<
   TimeIntervalStatus,
@@ -567,6 +568,7 @@ const TimeIntervalPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const stored = value as Partial<TimeIntervalType> | undefined;
@@ -605,6 +607,8 @@ const TimeIntervalPropertyEdit = ({
       setManual(undefined);
     }
   };
+
+  useReportDirty({ bounds, manual }, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

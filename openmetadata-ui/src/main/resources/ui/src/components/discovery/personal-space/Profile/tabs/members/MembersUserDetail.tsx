@@ -33,7 +33,7 @@ import TaskDetailPage from '../../../InboxPage/components/TaskDetailPage';
 import ActivityTab from '../../../InboxPage/tabs/ActivityTab';
 import TasksTab from '../../../InboxPage/tabs/TasksTab';
 import UserAssetsView from '../../../UserAssets/UserAssetsView';
-import UserCustomPropertiesTable from '../../customProperties/UserCustomPropertiesTable';
+import UserCustomPropertiesList from '../../customProperties/UserCustomPropertiesList';
 import { useUserCustomPropertyAccess } from '../../customProperties/useUserCustomPropertyAccess';
 import ProfileDetailsPanel from '../../ProfileDetailsPanel';
 import { useUserProfile } from '../../useUserProfile';
@@ -89,7 +89,7 @@ const UserDetailTabContent: FC<UserDetailTabContentProps> = ({
       return <UserAssetsView kind="following" user={user} />;
     case 'custom-properties':
       return (
-        <UserCustomPropertiesTable
+        <UserCustomPropertiesList
           isProfileLoading={isProfileLoading}
           user={user}
           onUpdate={updateUserDetails}

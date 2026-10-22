@@ -28,6 +28,7 @@ import {
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
 import { EditableRow, TableRow } from './TablePropertyValue.interface';
+import { useReportDirty } from '../useReportDirty';
 
 const getColumns = (config: unknown): string[] =>
   (config as Config | undefined)?.columns ?? [];
@@ -76,6 +77,7 @@ const TablePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const columns = getColumns(property.customPropertyConfig?.config);
@@ -101,6 +103,11 @@ const TablePropertyEdit = ({
 
   const removeRow = (key: number) =>
     setRows((prev) => prev.filter((row) => row.key !== key));
+
+  useReportDirty(
+    filterPopulatedTableRows(rows.map((row) => row.values)),
+    onDirtyChange
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -21,6 +21,7 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
+import { useReportDirty } from '../useReportDirty';
 
 const HyperlinkPropertyView = ({ value, isCompact }: PropertyViewProps) => {
   const hyperlink = value as Hyperlink;
@@ -49,12 +50,18 @@ const HyperlinkPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const hyperlink = (value ?? {}) as Partial<Hyperlink>;
   const [url, setUrl] = useState(hyperlink.url ?? '');
   const [displayText, setDisplayText] = useState(hyperlink.displayText ?? '');
   const [urlError, setUrlError] = useState<string>();
+
+  useReportDirty(
+    { url: url.trim(), displayText: displayText.trim() },
+    onDirtyChange
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -26,6 +26,7 @@ import {
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
 import { PropertyValueChip } from '../PropertyValueChip';
+import { useReportDirty } from '../useReportDirty';
 
 const toValueList = (value: unknown): string[] =>
   (isArray(value) ? value : [value]).filter(
@@ -51,6 +52,7 @@ const EnumPropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const config = property.customPropertyConfig?.config as Config | undefined;
@@ -72,6 +74,8 @@ const EnumPropertyEdit = ({
       ),
     [selected, options]
   );
+
+  useReportDirty(selected, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

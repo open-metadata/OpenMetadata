@@ -55,7 +55,7 @@ const mockCustomPropertyAccess = {
 jest.mock('../../customProperties/useUserCustomPropertyAccess', () => ({
   useUserCustomPropertyAccess: () => mockCustomPropertyAccess,
 }));
-jest.mock('../../customProperties/UserCustomPropertiesTable', () => () => (
+jest.mock('../../customProperties/UserCustomPropertiesList', () => () => (
   <div data-testid="tab-custom-properties" />
 ));
 jest.mock('../../ProfileDetailsPanel', () => () => (

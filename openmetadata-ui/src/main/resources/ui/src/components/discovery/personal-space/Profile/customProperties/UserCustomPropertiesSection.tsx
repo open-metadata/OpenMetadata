@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -21,27 +20,17 @@ import {
   ArrowUpRight,
   ChevronDown,
   ChevronUp,
-  Edit02,
 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Type } from '../../../../../generated/entity/type';
-import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
-import { getTextFromHtmlString } from '../../../../../utils/BlockEditorPureUtils';
-import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { isPropertyValueEmpty } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
-import { getPropertyRenderer } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
-import FieldRow from '../components/FieldRow';
 import { viewToSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
-import {
-  COLLAPSED_ROW_COUNT,
-  EMPTY_VALUE,
-} from './UserCustomProperties.constants';
+import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
-import UserCustomPropertyInlineEditor from './UserCustomPropertyInlineEditor';
+import UserCustomPropertyRow from './UserCustomPropertyRow';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 import { useUserCustomPropertyEditor } from './useUserCustomPropertyEditor';
 
@@ -82,21 +71,6 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
       })
     );
 
-  const renderValue = (property: CustomProperty) => {
-    const typeName = property.propertyType.name;
-    const value = extension?.[property.name];
-    if (isPropertyValueEmpty(typeName, value)) {
-      return (
-        <Typography className="tw:text-tertiary" data-testid="no-value">
-          {EMPTY_VALUE}
-        </Typography>
-      );
-    }
-    const { View } = getPropertyRenderer(typeName);
-
-    return <View isCompact property={property} value={value} />;
-  };
-
   return (
     <Box
       data-testid="profile-section-custom-properties"
@@ -127,45 +101,19 @@ const UserCustomPropertiesSection = (props: UserCustomPropertiesProps) => {
       <Card
         className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
         variant="muted">
-        {visibleProperties.map((property) =>
-          editingProperty?.name === property.name ? (
-            <UserCustomPropertyInlineEditor
-              isSaving={isSaving}
-              key={property.name}
-              property={property}
-              value={extension?.[property.name]}
-              onCancel={stopEditing}
-              onSave={saveValue}
-            />
-          ) : (
-            <Box
-              align="center"
-              className="tw:px-5 tw:py-4"
-              data-testid={`custom-property-row-${property.name}`}
-              gap={3}
-              key={property.name}>
-              <div className="tw:min-w-0 tw:flex-1">
-                <FieldRow
-                  description={getTextFromHtmlString(property.description)}
-                  title={getEntityName(property)}>
-                  {renderValue(property)}
-                </FieldRow>
-              </div>
-              {access.canEdit && (
-                <ButtonUtility
-                  color="tertiary"
-                  data-testid={`edit-${property.name}`}
-                  icon={Edit02}
-                  size="xs"
-                  tooltip={t('label.edit-entity', {
-                    entity: getEntityName(property),
-                  })}
-                  onClick={() => startEditing(property)}
-                />
-              )}
-            </Box>
-          )
-        )}
+        {visibleProperties.map((property) => (
+          <UserCustomPropertyRow
+            canEdit={access.canEdit}
+            isEditing={editingProperty?.name === property.name}
+            isSaving={isSaving}
+            key={property.name}
+            property={property}
+            value={extension?.[property.name]}
+            onCancel={stopEditing}
+            onEdit={startEditing}
+            onSave={saveValue}
+          />
+        ))}
         {customProperties.length > COLLAPSED_ROW_COUNT && (
           <Box className="tw:px-5 tw:py-3.5">
             <Button

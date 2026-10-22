@@ -224,24 +224,18 @@ const addUserTextProperty = async (apiContext: APIRequestContext) => {
   };
 };
 
-/**
- * Set a text property's value from its row: the Custom Properties tab edits in
- * a modal, the own-Profile section edits inline in the row.
- */
+/** Set a text property's value inline in its row. */
 const setTextPropertyValue = async (
   page: Page,
   row: Locator,
   propertyName: string,
   userId: string,
-  value: string,
-  editor: 'modal' | 'inline'
+  value: string
 ) => {
   await row.getByTestId(`edit-${propertyName}`).click();
-  const form =
-    editor === 'modal' ? page.getByTestId('custom-property-edit-modal') : row;
-  await form.getByRole('textbox').fill(value);
+  await row.getByRole('textbox').fill(value);
   const patch = waitForUserPatch(page, userId);
-  await form.getByTestId('inline-save-btn').click();
+  await row.getByTestId('inline-save-btn').click();
   expect((await patch).ok()).toBeTruthy();
   await expect(row).toContainText(value);
 };
@@ -733,8 +727,7 @@ test.describe('User custom properties, password reset and read-only access', () 
         row,
         property.name,
         subject.responseData.id,
-        value,
-        'modal'
+        value
       );
 
       const saved = await readUser(seeded.apiContext, subject.responseData.id);
@@ -773,8 +766,7 @@ test.describe('User custom properties, password reset and read-only access', () 
         row,
         property.name,
         isolatedUser.responseData.id,
-        value,
-        'inline'
+        value
       );
 
       const saved = await readUser(

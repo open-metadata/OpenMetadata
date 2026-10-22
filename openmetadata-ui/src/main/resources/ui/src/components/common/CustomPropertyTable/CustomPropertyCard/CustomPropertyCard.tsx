@@ -26,7 +26,10 @@ import { getTextFromHtmlString } from '../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
-import { TYPE_ICON_TILE_CLASS } from './CustomPropertyCard.constants';
+import {
+  HEADER_BADGE_CLASS,
+  TYPE_ICON_TILE_CLASS,
+} from './CustomPropertyCard.constants';
 import { CustomPropertyCardProps } from './CustomPropertyCard.interface';
 import {
   getPropertyItemCount,
@@ -53,10 +56,6 @@ const CARD_STYLES = {
     description: 'tw:line-clamp-2',
   },
 } as const;
-
-// Design spec: 20px tall header badges (18px line + 1px border each side).
-const HEADER_BADGE_CLASS =
-  'tw:py-px tw:px-[7px] tw:leading-[18px] tw:font-medium';
 
 export const CustomPropertyCard = ({
   isCompact = false,

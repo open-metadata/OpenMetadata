@@ -37,6 +37,7 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
+import { useReportDirty } from '../useReportDirty';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ENTITY_REFERENCE_LIST = 'entityReferenceList';
@@ -90,6 +91,7 @@ const EntityReferencePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const isList = property.propertyType.name === ENTITY_REFERENCE_LIST;
@@ -158,6 +160,8 @@ const EntityReferencePropertyEdit = ({
       setSelected((prev) => (isList ? [...prev, reference] : [reference]));
     }
   };
+
+  useReportDirty(selected, onDirtyChange);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

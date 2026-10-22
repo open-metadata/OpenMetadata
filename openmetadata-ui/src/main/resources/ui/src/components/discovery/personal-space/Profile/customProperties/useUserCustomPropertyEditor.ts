@@ -17,7 +17,7 @@ import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTyp
 import { buildUpdatedExtension } from '../../../../../utils/CustomProperty.utils';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
 
-/** User custom-property definitions plus the edit-modal state shared by the tab and the Profile section. */
+/** User custom-property definitions plus the inline-edit state shared by the tab and the Profile section. */
 export const useUserCustomPropertyEditor = ({
   user,
   onUpdate,
@@ -49,7 +49,7 @@ export const useUserCustomPropertyEditor = ({
         'extension'
       );
       setIsSaving(false);
-      // A failed save keeps the modal open with what the user typed; the
+      // A failed save keeps the editor open with what the user typed; the
       // update handler has already shown the error.
       if (saved) {
         setEditingProperty(undefined);

@@ -21,8 +21,7 @@ import {
 import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
-import { getAllCustomProperties } from '../../../../../rest/metadataTypeAPI';
-import UserCustomPropertiesTable from './UserCustomPropertiesTable';
+import UserCustomPropertiesList from './UserCustomPropertiesList';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 jest.mock('react-i18next', () => ({
@@ -39,29 +38,6 @@ jest.mock('./useUserCustomPropertyAccess', () => ({
 jest.mock('../../../../../hooks/useEntityTypeCustomProperties', () => ({
   useEntityTypeCustomProperties: jest.fn(),
 }));
-
-jest.mock('../../../../../rest/metadataTypeAPI', () => ({
-  getAllCustomProperties: jest.fn(),
-}));
-
-jest.mock(
-  '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal',
-  () => ({
-    CustomPropertyEditModal: ({
-      property,
-      onSave,
-    }: {
-      property: CustomProperty;
-      onSave: (value: unknown) => void;
-    }) => (
-      <button
-        data-testid="custom-property-edit-modal"
-        onClick={() => onSave('E-200')}>
-        {property.name}
-      </button>
-    ),
-  })
-);
 
 const PROPERTIES = [
   {
@@ -103,23 +79,13 @@ const renderTable = (onUpdate = jest.fn().mockResolvedValue(true)) =>
       client={
         new QueryClient({ defaultOptions: { queries: { retry: false } } })
       }>
-      <UserCustomPropertiesTable user={USER} onUpdate={onUpdate} />
+      <UserCustomPropertiesList user={USER} onUpdate={onUpdate} />
     </QueryClientProvider>
   );
 
-describe('UserCustomPropertiesTable', () => {
+describe('UserCustomPropertiesList', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getAllCustomProperties as jest.Mock).mockResolvedValue({
-      table: [{ name: 'notes', type: 'string' }],
-      user: [
-        { name: 'employeeId', type: 'string' },
-        { name: 'notes', type: 'string' },
-      ],
-      dashboard: [{ name: 'notes', type: 'string' }],
-      pipeline: [{ name: 'notes', type: 'string' }],
-      team: [{ name: 'other', type: 'string' }],
-    });
     mockDefinitions(PROPERTIES);
   });
 
@@ -132,9 +98,8 @@ describe('UserCustomPropertiesTable', () => {
       screen.getByTestId('user-custom-properties-no-permission')
     ).toBeInTheDocument();
     expect(
-      screen.queryByTestId('user-custom-properties-table')
+      screen.queryByTestId('user-custom-properties-list')
     ).not.toBeInTheDocument();
-    expect(getAllCustomProperties).not.toHaveBeenCalled();
   });
 
   it('shows the empty state when users have no custom properties', () => {
@@ -151,7 +116,7 @@ describe('UserCustomPropertiesTable', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders name, description, type, value and an empty-value dash', () => {
+  it('renders name, type badge, description, value and an empty-value dash', () => {
     mockAccess(true, false);
 
     renderTable();
@@ -173,25 +138,6 @@ describe('UserCustomPropertiesTable', () => {
     ).toHaveTextContent('—');
   });
 
-  it('lists the entity types sharing the property name, user first, max 3 then +N', async () => {
-    mockAccess(true, false);
-
-    renderTable();
-
-    const entityTypesOf = (name: string) =>
-      within(screen.getByTestId(`custom-property-row-${name}`)).getByTestId(
-        'property-entity-types'
-      ).textContent;
-
-    await waitFor(() =>
-      expect(entityTypesOf('notes')).toBe(
-        'UserDashboardPipelinelabel.plus-count:1'
-      )
-    );
-
-    expect(entityTypesOf('employeeId')).toBe('User');
-  });
-
   it('hides the edit pencils without edit permission', () => {
     mockAccess(true, false);
 
@@ -200,13 +146,37 @@ describe('UserCustomPropertiesTable', () => {
     expect(screen.queryByTestId('edit-employeeId')).not.toBeInTheDocument();
   });
 
-  it('saves an edited value into the user extension', async () => {
+  it('keeps Save disabled until the value changes', () => {
+    mockAccess(true, true);
+
+    renderTable();
+    fireEvent.click(screen.getByTestId('edit-employeeId'));
+
+    expect(screen.getByTestId('inline-save-btn')).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Employee ID' }), {
+      target: { value: 'E-200' },
+    });
+
+    expect(screen.getByTestId('inline-save-btn')).toBeEnabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Employee ID' }), {
+      target: { value: 'E-100' },
+    });
+
+    expect(screen.getByTestId('inline-save-btn')).toBeDisabled();
+  });
+
+  it('saves an edited value into the user extension in place', async () => {
     mockAccess(true, true);
     const onUpdate = jest.fn().mockResolvedValue(true);
 
     renderTable(onUpdate);
     fireEvent.click(screen.getByTestId('edit-employeeId'));
-    fireEvent.click(screen.getByTestId('custom-property-edit-modal'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Employee ID' }), {
+      target: { value: 'E-200' },
+    });
+    fireEvent.click(screen.getByTestId('inline-save-btn'));
 
     await waitFor(() =>
       expect(onUpdate).toHaveBeenCalledWith(
@@ -215,25 +185,24 @@ describe('UserCustomPropertiesTable', () => {
       )
     );
     await waitFor(() =>
-      expect(
-        screen.queryByTestId('custom-property-edit-modal')
-      ).not.toBeInTheDocument()
+      expect(screen.queryByTestId('inline-save-btn')).not.toBeInTheDocument()
     );
   });
 
-  it('keeps the edit modal open when the save fails', async () => {
+  it('keeps the editor open when the save fails', async () => {
     mockAccess(true, true);
     const onUpdate = jest.fn().mockResolvedValue(false);
 
     renderTable(onUpdate);
     fireEvent.click(screen.getByTestId('edit-employeeId'));
-    fireEvent.click(screen.getByTestId('custom-property-edit-modal'));
+    fireEvent.change(screen.getByRole('textbox', { name: 'Employee ID' }), {
+      target: { value: 'E-200' },
+    });
+    fireEvent.click(screen.getByTestId('inline-save-btn'));
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalled());
 
-    expect(
-      screen.getByTestId('custom-property-edit-modal')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('inline-save-btn')).toBeInTheDocument();
   });
 
   it('filters the rows by the search text and says when nothing matches', () => {
@@ -264,7 +233,7 @@ describe('UserCustomPropertiesTable', () => {
     mockAccess(true, true);
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <UserCustomPropertiesTable
+        <UserCustomPropertiesList
           isProfileLoading
           user={USER}
           onUpdate={jest.fn()}
