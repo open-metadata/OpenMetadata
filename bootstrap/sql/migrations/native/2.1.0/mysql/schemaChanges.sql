@@ -500,6 +500,26 @@ PREPARE wf_instance_state_execution_id_stmt FROM @wf_instance_state_execution_id
 EXECUTE wf_instance_state_execution_id_stmt;
 DEALLOCATE PREPARE wf_instance_state_execution_id_stmt;
 
+-- task_entity creates this index inline. Environments whose task_entity predates the inline
+-- approvedById column got the column from a 2.0.0 guard, but that guard's index block reused
+-- `PREPARE stmt FROM @ddl` and was skipped, so the index is added here.
+SET @task_entity_approved_by_id_idx_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND index_name = 'idx_approved_by_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD KEY idx_approved_by_id (approvedById)'
+  )
+);
+PREPARE task_entity_approved_by_id_idx_stmt FROM @task_entity_approved_by_id_idx_ddl;
+EXECUTE task_entity_approved_by_id_idx_stmt;
+DEALLOCATE PREPARE task_entity_approved_by_id_idx_stmt;
+
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
 -- before the field existed have no $.type and read back as the Notice default.
 SET @announcement_type_column_ddl = (

@@ -47,7 +47,9 @@ class MySqlGuardedBlockNamesTest {
   private static final Pattern SET_VARIABLE =
       Pattern.compile("\\ASET\\s+@(?!@)", Pattern.CASE_INSENSITIVE);
 
-  // Shipped before this guard existed. Those blocks never ran; later versions re-apply their DDL.
+  // Shipped before this guard existed, so four of its five blocks never ran. 2.1.0 re-applies the
+  // two indexes. The tag_usage.metadata and audit_log_event.search_text columns need nothing: the
+  // released 1.12.0 and 1.12.1 folders add them, and both run before 2.0.0.
   private static final Set<String> SHIPPED_REUSES =
       Set.of("2.0.0/mysql/schemaChanges.sql prepared statement name 'stmt'");
 
