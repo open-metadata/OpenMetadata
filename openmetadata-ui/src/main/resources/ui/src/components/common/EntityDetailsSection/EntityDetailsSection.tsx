@@ -70,9 +70,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
     </div>
   ) : (
     <div className="lineage-items-list empty-state">
-      <PanelEmptyPlaceholder
-        description={t('message.no-schema-message')}
-      />
+      <PanelEmptyPlaceholder description={t('message.no-schema-message')} />
     </div>
   );
 };
