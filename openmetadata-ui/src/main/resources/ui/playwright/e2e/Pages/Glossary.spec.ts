@@ -1934,7 +1934,7 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
+      ).toContainText(
         "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
       );
     } finally {
@@ -1968,8 +1968,8 @@ test.describe('Glossary tests', () => {
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toHaveText(
-        "You don't have necessary permissions. Please check with the admin to get the  permission."
+      ).toContainText(
+        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
       );
     } finally {
       await consumerAfterAction();

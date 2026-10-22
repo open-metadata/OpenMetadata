@@ -26,6 +26,14 @@ export interface RDFReasoningCapabilities {
     limits?:       Limits;
     memoryBudget?: MemoryBudget;
     /**
+     * What the store can perform, at most one entry per operation. An operation that is not
+     * listed is NOT_IMPLEMENTED, and so is every operation when the list is absent. Readiness
+     * says whether the store may admit work now; this says what work this build can do at all,
+     * so OpenMetadata can tell a store that cannot yet perform an operation from one that
+     * failed.
+     */
+    operations?: OperationSupport[];
+    /**
      * Version of this reasoning protocol. OpenMetadata refuses versions it does not know.
      */
     protocolVersion: string;
@@ -55,8 +63,14 @@ export interface Engine {
 }
 
 /**
- * Admission and execution limits. A job that reaches one stops without publishing a partial
- * result, and a check answers INCOMPLETE. The store reports NOT_READY when a limit is unset.
+ * The admission and execution limits the store enforces; a limit it does not enforce is
+ * absent. A job that reaches one stops without publishing a partial result, and a check
+ * answers INCOMPLETE. Limits are mandatory per operation, not for readiness: the store
+ * reports an operation AVAILABLE only when it enforces every limit that operation needs.
+ * REFRESH, CHECK and EXPLAIN need maxQueuedJobs, maxJobSeconds, maxDiskBytes,
+ * maxClosureAxioms, maxIndividuals, maxExpressionDepth and maxImports; REFRESH also needs
+ * maxDerivedTriples and maxRulePasses; RESULTS and QUERY need maxResultRows, and QUERY also
+ * needs maxQuerySeconds.
  */
 export interface Limits {
     /**
@@ -120,9 +134,46 @@ export interface MemoryBudget {
 }
 
 /**
+ * Whether the store can perform one operation.
+ */
+export interface OperationSupport {
+    availability: Availability;
+    operation:    Operation;
+    /**
+     * Why the operation is not available, one sentence.
+     */
+    reason?: string;
+}
+
+/**
+ * AVAILABLE: this build implements the operation and enforces every limit it needs, so it
+ * runs whenever readiness is READY. NOT_IMPLEMENTED: this build cannot perform the
+ * operation; using it fails with the problem NOT_IMPLEMENTED, whatever the readiness, until
+ * the store is upgraded.
+ */
+export enum Availability {
+    Available = "AVAILABLE",
+    NotImplemented = "NOT_IMPLEMENTED",
+}
+
+/**
+ * An operation of the store's reasoning API. REFRESH, CHECK and EXPLAIN are the job
+ * operations a request names. RESULTS reads the result of a finished check or explanation.
+ * QUERY runs a bounded SELECT or ASK over a published snapshot.
+ */
+export enum Operation {
+    Check = "CHECK",
+    Explain = "EXPLAIN",
+    Query = "QUERY",
+    Refresh = "REFRESH",
+    Results = "RESULTS",
+}
+
+/**
  * READY admits jobs. NOT_READY means reasoning is enabled but cannot run safely, for
  * example because the memory budget does not fit the container limit; reasons say why.
- * DISABLED means reasoning is switched off.
+ * DISABLED means reasoning is switched off. Readiness does not say which operations this
+ * build implements; operations does.
  */
 export enum Readiness {
     Disabled = "DISABLED",

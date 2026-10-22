@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { Task } from '../../../rest/tasksAPI';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import TaskFeedCardFromTask from '../TaskFeedCard/TaskFeedCardFromTask.component';
 
@@ -89,13 +87,13 @@ const TaskListV1 = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="taskData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography as="div" className="placeholder-text tw:break-words">
-            {emptyPlaceholderText}
-          </Typography>
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={emptyPlaceholderText}
+            icon={<FeedEmptyIcon height={140} width={140} />}
+          />
+        </div>
       </div>
     );
   }

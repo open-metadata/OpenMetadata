@@ -45,7 +45,7 @@ const KnowledgeGraphViewControls: FC<KnowledgeGraphViewControlsProps> = ({
 
   return (
     <Card
-      className="knowledge-graph-action-buttons"
+      className="tw:absolute tw:right-4 tw:bottom-4"
       data-testid="graph-view-controls"
       size="sm"
       variant="elevated">
