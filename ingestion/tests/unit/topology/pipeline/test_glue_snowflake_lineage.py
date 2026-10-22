@@ -772,6 +772,30 @@ class Job:
 """
         assert _sources(script) == [SnowflakeRef(table="ORDERS")]
 
+    @pytest.mark.parametrize(
+        "deferred",
+        [
+            f"job = lambda: {READ_ORDERS}",
+            f"jobs = ({READ_ORDERS} for _ in range(2))",
+        ],
+    )
+    def test_lambda_or_generator_reads_any_assignment(self, deferred):
+        """They run when called or consumed, after the dict may have been reassigned."""
+        script = f"""
+{DEV_RAW}
+{deferred}
+{SALES_RAW}
+"""
+        assert _sources(script) == RAW_ANY_DATABASE
+
+    def test_walrus_in_a_lambda_binds_in_the_lambda(self):
+        script = f"""
+{SALES_RAW}
+pick = lambda c: (sf_options := c)
+{READ_ORDERS}
+"""
+        assert _sources(script) == ORDERS
+
     def test_walrus_in_a_comprehension_rebinds_the_enclosing_name(self):
         script = f"""
 {SALES_RAW}

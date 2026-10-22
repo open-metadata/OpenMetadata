@@ -122,7 +122,8 @@ class _Bindings:
     assignment before it in an enclosing block plus any later one in a branch
     before the read (if/else, try/except), and any after it in a loop around the
     read. A read from a nested function may run after any assignment, so all of
-    them are candidates. The reader merges candidates key by key: a key every
+    them are candidates, as for a read in a lambda or generator expression,
+    which runs later than where it is written. The reader merges candidates key by key: a key every
     candidate sets to the same value is known.
 
     An in-place change (d["k"] = v, d.update(...), d |= {...}, d.pop(k)) makes
@@ -188,8 +189,9 @@ class _Bindings:
             value = parent.value
         elif isinstance(parent, ast.AnnAssign) and node is parent.target:
             value = parent.value
-        # a walrus in a comprehension or lambda binds in the function or module around it
-        container = self._scope_of(node) if isinstance(parent, ast.NamedExpr) else self._container_of(node)
+        container = self._container_of(node)
+        while isinstance(parent, ast.NamedExpr) and isinstance(container, COMPREHENSIONS):
+            container = self._container_of(container)  # a walrus in a comprehension binds around it
         self._bind(node.id, _Binding(statement, value), container)
 
     def _bind(self, name: str, binding: _Binding, container: ast.AST) -> None:
@@ -248,13 +250,16 @@ class _Bindings:
             container = self._container_of(container)
         return container
 
-    def _is_shadowed(self, name: ast.Name) -> bool:
-        container = self._container_of(name)
+    def _shadowing_containers(self, name: ast.Name) -> list[ast.AST]:
+        """The lambdas, comprehensions and class bodies between a read and its function or module."""
+        containers, container = [], self._container_of(name)
         while isinstance(container, SHADOWING_NODES):
-            if name.id in self._shadows.get(container, ()):
-                return True
+            containers.append(container)
             container = self._container_of(container)
-        return False
+        return containers
+
+    def _is_shadowed(self, name: ast.Name) -> bool:
+        return any(name.id in self._shadows.get(container, ()) for container in self._shadowing_containers(name))
 
     def _owner(self, scope: ast.AST, name: str) -> ast.AST:
         """The function or module holding the assignments a read of `name` in `scope` sees."""
@@ -275,7 +280,9 @@ class _Bindings:
         scope = self._scope_of(name)
         owner = self._owner(scope, name.id)
         bindings = self._bindings.get((owner, name.id), [])
-        candidates = self._reaching(name, bindings) if owner is scope else bindings
+        # a lambda or generator runs when it is called or consumed: any assignment may be in effect by then
+        is_deferred = any(isinstance(c, (ast.Lambda, ast.GeneratorExp)) for c in self._shadowing_containers(name))
+        candidates = self._reaching(name, bindings) if owner is scope and not is_deferred else bindings
         values = [binding.value for binding in candidates if binding.value is not None]
         if not values or len(values) != len(candidates) or len(values) > MAX_CANDIDATES:
             return None
