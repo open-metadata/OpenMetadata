@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Grid, Typography } from '@openmetadata/ui-core-components';
+import { Badge, Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import classNames from 'classnames';
@@ -150,7 +150,10 @@ const ContractSchemaTable: React.FC<{
       </Grid.Item>
       <Grid.Item className="layout-column d-flex justify-end" span={12}>
         {contractStatus && (
-          <div className="contract-status-container">
+          <Box
+            align="center"
+            className="contract-status-container tw:self-start"
+            gap={3}>
             <Typography className="contract-status-label">{`${t(
               'label.entity-status',
               {
@@ -162,7 +165,7 @@ const ContractSchemaTable: React.FC<{
               label={contractStatus}
               status={getContractStatusType(contractStatus)}
             />
-          </div>
+          </Box>
         )}
       </Grid.Item>
     </Grid>
