@@ -56,7 +56,7 @@ def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
 
 
 class SearchCursorStalledError(RuntimeError):
-    """search_after pagination returned the same page again, so it can never reach the end."""
+    """search_after pagination cannot page an index that does not sort on the id tiebreaker."""
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ class HitsModel(BaseModel):
     ]
     source: Annotated[dict, Field(description="Document source", alias="_source")]
     sort: Annotated[
-        list[str] | None,
+        list[str | None] | None,
         Field(
             default=None,
             description="Sort field. Used internally to get the next page FQN",
@@ -98,7 +98,7 @@ class HitsModel(BaseModel):
     ]
 
     @field_validator("sort", mode="before")
-    def normalize_sort(cls, sort_value: list[str] | None):  # noqa: N805
+    def normalize_sort(cls, sort_value: list | None):  # noqa: N805
         """
         Return sort as a list of strings, regardless of the actual type.
         if sort_field is set to `_score`, sort is a list of the score and the sort value.
@@ -111,7 +111,8 @@ class HitsModel(BaseModel):
         if sort_value is None:
             return None
 
-        return [str(v) for v in sort_value]
+        # A null stays null: it marks a sort field the index cannot sort on.
+        return [None if v is None else str(v) for v in sort_value]
 
 
 class ESHits(BaseModel):
@@ -540,13 +541,15 @@ class ESMixin(Generic[T]):
                     break
 
             next_after = self._next_search_after(response)
-            # An index that cannot sort on the server's id tiebreaker returns a null sort value
-            # search_after cannot move past, so the same page would come back forever. Stopping
-            # quietly would hand the caller a partial walk as a complete one.
-            if after and next_after == after:
+            # The server sorts last on its id tiebreaker. An index without id.keyword sorts it as
+            # null, and each next page then starts again with the previous page's last hit, so
+            # the walk is refused before any page of it is handed out.
+            last_hit = response.hits.hits[-1] if response.hits.hits else None
+            no_tiebreaker = bool(last_hit and last_hit.sort and last_hit.sort[-1] is None)
+            if no_tiebreaker or (after and next_after == after):
                 raise SearchCursorStalledError(
-                    f"Search cursor for {entity.__name__} did not advance past {after}: its index"
-                    f" {ES_INDEX_MAP[entity.__name__]} cannot sort on the id tiebreaker. Reindex it."
+                    f"Search cursor for {entity.__name__} cannot page its index"
+                    f" {ES_INDEX_MAP[entity.__name__]}: it cannot sort on the id tiebreaker. Reindex it."
                 )
             yield response
 

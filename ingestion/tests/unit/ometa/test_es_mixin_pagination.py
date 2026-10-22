@@ -52,19 +52,33 @@ def test_pagination_follows_a_cursor_that_advances():
     assert client.cursors == [None, ["b", "b", "id-b"], ["a", "a", "id-a"]]
 
 
-def test_pagination_raises_when_the_cursor_does_not_advance():
-    # A hit whose index cannot sort on the id tiebreaker comes back with a null sort value, and
-    # search_after cannot move past it: the server answers every request with the same page.
-    # Stopping quietly would report a partial walk as a complete one.
-    client = PagedSearchClient([_page(["p", "p", None])])
+def _walk_until_raised(pages):
+    client = PagedSearchClient(pages)
     mixin = ESMixin()
     mixin.client = client
     responses = []
-
-    with pytest.raises(SearchCursorStalledError, match=r"table_search_index .* Reindex it"):
+    with pytest.raises(SearchCursorStalledError, match=r"table_search_index.* Reindex it"):
         for response in mixin._paginate_es_internal(entity=Table):
             responses.append(response)
-            assert len(client.cursors) <= 3, "the guard must stop the loop"
+            assert len(client.cursors) <= 5, "the guard must stop the loop"
+    return responses
+
+
+def test_pagination_raises_before_yielding_a_page_with_no_id_tiebreaker():
+    # An index with no id.keyword sorts the server's tiebreaker as null: each next page starts
+    # with the previous page's last hit, so every page boundary would be processed twice.
+    responses = _walk_until_raised(
+        [
+            _page(["c", "c", None], ["b", "b", None]),
+            _page(["b", "b", None], ["a", "a", None]),
+            _page(["a", "a", None]),
+        ]
+    )
+
+    assert responses == []
+
+
+def test_pagination_raises_when_the_cursor_does_not_advance():
+    responses = _walk_until_raised([_page(["b", "b", "id-b"]), _page(["b", "b", "id-b"])])
 
     assert len(responses) == 1
-    assert len(client.cursors) == 2
