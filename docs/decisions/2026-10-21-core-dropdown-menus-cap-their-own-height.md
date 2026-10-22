@@ -15,12 +15,10 @@ overflow, the rows below the fold could not be reached.
 
 ## Decision
 The core component does not pick a menu height. `Dropdown.Popover` drops `max-h-none!` and lets
-react-aria set its `max-height` to the space on the side it opens toward. The popover is a flex
-column and `Dropdown.Menu` is `min-h-0 overflow-y-auto`, so the menu shrinks to that space and
-scrolls. A caller that wants a shorter menu passes its own `max-h-*` on `Dropdown.Menu`; the menu
-then scrolls at whichever is smaller, the caller's height or the space on screen. The popover is
-`overflow-y-auto`, so content that cannot shrink, such as a menu inside a wrapper `<div>`, scrolls
-the popover instead of being clipped.
+react-aria set its `max-height` to the space on the side it opens toward, and the popover is
+`overflow-y-auto`: whatever it holds (a menu, a wrapper, a form) scrolls once it reaches that
+height. `Dropdown.Menu` no longer sets a `max-height`. A caller that wants a shorter menu passes its
+own `max-h-*` on `Dropdown.Menu`, and the menu scrolls at that height.
 
 The shrinking in #30031 came from the popover's enter classes. `duration-150` sets
 `transition-duration`, and the default `transition-property` is `all`, so `top` and `max-height`
@@ -29,14 +27,11 @@ fit, and capped it instead of flipping. The popover now sets `transition-none`; 
 effects are keyframe animations, so they still play.
 
 v1 capped the menu at `min(24rem, 40vh)`, which put one product's height into a shared component.
-Two alternatives were tried and rejected. A viewport-height cap with `max-h-none!` kept let a long
-menu opened from mid-screen run off the top of the viewport. `max-h-[inherit]` on the menu ignored
-the space on screen when a caller's `max-h-*` replaced it, so the popover clipped the menu's end.
+A viewport-height cap with `max-h-none!` kept was tried and rejected: a long menu opened from
+mid-screen ran off the top of the viewport.
 
 ## Consequences
-Short menus look as before and still flip above a trigger near the bottom. A long menu grows to the
-edge of the screen on its roomier side and scrolls. Callers that set their own cap keep it. A
-popover with custom content (FilterSelect, TreeSelect, ManageButton's wrapped menu) is now also
-bounded by the available space and scrolls.
-Revisit if a `transition-*` class comes back on `Dropdown.Popover`, or if a custom popover needs
-block rather than flex layout.
+Short menus look as before and still flip above a trigger near the bottom. Long content grows to the
+edge of the screen on its roomier side and scrolls. Callers that set their own cap keep it; if that
+cap is taller than the space on screen, the popover and the menu both scroll. Revisit if a
+`transition-*` class comes back on `Dropdown.Popover`.
