@@ -13,6 +13,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import MethodType, SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine, event, text
@@ -229,6 +230,59 @@ def test_fallback_stays_in_owner_and_isolates_denied_ddl(catalog, prefix):
             assert get_view_definition(oracle, connection, "my_view", "my_schema", info_cache=cache) == ""
         assert sum('AS "view_def"' in sql for sql, _ in executions) == 1
         assert all("MY_OTHER_SCHEMA" not in parameters for _, parameters in executions)
+    finally:
+        cache.clear()
+
+
+@pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+@pytest.mark.parametrize("preserve", [False, True])
+@pytest.mark.parametrize("retry", ["denied", "empty", "recovered"])
+def test_partial_bulk_failure_preserves_definitions_when_retry_has_no_sql(prefix, preserve, retry):
+    owner = "MySchema" if preserve else "MY_SCHEMA"
+    name = "MyView" if preserve else "MY_VIEW"
+    schema = "MySchema" if preserve else "my_schema"
+    view_name = "MyView" if preserve else "my_view"
+    connection = MagicMock()
+    executions = []
+
+    def partial_rows():
+        yield SimpleNamespace(view_name=view_name, schema=schema, view_def="SELECT 1", view_ddl=None)
+        raise DatabaseError("bulk fetch", None, Exception("ORA-01406"))
+
+    bulk = MagicMock()
+    bulk.__iter__.side_effect = partial_rows
+    names = MagicMock()
+    names.__iter__.side_effect = lambda: iter([(owner, name, "VIEW"), (owner, "UNREADABLE_VIEW", "VIEW")])
+
+    def execute(query, parameters):
+        statement = str(query)
+        executions.append(statement)
+        assert parameters["owner"] == owner
+        if 'AS "view_def"' in statement:
+            return bulk
+        if 'AS "object_type"' in statement:
+            return names
+        if parameters["name"] == "UNREADABLE_VIEW" or retry == "denied":
+            raise DatabaseError(statement, parameters, Exception("ORA-31603"))
+        value = "SELECT 2" if retry == "recovered" else None
+        return SimpleNamespace(scalar=lambda: value, close=lambda: None)
+
+    connection.execute.side_effect = execute
+    oracle = dialect(prefix, preserve)
+    cache = {}
+    expected = (
+        f"CREATE OR REPLACE VIEW {name} AS SELECT 2"
+        if retry == "recovered"
+        else (f"CREATE OR REPLACE VIEW {view_name} AS SELECT 1")
+    )
+    try:
+        assert get_view_definition(oracle, connection, view_name, schema, info_cache=cache) == expected
+        executed = len(executions)
+        assert get_view_definition(oracle, connection, view_name, schema, info_cache=cache) == expected
+        unreadable = "UNREADABLE_VIEW" if preserve else "unreadable_view"
+        assert get_view_definition(oracle, connection, unreadable, schema, info_cache=cache) == ""
+        assert get_view_definition(oracle, connection, unreadable, schema, info_cache=cache) == ""
+        assert len(executions) == executed
     finally:
         cache.clear()
 

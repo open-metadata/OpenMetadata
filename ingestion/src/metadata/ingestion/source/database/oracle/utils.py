@@ -167,8 +167,9 @@ def _get_view_definitions_individually(self, connection: Connection, owner: str)
             except DatabaseError as exc:
                 logger.warning("Could not fetch view definition for %s.%s: %s", view_owner, name, exc)
                 logger.debug(traceback.format_exc())
-                definition = ""
-            yield (normalize(name), normalize(view_owner)), definition or ""
+                continue
+            if definition:
+                yield (normalize(name), normalize(view_owner)), definition
     finally:
         view_names.close()
 

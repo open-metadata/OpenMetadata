@@ -717,8 +717,7 @@ class TestOracleViewDefinitionFallback:
         assert defs.get(("mv1", "sam")) == "CREATE OR REPLACE VIEW MV1 AS SELECT count(*) FROM t"
         # NULL text falls back to GET_DDL, mirroring the bulk query.
         assert defs.get(("null_text", "sam")) == "CREATE FORCE VIEW SAM.NULL_TEXT AS SELECT 1 FROM dual"
-        # An unreadable view is negatively cached without blanking the rest.
-        assert defs.get(("bad_view", "sam")) == ""
+        assert ("bad_view", "sam") not in defs
 
     def test_fallback_keeps_native_case_for_preserve_identifier_case(self):
         """With preserveIdentifierCase set on the dialect, fallback keys stay verbatim."""
