@@ -811,6 +811,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/CustomMetricForm/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useGridEditController.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
@@ -826,6 +827,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/BulkEditTableGridInteractions.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts"
       ]
