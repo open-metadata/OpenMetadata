@@ -595,9 +595,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final Relationship relationship,
       final boolean isAdd,
       final ChangeActor actor) {
-    return stagePorts(dataProductId, ports, relationship, isAdd, actor)
-        .map(staged -> ApprovalGate.pendingMessage(ChangeRequestService.submit(staged).getId()))
-        .orElse(null);
+    // Most installs gate no data product; only then is the data product read and judged.
+    return ApprovalGate.mayHold(DATA_PRODUCT, actor.userName())
+        ? stagePorts(dataProductId, ports, relationship, isAdd, actor)
+            .map(staged -> ApprovalGate.pendingMessage(ChangeRequestService.submit(staged).getId()))
+            .orElse(null)
+        : null;
   }
 
   // The data product as the gate judges it, its ports included, before and after the edit.
@@ -611,20 +614,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     final String field = portField(relationship);
     // An entity always serializes to a JSON object.
     final ObjectNode base = (ObjectNode) JsonUtils.valueToTree(dataProduct);
-    addStagedRelations(base, dataProductId, Set.of(field));
+    final List<EntityReference> current = currentPorts(dataProductId, relationship);
+    base.set(field, JsonUtils.valueToTree(current));
     final ObjectNode proposed = base.deepCopy();
-    proposed.set(
-        field, JsonUtils.valueToTree(proposedPorts(dataProductId, relationship, ports, isAdd)));
+    proposed.set(field, JsonUtils.valueToTree(proposedPorts(current, ports, isAdd)));
     return ApprovalGate.admitRelations(dataProduct, base, proposed, actor);
   }
 
-  private List<EntityReference> proposedPorts(
-      final UUID dataProductId,
-      final Relationship relationship,
-      final List<EntityReference> ports,
-      final boolean isAdd) {
+  private static List<EntityReference> proposedPorts(
+      final List<EntityReference> current, final List<EntityReference> ports, final boolean isAdd) {
     final Map<UUID, EntityReference> byId = new LinkedHashMap<>();
-    currentPorts(dataProductId, relationship).forEach(ref -> byId.put(ref.getId(), ref));
+    current.forEach(ref -> byId.put(ref.getId(), ref));
     for (final EntityReference ref : ports) {
       if (isAdd) {
         byId.putIfAbsent(ref.getId(), ref);
@@ -649,6 +649,21 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final Relationship relationship,
       final boolean isAdd,
       final String updatedBy) {
+    linkPorts(dataProduct, ports, relationship, isAdd);
+    final DataProduct stored = get(null, dataProduct.getId(), getFields("*"));
+    recordPortChange(
+        stored,
+        portChangeDescription(
+            stored.getVersion(), Map.of(new PortChange(relationship, isAdd), ports)),
+        updatedBy,
+        false);
+  }
+
+  private void linkPorts(
+      final DataProduct dataProduct,
+      final List<EntityReference> ports,
+      final Relationship relationship,
+      final boolean isAdd) {
     for (final EntityReference ref : ports) {
       if (isAdd) {
         addRelationship(
@@ -657,31 +672,48 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         deleteRelationship(
             dataProduct.getId(), DATA_PRODUCT, ref.getId(), ref.getType(), relationship);
       }
-      EntityLifecycleEventDispatcher.getInstance()
-          .onEntityUpdated(dataProduct.getEntityReference(), null);
     }
-    recordPortChange(dataProduct, ports, relationship, isAdd, updatedBy);
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(dataProduct.getEntityReference(), null);
   }
 
+  // Every port field a change adds to or removes from, as one change description.
+  private ChangeDescription portChangeDescription(
+      final Double version, final Map<PortChange, List<EntityReference>> changes) {
+    final ChangeDescription combined = new ChangeDescription().withPreviousVersion(version);
+    changes.forEach(
+        (change, ports) -> {
+          final ChangeDescription part =
+              addBulkAddRemoveChangeDescription(version, change.isAdd(), ports, null);
+          final String fieldName = portField(change.relationship());
+          part.getFieldsAdded()
+              .forEach(field -> combined.getFieldsAdded().add(field.withName(fieldName)));
+          part.getFieldsDeleted()
+              .forEach(field -> combined.getFieldsDeleted().add(field.withName(fieldName)));
+        });
+    return combined;
+  }
+
+  // {@code joinsFieldChange}: the same approval has just published field changes at this version,
+  // so the port changes join that version's change description rather than replace it.
   private void recordPortChange(
       final DataProduct dataProduct,
-      final List<EntityReference> ports,
-      final Relationship relationship,
-      final boolean isAdd,
-      final String updatedBy) {
-    final ChangeDescription change =
-        addBulkAddRemoveChangeDescription(dataProduct.getVersion(), isAdd, ports, null);
-    final String fieldName = portField(relationship);
-    change.getFieldsAdded().forEach(field -> field.setName(fieldName));
-    change.getFieldsDeleted().forEach(field -> field.setName(fieldName));
+      final ChangeDescription change,
+      final String updatedBy,
+      final boolean joinsFieldChange) {
     final ChangeEvent changeEvent =
         getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
-    final DataProduct entityToUpdate = get(null, dataProduct.getId(), getFields("*"));
-    entityToUpdate.setChangeDescription(change);
-    entityToUpdate.setUpdatedBy(updatedBy);
-    storeEntity(entityToUpdate, true);
-    invalidate(entityToUpdate);
+    final ChangeDescription current = dataProduct.getChangeDescription();
+    if (joinsFieldChange && current != null) {
+      current.getFieldsAdded().addAll(change.getFieldsAdded());
+      current.getFieldsDeleted().addAll(change.getFieldsDeleted());
+    } else {
+      dataProduct.setChangeDescription(change);
+    }
+    dataProduct.setUpdatedBy(updatedBy);
+    storeEntity(dataProduct, true);
+    invalidate(dataProduct);
   }
 
   private static BulkOperationResult portsResult(final List<PortRow> rows, final String held) {
@@ -752,21 +784,29 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
             .map(EntityReference::getId)
             .collect(Collectors.toSet());
     final PortRules rules = portRules(entityId, relationship, addedOpposite);
+    final Set<UUID> existing = existingIds(ports);
     return ports.stream()
-        .map(ref -> exists(ref) ? rules.failure(ref) : missingAsset(ref))
+        .map(ref -> existing.contains(ref.getId()) ? rules.failure(ref) : missingAsset(ref))
         .filter(Objects::nonNull)
         .toList();
   }
 
   // A held addition names an asset by the reference saved at submission; it may be gone since.
-  private static boolean exists(final EntityReference ref) {
-    boolean exists = true;
-    try {
-      Entity.getEntityReferenceById(ref.getType(), ref.getId(), NON_DELETED);
-    } catch (EntityNotFoundException e) {
-      exists = false;
-    }
-    return exists;
+  // The assets are looked up once per entity type.
+  private static Set<UUID> existingIds(final List<EntityReference> refs) {
+    return refs.stream()
+        .collect(
+            Collectors.groupingBy(
+                EntityReference::getType,
+                Collectors.mapping(EntityReference::getId, Collectors.toList())))
+        .entrySet()
+        .stream()
+        .flatMap(
+            byType ->
+                Entity.getEntityReferencesByIds(byType.getKey(), byType.getValue(), NON_DELETED)
+                    .stream())
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
   }
 
   private static String missingAsset(final EntityReference ref) {
@@ -776,17 +816,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void applyStagedRelations(
-      final UUID entityId, final List<MutationOp> ops, final String requestedBy) {
+      final UUID entityId,
+      final List<MutationOp> ops,
+      final String requestedBy,
+      final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
-    portsByChange(ops)
-        .forEach(
-            (change, ports) ->
-                writePorts(
-                    get(null, entityId, getFields("id")),
-                    ports,
-                    change.relationship(),
-                    change.isAdd(),
-                    requestedBy));
+    final DataProduct dataProduct = get(null, entityId, getFields("*"));
+    final Map<PortChange, List<EntityReference>> changes = portsByChange(ops);
+    changes.forEach(
+        (change, ports) -> linkPorts(dataProduct, ports, change.relationship(), change.isAdd()));
+    recordPortChange(
+        dataProduct,
+        portChangeDescription(dataProduct.getVersion(), changes),
+        requestedBy,
+        withFieldChanges);
   }
 
   /** A kind of port change: which ports, and whether they are added or removed. */

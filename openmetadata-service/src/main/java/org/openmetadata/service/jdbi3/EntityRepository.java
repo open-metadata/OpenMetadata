@@ -6390,9 +6390,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         "%s has no relations an approval can hold".formatted(entityType));
   }
 
-  /** Publishes approved changes of staged relations, as {@code requestedBy} would have. */
+  /**
+   * Publishes approved changes of staged relations, as {@code requestedBy} would have. {@code
+   * withFieldChanges}: the same approval has just published field changes, which the relation
+   * changes join in the entity's change description.
+   */
   public void applyStagedRelations(
-      final UUID entityId, final List<MutationOp> ops, final String requestedBy) {
+      final UUID entityId,
+      final List<MutationOp> ops,
+      final String requestedBy,
+      final boolean withFieldChanges) {
     throw new IllegalArgumentException(
         "%s has no relations an approval can hold".formatted(entityType));
   }

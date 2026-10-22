@@ -426,7 +426,8 @@ public final class ChangeApplyService {
       repository.applyApprovedChange(approval, patch);
     }
     if (!relationOps.isEmpty()) {
-      repository.applyStagedRelations(request.getEntityId(), relationOps, request.getRequestedBy());
+      repository.applyStagedRelations(
+          request.getEntityId(), relationOps, request.getRequestedBy(), !fieldOps.isEmpty());
     }
     final EntityInterface published =
         readCurrent(repository, request.getEntityId(), split.applicable());
