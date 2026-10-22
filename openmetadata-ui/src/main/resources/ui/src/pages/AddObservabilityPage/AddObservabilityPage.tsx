@@ -42,8 +42,8 @@ function AddObservabilityPage({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={t('message.system-alert-edit-message')}
           icon={<Database01 />}
+          title={t('message.system-alert-edit-message')}
         />
       </div>
     );

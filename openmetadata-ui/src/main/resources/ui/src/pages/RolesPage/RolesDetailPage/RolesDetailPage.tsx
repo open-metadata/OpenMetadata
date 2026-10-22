@@ -359,16 +359,16 @@ const RolesDetailPage = () => {
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
             <NoDataPlaceholder
               data-testid="no-data-placeholder"
-              description={t('message.no-entity-found-for-name', {
-                entity: t('label.role'),
-                name: fqn,
-              })}
               footer={
                 <Button color="primary" onClick={() => navigate(rolesPath)}>
                   {t('label.go-back')}
                 </Button>
               }
               icon={<Database01 />}
+              title={t('message.no-entity-found-for-name', {
+                entity: t('label.role'),
+                name: fqn,
+              })}
             />
           </div>
         ) : (

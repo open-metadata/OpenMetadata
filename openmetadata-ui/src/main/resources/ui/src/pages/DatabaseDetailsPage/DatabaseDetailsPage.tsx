@@ -133,10 +133,7 @@ const renderDatabasePageGuard = ({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError(
-            EntityType.DATABASE,
-            decodedDatabaseFQN
-          )}
+          title={getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
         />
       </div>
     );
@@ -761,7 +758,7 @@ const DatabaseDetails: FunctionComponent = () => {
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={getEntityMissingError(
+            title={getEntityMissingError(
               EntityType.DATABASE,
               decodedDatabaseFQN
             )}
