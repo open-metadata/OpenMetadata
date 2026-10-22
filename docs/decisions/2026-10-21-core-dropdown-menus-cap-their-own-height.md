@@ -18,7 +18,9 @@ The core component does not pick a menu height. `Dropdown.Popover` drops `max-h-
 react-aria set its `max-height` to the space on the side it opens toward. The popover is a flex
 column and `Dropdown.Menu` is `min-h-0 overflow-y-auto`, so the menu shrinks to that space and
 scrolls. A caller that wants a shorter menu passes its own `max-h-*` on `Dropdown.Menu`; the menu
-then scrolls at whichever is smaller, the caller's height or the space on screen.
+then scrolls at whichever is smaller, the caller's height or the space on screen. The popover is
+`overflow-y-auto`, so content that cannot shrink, such as a menu inside a wrapper `<div>`, scrolls
+the popover instead of being clipped.
 
 The shrinking in #30031 came from the popover's enter classes. `duration-150` sets
 `transition-duration`, and the default `transition-property` is `all`, so `top` and `max-height`
@@ -34,6 +36,7 @@ the space on screen when a caller's `max-h-*` replaced it, so the popover clippe
 ## Consequences
 Short menus look as before and still flip above a trigger near the bottom. A long menu grows to the
 edge of the screen on its roomier side and scrolls. Callers that set their own cap keep it. A
-popover with custom content (FilterSelect, TreeSelect) is now also bounded by the available space.
+popover with custom content (FilterSelect, TreeSelect, ManageButton's wrapped menu) is now also
+bounded by the available space and scrolls.
 Revisit if a `transition-*` class comes back on `Dropdown.Popover`, or if a custom popover needs
 block rather than flex layout.
