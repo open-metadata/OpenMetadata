@@ -20,15 +20,13 @@ import type { ExportData } from '../../components/Entity/EntityExportModalProvid
 import i18n from '../../utils/i18next/LocalUtil';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 
-const SIDE_PANEL_ICONS = 'side-panel-icons';
-
 export type DataQualityLeftSideBarType = {
   key: DataQualityPageTabs;
   id: string;
   label: string;
   description: string;
   icon: SvgComponent;
-  iconProps: React.SVGProps<SVGSVGElement>;
+  iconProps?: React.SVGProps<SVGSVGElement>;
 };
 
 class DataQualityClassBase {
@@ -40,7 +38,6 @@ class DataQualityClassBase {
         label: i18n.t('label.summary'),
         icon: DashboardIcon,
         description: i18n.t('label.data-health-overview'),
-        iconProps: { className: SIDE_PANEL_ICONS },
       },
       {
         key: DataQualityPageTabs.TEST_CASES,
@@ -52,9 +49,6 @@ class DataQualityClassBase {
           entity: i18n.t('label.test-case-plural'),
         }),
         icon: TestCaseIcon,
-        iconProps: {
-          className: SIDE_PANEL_ICONS,
-        },
       },
       {
         key: DataQualityPageTabs.TEST_SUITES,
@@ -66,9 +60,6 @@ class DataQualityClassBase {
         }),
         id: 'by-test-suites',
         icon: TestSuiteIcon,
-        iconProps: {
-          className: SIDE_PANEL_ICONS,
-        },
       },
     ];
   }

@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   ProgressSteps,
   Skeleton,
   Typography,
@@ -57,6 +56,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import BrandImage from '../../../../../common/BrandImage/BrandImage';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
@@ -393,7 +393,7 @@ const AppInstall: FC<AppInstallProps> = ({
   if (!appData) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="app-not-found"
           description={fqn}
           icon={GridView}

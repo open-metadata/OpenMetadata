@@ -96,9 +96,6 @@ jest.mock('./DataQualityClassBase', () => {
           key: 'tables',
           label: 'Tables',
           icon: jest.fn(),
-          iconProps: {
-            className: 'side-panel-icons',
-          },
         },
       ]),
       getDataQualityTab: jest.fn().mockReturnValue([

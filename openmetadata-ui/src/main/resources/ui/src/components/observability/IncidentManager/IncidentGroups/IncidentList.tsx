@@ -14,7 +14,6 @@
 import {
   Badge,
   Box,
-  EmptyPlaceholder,
   OwnerChip,
   Table,
   toOwnerRef,
@@ -48,6 +47,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPartialNameFromTableFQN } from '../../../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../common/Loader/Loader';
 import InlineSeverity from '../../../DataQuality/IncidentManager/Severity/InlineSeverity.component';
 import InlineTestCaseIncidentStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/InlineTestCaseIncidentStatus.component';
@@ -176,10 +176,9 @@ const IncidentList = ({
       <Box
         className="tw:relative tw:min-h-60 tw:w-full"
         data-testid="incident-list-empty">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           icon={<ShieldTick className="tw:text-fg-brand-primary" />}
           title={t('message.no-active-incidents')}
-          variant="blank"
         />
       </Box>
     );

@@ -57,7 +57,6 @@ export interface ModifiedCreateEventSubscription
 
 export interface AddAlertPageLoadingState {
   alerts: boolean;
-  functions: boolean;
   templates: boolean;
 }
 

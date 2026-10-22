@@ -16,7 +16,6 @@ import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { Include } from '../../generated/type/include';
 import {
@@ -117,16 +116,6 @@ jest.mock('../../components/common/EntityDescription/Description', () =>
     .mockImplementation(({ onThreadLinkSelect }) => (
       <button onClick={onThreadLinkSelect}>Description</button>
     ))
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(({ type, children }) => (
-    <div>
-      ErrorPlaceHolder
-      <span>{type}</span>
-      <div>{children}</div>
-    </div>
-  ))
 );
 
 jest.mock(
@@ -419,7 +408,7 @@ describe('Container Page Component', () => {
     await waitFor(() => expect(mockUseEntityPermissions).toHaveBeenCalled());
 
     expect(
-      await screen.findByText(ERROR_PLACEHOLDER_TYPE.PERMISSION)
+      await screen.findByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
   });
 
@@ -476,7 +465,11 @@ describe('Container Page Component', () => {
 
     await waitFor(() => expect(getContainerByName).toHaveBeenCalledTimes(1));
 
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the page container data, with the schema tab selected', async () => {

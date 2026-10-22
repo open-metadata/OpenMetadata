@@ -33,7 +33,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PageLoader } from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -69,7 +68,6 @@ import { useAirflowStatus } from '../../context/AirflowStatusProvider/AirflowSta
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -80,6 +78,8 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
 
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Directory } from '../../generated/entity/data/directory';
 import { File } from '../../generated/entity/data/file';
@@ -2129,13 +2129,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   if (!flags.hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+          })}
+        />
+      </div>
     );
   }
 
@@ -2144,9 +2145,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
       className="service-details-page"
       pageTitle={getEntityName(serviceDetails)}>
       {isEmpty(serviceDetails) ? (
-        <ErrorPlaceHolder className="m-0 h-min-80">
-          {getEntityMissingError(serviceCategory as string, decodedServiceFQN)}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={getEntityMissingError(
+              serviceCategory as string,
+              decodedServiceFQN
+            )}
+          />
+        </div>
       ) : (
         <Box data-testid="service-page" direction="col" gap={3}>
           <div>

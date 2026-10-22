@@ -23,12 +23,11 @@ import i18n from '../../utils/i18next/LocalUtil';
 import DataInsightLeftPanel from './DataInsightLeftPanel/DataInsightLeftPanel';
 import KPIList from './KPIList';
 
-const SIDE_PANEL_ICONS_CLASS = 'side-panel-icons';
 type LeftSideBarType = {
   key: DataInsightTabs;
   label: string;
   icon: SvgComponent;
-  iconProps: React.SVGProps<SVGSVGElement>;
+  iconProps?: React.SVGProps<SVGSVGElement>;
 };
 
 class DataInsightClassBase {
@@ -41,26 +40,17 @@ class DataInsightClassBase {
       {
         key: DataInsightTabs.DATA_ASSETS,
         label: i18n.t('label.data-asset-plural'),
-        icon: AppAnalyticsIcon,
-        iconProps: {
-          className: SIDE_PANEL_ICONS_CLASS,
-        },
+        icon: DataAssetsIcon,
       },
       {
         key: DataInsightTabs.APP_ANALYTICS,
         label: i18n.t('label.app-analytic-plural'),
-        icon: DataAssetsIcon,
-        iconProps: {
-          className: SIDE_PANEL_ICONS_CLASS,
-        },
+        icon: AppAnalyticsIcon,
       },
       {
         key: DataInsightTabs.KPIS,
         label: i18n.t('label.kpi-uppercase-plural'),
         icon: KPIIcon,
-        iconProps: {
-          className: SIDE_PANEL_ICONS_CLASS,
-        },
       },
     ];
   }
