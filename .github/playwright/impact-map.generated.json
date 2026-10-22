@@ -4738,7 +4738,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/pagination.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts"
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts"
       ]
     },
     {
@@ -4815,6 +4816,7 @@
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
