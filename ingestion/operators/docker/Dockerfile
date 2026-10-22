@@ -1,4 +1,8 @@
-FROM python:3.12-slim-trixie
+ARG BASE_IMAGE=python:3.12-slim-trixie
+FROM ${BASE_IMAGE}
+
+# gRPC ships a separate CA bundle that can lag behind OS distrust updates.
+ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 
 # The -slim base ships without curl/gnupg/ca-certificates, so bootstrap them
 # before configuring third-party apt repositories.
@@ -6,6 +10,13 @@ RUN apt-get -qq update \
     && apt-get -qq install -y --no-install-recommends \
          curl ca-certificates gnupg \
     && rm -rf /var/lib/apt/lists/*
+ARG PIP_BOOTSTRAP="pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "${PIP_BOOTSTRAP}" \
+    && python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" \
+    && python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
 # apt-key was removed in Debian 13. The repo was also pointing at Debian 11
 # while the image was Debian 12 -- now matched to the actual base. The
 # debian/13 "prod" repo is signed with Microsoft's newer General GPG Signer
@@ -139,7 +150,7 @@ ENV PATH="/home/openmetadata/.local/bin:${PATH}"
 
 # Upgrade interpreter-level build tools before dropping privileges so scanners do not retain
 # the vulnerable base copies (pip CVE-2025-8869/3219/6357/8643; setuptools CVE-2026-59890).
-RUN pip install --no-cache-dir --upgrade "pip>=26.2,<27" "setuptools>=83"
+RUN pip install --no-cache-dir --upgrade "setuptools>=83"
 
 USER openmetadata
 
