@@ -186,25 +186,6 @@ describe('Test IngestionRecentRun component', () => {
     expect(runs).toHaveLength(4);
   });
 
-  it('should colour each run by its state and dim all but the latest', async () => {
-    (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
-      data: [...EXECUTION_RUNS],
-      paging: { total: 3 },
-    });
-
-    await act(async () => {
-      render(<IngestionRecentRuns ingestion={mockIngestion} />);
-    });
-
-    const [oldest, , latest] = await screen.findAllByTestId('pipeline-status');
-
-    expect(oldest).toHaveClass('tw:bg-utility-success-500', 'tw:opacity-[0.55]');
-    expect(latest).toHaveClass('tw:bg-utility-warning-500');
-    expect(latest).not.toHaveClass('tw:opacity-[0.55]');
-    expect(latest).toHaveTextContent('PartialSuccess');
-    expect(oldest).toHaveAccessibleName('Success');
-  });
-
   it('should show additional details for click on run', async () => {
     (getRunHistoryForPipeline as jest.Mock).mockResolvedValueOnce({
       data: [...EXECUTION_RUNS],

@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   HoverCard,
   Skeleton,
@@ -31,10 +32,7 @@ import {
 import { getRunHistoryForPipeline } from '../../../../../rest/ingestionPipelineAPI';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import IngestionRunDetailsModal from '../../../../Modals/IngestionRunDetailsModal/IngestionRunDetailsModal';
-import {
-  RECENT_RUN_DOT_CLASS,
-  RECENT_RUN_DOT_FALLBACK_CLASS,
-} from './IngestionRecentRuns.constants';
+import './ingestion-recent-run.style.less';
 import { IngestionRecentRunsProps } from './IngestionRecentRuns.interface';
 
 type TFunc = ReturnType<typeof useTranslation>['t'];
@@ -158,7 +156,7 @@ export const IngestionRecentRuns = <
     <Box
       inline
       align="center"
-      className={classNamesFunc('tw:gap-1', classNames)}>
+      className={classNamesFunc('tw:gap-1.25', classNames)}>
       {isEmpty(recentRunStatus) ? (
         <Typography data-testid="pipeline-status">
           {NO_DATA_PLACEHOLDER}
@@ -168,25 +166,26 @@ export const IngestionRecentRuns = <
           const { pipelineState, runId, startDate, endDate } =
             getRunFieldValues(r);
 
-          const isLatest = i === recentRunStatus.length - 1;
-          const label = upperFirst(pipelineState);
           const status = (
-            <button
-              aria-label={label}
+            <Badge
+              bordered={false}
               className={classNamesFunc(
-                'tw:size-[13px] tw:shrink-0 tw:cursor-pointer tw:rounded tw:border-0 tw:p-0',
-                RECENT_RUN_DOT_CLASS[pipelineState ?? ''] ??
-                  RECENT_RUN_DOT_FALLBACK_CLASS,
-                { 'tw:opacity-[0.55]': !isLatest }
+                'ingestion-run-badge',
+                pipelineState ?? '',
+                {
+                  latest: i === recentRunStatus.length - 1,
+                }
               )}
-              data-run-status={pipelineState}
+              color="gray"
               data-testid="pipeline-status"
               key={`${runId}-status`}
-              type="button"
+              size="sm"
+              type="color"
               onClick={() => handleRunStatusClick(r)}>
-              {/* The latest run's state stays in the text for readers of the row. */}
-              {isLatest && <span className="tw:sr-only">{label}</span>}
-            </button>
+              {i === recentRunStatus.length - 1
+                ? upperFirst(pipelineState)
+                : ''}
+            </Badge>
           );
 
           const showTooltip =
