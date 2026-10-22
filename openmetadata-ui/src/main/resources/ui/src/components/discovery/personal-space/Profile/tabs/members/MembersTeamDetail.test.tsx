@@ -321,6 +321,43 @@ describe('MembersTeamDetail', () => {
       );
     });
 
+    // A tab click records itself in the hash; otherwise following the same
+    // team link again leaves the hash unchanged and the link's tab is ignored.
+    it('applies the linked tab again after another tab was chosen', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      const link = '#members/teams/engineering?activeTab=sql-studio';
+      globalThis.location.hash = link;
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await screen.findByTestId('plugin-tab');
+
+      fireEvent.click(screen.getByRole('tab', { name: /label.team-plural/ }));
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'false'
+      );
+
+      // Following the same link again (or Back to it) brings the hash back.
+      act(() => {
+        globalThis.location.hash = link;
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
     it('stays on the default tab when the hash names no such tab', async () => {
       globalThis.location.hash = '#members/teams/engineering?activeTab=nope';
 

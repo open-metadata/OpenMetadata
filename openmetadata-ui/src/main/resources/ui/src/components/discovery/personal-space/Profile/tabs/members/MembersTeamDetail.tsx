@@ -177,7 +177,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
-  const { goTo, state: hashState } = useSettingsHash();
+  const { goTo, state: hashState, updateParams } = useSettingsHash();
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -1385,7 +1385,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             size="compact">
             <Tabs
               selectedKey={activeTab}
-              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
+              onSelectionChange={(key: Key) => {
+                setActiveTab(String(key));
+                // Record the tab in the hash, so a later link to another tab of
+                // this team changes the hash and is applied, as is Back/Forward.
+                updateParams({ activeTab: String(key) });
+              }}>
               {/* -mb-px lays the tab underline over the row border so the divider
                   also runs under the actions. */}
               <Box
