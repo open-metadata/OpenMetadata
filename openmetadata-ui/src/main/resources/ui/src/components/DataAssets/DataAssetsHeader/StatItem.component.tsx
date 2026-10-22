@@ -57,10 +57,11 @@ export const StatItem = ({
   srLabel,
 }: StatItemProps) => {
   const isDisabled = disabled || loading;
-  // `flex`, not `inline-flex`: Button wraps children in a block span, where an
-  // inline box sits on the text baseline and adds descender space below the icon.
+  // Button sets its children on a text line, so this inline box sits on the
+  // baseline with the line's descender space below it. That space sizes the
+  // header rows, so it stays; the translate only re-centres the icon and count.
   const labelClassName = classNames(
-    'tw:flex tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
+    'tw:inline-flex tw:translate-y-[2.5px] tw:items-center tw:gap-1 tw:text-xs tw:font-medium tw:transition-colors',
     isActive ? 'tw:text-brand-secondary' : 'tw:text-quaternary',
     onClick && !isDisabled
       ? 'tw:cursor-pointer tw:hover:text-secondary'
