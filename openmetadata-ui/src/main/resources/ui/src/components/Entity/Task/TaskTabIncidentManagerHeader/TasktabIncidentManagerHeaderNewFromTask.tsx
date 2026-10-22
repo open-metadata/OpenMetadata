@@ -165,7 +165,7 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
         <ProgressSteps
           // Fixed-width steps scroll inside the container, as the antd Steps did,
           // instead of squeezing their labels together.
-          className="task-resolution-steps w-full tw:*:min-w-32"
+          className="task-resolution-steps w-full tw:*:min-w-28"
           data-testid="task-resolution-steps"
           size="sm"
           steps={testCaseResolutionStepper}

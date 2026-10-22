@@ -65,7 +65,7 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: jest.fn(() => providerValue),
 }));
 
-jest.mock('../ActivityFeedEditor/ActivityFeedEditor', () =>
+jest.mock('../../common/CommentComposer/CommentComposer', () =>
   jest.fn(({ onSave }) => (
     <button data-testid="conversation-editor" onClick={() => onSave('Hello')}>
       Editor
