@@ -1115,7 +1115,16 @@
       ],
       "projects": ["chromium"],
       "specs": [
-        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The AI-mode test case detail page header, including the Deleted badge. TestCaseSoftDeleteRestore is the only spec asserting the badge, and the generated map does not reach it from this file.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
       ]
     },
