@@ -11,23 +11,48 @@
  *  limitations under the License.
  */
 import {
-  getWelcomeAccentStyle,
+  getWelcomeThemeStyle,
   isThemeDefaultPrimary,
   WELCOME_GLOW_DARK,
   WELCOME_GLOW_LIGHT,
 } from './WelcomeScreen.constants';
 
-describe('getWelcomeAccentStyle', () => {
-  it('should keep the theme colour when no accent is given', () => {
-    expect(getWelcomeAccentStyle()).toBeUndefined();
+describe('getWelcomeThemeStyle', () => {
+  it('should keep the theme colour with no accent and a default primary', () => {
+    expect(getWelcomeThemeStyle({ hasCustomPrimary: false })).toBeUndefined();
   });
 
-  it('should point the glow and button variables at the accent family', () => {
-    expect(getWelcomeAccentStyle('purple')).toEqual({
-      '--tw-color-brand-600': 'var(--tw-color-purple-600)',
+  it('should point the glow, button and dark strength at the accent family', () => {
+    expect(
+      getWelcomeThemeStyle({ accent: 'purple', hasCustomPrimary: false })
+    ).toEqual({
+      '--tw-color-brand-500': 'var(--tw-color-purple-500)',
       '--tw-background-color-brand-solid': 'var(--tw-color-purple-600)',
       '--tw-background-color-brand-solid_hover': 'var(--tw-color-purple-700)',
+      '--welcome-glow-dark-mix': '100%',
     });
+  });
+
+  // A custom theme overrides brand-600, not brand-500, so the glow is
+  // re-pointed at it.
+  it('should send a configured primary colour to the glow', () => {
+    expect(getWelcomeThemeStyle({ hasCustomPrimary: true })).toEqual({
+      '--tw-color-brand-500': 'var(--tw-color-brand-600)',
+    });
+  });
+});
+
+describe('welcome glow', () => {
+  it('should match the Figma light gradient', () => {
+    expect(WELCOME_GLOW_LIGHT).toBe(
+      'radial-gradient(168.55% 167.82% at 55.79% -31.38%, transparent 55%, var(--tw-color-brand-500) 100%)'
+    );
+  });
+
+  it('should use the wider dark ellipse at 20% unless an accent raises it', () => {
+    expect(WELCOME_GLOW_DARK).toBe(
+      'radial-gradient(220.28% 218.41% at 55.79% -31.38%, transparent 46.85%, color-mix(in srgb, var(--tw-color-brand-500) var(--welcome-glow-dark-mix, 20%), transparent) 100%)'
+    );
   });
 });
 
@@ -40,16 +65,4 @@ describe('isThemeDefaultPrimary', () => {
   ])('should treat %s as default: %s', (color, expected) => {
     expect(isThemeDefaultPrimary(color)).toBe(expected);
   });
-});
-
-describe('welcome glow', () => {
-  // A custom theme overrides brand-600 (not brand-500), so the glow must read
-  // brand-600 to follow an admin-configured primary colour.
-  it.each([WELCOME_GLOW_LIGHT, WELCOME_GLOW_DARK])(
-    'should follow the themed primary colour',
-    (glow) => {
-      expect(glow).toContain('var(--tw-color-brand-600)');
-      expect(glow).not.toContain('brand-500');
-    }
-  );
 });

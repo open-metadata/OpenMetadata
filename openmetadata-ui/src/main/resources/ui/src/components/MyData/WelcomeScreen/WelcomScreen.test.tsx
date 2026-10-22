@@ -60,8 +60,8 @@ describe('WelcomeScreen', () => {
     expect(
       root.style.getPropertyValue('--tw-background-color-brand-solid')
     ).toBe('var(--tw-color-purple-600)');
-    expect(root.style.getPropertyValue('--tw-color-brand-600')).toBe(
-      'var(--tw-color-purple-600)'
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe(
+      'var(--tw-color-purple-500)'
     );
   });
 
@@ -72,7 +72,16 @@ describe('WelcomeScreen', () => {
 
     renderScreen();
 
-    expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
+    const root = screen.getByTestId('welcome-screen');
+
+    // No purple accent: the button keeps the configured colour, and the glow
+    // follows it through brand-600.
+    expect(
+      root.style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('');
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe(
+      'var(--tw-color-brand-600)'
+    );
 
     useApplicationStore.setState({ applicationConfig: undefined } as never);
   });

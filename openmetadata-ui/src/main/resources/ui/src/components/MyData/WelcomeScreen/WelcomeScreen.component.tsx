@@ -30,7 +30,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useAddServiceAction } from '../../integration/ConnectionsPage/useAddServiceAction';
 import {
-  getWelcomeAccentStyle,
+  getWelcomeThemeStyle,
   isThemeDefaultPrimary,
   WELCOME_GLOW_DARK,
   WELCOME_GLOW_LIGHT,
@@ -81,7 +81,7 @@ const WelcomeScreen = ({ onClose }: WelcomeScreenProps) => {
     <div
       className="tw:relative tw:h-full tw:overflow-hidden tw:rounded-2xl tw:bg-primary tw:dark:bg-canvas"
       data-testid="welcome-screen"
-      style={getWelcomeAccentStyle(accent)}>
+      style={getWelcomeThemeStyle({ accent, hasCustomPrimary })}>
       <div
         aria-hidden
         className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:h-2/3"

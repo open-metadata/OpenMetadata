@@ -11,51 +11,52 @@
  *  limitations under the License.
  */
 
-// Figma 15448:9083: a radial glow rising into the brand colour along the bottom
-// 65% of the panel; dark mode keeps it faint. `--tw-*` is the runtime name of
-// the core theme variables, and it follows the configured brand colour.
 import { CSSProperties } from 'react';
 import { DEFAULT_THEME } from '../../../constants/Appearance.constants';
 
-const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
-// brand-600 is the primary colour a custom theme overrides (applyBrandCssVars);
-// brand-500 is not, so a glow on it would stay the default blue.
-const BRAND = 'var(--tw-color-brand-600)';
+// Figma "Harsha approved version (option - 2)", Rectangle 8: a radial glow
+// rising into the glow colour along the bottom 65% of the panel. Dark mode
+// uses a wider ellipse and, by default, 20% of the colour. `--tw-*` is the
+// runtime name of the core theme variables.
+const GLOW_CENTER = 'at 55.79% -31.38%';
+// brand-500 is Figma's fg-brand-secondary-500. getWelcomeThemeStyle re-points
+// it when a product accent or an admin-configured primary colour applies.
+const GLOW = 'var(--tw-color-brand-500)';
+// Dark-mode strength of the glow colour; a product accent can raise it.
+const DARK_GLOW_MIX = 'var(--welcome-glow-dark-mix, 20%)';
 
-const brandMix = (percent: number) =>
-  `color-mix(in srgb, ${BRAND} ${percent}%, transparent)`;
+export const WELCOME_GLOW_LIGHT = `radial-gradient(168.55% 167.82% ${GLOW_CENTER}, transparent 55%, ${GLOW} 100%)`;
 
-export const WELCOME_GLOW_LIGHT = `radial-gradient(${GLOW_SHAPE}, ${[
-  'transparent 55%',
-  `${brandMix(50)} 77.5%`,
-  `${brandMix(75)} 88.75%`,
-  BRAND,
-].join(', ')})`;
-
-export const WELCOME_GLOW_DARK = `radial-gradient(${GLOW_SHAPE}, ${[
-  'transparent 47%',
-  `${brandMix(8)} 60%`,
-  `${brandMix(20)} 73%`,
-  brandMix(20),
-].join(', ')})`;
+export const WELCOME_GLOW_DARK = `radial-gradient(220.28% 218.41% ${GLOW_CENTER}, transparent 46.85%, color-mix(in srgb, ${GLOW} ${DARK_GLOW_MIX}, transparent) 100%)`;
 
 /**
- * Re-points the brand variables the welcome screen reads (the glow above and
- * the primary button's `bg-brand-solid`) at a core `<accent>-*` palette
- * family, scoped to the screen. Like the brand solid, the palette keeps the
- * same shade in dark mode, so white button text stays readable (the
- * `utility-*` roles lighten in dark mode). `undefined` keeps the theme colour.
+ * Scoped theme for the welcome screen. A product accent (a core `<accent>-*`
+ * palette family, which keeps its shade in dark mode so white button text
+ * stays readable) re-points the glow and the primary button's
+ * `bg-brand-solid`; OpenMetadata's dark mock shows that accent at full
+ * strength. Without an accent, a configured primary colour still has to reach
+ * the glow: a custom theme overrides brand-600, not brand-500.
  */
-export const getWelcomeAccentStyle = (
-  accent?: string
-): CSSProperties | undefined =>
-  accent
-    ? ({
-        '--tw-color-brand-600': `var(--tw-color-${accent}-600)`,
-        '--tw-background-color-brand-solid': `var(--tw-color-${accent}-600)`,
-        '--tw-background-color-brand-solid_hover': `var(--tw-color-${accent}-700)`,
-      } as CSSProperties)
+export const getWelcomeThemeStyle = ({
+  accent,
+  hasCustomPrimary,
+}: {
+  accent?: string;
+  hasCustomPrimary: boolean;
+}): CSSProperties | undefined => {
+  if (accent) {
+    return {
+      '--tw-color-brand-500': `var(--tw-color-${accent}-500)`,
+      '--tw-background-color-brand-solid': `var(--tw-color-${accent}-600)`,
+      '--tw-background-color-brand-solid_hover': `var(--tw-color-${accent}-700)`,
+      '--welcome-glow-dark-mix': '100%',
+    } as CSSProperties;
+  }
+
+  return hasCustomPrimary
+    ? ({ '--tw-color-brand-500': 'var(--tw-color-brand-600)' } as CSSProperties)
     : undefined;
+};
 
 /** True when the theme's primary colour is unset or still the default. */
 export const isThemeDefaultPrimary = (primaryColor?: string) =>
