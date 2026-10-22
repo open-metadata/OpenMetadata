@@ -106,13 +106,7 @@ const ProfilePage: React.FC = () => {
       // Leaving the modal's route drops the hash, which closes the modal.
       navigate(getUserPath(linkedName), { replace: true });
     }
-  }, [
-    hashState.tab,
-    hashState.subPath,
-    currentUser,
-    setHash,
-    navigate,
-  ]);
+  }, [hashState.tab, hashState.subPath, currentUser, setHash, navigate]);
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
   // tabs through the `profile.tabs` extension point. Map each surviving

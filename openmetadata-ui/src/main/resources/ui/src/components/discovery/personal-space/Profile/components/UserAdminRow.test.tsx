@@ -72,7 +72,11 @@ describe('UserAdminRow', () => {
         })
     );
     render(
-      <UserAdminRow canEdit updateUserDetails={updateUserDetails} userData={user} />
+      <UserAdminRow
+        canEdit
+        updateUserDetails={updateUserDetails}
+        userData={user}
+      />
     );
 
     await act(async () => {
