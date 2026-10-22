@@ -139,6 +139,11 @@
     "baseReleaseId": {
       "description": "Active release at capture, retained as the immutable review comparison baseline.",
       "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "changeSummary": {
+      "description": "Member change counts against baseReleaseId, assigned by the server at capture. Absent on releases captured before change summaries existed.",
+      "$ref": "../../type/ontologyReleaseChangeSummary.json",
+      "readOnly": true
     }
   },
   "required": [

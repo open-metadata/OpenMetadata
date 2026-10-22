@@ -4102,6 +4102,18 @@ om:subClasses a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "subClasses" .
 
+om:publicationStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "publicationStatus" .
+
+om:changeSummary a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "changeSummary" .
+
+om:lifecycleStatus a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleStatus" .
+
 om:encodingVersion a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "encodingVersion" .
