@@ -376,15 +376,15 @@ def _get_dbt_cloud_run_results(client, account_id, run_id, run_steps: list[dict]
     run_results = []
     for step_index in step_indexes:
         try:
-            logger.debug(f"Requesting [dbt_run_results] for step [{step_index}]")
+            logger.debug("Requesting [dbt_run_results] for step [%s]", step_index)
             result = client.get(path, data={"step": step_index} if step_index is not None else None)
         except Exception as exc:
-            logger.debug(f"No dbt run_results for run {run_id} step {step_index}: {exc}")
+            logger.debug("No dbt run_results for run %s step %s: %s", run_id, step_index, exc)
             continue
         if isinstance(result, dict):
             run_results.append(result)
     if not run_results:
-        logger.warning(f"dbt run_results file not found for run {run_id}, skipping dbt tests")
+        logger.warning("dbt run_results file not found for run %s, skipping dbt tests", run_id)
     return run_results
 
 
