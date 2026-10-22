@@ -112,7 +112,7 @@ const UserCustomPropertiesTable = (props: UserCustomPropertiesProps) => {
     [t]
   );
 
-  if (access.isLoading || isLoading) {
+  if (access.isLoading || isLoading || props.isProfileLoading) {
     return (
       <Box data-testid="user-custom-properties-loading" direction="col" gap={2}>
         {Array.from({ length: 3 }, (_, index) => (

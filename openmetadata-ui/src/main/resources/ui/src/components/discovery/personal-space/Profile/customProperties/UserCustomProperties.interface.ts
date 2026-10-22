@@ -16,4 +16,7 @@ export interface UserCustomPropertiesProps {
   user: User;
   // Resolves to whether the save landed.
   onUpdate: (data: Partial<User>, key: keyof User) => Promise<boolean>;
+  // While true, user is the store's seed copy without `extension`, so values
+  // are unknown and a save would replace every other one.
+  isProfileLoading?: boolean;
 }

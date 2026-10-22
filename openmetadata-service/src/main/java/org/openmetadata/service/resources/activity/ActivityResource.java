@@ -170,14 +170,15 @@ public class ActivityResource {
    */
   private User feedSubject(SecurityContext securityContext, UUID userId) {
     String callerName = securityContext.getUserPrincipal().getName();
+    // A requested user may be soft-deleted: their profile (and its Activity tab) stays readable
+    // until restored or purged, as /activity/user/{userId} already allows.
     User subject =
         userId == null
             ? Entity.getEntityByName(Entity.USER, callerName, "teams", Include.NON_DELETED)
-            : Entity.getEntity(Entity.USER, userId, "teams", Include.NON_DELETED);
+            : Entity.getEntity(Entity.USER, userId, "teams", Include.ALL);
     if (!subject.getName().equals(callerName)) {
       authorizeTargetView(
-          securityContext,
-          new ResourceContext<>(Entity.USER, subject.getId(), null, Include.NON_DELETED));
+          securityContext, new ResourceContext<>(Entity.USER, subject.getId(), null, Include.ALL));
     }
     return subject;
   }

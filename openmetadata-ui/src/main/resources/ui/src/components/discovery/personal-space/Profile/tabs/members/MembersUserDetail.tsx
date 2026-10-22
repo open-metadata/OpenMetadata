@@ -89,7 +89,11 @@ const UserDetailTabContent: FC<UserDetailTabContentProps> = ({
       return <UserAssetsView kind="following" user={user} />;
     case 'custom-properties':
       return (
-        <UserCustomPropertiesTable user={user} onUpdate={updateUserDetails} />
+        <UserCustomPropertiesTable
+          isProfileLoading={isProfileLoading}
+          user={user}
+          onUpdate={updateUserDetails}
+        />
       );
     default:
       return (

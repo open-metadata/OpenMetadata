@@ -1306,6 +1306,43 @@ public class ActivityResourceIT {
     }
   }
 
+  @Test
+  void test_personalFeedsOfSoftDeletedUserStayReadable(TestNamespace ns) throws Exception {
+    String userName = "deletedfeed_" + UUID.randomUUID().toString().substring(0, 8);
+    User member =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(userName).withEmail(userName + "@test.om.org"));
+    try {
+      Table table = createTestTable(ns, "deleted-user-feed-table");
+      ActivityEvent activity =
+          createTestActivityEventWithAbout(
+              table, "<#E::table::" + table.getFullyQualifiedName() + ">");
+      addActivityReply(
+          SdkClients.adminClient(),
+          activity.getId(),
+          "<#E::user::" + member.getName() + "> please review");
+      SdkClients.adminClient()
+          .users()
+          .delete(member.getId().toString(), Map.of("hardDelete", "false"));
+
+      // The user detail keeps a soft-deleted user's Activity tab, so their feeds must not 404.
+      assertTrue(
+          feedIds(SdkClients.adminClient(), "/mentions", member.getId())
+              .contains(activity.getId()),
+          "/mentions for a soft-deleted user must still return their activity");
+      for (String feed : List.of("/my-feed", "/following")) {
+        assertNotNull(
+            feedIds(SdkClients.adminClient(), feed, member.getId()),
+            feed + " for a soft-deleted user must not 404");
+      }
+    } finally {
+      SdkClients.adminClient()
+          .users()
+          .delete(member.getId().toString(), Map.of("hardDelete", "true"));
+    }
+  }
+
   // ==================== EntityLink (About) Tests ====================
 
   @Test

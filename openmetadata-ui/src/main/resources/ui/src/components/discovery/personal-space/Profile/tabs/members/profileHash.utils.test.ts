@@ -53,4 +53,11 @@ describe('toHashLocation', () => {
   it('falls back to just the tab when there is no sub-path', () => {
     expect(toHashLocation({ tab: 'profile' })).toEqual({ hash: 'profile' });
   });
+
+  it('sends a viewer who cannot browse users to the read-only profile', () => {
+    expect(profileHash.user('alice', false)).toEqual({
+      tab: 'profile',
+      subPath: 'alice',
+    });
+  });
 });

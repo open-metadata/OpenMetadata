@@ -30,16 +30,20 @@ export interface ProfileHashTarget {
  * (`access-control` and `members`), avoiding divergent encoding.
  */
 export const profileHash = {
-  // Every caller is an admin-only surface (Members, Access Control), so a user
-  // (yourself included) opens in the Members user detail.
-  user: (name: string): ProfileHashTarget => ({
-    tab: 'members',
-    subPath: membersViewToSubPath({
-      type: 'user-detail',
-      name,
-      tab: 'overview',
-    }),
-  }),
+  // A user (yourself included) opens in the Members user detail when the viewer
+  // may browse users there; anyone else gets the same read-only detail under
+  // `#profile/<name>`, which any signed-in user can open.
+  user: (name: string, canBrowseUsers = true): ProfileHashTarget =>
+    canBrowseUsers
+      ? {
+          tab: 'members',
+          subPath: membersViewToSubPath({
+            type: 'user-detail',
+            name,
+            tab: 'overview',
+          }),
+        }
+      : { tab: 'profile', subPath: encodeURIComponent(name) },
   role: (fqn: string): ProfileHashTarget => ({
     tab: 'access-control',
     subPath: acViewToSubPath({ type: 'roles-detail', fqn, name: fqn }),

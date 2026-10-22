@@ -22,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 import type { User } from '../../../../../../generated/entity/teams/user';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { useAuth } from '../../../../../../hooks/authHooks';
 import { LIST_CAP } from '../../../../../../utils/PermissionsUtils';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
 import {
@@ -29,6 +31,7 @@ import {
   ProfileHashTarget,
   toHashLocation,
 } from './profileHash.utils';
+import { getMembersAccess } from './Members.utils';
 import ProfileHashLink from './ProfileHashLink';
 
 type GoTo = (target: ProfileHashTarget) => void;
@@ -38,18 +41,29 @@ type GoTo = (target: ProfileHashTarget) => void;
 export const UserNameCell: FC<{ record: User; goTo: GoTo }> = ({
   record,
   goTo,
-}) =>
-  record.name ? (
+}) => {
+  const { permissions } = usePermissionProvider();
+  const { isAdminUser } = useAuth();
+
+  if (!record.name) {
+    return <Typography size="text-sm">{getEntityName(record)}</Typography>;
+  }
+  // A team-only viewer can list a team's members but not open Members › Users.
+  const target = profileHash.user(
+    record.name,
+    getMembersAccess(permissions, Boolean(isAdminUser)).users
+  );
+
+  return (
     <UserPopOverCard
       showUserName
       profileWidth={16}
-      to={toHashLocation(profileHash.user(record.name))}
+      to={toHashLocation(target)}
       userName={record.name}
-      onTitleClick={() => goTo(profileHash.user(record.name ?? ''))}
+      onTitleClick={() => goTo(target)}
     />
-  ) : (
-    <Typography size="text-sm">{getEntityName(record)}</Typography>
   );
+};
 
 // A list of entity-reference links (teams/roles) with a "+N more" popover past
 // LIST_CAP — shared so every member table renders them identically.

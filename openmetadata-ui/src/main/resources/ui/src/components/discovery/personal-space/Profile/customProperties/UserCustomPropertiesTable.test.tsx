@@ -259,4 +259,22 @@ describe('UserCustomPropertiesTable', () => {
       screen.getByTestId('no-matching-custom-properties')
     ).toBeInTheDocument();
   });
+
+  it('waits for the full profile before offering any edit', () => {
+    mockAccess(true, true);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <UserCustomPropertiesTable
+          isProfileLoading
+          user={USER}
+          onUpdate={jest.fn()}
+        />
+      </QueryClientProvider>
+    );
+
+    expect(
+      screen.getByTestId('user-custom-properties-loading')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-employeeId')).not.toBeInTheDocument();
+  });
 });
