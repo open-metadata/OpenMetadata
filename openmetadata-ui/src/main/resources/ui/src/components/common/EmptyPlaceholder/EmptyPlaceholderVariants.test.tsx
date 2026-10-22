@@ -285,7 +285,7 @@ describe('Caller copy replaces wrapper defaults', () => {
     const title = screen.getByText('message.no-data-available');
     const description = screen.getByText('Enable the profiler to see data.');
 
-    expect(title).toHaveClass('tw:font-semibold');
+    expect(title).toHaveClass('tw:font-semibold', 'tw:text-primary');
     expect(description).toHaveClass('tw:text-secondary');
     expect(description).not.toHaveClass('tw:font-semibold');
   });
