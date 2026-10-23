@@ -15,11 +15,17 @@ package org.openmetadata.service.apps.bundles.dataRetention;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.CollectionDAO.WorkflowInstanceStateTimeSeriesDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.WorkflowInstanceTimeSeriesDAO;
 
 class DataRetentionTest {
   @Test
@@ -42,5 +48,29 @@ class DataRetentionTest {
 
     assertEquals(30, config.getWorkflowInstanceRetentionPeriod());
     assertTrue(DataRetention.isRetentionEnabled(config.getWorkflowInstanceRetentionPeriod()));
+  }
+
+  /**
+   * A workflow-run page that throws can have left at most one page of runs behind, so that is what
+   * the run's failed count is charged. The generic {@code BATCH_SIZE} charge would report ten times
+   * the runs one failed page could hold. The run DAO is the database boundary, so it is the mock.
+   */
+  @Test
+  void aFailedWorkflowRunPageIsChargedOnePageOfRuns() {
+    final WorkflowInstanceTimeSeriesDAO runDAO = mock(WorkflowInstanceTimeSeriesDAO.class);
+    when(runDAO.listExpiredRuns(any(), any()))
+        .thenThrow(new IllegalStateException("Lock wait timeout exceeded"));
+    final WorkflowRunRetention retention =
+        new WorkflowRunRetention(
+            runDAO,
+            mock(WorkflowInstanceStateTimeSeriesDAO.class),
+            0L,
+            DataRetention.WORKFLOW_RUN_PAGE_SIZE);
+
+    final BatchDrain.Result result = DataRetention.drainWorkflowRuns(retention);
+
+    assertNotNull(result.failure(), "the page failure must be reported");
+    assertEquals(DataRetention.WORKFLOW_RUN_PAGE_SIZE, result.failed());
+    assertEquals(0, result.deleted());
   }
 }
