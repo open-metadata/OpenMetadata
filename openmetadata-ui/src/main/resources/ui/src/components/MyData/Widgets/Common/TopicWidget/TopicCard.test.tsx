@@ -140,6 +140,23 @@ describe('TopicCard edit-view controls', () => {
   });
 });
 
+describe('TopicCard surface', () => {
+  // The card's look comes from the core Card so landing widgets match every
+  // other card surface, in dark mode too; a bg-primary card is page-coloured
+  // there and disappears into the page.
+  it('takes its surface, border and radius from the core Card', () => {
+    renderCard();
+    const card = screen.getByTestId(`topic-card-${TopicKey.TEAM_ACTIVITY}`);
+
+    expect(card).toHaveClass(
+      'tw:bg-surface',
+      'tw:border-subtle',
+      'tw:rounded-xl'
+    );
+    expect(card).not.toHaveClass('tw:bg-primary');
+  });
+});
+
 describe('TopicCard loading state', () => {
   const renderLoading = (isLoading: boolean) =>
     render(

@@ -48,6 +48,24 @@ describe('TopicStatChips', () => {
     expect(onChange).toHaveBeenCalledWith('healthy');
   });
 
+  // An unselected chip keeps the core Button's surface so it sits on the card
+  // in dark mode rather than showing as a page-coloured patch.
+  it('leaves an unselected chip on the button surface', () => {
+    render(
+      <TopicStatChips
+        label="Buckets"
+        stats={STATS}
+        value="failing"
+        onChange={jest.fn()}
+      />
+    );
+
+    const unselected = screen.getByTestId('topic-stat-healthy');
+
+    expect(unselected).toHaveClass('tw:bg-surface');
+    expect(unselected).not.toHaveClass('tw:bg-primary');
+  });
+
   // An empty bucket has no list to show, so it cannot be picked.
   it('disables an empty bucket unless it is the one selected', () => {
     render(
