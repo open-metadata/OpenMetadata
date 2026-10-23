@@ -19,6 +19,7 @@ import { isArray } from 'lodash';
 import { FormEvent, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { CollapsibleChipList } from '../CollapsibleChipList';
 import {
   CustomPropertyRenderer,
@@ -26,7 +27,6 @@ import {
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
 import { PropertyValueChip } from '../PropertyValueChip';
-import { useReportDirty } from '../useReportDirty';
 
 const toValueList = (value: unknown): string[] =>
   (isArray(value) ? value : [value]).filter(

@@ -16,13 +16,13 @@ import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import DomainSelect from '../../../../common/DomainSelect/DomainSelect';
 import {
   getDirectDomains,
   hasDirectDomainChanges,
   mergeDomainEdits,
 } from '../tabs/members/Members.utils';
-import { useProfileCopy } from '../useUserProfile';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 

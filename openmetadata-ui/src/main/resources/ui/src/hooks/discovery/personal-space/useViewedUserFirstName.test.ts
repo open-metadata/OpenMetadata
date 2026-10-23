@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { User } from '../../../../generated/entity/teams/user';
+import { User } from '../../../generated/entity/teams/user';
 import { useViewedUserFirstName } from './useViewedUserFirstName';
 
-jest.mock('../../../../hooks/useApplicationStore', () => ({
+jest.mock('../../useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { id: 'me', name: 'me' } }),
 }));
 

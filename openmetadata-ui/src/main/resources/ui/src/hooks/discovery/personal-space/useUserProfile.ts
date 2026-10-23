@@ -16,18 +16,18 @@ import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, pick } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ClientErrors } from '../../../../enums/Axios.enum';
-import { TabSpecificField } from '../../../../enums/entity.enum';
-import { User } from '../../../../generated/entity/teams/user';
-import { Include } from '../../../../generated/type/include';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { ClientErrors } from '../../../enums/Axios.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
+import { User } from '../../../generated/entity/teams/user';
+import { Include } from '../../../generated/type/include';
 import {
   getLoggedInUser,
   getUserByName,
   updateUserDetail,
-} from '../../../../rest/userAPI';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import { getUserFirstName } from './ProfileDetailsPanel.utils';
+} from '../../../rest/userAPI';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { getUserFirstName } from '../../../utils/UsersPureUtils';
+import { useApplicationStore } from '../../useApplicationStore';
 
 const USER_PROFILE_FIELDS = [
   TabSpecificField.PROFILE,

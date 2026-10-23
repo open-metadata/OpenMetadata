@@ -17,6 +17,7 @@ import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
@@ -44,7 +45,6 @@ import {
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
 import { getProfileUserDetailView } from './tabs/members/membersRoute.utils';
-import { useUserProfile } from './useUserProfile';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();

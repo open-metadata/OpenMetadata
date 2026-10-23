@@ -11,21 +11,20 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ResourceEntity } from '../../../../../enums/permissions.enum';
-import { User } from '../../../../../generated/entity/teams/user';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../enums/permissions.enum';
+import { User } from '../../../generated/entity/teams/user';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import {
   useEntityPermissions,
   UseEntityPermissionsOptions,
-} from '../../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../../utils/PermissionsUtils';
+} from '../../useEntityPermissions/useEntityPermissions';
 import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
-jest.mock(
-  '../../../../../hooks/useEntityPermissions/useEntityPermissions',
-  () => ({ useEntityPermissions: jest.fn() })
-);
+jest.mock('../../useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: jest.fn(),
+}));
 
 // Mock the hook, run the real derivation (incl. its `deleted` gating).
 const mockPermissions = (

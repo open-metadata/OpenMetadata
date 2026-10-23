@@ -15,9 +15,9 @@ import { Typography } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import { useProfileCopy } from '../useUserProfile';
 import InlineEditCard from './InlineEditCard';
 
 interface UserDescriptionRowProps {

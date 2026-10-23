@@ -20,9 +20,9 @@ import {
 import { NO_DATA_PLACEHOLDER } from '../../../../../constants/constants';
 import { User } from '../../../../../generated/entity/teams/user';
 import { CustomProperty } from '../../../../../generated/type/customProperty';
+import { useUserCustomPropertyAccess } from '../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess';
 import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
 import UserCustomPropertiesSection from './UserCustomPropertiesSection';
-import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 const mockSetHash = jest.fn();
 let mockIsAdmin = false;
@@ -34,9 +34,12 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('./useUserCustomPropertyAccess', () => ({
-  useUserCustomPropertyAccess: jest.fn(),
-}));
+jest.mock(
+  '../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess',
+  () => ({
+    useUserCustomPropertyAccess: jest.fn(),
+  })
+);
 
 jest.mock('../../../../../hooks/useEntityTypeCustomProperties', () => ({
   useEntityTypeCustomProperties: jest.fn(),

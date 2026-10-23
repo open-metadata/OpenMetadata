@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ResourceEntity } from '../../../../../enums/permissions.enum';
-import { User } from '../../../../../generated/entity/teams/user';
-import { useEntityPermissions } from '../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { ResourceEntity } from '../../../enums/permissions.enum';
+import { User } from '../../../generated/entity/teams/user';
+import { useEntityPermissions } from '../../useEntityPermissions/useEntityPermissions';
 
 export const useUserCustomPropertyAccess = (user?: User) => {
   const { canViewCustomFields, canEditCustomFields, isLoading } =

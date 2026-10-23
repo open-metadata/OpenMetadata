@@ -15,10 +15,10 @@ import { useMemo } from 'react';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useUserCustomPropertyAccess } from '../../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
-import { useUserCustomPropertyAccess } from '../../customProperties/useUserCustomPropertyAccess';
 import type { MembersUserDetailView, UserDetailTab } from './Members.types';
 import { getHiddenUserDetailTabs } from './Members.utils';
 

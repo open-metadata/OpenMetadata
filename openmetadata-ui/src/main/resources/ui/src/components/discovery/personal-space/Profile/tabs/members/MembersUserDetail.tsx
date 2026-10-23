@@ -18,6 +18,7 @@ import classNames from 'classnames';
 import { FC, Key, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../../enums/entity.enum';
+import { useUserProfile } from '../../../../../../hooks/discovery/personal-space/useUserProfile';
 import { restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
@@ -29,7 +30,6 @@ import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlac
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import TaskDetailPage from '../../../InboxPage/components/TaskDetailPage';
-import { useUserProfile } from '../../useUserProfile';
 import { SCROLLING_USER_DETAIL_TABS } from './Members.constants';
 import type { MembersUserDetailProps, UserDetailTab } from './Members.types';
 import MembersUserDetailBanners from './MembersUserDetailBanners';

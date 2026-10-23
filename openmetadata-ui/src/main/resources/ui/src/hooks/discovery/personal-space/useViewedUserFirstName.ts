@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { User } from '../../../../generated/entity/teams/user';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { getUserFirstName } from '../Profile/ProfileDetailsPanel.utils';
+import { User } from '../../../generated/entity/teams/user';
+import { getUserFirstName } from '../../../utils/UsersPureUtils';
+import { useApplicationStore } from '../../useApplicationStore';
 
 // Copy for another user's feed or tasks names them by first name, not "you".
 export const useViewedUserFirstName = (user?: User): string | undefined => {

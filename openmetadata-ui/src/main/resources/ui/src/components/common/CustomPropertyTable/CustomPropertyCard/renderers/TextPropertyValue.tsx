@@ -18,6 +18,7 @@ import {
   EMAIL_REG_EX,
   TIMESTAMP_UNIX_IN_MILLISECONDS_REGEX,
 } from '../../../../../constants/regex.constants';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
@@ -25,7 +26,6 @@ import {
 } from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
-import { useReportDirty } from '../useReportDirty';
 import { TextFieldConfig } from './TextPropertyValue.interface';
 
 const EMAIL_MIN_LENGTH = 6;

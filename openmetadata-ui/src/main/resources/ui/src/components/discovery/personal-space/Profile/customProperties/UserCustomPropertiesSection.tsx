@@ -25,13 +25,13 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useCustomPropertyEditor } from '../../../../../hooks/discovery/personal-space/useCustomPropertyEditor';
+import { useUserCustomPropertyAccess } from '../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess';
 import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
 import { entityTypeDetailSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
 import CustomPropertyRow from './CustomPropertyRow';
-import { useCustomPropertyEditor } from './useCustomPropertyEditor';
 import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
-import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 const CUSTOM_PROPERTIES_NAV_ID = 'custom-properties';
 

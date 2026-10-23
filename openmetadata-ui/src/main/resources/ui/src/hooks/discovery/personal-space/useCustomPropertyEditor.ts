@@ -12,11 +12,11 @@
  */
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { CustomProperty } from '../../../../../generated/type/customProperty';
-import { useEntityTypeCustomProperties } from '../../../../../hooks/useEntityTypeCustomProperties';
-import { buildUpdatedExtension } from '../../../../../utils/CustomProperty.utils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { CustomProperty } from '../../../generated/type/customProperty';
+import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import { useEntityTypeCustomProperties } from '../../useEntityTypeCustomProperties';
 
 export interface CustomPropertyEditorOptions {
   entityType: EntityType;

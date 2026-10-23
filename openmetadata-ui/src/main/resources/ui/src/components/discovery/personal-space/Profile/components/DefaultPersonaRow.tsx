@@ -19,9 +19,9 @@ import {
   User,
 } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
-import { useProfileCopy } from '../useUserProfile';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
 

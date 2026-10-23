@@ -21,13 +21,13 @@ import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { filterPopulatedTableRows } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { useReportDirty } from '../useReportDirty';
 import { EditableRow, TableRow } from './TablePropertyValue.interface';
 
 const getColumns = (config: unknown): string[] =>

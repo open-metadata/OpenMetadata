@@ -19,11 +19,11 @@ import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../../generated/entity/teams/teamHierarchy';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { getTeamsHierarchy } from '../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 

@@ -35,6 +35,7 @@ import SomethingWentWrongPlaceholder from '../../../../../components/common/Empt
 import Loader from '../../../../../components/common/Loader/Loader';
 import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { User } from '../../../../../generated/entity/teams/user';
+import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
@@ -82,7 +83,6 @@ import {
   getUserTaskScope,
   userTaskCountQuery,
 } from '../useUserTasks';
-import { useViewedUserFirstName } from '../useViewedUserFirstName';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed

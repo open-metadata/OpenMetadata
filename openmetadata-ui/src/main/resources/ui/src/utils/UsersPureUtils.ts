@@ -101,3 +101,9 @@ export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
 
   return null;
 };
+
+/** "Alice" from "Alice Johnson" — used where copy addresses another user. */
+export const getUserFirstName = (user: {
+  name: string;
+  displayName?: string;
+}): string => (user.displayName?.trim() || user.name).split(/\s+/)[0];

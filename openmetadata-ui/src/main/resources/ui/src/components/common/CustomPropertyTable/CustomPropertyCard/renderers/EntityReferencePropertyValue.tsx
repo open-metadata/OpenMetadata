@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import { PAGE_SIZE } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { EntityReference } from '../../../../../generated/entity/type';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { searchQuery } from '../../../../../rest/searchAPI';
 import { getCustomPropertyReferenceSearchIndex } from '../../../../../utils/CustomProperty.utils';
 import { getEntityIcon } from '../../../../../utils/EntityIconUtils';
@@ -37,7 +38,6 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { useReportDirty } from '../useReportDirty';
 
 const SEARCH_DEBOUNCE_MS = 300;
 const ENTITY_REFERENCE_LIST = 'entityReferenceList';

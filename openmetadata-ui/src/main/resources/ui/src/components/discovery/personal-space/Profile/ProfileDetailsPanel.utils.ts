@@ -48,9 +48,3 @@ export const canUserChangePassword = ({
     (isSelf || Boolean(isAdmin))
   );
 };
-
-/** "Alice" from "Alice Johnson" — used where copy addresses another user. */
-export const getUserFirstName = (user: {
-  name: string;
-  displayName?: string;
-}): string => (user.displayName?.trim() || user.name).split(/\s+/)[0];

@@ -88,9 +88,12 @@ const mockCustomPropertyAccess = {
   isLoading: false,
 };
 
-jest.mock('../../customProperties/useUserCustomPropertyAccess', () => ({
-  useUserCustomPropertyAccess: () => mockCustomPropertyAccess,
-}));
+jest.mock(
+  '../../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess',
+  () => ({
+    useUserCustomPropertyAccess: () => mockCustomPropertyAccess,
+  })
+);
 jest.mock('../../customProperties/UserCustomPropertiesList', () => () => (
   <div data-testid="tab-custom-properties" />
 ));

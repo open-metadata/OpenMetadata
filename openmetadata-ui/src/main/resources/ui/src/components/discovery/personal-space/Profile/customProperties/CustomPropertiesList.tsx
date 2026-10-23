@@ -19,6 +19,10 @@ import {
 import { Settings02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  CustomPropertyEditorOptions,
+  useCustomPropertyEditor,
+} from '../../../../../hooks/discovery/personal-space/useCustomPropertyEditor';
 import { SORT_OPTIONS } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.constants';
 import { CustomPropertySortMode } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.interface';
 import { filterAndSortProperties } from '../../../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
@@ -26,10 +30,6 @@ import { CustomPropertySearchSortBar } from '../../../../common/CustomPropertyTa
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import CustomPropertyRow from './CustomPropertyRow';
-import {
-  CustomPropertyEditorOptions,
-  useCustomPropertyEditor,
-} from './useCustomPropertyEditor';
 
 interface CustomPropertiesListProps extends CustomPropertyEditorOptions {
   canView: boolean;

@@ -13,6 +13,7 @@
 import { Box } from '@openmetadata/ui-core-components';
 import { FormEvent, lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import RichTextEditorPreviewerV1 from '../../../RichTextEditor/RichTextEditorPreviewerV1';
 import {
@@ -20,7 +21,6 @@ import {
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { useReportDirty } from '../useReportDirty';
 
 const RichTextEditor = withSuspenseFallback(
   lazy(() => import('../../../RichTextEditor/RichTextEditor'))

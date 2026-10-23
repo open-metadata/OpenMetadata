@@ -15,13 +15,13 @@ import { Link01 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Hyperlink } from '../../../../../generated/type/customProperties/complexTypes';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { getHyperlinkUrlValidationErrorKey } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { useReportDirty } from '../useReportDirty';
 
 const HyperlinkPropertyView = ({ value, isCompact }: PropertyViewProps) => {
   const hyperlink = value as Hyperlink;

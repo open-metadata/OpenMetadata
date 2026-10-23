@@ -19,8 +19,8 @@ import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { User } from '../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { getUserFirstName } from '../../../../utils/UsersPureUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import { getUserFirstName } from '../Profile/ProfileDetailsPanel.utils';
 import { EMPTY_STATE_COPY } from './UserAssets.constants';
 import { UserAssetsKind } from './UserAssets.utils';
 

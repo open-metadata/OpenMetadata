@@ -27,6 +27,7 @@ import SomethingWentWrongPlaceholder from '../../../../../components/common/Empt
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { User } from '../../../../../generated/entity/teams/user';
+import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -59,7 +60,6 @@ import {
 } from '../useInboxActivity';
 import { useIncrementalRender } from '../useIncrementalRender';
 import { useIsScrolled } from '../useIsScrolled';
-import { useViewedUserFirstName } from '../useViewedUserFirstName';
 
 // Cards rendered per batch. The feed is fetched whole (up to ACTIVITY_LIMIT),
 // but a small DOM keeps a modal over it (a delete confirm, say) cheap to open.

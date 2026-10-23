@@ -29,13 +29,13 @@ import {
 import { Clock } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { TimeIntervalType } from '../../CustomPropertyTable.interface';
 import {
   CustomPropertyRenderer,
   PropertyEditProps,
   PropertyViewProps,
 } from '../CustomPropertyCard.interface';
-import { useReportDirty } from '../useReportDirty';
 import {
   CalendarDateValue,
   CalendarRange,

@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { act, renderHook } from '@testing-library/react';
-import { EntityType } from '../../../../../enums/entity.enum';
-import { CustomProperty } from '../../../../../generated/type/customProperty';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { EntityType } from '../../../enums/entity.enum';
+import { CustomProperty } from '../../../generated/type/customProperty';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useCustomPropertyEditor } from './useCustomPropertyEditor';
 
-jest.mock('../../../../../hooks/useEntityTypeCustomProperties', () => ({
+jest.mock('../../useEntityTypeCustomProperties', () => ({
   useEntityTypeCustomProperties: () => ({
     customProperties: [],
     isLoading: false,
   }),
 }));
 
-jest.mock('../../../../../utils/ToastUtils', () => ({
+jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 

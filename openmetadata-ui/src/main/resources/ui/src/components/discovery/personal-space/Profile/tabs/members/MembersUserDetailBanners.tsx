@@ -25,7 +25,7 @@ import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { formatDate } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { getUserFirstName } from '../../ProfileDetailsPanel.utils';
+import { getUserFirstName } from '../../../../../../utils/UsersPureUtils';
 import type { UserDetailTab } from './Members.types';
 
 interface MembersUserDetailBannersProps {

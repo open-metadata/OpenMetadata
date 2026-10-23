@@ -13,9 +13,9 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
+import { useUserCustomPropertyAccess } from '../../../../../hooks/discovery/personal-space/useUserCustomPropertyAccess';
 import CustomPropertiesList from './CustomPropertiesList';
 import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
-import { useUserCustomPropertyAccess } from './useUserCustomPropertyAccess';
 
 /** The user detail's Custom Properties tab: the shared list, gated on the user's own access rules. */
 const UserCustomPropertiesList = ({

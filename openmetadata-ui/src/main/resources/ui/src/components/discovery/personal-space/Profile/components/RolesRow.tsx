@@ -24,10 +24,10 @@ import {
   User,
 } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
-import { useProfileCopy } from '../useUserProfile';
 import ChipBadgeList from './ChipBadgeList';
 import InlineEditCard from './InlineEditCard';
 

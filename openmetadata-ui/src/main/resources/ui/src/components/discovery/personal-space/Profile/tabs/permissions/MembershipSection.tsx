@@ -15,11 +15,11 @@ import { Card } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../../generated/entity/teams/user';
+import { useProfileCopy } from '../../../../../../hooks/discovery/personal-space/useUserProfile';
 import ChipBadgeList from '../../components/ChipBadgeList';
 import FieldRow from '../../components/FieldRow';
 import RolesRow from '../../components/RolesRow';
 import TeamsRow from '../../components/TeamsRow';
-import { useProfileCopy } from '../../useUserProfile';
 
 export interface MembershipSectionProps {
   userData: User;

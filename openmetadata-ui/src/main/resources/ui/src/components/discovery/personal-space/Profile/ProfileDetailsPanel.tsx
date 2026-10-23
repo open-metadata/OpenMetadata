@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../../components/common/ProfilePicture/ProfilePicture';
 import { User } from '../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getVisibleEmail } from '../../../../utils/UsersPureUtils';
@@ -35,7 +36,6 @@ import SettingsSection, { ReadOnlyRow } from './components/SettingsSection';
 import UserDescriptionRow from './components/UserDescriptionRow';
 import UserCustomPropertiesSection from './customProperties/UserCustomPropertiesSection';
 import { canUserChangePassword } from './ProfileDetailsPanel.utils';
-import { useProfileCopy } from './useUserProfile';
 
 interface ProfileDetailsPanelProps {
   userData: User;

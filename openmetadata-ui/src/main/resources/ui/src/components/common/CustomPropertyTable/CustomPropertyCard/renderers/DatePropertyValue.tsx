@@ -15,6 +15,7 @@ import { Box, DatePicker, TimePicker } from '@openmetadata/ui-core-components';
 import { DateTime } from 'luxon';
 import { FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { formatCustomPropertyDateTime } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
@@ -23,7 +24,6 @@ import {
 } from '../CustomPropertyCard.interface';
 import { getPropertyTypeMeta } from '../CustomPropertyCard.utils';
 import { PropertyValueChip } from '../PropertyValueChip';
-import { useReportDirty } from '../useReportDirty';
 import { PickerDate } from './DatePropertyValue.interface';
 import {
   DateParts,
