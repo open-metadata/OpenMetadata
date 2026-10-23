@@ -866,7 +866,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
       />
 
       <TableCard.Root
-        className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+        className="tw:rounded-xl tw:shadow-none"
         size="compact">
         <Tabs
           selectedKey={activeTab}
