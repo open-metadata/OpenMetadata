@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "This alert could not be found. It may have been deleted or renamed.",
     "alert-pick-a-trigger-description": "Choose what to watch — test results, pipeline status, changes to specific assets.",
     "alert-recent-events-description": "List of recent alert events triggered for the alert {{alertName}}.",
+    "alert-rules-read-only": "These filters and triggers were not created in this form, so they can't be edited here. Other changes save without affecting them.",
     "alert-stay-ahead-description": "Your team hears about issues in their own tools — before stakeholders notice.",
     "alert-synced-successfully": "Alert synced successfully",
     "alerts-description": "Stay current with timely alerts using webhooks.",

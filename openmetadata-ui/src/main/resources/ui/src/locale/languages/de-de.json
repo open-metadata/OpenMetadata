@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "Diese Warnung wurde nicht gefunden. Möglicherweise wurde sie gelöscht oder umbenannt.",
     "alert-pick-a-trigger-description": "Wählen Sie, was überwacht werden soll — Testergebnisse, Pipeline-Status oder Änderungen an bestimmten Assets.",
     "alert-recent-events-description": "Liste der zuletzt ausgelösten Alarmereignisse für den Alarm {{alertName}}.",
+    "alert-rules-read-only": "Diese Filter und Auslöser wurden nicht in diesem Formular erstellt und können hier nicht bearbeitet werden. Andere Änderungen werden gespeichert, ohne sie zu beeinflussen.",
     "alert-stay-ahead-description": "Ihr Team erfährt von Problemen in den eigenen Tools — bevor Stakeholder etwas bemerken.",
     "alert-synced-successfully": "Warnung erfolgreich synchronisiert",
     "alerts-description": "Bleiben Sie mit zeitnahen Benachrichtigungen über Webhooks auf dem neuesten Stand.",

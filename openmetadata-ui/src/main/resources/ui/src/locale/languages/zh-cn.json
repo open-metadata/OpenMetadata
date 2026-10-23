@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "找不到此提醒，它可能已被删除或重命名。",
     "alert-pick-a-trigger-description": "选择要监控的对象——测试结果、管道状态或特定资产的变更。",
     "alert-recent-events-description": "为告警{{alertName}}触发的最近告警事件列表。",
+    "alert-rules-read-only": "这些筛选器和触发器不是在此表单中创建的，因此无法在此处编辑。其他更改的保存不会影响它们。",
     "alert-stay-ahead-description": "让团队在各自使用的工具中先于相关方了解问题。",
     "alert-synced-successfully": "警报同步成功",
     "alerts-description": "使用 Webhooks 及时了解最新的提醒信息",

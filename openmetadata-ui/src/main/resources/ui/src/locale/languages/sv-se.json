@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "Det gick inte att hitta den här aviseringen. Den kan ha tagits bort eller bytt namn.",
     "alert-pick-a-trigger-description": "Välj vad som ska bevakas — testresultat, pipelinestatus, ändringar i specifika tillgångar.",
     "alert-recent-events-description": "Lista över senaste aviseringshändelser som startats för aviseringen {{alertName}}.",
+    "alert-rules-read-only": "Dessa filter och utlösare skapades inte i det här formuläret och kan därför inte redigeras här. Andra ändringar sparas utan att påverka dem.",
     "alert-stay-ahead-description": "Ditt team får höra om problem i sina egna verktyg — innan intressenterna märker något.",
     "alert-synced-successfully": "Aviseringen synkroniserades",
     "alerts-description": "Håll dig uppdaterad med aviseringar i rätt tid med hjälp av webhooks.",

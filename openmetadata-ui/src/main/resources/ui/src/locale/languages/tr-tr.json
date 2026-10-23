@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "Bu uyarı bulunamadı. Silinmiş veya yeniden adlandırılmış olabilir.",
     "alert-pick-a-trigger-description": "Neyi izleyeceğinizi seçin — test sonuçları, pipeline durumu, belirli varlıklardaki değişiklikler.",
     "alert-recent-events-description": "{{alertName}} uyarısı için tetiklenen son uyarı olaylarının listesi.",
+    "alert-rules-read-only": "Bu filtreler ve tetikleyiciler bu formda oluşturulmadığından burada düzenlenemez. Diğer değişiklikler bunları etkilemeden kaydedilir.",
     "alert-stay-ahead-description": "Ekibiniz sorunları kendi araçlarından öğrenir — paydaşlar fark etmeden önce.",
     "alert-synced-successfully": "Uyarı başarıyla senkronize edildi",
     "alerts-description": "Webhook'ları kullanarak zamanında uyarılarla güncel kalın.",

@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "このアラートが見つかりませんでした。削除されたか、名前が変更された可能性があります。",
     "alert-pick-a-trigger-description": "監視対象を選択します — テスト結果、パイプラインのステータス、特定アセットの変更など。",
     "alert-recent-events-description": "アラート {{alertName}} に対してトリガーされた最近のイベント一覧です。",
+    "alert-rules-read-only": "これらのフィルターとトリガーはこのフォームで作成されたものではないため、ここでは編集できません。その他の変更はこれらに影響せずに保存されます。",
     "alert-stay-ahead-description": "関係者が気づく前に、チームが使い慣れたツールで問題を把握できます。",
     "alert-synced-successfully": "アラートが正常に同期されました",
     "alerts-description": "Webhook を活用したタイムリーなアラートで、常に最新情報を把握できます。",

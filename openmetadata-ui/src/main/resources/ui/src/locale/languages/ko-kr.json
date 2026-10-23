@@ -4005,6 +4005,7 @@
     "alert-not-found-description": "이 알림을 찾을 수 없습니다. 삭제되었거나 이름이 변경되었을 수 있습니다.",
     "alert-pick-a-trigger-description": "감시할 대상을 선택하세요 — 테스트 결과, 파이프라인 상태, 특정 자산의 변경 사항 등.",
     "alert-recent-events-description": "{{alertName}} 알림에 대해 최근 발생한 알림 이벤트 목록입니다.",
+    "alert-rules-read-only": "이 필터와 트리거는 이 양식에서 생성되지 않았으므로 여기에서 편집할 수 없습니다. 다른 변경 사항은 이들에 영향을 주지 않고 저장됩니다.",
     "alert-stay-ahead-description": "이해관계자가 알아차리기 전에, 팀이 익숙한 도구에서 먼저 문제를 파악합니다.",
     "alert-synced-successfully": "알림이 성공적으로 동기화되었습니다.",
     "alerts-description": "웹훅을 사용하여 시기적절한 알림으로 최신 정보를 유지하세요.",
