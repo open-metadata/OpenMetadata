@@ -42,6 +42,10 @@ export const TOUR_PASS_THROUGH_PATHS = [
   /^\/users\/(login|logout|refresh)\b/,
   /^\/users\/loggedInUser/,
   /^\/users\/name\/[^/]+\/?$/,
+  // A user by id, and what hangs off them (their follows, preferences): only
+  // the signed-in user is read this way, and the id differs per instance, so
+  // a recorded one would never match anyway.
+  /^\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/|$)/,
   /^\/permissions/,
   /^\/system\//,
   /^\/apps\/installed/,

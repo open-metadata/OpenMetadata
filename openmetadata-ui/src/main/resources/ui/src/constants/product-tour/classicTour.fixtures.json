@@ -9339,16 +9339,6 @@
     }
   },
   {
-    "method": "get",
-    "path": "/users/e5a2e3f1-63a4-48da-b709-bdf77edf314b/preferences",
-    "query": {},
-    "status": 200,
-    "data": {
-      "userId": "e5a2e3f1-63a4-48da-b709-bdf77edf314b",
-      "preferences": []
-    }
-  },
-  {
     "method": "post",
     "path": "/dataQuality/testSuites/dataQualityReport/batch",
     "query": {},

@@ -25,11 +25,15 @@
  *   TOUR_FIXTURES_OUT=src/constants/product-tour/classicTour.fixtures.json \
  *     npx playwright test -c scripts/product-tour/recordProductTourFixtures.config.ts
  *
- * The app mode the admin is in picks the tour, as Help > Tour does.
+ * The app mode the admin is in picks the tour, as Help > Tour does; set
+ * TOUR_APP_MODE (`default` or `ai`) to record the tour of another mode. A
+ * distribution records its own tours the same way, with
+ * PLAYWRIGHT_TEST_BASE_URL pointing at its app.
  */
 import { expect, Page, Request, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import { AdminClass } from '../../playwright/support/user/AdminClass';
+import { APP_MODE_SESSION_KEY } from '../../src/constants/appMode.constants';
 import {
   PRODUCT_TOUR_RECORD_KEY,
   TOUR_WRITE_METHODS,
@@ -114,6 +118,18 @@ test('record the product tour fixtures', async ({ page }) => {
     (key) => sessionStorage.setItem(key, 'true'),
     PRODUCT_TOUR_RECORD_KEY
   );
+  const appMode = process.env.TOUR_APP_MODE;
+  if (appMode) {
+    // This tab's mode, as switching modes in the app sets it.
+    await page.evaluate(
+      ({ key, mode }) =>
+        sessionStorage.setItem(
+          key,
+          JSON.stringify({ personaAppMode: null, mode, source: 'manual' })
+        ),
+      { key: APP_MODE_SESSION_KEY, mode: appMode }
+    );
+  }
   await page.goto('/tour');
 
   try {

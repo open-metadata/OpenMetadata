@@ -21,6 +21,7 @@ export const PRODUCT_TOUR_PASS_THROUGH_PATHS = [
   /^\/users\/(login|logout|refresh)\b/,
   /^\/users\/loggedInUser/,
   /^\/users\/name\/[^/]+\/?$/,
+  /^\/users\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\/|$)/,
   /^\/permissions/,
   /^\/system\//,
   /^\/apps\/installed/,

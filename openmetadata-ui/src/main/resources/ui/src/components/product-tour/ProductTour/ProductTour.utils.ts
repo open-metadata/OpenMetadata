@@ -18,6 +18,7 @@ import { getBasePath } from '../../../utils/HistoryUtils';
 import {
   TARGET_POLL_INTERVAL_MS,
   TOUR_HELPER_MARKER_CLASS_NAME,
+  TOUR_SCROLL_MARGIN,
   TOUR_TRANSITION_FADE_MS,
   TOUR_TRANSITION_TIMEOUT_MS,
 } from './ProductTour.constants';
@@ -80,16 +81,27 @@ export const waitForStableTarget = (
 
 /**
  * Pages scroll inside their own layout container, so a target can sit below
- * the fold. Only a hidden top edge counts: a tall target whose top is on
- * screen is still readable, and scrolling it would move it out from under the
- * measured mask.
+ * the fold, or under a prompt docked at the bottom of the page. The tour
+ * scrolls it into view before react-tour measures it, and react-tour never
+ * scrolls (see TOUR_IN_VIEW_THRESHOLD). A target that fits within the margins
+ * is centred unless it already clears them. A taller one moves only when its
+ * top, which the popover points at, is out of view: scrolling a tall target
+ * whose top shows would only move its top off screen.
  */
 export const scrollTargetIntoView = (selector: string) => {
   const target = document.querySelector(selector);
-  const rect = target?.getBoundingClientRect();
+  if (!target) {
+    return;
+  }
+  const { top, bottom, height } = target.getBoundingClientRect();
+  const viewportHeight = window.innerHeight;
+  const fitsWithinMargins = height <= viewportHeight - 2 * TOUR_SCROLL_MARGIN;
+  const isOutOfView = fitsWithinMargins
+    ? top < TOUR_SCROLL_MARGIN || bottom > viewportHeight - TOUR_SCROLL_MARGIN
+    : top < 0 || top > viewportHeight - TOUR_SCROLL_MARGIN;
 
-  if (rect && (rect.top < 0 || rect.top > window.innerHeight)) {
-    target?.scrollIntoView({ block: 'center' });
+  if (isOutOfView) {
+    target.scrollIntoView({ block: fitsWithinMargins ? 'center' : 'start' });
   }
 };
 

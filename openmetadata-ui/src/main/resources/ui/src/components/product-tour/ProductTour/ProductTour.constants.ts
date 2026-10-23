@@ -47,7 +47,17 @@ export const KEYBOARD_NAVIGATION_ESCAPE_ONLY: Array<'right' | 'left'> = [
 // enough that a step on another page has already started its page change,
 // which unmounts react-tour, before react-tour moves on by itself.
 export const TOUR_STEP_WAIT_MS = 150;
-export const TOUR_IN_VIEW_THRESHOLD = 200;
+
+// How far a target that fits on screen must clear the viewport edges, or the
+// tour scrolls it to the middle; a prompt docked at the bottom of a page
+// covers less than this.
+export const TOUR_SCROLL_MARGIN = 200;
+
+// Every target counts as in view for react-tour, so it never scrolls: once its
+// own scroll ends it positions the popover from a ref that may be gone by
+// then, and throws. scrollTargetIntoView scrolls instead, before react-tour
+// measures the target.
+export const TOUR_IN_VIEW_THRESHOLD = -Number.MAX_SAFE_INTEGER;
 
 // How long a page must make no request before its step opens. Pages read
 // fixtures, and their code is loaded as the tour starts, so a panel that

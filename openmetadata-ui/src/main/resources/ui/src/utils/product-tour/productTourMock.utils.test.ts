@@ -105,10 +105,14 @@ describe('productTourMock utils', () => {
       '/auth/refresh',
       '/users/login',
       '/users/loggedInUser',
+      '/users/95cb4e45-02b7-4271-b3a9-7c874cc54d8f',
+      '/users/95cb4e45-02b7-4271-b3a9-7c874cc54d8f/preferences',
       '/permissions',
     ].forEach((path) => expect(isTourPassThroughPath(path)).toBe(true));
 
-    expect(isTourPassThroughPath('/search/query')).toBe(false);
+    ['/search/query', '/users'].forEach((path) =>
+      expect(isTourPassThroughPath(path)).toBe(false)
+    );
   });
 
   describe('findTourFixture', () => {

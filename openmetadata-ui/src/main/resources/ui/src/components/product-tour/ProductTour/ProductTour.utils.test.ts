@@ -22,11 +22,11 @@ import {
   waitForStableTarget,
 } from './ProductTour.utils';
 
-const addTarget = (top: number) => {
+const addTarget = (top: number, height = 40) => {
   const target = document.createElement('div');
   target.id = 'target';
   target.getBoundingClientRect = () =>
-    ({ top, left: 0, width: 100, height: 40 } as DOMRect);
+    ({ top, bottom: top + height, left: 0, width: 100, height } as DOMRect);
   target.scrollIntoView = jest.fn();
   document.body.appendChild(target);
 
@@ -107,12 +107,37 @@ describe('ProductTour utils', () => {
       expect(target.scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
     });
 
-    it('leaves a target whose top is on screen where it is', () => {
-      const target = addTarget(100);
+    it('centres a target under a prompt docked at the bottom of the page', () => {
+      // jsdom's viewport is 768 px tall.
+      const target = addTarget(700);
+
+      scrollTargetIntoView('#target');
+
+      expect(target.scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+    });
+
+    it('leaves a target clear of the viewport edges where it is', () => {
+      const target = addTarget(300);
 
       scrollTargetIntoView('#target');
 
       expect(target.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('leaves a tall target whose top is on screen where it is', () => {
+      const target = addTarget(100, 2000);
+
+      scrollTargetIntoView('#target');
+
+      expect(target.scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('scrolls a tall target whose top is hidden to the top', () => {
+      const target = addTarget(-50, 2000);
+
+      scrollTargetIntoView('#target');
+
+      expect(target.scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
     });
   });
 
