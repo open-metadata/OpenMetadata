@@ -14,7 +14,6 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAssetBinding;
-import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -88,17 +87,18 @@ public final class OntologyConceptBindingStore {
     return dao.ontologyConceptBindingDAO().countBoundConcepts(ontologyId);
   }
 
-  /** Live (not deleted) assets of one type among {@code ids}, with their service type. */
-  public Map<UUID, LiveAsset> liveAssets(
-      final OntologyBindingAssetType type, final Collection<UUID> ids) {
+  /** The assets of {@code rows} that are not deleted, with their service type, one query per type. */
+  public Map<UUID, LiveAsset> liveAssets(final List<BindingRow> rows) {
     final Map<UUID, LiveAsset> live = new HashMap<>();
-    if (!ids.isEmpty()) {
-      final String table = Entity.getEntityRepository(type.value()).getDao().getTableName();
-      EntityDAO.queryInChunks(
-              ids.stream().map(UUID::toString).distinct().toList(),
-              chunk -> dao.ontologyConceptBindingDAO().findLiveAssets(table, chunk))
-          .forEach(asset -> live.put(asset.id(), asset));
-    }
+    BindingRow.assetIdsByType(rows)
+        .forEach(
+            (type, ids) -> {
+              final String table = Entity.getEntityRepository(type.value()).getDao().getTableName();
+              EntityDAO.queryInChunks(
+                      ids.stream().map(UUID::toString).distinct().toList(),
+                      chunk -> dao.ontologyConceptBindingDAO().findLiveAssets(table, chunk))
+                  .forEach(asset -> live.put(asset.id(), asset));
+            });
     return live;
   }
 

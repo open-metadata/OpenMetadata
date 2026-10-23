@@ -18,7 +18,10 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
@@ -49,7 +52,15 @@ public interface OntologyConceptBindingDAO {
       UUID assetId,
       OntologyBindingAssetType assetType,
       String assetFqnHash,
-      List<OntologyColumnBinding> columns) {}
+      List<OntologyColumnBinding> columns) {
+    public static Map<OntologyBindingAssetType, List<UUID>> assetIdsByType(List<BindingRow> rows) {
+      Map<OntologyBindingAssetType, List<UUID>> ids = new EnumMap<>(OntologyBindingAssetType.class);
+      for (BindingRow row : rows) {
+        ids.computeIfAbsent(row.assetType(), type -> new ArrayList<>()).add(row.assetId());
+      }
+      return ids;
+    }
+  }
 
   record ConceptAssetCount(UUID conceptId, long assetCount) {}
 

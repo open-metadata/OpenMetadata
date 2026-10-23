@@ -50,6 +50,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -72,6 +73,9 @@ import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService;
+import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Query;
+import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
@@ -105,6 +109,11 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyReleaseHistory releaseHistory;
   private final OntologyPackCatalog packCatalog;
   private final OntologyPackContentLoader packContentLoader;
+  private final NativeOntologyDataGraphService dataGraph =
+      new NativeOntologyDataGraphService(
+          Entity.getCollectionDAO(),
+          (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+          authorizer);
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
@@ -323,6 +332,29 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/{id}/dataGraph")
+  @Operation(
+      operationId = "getNativeOntologyDataGraph",
+      summary =
+          "Get one page of bound concepts ranked by binding count, each with the assets the caller may view")
+  public NativeOntologyDataGraph getDataGraph(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("limit") @DefaultValue("12") @Min(1) @Max(12) final int limit,
+      @QueryParam("offset") @DefaultValue("0") @Min(0) @Max(48) final int offset,
+      @QueryParam("assetsPerConcept") @DefaultValue("4") @Min(1) @Max(4) final int assetsPerConcept,
+      @QueryParam("edgeLimit") @DefaultValue("100") @Min(1) @Max(500) final int edgeLimit,
+      @QueryParam("lineageEdgeLimit") @DefaultValue("100") @Min(1) @Max(500)
+          final int lineageEdgeLimit) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return dataGraph.graph(
+        new Access(uriInfo, securityContext),
+        id,
+        new Query(limit, offset, assetsPerConcept, edgeLimit, lineageEdgeLimit));
   }
 
   @GET

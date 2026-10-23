@@ -126,6 +126,19 @@ public interface OntologyReferenceDAO {
       @Bind("role") String role,
       @Bind("limit") int limit);
 
+  @SqlQuery(
+      "SELECT a.json FROM ontology_axiom_entity a WHERE a.ontologyId = :ontologyId "
+          + "AND a.deleted = FALSE AND a.axiomType IN "
+          + "('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'OBJECT_PROPERTY_ASSERTION') AND EXISTS "
+          + "(SELECT 1 FROM ontology_reference r WHERE r.sourceId = a.id "
+          + "AND r.ontologyId = a.ontologyId AND r.sourceType = 'ontologyAxiom' "
+          + "AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>)) "
+          + "ORDER BY a.name, a.id LIMIT :limit")
+  List<String> listPropertyEdgeAxioms(
+      @BindUUID("ontologyId") UUID ontologyId,
+      @BindList("iriHashes") List<String> iriHashes,
+      @Bind("limit") int limit);
+
   class ReferenceMapper implements RowMapper<OntologyReference> {
     @Override
     public OntologyReference map(final ResultSet rows, final StatementContext context)

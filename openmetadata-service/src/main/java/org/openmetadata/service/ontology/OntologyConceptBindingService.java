@@ -5,7 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -36,10 +35,10 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
-import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -50,6 +49,9 @@ import org.openmetadata.service.util.RestUtil;
 @Slf4j
 public final class OntologyConceptBindingService {
   public static final int MAX_PAGE_SIZE = 100;
+
+  static final int SCAN_BUDGET_MULTIPLIER = 10;
+
   private static final int MAX_CURSOR_LENGTH = 256;
   private final OntologyConceptBindingStore store;
   private final Authorizer authorizer;
@@ -151,27 +153,11 @@ public final class OntologyConceptBindingService {
   /** Drops rows whose asset is soft or hard deleted and returns the rows that remain. */
   private List<BindingRow> prune(final OntologyConceptBindingStore locked, final UUID conceptId) {
     final var rows = locked.rows(conceptId);
-    final var live = liveAssets(locked, rows).keySet();
+    final var live = locked.liveAssets(rows).keySet();
     locked.remove(
         conceptId,
         rows.stream().map(BindingRow::assetId).filter(assetId -> !live.contains(assetId)).toList());
     return rows.stream().filter(row -> live.contains(row.assetId())).toList();
-  }
-
-  private static Map<UUID, LiveAsset> liveAssets(
-      final OntologyConceptBindingStore store, final List<BindingRow> rows) {
-    final Map<UUID, LiveAsset> live = new HashMap<>();
-    byType(rows).forEach((type, ids) -> live.putAll(store.liveAssets(type, ids)));
-    return live;
-  }
-
-  private static Map<OntologyBindingAssetType, List<UUID>> byType(final List<BindingRow> rows) {
-    final Map<OntologyBindingAssetType, List<UUID>> ids =
-        new EnumMap<>(OntologyBindingAssetType.class);
-    for (final var row : rows) {
-      ids.computeIfAbsent(row.assetType(), type -> new ArrayList<>()).add(row.assetId());
-    }
-    return ids;
   }
 
   private void validateColumns(
@@ -211,7 +197,10 @@ public final class OntologyConceptBindingService {
 
   /**
    * Walks rows in asset id order until one more visible asset than the page holds is found, so the
-   * cursor is only returned when a next page exists. Hidden and deleted rows take no slot.
+   * cursor then points at the last returned asset. Hidden and deleted rows take no slot but count
+   * against the scan budget; when it runs out first, the cursor points at the last row examined and
+   * the page is short, so a reader hidden from most of a large concept pays a bounded price per
+   * request.
    */
   private OntologyConceptBindingsResponse page(
       final Access access,
@@ -220,20 +209,24 @@ public final class OntologyConceptBindingService {
       final UUID after,
       final int limit) {
     final List<Visible> visible = new ArrayList<>();
+    final int budget = limit * SCAN_BUDGET_MULTIPLIER;
+    int scanned = 0;
+    boolean exhausted = false;
     UUID cursor = after;
-    while (visible.size() <= limit) {
-      final var batch = store.page(concept.getId(), cursor, limit + 1);
-      if (batch.isEmpty()) {
-        break;
-      }
+    while (visible.size() <= limit && scanned < budget) {
+      final int batchSize = Math.min(limit + 1, budget - scanned);
+      final var batch = store.page(concept.getId(), cursor, batchSize);
       visible.addAll(visibleAssets(access, batch));
-      if (batch.size() < limit + 1) {
+      scanned += batch.size();
+      if (batch.size() < batchSize) {
+        exhausted = true;
         break;
       }
       cursor = batch.getLast().assetId();
     }
     final boolean more = visible.size() > limit;
     final var assets = visible.subList(0, Math.min(limit, visible.size()));
+    final UUID next = more ? assets.getLast().row().assetId() : exhausted ? null : cursor;
     final var ancestors =
         assets.stream().anyMatch(asset -> !asset.row().columns().isEmpty())
             ? store.ancestors(concept)
@@ -242,14 +235,13 @@ public final class OntologyConceptBindingService {
     return new OntologyConceptBindingsResponse()
         .withRevision(revision)
         .withAssets(assets.stream().map(asset -> hydrateAsset(hydration, asset)).toList())
-        .withAfter(
-            more ? RestUtil.encodeCursor(assets.getLast().row().assetId().toString()) : null);
+        .withAfter(next == null ? null : RestUtil.encodeCursor(next.toString()));
   }
 
   private List<Visible> visibleAssets(final Access access, final List<BindingRow> rows) {
-    final var live = liveAssets(store, rows);
+    final var live = store.liveAssets(rows);
     final Map<UUID, EntityInterface<?>> viewable = new HashMap<>();
-    byType(rows)
+    BindingRow.assetIdsByType(rows)
         .forEach(
             (type, ids) ->
                 loadViewable(
@@ -266,6 +258,10 @@ public final class OntologyConceptBindingService {
         .toList();
   }
 
+  /**
+   * One load per asset type with the fields policies read, then the same authorize call a direct
+   * read gets. Tags are batch-loaded for the whole page the first time a policy reads them.
+   */
   private <T extends EntityInterface<?>> void loadViewable(
       final Access access,
       final EntityRepository<T> repository,
@@ -274,10 +270,17 @@ public final class OntologyConceptBindingService {
     if (ids.isEmpty()) {
       return;
     }
-    for (final T entity :
-        repository.get(access.uriInfo(), ids, fields(repository), Include.NON_DELETED)) {
+    final List<T> entities =
+        repository.get(access.uriInfo(), ids, fields(repository), Include.NON_DELETED);
+    final var tags =
+        new BulkFieldHydrator(
+            Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(entities))));
+    for (final T entity : entities) {
       try {
-        authorize(access, repository, entity, MetadataOperation.VIEW_BASIC);
+        authorizer.authorize(
+            access.securityContext(),
+            new OperationContext(repository.getEntityType(), MetadataOperation.VIEW_BASIC),
+            new ResourceContext<>(repository.getEntityType(), entity, repository, tags));
         viewable.put(entity.getId(), entity);
       } catch (final AuthorizationException hidden) {
         LOG.debug(

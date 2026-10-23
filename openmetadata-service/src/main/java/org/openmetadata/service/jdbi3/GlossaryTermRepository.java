@@ -358,7 +358,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         resultLimit);
   }
 
-  static int ontologyRelationCandidateLimit(int resultLimit) {
+  public static int ontologyRelationCandidateLimit(int resultLimit) {
     return Math.min(
         MAX_ONTOLOGY_RELATION_CANDIDATES,
         Math.max(resultLimit, resultLimit * ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER));

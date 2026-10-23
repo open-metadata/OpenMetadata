@@ -12,12 +12,13 @@
  */
 /**
  * One page of a concept's bindings, ordered by asset id and filtered by canonical catalog
- * visibility. Hidden and deleted assets contribute no associations, paths, cursors, or
- * counts.
+ * visibility. Hidden and deleted assets contribute no associations, paths, or counts.
  */
 export interface OntologyConceptBindingsResponse {
     /**
-     * Cursor for the next page of visible assets. Absent on the last page.
+     * Cursor for the next page. Absent when no rows follow. One request examines a bounded
+     * number of rows, so a page can hold fewer than limit assets while a cursor follows, and
+     * the last page can be empty.
      */
     after?:   string;
     assets:   AssetBinding[];
