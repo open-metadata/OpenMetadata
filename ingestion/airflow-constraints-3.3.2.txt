@@ -288,7 +288,7 @@ deprecation==2.1.0
 dill==0.4.1
 distlib==0.4.3
 distro==1.9.0
-dnspython==2.8.0
+dnspython==2.9.0
 docker==7.2.0
 docopt==0.6.2
 docstring_parser==0.18.0
