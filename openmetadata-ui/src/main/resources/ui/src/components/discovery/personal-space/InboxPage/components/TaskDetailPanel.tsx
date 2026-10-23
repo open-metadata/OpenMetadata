@@ -42,7 +42,7 @@ import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
-  getTaskById,
+  getTask,
   resolveTask,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
@@ -81,14 +81,13 @@ import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
-import ClampedText from './ClampedText';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
 import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
-import TaskTitleEntityBadge from './TaskTitleEntityBadge';
+import TaskTitle from './TaskTitle';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -378,7 +377,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     setIsLoading(true);
     let result: Task | undefined;
     try {
-      const res = await getTaskById(taskId, { fields: TASK_FIELDS });
+      const res = await getTask(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
       setLoadedTaskId(taskId);
       setLoadError(undefined);
@@ -565,7 +564,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         if (isStale()) {
           return true;
         }
-        const { data: fresh } = await getTaskById(taskId, {
+        const { data: fresh } = await getTask(taskId, {
           fields: TASK_FIELDS,
         });
         if (isStale()) {
@@ -743,12 +742,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Two lines, the full title in a tooltip when clamped; see ClampedText for
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <ClampedText text={titleText}>
+    <TaskTitle entityType={titleEntityType} size="text-md" text={titleText}>
       <Typography size="text-md" weight="medium">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
-      <TaskTitleEntityBadge entityType={titleEntityType} />
-    </ClampedText>
+    </TaskTitle>
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {

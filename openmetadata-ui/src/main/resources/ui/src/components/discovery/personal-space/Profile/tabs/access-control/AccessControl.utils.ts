@@ -211,3 +211,13 @@ export const getDetailHeaderNames = (
     policyName: isPolicyView ? resolvedName || urlName : '',
   };
 };
+
+/**
+ * Classic keeps Roles, Policies and the permission debugger admin-only, while
+ * Audit Logs also opens to holders of the AuditLogs permission (the only way a
+ * non-admin reaches this panel).
+ */
+export const isAccessControlViewAllowed = (
+  viewType: AccessControlView['type'],
+  isAdmin: boolean
+): boolean => isAdmin || viewType === 'landing' || viewType === 'audit-logs';

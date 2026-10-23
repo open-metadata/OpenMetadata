@@ -41,7 +41,10 @@ const PAGES: {
       '[data-testid^="stat-card-"][data-testid$="-value"]',
       '[data-testid^="stat-card-"][data-testid$="-subtitle"]',
       '[data-testid^="stat-card-"][data-testid$="-breakdown"]',
-      '[data-testid="my-data-assets"]',
+      '[data-testid="user-assets-list"]',
+      '[data-testid="user-assets-summary"]',
+      // Unread count: other specs' activity lands in the admin's inbox.
+      '[data-testid="ai-inbox-badge"]',
     ],
   },
   {
