@@ -142,7 +142,7 @@ const Reactions: FC<ReactionsProps> = ({
             className={
               isPill(variant)
                 ? 'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover'
-                : 'tw:size-[22px] tw:rounded-md! tw:p-[3px]!'
+                : 'tw:size-6 tw:rounded-md! tw:p-1!'
             }
             color="tertiary"
             data-testid="add-reactions"

@@ -27,8 +27,8 @@ import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 const MAX_VISIBLE_AVATARS = 3;
-// Matches the 22px avatar button so each AvatarStack slot fits it exactly.
-const AVATAR_SIZE = 22;
+// Matches the 24px avatar button (the minimum touch target) so each AvatarStack slot fits it.
+const AVATAR_SIZE = 24;
 
 function FeedCardFooterNew({
   conversation,
@@ -105,11 +105,11 @@ function FeedCardFooterNew({
                 avatarSize={AVATAR_SIZE}
                 // The avatar fills its slot while the icons sit in padded buttons, so it
                 // takes extra space to match the icons' visible gap.
-                className="tw:mr-1"
+                className="tw:mr-[5px]"
                 items={repliedUsers.map((user) => (
                   <Button
                     noTextPadding
-                    className="tw:size-[22px] tw:rounded-full! tw:p-px! tw:align-top"
+                    className="tw:size-6 tw:rounded-full! tw:p-0.5! tw:align-top"
                     color="tertiary"
                     key={user}
                     onPress={handleRepliesPress}>
@@ -126,7 +126,7 @@ function FeedCardFooterNew({
             {!isReply && (
               <Button
                 aria-label={t('label.reply')}
-                className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
+                className="tw:size-6 tw:rounded-md! tw:p-1!"
                 color="tertiary"
                 data-testid="reply-button"
                 iconLeading={

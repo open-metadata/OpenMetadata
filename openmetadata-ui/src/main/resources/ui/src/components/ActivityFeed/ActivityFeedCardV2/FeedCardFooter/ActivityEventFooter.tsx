@@ -67,7 +67,7 @@ function ActivityEventFooter({
           <Box align="center" className="w-full rounded-8" gap={2}>
             <Button
               aria-label={t('label.comment')}
-              className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
+              className="tw:size-6 tw:rounded-md! tw:p-1!"
               color="tertiary"
               data-testid="comment-button"
               iconLeading={
