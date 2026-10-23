@@ -514,7 +514,8 @@
 
 .owner-chip {
   border-radius: var(--om-radius-lg);
-  background: @grey-16;
+  // Was @grey-16, a fixed hex that stayed a white pill in dark mode.
+  background: var(--tw-background-color-tertiary);
   padding: var(--om-space-4) var(--om-space-8);
   margin-right: @margin-xs;
   border: 1px solid @grey-15;
