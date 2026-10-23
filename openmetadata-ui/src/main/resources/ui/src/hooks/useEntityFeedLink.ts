@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { EntityType } from '../enums/entity.enum';
-import { useFqn } from './useFqn';
 import { getEntityFeedLink } from '../utils/EntityPureUtils';
+import { useFqn } from './useFqn';
 
 /**
  * The entity an entity page shows, as a feed link (`<#E::table::fqn>`), read

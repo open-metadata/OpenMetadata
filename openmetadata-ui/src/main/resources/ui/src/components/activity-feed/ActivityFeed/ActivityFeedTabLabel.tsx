@@ -13,12 +13,12 @@
 import React from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
+import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { getActivityFeedTabCount } from './ActivityFeed.utils';
 import { useActivityDatePresetParam } from './useActivityDatePresetParam';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
-import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
 export type ActivityFeedTabLabelProps = TabsLabelProps & {
