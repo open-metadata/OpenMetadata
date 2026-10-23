@@ -91,8 +91,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -231,6 +233,12 @@ public class UserResource extends EntityResource<User, UserRepository> {
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("profile,roles,teams,follows,owns", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_TEAMS, MetadataOperation.IMPERSONATE);
+  }
+
+  /** A stored user carries its password hash, or for a bot its token, which no snapshot shows. */
+  @Override
+  protected Optional<UnaryOperator<User>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(user -> user.withAuthenticationMechanism(null));
   }
 
   @Override

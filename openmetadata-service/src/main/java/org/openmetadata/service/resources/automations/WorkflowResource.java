@@ -34,7 +34,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -67,6 +69,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
@@ -75,6 +78,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -335,8 +339,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return decryptOrNullify(
-        securityContext, super.getVersionInternal(securityContext, id, version));
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -359,7 +362,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+    Response response = create(uriInfo, securityContext, unmask(securityContext, workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -481,7 +484,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
+    workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -697,18 +700,48 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
   }
 
-  private Workflow unmask(Workflow workflow) {
+  private Workflow unmask(SecurityContext securityContext, Workflow workflow) {
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
       originalWorkflow = buildFromOriginalServiceConnection(workflow);
+      if (!readsStoredSecrets(securityContext)) {
+        requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
+      }
     } else {
       originalWorkflow =
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
+  }
+
+  /** Admins and bots may already read or replace any connection's secrets. */
+  private static boolean readsStoredSecrets(SecurityContext securityContext) {
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  /** A test against another endpoint may not borrow the stored secrets it would be sent. */
+  private static void requireSecretsReenteredOnRetarget(Workflow workflow, Workflow original) {
+    Workflow converted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    if (converted.getRequest() instanceof TestServiceConnectionRequest request
+        && original.getRequest() instanceof TestServiceConnectionRequest stored
+        && request.getConnection() instanceof ServiceConnectionEntityInterface connection
+        && stored.getConnection() instanceof ServiceConnectionEntityInterface storedConnection) {
+      ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+          connection.getConfig(),
+          storedConnection.getConfig(),
+          request.getConnectionType(),
+          request.getServiceType());
+    }
+  }
+
+  @Override
+  protected Optional<UnaryOperator<Workflow>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(workflow -> decryptOrNullify(securityContext, workflow));
   }
 
   private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {
