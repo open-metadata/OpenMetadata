@@ -15,7 +15,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   STATUS_FILTERS,
   TaskStatusFilter,
-} from '../../discovery/personal-space/InboxPage/useTaskQueue';
+} from '../../discovery/personal-space/InboxPage/taskScope.utils';
 
 const TASK_STATUS_PARAM = 'taskStatus';
 const DEFAULT_TASK_STATUS: TaskStatusFilter = 'open';

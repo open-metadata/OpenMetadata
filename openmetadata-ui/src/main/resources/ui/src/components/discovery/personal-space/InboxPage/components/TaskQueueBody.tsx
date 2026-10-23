@@ -26,8 +26,8 @@ import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceho
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskTypeGroup } from '../taskList.utils';
+import { TaskStatusFilter } from '../taskScope.utils';
 import { useIsScrolled } from '../useIsScrolled';
-import { TaskStatusFilter } from '../useTaskQueue';
 import InboxTaskListItem from './InboxTaskListItem';
 import InboxTaskListSkeleton from './InboxTaskListSkeleton';
 import TaskDetailPanel from './TaskDetailPanel';

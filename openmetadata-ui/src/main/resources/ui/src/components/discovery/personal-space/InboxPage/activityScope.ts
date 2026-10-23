@@ -13,7 +13,7 @@
 import { EntityType } from '../../../../enums/entity.enum';
 import EntityLink from '../../../../utils/EntityLink';
 import { ActivityFilter } from './inbox.utils';
-import type { TaskListScope } from './useTaskQueue';
+import type { TaskListScope } from './taskScope.utils';
 
 /**
  * Whose activity a feed reads: the viewer's own Inbox, everything about one

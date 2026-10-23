@@ -11,18 +11,12 @@
  *  limitations under the License.
  */
 
-import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MY_TASKS_QUERY_KEY } from '../../../../hooks/useMyTasks';
-import {
-  listMyVisibleTasks,
-  listTasks,
-  ListTasksParams,
-  Task,
-  TaskStatusGroup,
-} from '../../../../rest/tasksAPI';
+import { Task, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import {
   INBOX_OPEN_TASK_COUNT_QUERY_KEY,
   TASK_LIST_QUERY_KEY,
@@ -37,46 +31,20 @@ import {
   TaskStatusBucket,
 } from './taskList.utils';
 import {
+  getTaskScopeKey,
+  listScopedTasks,
+  TaskListScope,
+  TaskStatusFilter,
+  VISIBLE_TASKS,
+} from './taskScope.utils';
+import {
   filterTasksByTitleSearch,
   splitTaskTitleSearch,
 } from './taskTitle.utils';
 import { useCurrentUserIds } from './useCurrentUserIds';
 import { useInboxInfiniteList } from './useInboxInfiniteList';
 import { useLinkedTaskId } from './useLinkedTaskId';
-
-/**
- * Which tasks a queue holds: the viewer's visible ones (their Inbox), every
- * task about one entity, or the tasks assigned to one user.
- */
-export type TaskListScope =
-  | { type: 'visible' }
-  | { type: 'entity'; aboutEntity: string }
-  | { type: 'assignee'; assignee: string };
-
-const VISIBLE_TASKS: TaskListScope = { type: 'visible' };
-
-const getTaskScopeKey = (scope: TaskListScope): string => {
-  switch (scope.type) {
-    case 'entity':
-      return `entity:${scope.aboutEntity}`;
-    case 'assignee':
-      return `assignee:${scope.assignee}`;
-    default:
-      return 'me';
-  }
-};
-
-// The visible list is the viewer's own; the others filter every task.
-const listScopedTasks = (scope: TaskListScope, params: ListTasksParams) => {
-  switch (scope.type) {
-    case 'entity':
-      return listTasks({ ...params, aboutEntity: scope.aboutEntity });
-    case 'assignee':
-      return listTasks({ ...params, assignee: scope.assignee });
-    default:
-      return listMyVisibleTasks(params);
-  }
-};
+import { useTaskStatusCounts } from './useTaskStatusCounts';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
@@ -86,24 +54,6 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-const TASK_COUNTS_STALE_TIME = 30_000;
-
-export type TaskStatusFilter = 'all' | 'open' | 'closed';
-
-export const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
-  { id: 'all', labelKey: 'label.all' },
-  { id: 'open', labelKey: 'label.open' },
-  { id: 'closed', labelKey: 'label.closed' },
-];
-
-// Pulls the three per-status totals out of the useQueries results array.
-const getStatusCounts = (
-  countQueries: { data?: number }[]
-): Record<TaskStatusFilter, number> => ({
-  all: countQueries[0].data ?? 0,
-  open: countQueries[1].data ?? 0,
-  closed: countQueries[2].data ?? 0,
-});
 
 // The Status options each tab can hold: Open splits into whose move it is,
 // Closed into the outcome. "Open" itself is the tab, so it is never an option.
@@ -142,38 +92,6 @@ const isListSettled = ({
   canLoadMore: (loaded: Task[]) => boolean;
   tasks: Task[];
 }) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
-
-/**
- * Per-status totals for the All / Open / Closed choice, fetched cheaply
- * (limit=1, server paging.total) and cached by React Query keyed on the scope.
- * A work queue has no date window: an open task never ages out. The keyed cache
- * dedupes the fetch across remounts and StrictMode's dev double-invoke, and
- * lets a host read the open count without mounting the queue; mutations
- * invalidate the key.
- */
-export const useTaskStatusCounts = (
-  scope: TaskListScope
-): Record<TaskStatusFilter, number> => {
-  const scopeKey = getTaskScopeKey(scope);
-  const countQueries = useQueries({
-    queries: [undefined, TaskStatusGroup.Open, TaskStatusGroup.Closed].map(
-      (statusGroup) => ({
-        queryKey: [
-          TASK_STATUS_COUNTS_QUERY_KEY,
-          scopeKey,
-          statusGroup ?? 'all',
-        ],
-        queryFn: () =>
-          listScopedTasks(scope, { statusGroup, limit: 1 }).then(
-            (res) => res.paging?.total ?? 0
-          ),
-        staleTime: TASK_COUNTS_STALE_TIME,
-      })
-    ),
-  });
-
-  return getStatusCounts(countQueries);
-};
 
 export interface UseTaskQueueOptions {
   scope?: TaskListScope;

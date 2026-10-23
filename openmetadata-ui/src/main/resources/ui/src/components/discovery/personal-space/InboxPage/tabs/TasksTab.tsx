@@ -19,12 +19,8 @@ import InboxTaskListToolbar from '../components/InboxTaskListToolbar';
 import TaskQueueBody, {
   TaskQueueEmptyState,
 } from '../components/TaskQueueBody';
-import {
-  STATUS_FILTERS,
-  STATUS_OPTIONS_BY_TAB,
-  TaskStatusFilter,
-  useTaskQueue,
-} from '../useTaskQueue';
+import { STATUS_FILTERS, TaskStatusFilter } from '../taskScope.utils';
+import { STATUS_OPTIONS_BY_TAB, useTaskQueue } from '../useTaskQueue';
 
 export interface TasksTabProps {
   className?: string;

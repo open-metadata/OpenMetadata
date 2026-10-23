@@ -24,8 +24,8 @@ import {
   INBOX_DATE_RANGE_OPTIONS,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import ActivityTab from '../../discovery/personal-space/InboxPage/tabs/ActivityTab';
+import type { TaskStatusFilter } from '../../discovery/personal-space/InboxPage/taskScope.utils';
 import { INBOX_ACTIVITY_QUERY_KEY } from '../../discovery/personal-space/InboxPage/useInboxActivity';
-import type { TaskStatusFilter } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 import { getEntityTabBar } from './ActivityFeed.utils';
 import ActivityFeedTasks from './ActivityFeedTasks';
 import { useActivityFeedCounts } from './useActivityFeedCounts';

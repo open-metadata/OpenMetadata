@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
-jest.mock('../../discovery/personal-space/InboxPage/useTaskQueue', () => ({
+jest.mock('../../discovery/personal-space/InboxPage/taskScope.utils', () => ({
   STATUS_FILTERS: [{ id: 'all' }, { id: 'open' }, { id: 'closed' }],
 }));
 

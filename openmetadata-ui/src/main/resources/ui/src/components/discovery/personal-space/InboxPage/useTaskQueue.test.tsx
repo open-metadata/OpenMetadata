@@ -12,11 +12,8 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import { Task } from '../../../../generated/entity/tasks/task';
-import {
-  TaskListScope,
-  useTaskQueue,
-  useTaskStatusCounts,
-} from './useTaskQueue';
+import { TaskListScope } from './taskScope.utils';
+import { useTaskQueue } from './useTaskQueue';
 
 const mockListTasks = jest.fn().mockResolvedValue({ data: [], paging: {} });
 const mockListVisibleTasks = jest
@@ -26,19 +23,11 @@ let capturedFetchPage: (after?: string) => unknown;
 let capturedQueryKey: unknown[];
 let capturedCanLoadMore: ((loaded: Task[]) => boolean) | undefined;
 let loadedTasks: Task[] = [];
-let capturedCountQueries: { queryKey: unknown[]; queryFn: () => unknown }[];
 
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
-  useQueries: ({
-    queries,
-  }: {
-    queries: { queryKey: unknown[]; queryFn: () => unknown }[];
-  }) => {
-    capturedCountQueries = queries;
-
-    return queries.map(() => ({ data: 0 }));
-  },
+  useQueries: ({ queries }: { queries: unknown[] }) =>
+    queries.map(() => ({ data: 0 })),
 }));
 
 let mockLinkedTaskId: string | undefined;
@@ -223,32 +212,5 @@ describe('useTaskQueue', () => {
     act(() => result.current.handleScanFurther());
 
     expect(capturedCanLoadMore?.(loadedTasks)).toBe(true);
-  });
-});
-
-describe('useTaskStatusCounts', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  it('counts All, Open and Closed for the scope, one task per request', () => {
-    renderHook(() => useTaskStatusCounts(ENTITY));
-
-    capturedCountQueries.forEach((query) => query.queryFn());
-
-    expect(
-      capturedCountQueries.map(({ queryKey }) => queryKey.slice(1))
-    ).toEqual([
-      ['entity:svc.db.schema.table', 'all'],
-      ['entity:svc.db.schema.table', 'open'],
-      ['entity:svc.db.schema.table', 'closed'],
-    ]);
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({
-        aboutEntity: 'svc.db.schema.table',
-        limit: 1,
-        statusGroup: 'open',
-      })
-    );
   });
 });

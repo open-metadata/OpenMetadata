@@ -37,8 +37,8 @@ import {
   STATUS_FILTERS,
   TaskListScope,
   TaskStatusFilter,
-  useTaskQueue,
-} from '../../discovery/personal-space/InboxPage/useTaskQueue';
+} from '../../discovery/personal-space/InboxPage/taskScope.utils';
+import { useTaskQueue } from '../../discovery/personal-space/InboxPage/useTaskQueue';
 
 export interface ActivityFeedTasksProps {
   scope: TaskListScope;

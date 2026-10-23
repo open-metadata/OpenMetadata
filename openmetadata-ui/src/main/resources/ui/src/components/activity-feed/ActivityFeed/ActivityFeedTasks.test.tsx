@@ -33,9 +33,6 @@ const mockQueue = {
 };
 
 jest.mock('../../discovery/personal-space/InboxPage/useTaskQueue', () => ({
-  ...jest.requireActual(
-    '../../discovery/personal-space/InboxPage/useTaskQueue'
-  ),
   useTaskQueue: (...args: unknown[]) => {
     mockUseTaskQueue(...args);
 

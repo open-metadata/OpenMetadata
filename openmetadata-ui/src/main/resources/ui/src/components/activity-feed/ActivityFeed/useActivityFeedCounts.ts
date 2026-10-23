@@ -20,7 +20,7 @@ import {
   InboxDateRange,
 } from '../../discovery/personal-space/InboxPage/inbox.utils';
 import { useInboxActivity } from '../../discovery/personal-space/InboxPage/useInboxActivity';
-import { useTaskStatusCounts } from '../../discovery/personal-space/InboxPage/useTaskQueue';
+import { useTaskStatusCounts } from '../../discovery/personal-space/InboxPage/useTaskStatusCounts';
 
 /**
  * What an `<ActivityFeed>` counts: its Activity cards (paired changes as one,
