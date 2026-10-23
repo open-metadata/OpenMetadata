@@ -71,7 +71,8 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
   /**
    * A restore brings back the inverse the property held when it was deleted. When that partner
    * has gone since, the link is dropped rather than refused: the property cannot be edited while
-   * deleted, so refusing would leave it unrestorable.
+   * deleted, so refusing would leave it unrestorable. A self-inverse is kept, because its own
+   * declaration goes live in this write.
    */
   @Override
   public EntityUpdater getUpdater(
@@ -82,6 +83,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     if (operation.isPut()
         && Boolean.TRUE.equals(original.getDeleted())
         && updated.getInverse() != null
+        && !updated.getInverse().equals(updated.getIri())
         && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
         && !declaresObjectProperty(
             updated.getOntology().getId(), updated.getInverse().toString())) {

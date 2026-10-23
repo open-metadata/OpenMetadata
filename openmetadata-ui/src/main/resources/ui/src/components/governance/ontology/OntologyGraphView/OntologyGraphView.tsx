@@ -57,6 +57,7 @@ import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
+  MAX_RELATIONSHIP_TYPE_PAGES,
   NativeRelationStep,
   NativeRelationType,
   planNativeRelation,
@@ -64,6 +65,7 @@ import {
   RelationshipTypeDraft,
   toNativeRelationType,
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
+import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
   buildDataPropertyRequest,
   DataPropertyInput,
@@ -370,7 +372,11 @@ const OntologyGraphView = ({
     gcTime: 30_000,
     staleTime: 30_000,
     retry: false,
-    queryFn: async () => (await listRelationshipTypes({ limit: 1000 })).data,
+    queryFn: () =>
+      listAllPages(
+        (after) => listRelationshipTypes({ limit: 1000, after }),
+        MAX_RELATIONSHIP_TYPE_PAGES
+      ),
   });
   const catalog = useMemo(
     () =>

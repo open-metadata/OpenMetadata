@@ -290,7 +290,38 @@ test.describe(
           });
         });
 
-        await test.step('An author without registry rights sees the admin types and no create option', async () => {
+        await test.step('Offer ontology-owned object properties beside admin types', async () => {
+          const localIri = `${ontology.namespace}relatedLocally`;
+          await okJson<OntologyProperty>(
+            await api.post('/api/v1/ontologyProperties', {
+              data: {
+                name: 'relatedLocally',
+                displayName: 'Related locally',
+                ontology: ontologyFqn,
+                iri: localIri,
+                kind: 'OBJECT',
+                inverse: localIri,
+              },
+            }),
+            'Create an ontology-owned relation type'
+          );
+          await page.reload();
+          await page.getByTestId('mode-tab-edit').click();
+          const { picker } = await openRelationPicker(page, account.id);
+          const custom = picker.getByTestId('group-custom');
+          await expect(custom).toContainText(`governed by ${suffix}`);
+          const local = custom.getByTestId(`relation-type-${localIri}`);
+          await expect(local).toContainText('Related locally');
+          await expect(local).toContainText('Inverse: Related locally');
+          await scrollIntoViewAndSettle(local);
+          await testInfo.attach('native-relation-custom-group', {
+            body: await page.screenshot(),
+            contentType: 'image/png',
+          });
+        });
+
+        await test.step('A data steward with native authoring rights sees admin types and no create option', async () => {
+          await author.setDataStewardRole(api);
           await policy.create(api, [
             {
               name: 'native-ontology-author',
@@ -333,10 +364,10 @@ test.describe(
           await expect(picker.getByTestId('group-custom')).toContainText(
             `governed by ${suffix}`
           );
-          await picker
-            .getByTestId('relation-type-search')
-            .fill(`owned by ${suffix}`);
-          await expect(picker.getByTestId('no-relation-types')).toBeVisible();
+          await picker.getByTestId('relation-type-search').fill('governed by');
+          await expect(picker.getByTestId('group-custom')).toContainText(
+            `governed by ${suffix}`
+          );
           await expect(picker.getByTestId('relation-type-create')).toHaveCount(
             0
           );
@@ -344,6 +375,13 @@ test.describe(
             body: await authorPage.screenshot(),
             contentType: 'image/png',
           });
+          await picker
+            .getByTestId('relation-type-search')
+            .fill(`owned by ${suffix}`);
+          await expect(picker.getByTestId('no-relation-types')).toBeVisible();
+          await expect(picker.getByTestId('relation-type-create')).toHaveCount(
+            0
+          );
         });
       } finally {
         await deleteFixtureEntity(

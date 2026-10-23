@@ -51,6 +51,7 @@ import {
   toPascalCase,
 } from './OntologyStudioModel.utils';
 
+export const MAX_RELATIONSHIP_TYPE_PAGES = 10;
 export const SUBCLASS_OF_PREDICATE =
   'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 export const SUPERCLASS_OF_PREDICATE =

@@ -23,7 +23,14 @@ import org.openmetadata.service.rdf.RdfUpdater;
 /** Serializes a module's SQL writes with release capture on the caller's retained transaction. */
 final class OntologyWorkingState {
   private static final ThreadLocal<Changes> CHANGES = new ThreadLocal<>();
+
+  /**
+   * Finalizers rerun until a pass records no change. A mutation still unsettled after this many
+   * passes has a finalizer that never converges, so it fails instead of looping. See
+   * ADR:2026-10-21-native-relations-instantiate-registry-relationship-types.
+   */
   private static final int SETTLE_PASSES = 8;
+
   private final CollectionDAO dao;
   private final OntologyStateDAO states;
   private final OntologyReferenceIndex references;

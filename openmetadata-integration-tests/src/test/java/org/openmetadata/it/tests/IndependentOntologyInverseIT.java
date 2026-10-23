@@ -199,6 +199,20 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void restoringASelfInversePropertyKeepsItsLink(TestNamespace ns) {
+    Ontology ontology = createOntology(ns, "inverseModel");
+    OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+    OntologyProperty adjacentTo =
+        service.create(
+            objectProperty(ontology, "adjacentTo", ADJACENT_TO).withInverse(ADJACENT_TO));
+
+    service.delete(adjacentTo.getId().toString());
+
+    assertEquals(ADJACENT_TO, service.restore(adjacentTo.getId()).getInverse());
+    assertEquals(ADJACENT_TO, service.get(adjacentTo.getId().toString()).getInverse());
+  }
+
+  @Test
   void aRejectedLinkLeavesBothSidesUntouched(TestNamespace ns) {
     Ontology ontology = createOntology(ns, "inverseModel");
     OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();

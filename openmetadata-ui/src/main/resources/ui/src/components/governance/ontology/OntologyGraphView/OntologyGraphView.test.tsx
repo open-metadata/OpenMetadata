@@ -43,6 +43,7 @@ import {
   createOntologyAxiom,
   createOntologyProperty,
   createRelationshipType,
+  getRelationshipTypeByName,
   listRelationshipTypes,
   patchOntologyProperty,
   patchRelationshipType,
@@ -343,6 +344,167 @@ describe('OntologyGraphView', () => {
     );
     (patchRelationshipType as jest.Mock).mockResolvedValue({});
   });
+
+  it('offers registry types and their inverse labels from later pages', async () => {
+    (listRelationshipTypes as jest.Mock)
+      .mockResolvedValueOnce({
+        data: registryTypes.slice(0, 1),
+        paging: { after: 'next', total: registryTypes.length },
+      })
+      .mockResolvedValueOnce({
+        data: registryTypes.slice(1),
+        paging: { total: registryTypes.length },
+      });
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(
+      await screen.findByTestId(`relation-type-${PART_OF}`)
+    ).toHaveTextContent('Has Part');
+    expect(
+      screen.getByTestId(`relation-type-${GOVERNED_BY}`)
+    ).toHaveTextContent('Governed By');
+  });
+
+  it('reports a repeated registry cursor without offering a partial catalog', async () => {
+    (listRelationshipTypes as jest.Mock).mockResolvedValue({
+      data: registryTypes,
+      paging: { after: 'same', total: registryTypes.length },
+    });
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith('server.unexpected-error')
+    );
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId(`relation-type-${PART_OF}`)
+    ).not.toBeInTheDocument();
+  });
+
+  it('submits a registry relation through the inspector and resets the form after saving', async () => {
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+    fireEvent.click(screen.getByRole('button', { name: /label\.target/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Orphan' }));
+    fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
+
+    await waitFor(() =>
+      expect(createOntologyAxiom).toHaveBeenCalledWith(
+        expect.objectContaining({
+          subjectIri: customer.iri,
+          expressions: [
+            expect.objectContaining({
+              propertyIri: PART_OF,
+              filler: { kind: 'NAMED_CLASS', classIri: orphan.iri },
+            }),
+          ],
+        })
+      )
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByTestId('ontology-add-relationship')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-relationship-submit')
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    { targetId: 'removed-concept', relationType: PART_OF },
+    { targetId: orphan.id, relationType: 'urn:missing-type' },
+  ])(
+    'rejects a stale relation selection $targetId $relationType',
+    async ({ targetId, relationType }) => {
+      render(
+        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      );
+      await screen.findByTestId('native-ontology-graph');
+      await waitForRegistry();
+      await act(() =>
+        latestGraphProps().onCreateRelation(customer.id, targetId, relationType)
+      );
+
+      expect(showErrorToast).toHaveBeenCalledWith('server.unexpected-error');
+      expect(createOntologyProperty).not.toHaveBeenCalled();
+      expect(createOntologyAxiom).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    { status: 409, propertyIris: ['urn:existing:approvedBy'], errors: 0 },
+    { status: 503, propertyIris: [], errors: 1 },
+  ])(
+    'handles registry HTTP $status before creating native properties',
+    async ({ status, propertyIris, errors }) => {
+      (createRelationshipType as jest.Mock).mockRejectedValue({
+        isAxiosError: true,
+        response: { status },
+      });
+      (getRelationshipTypeByName as jest.Mock).mockResolvedValue(
+        relationshipType(
+          'approvedBy',
+          'approved by',
+          'urn:existing:approvedBy',
+          {
+            category: Category.Custom,
+          }
+        )
+      );
+      (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+      (createOntologyProperty as jest.Mock).mockResolvedValue({});
+      render(
+        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+      );
+      await screen.findByTestId('native-ontology-graph');
+      await waitForRegistry();
+      let creation: Promise<void> = Promise.resolve();
+      act(() => {
+        creation = latestGraphProps().onCreateRelation(
+          customer.id,
+          orphan.id,
+          'new:approved by'
+        );
+      });
+      await screen.findByTestId('relationship-type-dialog');
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('relationship-type-submit'));
+        await creation;
+      });
+
+      expect(
+        (createOntologyProperty as jest.Mock).mock.calls.map(
+          ([request]) => request.iri
+        )
+      ).toEqual(propertyIris);
+      expect(createOntologyAxiom).toHaveBeenCalledTimes(propertyIris.length);
+      expect(getRelationshipTypeByName).toHaveBeenCalledTimes(
+        propertyIris.length
+      );
+      expect(showErrorToast).toHaveBeenCalledTimes(errors);
+      expect(
+        screen.queryByTestId('relationship-type-dialog')
+      ).not.toBeInTheDocument();
+    }
+  );
 
   it('renders the full native model, health, search, and concept inspector', async () => {
     const onStatsChange = jest.fn();
