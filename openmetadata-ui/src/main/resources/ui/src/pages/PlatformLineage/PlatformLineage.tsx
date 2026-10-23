@@ -202,7 +202,7 @@ const PlatformLineage = () => {
     [setLineageConfig]
   );
 
-  const isAiMode = useIsAiMode();
+  const isAiMode = useIsAiMode() || true; // TEMP-PREVIEW
 
   const searchSelect = useMemo(
     () => (
@@ -279,7 +279,7 @@ const PlatformLineage = () => {
               icon={PlatformLineageIcon}
               shape="square"
               size="md"
-              theme="gradient"
+              theme="dark"
             />
           }
           subtitle={t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader)}
