@@ -1171,6 +1171,40 @@
       "specs": []
     },
     {
+      "_comment": "The AI-mode Data Quality Test Cases tab (list, filters, soft delete and restore). The generated map reaches only the shared classic components it renders, so a change to the AI-mode tab itself would otherwise run the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/DataQuality/TestCases/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
+        "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
+        "playwright/e2e/Features/AIMode/TestCaseEdit.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The AI-mode test case Run now / Retry controls. Only the AI-mode detail page and the run execution error banner render them, so the generated map does not reach them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/RunTestCaseButton/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The test case detail page header and its Deleted badge (Classic and AI mode). TestCaseSoftDeleteRestore is the only spec asserting the badge, and the generated map skips the deleted-badge test id (too many owners).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail*",
+        "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/IncidentManagerDetailPage/TestCaseHeaderTitle.component*"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
+      ]
+    },
+    {
       "_comment": "The limit banner shows only once a resource limit is reached, and only Collate enables the limits config that sets one, so no spec in this suite can display it. Mapped to no specs rather than left unmapped, so a change to it does not escalate to a full-suite run.",
       "sources": ["openmetadata-ui/src/main/resources/ui/src/components/common/LimitBanner/**"],
       "projects": [],
