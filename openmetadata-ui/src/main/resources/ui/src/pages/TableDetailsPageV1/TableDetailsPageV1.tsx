@@ -1033,7 +1033,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <GenericProvider<Table>
         columnFqn={columnFqn}
         customizedPage={customizedPage}
