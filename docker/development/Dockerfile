@@ -28,10 +28,12 @@ RUN adduser -D openmetadata && \
     apk upgrade && \
     apk add --update --no-cache bash openjdk21-jre
 
-# CVE-2026-91403: eMudhra's compromised intermediates chain to three emSign roots (ECC G3,
-# ECC C3, C1). Alpine's current ca-certificates (20261020) already leaves them out of the Java
-# trust store it generates; deleting them by SHA-256 here as well keeps a stale cached apk layer
-# from shipping them, and the check fails the build if any is still trusted.
+# CVE-2026-91403: eMudhra's compromised intermediates chain to three emSign roots
+# (ECC G3, ECC C3, C1). Alpine's current ca-certificates (20261020) already leaves them out of
+# the Java trust store it generates; deleting them by SHA-256 here as well keeps a stale cached
+# apk layer from shipping them, and the check fails the build if any is still trusted.
+# Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
+# re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
 RUN set -eu; \
     export PATH="/usr/lib/jvm/default-jvm/bin:$PATH"; roots='86A1ECBA089C4A8D3BBE2734C612BA341D813E043CF9E8A862CD5C57A36BBE6B BC4D809B15189D78DB3E1D8CF4F9726A795DA1643CA5F1358E1DDB0EDC0D7EB3 125609AA301DA0A249B97A8239CB6A34216F44DCAC9F3954B14292F2E8C8608F'; \
     certs=$(keytool -list -v -cacerts -storepass changeit); \
