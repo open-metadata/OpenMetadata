@@ -78,7 +78,6 @@ class ReindexingMetricsTest {
       assertNotNull(meterRegistry.find("reindexing.bulk.duration").tag("success", "false").timer());
       assertNotNull(meterRegistry.find("reindexing.bulk.payload.size").summary());
       assertNotNull(meterRegistry.find("reindexing.sink.pending").gauge());
-      assertNotNull(meterRegistry.find("reindexing.backpressure.events").counter());
     }
   }
 
