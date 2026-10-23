@@ -46,6 +46,7 @@ import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -404,7 +405,7 @@ public class TaskWorkflowHandler {
         : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
       LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
       persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
-      updateTaskVotes(task, user, isPositiveResolution(resolutionType));
+      recordCountedVote(taskId, user, resolutionType, comment);
       return refreshTask(taskId);
     }
 
@@ -1380,14 +1381,37 @@ public class TaskWorkflowHandler {
   /**
    * Update task to reflect that a user has voted (for multi-approval tasks).
    */
-  private void updateTaskVotes(Task task, String user, boolean approved) {
-    // This updates metadata to track who has voted
-    // The actual vote tracking is in Flowable variables
-    LOG.debug(
-        "[TaskWorkflowHandler] User '{}' voted {} on task '{}'",
+  /**
+   * WAITING_FOR_VOTES also covers a repeat or malformed vote the workflow dropped, so a vote is
+   * recorded only when the workflow lists its voter. The record is written after the workflow's
+   * own commit; a crash between the two is healed when the decision reconciles the workflow's
+   * voters.
+   */
+  private void recordCountedVote(
+      UUID taskId, String user, TaskResolutionType resolutionType, String comment) {
+    final List<String> voters;
+    try {
+      voters = WorkflowHandler.getInstance().approvalTaskContext(taskId).voters();
+    } catch (IllegalStateException unavailable) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Vote by '{}' on task '{}' was not recorded: {}",
+          user,
+          taskId,
+          unavailable.getMessage());
+      return;
+    }
+    if (!voters.contains(user)) {
+      LOG.debug("[TaskWorkflowHandler] Vote by '{}' on task '{}' was not counted", user, taskId);
+      return;
+    }
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    taskRepository.recordReviewVote(
+        taskId,
         user,
-        approved ? "approve" : "reject",
-        task.getId());
+        isPositiveResolution(resolutionType)
+            ? TaskReviewVoteDecision.Approved
+            : TaskReviewVoteDecision.Rejected,
+        comment);
   }
 
   /**

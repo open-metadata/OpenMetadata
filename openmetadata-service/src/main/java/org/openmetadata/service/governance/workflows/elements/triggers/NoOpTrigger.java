@@ -48,6 +48,7 @@ public class NoOpTrigger implements TriggerInterface {
           WorkflowStartVariables.TASK_UPDATED_BY,
           WorkflowStartVariables.TASK_REVIEWERS,
           WorkflowStartVariables.TASK_ASSIGNEES,
+          WorkflowStartVariables.APPROVAL_MODE,
           WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID);

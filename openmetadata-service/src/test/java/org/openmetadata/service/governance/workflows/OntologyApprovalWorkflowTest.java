@@ -1,15 +1,18 @@
 package org.openmetadata.service.governance.workflows;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.OntologyApprovalRule;
 import org.openmetadata.schema.type.OntologyReviewTarget;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -84,6 +87,34 @@ class OntologyApprovalWorkflowTest {
     assertFalse(OntologyApprovalWorkflow.isReview(glossary));
     assertDoesNotThrow(() -> OntologyApprovalWorkflow.requireUnchangedTarget(glossary, updated));
     assertTrue(OntologyApprovalWorkflow.isReview(reviewTask()));
+  }
+
+  @Test
+  void allReviewersRuleStartsTheWorkflowInAllAssigneesMode() {
+    Task review = reviewTask();
+    review.getOntologyReview().setApprovalRule(OntologyApprovalRule.AllReviewers);
+
+    assertEquals(
+        Map.of("approvalMode", "allAssignees"), OntologyApprovalWorkflow.startVariables(review));
+    assertEquals(OntologyApprovalRule.AllReviewers, OntologyApprovalWorkflow.approvalRule(review));
+  }
+
+  @Test
+  void anyReviewerRuleAndOlderReviewsAddNoStartVariable() {
+    Task any = reviewTask();
+    any.getOntologyReview().setApprovalRule(OntologyApprovalRule.AnyReviewer);
+    Task legacy = reviewTask();
+    legacy.getOntologyReview().setApprovalRule(null);
+    Task glossary =
+        new Task()
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAbout(new EntityReference().withType(Entity.GLOSSARY_TERM));
+
+    assertEquals(Map.of(), OntologyApprovalWorkflow.startVariables(any));
+    assertEquals(Map.of(), OntologyApprovalWorkflow.startVariables(legacy));
+    assertEquals(Map.of(), OntologyApprovalWorkflow.startVariables(glossary));
+    assertEquals(OntologyApprovalRule.AnyReviewer, OntologyApprovalWorkflow.approvalRule(legacy));
+    assertEquals(OntologyApprovalRule.AnyReviewer, OntologyApprovalWorkflow.approvalRule(glossary));
   }
 
   private static void assertRejected(Task original, Consumer<Task> edit) {

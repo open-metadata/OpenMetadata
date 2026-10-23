@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -9,15 +11,21 @@ import java.util.UUID;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyApprovalRule;
+import org.openmetadata.schema.type.OntologyReviewTarget;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.OntologyEntityRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.tasks.TaskReviewVotes;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.FreshReadScope;
 
 /** Binds ontology revisions to the existing approval-task lifecycle. */
@@ -54,6 +62,26 @@ public final class OntologyApprovalWorkflow {
       repository(task).startReview(task);
       trackExecution(task.getId(), null);
     }
+  }
+
+  /**
+   * Start variables the frozen approval rule adds to the review's workflow process. Only an
+   * AllReviewers review sets one, so every other workflow keeps its node's approval threshold.
+   */
+  public static Map<String, Object> startVariables(final Task task) {
+    return approvalRule(task) == OntologyApprovalRule.AllReviewers
+        ? Map.of(
+            WorkflowStartVariables.APPROVAL_MODE,
+            WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES)
+        : Map.of();
+  }
+
+  /** The rule frozen into the review; reviews requested before the rule existed read AnyReviewer. */
+  public static OntologyApprovalRule approvalRule(final Task task) {
+    final OntologyReviewTarget target = task.getOntologyReview();
+    return target == null || target.getApprovalRule() == null
+        ? OntologyApprovalRule.AnyReviewer
+        : target.getApprovalRule();
   }
 
   public static void validate(final Task task, final String user) {
@@ -149,21 +177,58 @@ public final class OntologyApprovalWorkflow {
   private static Task applyDecision(
       final TaskRepository tasks, final Task task, final OntologyWorkflowDecision decision) {
     decision.voters().forEach(voter -> validate(task, voter));
+    final long decidedAt = System.currentTimeMillis();
     final TaskResolution resolution =
         new TaskResolution()
             .withType(decision.resolution())
-            .withResolvedBy(
-                Entity.getEntityReferenceByName(Entity.USER, decision.user(), Include.NON_DELETED))
-            .withResolvedAt(System.currentTimeMillis())
+            .withResolvedBy(userReference(decision.user()))
+            .withResolvedAt(decidedAt)
             .withComment(decision.comment());
     final Task resolved =
-        tasks.resolveTask(task, resolution, decision.transition(), decision.user());
+        tasks.resolveTask(
+            task,
+            resolution,
+            decision.transition(),
+            decision.user(),
+            decidedVotes(task, decision, decidedAt));
     complete(resolved, decision.user());
     repository(task).recordDecision(resolved, decision);
     Entity.getCollectionDAO()
         .entityExtensionDAO()
         .delete(task.getId(), OntologyReviewReconciler.EXTENSION);
     return resolved;
+  }
+
+  /**
+   * Every counted voter once. Recorded votes keep their comments; the deciding vote carries the
+   * decision's comment; a voter the workflow counted but no record reached is an approval, because
+   * a rejection decides as soon as it is counted.
+   */
+  static List<TaskReviewVote> decidedVotes(
+      final Task task, final OntologyWorkflowDecision decision, final long decidedAt) {
+    List<TaskReviewVote> votes = listOrEmpty(task.getReviewVotes());
+    for (final String voter : decision.voters()) {
+      if (TaskReviewVotes.hasVoted(votes, voter)) {
+        continue;
+      }
+      final boolean decider = voter.equals(decision.user());
+      votes =
+          TaskReviewVotes.record(
+              votes,
+              TaskReviewVotes.vote(
+                  task,
+                  userReference(voter),
+                  decider
+                      ? TaskReviewVotes.decision(decision.resolution())
+                      : TaskReviewVoteDecision.Approved,
+                  decider ? decision.comment() : null,
+                  decidedAt));
+    }
+    return votes;
+  }
+
+  private static EntityReference userReference(final String user) {
+    return Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED);
   }
 
   public static void trackExecution(final UUID taskId, final String processId) {
