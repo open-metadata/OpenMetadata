@@ -64,13 +64,16 @@ const CustomPropertyRow = ({
   const { View, Edit } = getPropertyRenderer(typeName);
   const label = getEntityName(property);
 
+  // A column, so the type's editor form stretches to the full width and its
+  // right edge lines up with Cancel / Save changes; a row would shrink it.
   const editor = (
     <Box
       className={classNames(
         'tw:min-w-0',
         meta.isWide ? 'tw:w-full' : 'tw:w-120 tw:max-w-full'
       )}
-      data-testid="custom-property-editor">
+      data-testid="custom-property-editor"
+      direction="col">
       <Edit
         formId={formId}
         isSaving={isSaving}
