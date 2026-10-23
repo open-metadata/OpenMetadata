@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools~=70.3.0"]
+requires = ["setuptools>=83"]
 build-backend = "setuptools.build_meta"
 
 # We will keep handling dependencies in setup.py
