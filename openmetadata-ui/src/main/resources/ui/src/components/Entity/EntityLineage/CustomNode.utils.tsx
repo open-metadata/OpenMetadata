@@ -34,6 +34,7 @@ import { t } from '../../../utils/i18next/LocalUtil';
 import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import LineageColumnMenu from '../../Lineage/LineageColumnMenu/LineageColumnMenu';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -347,12 +348,11 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 
 /**
  * Dark swaps the static grey node/badge/handle borders (custom-node.less
- * `@lineage-border`) for border-primary, and the column panel's secondary fill
- * (darker than the canvas in dark) for the node's own raised fill. Variables
- * rather than classes so the less hover/highlight/tracing states keep winning.
+ * `@lineage-border`) for border-primary. A variable rather than a border class so
+ * the less hover/highlight/tracing states keep winning over it.
  */
 export const LINEAGE_NODE_DARK_CLASS =
-  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)] tw:dark:[--lineage-node-inset-bg:var(--tw-background-color-raised)]';
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
 
 export function getNodeClassNames({
   isSelected,
@@ -374,7 +374,7 @@ export function getNodeClassNames({
     {
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
-      'lineage-base-node': isBaseNode,
+      [`lineage-base-node ${BASE_NODE_FILL_CLASS}`]: isBaseNode,
       'columns-expanded': isChildrenListExpanded,
     }
   );

@@ -50,7 +50,7 @@ describe('LineageNodeDeleteModal', () => {
 
     expect(
       screen.getByTestId('delete-node-confirmation-modal')
-    ).toHaveAccessibleName(`label.delete "${props.nodeName}"`);
+    ).toHaveAccessibleName('label.delete-entity');
   });
 
   it('disables confirm while deleting', () => {

@@ -67,7 +67,7 @@ const LineageNodeDeleteModal = ({
               theme="light"
             />
             <Typography id={titleId} size="text-md" weight="semibold">
-              {t('label.delete')} &quot;{nodeName}&quot;
+              {t('label.delete-entity', { entity: nodeName })}
             </Typography>
           </Dialog.Header>
           <Dialog.Content>

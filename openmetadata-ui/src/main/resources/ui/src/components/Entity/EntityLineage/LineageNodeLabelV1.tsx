@@ -54,6 +54,7 @@ import {
 } from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { NODE_INSET_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 interface LineageNodeLabelProps {
@@ -335,7 +336,11 @@ const EntityFooter = ({
   }
 
   return (
-    <div className="entity-footer">
+    <div
+      className={classNames(
+        'entity-footer',
+        isChildrenListExpanded && NODE_INSET_FILL_CLASS
+      )}>
       <div className="entity-footer__entity-type-and-dropdown">
         <BadgeWithIcon
           color="gray"

@@ -382,7 +382,6 @@
       min-height: 48px;
       padding: var(--om-space-12);
       padding-top: 0;
-      background-color: var(--lineage-node-inset-bg, var(--tw-background-color-secondary));
 
       .inside-current-page-item {
         margin-top: 0;
@@ -454,18 +453,6 @@
           &:hover {
             background-color: var(--tw-color-utility-brand-100);
             border-left-color: var(--tw-color-fg-brand-primary);
-          }
-        }
-      }
-    }
-  }
-
-  &.columns-expanded {
-    .lineage-node-content {
-      .label-container {
-        .custom-node-label-container {
-          .entity-footer {
-            background-color: var(--lineage-node-inset-bg, var(--tw-background-color-secondary));
           }
         }
       }
@@ -614,17 +601,10 @@
   }
 }
 
-// The base node is a light brand card; selected / DQ states above still win.
-// Dark brand-primary is translucent, so it is painted once over an opaque
-// raised fill and the inner sections stay transparent: repeating it on each
-// nested section stacked the alpha into uneven bands of blue.
+// The base node is a light brand card (its fill is BASE_NODE_FILL_CLASS in
+// CustomNode.utils); selected / DQ states above still win.
 .lineage-node.lineage-base-node {
   --lineage-node-border: var(--tw-border-color-brand);
-  background: linear-gradient(
-      var(--tw-background-color-brand-primary),
-      var(--tw-background-color-brand-primary)
-    ),
-    var(--tw-background-color-raised);
 
   &:not(.custom-node-header-active) {
     .lineage-node-content .label-container,
@@ -634,10 +614,6 @@
       .custom-node-label-container
       .entity-footer {
       background-color: transparent;
-    }
-
-    .lineage-node-badge-container {
-      background: inherit;
     }
   }
 }

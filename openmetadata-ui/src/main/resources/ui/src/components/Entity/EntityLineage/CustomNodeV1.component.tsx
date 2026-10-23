@@ -37,6 +37,7 @@ import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext
 import { isContainerSceneNode } from '../../Lineage/LineageMap/LineageMap.utils';
 import LineageNodeMenu from '../../Lineage/LineageNodeMenu/LineageNodeMenu';
 import './custom-node.less';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import {
   getCollapseHandle,
   getExpandHandle,
@@ -460,7 +461,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className="lineage-node-badge-container tw:bg-raised">
+        <div className={`lineage-node-badge-container ${BASE_NODE_FILL_CLASS}`}>
           <div className="lineage-node-badge" />
         </div>
       )}

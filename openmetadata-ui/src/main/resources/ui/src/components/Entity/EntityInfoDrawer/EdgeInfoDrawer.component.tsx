@@ -13,6 +13,7 @@
 
 import {
   ButtonUtility,
+  Card,
   Dropdown,
   Tooltip,
   Typography,
@@ -23,7 +24,6 @@ import {
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -493,7 +493,7 @@ const EdgeInfoDrawer = ({
           className="tw:flex tw:h-full tw:flex-col"
           data-testid="edge-info-drawer-container">
           {/* Insets line the icon and the × up with the card's edges. */}
-          <div className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-1 tw:pr-0.5 tw:pl-3">
+          <div className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-1 tw:pr-1.5 tw:pl-3">
             <div className="tw:min-w-0 tw:flex-1">
               <Tooltip
                 excludeTriggerFromTabOrder
@@ -517,48 +517,44 @@ const EdgeInfoDrawer = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              className="tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
               color="tertiary"
               data-testid="drawer-close-icon"
               icon={XClose}
-              size="xs"
+              size="lg"
               onClick={onClose}
             />
           </div>
-          <div
-            className={classNames(
-              'tw:mx-3 tw:max-h-[calc(100vh-70px)] tw:flex-1 tw:overflow-x-hidden tw:overflow-y-auto',
-              'tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface tw:dark:border-subtle',
-              'tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden'
-            )}>
-            {isLoading ? (
-              <Loader />
-            ) : (
-              <div className="d-flex flex-col">
-                <div className="tw:mt-4 tw:last:border-b-0 tw:[&_.description-section]:mt-0">
-                  <DescriptionSection
-                    description={edgeEntity?.description ?? ''}
-                    entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
-                    entityType={EntityType.LINEAGE_EDGE}
-                    hasPermission={hasEditAccess}
-                    showEditButton={hasEditAccess}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                  />
-                </div>
-                {edgeData && edgeData.length > 0 && (
-                  <div className="tw:mt-4 tw:last:border-b-0">
-                    <OverviewSection
-                      componentType=""
-                      entityInfoV1={edgeData}
-                      showEditButton={false}
+          <Card className="tw:mx-3 tw:flex tw:max-h-[calc(100vh-70px)] tw:min-h-0 tw:flex-1 tw:flex-col">
+            <div className="tw:min-h-0 tw:flex-1 tw:overflow-x-hidden tw:overflow-y-auto tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden">
+              {isLoading ? (
+                <Loader />
+              ) : (
+                <div className="d-flex flex-col">
+                  <div className="tw:mt-4 tw:last:border-b-0 tw:[&_.description-section]:mt-0">
+                    <DescriptionSection
+                      description={edgeEntity?.description ?? ''}
+                      entityFqn={edgeEntity.fromEntity.fullyQualifiedName}
+                      entityType={EntityType.LINEAGE_EDGE}
+                      hasPermission={hasEditAccess}
+                      showEditButton={hasEditAccess}
+                      onDescriptionUpdate={onDescriptionUpdate}
                     />
                   </div>
-                )}
+                  {edgeData && edgeData.length > 0 && (
+                    <div className="tw:mt-4 tw:last:border-b-0">
+                      <OverviewSection
+                        componentType=""
+                        entityInfoV1={edgeData}
+                        showEditButton={false}
+                      />
+                    </div>
+                  )}
 
-                {edgeDetailsSection}
-              </div>
-            )}
-          </div>
+                  {edgeDetailsSection}
+                </div>
+              )}
+            </div>
+          </Card>
         </div>
       )}
       {showSqlQueryModal && (

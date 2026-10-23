@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useIsTextClamped } from '../../hooks/useIsTextClamped';
@@ -29,16 +30,18 @@ const LineageTableDescription = ({
   entityPath,
 }: LineageTableDescriptionProps) => {
   const { t } = useTranslation();
-  const { ref, isClamped } = useIsTextClamped<HTMLSpanElement>(description);
+  const { ref, isClamped } = useIsTextClamped<HTMLElement>(description);
 
   return (
     <div className="tw:max-w-120 tw:whitespace-normal">
-      <span
+      <Typography
+        as="span"
         className="tw:line-clamp-2 tw:break-words"
         data-testid="impact-description"
-        ref={ref}>
+        ref={ref}
+        size="text-sm">
         {description}
-      </span>
+      </Typography>
       {isClamped && (
         <Link data-testid="impact-description-view-more" to={entityPath}>
           {t('label.view-more')}
