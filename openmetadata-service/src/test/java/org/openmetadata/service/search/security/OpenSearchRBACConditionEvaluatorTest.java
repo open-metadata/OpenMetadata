@@ -35,6 +35,7 @@ import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator.CompiledSearchFilter;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamGraphFixture;

@@ -5,6 +5,7 @@ import java.util.List;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator.CompiledSearchFilter;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 

@@ -76,6 +76,16 @@ public class RBACConditionEvaluator {
     return compile(subjectContext, SearchDocumentFields.ENTITY_DOCUMENTS).query();
   }
 
+  /**
+   * The search filter a caller's existing access policies compile to, for one kind of document.
+   *
+   * @param query the clause to AND into a search, as {@link #evaluateConditions} has always
+   *     returned it
+   * @param grantsEverything true when no deny rule restricts anything and the allow rules admit
+   *     every document of this kind, so the clause filters nothing
+   */
+  public record CompiledSearchFilter(OMQueryBuilder query, boolean grantsEverything) {}
+
   /** Compiles the caller's search policies for one kind of document. */
   public CompiledSearchFilter compile(
       SubjectContext subjectContext, SearchDocumentFields documentFields) {
@@ -417,6 +427,11 @@ public class RBACConditionEvaluator {
                     queryBuilderFactory.termsQuery(entityIdField(), ids))));
   }
 
+  /**
+   * The field holding an entity's id in the documents being compiled for: {@code id.keyword} on
+   * entity documents, {@code parentId} on vector chunk documents. Id-based conditions ({@code
+   * isOwner()}, {@code hasDomain()}, service matches) build their terms queries on it.
+   */
   private String entityIdField() {
     return evaluatingFields.get().entityIdField();
   }
