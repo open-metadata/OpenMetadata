@@ -298,3 +298,43 @@ def test_safe_orm_attr_collision_between_normal_and_remapped_dunder():
 
     # Both keys are distinct — no column was silently overwritten.
     assert real_key != dunder_key
+
+
+@mark.parametrize(
+    "array_data_type, expected_item_type",
+    [
+        (DataType.STRING, sqlalchemy.String),
+        (DataType.ARRAY, sqlalchemy.types.NullType),
+        (DataType.UNKNOWN, sqlalchemy.types.NullType),
+    ],
+)
+def test_map_array_types(array_data_type, expected_item_type):
+    """Array columns map to an array of their element type. A nested array
+    (e.g. ClickHouse `Array(Array(String))`) or an unmapped element type is
+    left untyped, since SQLAlchemy cannot build a nested or element-less ARRAY.
+    """
+    col = Column(name="tags", dataType=DataType.ARRAY, arrayDataType=array_data_type)
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database):
+    """A table with a nested array column must still build an ORM, so tests and
+    the profiler can run on its other columns."""
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name="nested_array_repro",
+        columns=[
+            Column(name="id", dataType=DataType.BIGINT),
+            Column(name="tags", dataType=DataType.ARRAY, arrayDataType=DataType.ARRAY),
+        ],
+        serviceType=DatabaseServiceType.Clickhouse,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    assert orm_table.__table__.columns.keys() == ["id", "tags"]

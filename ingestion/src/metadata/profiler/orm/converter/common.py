@@ -75,8 +75,15 @@ class CommonMapTypes:
         """returns an ORM type"""
 
         if col.arrayDataType:
-            return self._TYPE_MAP.get(col.dataType)(item_type=self._TYPE_MAP.get(col.arrayDataType))
+            return self._TYPE_MAP.get(col.dataType)(item_type=self._array_item_type(col))
         return self.return_custom_type(col, table_service_type)
+
+    def _array_item_type(self, col: Column):
+        """SQLAlchemy cannot nest ARRAY types and needs an element type to build one,
+        so a nested or unmapped element type is left untyped."""
+        if col.arrayDataType == DataType.ARRAY:
+            return sqlalchemy.types.NullType()
+        return self._TYPE_MAP.get(col.arrayDataType) or sqlalchemy.types.NullType()
 
     def return_custom_type(self, col: Column, _):
         return self._TYPE_MAP.get(col.dataType, CustomTypes.UNDETERMINED.value)
