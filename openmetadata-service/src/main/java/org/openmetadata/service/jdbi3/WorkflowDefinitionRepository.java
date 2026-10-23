@@ -574,7 +574,8 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
         throw BadRequestException.of(
             String.format(
                 "Workflow '%s' node '%s' has an expiryTimer.%s that is not a bare "
-                    + "process-variable name (letters, digits, '_'): '%s'",
+                    + "process-variable name (letters, digits, '_', starting with a letter or "
+                    + "underscore, not a reserved word): '%s'",
                 workflowName, nodeName, field.label, variableName));
       }
     }

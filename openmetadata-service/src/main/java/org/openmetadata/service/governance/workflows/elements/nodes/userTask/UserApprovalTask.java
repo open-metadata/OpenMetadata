@@ -611,7 +611,8 @@ public class UserApprovalTask implements NodeInterface {
       throw new IllegalArgumentException(
           String.format(
               "expiryTimer.%s on node '%s' must be a bare process-variable name "
-                  + "(letters, digits, '_'); got '%s'",
+                  + "(letters, digits, '_', starting with a letter or underscore, not a reserved "
+                  + "word); got '%s'",
               field, nodeName, variableName));
     }
   }

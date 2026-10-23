@@ -1,5 +1,6 @@
 package org.openmetadata.service.governance.workflows;
 
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -15,10 +16,34 @@ public final class WorkflowExpressionValidator {
   private static final Pattern SAFE_EDGE_CONDITION =
       Pattern.compile("^(?=.*[A-Za-z0-9])[A-Za-z0-9 ._-]+$");
 
-  // A value interpolated in code position as a JUEL variable reference (${<value>...}) — a
-  // conditional edge's source node, or a timer's process-variable name — is limited to identifier
-  // characters.
-  private static final Pattern SAFE_VARIABLE_REFERENCE = Pattern.compile("^[A-Za-z0-9_]+$");
+  // A conditional edge's source node lands in code position as the JUEL variable-name prefix
+  // (${from_result == ...}); a valid variable reference is limited to identifier characters.
+  private static final Pattern SAFE_NODE_REFERENCE = Pattern.compile("^[A-Za-z0-9_]+$");
+
+  // A process-variable name interpolated alone in code position (${<name>}) must parse as a JUEL
+  // variable reference — it cannot start with a digit (JUEL would read it as a number) and it
+  // cannot be one of the tokens JUEL treats as literals or operators.
+  private static final Pattern SAFE_EXPRESSION_VARIABLE =
+      Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
+
+  private static final Set<String> JUEL_RESERVED_WORDS =
+      Set.of(
+          "true",
+          "false",
+          "null",
+          "empty",
+          "and",
+          "or",
+          "not",
+          "div",
+          "mod",
+          "instanceof",
+          "eq",
+          "ne",
+          "lt",
+          "le",
+          "gt",
+          "ge");
 
   private WorkflowExpressionValidator() {}
 
@@ -27,14 +52,17 @@ public final class WorkflowExpressionValidator {
   }
 
   public static boolean isSafeNodeReference(String reference) {
-    return reference != null && SAFE_VARIABLE_REFERENCE.matcher(reference).matches();
+    return reference != null && SAFE_NODE_REFERENCE.matcher(reference).matches();
   }
 
   /**
    * A process-variable name interpolated alone in code position (an expiry timer's duration or date
-   * variable) must read as a valid variable reference, nothing more.
+   * variable) must read as a valid variable reference: identifier characters, not starting with a
+   * digit, and not a reserved word.
    */
   public static boolean isSafeExpressionVariable(String variableName) {
-    return isSafeNodeReference(variableName);
+    return variableName != null
+        && SAFE_EXPRESSION_VARIABLE.matcher(variableName).matches()
+        && !JUEL_RESERVED_WORDS.contains(variableName);
   }
 }
