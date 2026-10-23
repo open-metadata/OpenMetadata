@@ -281,7 +281,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({
       isBaseNode: isRootNode,
       isSelected,
-      showDqTracing: Boolean(showDqTracing),
     }),
   });
 

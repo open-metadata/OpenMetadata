@@ -356,18 +356,17 @@ export const LINEAGE_NODE_DARK_CLASS =
 
 /**
  * The base node's own fill is a gradient layer, which would sit above the
- * background-color that the selected and failed-quality states set, so it is
- * painted only when no state supplies a fill.
+ * background-color that the selected states set (brand, or error when quality
+ * failed), so it yields while selected. An unselected failed-quality node only
+ * changes its border, so it keeps the fill.
  */
 export const hasBaseNodeFill = ({
   isBaseNode,
   isSelected,
-  showDqTracing,
 }: {
   isBaseNode: boolean;
   isSelected: boolean;
-  showDqTracing: boolean;
-}) => isBaseNode && !isSelected && !showDqTracing;
+}) => isBaseNode && !isSelected;
 
 export function getNodeClassNames({
   isSelected,
@@ -390,11 +389,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
-      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({
-        isBaseNode,
-        isSelected,
-        showDqTracing,
-      }),
+      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({ isBaseNode, isSelected }),
       'columns-expanded': isChildrenListExpanded,
     }
   );

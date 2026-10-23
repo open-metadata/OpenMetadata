@@ -337,12 +337,15 @@ describe('Custom Node Utils', () => {
         ...state,
       });
 
-    it('paints the base fill on an idle base node', () => {
-      expect(classesFor({})).toContain(BASE_NODE_FILL_CLASS);
-    });
+    it.each([{}, { showDqTracing: true }])(
+      'paints the base fill on an unselected base node (%o)',
+      (state) => {
+        expect(classesFor(state)).toContain(BASE_NODE_FILL_CLASS);
+      }
+    );
 
-    it.each([{ isSelected: true }, { showDqTracing: true }])(
-      'leaves the fill to the state for %o',
+    it.each([{ isSelected: true }, { isSelected: true, showDqTracing: true }])(
+      'leaves the fill to the selected state (%o)',
       (state) => {
         const classes = classesFor(state);
 
