@@ -22,11 +22,20 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
+import DeferredWidget from '../../../common/DeferredWidget/DeferredWidget.component';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
+);
+
+// Each preview mounts a read-only rich-text editor; a long feed mounting them all at
+// once blocks the main thread, so only cards near the viewport mount theirs.
+const FeedMessagePreview = ({ markdown }: { markdown: string }) => (
+  <DeferredWidget minHeight="3em">
+    <RichTextEditorPreviewerNew className="text-wrap" markdown={markdown} />
+  </DeferredWidget>
 );
 
 const ActivityDescriptionFeed = withSuspenseFallback(
@@ -58,7 +67,6 @@ const ActivityTagsFeed = withSuspenseFallback(
 );
 
 const FeedCardBodyNew = ({
-  isPost = false,
   feed,
   activity,
   isEditPost,
@@ -111,29 +119,18 @@ const FeedCardBodyNew = ({
       }
 
       return (
-        <RichTextEditorPreviewerNew
-          className="text-wrap"
+        <FeedMessagePreview
           markdown={getFrontEndFormat(activity.summary ?? message)}
         />
       );
     }
 
     return (
-      <RichTextEditorPreviewerNew
-        className="text-wrap"
+      <FeedMessagePreview
         markdown={getFrontEndFormat(feed?.message ?? message)}
       />
     );
-  }, [
-    isPost,
-    message,
-    postMessage,
-    feed,
-    isActivityEvent,
-    activity,
-    isForFeedTab,
-    showThread,
-  ]);
+  }, [message, feed, isActivityEvent, activity, isForFeedTab, showThread]);
 
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
@@ -169,7 +166,14 @@ const FeedCardBodyNew = ({
     }
 
     return feedBodyStyleCardsRender;
-  }, [isEditPost, message, feedBodyStyleCardsRender]);
+  }, [
+    isEditPost,
+    message,
+    feedBodyStyleCardsRender,
+    handleSave,
+    onEditCancel,
+    t,
+  ]);
 
   return (
     <Card
