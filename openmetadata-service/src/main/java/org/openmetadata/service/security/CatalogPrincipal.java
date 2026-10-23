@@ -14,6 +14,7 @@
 package org.openmetadata.service.security;
 
 import java.security.Principal;
+import java.util.Locale;
 import lombok.Getter;
 
 @Getter
@@ -22,8 +23,8 @@ public class CatalogPrincipal implements Principal {
   private final String email;
 
   public CatalogPrincipal(String name, String email) {
-    this.name = name.toLowerCase();
-    this.email = email.toLowerCase();
+    this.name = name.toLowerCase(Locale.ROOT);
+    this.email = email.toLowerCase(Locale.ROOT);
   }
 
   @Override

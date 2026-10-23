@@ -285,6 +285,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -9594,7 +9595,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
   protected static User authorOf(final String userName) {
     final User author =
-        userName.equalsIgnoreCase(ADMIN_USER_NAME)
+        SecurityUtil.sameIdentifier(userName, ADMIN_USER_NAME)
             ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
             : findEntityByNameOrNull(USER, userName, ALL);
     return author == null ? new User().withName(userName).withIsAdmin(false) : author;

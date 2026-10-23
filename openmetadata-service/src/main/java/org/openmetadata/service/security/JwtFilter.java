@@ -708,7 +708,7 @@ public class JwtFilter implements ContainerRequestFilter {
     if (!isAuthenticated
         || session.isExpired(System.currentTimeMillis())
         || nullOrEmpty(session.getUsername())
-        || !session.getUsername().equalsIgnoreCase(userName)) {
+        || !SecurityUtil.sameIdentifier(session.getUsername(), userName)) {
       throw AuthenticationException.getInvalidTokenException("Invalid session.");
     }
     validateSessionProviderIsCurrent(session);

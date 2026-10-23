@@ -31,6 +31,7 @@ import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_R
 import static org.openmetadata.service.jdbi3.UserRepository.AUTH_MECHANISM_FIELD;
 import static org.openmetadata.service.secrets.ExternalSecretsManager.NULL_SECRET_STRING;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
+import static org.openmetadata.service.security.SecurityUtil.sameIdentifier;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.getExpiryDate;
 import static org.openmetadata.service.util.UserUtil.generateUsernameFromEmail;
 import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
@@ -192,6 +193,9 @@ import org.openmetadata.service.util.email.TemplateConstants;
 public class UserResource extends EntityResource<User, UserRepository> {
   public static final String COLLECTION_PATH = "/v1/users/";
   public static final String USER_PROTECTED_FIELDS = "authenticationMechanism";
+  static final String BOT_TOKENS_ONLY =
+      "This endpoint can only generate tokens for bot users. "
+          + "Use PUT /users/security/token to create a personal access token.";
   private final JWTTokenGenerator jwtTokenGenerator;
   private final TokenRepository tokenRepository;
   private final RoleRepository roleRepository;
@@ -738,7 +742,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       createdUserRes = create(uriInfo, securityContext, user);
     } catch (EntityNotFoundException ex) {
       if (isSelfSignUpEnabled()) {
-        if (securityContext.getUserPrincipal().getName().equals(user.getName())) {
+        if (isOwnSignUp(securityContext, user)) {
           User created =
               addHref(
                   uriInfo,
@@ -767,6 +771,17 @@ public class UserResource extends EntityResource<User, UserRepository> {
       return createdUserRes;
     }
     return Response.status(BAD_REQUEST).entity("User Cannot be created Successfully.").build();
+  }
+
+  /**
+   * Self sign-up creates the caller's own account only: both the name and the email must be the
+   * ones the caller's token carries. The email decides whether {@code adminEmails} makes the
+   * account an admin, so it cannot be taken from the request body alone.
+   */
+  static boolean isOwnSignUp(SecurityContext securityContext, User user) {
+    return securityContext.getUserPrincipal() instanceof CatalogPrincipal principal
+        && principal.getName().equals(user.getName())
+        && sameIdentifier(principal.getEmail(), user.getEmail());
   }
 
   private void addUserAuthForBasic(User user, CreateUser create) {
@@ -855,7 +870,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
     // roles to somebody else through PUT while PATCH refuses the same change.
     if (grantsPrivileges(create, existingUser, user)) {
       authorizeAdminForPrivilegedFields(securityContext);
-    } else if (!securityContext.getUserPrincipal().getName().equalsIgnoreCase(user.getName())) {
+    } else if (!sameIdentifier(securityContext.getUserPrincipal().getName(), user.getName())) {
       // doing authorization check outside of authorizer here. We are checking if the logged-in user
       // is same as the user. We are trying to update. One option is to set users.owner as user,
       // however that is not supported for User. The principal name comes from the token unmodified
@@ -904,9 +919,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
 
     // Only allow token generation for bot users via this endpoint
     if (!Boolean.TRUE.equals(user.getIsBot())) {
-      throw new AuthorizationException(
-          "This endpoint can only generate tokens for bot users. "
-              + "Use POST /users/generateToken for self-service token generation.");
+      throw new AuthorizationException(BOT_TOKENS_ONLY);
     }
 
     JWTAuthMechanism jwtAuthMechanism =
@@ -928,10 +941,11 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Path("/generateToken")
   @Operation(
       operationId = "generateJWTTokenForUser",
-      summary = "Generate JWT Token for a User",
+      summary = "Generate JWT Token for a Bot User",
       description =
-          "Generate JWT Token for a user. Users with EDIT permission can generate tokens for bot users, "
-              + "and users can generate their own tokens. Regular users cannot generate tokens for other regular users.",
+          "Generate JWT Token for a bot user. Users with EDIT permission on the bot can generate its "
+              + "token. Users create their own tokens as personal access tokens through "
+              + "PUT /users/security/token.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -952,26 +966,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
       throw new IllegalArgumentException("User ID is required for token generation");
     }
 
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(userId));
     User user = repository.get(uriInfo, userId, repository.getFieldsWithUserAuth("*"));
-
-    // Permission check: admins can generate tokens for bot users,
-    // users can generate their own tokens
-    String currentUserName = securityContext.getUserPrincipal().getName();
-    boolean isCurrentUser = currentUserName.equalsIgnoreCase(user.getName());
-    boolean isBotUser = Boolean.TRUE.equals(user.getIsBot());
-
-    if (isBotUser) {
-      // For bot users, users with EDIT permission on the bot can generate tokens
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      ResourceContext<?> resourceContext = getResourceContextById(userId);
-      authorizer.authorize(securityContext, operationContext, resourceContext);
-    } else if (!isCurrentUser) {
-      // For non-bot users, only the user themselves can generate their own token
-      // No one else can generate tokens for regular users (prevents impersonation)
-      throw new AuthorizationException(
-          "Users can only generate tokens for themselves. "
-              + "Use the bot user API to generate tokens for bots.");
+    // The minted token is a bot token stored as the account's authentication mechanism. A person's
+    // account would lose its own mechanism and get a token that bot revocation does not cover;
+    // personal access tokens are the revocable equivalent for people.
+    if (!Boolean.TRUE.equals(user.getIsBot())) {
+      throw new AuthorizationException(BOT_TOKENS_ONLY);
     }
 
     JWTAuthMechanism jwtAuthMechanism =
@@ -981,19 +984,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
             .withConfig(jwtAuthMechanism)
             .withAuthType(AuthenticationMechanism.AuthType.JWT);
     user.setAuthenticationMechanism(authenticationMechanism);
-    if (isBotUser) {
-      BotTokenCache.mutateToken(
-          user.getName(),
-          () ->
-              repository.createOrUpdate(
-                  uriInfo, user, securityContext.getUserPrincipal().getName()));
-    } else {
-      UserTokenCache.mutateToken(
-          user.getName(),
-          () ->
-              repository.createOrUpdate(
-                  uriInfo, user, securityContext.getUserPrincipal().getName()));
-    }
+    BotTokenCache.mutateToken(
+        user.getName(),
+        () ->
+            repository.createOrUpdate(uriInfo, user, securityContext.getUserPrincipal().getName()));
     return Response.status(Response.Status.OK).entity(jwtAuthMechanism).build();
   }
 

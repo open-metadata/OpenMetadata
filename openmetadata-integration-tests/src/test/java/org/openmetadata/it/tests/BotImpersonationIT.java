@@ -18,16 +18,24 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for the bot impersonation capability.
@@ -260,6 +268,44 @@ public class BotImpersonationIT {
                     .getHttpClient()
                     .executeForString(HttpMethod.GET, "/v1/system/settings", null),
             "Admin-only endpoints must enforce the bot's impersonation policy");
+    assertTrue(
+        denied.getMessage().contains("not authorized to impersonate"),
+        "Error should state the target is not allowed: " + denied.getMessage());
+  }
+
+  /**
+   * A role that allows impersonation only within the bot's domains must see the target's domains.
+   * The target used to be evaluated as loaded by the token filter, without domains, so {@code
+   * hasDomain()} read "no domains" and allowed every target.
+   */
+  @Test
+  void test_domainScopedRole_deniesTargetOutsideTheBotsDomains(TestNamespace ns) {
+    Domain domain =
+        SdkClients.adminClient()
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(ns.shortPrefix("impdomain"))
+                    .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                    .withDescription("Domain the impersonating bot does not belong to"));
+    User inDomain = createRegularUser(ns, "indomain", domain.getFullyQualifiedName());
+    User withoutDomain = createRegularUser(ns, "nodomain");
+    User botUser = createBotUser(ns, "domscoped");
+    createBot(ns.prefix("imp_domscoped_bot"), botUser, true);
+    swapImpersonationRole(botUser, createDomainScopedImpersonationRole(ns).getName());
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asUnscoped = impersonationClient(botToken, withoutDomain.getName());
+    assertDoesNotThrow(
+        () -> asUnscoped.users().getByName(withoutDomain.getName()),
+        "A target with no domain is within hasDomain() and stays impersonable");
+
+    OpenMetadataClient asOutsider = impersonationClient(botToken, inDomain.getName());
+    Exception denied =
+        assertThrows(
+            Exception.class,
+            () -> asOutsider.users().getByName(inDomain.getName()),
+            "hasDomain() must be evaluated against the target's domains");
     assertTrue(
         denied.getMessage().contains("not authorized to impersonate"),
         "Error should state the target is not allowed: " + denied.getMessage());
@@ -549,6 +595,10 @@ public class BotImpersonationIT {
   }
 
   private User createRegularUser(TestNamespace ns, String suffix) {
+    return createRegularUser(ns, suffix, null);
+  }
+
+  private User createRegularUser(TestNamespace ns, String suffix, String domainFqn) {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
     String userName = ns.prefix("imptarget_" + suffix + "_" + uniqueId);
     Role dataConsumer = SdkClients.adminClient().roles().getByName("DataConsumer");
@@ -559,8 +609,34 @@ public class BotImpersonationIT {
             .withEmail("imptarget" + suffix + uniqueId + "@test.com")
             .withDescription("Impersonation target user")
             .withRoles(List.of(dataConsumer.getId()));
+    if (domainFqn != null) {
+      request.withDomains(List.of(domainFqn));
+    }
 
     return SdkClients.adminClient().users().create(request);
+  }
+
+  private Role createDomainScopedImpersonationRole(TestNamespace ns) {
+    Rule allowWithinDomain =
+        new Rule()
+            .withName("AllowImpersonationWithinDomain")
+            .withResources(List.of(Entity.USER))
+            .withOperations(List.of(MetadataOperation.IMPERSONATE))
+            .withEffect(Rule.Effect.ALLOW)
+            .withCondition("hasDomain()");
+    Policy policy =
+        SdkClients.adminClient()
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.shortPrefix("impdompol"))
+                    .withRules(List.of(allowWithinDomain)));
+    return SdkClients.adminClient()
+        .roles()
+        .create(
+            new CreateRole()
+                .withName(ns.shortPrefix("impdomrole"))
+                .withPolicies(List.of(policy.getFullyQualifiedName())));
   }
 
   private Bot createBot(String botName, User botUser, Boolean allowImpersonation) {

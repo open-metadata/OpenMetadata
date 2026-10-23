@@ -70,12 +70,13 @@ public class BotMapper implements EntityMapper<Bot, CreateBot> {
     return repository.findFromRecords(user.getId(), Entity.USER, Relationship.CONTAINS, Entity.BOT);
   }
 
+  // Include.ALL: the bot repository links soft-deleted users too, and restoring the bot then
+  // restores its user, so a deleted person's account must fail the bot-user check like a live one.
   private User retrieveUser(Bot bot) {
     EntityRepository<? extends EntityInterface<?>> userRepository =
         Entity.getEntityRepository(Entity.USER);
     return (User)
-        userRepository.findByNameOrNull(
-            bot.getBotUser().getFullyQualifiedName(), Include.NON_DELETED);
+        userRepository.findByNameOrNull(bot.getBotUser().getFullyQualifiedName(), Include.ALL);
   }
 
   private Bot retrieveBot(String botName) {
