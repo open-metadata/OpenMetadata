@@ -111,7 +111,9 @@ const getHeaderTagsClassName = (
 ): string =>
   classNames('d-flex', {
     'header-container-card': !showThread,
-    'flex-wrap': showThread && entityRefType !== EntityType.CONTAINER,
+    // Feed-list cards are narrow: wrap the entity link and field path onto
+    // their own lines instead of letting them run past the card edge.
+    'flex-wrap': !showThread || entityRefType !== EntityType.CONTAINER,
     'items-start': showThread && entityRefType === EntityType.CONTAINER,
     'items-center': !showThread || entityRefType !== EntityType.CONTAINER,
   });
@@ -263,7 +265,11 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <Box inline align="center" className="tw:min-w-0 tw:gap-1.5">
+        <Box
+          inline
+          align="center"
+          className="tw:min-w-0 tw:gap-1.5"
+          wrap="wrap">
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
             <Box
               align="center"

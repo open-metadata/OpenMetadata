@@ -16,6 +16,9 @@
 .activity-feed-card-new {
   border-radius: var(--om-radius-xl);
   background: var(--tw-color-bg-surface);
+  // Clamped descriptions in feed cards sit on the surface card, not the page;
+  // fade into that, or the fade shows as a dark band in dark mode.
+  --markdown-clamp-fade-color: var(--om-color-bg-surface);
   display: flex;
   flex-direction: column;
   width: inherit;
