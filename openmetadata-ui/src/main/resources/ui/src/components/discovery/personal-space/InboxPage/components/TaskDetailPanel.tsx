@@ -13,6 +13,7 @@
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import React, {
   ReactNode,
   useCallback,
@@ -78,6 +79,7 @@ import {
 } from '../taskResolve.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
+import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
 import ClampedText from './ClampedText';
 import TaskActionCommentModal from './TaskActionCommentModal';
@@ -335,6 +337,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onCommentsChanged,
 }) => {
   const { t } = useTranslation();
+  const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
+    useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
   const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
@@ -780,9 +784,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       className="tw:h-full tw:w-full tw:min-h-0"
       data-testid="task-detail-panel"
       direction="col">
-      {/* Set off from the body by a light shadow rather than a rule. */}
+      {/* Lifts off the body with a light shadow once it scrolls under it. */}
       <Box
-        className="tw:relative tw:z-10 tw:shrink-0 tw:px-6 tw:py-5 tw:shadow-sm"
+        className={classNames(
+          'tw:relative tw:z-10 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-5 tw:transition-shadow',
+          isBodyScrolled && 'tw:shadow-sm'
+        )}
         direction="col">
         <TaskDetailHeader
           actions={actions}
@@ -810,7 +817,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       <Box
         className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:pt-6 tw:pb-12 tw:*:shrink-0"
         direction="col"
-        gap={6}>
+        gap={6}
+        onScroll={onBodyScroll}>
         {renderDetails()}
 
         <TaskActivityTimeline

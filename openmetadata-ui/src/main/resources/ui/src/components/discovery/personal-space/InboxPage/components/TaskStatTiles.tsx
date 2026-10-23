@@ -115,9 +115,11 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
         const isField = tile.layout === 'field';
 
         return (
+          // In dark the pane behind the card is bg-secondary, so the tiles lift to
+          // bg-surface to stay visible.
           <Box
             align="start"
-            className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3"
+            className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
             data-testid={`${testIdPrefix}-${tile.key}`}
             direction="col"
             gap={1}
