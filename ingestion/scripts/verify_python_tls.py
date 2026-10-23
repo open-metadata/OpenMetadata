@@ -11,6 +11,7 @@
 """Check installed Python trust stores, optionally exercising live TLS chains."""
 
 import argparse
+import ensurepip
 import hashlib
 import importlib.metadata
 import importlib.util
@@ -20,6 +21,8 @@ import shutil
 import socket
 import ssl
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import certifi
@@ -45,6 +48,9 @@ def verify_packages():
             raise RuntimeError(f"Vulnerable {name} {distribution.version} at {distribution.locate_file('')}")
     for name in ("pip", "certifi"):
         logging.info("%s=%s", name, importlib.metadata.version(name))
+    if Version(ensurepip.version()) < Version(floors["pip"]):
+        raise RuntimeError(f"Vulnerable ensurepip wheel: {ensurepip.version()}")
+    logging.info("ensurepip=%s", ensurepip.version())
     isolated_uv = Path("/home/airflow/.local/share/uv/tools/prek/bin/uv")
     if isolated_uv.is_file() and os.environ.get("PREK_NATIVE_TLS") != "true":
         raise RuntimeError("prek must use the patched OS trust store")
@@ -77,12 +83,30 @@ def verify_bundle(name, bundle, network):
     if not bundle:
         raise RuntimeError(f"Missing {name} CA bundle")
     context = ssl.create_default_context(cafile=bundle)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     fingerprints = {hashlib.sha256(certificate).hexdigest() for certificate in context.get_ca_certs(binary_form=True)}
     if not fingerprints or fingerprints & BLOCKED_ROOTS:
         raise RuntimeError(f"Unsafe {name} CA bundle: {bundle}")
     logging.info("%s CA bundle: patched", name)
     if network:
         verify_connections(name, context)
+
+
+def verify_seeds(network):
+    factories = {"venv": ["-m", "venv"]}
+    if importlib.util.find_spec("virtualenv"):
+        factories["virtualenv"] = ["-m", "virtualenv", "--no-download", "--no-periodic-update"]
+    for name, arguments in factories.items():
+        with tempfile.TemporaryDirectory() as directory:
+            subprocess.run([sys.executable, *arguments, directory], check=True)
+            probe = (
+                "import pip; from pip._vendor import certifi; "
+                "from pip._vendor.packaging.version import Version; "
+                "assert Version(pip.__version__) >= Version('26.2.2'), pip.__version__; "
+                "print(certifi.where())"
+            )
+            bundle = subprocess.check_output([str(Path(directory) / "bin/python"), "-c", probe], text=True).strip()
+            verify_bundle(name, bundle, network)
 
 
 def main():
@@ -102,6 +126,7 @@ def main():
         )
     for name, bundle in bundles.items():
         verify_bundle(name, bundle, args.network)
+    verify_seeds(args.network)
 
 
 if __name__ == "__main__":

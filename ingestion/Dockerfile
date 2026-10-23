@@ -10,8 +10,12 @@ RUN apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY ingestion/airflow-constraints-3.3.2.txt /opt/openmetadata/python-tls/airflow-constraints.txt
-RUN /usr/local/bin/python -m pip install --no-cache-dir "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
-    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4"
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    /usr/local/bin/python -m pip download --no-cache-dir --no-deps --dest /tmp/python-pip "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade /tmp/python-pip/*.whl \
+    && /usr/local/bin/python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
+    && /usr/local/bin/python /tmp/patch_python_seeds.py /tmp/python-pip/pip-26.2.2-py3-none-any.whl \
+    && rm -rf /tmp/python-pip
 RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
   && echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list
 
@@ -190,4 +194,6 @@ RUN airflow db migrate && rm -f /opt/airflow/airflow.db
 # Airflow's isolated prek environment carries another uv binary and CA bundle.
 ENV PREK_NATIVE_TLS=true
 RUN python -m pip --python /home/airflow/.local/share/uv/tools/prek/bin/python install --upgrade "uv>=0.13.4"
-RUN python -m pip install --no-cache-dir --upgrade "virtualenv>=21.14.12"
+RUN --mount=type=bind,source=ingestion/scripts/patch_python_seeds.py,target=/tmp/patch_python_seeds.py \
+    python -m pip install --no-cache-dir --upgrade "virtualenv>=21.14.12" \
+    && python /tmp/patch_python_seeds.py
