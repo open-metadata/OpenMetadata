@@ -188,6 +188,10 @@ public class DefaultAuthorizer implements Authorizer {
               subjectContext, req.resourceContext(), req.operationContext());
           anySuccess = true;
           break;
+        } catch (PolicyDeniedException denied) {
+          // An explicit Deny on any one of the requests refuses the whole thing: a resource a Deny
+          // rule names must stay hidden even when another request would have allowed access.
+          throw denied;
         } catch (AuthorizationException ignored) {
         }
       }
