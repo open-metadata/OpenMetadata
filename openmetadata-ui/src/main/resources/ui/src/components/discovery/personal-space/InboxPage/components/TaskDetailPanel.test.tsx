@@ -53,7 +53,7 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
-  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
   editTaskComment: (...a: unknown[]) => mockEditComment(...a),

@@ -39,7 +39,7 @@ import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
-  getTaskById,
+  getTask,
   resolveTask,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
@@ -314,7 +314,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     setIsLoading(true);
     let result: Task | undefined;
     try {
-      const res = await getTaskById(taskId, { fields: TASK_FIELDS });
+      const res = await getTask(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
       setLoadedTaskId(taskId);
       result = res.data;
@@ -485,7 +485,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         if (isStale()) {
           return true;
         }
-        const { data: fresh } = await getTaskById(taskId, {
+        const { data: fresh } = await getTask(taskId, {
           fields: TASK_FIELDS,
         });
         if (isStale()) {

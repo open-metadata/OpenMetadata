@@ -228,6 +228,21 @@ export const getTaskByTaskId = async (
   return APIClient.get<Task>(`${BASE_URL}/name/${taskId}`, { params });
 };
 
+const READABLE_TASK_ID_PREFIX = 'TASK-';
+
+/**
+ * A task by its UUID or by its readable `TASK-…` id. Links may carry either,
+ * but `/tasks/{id}` only takes the UUID; the readable id goes through
+ * `/tasks/name/{taskId}`.
+ */
+export const getTask = (
+  id: string,
+  params?: { fields?: string; include?: Include }
+): Promise<AxiosResponse<Task>> =>
+  id.startsWith(READABLE_TASK_ID_PREFIX)
+    ? getTaskByTaskId(id, params)
+    : getTaskById(id, params);
+
 /**
  * Get all versions of a task.
  */
