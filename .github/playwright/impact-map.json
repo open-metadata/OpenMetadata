@@ -1185,8 +1185,9 @@
       ]
     },
     {
-      "_comment": "ConfirmationModal's props and unit test. The generated map reaches only ConfirmationModal.tsx (through its testIds); these follow it, plus TestSuiteDetailsPage.spec.ts, which asserts the destructive confirm on bulk remove.",
+      "_comment": "ConfirmationModal, its props and unit test. The generated map sends ConfirmationModal.tsx to the first three specs (through its testIds); TestSuiteDetailsPage.spec.ts is added because it asserts the destructive confirm on bulk remove.",
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.test.tsx"
       ],

@@ -474,7 +474,8 @@ for (const { label, suitePathPrefix, openApp } of SUITE_APP_MODES) {
           await expect(testCaseRow(name)).toHaveCount(0);
         }
         await expect(testCaseRow(keptName)).toHaveCount(1);
-        await expect(page.getByTestId('test-cases')).toContainText('1');
+        // The badge renders differently per mode; anchor on the trailing count.
+        await expect(page.getByTestId('test-cases')).toHaveText(/(^|\D)1$/);
         await expect(
           page.getByTestId('bulk-remove-test-cases')
         ).not.toBeVisible();
