@@ -81,7 +81,7 @@ const TopicStatChips: React.FC<TopicStatChipsProps> = ({
         aria-pressed={stat.id === value}
         className={classNames(
           'tw:rounded-lg tw:px-2.5 tw:py-1',
-          stat.id === value ? SELECTED_SURFACE[stat.tone] : 'tw:bg-primary'
+          stat.id === value && SELECTED_SURFACE[stat.tone]
         )}
         color="secondary"
         data-testid={`topic-stat-${stat.id}`}

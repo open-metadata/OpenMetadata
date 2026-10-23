@@ -13,7 +13,12 @@
 
 import { AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 import { Task } from '../generated/entity/tasks/task';
-import { addTaskComment, deleteTaskComment, editTaskComment } from './tasksAPI';
+import {
+  addTaskComment,
+  deleteTaskComment,
+  editTaskComment,
+  getTask,
+} from './tasksAPI';
 
 let mockCapturedRequest: InternalAxiosRequestConfig | undefined;
 
@@ -93,5 +98,23 @@ describe('tasksAPI comments', () => {
 
       expect(contentType).toBe('application/json');
     });
+  });
+});
+
+describe('getTask', () => {
+  // `/tasks/{id}` only resolves a UUID: a readable id there is a 404.
+  it('loads a readable TASK- id by name', async () => {
+    await getTask('TASK-00170', { fields: 'payload' });
+
+    expect(mockCapturedRequest?.url).toBe('/tasks/name/TASK-00170');
+    expect(mockCapturedRequest?.params).toEqual({ fields: 'payload' });
+  });
+
+  it('loads a UUID by id', async () => {
+    await getTask('f210eaf1-7a21-4f0e-97d9-37ebe325d229');
+
+    expect(mockCapturedRequest?.url).toBe(
+      '/tasks/f210eaf1-7a21-4f0e-97d9-37ebe325d229'
+    );
   });
 });

@@ -22,12 +22,23 @@ import {
 } from './CustomPropertiesPanel.types';
 import {
   buildCustomPropertyConfig,
+  entityTypeDetailSubPath,
   getBreadcrumbItems,
   getCustomPropertyTypeFlags,
   getPageTitle,
+  parseCustomPropertiesHash,
   toCustomPropertyPayload,
   toId,
 } from './CustomPropertiesPanel.utils';
+
+describe('entityTypeDetailSubPath', () => {
+  it('opens that entity type in the custom properties panel', () => {
+    expect(parseCustomPropertiesHash(entityTypeDetailSubPath('user'))).toEqual({
+      entityFqn: 'user',
+      action: 'detail',
+    });
+  });
+});
 
 jest.mock('../../../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { displayName?: string; name?: string }) =>

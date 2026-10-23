@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ContextMemory } from '../../../../generated/entity/context/contextMemory';
 import MemoryDerivedTerm from './MemoryDerivedTerm';
@@ -29,6 +29,7 @@ describe('MemoryDerivedTerm', () => {
     render(
       <MemoryRouter>
         <MemoryDerivedTerm
+          isViewOnly
           memory={memory([
             {
               id: 'term-id',
@@ -63,10 +64,45 @@ describe('MemoryDerivedTerm', () => {
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
+  it('renders derived terms as plain text while the memory is being edited', () => {
+    const onNavigate = jest.fn();
+    render(
+      <MemoryRouter>
+        <MemoryDerivedTerm
+          isViewOnly={false}
+          memory={memory([
+            {
+              id: 'term-id',
+              type: 'glossaryTerm',
+              name: 'churn',
+              displayName: 'Churn',
+              fullyQualifiedName: 'Business.churn',
+            },
+          ])}
+          onNavigate={onNavigate}
+        />
+      </MemoryRouter>
+    );
+
+    const section = screen.getByTestId('memory-derived-term');
+
+    expect(section).toHaveTextContent('label.derived-term');
+    expect(section).toHaveTextContent('Churn');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    fireEvent.click(within(section).getByText('Churn'));
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it('renders nothing when no glossary term came from the memory', () => {
     const { container } = render(
       <MemoryRouter>
-        <MemoryDerivedTerm memory={memory([])} onNavigate={jest.fn()} />
+        <MemoryDerivedTerm
+          isViewOnly
+          memory={memory([])}
+          onNavigate={jest.fn()}
+        />
       </MemoryRouter>
     );
 

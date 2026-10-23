@@ -50,6 +50,7 @@ import {
 } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 
@@ -66,9 +67,9 @@ export const CONTEXT_CENTER_FETCH_LIMIT = 10;
 // The card is a digest; the footer link opens the full Context Center.
 const MAX_VISIBLE_ROWS = 6;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Articles,
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700',
+  color: 'gray',
 };
 
 const PAGE_TYPE_LABEL_KEYS: Partial<Record<PageType, string>> = {
