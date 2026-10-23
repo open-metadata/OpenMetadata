@@ -556,10 +556,7 @@ export const ActivityFeedTab = ({
         description: t('message.no-activity-feed-description'),
       };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return {
-        title: t('label.no-entity', { entity: t('label.mention-plural') }),
-        description: t('message.no-mentions'),
-      };
+      return { description: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return {
         title: t('message.no-closed-tasks-title'),
@@ -1042,10 +1039,7 @@ export const ActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return {
-        title: t('label.no-entity', { entity: t('label.mention-plural') }),
-        description: t('message.no-mentions'),
-      };
+      return { description: t('message.no-mentions') };
     }
 
     return {

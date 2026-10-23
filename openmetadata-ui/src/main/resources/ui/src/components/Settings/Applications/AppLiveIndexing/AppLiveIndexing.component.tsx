@@ -177,7 +177,6 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
             <NoDataPlaceholder
               description={t('message.no-retry-queue-records')}
               icon={CheckCircle}
-              title={t('label.no-entity', { entity: t('label.record-plural') })}
             />
           </Box>
         ),
