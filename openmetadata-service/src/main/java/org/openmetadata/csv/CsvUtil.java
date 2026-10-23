@@ -71,22 +71,29 @@ public final class CsvUtil {
 
   /**
    * Prefix cells a spreadsheet would evaluate as a formula with a quote (e.g. "=HYPERLINK(..)"
-   * becomes "'=HYPERLINK(..)"). {@link #restoreFormula} reverses it on import.
+   * becomes "'=HYPERLINK(..)"). A value already shaped like an escaped one (e.g. "'=x") gets one
+   * more quote, so {@link #restoreFormula} gives every value back unchanged on import.
    */
   public static String neutralizeFormula(String value) {
-    return startsWithFormulaTrigger(value, 0) ? FORMULA_ESCAPE + value : value;
+    return isFormulaLike(value) ? FORMULA_ESCAPE + value : value;
   }
 
   public static String restoreFormula(String value) {
     boolean escaped =
-        value != null && value.startsWith(FORMULA_ESCAPE) && startsWithFormulaTrigger(value, 1);
+        value != null && value.startsWith(FORMULA_ESCAPE) && isFormulaLike(value.substring(1));
     return escaped ? value.substring(1) : value;
   }
 
-  private static boolean startsWithFormulaTrigger(String value, int index) {
-    return value != null
-        && value.length() > index
-        && FORMULA_TRIGGERS.indexOf(value.charAt(index)) >= 0;
+  // A formula trigger, possibly behind leading quotes (e.g. "=x", "'=x", "''=x").
+  private static boolean isFormulaLike(String value) {
+    if (value == null) {
+      return false;
+    }
+    int index = 0;
+    while (index < value.length() && value.startsWith(FORMULA_ESCAPE, index)) {
+      index++;
+    }
+    return index < value.length() && FORMULA_TRIGGERS.indexOf(value.charAt(index)) >= 0;
   }
 
   /** Get headers from CsvHeaders */

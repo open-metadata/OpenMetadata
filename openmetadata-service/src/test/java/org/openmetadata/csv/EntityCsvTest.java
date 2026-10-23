@@ -25,6 +25,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -125,8 +126,20 @@ public class EntityCsvTest {
 
   @Test
   void test_exportNeutralizesFormulaCellsAndImportRestoresThem() throws IOException {
-    List<String> values =
-        List.of("=HYPERLINK(\"http://x\",\"y\")", "+1", "-2", "@SUM(A1)", "\tx", "\rx", "safe");
+    Map<String, String> exportedByValue = new LinkedHashMap<>();
+    exportedByValue.put("=HYPERLINK(\"http://x\",\"y\")", "'=HYPERLINK(\"http://x\",\"y\")");
+    exportedByValue.put("+1", "'+1");
+    exportedByValue.put("-staging.db", "'-staging.db");
+    exportedByValue.put("@SUM(A1)", "'@SUM(A1)");
+    exportedByValue.put("\tx", "'\tx");
+    exportedByValue.put("\rx", "'\rx");
+    exportedByValue.put("'=already quoted", "''=already quoted");
+    exportedByValue.put("\"local.mysql\".default", "\"local.mysql\".default");
+    exportedByValue.put(
+        "service.db.\"schema.with.dots\".table", "service.db.\"schema.with.dots\".table");
+    exportedByValue.put("'plain quote", "'plain quote");
+    exportedByValue.put("user:admin;team:data", "user:admin;team:data");
+    List<String> values = new ArrayList<>(exportedByValue.keySet());
     List<List<String>> records = new ArrayList<>();
     for (String value : values) {
       records.add(List.of(value, "", ""));
@@ -135,16 +148,13 @@ public class EntityCsvTest {
         CsvUtil.formatCsv(new CsvFile().withHeaders(CSV_HEADERS).withRecords(records));
 
     List<CSVRecord> exportedRows = CSVFormat.DEFAULT.parse(new StringReader(exported)).getRecords();
-    for (int i = 0; i < values.size() - 1; i++) {
-      assertEquals("'" + values.get(i), exportedRows.get(i + 1).get(0));
-    }
-    assertEquals("safe", exportedRows.get(values.size()).get(0));
-
     List<CSVRecord> imported = new TestCsv().parse(exported);
     List<CSVRecord> importedRecursive = new TestCsv().parse(exported, true);
     for (int i = 0; i < values.size(); i++) {
-      assertEquals(values.get(i), imported.get(i + 1).get(0));
-      assertEquals(values.get(i), importedRecursive.get(i + 1).get(0));
+      String value = values.get(i);
+      assertEquals(exportedByValue.get(value), exportedRows.get(i + 1).get(0));
+      assertEquals(value, imported.get(i + 1).get(0));
+      assertEquals(value, importedRecursive.get(i + 1).get(0));
     }
   }
 
