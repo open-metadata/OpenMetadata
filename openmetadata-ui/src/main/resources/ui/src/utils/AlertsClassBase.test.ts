@@ -409,11 +409,14 @@ describe('AlertsClassBase', () => {
       expect(result.input).toEqual({ actions: [], filters: [] });
     });
 
-    it("strips a legacy alert's seeded rules from the update patch's input so the backend keeps them", () => {
+    it("never submits input for a legacy alert so the backend keeps its filteringRules", () => {
       // A legacy WrittenByHand alert: rules live only in filteringRules, no input.
       // The form seeds input from the legacy shape for display, but the seeded rules
-      // carry argument names without values the backend can recompile. getAlertUpdateData
-      // must strip them so the backend's WrittenByHand policy preserves filteringRules.
+      // carry argument names without values the backend can recompile. Even if the
+      // user adds a rule, getAlertUpdateData must not send any input — the backend's
+      // FromSelections would replace the hand-written filteringRules with rules it
+      // cannot rebuild, silently dropping the legacy rules. The WrittenByHand policy
+      // keeps the original filteringRules when no input is sent.
       const legacy: EventSubscription = {
         ...mockInitialData,
         input: undefined,
@@ -452,16 +455,10 @@ describe('AlertsClassBase', () => {
 
       const result = alertsClass.getAlertUpdateData(formData, legacy);
 
-      // The legacy rules (domainList, testResultTrigger) are stripped from input —
-      // their argument values live in the SpEL condition the form cannot represent,
-      // so submitting them would make the backend recompile or reject them. The
-      // user-added rule (pipelineStateList) is kept.
-      expect(result.input?.filters).toEqual([
-        { effect: Effect.Include, name: 'pipelineStateList' },
-      ]);
-      expect(result.input?.actions).toEqual([]);
-      // The legacy filteringRules ride along unchanged in the PATCH body so the
-      // backend's WrittenByHand policy keeps them when input is empty of legacy rules.
+      // A legacy alert never submits input — the user-added rule is not sent because
+      // sending it would make the backend replace the hand-written filteringRules.
+      // The backend's WrittenByHand policy keeps the original rules unchanged.
+      expect(result.input).toBeUndefined();
       expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
       expect(result.filteringRules?.actions).toBe(
         legacy.filteringRules?.actions
