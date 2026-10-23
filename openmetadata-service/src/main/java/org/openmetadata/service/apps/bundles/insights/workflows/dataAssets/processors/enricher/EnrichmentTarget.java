@@ -16,17 +16,13 @@ import org.openmetadata.schema.type.change.ChangeSummary;
 
 /**
  * Per-version input + accumulator handed to each {@link EnrichmentStep}. The {@code entityMap} is
- * the mutable snapshot accumulator: steps add their derived fields to it. {@code
- * windowStartTimestamp} / {@code windowEndTimestamp} describe the version's slice of the backfill
- * window (computed by the version resolver, expanded across days by the materializer). {@code
- * shape} tells steps whether the entity's references are hydrated (have FQN, name, …) or bare
- * (only {@code id} / {@code type}).
+ * the mutable snapshot accumulator: steps add their derived fields to it. {@code shape} tells
+ * steps whether the entity's references are hydrated (have FQN, name, …) or bare (only {@code
+ * id} / {@code type}).
  */
 public record EnrichmentTarget(
     EntityInterface<?> entity,
     Map<String, Object> entityMap,
     Map<String, ChangeSummary> changeSummary,
-    long windowStartTimestamp,
-    long windowEndTimestamp,
     EnrichmentContext context,
     VersionShape shape) {}
