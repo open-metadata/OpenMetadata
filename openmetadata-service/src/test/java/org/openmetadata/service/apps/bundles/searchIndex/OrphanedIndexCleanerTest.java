@@ -76,6 +76,13 @@ class OrphanedIndexCleanerTest {
   }
 
   @Test
+  void findOrphanedRebuildIndicesReturnsEmptyWhenListingIndicesFails() {
+    when(searchClient.listIndicesByPrefix("")).thenThrow(new RuntimeException("search unavailable"));
+
+    assertTrue(cleaner.findOrphanedRebuildIndices(searchClient).isEmpty());
+  }
+
+  @Test
   void countMethodsUseBulkInventory() {
     long oldTimestamp = System.currentTimeMillis() - (31L * 60 * 1000);
     long recentTimestamp = System.currentTimeMillis() - (5L * 60 * 1000);
