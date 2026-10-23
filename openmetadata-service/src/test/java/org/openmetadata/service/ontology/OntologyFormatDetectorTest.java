@@ -44,6 +44,7 @@ class OntologyFormatDetectorTest {
   @Test
   void contentBeatsAMisleadingFileName() {
     assertEquals(Optional.of(NativeOntologyImportFormat.RDFXML), detect(RDF_XML, "ontology.ttl"));
+    assertEquals(Optional.of(NativeOntologyImportFormat.RDFXML), detect("<rdf:RDF/>", null));
     assertEquals(Optional.of(NativeOntologyImportFormat.TURTLE), detect(TURTLE, "ontology.csv"));
     assertEquals(Optional.of(NativeOntologyImportFormat.CSV), detect(CSV, "ontology.json"));
   }
@@ -69,6 +70,12 @@ class OntologyFormatDetectorTest {
     assertEquals(
         Optional.of(NativeOntologyImportFormat.NTRIPLES),
         detect("<urn:a> <urn:b> <urn:c> .\n", null));
+    assertEquals(
+        Optional.of(NativeOntologyImportFormat.NTRIPLES),
+        detect("<urn:example/A> <urn:b> <urn:c> .\n", null));
+    assertEquals(
+        Optional.of(NativeOntologyImportFormat.TURTLE),
+        detect("<urn:example/A> a <urn:Class> .\n", null));
   }
 
   @Test

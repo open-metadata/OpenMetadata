@@ -32,6 +32,8 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
+import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -61,8 +63,6 @@ import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ont
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
 import type { OntologyWorkingDiff } from '../generated/api/data/ontologyWorkingDiff';
-import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
-import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import type { PreviewNativeOntologyImport } from '../generated/api/data/previewNativeOntologyImport';
 import { PreviewNativeOntologyPack } from '../generated/api/data/previewNativeOntologyPack';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';

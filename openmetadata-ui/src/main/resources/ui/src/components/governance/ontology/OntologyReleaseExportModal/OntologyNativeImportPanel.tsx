@@ -40,30 +40,30 @@ import {
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { previewNativeOntologyImport } from '../../../../rest/ontologyAPI';
-import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
 import {
   detectNativeImportFile,
-  INITIAL_NATIVE_IMPORT_STATE,
   hasReviewers,
-  pick,
-  readySummaryOf,
-  nativeImportActionFlags,
+  INITIAL_NATIVE_IMPORT_STATE,
   landOnImportedOntology,
+  nativeImportActionFlags,
+  nativeImportErrorMessage,
+  nativeImportOntologyRequest,
+  NativeImportParse,
+  nativeImportReducer,
+  NativeImportState,
+  nativeImportStep,
+  NativeImportTarget,
   NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
   NATIVE_IMPORT_FORMAT_LABEL_KEYS,
   NATIVE_IMPORT_MAX_BYTES,
-  nativeImportErrorMessage,
-  nativeImportOntologyRequest,
-  nativeImportReducer,
-  NativeImportParse,
-  NativeImportState,
-  NativeImportTarget,
-  nativeImportStep,
   parseNativeImportFile,
+  pick,
+  readySummaryOf,
 } from './OntologyNativeImportPanel.utils';
 
 interface OntologyNativeImportPanelProps {
@@ -82,6 +82,11 @@ const COUNT_TILES = [
     count: 'newConcepts',
   },
   { id: 'relations', label: 'label.relation-plural', count: 'newRelations' },
+  {
+    id: 'new-properties',
+    label: 'label.property-plural',
+    count: 'newProperties',
+  },
   { id: 'mappings', label: 'label.mapping-plural', count: 'newMappings' },
   { id: 'skipped', label: 'label.skipped', count: 'skippedDefinitions' },
 ] as const;
@@ -127,7 +132,9 @@ const ImportResult = ({
                 {counts[tile.count]}
               </Typography>
               <Typography color="secondary" size="text-xs">
-                {t(tile.label)}
+                {tile.id === 'new-properties'
+                  ? `${t('label.new')} ${t(tile.label)}`
+                  : t(tile.label)}
               </Typography>
             </Card.Content>
           </Card>
@@ -393,6 +400,7 @@ const OntologyNativeImportPanel = ({
   });
   const content = useRef('');
   const token = useRef(0);
+  const fileToken = useRef(0);
   const nextToken = () => ++token.current;
   const isNewTarget = state.target === 'new' || !ontology;
   const canUseTarget = pick(isNewTarget, canCreate, canImport);
@@ -421,13 +429,13 @@ const OntologyNativeImportPanel = ({
       return;
     }
     const fileId = nextToken();
+    fileToken.current = fileId;
+    content.current = '';
     dispatch({ type: 'fileChosen', token: fileId, fileName: file.name });
-    content.current = await detectNativeImportFile(
-      file,
-      fileId,
-      dispatch,
-      describe
-    );
+    const text = await detectNativeImportFile(file, fileId, dispatch, describe);
+    if (fileToken.current === fileId) {
+      content.current = text;
+    }
   };
 
   const handleParse = async () => {

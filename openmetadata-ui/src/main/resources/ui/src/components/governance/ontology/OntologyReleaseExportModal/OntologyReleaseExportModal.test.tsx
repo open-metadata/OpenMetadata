@@ -36,11 +36,11 @@ import {
   acquireOntologyEditLock,
   applyOntologyChangeSet,
   createOntologyChangeSet,
+  detectNativeOntologyImportFormat,
   exportOntologyRelease,
   getOntologyChangeSet,
   getOntologyRelease,
   getOntologyState,
-  detectNativeOntologyImportFormat,
   previewNativeOntologyImport,
   releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';

@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { AxiosError } from 'axios';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
   CreateOntologyChangeSet,
@@ -213,6 +213,32 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
+  it('parses the latest file when an earlier detection finishes last', async () => {
+    let finishFirstDetection:
+      | ((value: { detectedFormat: string }) => void)
+      | undefined;
+    (detectNativeOntologyImportFormat as jest.Mock).mockImplementation(
+      ({ fileName }) =>
+        fileName === 'first.ttl'
+          ? new Promise((resolve) => {
+              finishFirstDetection = resolve;
+            })
+          : Promise.resolve({ detectedFormat: Format.Turtle })
+    );
+    renderPanel();
+    dropFile('first.ttl', 'first content');
+    dropFile('second.ttl', 'second content');
+
+    await screen.findByTestId('ontology-native-import-format');
+    finishFirstDetection?.({ detectedFormat: Format.Turtle });
+    await parse();
+
+    expect(previewNativeOntologyImport).toHaveBeenCalledWith('ontology-id', {
+      data: 'second content',
+      fileName: 'second.ttl',
+    });
+  });
+
   it('parses without persisting and shows the server counts', async () => {
     renderPanel();
     dropFile();
@@ -232,6 +258,9 @@ describe('OntologyNativeImportPanel', () => {
       screen.getByTestId('ontology-native-import-count-relations')
     ).toHaveTextContent('37');
     expect(
+      screen.getByTestId('ontology-native-import-count-new-properties')
+    ).toHaveTextContent('5');
+    expect(
       screen.getByTestId('ontology-native-import-count-mappings')
     ).toHaveTextContent('12');
     expect(
@@ -239,6 +268,33 @@ describe('OntologyNativeImportPanel', () => {
     ).toHaveTextContent('3');
     expect(createOntologyChangeSet).not.toHaveBeenCalled();
     expect(createOntology).not.toHaveBeenCalled();
+  });
+
+  it('shows new properties when they are the only importable changes', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: {
+        ...summary,
+        counts: {
+          ...summary.counts,
+          newConcepts: 0,
+          updatedConcepts: 0,
+          updatedProperties: 0,
+          newRelations: 0,
+          newMappings: 0,
+          skippedDefinitions: 0,
+          skippedRelations: 0,
+        },
+      },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-properties')
+    ).toHaveTextContent('5');
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
   });
 
   it('applies the previewed change set to the existing ontology under its lease', async () => {

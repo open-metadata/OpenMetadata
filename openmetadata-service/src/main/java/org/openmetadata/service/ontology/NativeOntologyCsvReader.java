@@ -39,6 +39,7 @@ import org.openmetadata.service.rdf.SafeRdfModelParser;
  * fails the whole read, naming the row a spreadsheet shows (the header is row 1).
  */
 final class NativeOntologyCsvReader {
+  private static final int MAX_DEFINITION_ROWS = 1000;
   private static final OwlProfileGuard SHAPE_GUARD = new OwlProfileGuard(iri -> null);
 
   private final long deadline = System.nanoTime() + SafeRdfModelParser.PARSE_NANOS;
@@ -50,6 +51,7 @@ final class NativeOntologyCsvReader {
   private NativeOntologyDocument.Header header;
   private int headerRow;
   private int statements;
+  private int definitionRows;
 
   NativeOntologyDocument read(final String csv) {
     requireWithinSize(csv);
@@ -94,6 +96,9 @@ final class NativeOntologyCsvReader {
     }
     spend(number, 1);
     final Row row = Row.of(number, record);
+    if (row.kind() != RowKind.ONTOLOGY && ++definitionRows > MAX_DEFINITION_ROWS) {
+      throw new BadRequestException("CSV row " + number + ": at most 1000 definitions are allowed");
+    }
     switch (row.kind()) {
       case ONTOLOGY -> ontology(row);
       case CONCEPT -> concept(row);

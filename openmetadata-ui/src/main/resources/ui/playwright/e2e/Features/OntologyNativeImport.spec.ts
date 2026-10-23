@@ -197,14 +197,6 @@ test.describe(
         `pw_native_new_${uuid()}`
       );
       const created: string[] = [];
-      page.on('response', async (response) => {
-        if (
-          response.url().endsWith('/api/v1/ontologies') &&
-          response.request().method() === 'POST'
-        ) {
-          created.push((await response.json()).id);
-        }
-      });
 
       try {
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
@@ -217,7 +209,14 @@ test.describe(
           page.getByTestId('ontology-native-import-count-new-concepts')
         ).toContainText('2');
 
+        const create = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/ontologies') &&
+            response.request().method() === 'POST'
+        );
         await page.getByTestId('ontology-native-import-apply').click();
+        const createdOntology = await (await create).json();
+        created.push(createdOntology.id);
         expect(created).toHaveLength(1);
         await expect(page).toHaveURL(new RegExp(`ontology=${created[0]}`));
       } finally {

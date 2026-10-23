@@ -281,6 +281,93 @@ class NativeOntologyCsvCodecTest {
   }
 
   @Test
+  void rejectsMalformedMultiValueIriMappingLiteralAndExpressionCells() {
+    assertEquals(
+        "CSV row 2, column parents: an empty item is not allowed",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "CONCEPT",
+                    "IRI",
+                    EX + "A",
+                    "CONCEPT_TYPE",
+                    "OWL_CLASS",
+                    "PARENTS",
+                    EX + "B;"))));
+    assertEquals(
+        "CSV row 2, column iri: 'https://example.org/bad iri' is not an absolute IRI",
+        errorOf(csv(concept("https://example.org/bad iri"))));
+    assertEquals(
+        "CSV row 2, column mappings: mapping 'EXACT' must be TYPE:iri",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "CONCEPT",
+                    "IRI",
+                    EX + "A",
+                    "CONCEPT_TYPE",
+                    "OWL_CLASS",
+                    "MAPPINGS",
+                    "EXACT"))));
+    final String taggedLiteral = NativeOntologyCsvCells.join(List.of("\"red\"@en"));
+    final String malformedLiteral = NativeOntologyCsvCells.join(List.of("\"unterminated"));
+    assertEquals(
+        "CSV row 2, column enumValues: language-tagged literals cannot be represented in native ontologies",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    EX + "p",
+                    "PROPERTY_KIND",
+                    "DATA",
+                    "ENUM_VALUES",
+                    taggedLiteral))));
+    assertTrue(
+        errorOf(
+                csv(
+                    row(
+                        "KIND",
+                        "PROPERTY",
+                        "IRI",
+                        EX + "p",
+                        "PROPERTY_KIND",
+                        "DATA",
+                        "ENUM_VALUES",
+                        malformedLiteral)))
+            .startsWith("CSV row 2, column enumValues: malformed N-Triples literal:"));
+    assertEquals(
+        "CSV row 2, column expressions: malformed JSON: expected an array of expressions",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "AXIOM",
+                    "IRI",
+                    EX + "A",
+                    "AXIOM_TYPE",
+                    "SUBCLASS_OF",
+                    "EXPRESSIONS",
+                    "null"))));
+    assertTrue(
+        errorOf(
+                csv(
+                    row(
+                        "KIND",
+                        "AXIOM",
+                        "IRI",
+                        EX + "A",
+                        "AXIOM_TYPE",
+                        "SUBCLASS_OF",
+                        "EXPRESSIONS",
+                        "[")))
+            .startsWith("CSV row 2, column expressions: malformed JSON:"));
+  }
+
+  @Test
   void enforcesTheInputAndStatementBudgets() {
     final String oversized = "x".repeat(SafeRdfModelParser.MAX_INPUT_BYTES + 1);
     assertEquals("Native ontology CSV must contain at most 10 MiB of data", errorOf(oversized));
@@ -304,9 +391,22 @@ class NativeOntologyCsvCodecTest {
   }
 
   @Test
+  void countsCsvRowsTowardTheDefinitionLimit() {
+    final String[] rows =
+        IntStream.range(0, 1001)
+            .mapToObj(index -> concept(EX + "C" + index))
+            .toArray(String[]::new);
+    assertEquals(
+        1000,
+        NativeOntologyCsvCodec.read(csv(java.util.Arrays.copyOf(rows, 1000))).concepts().size());
+    assertEquals("CSV row 1002: at most 1000 definitions are allowed", errorOf(csv(rows)));
+  }
+
+  @Test
   void headerRecognitionToleratesABomAndACarriageReturn() {
     assertTrue(NativeOntologyCsvCodec.isHeader("\uFEFF" + NativeOntologyCsvCodec.HEADER + "\r"));
     assertEquals(false, NativeOntologyCsvCodec.isHeader("kind,iri,label"));
+    assertEquals(false, NativeOntologyCsvCodec.isHeader("kind,\"iri\"oops"));
     assertEquals(false, NativeOntologyCsvCodec.isHeader(null));
   }
 

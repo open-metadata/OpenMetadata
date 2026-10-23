@@ -21,7 +21,7 @@ public final class OntologyFormatDetector {
   private static final Pattern JSON_LD = Pattern.compile("(?s)^(\\{|\\[\\s*[\\{\\]]).*");
   private static final Pattern RDF_XML =
       Pattern.compile(
-          "(?s)^(<\\?xml\\b|<!--|<[A-Za-z_][\\w.-]*(:[A-Za-z_][\\w.-]*)?[\\s/]|<[A-Za-z_][\\w.-]*>).*");
+          "(?s)^(<\\?xml\\b|<!--|<[A-Za-z_][\\w.-]*(:[A-Za-z_][\\w.-]*)?(?:\\s|/>)|<[A-Za-z_][\\w.-]*>).*");
   private static final String TERM = "(<[^>\\s]*>|_:\\S+)";
   private static final String OBJECT =
       "(<[^>\\s]*>|_:\\S+|\"(?:[^\"\\\\]|\\\\.)*\"(?:\\^\\^<[^>\\s]*>|@[A-Za-z0-9-]+)?)";
