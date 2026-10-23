@@ -72,6 +72,10 @@ export const useUserProfile = (username: string | undefined) => {
   // Monotonic request id: a target change bumps it so a slower earlier response
   // can't overwrite a faster later one and strand the wrong user's data.
   const requestRef = useRef(0);
+  // refresh() keeps its own id so it can never strand a full load: a full load
+  // or a successful save bumps it, which drops an older refresh response.
+  const refreshRef = useRef(0);
+  const isLoadingRef = useRef(false);
   // Latest user state, kept in step with every update, so a save diffs against
   // what the page shows now rather than the render its handler closed over.
   const latestUserRef = useRef(userData);
@@ -84,6 +88,8 @@ export const useUserProfile = (username: string | undefined) => {
       return;
     }
     const reqId = ++requestRef.current;
+    ++refreshRef.current;
+    isLoadingRef.current = true;
     setIsProfileLoading(true);
     setIsUserNotFound(false);
     setLoadError(false);
@@ -124,6 +130,7 @@ export const useUserProfile = (username: string | undefined) => {
       }
     } finally {
       if (reqId === requestRef.current) {
+        isLoadingRef.current = false;
         setIsProfileLoading(false);
       }
     }
@@ -167,6 +174,8 @@ export const useUserProfile = (username: string | undefined) => {
           key === 'teams'
             ? { teams: response.teams, domains: response.domains }
             : nonTeamKeyData;
+        // A refresh read before this save would put the old value back.
+        ++refreshRef.current;
         // Merge into the latest state, not the copy this save started from, so
         // two overlapping saves can't overwrite each other's field.
         setUserData((prev) => {
@@ -202,12 +211,13 @@ export const useUserProfile = (username: string | undefined) => {
 
   // Re-reads the user in place: no skeleton and no reset, so a view coming back
   // into focus picks up edits made elsewhere without flashing. A failure keeps
-  // what is on screen; the next full load reports it.
+  // what is on screen; the next full load reports it. While a full load runs
+  // there is nothing stale to refresh, and that load owns finishing.
   const refresh = useCallback(async () => {
-    if (!username || loadError) {
+    if (!username || loadError || isLoadingRef.current) {
       return;
     }
-    const reqId = ++requestRef.current;
+    const reqId = ++refreshRef.current;
     try {
       const res = isSelf
         ? await getLoggedInUser({ fields: USER_PROFILE_FIELDS })
@@ -215,11 +225,13 @@ export const useUserProfile = (username: string | undefined) => {
             fields: USER_PROFILE_FIELDS,
             include: Include.All,
           });
-      if (reqId === requestRef.current) {
-        setUserData((prev) => ({
-          ...res,
-          isAdmin: res.isAdmin ?? prev?.isAdmin,
-        }));
+      if (reqId === refreshRef.current) {
+        setUserData((prev) => {
+          const next = { ...res, isAdmin: res.isAdmin ?? prev?.isAdmin };
+          latestUserRef.current = next;
+
+          return next;
+        });
       }
     } catch {
       // Keep the values on screen.

@@ -359,4 +359,66 @@ describe('useUserProfile refresh', () => {
     expect(result.current.loadError).toBe(false);
     expect(mockShowErrorToast).not.toHaveBeenCalled();
   });
+
+  // Opening Settings elsewhere and clicking Profile before the first load
+  // lands used to strand that load in its skeleton.
+  it('ignores a refresh while the first load runs, and that load still finishes', async () => {
+    let resolveLoad!: (value: unknown) => void;
+    mockGetUserByName.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveLoad = resolve;
+        })
+    );
+    const { result } = renderHook(() => useUserProfile('alice'));
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(mockGetUserByName).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveLoad({ id: 'u2', name: 'alice', displayName: 'Loaded' });
+    });
+
+    expect(result.current.isProfileLoading).toBe(false);
+    expect(result.current.userData?.displayName).toBe('Loaded');
+  });
+
+  it('drops a refresh read before a save that lands first', async () => {
+    let resolveRefresh!: (value: unknown) => void;
+    mockGetUserByName
+      .mockResolvedValueOnce({ id: 'u2', name: 'alice', displayName: 'Old' })
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRefresh = resolve;
+          })
+      );
+    mockUpdateUserDetail.mockResolvedValueOnce({
+      id: 'u2',
+      name: 'alice',
+      displayName: 'Saved',
+    });
+    const { result } = renderHook(() => useUserProfile('alice'));
+    await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
+
+    let refreshed!: Promise<void>;
+    act(() => {
+      refreshed = result.current.refresh();
+    });
+    await act(async () => {
+      await result.current.updateUserDetails(
+        { displayName: 'Saved' },
+        'displayName'
+      );
+    });
+    await act(async () => {
+      resolveRefresh({ id: 'u2', name: 'alice', displayName: 'Old' });
+      await refreshed;
+    });
+
+    expect(result.current.userData?.displayName).toBe('Saved');
+  });
 });
