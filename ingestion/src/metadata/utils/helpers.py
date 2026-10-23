@@ -544,12 +544,17 @@ def _blank_backtick_identifiers(query_expression: str) -> str:
     blanked: list[str] = []
     in_identifier = False
     for token in tokenize.generate_tokens(io.StringIO(query_expression).readline):
+        # Match the delimiter by its string value, as pandas' parser does: a stray
+        # backtick is ERRORTOKEN on Python <= 3.11 but OP on 3.12+ (the C tokenizer
+        # reclassified it). Backticks inside string literals are part of a longer
+        # STRING token, so only a lone "`" can match.
+        is_backtick = token.string == "`"
         if in_identifier:
             # Everything between the delimiters is the identifier; drop it.
-            if token.type == tokenize.ERRORTOKEN and token.string == "`":
+            if is_backtick:
                 in_identifier = False
             continue
-        if token.type == tokenize.ERRORTOKEN and token.string == "`":
+        if is_backtick:
             blanked.append(" col ")
             in_identifier = True
             continue
