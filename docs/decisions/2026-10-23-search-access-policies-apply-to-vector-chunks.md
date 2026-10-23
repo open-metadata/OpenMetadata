@@ -70,8 +70,11 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   delete) first removes `accessStamp` from the matched entities' chunks
   (`VectorIndexService.invalidateChunkAccess`), since no lifecycle event reaches those entities.
   The removal runs before the rewrite, so a match on a replaced value still finds them. A failed
-  removal fails the propagation before the rewrite, as a failed child rewrite does, so the search
-  retry queue re-runs both and chunks never keep a valid stamp beside rewritten entity documents.
+  removal fails the propagation before the rewrite, as a failed child rewrite does, and the
+  path's search retry re-runs both: an entity update (single or bulk) is re-queued with its
+  propagation, a data product move re-queues its assets, and an inherited-domain move re-queues
+  its parents. A delete's child cleanup has no retry, since the entity is gone: there the failure
+  is logged and the cleanup rewrite still runs, leaving those chunks stale until Search Reindex.
 - A chunk with no `accessStamp` was written before chunks carried access fields and cannot be
   evaluated. A caller whose chunk policy does not grant everything does not see it; everyone else
   does. The gate is the presence of the field, not a version number, so a later

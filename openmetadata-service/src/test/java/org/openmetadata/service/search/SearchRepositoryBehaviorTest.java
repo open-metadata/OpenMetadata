@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
@@ -1276,6 +1277,82 @@ class SearchRepositoryBehaviorTest {
 
     verify(searchClient, never())
         .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+  }
+
+  private VectorIndexService failingVectorsOn(SearchRepository target) throws Exception {
+    VectorIndexService vectors = vectorsOn(target);
+    doThrow(new IllegalStateException("chunk index unavailable"))
+        .when(vectors)
+        .invalidateChunkAccess(anyList(), anyString());
+    return vectors;
+  }
+
+  /** The inherited-domain rewrite is deferred without a locator: its own catch must retry it. */
+  @Test
+  void failedWithholdOnInheritedDomainsEnqueuesTheParentsForRetry() throws Exception {
+    failingVectorsOn(repository);
+    UUID asset = UUID.randomUUID();
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateInheritedDomainsToChildren(
+          List.of(new EntityReference().withId(asset).withType(Entity.TABLE)),
+          List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(asset.toString()), isNull(), eq(Entity.TABLE), any()));
+    }
+  }
+
+  /**
+   * A deleted domain is gone from the database, so no retry can re-run its cleanup: the rewrite
+   * that strips it from its assets runs even when withholding their chunks failed.
+   */
+  @Test
+  void domainDeleteRewritesItsAssetsWhenWithholdingTheirChunksFails() throws Exception {
+    failingVectorsOn(repository);
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+
+    repository.deleteOrUpdateChildren(domain, DOMAIN_MAPPING);
+
+    verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
+  /** A bulk update's propagation failure is retried with propagation, as a single update's is. */
+  @Test
+  void failedWithholdInBulkPropagationEnqueuesTheEntityForRetry() throws Exception {
+    failingVectorsOn(repository);
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface<?> service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    when(service.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(service.getChangeDescription())
+        .thenReturn(
+            changeDescription(
+                List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of()));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(service),
+                  any(ChangeDescription.class),
+                  eq("propagateEntitiesAfterBulkFlush"),
+                  any(IllegalStateException.class)));
+    }
   }
 
   @Test

@@ -2535,6 +2535,7 @@ public class SearchRepository {
             entity.getId(),
             entityType,
             e);
+        enqueueEntityRetry(entity, "propagateEntitiesAfterBulkFlush", e);
       }
     }
 
@@ -2975,11 +2976,29 @@ public class SearchRepository {
    * callers until restamped (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks). Called
    * before the rewrite, so a match on a value the rewrite replaces (a renamed tag) still finds them.
    * A failure fails the propagation before the rewrite, as a failed child rewrite does, so the
-   * search retry queue re-runs both.
+   * caller's search retry re-runs both.
    */
   private void withholdChunksOf(List<String> entityIndices, String matchQueryJson) {
     if (vectorIndexService != null) {
       vectorIndexService.invalidateChunkAccess(entityIndices, matchQueryJson);
+    }
+  }
+
+  /**
+   * A deleted entity is gone from the database, so no retry can re-run its children's cleanup: a
+   * failure to withhold their chunks is logged and the cleanup rewrite runs regardless.
+   */
+  private void withholdChunksBeforeDeleteCleanup(
+      List<String> entityIndices, String matchQueryJson) {
+    try {
+      withholdChunksOf(entityIndices, matchQueryJson);
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Failed to withhold vector chunks matching {} on {} before a delete cleanup; their"
+              + " access fields stay stale until Search Reindex",
+          matchQueryJson,
+          entityIndices,
+          e);
     }
   }
 
@@ -3230,7 +3249,7 @@ public class SearchRepository {
           try {
             withholdChunksOf(childAliases, termsMatch(parentField, parentIds));
             searchClient.updateChildren(childAliases, parentField, parentIds, updates);
-          } catch (IOException e) {
+          } catch (IOException | RuntimeException e) {
             String reason =
                 SearchIndexRetryQueue.failureReason("propagateInheritedDomainsToChildren", e);
             parentIds.forEach(id -> SearchIndexRetryQueue.enqueue(id, null, entityType, reason));
@@ -4247,7 +4266,7 @@ public class SearchRepository {
         // Assets store the domain in the plural "domains" array, so strip the deleted domain from
         // every referencing asset by matching domains.id. Matching the singular "domain" field left
         // stale references behind, which a same-named recreated domain then inherited (#28923).
-        withholdChunksOf(
+        withholdChunksBeforeDeleteCleanup(
             List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)), termMatch("domains.id", docId));
         searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
@@ -4268,7 +4287,7 @@ public class SearchRepository {
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
 
       case Entity.TAG, Entity.GLOSSARY_TERM -> {
-        withholdChunksOf(
+        withholdChunksBeforeDeleteCleanup(
             List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
             termMatch(TAGS_FQN, entity.getFullyQualifiedName()));
         searchClient.updateChildren(
