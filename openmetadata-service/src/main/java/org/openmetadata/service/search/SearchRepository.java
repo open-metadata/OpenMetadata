@@ -6,12 +6,16 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.ENTITY_REPORT_DATA;
+import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
 import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME;
 import static org.openmetadata.service.Entity.FIELD_NAME;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 import static org.openmetadata.service.Entity.FIELD_USAGE_SUMMARY;
 import static org.openmetadata.service.Entity.QUERY;
@@ -28,6 +32,7 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.PROPAGATE_NESTED_FIELD_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.RELABEL_REFERENCE_COPIES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_CUSTOM_PROPERTY_REFERENCES_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
@@ -490,6 +495,14 @@ public class SearchRepository {
 
   private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
+
+  /** The reference lists in which other documents copy a user, team, domain or data product. */
+  private static final Map<String, List<String>> REFERENCE_COPY_FIELDS =
+      Map.of(
+          Entity.USER, List.of(FIELD_OWNERS, FIELD_REVIEWERS, FIELD_EXPERTS),
+          Entity.TEAM, List.of(FIELD_OWNERS, FIELD_REVIEWERS, "teams", "parents"),
+          Entity.DOMAIN, List.of(FIELD_DOMAINS),
+          Entity.DATA_PRODUCT, List.of(FIELD_DATA_PRODUCTS));
 
   private final List<String> propagateFields = List.of(Entity.FIELD_TAGS);
 
@@ -3183,16 +3196,20 @@ public class SearchRepository {
         entityType);
   }
 
+  /**
+   * Synchronous, unlike the other child cascades: a domain has few subdomains and data products,
+   * and the relabel pass that follows rewrites the same data products. Two update-by-query passes
+   * running over one document at once drop one of the writes as a version conflict.
+   */
   private void propagateToDomainChildren(
       String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
       throws IOException {
     searchClient.updateChildren(
-        List.of(getWriteIndexName(indexMapping)),
-        new ImmutablePair<>(PARENT_ID, domainId),
-        updates);
+        List.of(getWriteIndexName(indexMapping)), PARENT_ID, List.of(domainId), updates);
     searchClient.updateChildren(
         List.of(getWriteIndexName(entityIndexMap.get(Entity.DATA_PRODUCT))),
-        new ImmutablePair<>(DOMAINS_ID, domainId),
+        DOMAINS_ID,
+        List.of(domainId),
         updates);
   }
 
@@ -3416,6 +3433,48 @@ public class SearchRepository {
         indexName, entity.getId().toString(), paramMap, UPDATE_CERTIFICATION_SCRIPT);
   }
 
+  /**
+   * Documents copy the name and display name of the users, teams, domains and data products they
+   * reference, and only the id identifies those copies, so a rename or a display-name change has to
+   * overwrite them wherever the reference is held. The display name falls back to the name, as the
+   * index builder writes it.
+   */
+  private void relabelReferenceCopies(
+      String entityType, ChangeDescription changeDescription, EntityInterface<?> entity) {
+    List<String> fields = REFERENCE_COPY_FIELDS.get(entityType);
+    if (fields == null) {
+      return;
+    }
+    Set<String> changedFields = getChangedFieldNames(changeDescription);
+    if (!changedFields.contains(FIELD_NAME) && !changedFields.contains(FIELD_DISPLAY_NAME)) {
+      return;
+    }
+    String id = entity.getId().toString();
+    Map<String, Object> label = new HashMap<>();
+    label.put(FIELD_NAME, entity.getName());
+    label.put(FIELD_FULLY_QUALIFIED_NAME, entity.getFullyQualifiedName());
+    label.put(
+        FIELD_DISPLAY_NAME,
+        nullOrEmpty(entity.getDisplayName()) ? entity.getName() : entity.getDisplayName());
+    // owners is mapped nested in every index that has it; the other reference lists are objects.
+    List<String> nestedPaths = fields.contains(FIELD_OWNERS) ? List.of(FIELD_OWNERS) : List.of();
+    List<String> objectPaths =
+        fields.stream().filter(field -> !FIELD_OWNERS.equals(field)).toList();
+    try {
+      searchClient.updateReferenceCopies(
+          referenceCopyTargets(fields),
+          nestedPaths,
+          objectPaths,
+          ID,
+          List.of(id),
+          new ImmutablePair<>(
+              RELABEL_REFERENCE_COPIES_SCRIPT, Map.of("id", id, "fields", fields, "label", label)));
+    } catch (IOException e) {
+      enqueueEntityRetry(entity, "relabelReferenceCopies", e);
+      LOG.error("Failed to relabel the copies of {} {} in search", entityType, id, e);
+    }
+  }
+
   public void propagateToRelatedEntities(
       String entityType,
       ChangeDescription changeDescription,
@@ -3423,6 +3482,7 @@ public class SearchRepository {
       EntityInterface<?> entity) {
 
     reindexQueriesForDomainChange(entityType, changeDescription, entity);
+    relabelReferenceCopies(entityType, changeDescription, entity);
 
     if (changeDescription != null && entityType.equalsIgnoreCase(Entity.PAGE)) {
       String indexName = getWriteIndexName(indexMapping);
@@ -4128,9 +4188,25 @@ public class SearchRepository {
    * it (e.g. user and team), each with its staged index.
    */
   private List<String> customPropertyReferenceTargets() {
+    return globalAliasAndIndexesOutsideIt(SearchRepository::supportsCustomProperties);
+  }
+
+  /**
+   * The global alias, plus the indexes outside it whose entities have one of {@code fields} (user
+   * and team documents hold domains, teams and owners), each with its staged index.
+   */
+  private List<String> referenceCopyTargets(List<String> fields) {
+    return globalAliasAndIndexesOutsideIt(
+        entityType ->
+            Entity.hasEntityRepository(entityType)
+                && !Entity.isTimeSeriesEntity(entityType)
+                && fields.stream().anyMatch(field -> Entity.entityHasField(entityType, field)));
+  }
+
+  private List<String> globalAliasAndIndexesOutsideIt(Predicate<String> entityTypeFilter) {
     Set<String> targets =
         new LinkedHashSet<>(getWriteFanoutTargets(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)));
-    indexesOutsideGlobalAlias(entityIndexMap, SearchRepository::supportsCustomProperties)
+    indexesOutsideGlobalAlias(entityIndexMap, entityTypeFilter)
         .forEach(
             mapping -> targets.addAll(getWriteFanoutTargets(mapping.getIndexName(clusterAlias))));
     return List.copyOf(targets);

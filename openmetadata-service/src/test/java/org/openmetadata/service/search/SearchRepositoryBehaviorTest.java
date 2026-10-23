@@ -995,25 +995,31 @@ class SearchRepositoryBehaviorTest {
   void propagateInheritedFieldsToChildrenUpdatesDomainChildrenAndDataProductsSeparately()
       throws IOException {
     EntityInterface<?> domainEntity = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    doReturn(List.of(owner)).when(domainEntity).getOwners();
     ChangeDescription changeDescription =
         changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS).withNewValue(List.of(owner))),
             List.of(),
-            List.of(
-                new FieldChange()
-                    .withName(Entity.FIELD_DISPLAY_NAME)
-                    .withOldValue("Old Domain")
-                    .withNewValue("New Domain")),
             List.of());
 
     repository.propagateInheritedFieldsToChildren(
         Entity.DOMAIN, "domain-id", changeDescription, DOMAIN_MAPPING, domainEntity);
 
+    // The reconciled, synchronous variant: the relabel pass that follows rewrites the same data
+    // products, and two concurrent passes over a document drop one of the writes.
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_domain_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_domain_search_index")),
+            eq("parent.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
     verify(searchClient)
         .updateChildren(
-            eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+            eq(List.of("cluster_data_product_search_index")),
+            eq("domains.id"),
+            eq(List.of("domain-id")),
+            any(Pair.class));
   }
 
   @Test

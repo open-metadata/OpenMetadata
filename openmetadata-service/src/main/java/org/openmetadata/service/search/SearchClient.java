@@ -810,6 +810,36 @@ public interface SearchClient
                   }
               """);
 
+  /**
+   * Overwrites, in the reference lists {@code params.fields}, every copy of the reference {@code
+   * params.id} with {@code params.label} (its name, FQN and display name), then rebuilds the owner
+   * display names derived from {@code owners}.
+   */
+  String RELABEL_REFERENCE_COPIES_SCRIPT =
+      """
+      for (String field : params.fields) {
+        def refs = ctx._source[field];
+        if (refs instanceof List) {
+          for (def ref : refs) {
+            if (ref instanceof Map && ref.get('id') == params.id) {
+              ref.putAll(params.label);
+            }
+          }
+        }
+      }
+      if (params.fields.contains('owners') && ctx._source.containsKey('ownerDisplayName')
+          && ctx._source.owners instanceof List) {
+        List ownerDisplayNames = new ArrayList();
+        for (def owner : ctx._source.owners) {
+          if (owner instanceof Map && owner.get('displayName') != null
+              && owner.get('displayName') != '') {
+            ownerDisplayNames.add(owner.get('displayName'));
+          }
+        }
+        ctx._source.ownerDisplayName = ownerDisplayNames;
+      }
+      """;
+
   String UPDATE_COLUMN_LINEAGE_SCRIPT =
       """
           if (ctx._source.upstreamLineage != null) {

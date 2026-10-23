@@ -37,6 +37,25 @@ public final class SearchDocs {
             written);
   }
 
+  /** Polls until the {@code index} document of {@code id} is gone. */
+  public static void awaitNoDoc(String index, UUID id) {
+    String docPath = "/v1/search/get/" + index + "/doc/" + id;
+    Awaitility.await(index + " doc " + id + " removed")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .until(
+            () -> {
+              try {
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, docPath, null);
+                return false;
+              } catch (OpenMetadataException e) {
+                return e.getStatusCode() == 404;
+              }
+            });
+  }
+
   public static Set<String> fieldValues(JsonNode array, String field) {
     Set<String> values = new HashSet<>();
     array.forEach(node -> values.add(node.path(field).asText()));
@@ -81,6 +100,16 @@ public final class SearchDocs {
     for (JsonNode tag : tags) {
       if (tagFqn.equals(tag.path("tagFQN").asText())) {
         return tag;
+      }
+    }
+    return MissingNode.getInstance();
+  }
+
+  /** The reference to {@code id} in the reference list {@code refs}, or a missing node. */
+  public static JsonNode refOf(JsonNode refs, UUID id) {
+    for (JsonNode ref : refs) {
+      if (id.toString().equals(ref.path("id").asText())) {
+        return ref;
       }
     }
     return MissingNode.getInstance();
