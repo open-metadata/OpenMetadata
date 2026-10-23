@@ -165,7 +165,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
 
             return (
               <li
-                className="tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:py-3"
+                className="tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3 tw:first:pt-0"
                 data-testid={`team-activity-${event.id}`}
                 key={event.id}>
                 <Avatar
