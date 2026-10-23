@@ -356,7 +356,7 @@ const ActivityFeedCardNew = ({
       );
     }
 
-    return t('label.posted-on-lowercase');
+    return t('label.conversation-lowercase');
   }, [isActivityEvent, activity, entityType, t]);
 
   const timestampValue =
