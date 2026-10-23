@@ -67,4 +67,21 @@ class WorkflowExpressionValidatorTest {
   void rejectsNullNodeReference() {
     assertFalse(WorkflowExpressionValidator.isSafeNodeReference(null));
   }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"accessExpirationDate", "accessDuration", "node_1", "result"})
+  void acceptsBareProcessVariableNames(String variableName) {
+    assertTrue(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"a' b", "a\\b", "${x}", "T(java.lang.Runtime)", "a b", "a-1", "a.1", ""})
+  void rejectsNonReferenceValuesInsideExpressions(String variableName) {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  @Test
+  void rejectsNullExpressionVariable() {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(null));
+  }
 }
