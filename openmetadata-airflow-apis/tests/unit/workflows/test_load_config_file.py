@@ -54,10 +54,7 @@ def test_loads_stored_pipeline_config(config_dir, monkeypatch):
     config = load_config_file(config_file)
 
     assert config["name"] == "my_pipeline"
-    assert (
-        config["openMetadataServerConnection"]["hostPort"]
-        == "http://localhost:8585/api"
-    )
+    assert config["openMetadataServerConnection"]["hostPort"] == "http://localhost:8585/api"
 
 
 def test_does_not_expand_variables_from_host_environment(config_dir, monkeypatch):
