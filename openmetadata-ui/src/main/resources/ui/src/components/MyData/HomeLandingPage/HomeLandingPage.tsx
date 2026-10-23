@@ -173,7 +173,7 @@ const HomeLandingPage = ({ footerSlot }: HomeLandingPageProps) => {
           </DeferredWidget>
         </div>
       )),
-    [displayLayout]
+    [displayLayout, widgetHeight]
   );
 
   const personaFqn = selectedPersona?.fullyQualifiedName;

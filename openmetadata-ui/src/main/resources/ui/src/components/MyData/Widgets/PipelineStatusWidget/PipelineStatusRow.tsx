@@ -191,7 +191,7 @@ const PipelineStatusRow: React.FC<PipelineStatusRowProps> = ({
       {/* Indented by the tile and its gap, so it lines up with the name. */}
       {errorMessage && (
         <Typography
-          className="tw:mt-1 tw:ml-11 tw:rounded-lg tw:bg-utility-error-50 tw:px-2.5 tw:py-2 tw:text-utility-error-700!"
+          className="tw:mt-1 tw:ms-11 tw:rounded-lg tw:bg-utility-error-50 tw:px-2.5 tw:py-2 tw:text-utility-error-700!"
           data-testid="pipeline-status-error"
           ellipsis={{ rows: 3 }}
           size="text-xs">
