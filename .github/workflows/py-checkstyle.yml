@@ -15,7 +15,9 @@ name: Python Checkstyle
 # access to secrets
 on:
   merge_group:
+    branches-ignore: [main]
   pull_request_target:
+    branches-ignore: [main]
     types: [labeled, opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"

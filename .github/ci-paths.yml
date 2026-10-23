@@ -1,0 +1,36 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+ci:
+  - .github/workflows/ci-*.yml
+  - .github/workflows/backend-build-reusable.yml
+  - .github/workflows/python-*-reusable.yml
+  - .github/workflows/py-tests*.yml
+  - .github/workflows/py-checkstyle.yml
+  - .github/workflows/py-sonarcloud-nightly.yml
+  - .github/workflows/populate-playwright-caches.yml
+  - .github/actions/setup-openmetadata-test-environment/**
+  - .github/ci-paths.yml
+  - .github/scripts/tests/test_nox_cli.py
+  - Makefile
+python:
+  - ingestion/**
+  - openmetadata-spec/**
+  - .github/workflows/py-cli-e2e-tests.yml
+  - .github/workflows/py-cli-e2e-tests-v2.yml
+  - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
+style:
+  - ingestion/**
+  - openmetadata-airflow-apis/**
+  - openmetadata-spec/**

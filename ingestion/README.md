@@ -9,6 +9,9 @@ OpenMetadata Ingestion is a simple framework to build connectors and ingest meta
 
 - Python &gt;= 3.10
 
+Tested on Python 3.10, 3.11, and 3.12. Published ingestion images use Python 3.12.
+Newer Python versions are allowed by package metadata but are not covered by CI.
+
 ### Docs
 
 Please refer to the documentation here: [docs.open-metadata.org/connectors](https://docs.open-metadata.org/connectors)

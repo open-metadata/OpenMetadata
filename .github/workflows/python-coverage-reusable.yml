@@ -1,0 +1,122 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Python coverage
+'on':
+  workflow_call:
+    inputs:
+      checkout-ref:
+        description: Exact revision supplying coverage
+        type: string
+        required: true
+      python-version:
+        description: Python used to combine coverage
+        type: string
+        required: true
+      report-branch:
+        description: Publish branch analysis and retry failed scans
+        type: boolean
+        default: false
+    secrets:
+      sonar-token:
+        description: Ingestion Sonar token
+        required: false
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: ${{ !inputs.report-branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.checkout-ref }}
+          persist-credentials: false
+          fetch-depth: 0
+          allow-unsafe-pr-checkout: true
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+        with:
+          enable-cache: false
+      - name: Install coverage
+        run: |
+          uv venv env
+          uv pip install --python env/bin/python "coverage[toml]" nox
+        shell: bash
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: py-coverage-*
+          path: ingestion/coverage-data/
+      - name: Prepare coverage files
+        run: |
+          cd ingestion
+          shopt -s globstar nullglob
+          files=(coverage-data/**/.coverage)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Python coverage data downloaded"
+            exit 1
+          fi
+          for index in "${!files[@]}"; do
+            mv "${files[$index]}" ".coverage.ci-$index"
+          done
+        shell: bash
+      - name: Combine coverage
+        run: |
+          source env/bin/activate
+          cd ingestion
+          python -m nox --non-interactive --no-venv -s combine-coverage
+        shell: bash
+      - name: Remove pom.xml
+        run: rm pom.xml
+        shell: bash
+      - name: Push Results in PR to Sonar
+        id: push-pr-to-sonar
+        if: ${{ github.event_name == 'pull_request_target'}}
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+        with:
+          projectBaseDir: ingestion/
+          args: -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }} -Dsonar.pullrequest.github.repository=OpenMetadata
+            -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} -Dsonar.pullrequest.provider=github
+      - name: Push Results To Sonar
+        if: ${{ !cancelled() && inputs.report-branch }}
+        id: push-to-sonar
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+        with:
+          projectBaseDir: ingestion/
+          args: -Dsonar.branch.name=${{ github.ref_name }}
+      - name: Wait to retry 'Push Results to Sonar'
+        if: ${{ !cancelled() && inputs.report-branch && steps.push-to-sonar.outcome != 'success' }}
+        run: sleep 20s
+        shell: bash
+      - name: Retry 'Push Results to Sonar'
+        if: ${{ !cancelled() && inputs.report-branch && steps.push-to-sonar.outcome != 'success' }}
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.sonar-token }}
+        with:
+          projectBaseDir: ingestion/
+          args: -Dsonar.branch.name=${{ github.ref_name }}
