@@ -641,6 +641,45 @@ describe('TasksTab', () => {
     expect(screen.getByTestId('detail')).toHaveTextContent('t2');
   });
 
+  // The My Tasks card on the home page links to a task that may have been
+  // resolved since the card last cached it, so the default Open tab can be
+  // empty and settled when the deep link lands. The linked task's detail
+  // must render, not the per-status empty placeholder.
+  it('opens on the linked task even when the visible list is empty and settled', () => {
+    hookState = { items: [] as unknown as Task[], isLoading: false, total: 0 };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(
+      screen.queryByTestId('inbox-tasks-open-empty')
+    ).not.toBeInTheDocument();
+  });
+
+  // A narrowing that empties the list must not suppress a kept selection: the
+  // linked task's detail owns the pane, not the "no match" placeholder.
+  it('keeps the linked task detail when a narrowing empties the list', () => {
+    hookState = {
+      items: [{ id: 't1', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 1,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(
+      screen.queryByTestId('inbox-tasks-no-match')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('inbox-tasks-open-empty')
+    ).not.toBeInTheDocument();
+  });
+
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
     hookState = {
       items: [{ id: 't1' }] as unknown as Task[],
