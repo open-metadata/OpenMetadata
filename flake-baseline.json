@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-22T03:22:50Z",
+  "generatedAt": "2026-10-23T03:23:39Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38198274479",
-      "sourceSha": "d316054fe4808dce3e3d5c90bee2a821e5e8f39e",
-      "recordedAt": "2026-10-12T03:39:27Z"
-    },
     {
       "runId": "38339539850",
       "sourceSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
@@ -53,6 +48,11 @@
       "runId": "39713219915",
       "sourceSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "recordedAt": "2026-10-22T03:22:50Z"
+    },
+    {
+      "runId": "39891471813",
+      "sourceSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
+      "recordedAt": "2026-10-23T03:23:39Z"
     }
   ],
   "entries": {
@@ -147,6 +147,16 @@
       "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "hardFailure": false
     },
+    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously": {
+      "observations": [
+        "39891471813"
+      ],
+      "project": "chromium",
+      "file": "Features/ContextCenterArticles.spec.ts",
+      "title": "Context Center Articles \u203a Draft Persistence \u203a multiple articles hold independent drafts simultaneously",
+      "lastSeenSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
+      "hardFailure": false
+    },
     "chromium :: Features/CuratedAssets.spec.ts :: Curated Assets Widget \u203a Test Stored Procedures with display name filter": {
       "observations": [
         "38502607895"
@@ -166,6 +176,16 @@
       "file": "Features/DataQuality/TestLibrary.spec.ts",
       "title": "Test Library \u203a should display test platform badges correctly",
       "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
+      "hardFailure": false
+    },
+    "chromium :: Features/GlobalPageSize.spec.ts :: Table & Data Model columns table pagination \u203a Page size should persist across different pages": {
+      "observations": [
+        "39891471813"
+      ],
+      "project": "chromium",
+      "file": "Features/GlobalPageSize.spec.ts",
+      "title": "Table & Data Model columns table pagination \u203a Page size should persist across different pages",
+      "lastSeenSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeStudio.spec.ts :: Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell": {
