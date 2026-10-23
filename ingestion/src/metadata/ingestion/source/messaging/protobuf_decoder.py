@@ -15,6 +15,8 @@ Decode Protobuf topic messages into JSON for sample data
 
 import io
 import json
+from collections.abc import Mapping
+from typing import NamedTuple
 
 from confluent_kafka.schema_registry.serde import SchemaId
 from google.protobuf import descriptor_pb2
@@ -30,6 +32,13 @@ PROTOBUF_SCHEMA_TYPE = "PROTOBUF"
 # A bare Protobuf message can never start with either: its first byte is a field tag,
 # and field number 0 is invalid.
 CONFLUENT_MAGIC_BYTES = (0, 1)
+
+
+class ProtobufSchema(NamedTuple):
+    """A Protobuf schema and the text of each file it imports, by import name."""
+
+    text: str
+    dependencies: tuple[tuple[str, str], ...] = ()
 
 
 def read_writer_schema_id(record: bytes) -> int | str | None:
@@ -53,8 +62,10 @@ class ProtobufMessageDecoder:
     message the schema parser picks for the topic.
     """
 
-    def __init__(self, topic_name: str, schema_text: str):
-        parser = ProtobufParser(ProtobufParserConfig(schema_name=topic_name, schema_text=schema_text))
+    def __init__(self, topic_name: str, schema_text: str, dependencies: Mapping[str, str] | None = None):
+        parser = ProtobufParser(
+            ProtobufParserConfig(schema_name=topic_name, schema_text=schema_text, dependencies=dict(dependencies or {}))
+        )
         self._file_descriptor = parser.compile_file_descriptor()
         self._file_proto = descriptor_pb2.FileDescriptorProto()
         self._file_descriptor.CopyToProto(self._file_proto)

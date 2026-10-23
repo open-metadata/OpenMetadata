@@ -28,7 +28,6 @@ from metadata.ingestion.source.messaging.common_broker_source import (
     strip_confluent_framing,
 )
 from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
-from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
 
 CONFLUENT_HEADER = b"\x00\x00\x00\x00\x01"
 
@@ -125,7 +124,7 @@ def test_protobuf_decoder_is_built_once_per_schema():
         CommonBrokerSource.decode_message(source, b"payload", "other-schema", SchemaType.Protobuf, topic_name="t")
 
     assert mock_decoder.call_count == 2
-    mock_decoder.assert_any_call("t", "schema")
+    mock_decoder.assert_any_call("t", "schema", {})
 
 
 def test_protobuf_decoder_compile_failure_is_not_retried():
@@ -175,23 +174,61 @@ def _message_class(schema: str, full_name: str):
     return GetMessageClass(parser.compile_file_descriptor().pool.FindMessageTypeByName(full_name))
 
 
-def test_shared_reference_is_merged_into_every_topic_schema():
-    registry = _registry("shared-reference")
-    registry.register_schema(
-        "money.proto",
-        Schema('syntax = "proto3";\npackage org.example;\nmessage Money { int64 units = 1; }', "PROTOBUF"),
+MONEY_V1 = 'syntax = "proto3";\npackage org.example.money;\nmessage Money { int64 units = 1; }'
+MONEY_V2 = 'syntax = "proto3";\npackage org.example.money;\nmessage Money { string currency = 1; int64 units = 2; }'
+# A topic message holding Money amount = 1 with units = 5, encoded against MONEY_V1.
+AMOUNT_RECORD = b"\x0a\x02\x08\x05"
+
+
+def _money_topic_schema(message: str, money_version: int = 1) -> Schema:
+    return Schema(
+        f'syntax = "proto3";\npackage org.example.{message.lower()};\nimport "money.proto";\n'
+        f"message {message} {{ org.example.money.Money amount = 1; }}",
+        "PROTOBUF",
+        references=[SchemaReference("money.proto", "money.proto", money_version)],
     )
+
+
+def test_topics_sharing_a_packaged_reference_both_decode():
+    registry = _registry("shared-reference")
+    registry.register_schema("money.proto", Schema(MONEY_V1, "PROTOBUF"))
     source = _source(registry)
 
     for message in ("Loan", "Deposit"):
-        topic_schema = Schema(
-            f'syntax = "proto3";\npackage org.example;\nimport "money.proto";\nmessage {message} {{ Money amount = 1; }}',
-            "PROTOBUF",
-            references=[SchemaReference("money.proto", "money.proto", 1)],
+        schema = source._get_protobuf_schema(_money_topic_schema(message))
+        result = CommonBrokerSource.decode_message(
+            source, AMOUNT_RECORD, schema, SchemaType.Protobuf, topic_name=message.lower()
         )
-        merged = merge_and_clean_protobuf_schema(source._get_schema_text_with_references(topic_schema))
 
-        assert "message Money" in merged, f"{message} schema lacks the shared reference"
+        assert json.loads(result) == {"amount": {"units": "5"}}, message
+
+
+def test_writer_schema_reads_the_reference_version_it_pins():
+    registry = _registry("pinned-reference")
+    registry.register_schema("money.proto", Schema(MONEY_V1, "PROTOBUF"))
+    registry.register_schema("money.proto", Schema(MONEY_V2, "PROTOBUF"))
+    loan_id = registry.register_schema("loan-value", _money_topic_schema("Loan", money_version=1))
+    # Confluent framing: magic byte, the Loan schema id, message index [0].
+    record = b"\x00" + loan_id.to_bytes(4, "big") + b"\x00" + AMOUNT_RECORD
+
+    result = CommonBrokerSource.decode_message(_source(registry), record, "", SchemaType.Protobuf, topic_name="loan")
+
+    assert json.loads(result) == {"amount": {"units": "5"}}
+
+
+def test_unregistered_imports_and_options_are_dropped():
+    source = _source(_registry("unregistered-import"))
+    schema = source._get_protobuf_schema(
+        Schema(
+            'syntax = "proto3";\npackage org.example;\nimport "confluent/meta.proto";\n'
+            'option java_package = "org.example";\nmessage Loan { string id = 1; }',
+            "PROTOBUF",
+        )
+    )
+
+    result = CommonBrokerSource.decode_message(source, b"\x0a\x03L-1", schema, SchemaType.Protobuf, topic_name="loan")
+
+    assert json.loads(result) == {"id": "L-1"}
 
 
 def test_record_written_with_an_older_schema_is_read_with_that_schema():

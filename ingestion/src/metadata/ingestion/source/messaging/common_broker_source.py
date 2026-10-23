@@ -36,7 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
-from metadata.generated.schema.type.schema import SchemaType, Topic
+from metadata.generated.schema.type.schema import FieldModel, SchemaType, Topic
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.ometa_topic_data import OMetaTopicSampleData
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -46,15 +46,17 @@ from metadata.ingestion.source.messaging.messaging_service import (
 )
 from metadata.ingestion.source.messaging.protobuf_decoder import (
     ProtobufMessageDecoder,
+    ProtobufSchema,
     read_writer_schema_id,
 )
+from metadata.parsers.protobuf_parser import ProtobufParser, ProtobufParserConfig
 from metadata.parsers.schema_parsers import (
     InvalidSchemaTypeException,
     schema_parser_config_registry,
 )
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.messaging_utils import merge_and_clean_protobuf_schema
+from metadata.utils.messaging_utils import clean_protobuf_schema
 
 logger = ingestion_logger()
 
@@ -105,10 +107,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         self.admin_client = self.connection.admin_client
         self.schema_registry_client = self.connection.schema_registry_client
         self._avro_deserializers = LRUCache(maxsize=AVRO_DESERIALIZER_CACHE_SIZE)
-        # Merged Protobuf schema text per topic, held from yield_topic until its sample data is
-        # read: the stored schema text lacks its references.
-        self._protobuf_schema_texts = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
-        # Merged Protobuf schema text per writer schema id, or the error that fetching it raised.
+        # Protobuf schema with its imported files per topic, held from yield_topic until its
+        # sample data is read: the stored schema text lacks its references.
+        self._protobuf_schemas = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
+        # Protobuf schema per writer schema id, or the error that fetching it raised.
         self._protobuf_writer_schemas = LRUCache(maxsize=PROTOBUF_SCHEMA_CACHE_SIZE)
         self._protobuf_decoders = LRUCache(maxsize=PROTOBUF_DECODER_CACHE_SIZE)
         if self.generate_sample_data:
@@ -150,16 +152,10 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 load_parser_fn = schema_parser_config_registry.registry.get(schema_type)
                 if not load_parser_fn:
                     raise InvalidSchemaTypeException(f"Cannot find {schema_type} in parser providers registry.")  # noqa: TRY301
-                schema_text = topic_schema.schema_str
-
-                # In protobuf schema, we need to merge all the schema text with references
                 if schema_type == SchemaType.Protobuf.value.lower():
-                    schema_text = merge_and_clean_protobuf_schema(
-                        self._get_schema_text_with_references(schema=topic_schema)
-                    )
-                    if schema_text and self.generate_sample_data:
-                        self._protobuf_schema_texts[topic_details.topic_name] = schema_text
-                schema_fields = load_parser_fn(topic_details.topic_name, schema_text)
+                    schema_fields = self._parse_protobuf_topic_schema(topic_details.topic_name, topic_schema)
+                else:
+                    schema_fields = load_parser_fn(topic_details.topic_name, topic_schema.schema_str)
 
                 topic.messageSchema = Topic(
                     schemaText=topic_schema.schema_str,
@@ -215,31 +211,50 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             logger.debug(traceback.format_exc())
             logger.warning(f"Exception adding properties to topic [{topic.name}]: {exc}")
 
-    def _get_schema_text_with_references(self, schema, processed: set[str] | None = None) -> str | None:
-        """
-        Returns the schema text with references resolved using recursive calls.
-        `processed` holds the references already merged into this schema, so each is added once.
-        """
-        if processed is None:
-            processed = set()
+    def _parse_protobuf_topic_schema(self, topic_name: str, topic_schema: Schema) -> list[FieldModel] | None:
+        """Schema fields of a Protobuf topic. Its schema is kept to read the topic's sample data."""
         try:
-            if schema:
-                schema_text = schema.schema_str
-                for reference in schema.references or []:
-                    if reference.name not in processed:
-                        processed.add(reference.name)
-                        reference_schema = self.schema_registry_client.get_latest_version(reference.name)
-                        if reference_schema.schema.references:
-                            schema_text = schema_text + self._get_schema_text_with_references(
-                                reference_schema.schema, processed
-                            )
-                        else:
-                            schema_text = schema_text + reference_schema.schema.schema_str
-                return schema_text
+            protobuf_schema = self._get_protobuf_schema(topic_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get schema with references: {exc}")
-        return None
+            logger.warning("Failed to fetch the Protobuf references of topic [%s]: %s", topic_name, exc)
+            return None
+        if self.generate_sample_data:
+            self._protobuf_schemas[topic_name] = protobuf_schema
+        parser = ProtobufParser(
+            ProtobufParserConfig(
+                schema_name=topic_name,
+                schema_text=protobuf_schema.text,
+                dependencies=dict(protobuf_schema.dependencies),
+            )
+        )
+        return parser.parse_protobuf_schema()
+
+    def _get_protobuf_schema(self, schema: Schema) -> ProtobufSchema:
+        """
+        A Protobuf schema with the files it imports, at the versions its references pin. Each file
+        keeps its own package, so they are compiled side by side rather than merged into one.
+        """
+        dependencies: dict[str, str] = {}
+        self._collect_protobuf_references(schema, dependencies)
+        return ProtobufSchema(
+            text=clean_protobuf_schema(schema.schema_str, dependencies),
+            dependencies=tuple(
+                (name, clean_protobuf_schema(text, dependencies)) for name, text in dependencies.items()
+            ),
+        )
+
+    def _collect_protobuf_references(self, schema: Schema, dependencies: dict[str, str]) -> None:
+        """Add the text of each file `schema` imports, and of theirs, to `dependencies` by import name."""
+        for reference in schema.references or []:
+            if reference.name in dependencies:
+                continue
+            if reference.subject and reference.version is not None:
+                registered = self.schema_registry_client.get_version(reference.subject, reference.version)
+            else:
+                registered = self.schema_registry_client.get_latest_version(reference.name)
+            dependencies[reference.name] = registered.schema.schema_str
+            self._collect_protobuf_references(registered.schema, dependencies)
 
     def _parse_topic_metadata(self, topic_name: str) -> Schema | None:
 
@@ -272,7 +287,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
             service_name=self.context.get().messaging_service,
             topic_name=self.context.get().topic,
         )
-        merged_protobuf_schema = self._protobuf_schema_texts.pop(topic_details.topic_name, None)
+        topic_protobuf_schema = self._protobuf_schemas.pop(topic_details.topic_name, None)
         topic_entity = self.metadata.get_by_name(entity=TopicEntity, fqn=topic_fqn)
         if topic_entity and self.generate_sample_data:
             topic_name = topic_details.topic_name
@@ -314,14 +329,14 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             else:
                 if messages:
-                    schema_text = merged_protobuf_schema or topic_entity.messageSchema.schemaText
+                    schema = topic_protobuf_schema or topic_entity.messageSchema.schemaText
                     for message in messages:
                         try:
                             value = message.value()
                             sample_data.append(
                                 self.decode_message(
                                     value,
-                                    schema_text,
+                                    schema,
                                     topic_entity.messageSchema.schemaType,
                                     topic_name=topic_name,
                                 )
@@ -337,7 +352,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 )
             )
 
-    def decode_message(self, record: Any, schema: str, schema_type: SchemaType, topic_name: str = ""):
+    def decode_message(self, record: Any, schema: str | ProtobufSchema, schema_type: SchemaType, topic_name: str = ""):
         if not isinstance(record, (bytes, bytearray, memoryview)):
             return str(record)
         if schema_type == SchemaType.Avro:
@@ -354,13 +369,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                 self._avro_deserializers[schema] = deserializer
             return str(deserializer(bytes(record), None))
         if schema_type == SchemaType.Protobuf:
+            if isinstance(schema, str):
+                schema = ProtobufSchema(schema)
             schema = self._get_protobuf_writer_schema(bytes(record)) or schema
             # One decoder per schema: compiling it runs protoc, so a failure is kept too.
             key = (topic_name, schema)
             decoder = self._protobuf_decoders.get(key)
             if decoder is None:
                 try:
-                    decoder = ProtobufMessageDecoder(topic_name, schema)
+                    decoder = ProtobufMessageDecoder(topic_name, schema.text, dict(schema.dependencies))
                 except Exception as exc:
                     decoder = exc
                 self._protobuf_decoders[key] = decoder
@@ -371,9 +388,9 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         # must be skipped by the caller, not stored as mojibake.
         return strip_confluent_framing(bytes(record)).decode("utf-8")
 
-    def _get_protobuf_writer_schema(self, record: bytes) -> str | None:
+    def _get_protobuf_writer_schema(self, record: bytes) -> ProtobufSchema | None:
         """
-        Merged text of the schema a framed record was written with. Its message indexes are
+        The schema a framed record was written with. Its message indexes are
         positions in that schema, so a later version that adds or moves a message would make
         them name the wrong one. None means the record is unframed: read it with the topic's schema.
         Raises when the writer schema cannot be fetched, so the record is skipped rather than
@@ -388,18 +405,15 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
                     writer_schema = self.schema_registry_client.get_schema(writer_id)
                 else:
                     writer_schema = self.schema_registry_client.get_schema_by_guid(writer_id)
-                schema_text = merge_and_clean_protobuf_schema(self._get_schema_text_with_references(writer_schema))
-                self._protobuf_writer_schemas[writer_id] = schema_text or ValueError(
-                    f"Writer schema [{writer_id}] could not be merged with its references"
-                )
+                self._protobuf_writer_schemas[writer_id] = self._get_protobuf_schema(writer_schema)
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 # Kept, so the registry is asked once per schema rather than once per record.
                 self._protobuf_writer_schemas[writer_id] = exc
-        writer_schema_text = self._protobuf_writer_schemas[writer_id]
-        if isinstance(writer_schema_text, Exception):
-            raise writer_schema_text
-        return writer_schema_text
+        protobuf_schema = self._protobuf_writer_schemas[writer_id]
+        if isinstance(protobuf_schema, Exception):
+            raise protobuf_schema
+        return protobuf_schema
 
     def close(self):
         # The consumer belongs to the connection, which closes it on teardown.

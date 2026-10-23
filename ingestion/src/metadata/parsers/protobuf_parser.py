@@ -82,11 +82,13 @@ class ProtobufParserConfig(BaseModel):
     :param schema_name: Name of protobuf schema
     :param schema_text: Protobuf schema definition in text format
     :param base_file_path: Optional parent directory for temporary parser files.
+    :param dependencies: Text of each file the schema imports, by import name.
     """
 
     schema_name: str
     schema_text: str
     base_file_path: str | None = Field(default=None)
+    dependencies: dict[str, str] = Field(default_factory=dict)
 
 
 class ProtobufParser:
@@ -105,6 +107,15 @@ class ProtobufParser:
         interface_directory.mkdir()
         proto_file = interface_directory / PROTO_FILE_NAME
         proto_file.write_text(self.config.schema_text, encoding="UTF-8")
+        # Each imported file sits at its import name, so it keeps its own package.
+        for import_name, dependency_text in self.config.dependencies.items():
+            dependency_file = (interface_directory / import_name).resolve()
+            if dependency_file == proto_file.resolve() or not dependency_file.is_relative_to(
+                interface_directory.resolve()
+            ):
+                raise ValueError(f"Invalid Protobuf import name: {import_name}")
+            dependency_file.parent.mkdir(parents=True, exist_ok=True)
+            dependency_file.write_text(dependency_text, encoding="UTF-8")
         descriptor_set_file = working_directory / DESCRIPTOR_SET_FILE_NAME
 
         exit_code = grpc_tools.protoc.main(

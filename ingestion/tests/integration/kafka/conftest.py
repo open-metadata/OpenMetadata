@@ -6,7 +6,7 @@ import pytest
 import testcontainers.core.network
 from confluent_kafka import Producer
 from confluent_kafka.admin import AdminClient, NewTopic
-from confluent_kafka.schema_registry import Schema, SchemaRegistryClient
+from confluent_kafka.schema_registry import Schema, SchemaReference, SchemaRegistryClient
 from confluent_kafka.schema_registry.protobuf import ProtobufSerializer
 from confluent_kafka.serialization import MessageField, SerializationContext
 from docker.types import EndpointConfig
@@ -142,6 +142,41 @@ def protobuf_topic(kafka_container, schema_registry_container):
     )
     _produce_protobuf_records(kafka_container, schema_registry_client)
     return LOANS_TOPIC
+
+
+PAYMENTS_TOPIC = "payments"
+MONEY_PROTOBUF_SCHEMA = 'syntax = "proto3";\npackage org.example.money;\nmessage Money { int64 units = 1; }'
+PAYMENTS_PROTOBUF_SCHEMA = (
+    'syntax = "proto3";\npackage org.example.payments;\nimport "money.proto";\n'
+    "message Payment { org.example.money.Money amount = 1; }"
+)
+# Payment with amount.units = 5, encoded by hand so the fixture does not depend on the parser.
+PAYMENT_RECORD = b"\x0a\x02\x08\x05"
+
+
+@pytest.fixture(scope="module")
+def protobuf_reference_topic(kafka_container, schema_registry_container):
+    """A topic whose Protobuf schema imports a file of another package."""
+    admin_client = AdminClient({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    admin_client.create_topics([NewTopic(PAYMENTS_TOPIC, num_partitions=1, replication_factor=1)])[
+        PAYMENTS_TOPIC
+    ].result(timeout=10)
+
+    schema_registry_client = SchemaRegistryClient({"url": schema_registry_container.get_connection_url()})
+    schema_registry_client.register_schema("money.proto", Schema(MONEY_PROTOBUF_SCHEMA, "PROTOBUF"))
+    schema_id = schema_registry_client.register_schema(
+        f"{PAYMENTS_TOPIC}-value",
+        Schema(
+            PAYMENTS_PROTOBUF_SCHEMA,
+            "PROTOBUF",
+            references=[SchemaReference("money.proto", "money.proto", 1)],
+        ),
+    )
+    producer = Producer({"bootstrap.servers": kafka_container.get_bootstrap_server()})
+    # Confluent framing: magic byte, schema id, message index [0].
+    producer.produce(PAYMENTS_TOPIC, value=b"\x00" + schema_id.to_bytes(4, "big") + b"\x00" + PAYMENT_RECORD)
+    assert producer.flush(timeout=30) == 0
+    return PAYMENTS_TOPIC
 
 
 def _loan_record_class():

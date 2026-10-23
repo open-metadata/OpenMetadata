@@ -70,6 +70,34 @@ def test_ingest_protobuf_sample_data(
     assert [json.loads(message) for message in raw_messages] == LOANS_RECORDS
 
 
+def test_ingest_protobuf_topic_whose_schema_imports_another_package(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    sample_data_ingestion_config,
+    metadata,
+    db_service,
+    protobuf_reference_topic,
+):
+    # Sample data is only stored for a topic the server already has, so create it first.
+    run_workflow(MetadataWorkflow, ingestion_config)
+    run_workflow(MetadataWorkflow, sample_data_ingestion_config)
+
+    topic: Topic = metadata.get_by_name(
+        entity=Topic,
+        fqn=f"{db_service.fullyQualifiedName.root}.{protobuf_reference_topic}",
+        fields=["*"],
+        nullable=False,
+    )
+    root = topic.messageSchema.schemaFields[0]
+    assert root.name.root == "Payment"
+    assert [child.name.root for child in root.children] == ["amount"]
+    assert [child.name.root for child in root.children[0].children] == ["units"]
+
+    raw_messages = metadata.get_topic_sample_data(topic).sampleData.messages
+    assert [json.loads(message) for message in raw_messages] == [{"amount": {"units": "5"}}]
+
+
 @pytest.fixture(
     scope="module",
     params=[
