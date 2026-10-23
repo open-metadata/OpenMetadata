@@ -20,9 +20,6 @@ import { get, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { mockTourSummaryPanelPermission } from '../../../constants/mockTourPermission.constants';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
@@ -98,7 +95,6 @@ import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { DRAWER_NAVIGATION_OPTIONS } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -216,12 +212,6 @@ const getSummaryLineageConfig = ({
   EntitySummaryPanelProps,
   'upstreamDepth' | 'downstreamDepth' | 'nodesPerLayer' | 'pipelineViewMode'
 >) => ({ upstreamDepth, downstreamDepth, nodesPerLayer, pipelineViewMode });
-const TOUR_PERMISSION_FLAGS = {
-  ...getDerivedPermissionFlags(
-    mockTourSummaryPanelPermission as OperationPermission
-  ),
-  isLoading: false,
-};
 
 export default function EntitySummaryPanel({
   entityDetails,
@@ -246,7 +236,6 @@ export default function EntitySummaryPanel({
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isTourPage } = useTourProvider();
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
   );
@@ -357,13 +346,6 @@ export default function EntitySummaryPanel({
   // getPrioritizedEditPermission calls with no soft-delete gating, so passing `deleted` here
   // would hide edit affordances that previously rendered on deleted entities — a real
   // behavior change. DataAssetsHeader is ungated for the same reason.
-  // The tour's entity is mock data with no server-side record, so it carries a view-only
-  // tour grant instead of a permission fetch.
-  const fetchedPermissionFlags = useEntityPermissions(
-    permissionResourceType,
-    permissionIdentifier,
-    { enabled: isPermissionFetchEnabled && !isTourPage }
-  );
   const {
     isLoading: isPermissionLoading,
     hasViewAccess: viewPermission,
@@ -376,7 +358,9 @@ export default function EntitySummaryPanel({
     // precedent as `canViewBasic`'s fix — see PermissionDerivation.ts): an explicit field
     // deny beats a broader grant. Fixes the same class of bug in passing.
     canViewTests,
-  } = isTourPage ? TOUR_PERMISSION_FLAGS : fetchedPermissionFlags;
+  } = useEntityPermissions(permissionResourceType, permissionIdentifier, {
+    enabled: isPermissionFetchEnabled,
+  });
 
   // Memoize the entity fetch map to avoid recreating it on every render
   const entityFetchMap = useMemo<
@@ -476,12 +460,6 @@ export default function EntitySummaryPanel({
       return;
     }
 
-    if (isTourPage) {
-      setEntityData(entityDetails.details as EntityData);
-
-      return;
-    }
-
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
@@ -511,12 +489,7 @@ export default function EntitySummaryPanel({
     } finally {
       setIsEntityDataLoading(false);
     }
-  }, [
-    entityDetails?.details?.fullyQualifiedName,
-    entityType,
-    entityFetchMap,
-    isTourPage,
-  ]);
+  }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
   const fetchEntityTypeDetail = useCallback(async () => {
     if (!entityType || entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -537,7 +510,7 @@ export default function EntitySummaryPanel({
   const fetchLineageData = useCallback(async () => {
     const currentFqn = entityDetails?.details?.fullyQualifiedName;
 
-    if (!currentFqn || !entityType || isTourPage) {
+    if (!currentFqn || !entityType) {
       setIsLineageLoading(false);
       setLineageData(null);
 
@@ -576,7 +549,6 @@ export default function EntitySummaryPanel({
   }, [
     entityDetails?.details?.fullyQualifiedName,
     entityType,
-    isTourPage,
     upstreamDepth,
     downstreamDepth,
     nodesPerLayer,

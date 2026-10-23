@@ -1,0 +1,53 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// This file has no imports, so the fixture recorder can read it outside the app.
+
+export const PRODUCT_TOUR_STORAGE_KEY = 'omProductTour';
+
+// Set in sessionStorage by the fixture recorder: the tour runs on the server's
+// data so its responses can be recorded.
+export const PRODUCT_TOUR_RECORD_KEY = 'omProductTourRecord';
+
+export const REQUIRED_STABLE_LAYOUT_FRAMES = 3;
+export const TARGET_WAIT_TIMEOUT_MS = 8000;
+
+// Query parameters whose value changes on every visit (time windows, cache
+// busters), so a recorded fixture still matches the request the page sends.
+export const TOUR_VOLATILE_QUERY_PARAMS = [
+  'start',
+  'end',
+  'startTs',
+  'endTs',
+  'timestamp',
+  '_',
+] as const;
+
+// Requests the app shell makes for the signed-in user, which the tour leaves
+// to the server: who is signed in, what they may do, how the app is set up.
+// Everything a tour page shows comes from its fixtures instead.
+export const TOUR_PASS_THROUGH_PATHS = [
+  /^\/users\/loggedInUser/,
+  /^\/users\/name\/[^/]+\/?$/,
+  /^\/permissions/,
+  /^\/system\//,
+  /^\/apps\/installed/,
+  /^\/feed\/count/,
+  /^\/docStore/,
+  /^\/limits/,
+  /^\/analytics\/web/,
+] as const;
+
+// Updates and deletes; the tour drops them and the recorder never records them.
+// POST also reads (searches, aggregations, report batches), so it is not one.
+export const TOUR_WRITE_METHODS = ['put', 'patch', 'delete'] as const;

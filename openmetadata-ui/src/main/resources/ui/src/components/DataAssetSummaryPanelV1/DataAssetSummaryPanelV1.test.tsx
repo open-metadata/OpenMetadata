@@ -22,7 +22,6 @@ import { AxiosError } from 'axios';
 import { act } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
@@ -67,10 +66,6 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn(),
-}));
-
-jest.mock('../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(),
 }));
 
 jest.mock('../../hooks/useChangeSummary', () => ({
@@ -476,9 +471,6 @@ describe('DataAssetSummaryPanelV1', () => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       getEntityPermission: mockGetEntityPermission,
     });
-    (useTourProvider as jest.Mock).mockReturnValue({
-      isTourPage: false,
-    });
     (useChangeSummary as jest.Mock).mockReturnValue({
       changeSummary: {},
       totalEntries: 0,
@@ -694,27 +686,6 @@ describe('DataAssetSummaryPanelV1', () => {
           mockDataAsset.id
         );
       });
-    });
-
-    it('should not fetch data when on tour page', async () => {
-      (useTourProvider as jest.Mock).mockReturnValue({
-        isTourPage: true,
-      });
-
-      await act(async () => {
-        render(<DataAssetSummaryPanelV1 {...defaultProps} />);
-      });
-
-      await waitFor(() => {
-        expect(mockGetEntityPermission).not.toHaveBeenCalled();
-      });
-
-      // An empty entity id keeps useChangeSummary from requesting the mock entity's history.
-      expect(useChangeSummary).toHaveBeenLastCalledWith(
-        expect.anything(),
-        '',
-        expect.anything()
-      );
     });
   });
 

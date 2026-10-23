@@ -184,10 +184,6 @@ jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-table-fqn' })),
 }));
 
-jest.mock('../../../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(() => ({ isTourOpen: false })),
-}));
-
 jest.mock('../../TableProfiler/TableProfilerProvider', () => ({
   useTableProfiler: () => mockUseTableProfiler(),
 }));
