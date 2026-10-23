@@ -565,7 +565,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // Invalidate the cached badge totals so a task action re-fetches them.
   const refreshStatusCounts = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
     });
   }, [queryClient]);
@@ -576,7 +576,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // next visit.
   const invalidateTaskLists = useCallback(
     (refetch = false) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [TASK_LIST_QUERY_KEY, scope],
         refetchType: refetch ? 'active' : 'none',
       });
