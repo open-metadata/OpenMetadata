@@ -175,8 +175,9 @@ const AppLiveIndexing = ({ appData }: AppLiveIndexingProps) => {
         emptyText: (
           <Box className="tw:relative tw:min-h-60">
             <NoDataPlaceholder
+              description={t('message.no-retry-queue-records')}
               icon={CheckCircle}
-              title={t('message.no-retry-queue-records')}
+              title={t('label.no-entity', { entity: t('label.record-plural') })}
             />
           </Box>
         ),
