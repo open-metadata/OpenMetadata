@@ -32,6 +32,7 @@ import {
 import { verifyBundleSuitePageLoaded } from '../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { test } from '../fixtures/pages';
+import { enableAiAppMode } from '../Utils/appMode';
 
 const table = new TableClass();
 
@@ -267,6 +268,96 @@ test(
     });
   }
 );
+
+const SUITE_SEARCH_APP_MODES = [
+  {
+    label: 'Classic',
+    suitePathPrefix: '/test-suites',
+    openApp: redirectToHomePage,
+  },
+  {
+    label: 'AI',
+    suitePathPrefix: '/observability/test-suites',
+    openApp: enableAiAppMode,
+  },
+];
+
+for (const { label, suitePathPrefix, openApp } of SUITE_SEARCH_APP_MODES) {
+  test.describe(`Search test cases inside a bundle suite (${label} mode)`, () => {
+    let searchTable: TableClass;
+    let searchSuite: BundleTestSuiteClass;
+    let testCaseNames: string[];
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      searchTable = new TableClass();
+      searchSuite = new BundleTestSuiteClass();
+      await searchTable.create(apiContext);
+      const testCases = [
+        await searchTable.createTestCase(apiContext),
+        await searchTable.createTestCase(apiContext),
+      ];
+      testCaseNames = testCases.map((testCase) => testCase.name as string);
+      await searchSuite.createBundleTestSuite(apiContext);
+      const addResponse = await searchSuite.addTestCases(
+        apiContext,
+        testCases.map((testCase) => testCase.id as string)
+      );
+      expect(addResponse.status()).toBe(200);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await searchSuite.delete(apiContext);
+      await searchTable.delete(apiContext);
+      await afterAction();
+    });
+
+    test('finds a test case by a mixed-case part of its name', async ({
+      page,
+    }) => {
+      const suiteFqn =
+        searchSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
+      const [matchName, otherName] = testCaseNames;
+      // The trailing uuid is unique to this test case; flipping its case
+      // proves the search is case-insensitive.
+      const mixedCaseQuery = matchName.slice(-8).toUpperCase();
+
+      await test.step('Open the bundle suite', async () => {
+        await openApp(page);
+        const listResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list*'
+        );
+        await page.goto(`${suitePathPrefix}/${encodeURIComponent(suiteFqn)}`, {
+          waitUntil: 'domcontentloaded',
+        });
+        await listResponse;
+        await expect(page.getByTestId(matchName)).toBeVisible();
+        await expect(page.getByTestId(otherName)).toBeVisible();
+      });
+
+      await test.step('Search shows only the matching test case', async () => {
+        const searchResponse = page.waitForResponse((response) => {
+          const responseUrl = new URL(response.url());
+
+          return (
+            responseUrl.pathname.includes(
+              '/api/v1/dataQuality/testCases/search/list'
+            ) && responseUrl.searchParams.get('q') === mixedCaseQuery
+          );
+        });
+        await page
+          .getByTestId('test-suite-test-case-search')
+          .fill(mixedCaseQuery);
+        await searchResponse;
+
+        await expect(page.getByTestId(matchName)).toBeVisible();
+        await expect(page.getByTestId(otherName)).toHaveCount(0);
+      });
+    });
+  });
+}
 
 test.describe('Bulk remove test cases from a bundle suite', () => {
   let bulkRemoveTable: TableClass;
