@@ -254,7 +254,7 @@ class NativeOntologyDataGraphIT extends BaseOntologyApprovalIT {
         log.info("Native data graph SQL reads: narrow={}, wide={}", narrowReads, wideReads);
         assertTrue(narrowReads > 0, "The SQL counter must observe the graph request");
         assertTrue(
-            wideReads <= narrowReads + 4,
+            wideReads <= narrowReads,
             "A page of 12 of 40 concepts with 2 assets each ran "
                 + wideReads
                 + " reads; 4 concepts with 1 asset ran "

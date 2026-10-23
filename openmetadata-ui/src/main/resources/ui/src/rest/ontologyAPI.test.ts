@@ -14,6 +14,7 @@
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { AssetType } from '../generated/api/data/updateOntologyConceptBinding';
 import { OntologyChangeSetState } from '../generated/entity/data/ontologyChangeSet';
 import APIClient from './axiosClient';
 import {
@@ -21,11 +22,13 @@ import {
   captureOntologyRelease,
   createOntology,
   createOntologyConcept,
+  deleteOntologyConceptBinding,
   generateOntologyDomainDraft,
   generateOntologySparql,
   getOntologyBulkTemplate,
   getOntologyByName,
   getOntologyChangeSet,
+  getOntologyConceptBindings,
   getOntologyRelease,
   getRdfEntityDiff,
   installOntologyPack,
@@ -39,6 +42,7 @@ import {
   listRelationshipTypes,
   materializeInferenceRules,
   patchOntologyConcept,
+  putOntologyConceptBinding,
   releaseOntologyEditLock,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
@@ -60,6 +64,78 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 describe('ontologyAPI', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  const boundTable = {
+    assetId: 'late-table',
+    assetType: 'table',
+    asset: { id: 'late-table', type: 'table', name: 'customers' },
+    columns: [
+      { propertyId: 'name', columnPath: ['customer_name'], state: 'resolved' },
+    ],
+  };
+
+  it('collects bindings through empty pages and preserves the starting revision', async () => {
+    const signal = new AbortController().signal;
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { revision: 4, assets: [], after: 'first' },
+      })
+      .mockResolvedValueOnce({
+        data: { revision: 5, assets: [], after: 'second' },
+      })
+      .mockResolvedValueOnce({ data: { revision: 5, assets: [boundTable] } });
+
+    expect(await getOntologyConceptBindings('concept/id', signal)).toEqual({
+      revision: 4,
+      assets: [boundTable],
+      after: undefined,
+    });
+    expect(mockedApiClient.get).toHaveBeenLastCalledWith(
+      '/ontologyConcepts/concept%2Fid/bindings',
+      { params: { after: 'second', limit: 100 }, signal }
+    );
+  });
+
+  it.each(['put', 'delete'] as const)(
+    'returns all bindings after a %s, retaining off-page columns',
+    async (method) => {
+      mockedApiClient[method].mockResolvedValueOnce({
+        data: { revision: 6, assets: [], after: 'next' },
+      });
+      mockedApiClient.get.mockResolvedValueOnce({
+        data: { revision: 6, assets: [boundTable] },
+      });
+      const result =
+        method === 'put'
+          ? await putOntologyConceptBinding('concept', {
+              expectedRevision: 5,
+              asset: {
+                assetId: 'topic',
+                assetType: AssetType.Topic,
+                columns: [],
+              },
+            })
+          : await deleteOntologyConceptBinding('concept', 'topic', 'topic', 5);
+
+      expect(result).toEqual({
+        revision: 6,
+        assets: [boundTable],
+        after: undefined,
+      });
+    }
+  );
+
+  it('rejects an incomplete binding read when a later page fails', async () => {
+    mockedApiClient.get
+      .mockResolvedValueOnce({
+        data: { revision: 4, assets: [], after: 'next' },
+      })
+      .mockRejectedValueOnce(new Error('later page unavailable'));
+
+    await expect(getOntologyConceptBindings('concept')).rejects.toThrow(
+      'later page unavailable'
+    );
   });
 
   it('recovers a native ontology by its frozen encoded name', async () => {

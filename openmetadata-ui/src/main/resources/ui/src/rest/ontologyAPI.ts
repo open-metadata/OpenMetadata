@@ -106,6 +106,26 @@ const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
 
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
+const collectOntologyConceptBindings = async (
+  id: string,
+  firstPage: OntologyConceptBindingsResponse,
+  signal?: AbortSignal
+): Promise<OntologyConceptBindingsResponse> => {
+  const assets = [...firstPage.assets];
+  let after = firstPage.after;
+  while (after) {
+    const { data } = await APIClient.get<OntologyConceptBindingsResponse>(
+      `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
+      { params: { after, limit: 100 }, signal }
+    );
+    assets.push(...data.assets);
+    after = data.after;
+  }
+
+  // Keep the starting revision so a write conflicts if bindings changed during paging.
+  return { ...firstPage, assets, after: undefined };
+};
+
 export const getOntologyConceptBindings = async (
   id: string,
   signal?: AbortSignal
@@ -115,7 +135,7 @@ export const getOntologyConceptBindings = async (
     { signal }
   );
 
-  return response.data;
+  return collectOntologyConceptBindings(id, response.data, signal);
 };
 
 export const putOntologyConceptBinding = async (
@@ -127,7 +147,7 @@ export const putOntologyConceptBinding = async (
     request
   );
 
-  return response.data;
+  return collectOntologyConceptBindings(id, response.data);
 };
 
 export const deleteOntologyConceptBinding = async (
@@ -145,7 +165,7 @@ export const deleteOntologyConceptBinding = async (
     { params: { expectedRevision } }
   );
 
-  return response.data;
+  return collectOntologyConceptBindings(id, response.data);
 };
 
 export const listOntologyReleaseHistory = async (

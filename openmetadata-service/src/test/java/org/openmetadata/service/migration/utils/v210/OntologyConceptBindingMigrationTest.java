@@ -211,6 +211,46 @@ class OntologyConceptBindingMigrationTest {
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  void unreadableDocumentsDoNotPreventCopyingValidBindings(String dialect) {
+    try (Handle handle = open(dialect)) {
+      createTables(handle, dialect);
+      seedEntity(handle, "topic_entity", EVENTS, "hash-events");
+      seedDocument(handle, dialect, CUSTOMER, 3, List.of());
+      seedDocument(handle, dialect, EMPTY, 7, List.of());
+      seedDocument(
+          handle, dialect, ORDER, 1, List.of(asset(OntologyBindingAssetType.TOPIC, EVENTS)));
+      for (var document :
+          Map.of(CUSTOMER, "{\"revision\":3,\"assets\":\"unreadable\"}", EMPTY, "null")
+              .entrySet()) {
+        handle
+            .createUpdate("UPDATE entity_extension SET json = " + json(dialect) + " WHERE id = :id")
+            .bind("json", document.getValue())
+            .bind("id", document.getKey().toString())
+            .execute();
+      }
+
+      OntologyConceptBindingMigration.copyConceptBindingsToRows(
+          handle, connectionType(dialect), TABLES::get);
+
+      assertEquals(
+          Map.of(key(ORDER, EVENTS), new Row("topic", "hash-events", JsonUtils.readTree("[]"))),
+          rows(handle, dialect));
+      assertEquals(3, documentCount(handle), "legacy documents remain available for recovery");
+      assertEquals(
+          3,
+          JsonUtils.readTree(
+                  handle
+                      .createQuery("SELECT json FROM entity_extension WHERE id = :id")
+                      .bind("id", CUSTOMER.toString())
+                      .mapTo(String.class)
+                      .one())
+              .get("revision")
+              .asInt());
+    }
+  }
+
   private static void createTables(Handle handle, String dialect) {
     String json = POSTGRES_DIALECT.equals(dialect) ? "JSONB" : "JSON";
     handle.execute("DROP TABLE IF EXISTS entity_extension");
