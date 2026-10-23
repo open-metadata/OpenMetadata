@@ -100,9 +100,11 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   // width, so a long label ("Active access requests") takes the room it needs
   // instead of wrapping, and a narrow pane wraps whole tiles, never words. The
   // tiles always fill the row, so no empty cell shows the separator colour.
+  // In dark the subtle rule vanishes against the lifted tiles, so the gaps and
+  // the top edge take the stronger rule.
   return (
     <Box
-      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary"
+      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary tw:dark:border-primary tw:dark:bg-border-primary"
       data-testid={`${testIdPrefix}-tiles`}>
       {tiles.map((tile) => {
         const label = (

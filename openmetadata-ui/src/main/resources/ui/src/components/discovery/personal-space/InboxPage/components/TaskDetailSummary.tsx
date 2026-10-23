@@ -177,7 +177,7 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
 
     {callout && (
       <Box
-        className="tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3"
+        className="tw:rounded-xl tw:border tw:border-l-2 tw:border-secondary tw:border-l-utility-brand-300 tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
         data-testid="task-detail-callout"
         direction="col"
         gap={1}>
