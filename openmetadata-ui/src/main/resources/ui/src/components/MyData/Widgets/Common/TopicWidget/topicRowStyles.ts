@@ -56,8 +56,11 @@ export const TOPIC_ROW_OWNER_NAME_CLASSES =
 // stood out on the row's hover tint. Flex the spans so the disc hugs the
 // avatar, and give it the row's hover tint so the cut still matches. The "+N"
 // trigger is sized by the line height the same way, so it is flexed too or it
-// sits below the avatars.
+// sits below the avatars. Dark's hover tint is translucent, which cannot cut the
+// overlap (the translucent avatars behind would show through), so there the
+// disc keeps the opaque card surface.
 export const TOPIC_ROW_AVATAR_BACKING_CLASSES =
   'tw:[&_[data-testid=avatar-group-item]]:flex tw:[&_[data-testid=avatar-group-item]_span]:flex ' +
   'tw:[&_[data-testid=avatar-group-overflow]]:flex ' +
-  'tw:group-hover:[&_[data-testid=avatar-group-item]]:bg-primary_hover';
+  'tw:group-hover:[&_[data-testid=avatar-group-item]]:bg-primary_hover ' +
+  'tw:dark:group-hover:[&_[data-testid=avatar-group-item]]:bg-surface';
