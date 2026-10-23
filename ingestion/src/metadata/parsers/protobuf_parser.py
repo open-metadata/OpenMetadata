@@ -105,14 +105,12 @@ class ProtobufParser:
         """Compile the configured schema into a descriptor set."""
         interface_directory = working_directory / "interfaces"
         interface_directory.mkdir()
-        proto_file = interface_directory / PROTO_FILE_NAME
+        proto_file = interface_directory / self._root_file_name
         proto_file.write_text(self.config.schema_text, encoding="UTF-8")
         # Each imported file sits at its import name, so it keeps its own package.
         for import_name, dependency_text in self.config.dependencies.items():
             dependency_file = (interface_directory / import_name).resolve()
-            if dependency_file == proto_file.resolve() or not dependency_file.is_relative_to(
-                interface_directory.resolve()
-            ):
+            if not dependency_file.is_relative_to(interface_directory.resolve()):
                 raise ValueError(f"Invalid Protobuf import name: {import_name}")
             dependency_file.parent.mkdir(parents=True, exist_ok=True)
             dependency_file.write_text(dependency_text, encoding="UTF-8")
@@ -135,8 +133,15 @@ class ProtobufParser:
         descriptor_set.ParseFromString(descriptor_set_file.read_bytes())
         return descriptor_set
 
-    @staticmethod
-    def _get_file_descriptor(descriptor_set: descriptor_pb2.FileDescriptorSet) -> FileDescriptor:
+    @property
+    def _root_file_name(self) -> str:
+        """Name of the topic schema's own file, which must not be one of the files it imports."""
+        root_file_name = PROTO_FILE_NAME
+        while root_file_name in self.config.dependencies:
+            root_file_name = f"_{root_file_name}"
+        return root_file_name
+
+    def _get_file_descriptor(self, descriptor_set: descriptor_pb2.FileDescriptorSet) -> FileDescriptor:
         """Load the compiled schema into an isolated descriptor pool."""
         descriptor_protos = {descriptor.name: descriptor for descriptor in descriptor_set.file}
         descriptor_pool_ = descriptor_pool.DescriptorPool()
@@ -153,8 +158,8 @@ class ProtobufParser:
             descriptor_pool_.Add(descriptor)
             added_descriptors.add(descriptor_name)
 
-        add_descriptor(PROTO_FILE_NAME)
-        return descriptor_pool_.FindFileByName(PROTO_FILE_NAME)
+        add_descriptor(self._root_file_name)
+        return descriptor_pool_.FindFileByName(self._root_file_name)
 
     def get_message_descriptor(self, file_descriptor: FileDescriptor) -> Descriptor | None:
         """Select the root message represented by the topic schema."""

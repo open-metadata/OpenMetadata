@@ -238,7 +238,7 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         dependencies: dict[str, str] = {}
         self._collect_protobuf_references(schema, dependencies)
         return ProtobufSchema(
-            text=clean_protobuf_schema(schema.schema_str, dependencies),
+            text=clean_protobuf_schema(schema.schema_str or "", dependencies),
             dependencies=tuple(
                 (name, clean_protobuf_schema(text, dependencies)) for name, text in dependencies.items()
             ),
@@ -247,13 +247,13 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
     def _collect_protobuf_references(self, schema: Schema, dependencies: dict[str, str]) -> None:
         """Add the text of each file `schema` imports, and of theirs, to `dependencies` by import name."""
         for reference in schema.references or []:
-            if reference.name in dependencies:
+            if not reference.name or reference.name in dependencies:
                 continue
             if reference.subject and reference.version is not None:
                 registered = self.schema_registry_client.get_version(reference.subject, reference.version)
             else:
                 registered = self.schema_registry_client.get_latest_version(reference.name)
-            dependencies[reference.name] = registered.schema.schema_str
+            dependencies[reference.name] = registered.schema.schema_str or ""
             self._collect_protobuf_references(registered.schema, dependencies)
 
     def _parse_topic_metadata(self, topic_name: str) -> Schema | None:

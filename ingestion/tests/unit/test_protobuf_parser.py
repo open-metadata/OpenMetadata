@@ -409,13 +409,28 @@ def test_parse_compiles_a_dependency_from_another_package(tmp_path):
     assert [child.name.root for child in fields[0].children[0].children] == ["units"]
 
 
-@pytest.mark.parametrize("import_name", ["../escape.proto", "schema.proto"])
-def test_dependency_cannot_leave_or_replace_the_schema_file(tmp_path, import_name):
+def test_parse_compiles_a_dependency_named_like_the_schema_file(tmp_path):
+    parser = ProtobufParser(
+        ProtobufParserConfig(
+            schema_name="loan",
+            schema_text='syntax = "proto3";\nimport "schema.proto";\nmessage Loan { Money amount = 1; }',
+            dependencies={"schema.proto": 'syntax = "proto3";\nmessage Money { int64 units = 1; }'},
+            base_file_path=str(tmp_path),
+        )
+    )
+
+    fields = parser.parse_protobuf_schema()
+
+    assert fields[0].name.root == "Loan"
+    assert [child.name.root for child in fields[0].children[0].children] == ["units"]
+
+
+def test_dependency_cannot_leave_the_schema_directory(tmp_path):
     parser = ProtobufParser(
         ProtobufParserConfig(
             schema_name="loan",
             schema_text='syntax = "proto3";\nmessage Loan { string id = 1; }',
-            dependencies={import_name: 'syntax = "proto3";'},
+            dependencies={"../escape.proto": 'syntax = "proto3";'},
             base_file_path=str(tmp_path),
         )
     )
