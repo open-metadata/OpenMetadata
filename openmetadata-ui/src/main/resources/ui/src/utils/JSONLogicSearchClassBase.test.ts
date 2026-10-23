@@ -372,6 +372,17 @@ describe('JSONLogicSearchClassBase', () => {
       );
     });
 
+    it('lets a status rule ask whether a stage is set', () => {
+      const config = jsonLogicSearchClassBase.getCommonConfig([
+        SearchIndex.TABLE,
+      ]);
+      const field = config[EntityReferenceFields.ENTITY_STATUS];
+
+      expect('operators' in field ? field.operators : []).toEqual(
+        expect.arrayContaining(['is_null', 'is_not_null'])
+      );
+    });
+
     it.each(['Superseded', 'Invalidated'])(
       'does not offer %s when filtering tables',
       async (status) => {

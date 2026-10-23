@@ -319,7 +319,7 @@ const UpdateDescription = () => {
                     />
                     <Box data-testid="cta-buttons" gap={4} justify="end">
                       <Button
-                        color="link-gray"
+                        color="secondary"
                         data-testid="cancel-btn"
                         onPress={back}>
                         {t('label.back')}

@@ -32,11 +32,11 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -125,7 +125,7 @@ const renderDatabasePageGuard = ({
   t: TFunction;
 }): JSX.Element | null => {
   if (permissionsLoading || databaseLoading || loading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (isError) {
@@ -749,7 +749,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!database) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (
