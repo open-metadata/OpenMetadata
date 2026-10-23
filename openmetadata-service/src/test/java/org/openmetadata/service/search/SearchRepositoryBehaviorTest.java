@@ -3162,10 +3162,11 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void propagateToRelatedEntitiesUpdatesGlossaryTagFqnsAndDisplayNames() {
-    EntityInterface<?> glossaryTerm =
-        mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Revenue");
+  @SuppressWarnings("unchecked")
+  void propagateToRelatedEntitiesRelabelsGlossaryTermCopiesWithoutPrefixRewrite() {
+    EntityInterface<?> glossaryTerm = mockEntity(Entity.GLOSSARY_TERM, UUID.randomUUID(), "Income");
     when(glossaryTerm.getFullyQualifiedName()).thenReturn("BusinessGlossary.Income");
+    when(glossaryTerm.getDisplayName()).thenReturn("Income Display");
 
     ChangeDescription changeDescription =
         changeDescription(
@@ -3184,19 +3185,20 @@ class SearchRepositoryBehaviorTest {
     repository.propagateToRelatedEntities(
         Entity.GLOSSARY_TERM, changeDescription, TABLE_MAPPING, glossaryTerm);
 
-    verify(searchClient)
-        .updateByFqnPrefix(
-            SearchClient.GLOBAL_SEARCH_ALIAS,
-            "BusinessGlossary.Revenue",
-            "BusinessGlossary.Income",
-            "tags.tagFQN");
+    // The term's updater rewrites the tag FQNs on assets; the prefix script that used to run here
+    // also substring-replaced the assets' own FQNs.
+    verify(searchClient, never()).updateByFqnPrefix(any(), any(), any(), any());
+    ArgumentCaptor<Pair<String, Map<String, Object>>> update = ArgumentCaptor.forClass(Pair.class);
     verify(searchClient)
         .updateChildren(
             eq(SearchClient.GLOBAL_SEARCH_ALIAS),
             eq(
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     "tags.tagFQN", "BusinessGlossary.Income")),
-            any(Pair.class));
+            update.capture());
+    assertEquals(
+        Map.of(Entity.FIELD_DISPLAY_NAME, "Income Display"),
+        update.getValue().getValue().get("updates"));
   }
 
   @Test

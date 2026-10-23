@@ -3,16 +3,16 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
+import static org.openmetadata.it.util.SearchDocs.fieldValues;
+import static org.openmetadata.it.util.SearchDocs.tagFqns;
+import static org.openmetadata.it.util.SearchDocs.tagFqnsOf;
+import static org.openmetadata.it.util.SearchDocs.textValues;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
-import java.time.Duration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
-import java.util.function.Predicate;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
@@ -171,7 +170,7 @@ public class PutKeepsTagsInSearchIT {
             "mlmodel_search_index",
             model.getId(),
             written -> fieldValues(written.path("mlFeatures"), "name").contains(SOURCE_FIELD));
-    Set<String> featureTags = tagsOf(doc.path("mlFeatures"), "score");
+    Set<String> featureTags = tagFqnsOf(doc.path("mlFeatures"), "score");
     assertTrue(
         featureTags.contains(piiSensitive().getTagFQN()),
         "feature tag in the search doc: " + featureTags);
@@ -195,7 +194,7 @@ public class PutKeepsTagsInSearchIT {
             "search_entity_search_index",
             index.getId(),
             written -> fieldValues(written.path("fields"), "name").contains(SOURCE_FIELD));
-    Set<String> fieldTags = tagsOf(doc.path("fields"), "id");
+    Set<String> fieldTags = tagFqnsOf(doc.path("fields"), "id");
     assertTrue(
         fieldTags.contains(piiSensitive().getTagFQN()),
         "field tag in the search doc: " + fieldTags);
@@ -279,47 +278,9 @@ public class PutKeepsTagsInSearchIT {
     assertEquals(ApiStatus.SUCCESS, result.getStatus(), () -> JsonUtils.pojoToJson(result));
   }
 
-  private static JsonNode awaitDoc(String index, UUID id, Predicate<JsonNode> written) {
-    String docPath = "/v1/search/get/" + index + "/doc/" + id;
-    return Awaitility.await(index + " doc " + id + " after the re-run")
-        .pollInterval(Duration.ofMillis(500))
-        .atMost(Duration.ofSeconds(60))
-        .ignoreExceptionsInstanceOf(OpenMetadataException.class)
-        .until(
-            () ->
-                JsonUtils.readTree(
-                    SdkClients.adminClient()
-                        .getHttpClient()
-                        .executeForString(HttpMethod.GET, docPath, null)),
-            written);
-  }
-
   private static void assertHasTag(JsonNode doc, TagLabel tag, String what) {
-    Set<String> tagFqns = fieldValues(doc.path("tags"), "tagFQN");
+    Set<String> tagFqns = tagFqns(doc);
     assertTrue(tagFqns.contains(tag.getTagFQN()), what + " in the search doc: " + tagFqns);
-  }
-
-  private static Set<String> fieldValues(JsonNode array, String field) {
-    Set<String> values = new HashSet<>();
-    array.forEach(node -> values.add(node.path(field).asText()));
-    return values;
-  }
-
-  private static Set<String> tagsOf(JsonNode elements, String name) {
-    Set<String> tagFqns = new HashSet<>();
-    elements.forEach(
-        element -> {
-          if (name.equals(element.path("name").asText())) {
-            tagFqns.addAll(fieldValues(element.path("tags"), "tagFQN"));
-          }
-        });
-    return tagFqns;
-  }
-
-  private static Set<String> textValues(JsonNode array) {
-    Set<String> values = new HashSet<>();
-    array.forEach(node -> values.add(node.asText()));
-    return values;
   }
 
   private static CreateTopic topic(TestNamespace ns, MessagingService service, Field... fields) {

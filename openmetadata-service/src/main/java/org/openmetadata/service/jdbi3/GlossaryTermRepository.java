@@ -775,6 +775,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    // Term labels on assets carry a copy of the term's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     if (SettingsCache.isGlossaryTagPropagationEnabled()) {
       descriptors.add(
           new PropagationDescriptor(
@@ -2651,6 +2656,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     /**
@@ -2717,6 +2723,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateAssetIndexes(oldFqn, newFqn);
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     private void validateParent() {

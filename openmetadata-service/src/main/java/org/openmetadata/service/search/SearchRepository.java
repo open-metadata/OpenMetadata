@@ -3475,36 +3475,40 @@ public class SearchRepository {
             || entityType.equalsIgnoreCase(Entity.GLOSSARY_TERM)
             || entityType.equalsIgnoreCase(Entity.TAG))) {
 
-      // Update the assets associated with the tags/terms in classification/glossary
-      Map<String, Object> paramMap = new HashMap<>();
-      for (FieldChange field : changeDescription.getFieldsUpdated()) {
-        String parentFQN = FullyQualifiedName.getParentFQN(entity.getFullyQualifiedName());
-        String oldFQN;
-        String newFQN;
-
-        if (!nullOrEmpty(parentFQN)) {
-          oldFQN = FullyQualifiedName.add(parentFQN, field.getOldValue().toString());
-          newFQN = FullyQualifiedName.add(parentFQN, field.getNewValue().toString());
-        } else {
-          oldFQN = FullyQualifiedName.quoteName(field.getOldValue().toString());
-          newFQN = FullyQualifiedName.quoteName(field.getNewValue().toString());
-        }
-
-        if (FIELD_NAME.equals(field.getName())) {
-          searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
-        }
-
-        if (field.getName().equalsIgnoreCase(FIELD_DISPLAY_NAME)) {
-          Map<String, Object> updates = new HashMap<>();
-          updates.put("displayName", field.getNewValue().toString());
-          paramMap.put("tagFQN", entity.getFullyQualifiedName());
-          paramMap.put("updates", updates);
-          searchClient.updateChildren(
-              GLOBAL_SEARCH_ALIAS,
-              new ImmutablePair<>(TAGS_FQN, entity.getFullyQualifiedName()),
-              new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
-        }
+      // Renames and moves rewrite the assets' tag FQNs inline in each repository's updater, with a
+      // boundary-safe script; only the label fields copied onto the assets are refreshed here.
+      Set<String> changedFields = getChangedFieldNames(changeDescription);
+      Map<String, Object> updates = new HashMap<>();
+      List<String> removes = new ArrayList<>();
+      if (changedFields.contains(FIELD_DISPLAY_NAME)) {
+        putOrRemove(updates, removes, FIELD_DISPLAY_NAME, entity.getDisplayName());
       }
+      if (changedFields.contains(FIELD_STYLE)) {
+        putOrRemove(
+            updates,
+            removes,
+            FIELD_STYLE,
+            entity.getStyle() == null ? null : JsonUtils.getMap(entity.getStyle()));
+      }
+      if (!updates.isEmpty() || !removes.isEmpty()) {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("tagFQN", entity.getFullyQualifiedName());
+        paramMap.put("updates", updates);
+        paramMap.put("removes", removes);
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>(TAGS_FQN, entity.getFullyQualifiedName()),
+            new ImmutablePair<>(UPDATE_TAGS_FIELD_SCRIPT, paramMap));
+      }
+    }
+  }
+
+  private static void putOrRemove(
+      Map<String, Object> updates, List<String> removes, String field, Object value) {
+    if (value == null || (value instanceof String text && text.isEmpty())) {
+      removes.add(field);
+    } else {
+      updates.put(field, value);
     }
   }
 
