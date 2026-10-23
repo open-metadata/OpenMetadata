@@ -45,6 +45,7 @@ import {
   TOPIC_FILTERED_BODY_CLASSES,
   TOPIC_FILTERED_LIST_CLASSES,
   TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
   TOPIC_ROW_STRETCHED_LINK_CLASSES,
   TOPIC_ROW_TILE_CLASSES,
 } from '../Common/TopicWidget/topicRowStyles';
@@ -249,15 +250,16 @@ const DataProductsOverviewWidget: React.FC<DataProductsOverviewWidgetProps> = ({
 
           <ul
             className={classNames(
-              'tw:flex tw:flex-col tw:divide-y tw:divide-secondary',
+              'tw:flex tw:flex-col',
               TOPIC_FILTERED_LIST_CLASSES
             )}
             data-testid="data-product-rows">
             {visibleProducts.map((product) => (
               <li
                 className={classNames(
-                  'tw:relative tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
-                  TOPIC_ROW_CLASSES
+                  'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
                 )}
                 data-testid={`data-product-card-${product.id}`}
                 key={product.id}>

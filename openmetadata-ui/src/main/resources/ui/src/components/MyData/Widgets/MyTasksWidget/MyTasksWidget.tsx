@@ -198,7 +198,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
           />
 
           <ul
-            className="tw:flex tw:flex-col tw:gap-1 tw:py-1"
+            className="tw:mt-1 tw:flex tw:flex-col tw:gap-1 tw:py-1"
             data-testid="my-task-rows">
             {visibleTasks.map((task) => (
               <MyTaskRow
