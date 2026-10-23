@@ -53,6 +53,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.events.ChangeEvents;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -1405,13 +1406,21 @@ public class TaskWorkflowHandler {
       return;
     }
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    taskRepository.recordReviewVote(
-        taskId,
-        user,
-        isPositiveResolution(resolutionType)
-            ? TaskReviewVoteDecision.Approved
-            : TaskReviewVoteDecision.Rejected,
-        comment);
+    try {
+      taskRepository.recordReviewVote(
+          taskId,
+          user,
+          isPositiveResolution(resolutionType)
+              ? TaskReviewVoteDecision.Approved
+              : TaskReviewVoteDecision.Rejected,
+          comment);
+    } catch (PreconditionFailedException conflict) {
+      LOG.warn(
+          "[TaskWorkflowHandler] Vote by '{}' on task '{}' counted but was not recorded; the decision records it: {}",
+          user,
+          taskId,
+          conflict.getMessage());
+    }
   }
 
   /**

@@ -354,7 +354,7 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
     Ontology ontology = createOntology(ns);
     OntologyRelease release = capture(ontology, state(ontology).getWorkingRevision());
     Task task = submit(ns, "ontologyRelease", release.getFullyQualifiedName());
-    OpenMetadataException refused =
+    OpenMetadataException wrapped =
         assertThrows(
             OpenMetadataException.class,
             () ->
@@ -364,6 +364,8 @@ public class IndependentOntologyReleaseIT extends BaseOntologyApprovalIT {
                         ontology.getId(),
                         ontology.withReviewers(
                             List.of(SharedEntities.get().USER2.getEntityReference()))));
+    OpenMetadataException refused =
+        wrapped.getCause() instanceof OpenMetadataException cause ? cause : wrapped;
     assertEquals(409, refused.getStatusCode());
     assertTrue(
         refused

@@ -145,9 +145,11 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
         reviewedOntology(ns, OntologyApprovalRule.AllReviewers, requester, user1(), user2());
     OntologyRelease release = capture(ontology);
     Task task = submit(ns, RELEASE, release.getFullyQualifiedName());
+    Task withReviewers =
+        SdkClients.adminClient().tasks().get(task.getId().toString(), "assignees,reviewers");
 
-    assertEquals(Set.of(user1().getId(), user2().getId()), ids(task.getAssignees()));
-    assertEquals(Set.of(user1().getId(), user2().getId()), ids(task.getReviewers()));
+    assertEquals(Set.of(user1().getId(), user2().getId()), ids(withReviewers.getAssignees()));
+    assertEquals(Set.of(user1().getId(), user2().getId()), ids(withReviewers.getReviewers()));
     assertEquals(0, listed(SdkClients.adminClient(), "pending", release));
 
     vote(SdkClients.user1Client(), task, TaskResolutionType.Approved, LOOKS_RIGHT);
@@ -190,15 +192,17 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
             + " is in review";
 
     OpenMetadataException reviewers =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> updateReviewers(ontology, List.of(user1(), user2())));
+        httpError(
+            assertThrows(
+                OpenMetadataException.class,
+                () -> updateReviewers(ontology, List.of(user1(), user2()))));
     assertEquals(409, reviewers.getStatusCode());
     assertTrue(reviewers.getMessage().contains(locked), reviewers.getMessage());
     OpenMetadataException rule =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> updateRule(ontology, OntologyApprovalRule.AllReviewers));
+        httpError(
+            assertThrows(
+                OpenMetadataException.class,
+                () -> updateRule(ontology, OntologyApprovalRule.AllReviewers)));
     assertEquals(409, rule.getStatusCode());
     assertTrue(rule.getMessage().contains(locked), rule.getMessage());
     assertEquals(Set.of(user1().getId()), ids(current(ontology).getReviewers()));
@@ -311,6 +315,11 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
                 .withExpectedWorkingRevision(state.getWorkingRevision())
                 .withExpectedLatestReleaseRevision(state.getLastReleaseRevision())
                 .withVersionBump(CaptureOntologyRelease.VersionBump.fromValue("minor")));
+  }
+
+  /** The SDK wraps a refused update; the HTTP status and message sit on the cause. */
+  private static OpenMetadataException httpError(OpenMetadataException wrapped) {
+    return wrapped.getCause() instanceof OpenMetadataException cause ? cause : wrapped;
   }
 
   private static Ontology updateReviewers(Ontology ontology, List<EntityReference> reviewers) {

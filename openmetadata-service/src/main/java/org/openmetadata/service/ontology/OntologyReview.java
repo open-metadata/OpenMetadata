@@ -39,6 +39,8 @@ public final class OntologyReview {
   /**
    * The reviewer entries that can vote on this release: the author and the requester cannot, so
    * their own user entries are left out. A team entry stays, because its other members can vote.
+   * The release inherits its reviewers from the ontology, and the entity updater drops an inherited
+   * reference from a reviewer list on the task's first update, so the task gets plain copies.
    */
   public static List<EntityReference> eligibleReviewers(
       final OntologyRelease entity, final Task task) {
@@ -49,6 +51,7 @@ public final class OntologyReview {
                 !Entity.USER.equals(reviewer.getType())
                     || (!Objects.equals(reviewer.getName(), entity.getReviewAuthor())
                         && !sameUser(reviewer, requester)))
+        .map(reviewer -> JsonUtils.deepCopy(reviewer, EntityReference.class).withInherited(null))
         .toList();
   }
 

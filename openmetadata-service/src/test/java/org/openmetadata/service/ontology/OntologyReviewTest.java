@@ -3,6 +3,7 @@ package org.openmetadata.service.ontology;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URI;
@@ -18,6 +19,23 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 
 class OntologyReviewTest {
+  @Test
+  void eligibleReviewersAreTheTasksOwnReferencesNotTheReleasesInheritedOnes() {
+    EntityReference inherited =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("user")
+            .withName("alice")
+            .withInherited(true);
+    OntologyRelease release = ontology().withReviewers(List.of(inherited));
+
+    List<EntityReference> eligible = OntologyReview.eligibleReviewers(release, new Task());
+
+    assertEquals(inherited.getId(), eligible.getFirst().getId());
+    assertNull(eligible.getFirst().getInherited());
+    assertEquals(Boolean.TRUE, release.getReviewers().getFirst().getInherited());
+  }
+
   @Test
   void eligibleReviewersLeaveOutTheAuthorAndTheRequesterButKeepTeams() {
     UUID requesterId = UUID.randomUUID();
