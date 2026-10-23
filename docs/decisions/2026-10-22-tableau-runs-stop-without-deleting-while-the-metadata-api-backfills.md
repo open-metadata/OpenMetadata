@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-22 (initial)
 - **Deciders:** harshsoni2024
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_tableau_backfill.py`, `ingestion/tests/integration/tableau/test_backfill.py`
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_tableau_backfill.py`
 - **Related:** [#16038](https://github.com/open-metadata/OpenMetadata/issues/16038)
 
 ## Context
