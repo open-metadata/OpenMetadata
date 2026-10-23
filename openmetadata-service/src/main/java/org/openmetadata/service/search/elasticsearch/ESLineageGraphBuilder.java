@@ -1425,6 +1425,15 @@ public class ESLineageGraphBuilder
       addLineageEdges(result, document, request, allCollectedFqns);
     }
 
+    // The root is excluded from the page window above, but its document still
+    // holds the lineage edges connecting it to its neighbours (e.g. upstream
+    // parents → root for UPSTREAM). Process those edges so the graph stays
+    // connected on every page, not just the first.
+    EntityData rootEntity = allEntitiesUpToDepth.get(request.getFqn());
+    if (rootEntity != null) {
+      addLineageEdges(result, rootEntity.document, request, allCollectedFqns);
+    }
+
     Map<Integer, Integer> depthCounts = new LinkedHashMap<>();
     for (EntityData entityData : allEntitiesUpToDepthList) {
       if (entityData.depth > 0) {

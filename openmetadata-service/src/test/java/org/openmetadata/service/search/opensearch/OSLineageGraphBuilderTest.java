@@ -1048,6 +1048,12 @@ class OSLineageGraphBuilderTest {
       assertTrue(result.getNodes().containsKey(up1));
       assertTrue(result.getNodes().containsKey(up2));
       assertEquals(3, result.getNodes().size());
+      // The root is excluded from the page window, but its upstream edges
+      // (up1 → root, up2 → root) must still be present — they live in the
+      // root's document, not the parents' documents.
+      assertTrue(result.getUpstreamEdges().containsKey(up1 + "->" + ROOT_FQN));
+      assertTrue(result.getUpstreamEdges().containsKey(up2 + "->" + ROOT_FQN));
+      assertTrue(result.getDownstreamEdges().isEmpty());
     }
   }
 
