@@ -224,9 +224,9 @@ class AlationSinkClient:
             logger.debug(traceback.format_exc())
             errors = [str(exc)]
         if errors:
-            logger.error(f"Failed to write entities for [{route}] {entity_names}: {errors}")
+            logger.error("Failed to write entities for [%s] %s: %s", route, entity_names, errors)
         else:
-            logger.info(f"Successfully wrote entities for [{route}]: {entity_names}")
+            logger.info("Successfully wrote entities for [%s]: %s", route, entity_names)
         return errors
 
     def _wait_for_job(self, job_id: int) -> list[str]:
