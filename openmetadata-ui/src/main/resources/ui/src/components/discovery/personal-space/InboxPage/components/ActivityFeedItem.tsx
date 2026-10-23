@@ -90,17 +90,12 @@ import {
 import { createThreadReply, useActivityReplies } from '../useActivityReplies';
 import { writeInboxReactions } from '../useInboxActivity';
 import ActivityChangePanel from './ActivityChangePanel';
+import {
+  ACTIVITY_CARD_CLASS,
+  ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+} from './ActivityFeedItem.constants';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
-
-// The core Card's surface and hover. Its hover tint is translucent in dark,
-// so it is laid over the surface, not swapped in for it: swapped, the page
-// shows through and the card darkens instead of lifting.
-const CARD_CLASS = classNames(
-  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
-  'tw:transition-colors tw:hover:border-primary',
-  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
-);
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -511,7 +506,7 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
 
   return (
     <Box
-      className={CARD_CLASS}
+      className={ACTIVITY_CARD_CLASS}
       data-testid="activity-feed-item"
       direction="col"
       gap={4}>
@@ -600,7 +595,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               className={classNames(
                 INBOX_MESSAGE_CLASS,
                 INBOX_RECESSED_SURFACE_CLASS,
-                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
+                ACTIVITY_CARD_MESSAGE_HOVER_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm tw:transition-colors'
               )}
               markdown={message}
             />
