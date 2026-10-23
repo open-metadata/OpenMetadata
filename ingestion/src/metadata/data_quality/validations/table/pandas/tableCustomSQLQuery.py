@@ -51,7 +51,8 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, PandasValid
             (param.value for param in self.test_case.parameterValues if param.name == "partitionExpression"),
             None,
         )
-        if partition_expression is not None and not is_safe_pandas_query(partition_expression):
+        # An empty partition expression means "no filter", as before the gate
+        if partition_expression and not is_safe_pandas_query(partition_expression):
             raise RuntimeError(f"Unsafe pandas query expression\n\n{partition_expression}")
         for dataframe in self.runner:
             if dataframe is not None:

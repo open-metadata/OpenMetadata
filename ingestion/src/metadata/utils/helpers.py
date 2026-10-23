@@ -17,11 +17,13 @@ from __future__ import annotations
 
 import ast
 import hashlib
+import io
 import itertools
 import pprint
 import re
 import shutil
 import sys
+import tokenize
 from collections.abc import Iterable  # noqa: TC003
 from datetime import datetime, timedelta, timezone
 from math import floor, log
@@ -531,6 +533,33 @@ def is_safe_sql_query(sql_query: str) -> bool:
     return True
 
 
+def _blank_backtick_identifiers(query_expression: str) -> str:
+    """Replace backtick-quoted column identifiers with ``col`` for the AST pass.
+
+    Tokenizer-based rather than a regex on purpose: backticks inside string
+    literals (``'`' == a.to_csv(...)``) are STRING tokens and must not be treated
+    as identifier delimiters, or the AST check reads a different expression than
+    ``DataFrame.query()`` will.
+    """
+    blanked: list[str] = []
+    in_identifier = False
+    for token in tokenize.generate_tokens(io.StringIO(query_expression).readline):
+        if in_identifier:
+            # Everything between the delimiters is the identifier; drop it.
+            if token.type == tokenize.ERRORTOKEN and token.string == "`":
+                in_identifier = False
+            continue
+        if token.type == tokenize.ERRORTOKEN and token.string == "`":
+            blanked.append(" col ")
+            in_identifier = True
+            continue
+        blanked.append(token.string)
+        blanked.append(" ")
+    if in_identifier:
+        raise SyntaxError("unterminated backtick-quoted identifier")
+    return "".join(blanked).strip()
+
+
 def is_safe_pandas_query(query_expression: str | None) -> bool:
     """Validate a pandas ``DataFrame.query()`` expression.
 
@@ -584,11 +613,12 @@ def is_safe_pandas_query(query_expression: str | None) -> bool:
         ast.RShift,
     )
 
-    # Blank backtick-quoted column identifiers so unusual names do not fail the parse.
-    sanitized = re.sub(r"`[^`]*`", "col", query_expression)
+    # Blank backtick-quoted column identifiers (tokenizer-aware: backticks inside
+    # string literals are not identifier delimiters) so unusual names do not fail the parse.
     try:
+        sanitized = _blank_backtick_identifiers(query_expression)
         tree = ast.parse(sanitized, mode="eval")
-    except SyntaxError:
+    except (SyntaxError, tokenize.TokenError):
         return False
     return all(isinstance(node, allowed_nodes) for node in ast.walk(tree))
 

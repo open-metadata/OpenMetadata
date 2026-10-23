@@ -33,6 +33,8 @@ UNSAFE_EXPRESSIONS = [
     "(a > 0) or (a.values.tofile('/tmp/h4_pwned'))",
     "`name`.str.len() > 3",
     "a @ b",
+    # backticks inside string literals must not hide a call from the AST pass
+    "a > 0 or '`' == a.to_csv('/tmp/h4_pwned_bt', index=False) == '`'",
 ]
 
 
@@ -77,6 +79,11 @@ class TestTableCustomSQLQueryGate:
         validator = build_validator(TableCustomSQLQueryValidator, partition_param("a > 1"))
         assert validator.compute_row_count() == 2
 
+    def test_empty_partition_expression_is_still_no_filter(self):
+        # An empty string previously meant "no filter"; the gate must not change that
+        validator = build_validator(TableCustomSQLQueryValidator, partition_param(""))
+        assert validator.compute_row_count() == 3
+
 
 class TestRuleLibraryGates:
     def test_table_validator_rejects_unsafe_expression(self):
@@ -113,10 +120,16 @@ class TestTableRowInsertedCountGate:
 
 
 class TestProfilerCustomMetricGate:
-    def test_unsafe_expression_is_not_executed(self):
+    def test_unsafe_expression_is_not_executed(self, tmp_path):
+        # Payloads that would leave a marker file if query() ran them; the result
+        # alone is not sufficient, since an exception after execution also returns None
         profiler = PandasProfilerInterface.__new__(PandasProfilerInterface)
-        metrics = [CustomMetric(name=f"m{i}", expression=e) for i, e in enumerate(UNSAFE_EXPRESSIONS)]
-        assert profiler._compute_custom_metrics(metrics, lambda: [DataFrame({"a": [1, 2, 3]})]) is None
+        payloads = [f"a > 0 and a.to_csv('{tmp_path / f'p{i}'}', index=False)" for i in range(3)]
+        payloads.append(f"a > 0 or '`' == a.to_csv('{tmp_path / 'p_smuggled'}', index=False) == '`'")
+        metrics = [CustomMetric(name=f"m{i}", expression=e) for i, e in enumerate(payloads)]
+        df = DataFrame({"a": [1, 2, 3]})
+        assert profiler._compute_custom_metrics(metrics, lambda: [df]) is None
+        assert list(tmp_path.iterdir()) == []
 
     def test_safe_expression_is_still_profiled(self):
         profiler = PandasProfilerInterface.__new__(PandasProfilerInterface)
