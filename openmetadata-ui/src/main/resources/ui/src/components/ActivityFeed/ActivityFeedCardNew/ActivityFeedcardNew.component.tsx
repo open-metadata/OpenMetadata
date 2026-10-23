@@ -314,7 +314,6 @@ const ActivityFeedCardNew = ({
                   className={classNames('text-sm header-link', {
                     // Ellipsis, not a word-wrapped one-line clamp: in a narrow
                     // card the clamp showed only the start of the first word.
-                    // nowrap! beats the unlayered `.header-link` white-space.
                     'tw:block tw:min-w-0 tw:truncate': !isPanelLayout,
                     'tw:min-w-0 tw:wrap-break-word': isPanelLayout,
                   })}
