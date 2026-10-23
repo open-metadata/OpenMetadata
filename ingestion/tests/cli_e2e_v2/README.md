@@ -430,10 +430,11 @@ profiler's ORM type map, so it fell back to `CustomTypes.UNDETERMINED` and its s
 persisted as the literal `OPENMETADATA_UNDETERMIND[<root/>]` instead of the document. `XML`
 now maps to `TEXT`, like every other textual type, for every connector that has one.
 
-**Not yet wired into CI.** `mssql` is deliberately absent from `py-cli-e2e-tests-v2.yml`'s dispatch
-default, matrix default and `Validate connector` allowlist, and from `meta/test_ci_workflow.py`'s
-connector lists: editing a workflow needs maintainer authorization. Until those four lists include it,
-run the suite locally with the command above; the stability window cannot start before it is scheduled.
+**Wired into CI.** `mssql` is in `py-cli-e2e-tests-v2.yml`'s dispatch default, matrix default and
+`Validate connector` allowlist, and in `meta/test_ci_workflow.py`'s connector lists. It runs in the
+generic `Run CLI E2E v2 tests` step, like Oracle and Postgres, because the suite owns its source
+through testcontainers and needs no secrets. The workflow is `workflow_dispatch` only, so the suite
+runs when it is dispatched rather than on every PR; the command above still runs it locally.
 
 Remove the v1 MSSQL test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has passed
 for the agreed stability window.
