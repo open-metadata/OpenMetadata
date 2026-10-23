@@ -664,8 +664,6 @@ test.describe('Large Table Column Search & Copy Link', () => {
     },
   });
 
-  const largeTable = new TableClass();
-  const largeTableName = `large_table_${uuid()}`;
   const targetColumnName = 'test_col_071';
   type TableColumn = NonNullable<
     Parameters<TableClass['createAdditionalTable']>[0]['columns']
@@ -674,6 +672,10 @@ test.describe('Large Table Column Search & Copy Link', () => {
   let createdTable: Record<string, ColumnDataType | string | number>;
 
   test.beforeAll('Setup large table', async ({ browser }) => {
+    // beforeAll runs once per group of this describe's tests, so two groups on
+    // one worker reuse module state; a fresh table and name per run avoids 409.
+    const largeTable = new TableClass();
+    const largeTableName = `large_table_${uuid()}`;
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create base hierarchy (service, db, schema) - assuming create() does this
