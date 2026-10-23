@@ -93,14 +93,20 @@ import ActivityChangePanel from './ActivityChangePanel';
 import ActivityThread from './ActivityThread';
 import AuthorPopover from './AuthorPopover';
 
-// The core Card's surface and hover. Its hover tint is translucent in dark,
-// so it is laid over the surface, not swapped in for it: swapped, the page
-// shows through and the card darkens instead of lifting.
+// The core Card's surface and hover. In light a hovered card turns gray-blue
+// and its message lifts to white (MESSAGE_HOVER_CLASS). In dark the hover tint
+// is translucent, so it is laid over the surface, not swapped in for it:
+// swapped, the page shows through and the card darkens instead of lifting.
 const CARD_CLASS = classNames(
-  'tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
-  'tw:transition-colors tw:hover:border-primary',
-  'tw:hover:bg-[linear-gradient(var(--om-color-bg-primary-hover),var(--om-color-bg-primary-hover))]'
+  'tw:group/activity-card tw:rounded-xl tw:border tw:border-subtle tw:bg-surface tw:pb-4 tw:shadow-xs',
+  'tw:transition-colors tw:hover:border-primary tw:hover:bg-utility-gray-blue-50',
+  'tw:dark:hover:bg-surface tw:dark:hover:bg-[linear-gradient(var(--tw-background-color-primary_hover),var(--tw-background-color-primary_hover))]'
 );
+
+// A message on a hovered card: white against the card's gray-blue in light;
+// dark keeps its well.
+const MESSAGE_HOVER_CLASS =
+  'tw:group-hover/activity-card:bg-surface tw:dark:group-hover/activity-card:bg-primary';
 
 // Repliers shown on the collapsed thread toggle.
 const MAX_REPLY_FACES = 3;
@@ -600,7 +606,8 @@ const ActivityFeedItem: React.FC<ActivityFeedItemProps> = ({
               className={classNames(
                 INBOX_MESSAGE_CLASS,
                 INBOX_RECESSED_SURFACE_CLASS,
-                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm'
+                MESSAGE_HOVER_CLASS,
+                'tw:rounded-lg tw:px-3.5 tw:py-3 tw:text-sm tw:transition-colors'
               )}
               markdown={message}
             />

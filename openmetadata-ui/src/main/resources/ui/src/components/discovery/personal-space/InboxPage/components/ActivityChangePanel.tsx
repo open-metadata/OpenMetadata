@@ -139,8 +139,10 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
   const showAfter = after.length > 0 || unchanged.length > 0;
 
   return (
+    // On a hovered activity card (light) the panel keeps its white, so its
+    // Before stays distinct from the card's gray-blue.
     <Box
-      className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
+      className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:group-hover/activity-card:bg-surface tw:dark:group-hover/activity-card:bg-transparent"
       data-testid="activity-change-panel"
       direction="col">
       <ChangeHeader
