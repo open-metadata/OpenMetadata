@@ -161,7 +161,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   void deletingOneSideAttributesPartnerCleanupToTheDeleter(boolean hardDelete, TestNamespace ns) {
-    final String name = ns.prefix("inverseDeleter");
+    final String name = ns.shortPrefix("inverseDeleter");
     final var deleter =
         ns.trackRoot(
             "user",
