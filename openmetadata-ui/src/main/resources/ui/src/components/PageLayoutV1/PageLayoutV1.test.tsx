@@ -210,7 +210,7 @@ describe('PageLayoutV1', () => {
 
     const hasClasses = Array.from(container.querySelectorAll('[class]'))
       .flatMap((element) => Array.from(element.classList))
-      .filter((name) => /(^|:)has-\[/.test(name));
+      .filter((name) => /has-\[|:has\(/.test(name));
 
     expect(hasClasses).toEqual([]);
   });
