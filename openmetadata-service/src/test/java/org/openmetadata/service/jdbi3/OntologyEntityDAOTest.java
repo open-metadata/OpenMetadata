@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
@@ -986,6 +987,35 @@ class OntologyEntityDAOTest {
         .withPropertyChain(null)
         .withCharacteristics(null)
         .withDisjointWith(List.of(NAMESPACE.resolve("annotation")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withKind(OntologyPropertyKind.DATA).withDisjointWith(null);
+    property.withEnumValues(List.of(new OntologyLiteral().withValue("Gold")));
+    assertEquals(
+        "An enumeration needs at least two allowed values",
+        assertThrows(BadRequestException.class, () -> repository.validateDefinition(property))
+            .getMessage());
+    property.withEnumValues(
+        List.of(new OntologyLiteral().withValue("Gold"), new OntologyLiteral().withValue("Gold")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(
+        List.of(
+            new OntologyLiteral().withValue("Gold"), new OntologyLiteral().withValue("Silver")));
+    assertDoesNotThrow(() -> repository.validateDefinition(property));
+    property.withEnumValues(
+        List.of(
+            new OntologyLiteral()
+                .withValue("invalid")
+                .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer"))));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(List.of(new OntologyLiteral()));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(List.of()).withUnit(" ");
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property
+        .withUnit(null)
+        .withDomain(List.of(NAMESPACE.resolve("same"), NAMESPACE.resolve("same")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withDomain(null).withReplacedBy(URI.create("relative"));
     assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
   }
 
