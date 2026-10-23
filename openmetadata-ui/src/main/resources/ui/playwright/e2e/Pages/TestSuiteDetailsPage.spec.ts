@@ -314,15 +314,16 @@ for (const { label, suitePathPrefix, openApp } of SUITE_SEARCH_APP_MODES) {
       await afterAction();
     });
 
-    test('finds a test case by a mixed-case part of its name', async ({
+    test('finds a test case by an upper-cased part of its name', async ({
       page,
     }) => {
       const suiteFqn =
         searchSuite.bundleTestSuiteResponseData.fullyQualifiedName ?? '';
       const [matchName, otherName] = testCaseNames;
-      // The trailing uuid is unique to this test case; flipping its case
-      // proves the search is case-insensitive.
-      const mixedCaseQuery = matchName.slice(-8).toUpperCase();
+      // `case_<uuid>`: the uuid makes it unique to this test case, and the
+      // `case` prefix guarantees letters, so upper-casing it always proves
+      // the search is case-insensitive (a uuid alone can be all digits).
+      const upperCaseQuery = matchName.slice(-13).toUpperCase();
 
       await test.step('Open the bundle suite', async () => {
         await openApp(page);
@@ -344,12 +345,12 @@ for (const { label, suitePathPrefix, openApp } of SUITE_SEARCH_APP_MODES) {
           return (
             responseUrl.pathname.includes(
               '/api/v1/dataQuality/testCases/search/list'
-            ) && responseUrl.searchParams.get('q') === mixedCaseQuery
+            ) && responseUrl.searchParams.get('q') === upperCaseQuery
           );
         });
         await page
           .getByTestId('test-suite-test-case-search')
-          .fill(mixedCaseQuery);
+          .fill(upperCaseQuery);
         await searchResponse;
 
         await expect(page.getByTestId(matchName)).toBeVisible();
