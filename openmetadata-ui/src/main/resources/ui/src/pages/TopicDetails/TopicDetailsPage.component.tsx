@@ -34,9 +34,9 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { useFqn } from '../../hooks/useFqn';
 import { QueryVote } from '../../interface/entity/vote.interface';
 import {
-  TOPIC_DEFAULT_FIELDS,
   topicQueryFn,
   topicQueryKey,
+  TOPIC_DEFAULT_FIELDS,
 } from '../../rest/queries/topicQuery';
 import {
   addFollower,

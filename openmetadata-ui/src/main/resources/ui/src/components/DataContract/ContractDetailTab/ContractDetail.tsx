@@ -44,8 +44,8 @@ import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-g
 import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
 import {
   ContractImportFormat,
-  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
   DataContractMode,
+  DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
