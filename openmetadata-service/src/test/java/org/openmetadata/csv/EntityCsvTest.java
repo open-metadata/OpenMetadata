@@ -19,6 +19,7 @@ import static org.openmetadata.csv.EntityCsv.ENTITY_UPDATED;
 import com.networknt.schema.Schema;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -120,6 +121,31 @@ public class EntityCsvTest {
     csvFile.withHeaders(CSV_HEADERS);
     String file = CsvUtil.formatCsv(csvFile);
     assertEquals(HEADER_STRING, file);
+  }
+
+  @Test
+  void test_exportNeutralizesFormulaCellsAndImportRestoresThem() throws IOException {
+    List<String> values =
+        List.of("=HYPERLINK(\"http://x\",\"y\")", "+1", "-2", "@SUM(A1)", "\tx", "\rx", "safe");
+    List<List<String>> records = new ArrayList<>();
+    for (String value : values) {
+      records.add(List.of(value, "", ""));
+    }
+    String exported =
+        CsvUtil.formatCsv(new CsvFile().withHeaders(CSV_HEADERS).withRecords(records));
+
+    List<CSVRecord> exportedRows = CSVFormat.DEFAULT.parse(new StringReader(exported)).getRecords();
+    for (int i = 0; i < values.size() - 1; i++) {
+      assertEquals("'" + values.get(i), exportedRows.get(i + 1).get(0));
+    }
+    assertEquals("safe", exportedRows.get(values.size()).get(0));
+
+    List<CSVRecord> imported = new TestCsv().parse(exported);
+    List<CSVRecord> importedRecursive = new TestCsv().parse(exported, true);
+    for (int i = 0; i < values.size(); i++) {
+      assertEquals(values.get(i), imported.get(i + 1).get(0));
+      assertEquals(values.get(i), importedRecursive.get(i + 1).get(0));
+    }
   }
 
   @Test

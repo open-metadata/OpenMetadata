@@ -47,6 +47,9 @@ public final class CsvUtil {
 
   public static final String INTERNAL_ARRAY_SEPARATOR = "|";
 
+  private static final String FORMULA_TRIGGERS = "=+-@\t\r";
+  private static final String FORMULA_ESCAPE = "'";
+
   private CsvUtil() {
     // Utility class hides the constructor
   }
@@ -60,10 +63,30 @@ public final class CsvUtil {
         Builder.create(CSVFormat.DEFAULT).setHeader(headers.toArray(new String[0])).build();
     try (CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
       for (List<String> csvRecord : listOrEmpty(csvFile.getRecords())) {
-        printer.printRecord(csvRecord);
+        printer.printRecord(csvRecord.stream().map(CsvUtil::neutralizeFormula).toList());
       }
     }
     return writer.toString();
+  }
+
+  /**
+   * Prefix cells a spreadsheet would evaluate as a formula with a quote (e.g. "=HYPERLINK(..)"
+   * becomes "'=HYPERLINK(..)"). {@link #restoreFormula} reverses it on import.
+   */
+  public static String neutralizeFormula(String value) {
+    return startsWithFormulaTrigger(value, 0) ? FORMULA_ESCAPE + value : value;
+  }
+
+  public static String restoreFormula(String value) {
+    boolean escaped =
+        value != null && value.startsWith(FORMULA_ESCAPE) && startsWithFormulaTrigger(value, 1);
+    return escaped ? value.substring(1) : value;
+  }
+
+  private static boolean startsWithFormulaTrigger(String value, int index) {
+    return value != null
+        && value.length() > index
+        && FORMULA_TRIGGERS.indexOf(value.charAt(index)) >= 0;
   }
 
   /** Get headers from CsvHeaders */
