@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -411,8 +412,7 @@ class PartitionCalculatorTest {
     long count = partitionCalculator.getEntityCount(Entity.TABLE_COLUMN);
 
     assertEquals(0, count);
-    // Verify no repository lookup was attempted for tableColumn
-    entityMock.verify(() -> Entity.getEntityRepository(Entity.TABLE_COLUMN), org.mockito.Mockito.never());
+    entityMock.verify(() -> Entity.getEntityRepository(Entity.TABLE_COLUMN), never());
   }
 
   private int getEffectivePartitionSize(PartitionCalculator calculator) {
