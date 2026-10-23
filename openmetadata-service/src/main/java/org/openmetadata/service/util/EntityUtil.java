@@ -158,10 +158,34 @@ public final class EntityUtil {
   public static final BiPredicate<TableConstraint, TableConstraint> tableConstraintMatch =
       (constraint1, constraint2) ->
           constraint1.getConstraintType() == constraint2.getConstraintType()
-              && constraint1.getColumns().equals(constraint2.getColumns())
-              && ((constraint1.getReferredColumns() == null
-                      && constraint2.getReferredColumns() == null)
-                  || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
+              && columnPairs(constraint1).equals(columnPairs(constraint2));
+
+  /**
+   * A constraint's columns, each with the column it refers to, in a canonical order. Columns and
+   * referred columns are paired by position, so they are sorted together: listing the same pairs
+   * in another order is the same constraint, while pairing the columns differently is not.
+   */
+  private static List<List<String>> columnPairs(TableConstraint constraint) {
+    List<String> columns = listOrEmpty(constraint.getColumns());
+    List<String> referredColumns = constraint.getReferredColumns();
+    List<List<String>> pairs = new ArrayList<>();
+    if (referredColumns == null) {
+      columns.forEach(column -> pairs.add(Arrays.asList(column, null)));
+    } else if (referredColumns.size() != columns.size()) {
+      // Not a positional pairing: compare each side on its own, ignoring order.
+      pairs.add(columns.stream().sorted().toList());
+      pairs.add(referredColumns.stream().sorted().toList());
+      return pairs;
+    } else {
+      for (int i = 0; i < columns.size(); i++) {
+        pairs.add(Arrays.asList(columns.get(i), referredColumns.get(i)));
+      }
+    }
+    pairs.sort(
+        Comparator.comparing((List<String> pair) -> pair.get(0))
+            .thenComparing(pair -> pair.get(1), Comparator.nullsFirst(Comparator.naturalOrder())));
+    return pairs;
+  }
 
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =

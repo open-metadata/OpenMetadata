@@ -2401,21 +2401,13 @@ public class TableRepository extends EntityRepository<Table> {
         }
         checkDuplicateTableConstraints(origTable, newConstraints);
       }
+      // Columns and referred columns are paired by position, so they are stored as sent: the
+      // matcher compares them as pairs, in any order.
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -2429,7 +2421,7 @@ public class TableRepository extends EntityRepository<Table> {
 
       // manage table ER relationship based on table constraints
       addConstraintRelationship(origTable, added);
-      deleteConstraintRelationship(origTable, deleted);
+      deleteConstraintRelationship(origTable, deleted, referredTables(updatedConstraints));
     }
 
     /**
@@ -2504,12 +2496,28 @@ public class TableRepository extends EntityRepository<Table> {
     }
   }
 
-  private void deleteConstraintRelationship(Table table, List<TableConstraint> constraints) {
+  // Tables the constraints refer to. A constraint replaced by one that still refers to the same
+  // table, such as a foreign key whose column pairing was corrected, keeps the link to it.
+  private static Set<String> referredTables(List<TableConstraint> constraints) {
+    Set<String> tables = new HashSet<>();
+    for (TableConstraint constraint : listOrEmpty(constraints)) {
+      for (String column : listOrEmpty(constraint.getReferredColumns())) {
+        tables.add(FullyQualifiedName.getParentFQN(column));
+      }
+    }
+    return tables;
+  }
+
+  private void deleteConstraintRelationship(
+      Table table, List<TableConstraint> constraints, Set<String> stillReferredTables) {
     if (!nullOrEmpty(constraints)) {
       for (TableConstraint constraint : constraints) {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
+            if (stillReferredTables.contains(toParent)) {
+              continue;
+            }
             try {
               EntityReference toTable = Entity.getEntityReferenceByName(TABLE, toParent, ALL);
               deleteRelationship(
