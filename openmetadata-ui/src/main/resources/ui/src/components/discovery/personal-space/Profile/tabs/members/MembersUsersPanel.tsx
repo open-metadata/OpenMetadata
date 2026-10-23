@@ -401,7 +401,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       data-testid="users-list-container"
       direction="col">
       <TableCard.Root
-        className="tw:flex tw:flex-col tw:outline-none"
+        className="tw:flex tw:flex-col"
         size="compact">
         <div className="tw:overflow-y-auto">
           <Table
