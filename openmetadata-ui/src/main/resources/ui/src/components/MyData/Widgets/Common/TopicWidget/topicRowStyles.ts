@@ -17,12 +17,15 @@
  * (`-mx-2` + `px-2`) so its content stays aligned with the filters above while
  * the tint gets room around it. `group` lets the row's icon tile react too.
  *
+ * Dark takes core's row hover instead: the gray-blue utility tint flips to
+ * near-black there, darker than the card it sits on.
+ *
  * `no-underline!`: the global `a:hover` rule is unlayered LESS, which beats a
  * plain Tailwind utility, and an anchor's underline runs through every line of
  * text inside it.
  */
 export const TOPIC_ROW_CLASSES =
-  'tw:group tw:-mx-2 tw:rounded-lg tw:px-2 tw:no-underline! tw:transition-colors tw:hover:bg-utility-gray-blue-50';
+  'tw:group tw:-mx-2 tw:rounded-lg tw:px-2 tw:no-underline! tw:transition-colors tw:hover:bg-utility-gray-blue-50 tw:dark:hover:bg-primary_hover';
 
 /** A row's icon tile turns white on hover so it still stands off the tint. */
 export const TOPIC_ROW_TILE_CLASSES =
@@ -56,8 +59,10 @@ export const TOPIC_ROW_OWNER_NAME_CLASSES =
 // stood out on the row's hover tint. Flex the spans so the disc hugs the
 // avatar, and give it the row's hover tint so the cut still matches. The "+N"
 // trigger is sized by the line height the same way, so it is flexed too or it
-// sits below the avatars.
+// sits below the avatars. Dark's row hover is translucent, which cannot cut the
+// overlap, so there the disc keeps the card surface.
 export const TOPIC_ROW_AVATAR_BACKING_CLASSES =
   'tw:[&_[data-testid=avatar-group-item]]:flex tw:[&_[data-testid=avatar-group-item]_span]:flex ' +
   'tw:[&_[data-testid=avatar-group-overflow]]:flex ' +
-  'tw:group-hover:[&_[data-testid=avatar-group-item]]:bg-utility-gray-blue-50';
+  'tw:group-hover:[&_[data-testid=avatar-group-item]]:bg-utility-gray-blue-50 ' +
+  'tw:dark:group-hover:[&_[data-testid=avatar-group-item]]:bg-surface';

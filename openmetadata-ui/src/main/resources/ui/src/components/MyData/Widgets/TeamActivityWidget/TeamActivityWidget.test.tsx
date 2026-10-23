@@ -43,6 +43,7 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
     meta,
     status,
     summary,
+    tone,
   }: {
     children?: React.ReactNode;
     emptyState?: { title: string; action?: { label: string } };
@@ -50,8 +51,10 @@ jest.mock('../Common/TopicWidget/TopicCard', () => ({
     meta?: React.ReactNode;
     status?: { label: string };
     summary: React.ReactNode;
+    tone: { tile: string };
   }) => (
     <section>
+      <span className={tone.tile} data-testid="tone-tile" />
       <div data-testid="summary">{summary}</div>
       {status && <span data-testid="status">{status.label}</span>}
       {meta && <span data-testid="meta">{meta}</span>}
@@ -187,5 +190,15 @@ describe('TeamActivityWidget', () => {
 
     expect(await screen.findByTestId('card-error')).toBeInTheDocument();
     expect(screen.queryByTestId('team-activity-rows')).toBeNull();
+  });
+
+  // Dark gray-100 is the card's own surface, so the header tile vanished.
+  it('keeps its header tile off the card surface in dark mode', async () => {
+    mockFeed.mockResolvedValue({ data: [] } as never);
+    renderWidget();
+
+    expect(await screen.findByTestId('tone-tile')).toHaveClass(
+      'tw:dark:bg-utility-gray-50'
+    );
   });
 });

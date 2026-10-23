@@ -159,6 +159,16 @@ describe('DataQualityWidget', () => {
     expect(screen.getByTestId('dq-test-test-1')).toHaveTextContent('id');
   });
 
+  // Dark gray-blue-50 is near-black, a hole in the card; the band takes the
+  // core table header's surface there instead.
+  it('heads each table group on the table-header surface in dark mode', () => {
+    renderWidget({ tests: [failingTest(0)] });
+
+    expect(
+      screen.getByTestId('dq-table-group-svc.db.schema.orders_0').firstChild
+    ).toHaveClass('tw:dark:bg-secondary');
+  });
+
   it('heads each table with all of its results, not just the rows shown', () => {
     renderWidget({
       tableCounts: {

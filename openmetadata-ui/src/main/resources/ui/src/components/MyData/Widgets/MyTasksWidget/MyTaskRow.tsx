@@ -58,7 +58,7 @@ const MyTaskRow: React.FC<MyTaskRowProps> = ({
         'tw:group tw:flex tw:min-w-0 tw:items-start tw:gap-3 tw:rounded-xl tw:px-2 tw:py-3 tw:transition-colors',
         isSelected
           ? 'tw:bg-utility-brand-50'
-          : 'tw:hover:bg-utility-gray-blue-50'
+          : 'tw:hover:bg-utility-gray-blue-50 tw:dark:hover:bg-primary_hover'
       )}
       data-testid={`my-task-row-${task.id}`}>
       <Checkbox
