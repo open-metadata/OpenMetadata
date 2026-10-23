@@ -20,10 +20,12 @@ import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
@@ -46,6 +48,7 @@ import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -59,11 +62,13 @@ public abstract class ServiceEntityResource<
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
   private final ServiceType serviceType;
+  private final ViewPermissionFilter viewPermissionFilter;
 
   protected ServiceEntityResource(
       String entityType, Authorizer authorizer, Limits limits, ServiceType serviceType) {
     super(entityType, authorizer, limits);
     this.serviceType = serviceType;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     serviceEntityRepository =
         (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
@@ -76,7 +81,22 @@ public abstract class ServiceEntityResource<
               retrieveServiceConnectionConfig(
                   service, authorizer.shouldMaskPasswords(securityContext)));
     }
+    filterPipelines(securityContext, service);
     return service;
+  }
+
+  /**
+   * The {@code pipelines} field is gated only by ViewBasic on the service, so it would list
+   * pipelines a deny rule hides. Keep only the ones the caller may view. Admins and bots see all.
+   */
+  private void filterPipelines(SecurityContext securityContext, T service) {
+    List<EntityReference> pipelines = service.getPipelines();
+    if (nullOrEmpty(pipelines) || readsStoredSecrets(securityContext)) {
+      return;
+    }
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, pipelines);
+    service.setPipelines(
+        pipelines.stream().filter(p -> viewable.contains(p.getId())).collect(Collectors.toList()));
   }
 
   private Object retrieveServiceConnectionConfig(T service, boolean maskPassword) {

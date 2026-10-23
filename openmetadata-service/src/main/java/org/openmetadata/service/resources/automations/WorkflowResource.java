@@ -46,6 +46,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
@@ -60,6 +61,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
@@ -604,7 +606,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       case TEST_CONNECTION -> authorizeTestConnectionTrigger(securityContext, workflow);
       case REVERSE_INGESTION -> authorizeReverseIngestionTrigger(securityContext, workflow);
       case QUERY_RUNNER -> authorizeQueryRunnerTrigger(securityContext, workflow);
-      case TEST_SPARK_ENGINE_CONNECTION -> authorizeIngestionPipelineCreate(securityContext);
+      case TEST_SPARK_ENGINE_CONNECTION -> authorizeSparkEngineTrigger(securityContext, workflow);
       case null -> throw unauthorizableTrigger(workflow, "it has no workflow type");
     }
   }
@@ -628,14 +630,21 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         || !isResolvableService(reverseIngestion.getService())) {
       throw unauthorizableTrigger(workflow, "request does not name the service it writes to");
     }
-    EntityReference service = reverseIngestion.getService();
+    // Resolve the reference from the store rather than trusting the type, id and FQN the request
+    // carries: a mismatched trio would otherwise authorize a different entity than the one written.
+    EntityReference service;
+    try {
+      service = Entity.getEntityReference(reverseIngestion.getService(), Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw unauthorizableTrigger(workflow, "the service it writes to does not exist");
+    }
+    if (!Entity.getServiceEntityTypes().contains(service.getType())) {
+      throw unauthorizableTrigger(workflow, "it does not write to a service");
+    }
     authorizer.authorize(
         securityContext,
         new OperationContext(service.getType(), MetadataOperation.EDIT_ALL),
-        new ResourceContext<>(
-            service.getType(),
-            service.getId(),
-            service.getId() == null ? service.getFullyQualifiedName() : null));
+        new ResourceContext<>(service.getType(), service.getId(), null));
   }
 
   private static boolean isResolvableService(EntityReference service) {
@@ -691,6 +700,19 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     } else {
       authorizeIngestionPipelineCreate(securityContext);
     }
+  }
+
+  /**
+   * A Spark engine test authorizes only an ingestion-pipeline create, the lightest of the trigger
+   * checks. A workflow stored before the converter was made type-strict could carry a reverse
+   * ingestion or test-connection request under this label, so confirm the stored request really is
+   * a Spark one before applying the lighter check.
+   */
+  private void authorizeSparkEngineTrigger(SecurityContext securityContext, Workflow workflow) {
+    if (!(typedRequest(workflow) instanceof TestSparkEngineConnectionRequest)) {
+      throw unauthorizableTrigger(workflow, "request is not a TestSparkEngineConnectionRequest");
+    }
+    authorizeIngestionPipelineCreate(securityContext);
   }
 
   private void authorizeIngestionPipelineCreate(SecurityContext securityContext) {

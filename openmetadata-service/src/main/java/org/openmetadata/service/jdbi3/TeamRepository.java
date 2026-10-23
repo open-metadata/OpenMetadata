@@ -1508,9 +1508,13 @@ public class TeamRepository extends EntityRepository<Team> {
       final Team original, final Team updated, final Operation operation, final boolean byBot) {
     final boolean botKeepsStored =
         operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    // A team read carries its parents' domains marked inherited; storing them would make them the
+    // team's own and keep them after the parent's domain is removed. Keep only the team's own.
     return botKeepsStored
         ? null
-        : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+        : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains())).stream()
+            .filter(domain -> domain.getInherited() == null || !domain.getInherited())
+            .collect(Collectors.toList());
   }
 
   /** Handles entity updated from PUT and POST operation. */

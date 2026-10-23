@@ -1053,6 +1053,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
    */
   @SuppressWarnings("unused")
+  /**
+   * Runs inheritance on a single already-loaded entity, for a caller outside this package such as
+   * the authorization {@code ResourceContext}, which must see inherited tags for a deny rule.
+   */
+  public void setInheritedFieldsInternal(T entity, Fields fields) {
+    setInheritedFields(entity, fields);
+  }
+
   protected void setInheritedFields(T entity, Fields fields) {
     if (!requiresParentForInheritance(entity, fields)) {
       return;

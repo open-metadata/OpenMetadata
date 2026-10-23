@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.query;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -320,6 +322,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
     Query query = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    authorizeQueryTargets(securityContext, query.getQueryUsedIn());
     return create(uriInfo, securityContext, query);
   }
 
@@ -344,6 +347,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
       @Context SecurityContext securityContext,
       @Valid CreateQuery create) {
     Query query = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    authorizeQueryTargets(securityContext, query.getQueryUsedIn());
     return createOrUpdate(uriInfo, securityContext, query);
   }
 
@@ -551,9 +555,26 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizeQueryTargets(securityContext, entityIds);
     return repository
         .addQueryUsage(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
         .toResponse();
+  }
+
+  /**
+   * A query takes the domain of the assets it is used in, so attaching it to an asset the caller
+   * cannot curate queries on would move it into that asset's domain. Each target is authorized for
+   * EditQueries, the same operation the asset's own query writes require.
+   */
+  private void authorizeQueryTargets(
+      SecurityContext securityContext, List<EntityReference> entityIds) {
+    for (EntityReference entityId : listOrEmpty(entityIds)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityId.getType(), MetadataOperation.EDIT_QUERIES),
+          new ResourceContext<>(
+              entityId.getType(), entityId.getId(), entityId.getFullyQualifiedName()));
+    }
   }
 
   @PUT
@@ -638,6 +659,7 @@ public class QueryResource extends EntityResource<Query, QueryRepository> {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    authorizeQueryTargets(securityContext, entityIds);
     return repository
         .removeQueryUsedIn(uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
         .toResponse();
