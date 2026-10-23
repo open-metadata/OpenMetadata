@@ -1,5 +1,6 @@
 package org.openmetadata.service.alerting.matching;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -59,6 +60,36 @@ class AlertMatchingTest {
     ChangeEvent event = entityChangeEvent("table");
     FilteringRules config = filteringRules("glossaryTerm");
     assertFalse(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  // ---- shouldTriggerAlert: tagCategory source for classification events ----
+
+  @Test
+  void shouldTriggerAlert_classificationEvent_tagCategoryResource_returnsTrue() {
+    ChangeEvent event = entityChangeEvent(Entity.CLASSIFICATION);
+    FilteringRules config = filteringRules("tagCategory");
+    assertTrue(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_tagEvent_tagCategoryResource_returnsFalse() {
+    ChangeEvent event = entityChangeEvent(Entity.TAG);
+    FilteringRules config = filteringRules("tagCategory");
+    assertFalse(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_conversationOnClassification_tagCategoryResource_returnsTrue() {
+    ChangeEvent event =
+        conversationChangeEvent(conversation(ref(Entity.CLASSIFICATION)), EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("tagCategory");
+    assertTrue(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void entityTypeOfSource_resolvesRenamedSourceOnly() {
+    assertEquals(Entity.CLASSIFICATION, AlertMatching.entityTypeOfSource("tagCategory"));
+    assertEquals(Entity.TABLE, AlertMatching.entityTypeOfSource(Entity.TABLE));
   }
 
   // ---- shouldTriggerAlert: conversations and dedicated resources -----------
