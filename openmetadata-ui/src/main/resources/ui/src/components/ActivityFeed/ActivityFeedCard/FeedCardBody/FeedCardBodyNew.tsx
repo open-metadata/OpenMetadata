@@ -58,6 +58,10 @@ const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
 );
 
+// Content that renders without text, such as an image-only post or a divider.
+const RENDERED_CONTENT_SELECTOR =
+  'img, hr, table, iframe, video, svg, [data-type]';
+
 const feedMessageSkeleton = (
   <Box data-testid="feed-message-skeleton" direction="col" gap={2}>
     <Skeleton height={14} variant="text" width="100%" />
@@ -66,7 +70,7 @@ const feedMessageSkeleton = (
 );
 
 // The previewer and its editor both load lazily and the editor first renders empty, so
-// the skeleton stays until the hidden preview has rendered text; the field is never blank.
+// the skeleton stays until the hidden preview has rendered content; the field is never blank.
 const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isRendered, setIsRendered] = useState(false);
@@ -77,7 +81,10 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
       return;
     }
     const checkRendered = () => {
-      if (container.textContent?.trim()) {
+      if (
+        container.textContent?.trim() ||
+        container.querySelector(RENDERED_CONTENT_SELECTOR)
+      ) {
         setIsRendered(true);
       }
     };
@@ -105,7 +112,7 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
 // Each preview mounts a read-only rich-text editor; a long feed mounting them all at
 // once blocks the main thread for tens of seconds, so only cards near the viewport do.
 const FeedMessagePreview = ({ markdown }: { markdown: string }) => (
-  <DeferredWidget minHeight="3em" placeholder={feedMessageSkeleton}>
+  <DeferredWidget placeholder={feedMessageSkeleton}>
     <FeedMessagePreviewContent markdown={markdown} />
   </DeferredWidget>
 );

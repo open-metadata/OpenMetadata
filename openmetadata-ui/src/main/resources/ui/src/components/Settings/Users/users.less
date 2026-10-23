@@ -27,51 +27,6 @@
 .profile-section {
   height: @profile-page-sidebar;
   overflow-y: scroll;
-
-  .profile-section-user-details-card {
-    padding: var(--om-space-20);
-    margin-bottom: var(--om-space-20);
-    background: var(--tw-background-color-surface);
-    justify-content: center;
-    align-items: center;
-    border-radius: var(--om-radius-xl);
-    border: 1px solid var(--tw-border-color-secondary);
-
-    .user-details-menu-icon {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-    }
-
-    .profile-details-title {
-      margin-top: var(--om-space-20);
-      font-size: var(--om-font-size-lg);
-      font-style: normal;
-      font-weight: var(--om-font-weight-semibold);
-      line-height: 28px;
-      color: var(--tw-text-color-primary);
-      text-align: center;
-      word-break: break-word;
-    }
-
-    .profile-details-email {
-      color: @primary-heading-color;
-      text-align: center;
-      font-size: var(--om-font-size-sm);
-      line-height: 20px;
-      word-break: break-word;
-    }
-
-    .profile-details-desc {
-      font-size: var(--om-font-size-sm);
-      font-style: normal;
-      font-weight: var(--om-font-weight-regular);
-      line-height: 20px;
-      color: @text-color;
-      text-align: center;
-      margin-top: @margin-xs;
-    }
-  }
 }
 
 .profile-section-card {
@@ -106,54 +61,16 @@
   padding: var(--om-space-20);
 }
 
-.user-profile-card {
-  background: var(--tw-background-color-surface);
-  padding: var(--om-space-20) var(--om-space-20) var(--om-space-10)
-    var(--om-space-20);
-  border-radius: var(--om-radius-xl);
-  margin-bottom: var(--om-space-20);
-  border: 1px solid var(--tw-border-color-secondary);
-
-  .user-profile-card-header {
-    margin-bottom: @margin-xs;
-  }
-
-  .user-profile-card-body {
-    margin-bottom: var(--om-space-10);
-  }
-}
-
 .user-profile-edit-popover-card-title {
   font-size: var(--om-font-size-sm);
   font-weight: var(--om-font-weight-semibold);
   line-height: 20px;
 }
 
-.chip-text {
-  color: @primary-heading-color;
-  border: none;
-  font-size: var(--om-font-size-xs);
-  background-color: white;
-}
-
-.default-persona-text {
-  .chip-tag-link {
-    color: @primary-heading-color;
-  }
-
-  .no-data-chip-placeholder {
-    margin-top: 0;
-  }
-}
-
 .no-default-persona-text {
   padding-left: var(--om-space-26);
   font-size: var(--om-font-size-sm);
   color: @text-color-tertiary;
-}
-
-.user-page-icon {
-  margin: var(--om-space-2);
 }
 
 .profile-edit-popover-card {
@@ -292,7 +209,7 @@
     font-weight: var(--om-font-weight-regular);
 
     &:hover {
-      color: @primary-heading-color;
+      color: var(--tw-text-color-brand-secondary);
     }
   }
 }
@@ -314,23 +231,5 @@
   margin-top: @size-xxs;
   &.inherit-icon {
     color: @primary-color;
-  }
-}
-
-// Brand/link colours and the chip fill above are fixed light values; flip them
-// only in dark mode so the light theme keeps its exact shade.
-.dark-mode {
-  .profile-section .profile-section-user-details-card .profile-details-email,
-  .default-persona-text .chip-tag-link,
-  .max-tag-text,
-  .domain-link .domain-link-name:hover,
-  .chip-container .chip-tag-link:hover,
-  .chip-container .chip-text,
-  .chip-text {
-    color: var(--tw-text-color-brand-secondary);
-  }
-
-  .chip-text {
-    background-color: transparent;
   }
 }

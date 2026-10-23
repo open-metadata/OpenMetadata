@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Persona, Role } from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty, orderBy } from 'lodash';
 import {
@@ -33,8 +34,6 @@ import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { ReactComponent as IconStruct } from '../../../../assets/svg/ic-inherited-roles.svg';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona.svg';
-import { ReactComponent as RoleIcon } from '../../../../assets/svg/ic-roles.svg';
 import { ReactComponent as LogoutIcon } from '../../../../assets/svg/logout.svg';
 import { ReactComponent as TeamIcon } from '../../../../assets/svg/teams-grey.svg';
 import { TERM_ADMIN } from '../../../../constants/constants';
@@ -318,7 +317,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'personas',
-            icon: PersonaIcon,
+            icon: Persona,
             title: t('label.switch-persona'),
             listItems: sortedPersonas,
             sizeLimit: showAllPersona ? sortedPersonas.length : 2,
@@ -337,7 +336,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'roles',
-            icon: RoleIcon,
+            icon: Role,
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,
