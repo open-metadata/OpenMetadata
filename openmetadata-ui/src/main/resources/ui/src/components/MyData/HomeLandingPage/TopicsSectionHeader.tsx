@@ -61,13 +61,15 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
   return (
     <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4">
       <div>
-        <Typography size="text-sm" weight="semibold">
+        <Typography size="text-md" weight="semibold">
           {t('label.topics-to-catch-up-on')}
         </Typography>
         {/* `!` on the colour: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
-        <Typography className="tw:block tw:text-text-tertiary!" size="text-xs">
+        <Typography
+          className="tw:mt-0.5 tw:block tw:text-text-tertiary!"
+          size="text-xs">
           {t('message.topics-to-catch-up-on-subtitle')}
         </Typography>
       </div>
