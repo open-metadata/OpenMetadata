@@ -56,6 +56,7 @@ import {
   waitForDraftPersisted,
   waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
+  waitForArticleSettled,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
@@ -230,6 +231,8 @@ test.describe('Context Center Articles', () => {
         draftArticleB.fullyQualifiedName,
         'page'
       ),
+      waitForArticleSettled(apiContext, draftArticleA.id),
+      waitForArticleSettled(apiContext, draftArticleB.id),
     ]);
 
     await afterAction();
