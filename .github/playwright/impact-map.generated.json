@@ -2450,6 +2450,7 @@
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
@@ -3372,6 +3373,7 @@
         "playwright/e2e/Features/LandingPageWidgets/LandingPagePlatformHealth.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageTotalDataAssets.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
@@ -3658,6 +3660,7 @@
         "playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
@@ -8345,6 +8348,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/OntologyLibraryDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts"
       ]
     },
@@ -11488,6 +11492,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts"
       ]
     },
@@ -12232,6 +12237,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts"
@@ -12574,6 +12580,7 @@
         "playwright/e2e/Features/NestedColumnsExpandCollapse.spec.ts",
         "playwright/e2e/Features/OnlineUsers.spec.ts",
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyStudioIntegration.spec.ts",
@@ -13599,6 +13606,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/OntologyNativeImport.spec.ts",
+        "playwright/e2e/Features/OntologyNativeLibrary.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
         "playwright/e2e/Features/OntologyReview.spec.ts",
