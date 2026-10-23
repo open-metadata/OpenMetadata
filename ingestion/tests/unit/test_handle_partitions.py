@@ -9,17 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-import unittest
-from unittest import TestCase
 from unittest.mock import Mock, patch
 
+import pytest
 from google.cloud.bigquery import (
     PartitionRange,
     RangePartitioning,
     SchemaField,
     TimePartitioning,
 )
-from google.cloud.bigquery.table import Table
 from pydantic import BaseModel
 from sqlalchemy import Integer, String
 
@@ -158,38 +156,35 @@ MOCK_COLUMN_DATA = [
 ]
 
 
-class BigqueryUnitTest(TestCase):
-    @patch("google.cloud.bigquery.Client")
-    @patch("metadata.ingestion.connections.builders.create_generic_db_connection")
-    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
-    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
-    @patch("metadata.ingestion.source.database.common_db_source.create_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        get_connection_common,
-        test_connection,
-        set_project_id,
-        create_generic_connection,
-        client,
-    ) -> None:
-        super().__init__(methodName)
-        get_connection_common.return_value = Mock()
-        client.return_value = Mock()
-        create_generic_connection.return_value = Mock()
-        set_project_id.return_value = Mock()
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
-        self.bigquery_source = BigquerySource.create(
-            mock_bigquery_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.bigquery_source.context.get().__dict__["database"] = MOCK_DATABASE.fullyQualifiedName.root
-        self.bigquery_source.context.get().__dict__["database_schema"] = TEST_PARTITION.get("schema_name")
-        self.bigquery_source.client = client
-        self.bigquery_source.inspector.get_columns = lambda table_name, schema, db_name: MOCK_COLUMN_DATA
-
-        unittest.mock.patch.object(Table, "object")
+class TestBigqueryUnitTest:
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.database.bigquery.helper.PolicyTagManagerClient"),
+            patch("metadata.ingestion.source.database.common_db_source.create_connection") as get_connection_common,
+            patch(
+                "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
+            ) as test_connection,
+            patch(
+                "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
+            ) as set_project_id,
+            patch("metadata.ingestion.connections.builders.create_generic_db_connection") as create_generic_connection,
+            patch("google.cloud.bigquery.Client") as client,
+        ):
+            get_connection_common.return_value = Mock()
+            client.return_value = Mock()
+            create_generic_connection.return_value = Mock()
+            set_project_id.return_value = Mock()
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_bigquery_config)
+            self.bigquery_source = BigquerySource.create(
+                mock_bigquery_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.bigquery_source.context.get().__dict__["database"] = MOCK_DATABASE.fullyQualifiedName.root
+            self.bigquery_source.context.get().__dict__["database_schema"] = TEST_PARTITION.get("schema_name")
+            self.bigquery_source.client = client
+            self.bigquery_source.inspector.get_columns = lambda table_name, schema, db_name: MOCK_COLUMN_DATA
 
     def test_time_unit_partition(self):
         self.bigquery_source.client.get_table = lambda fqn: MockTable(time_partitioning=MOCK_TIME_UNIT_PARTITIONING)
@@ -220,7 +215,7 @@ class BigqueryUnitTest(TestCase):
             inspector=self.bigquery_source.inspector,
         )
 
-        self.assertIsInstance(partition.columns, list)
+        assert isinstance(partition.columns, list)
         assert partition.columns[0].intervalType.value == PartitionIntervalTypes.INGESTION_TIME.value
         assert partition.columns[0].interval == "HOUR"
         assert bool_resp
@@ -235,7 +230,7 @@ class BigqueryUnitTest(TestCase):
             inspector=self.bigquery_source.inspector,
         )
 
-        self.assertIsInstance(partition.columns, list)
+        assert isinstance(partition.columns, list)
         assert partition.columns[0].intervalType.value == PartitionIntervalTypes.INTEGER_RANGE.value
         assert partition.columns[0].interval == 10
         assert bool_resp

@@ -19,7 +19,6 @@ import types
 from copy import deepcopy
 from types import SimpleNamespace
 from typing import ClassVar
-from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
@@ -753,33 +752,28 @@ class TestBigqueryUnitTest:
             ]
 
 
-class BigqueryLineageSourceTest(TestCase):
+class TestBigqueryLineageSourceTest:
     """
     Implements the necessary methods to extract
     Bigquery Lineage Test
     """
 
-    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
-    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection")
-    @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        set_project_id_lineage,  # pylint: disable=unused-argument
-        test_connection,  # pylint: disable=unused-argument
-        get_connection,  # pylint: disable=unused-argument
-    ) -> None:
-        super().__init__(methodName)
-
-        mock_credentials_path_bq_config = deepcopy(mock_bq_config)
-        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
-            "path": "credentials.json",
-            "projectId": "my-gcp-project",
-        }
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
-        self.bq_query_parser = BigqueryLineageSource(
-            self.config.source, self.config.workflowConfig.openMetadataServerConfig
-        )
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id"),
+            patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection"),
+            patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client"),
+        ):
+            mock_credentials_path_bq_config = deepcopy(mock_bq_config)
+            mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
+                "path": "credentials.json",
+                "projectId": "my-gcp-project",
+            }
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
+            self.bq_query_parser = BigqueryLineageSource(
+                self.config.source, self.config.workflowConfig.openMetadataServerConfig
+            )
 
     def test_get_engine_without_project_id_specified(self):
         for engine in self.bq_query_parser.get_engine():

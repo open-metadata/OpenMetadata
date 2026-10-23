@@ -14,9 +14,9 @@ Test SAS using the topology
 
 import json
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
 from pydantic import AnyUrl
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
@@ -236,114 +236,116 @@ EXPECTED_TABLE = Table(
 )
 
 
-class SASUnitTest(TestCase):
+class TestSASUnitTest:
     """
     Implements the necessary methods to extract
     SAS Metadata Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.sas.metadata.SasSource.test_connection")
-    @patch.object(SASClient, "get_token", mock_access_token)
-    def __init__(self, method_name, test_connection) -> None:
-        super().__init__(method_name)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_sas_config)
-        self.sas_source = SasSource.create(
-            mock_sas_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
-        self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(mock_sas_config["workflowConfig"]["openMetadataServerConfig"])
-        )
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch.object(SASClient, "get_token", mock_access_token),
+            patch("metadata.ingestion.source.database.sas.metadata.SasSource.test_connection") as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_sas_config)
+            self.sas_source = SasSource.create(
+                mock_sas_config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
+            self.metadata = OpenMetadata(
+                OpenMetadataConnection.model_validate(mock_sas_config["workflowConfig"]["openMetadataServerConfig"])
+            )
 
-        config_ = mock_sas_config["source"]["serviceConnection"]["config"]
-        self.database_service = mock_database_service_object = self.metadata.create_or_update(
-            CreateDatabaseServiceRequest(
-                name="local_sas",
-                serviceType="SAS",
-                connection=DatabaseConnection(
-                    config=SASConnection(
-                        type=config_["type"],
-                        username=config_["username"],
-                        password=config_["password"],
-                        serverHost=config_["serverHost"],
-                        datatables=config_["datatables"],
-                        dataTablesCustomFilter=config_["dataTablesCustomFilter"],
-                        reports=config_["reports"],
-                        reportsCustomFilter=config_["reportsCustomFilter"],
-                        dataflows=config_["dataflows"],
-                        dataflowsCustomFilter=config_["dataflowsCustomFilter"],
-                    )
-                ),
+            config_ = mock_sas_config["source"]["serviceConnection"]["config"]
+            self.database_service = mock_database_service_object = self.metadata.create_or_update(
+                CreateDatabaseServiceRequest(
+                    name="local_sas",
+                    serviceType="SAS",
+                    connection=DatabaseConnection(
+                        config=SASConnection(
+                            type=config_["type"],
+                            username=config_["username"],
+                            password=config_["password"],
+                            serverHost=config_["serverHost"],
+                            datatables=config_["datatables"],
+                            dataTablesCustomFilter=config_["dataTablesCustomFilter"],
+                            reports=config_["reports"],
+                            reportsCustomFilter=config_["reportsCustomFilter"],
+                            dataflows=config_["dataflows"],
+                            dataflowsCustomFilter=config_["dataflowsCustomFilter"],
+                        )
+                    ),
+                )
             )
-        )
 
-        mock_database_object = self.metadata.create_or_update(
-            CreateDatabaseRequest(
-                name="cas.cas-shared-default",
-                displayName=None,
-                description=None,
-                tags=None,
-                owners=None,
-                service=mock_database_service_object.fullyQualifiedName,
+            mock_database_object = self.metadata.create_or_update(
+                CreateDatabaseRequest(
+                    name="cas.cas-shared-default",
+                    displayName=None,
+                    description=None,
+                    tags=None,
+                    owners=None,
+                    service=mock_database_service_object.fullyQualifiedName,
+                )
             )
-        )
-        mock_database_schema_object = self.metadata.create_or_update(
-            CreateDatabaseSchemaRequest(
-                name="Samples",
-                database=mock_database_object.fullyQualifiedName,
+            mock_database_schema_object = self.metadata.create_or_update(
+                CreateDatabaseSchemaRequest(
+                    name="Samples",
+                    database=mock_database_object.fullyQualifiedName,
+                )
             )
-        )
-        _ = self.metadata.create_or_update(
-            CreateTableRequest(
-                name="WATER_CLUSTER.sashdat",
-                tableType="Regular",
-                columns=[
-                    Column(
-                        name="Address",
-                        displayName=None,
-                        dataType="STRING",
-                        arrayDataType=None,
-                        dataLength=1,
-                        precision=None,
-                        scale=None,
-                        dataTypeDisplay="string",
-                        description="",
-                        fullyQualifiedName=f"{mock_database_schema_object.fullyQualifiedName}"
-                        f'."WATER_CLUSTER.sashdat".Address',
-                        tags=None,
-                        constraint=None,
-                        ordinalPosition=None,
-                        jsonSchema=None,
-                        children=None,
-                        customMetrics=None,
-                        profile=None,
-                    ),
-                    Column(
-                        name="US Holiday",
-                        displayName=None,
-                        dataType="STRING",
-                        arrayDataType=None,
-                        dataLength=1,
-                        precision=None,
-                        scale=None,
-                        dataTypeDisplay="string",
-                        description="",
-                        fullyQualifiedName=f"{mock_database_schema_object.fullyQualifiedName}"
-                        f'."WATER_CLUSTER.sashdat".US%20Holiday',
-                        tags=None,
-                        constraint=None,
-                        ordinalPosition=None,
-                        jsonSchema=None,
-                        children=None,
-                        customMetrics=None,
-                        profile=None,
-                    ),
-                ],
-                databaseSchema=mock_database_schema_object.fullyQualifiedName,
-                sourceUrl="None",
+            _ = self.metadata.create_or_update(
+                CreateTableRequest(
+                    name="WATER_CLUSTER.sashdat",
+                    tableType="Regular",
+                    columns=[
+                        Column(
+                            name="Address",
+                            displayName=None,
+                            dataType="STRING",
+                            arrayDataType=None,
+                            dataLength=1,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="string",
+                            description="",
+                            fullyQualifiedName=f"{mock_database_schema_object.fullyQualifiedName}"
+                            f'."WATER_CLUSTER.sashdat".Address',
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            customMetrics=None,
+                            profile=None,
+                        ),
+                        Column(
+                            name="US Holiday",
+                            displayName=None,
+                            dataType="STRING",
+                            arrayDataType=None,
+                            dataLength=1,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="string",
+                            description="",
+                            fullyQualifiedName=f"{mock_database_schema_object.fullyQualifiedName}"
+                            f'."WATER_CLUSTER.sashdat".US%20Holiday',
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            customMetrics=None,
+                            profile=None,
+                        ),
+                    ],
+                    databaseSchema=mock_database_schema_object.fullyQualifiedName,
+                    sourceUrl="None",
+                )
             )
-        )
 
     @patch.object(SASClient, "list_assets", mock_list_assets)
     @patch.object(SASClient, "get_views", mock_get_views)

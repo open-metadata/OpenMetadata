@@ -14,9 +14,9 @@ Test Atlas using the topology
 
 import json
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
 from dirty_equals import HasAttributes, IsInstance
 from pydantic import AnyUrl
 
@@ -281,144 +281,146 @@ EXPTECTED_TABLE = Table(
 )
 
 
-class AtlasUnitTest(TestCase):
+class TestAtlasUnitTest:
     """
     Implements the necessary methods to extract
     Atlas Metadata Unit Test
     """
 
-    @patch("metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
-        self.atlas_source = AtlasSource.create(
-            mock_atlas_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
-        self.metadata = OpenMetadata(
-            OpenMetadataConnection.model_validate(mock_atlas_config["workflowConfig"]["openMetadataServerConfig"])
-        )
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.metadata.atlas.metadata.AtlasSource.test_connection") as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_atlas_config)
+            self.atlas_source = AtlasSource.create(
+                mock_atlas_config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
+            self.metadata = OpenMetadata(
+                OpenMetadataConnection.model_validate(mock_atlas_config["workflowConfig"]["openMetadataServerConfig"])
+            )
 
-        self.database_service = mock_database_service_object = self.metadata.create_or_update(
-            CreateDatabaseServiceRequest(
-                name="hive",
-                serviceType="Hive",
-                connection=DatabaseConnection(
-                    config=HiveConnection(
-                        type="Hive",
-                        scheme="hive",
-                        username=None,
-                        password=None,
-                        hostPort="http://nohost:6000",
-                        databaseName="Reporting",
-                    )
+            self.database_service = mock_database_service_object = self.metadata.create_or_update(
+                CreateDatabaseServiceRequest(
+                    name="hive",
+                    serviceType="Hive",
+                    connection=DatabaseConnection(
+                        config=HiveConnection(
+                            type="Hive",
+                            scheme="hive",
+                            username=None,
+                            password=None,
+                            hostPort="http://nohost:6000",
+                            databaseName="Reporting",
+                        )
+                    ),
+                )
+            )
+
+            mock_database_object = self.metadata.create_or_update(
+                CreateDatabaseRequest(
+                    name="Reporting",
+                    displayName=None,
+                    description=None,
+                    tags=None,
+                    owners=None,
+                    service=mock_database_service_object.fullyQualifiedName,
+                )
+            )
+            mock_database_schema_object = self.metadata.create_or_update(
+                CreateDatabaseSchemaRequest(
+                    name="Reporting",
+                    database=mock_database_object.fullyQualifiedName,
+                )
+            )
+            _ = self.metadata.create_or_update(
+                CreateTableRequest(
+                    name="sales_fact_daily_mv",
+                    tableType="Regular",
+                    columns=[
+                        Column(
+                            name="col2",
+                            displayName=None,
+                            dataType="STRUCT",
+                            arrayDataType=None,
+                            dataLength=1,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="struct<col3:string,col4:bigint>",
+                            description="col2 nested delta column",
+                            fullyQualifiedName="delta.default.test_schema.delta_test_table.col2",
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=[
+                                Column(
+                                    name="col3",
+                                    displayName=None,
+                                    dataType="STRING",
+                                    arrayDataType=None,
+                                    dataLength=None,
+                                    precision=None,
+                                    scale=None,
+                                    dataTypeDisplay="string",
+                                    description=None,
+                                    fullyQualifiedName="delta.default.test_schema.delta_test_table.col2.col3",
+                                    tags=None,
+                                    constraint=None,
+                                    ordinalPosition=None,
+                                    jsonSchema=None,
+                                    children=None,
+                                    customMetrics=None,
+                                    profile=None,
+                                ),
+                                Column(
+                                    name="col4",
+                                    displayName=None,
+                                    dataType="BIGINT",
+                                    arrayDataType=None,
+                                    dataLength=None,
+                                    precision=None,
+                                    scale=None,
+                                    dataTypeDisplay="bigint",
+                                    description=None,
+                                    fullyQualifiedName="delta.default.test_schema.delta_test_table.col2.col4",
+                                    tags=None,
+                                    constraint=None,
+                                    ordinalPosition=None,
+                                    jsonSchema=None,
+                                    children=None,
+                                    customMetrics=None,
+                                    profile=None,
+                                ),
+                            ],
+                            customMetrics=None,
+                            profile=None,
+                        ),
+                        Column(
+                            name="col1",
+                            displayName=None,
+                            dataType="BIGINT",
+                            arrayDataType=None,
+                            dataLength=1,
+                            precision=None,
+                            scale=None,
+                            dataTypeDisplay="bigint",
+                            description="col1 description",
+                            fullyQualifiedName="delta.default.test_schema.delta_test_table.col1",
+                            tags=None,
+                            constraint=None,
+                            ordinalPosition=None,
+                            jsonSchema=None,
+                            children=None,
+                            customMetrics=None,
+                            profile=None,
+                        ),
+                    ],
+                    databaseSchema=mock_database_schema_object.fullyQualifiedName,
                 ),
             )
-        )
-
-        mock_database_object = self.metadata.create_or_update(
-            CreateDatabaseRequest(
-                name="Reporting",
-                displayName=None,
-                description=None,
-                tags=None,
-                owners=None,
-                service=mock_database_service_object.fullyQualifiedName,
-            )
-        )
-        mock_database_schema_object = self.metadata.create_or_update(
-            CreateDatabaseSchemaRequest(
-                name="Reporting",
-                database=mock_database_object.fullyQualifiedName,
-            )
-        )
-        _ = self.metadata.create_or_update(
-            CreateTableRequest(
-                name="sales_fact_daily_mv",
-                tableType="Regular",
-                columns=[
-                    Column(
-                        name="col2",
-                        displayName=None,
-                        dataType="STRUCT",
-                        arrayDataType=None,
-                        dataLength=1,
-                        precision=None,
-                        scale=None,
-                        dataTypeDisplay="struct<col3:string,col4:bigint>",
-                        description="col2 nested delta column",
-                        fullyQualifiedName="delta.default.test_schema.delta_test_table.col2",
-                        tags=None,
-                        constraint=None,
-                        ordinalPosition=None,
-                        jsonSchema=None,
-                        children=[
-                            Column(
-                                name="col3",
-                                displayName=None,
-                                dataType="STRING",
-                                arrayDataType=None,
-                                dataLength=None,
-                                precision=None,
-                                scale=None,
-                                dataTypeDisplay="string",
-                                description=None,
-                                fullyQualifiedName="delta.default.test_schema.delta_test_table.col2.col3",
-                                tags=None,
-                                constraint=None,
-                                ordinalPosition=None,
-                                jsonSchema=None,
-                                children=None,
-                                customMetrics=None,
-                                profile=None,
-                            ),
-                            Column(
-                                name="col4",
-                                displayName=None,
-                                dataType="BIGINT",
-                                arrayDataType=None,
-                                dataLength=None,
-                                precision=None,
-                                scale=None,
-                                dataTypeDisplay="bigint",
-                                description=None,
-                                fullyQualifiedName="delta.default.test_schema.delta_test_table.col2.col4",
-                                tags=None,
-                                constraint=None,
-                                ordinalPosition=None,
-                                jsonSchema=None,
-                                children=None,
-                                customMetrics=None,
-                                profile=None,
-                            ),
-                        ],
-                        customMetrics=None,
-                        profile=None,
-                    ),
-                    Column(
-                        name="col1",
-                        displayName=None,
-                        dataType="BIGINT",
-                        arrayDataType=None,
-                        dataLength=1,
-                        precision=None,
-                        scale=None,
-                        dataTypeDisplay="bigint",
-                        description="col1 description",
-                        fullyQualifiedName="delta.default.test_schema.delta_test_table.col1",
-                        tags=None,
-                        constraint=None,
-                        ordinalPosition=None,
-                        jsonSchema=None,
-                        children=None,
-                        customMetrics=None,
-                        profile=None,
-                    ),
-                ],
-                databaseSchema=mock_database_schema_object.fullyQualifiedName,
-            ),
-        )
 
     def mock_ingest_lineage(self, source_guid, name):  # pylint: disable=unused-argument
         return []

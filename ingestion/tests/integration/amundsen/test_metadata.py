@@ -3,9 +3,9 @@ TestCase for Amundsen using the topology
 """
 
 import datetime
-from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
 from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.services.connections.database.customDatabaseConnection import (
@@ -157,21 +157,25 @@ EXPECTED_SERVICE = [
 SERVICE_NAME = ["hive", "delta", "dynamo"]
 
 
-class AmundsenUnitTest(TestCase):
+class TestAmundsenUnitTest:
     """
     Implements the necessary methods to extract
     Amundsen Unit Test
     """
 
-    @patch("metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_amundsen_config)
-        self.amundsen = AmundsenSource.create(
-            mock_amundsen_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.metadata.amundsen.metadata.AmundsenSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_amundsen_config)
+            self.amundsen = AmundsenSource.create(
+                mock_amundsen_config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
 
     def test_database_service(self):
         database_service_list = []
@@ -187,4 +191,4 @@ class AmundsenUnitTest(TestCase):
             original.version = expected.version = 2.5
             original.changeDescription = None
             original.incrementalChangeDescription = None
-            self.assertEqual(expected, original)
+            assert expected == original

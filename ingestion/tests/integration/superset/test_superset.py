@@ -14,16 +14,17 @@ Test superset source
 
 import json
 import uuid
+from contextlib import ExitStack
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
 
+import pytest
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
 from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.postgres.conftest import postgres_container
+from _openmetadata_testutils.ometa import OM_JWT
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
@@ -364,51 +365,38 @@ def setup_sample_data(postgres_container):
         connection.execute(sqlalchemy.text(CREATE_CALCULATED_COLUMNS_DATA))
 
 
-INITIAL_SETUP = True
-superset_container = postgres_container = None  # noqa: F811
-
-
-def set_testcontainers():
-    global INITIAL_SETUP, superset_container, postgres_container  # noqa: PLW0603
-    if INITIAL_SETUP:
-        # postgres test container
+@pytest.fixture(scope="class")
+def superset_containers():
+    with ExitStack() as cleanup:
         postgres_container = PostgresContainer("postgres:16-alpine")
+        cleanup.callback(postgres_container.stop)
         postgres_container.start()
         setup_sample_data(postgres_container)
-        # superset testcontainer
         superset_container = DockerContainer(image="apache/superset:3.1.2")
-        superset_container.with_env("SUPERSET_SECRET_KEY", "&3brfbcf192T!)$sabqbie")
+        cleanup.callback(superset_container.stop)
+        superset_container.with_env("SUPERSET_SECRET_KEY", "superset-test-secret-key")
         superset_container.with_env("WTF_CSRF_ENABLED", False)
 
         superset_container.with_exposed_ports(8088)
         superset_container.start()
 
         superset_container.exec(
-            "superset fab create-admin --username admin --firstname Superset  --lastname Admin --email admin@superset.com --password admin"
+            "superset fab create-admin --username admin --firstname Superset --lastname Admin --email user@example.com --password admin"
         )
         superset_container.exec("superset db upgrade")
         superset_container.exec("superset init")
         superset_container.exec("superset load-examples")
-        INITIAL_SETUP = False
-    return superset_container, postgres_container
+        yield superset_container, postgres_container
 
 
-class SupersetUnitTest(TestCase):
+class TestSupersetUnitTest:
     """
     Validate how we work with Superset metadata
     """
 
-    @classmethod
-    def teardown_class(cls):
-        """Teardown class"""
-        # stop containers
-        superset_container.stop()
-        postgres_container.stop()
-
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
-
-        superset_container, postgres_container = set_testcontainers()
+    @pytest.fixture(autouse=True)
+    def setup_source(self, superset_containers):
+        self.superset_container, postgres_container = superset_containers
 
         MOCK_SUPERSET_API_CONFIG = {  # noqa: N806
             "source": {
@@ -416,7 +404,7 @@ class SupersetUnitTest(TestCase):
                 "serviceName": "test_supserset",
                 "serviceConnection": {
                     "config": {
-                        "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
+                        "hostPort": f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}",
                         "type": "Superset",
                         "connection": {
                             "username": "admin",
@@ -437,9 +425,7 @@ class SupersetUnitTest(TestCase):
                 "openMetadataServerConfig": {
                     "hostPort": "http://localhost:8585/api",
                     "authProvider": "openmetadata",
-                    "securityConfig": {
-                        "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg"
-                    },
+                    "securityConfig": {"jwtToken": OM_JWT},
                 },
             },
         }
@@ -449,7 +435,7 @@ class SupersetUnitTest(TestCase):
                 "serviceName": "test_supserset",
                 "serviceConnection": {
                     "config": {
-                        "hostPort": f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}",
+                        "hostPort": f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}",
                         "type": "Superset",
                         "connection": {
                             "type": "Postgres",
@@ -481,14 +467,14 @@ class SupersetUnitTest(TestCase):
             MOCK_SUPERSET_API_CONFIG["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.assertEqual(type(self.superset_api), SupersetAPISource)
+        assert type(self.superset_api) is SupersetAPISource
         self.superset_api.context.get().__dict__["dashboard_service"] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
         self.superset_db: SupersetSource = SupersetSource.create(
             MOCK_SUPERSET_DB_CONFIG["source"],
             OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
         )
-        self.assertEqual(type(self.superset_db), SupersetDBSource)
+        assert type(self.superset_db) is SupersetDBSource
         self.superset_db.context.get().__dict__["dashboard_service"] = EXPECTED_DASH_SERVICE.fullyQualifiedName.root
 
     def test_create(self):
@@ -516,12 +502,8 @@ class SupersetUnitTest(TestCase):
             },
         }
 
-        self.assertRaises(
-            InvalidSourceException,
-            SupersetSource.create,
-            not_superset_source,
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+        with pytest.raises(InvalidSourceException):
+            SupersetSource.create(not_superset_source, self.config.workflowConfig.openMetadataServerConfig)
 
     # disabled due to container being flaky
     def x_test_api_get_dashboards_list(self):
@@ -529,7 +511,7 @@ class SupersetUnitTest(TestCase):
         Mock the client and check that we get a list
         """
         dashboard_list = list(self.superset_api.get_dashboards_list())
-        self.assertEqual(len(dashboard_list), PUBLISHED_DASHBOARD_COUNT)
+        assert len(dashboard_list) == PUBLISHED_DASHBOARD_COUNT
 
     def test_charts_of_dashboard(self):
         """
@@ -538,7 +520,7 @@ class SupersetUnitTest(TestCase):
         result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
             MOCK_DASHBOARD
         )
-        self.assertEqual(result, [69])
+        assert result == [69]
 
     # disabled due to container being flaky
     def x_test_datamodels_of_dashboard(self):
@@ -547,7 +529,7 @@ class SupersetUnitTest(TestCase):
         """
         self.superset_api.prepare()
         result = self.superset_api.yield_datamodel(MOCK_DASHBOARD)
-        self.assertEqual(len(list(result)), 1)
+        assert len(list(result)) == 1
 
     def test_datamodels_of_db_dashboard(self):
         """
@@ -555,35 +537,35 @@ class SupersetUnitTest(TestCase):
         """
         self.superset_db.prepare()
         result = self.superset_db.yield_datamodel(MOCK_DASHBOARD_DB)
-        self.assertEqual(len(list(result)), 1)
+        assert len(list(result)) == 1
 
     def test_fetch_chart_db(self):
         """
         test fetch chart method of db source
         """
         self.superset_db.prepare()
-        self.assertEqual(EXPECTED_ALL_CHARTS_DB, self.superset_db.all_charts)
+        assert self.superset_db.all_charts == EXPECTED_ALL_CHARTS_DB
 
     def test_dashboard_name(self):
         dashboard_name = self.superset_api.get_dashboard_name(MOCK_DASHBOARD)
-        self.assertEqual(dashboard_name, MOCK_DASHBOARD.dashboard_title)
+        assert dashboard_name == MOCK_DASHBOARD.dashboard_title
 
     def test_yield_dashboard(self):
         # TEST API SOURCE
         dashboard = next(self.superset_api.yield_dashboard(MOCK_DASHBOARD)).right
         EXPECTED_API_DASHBOARD.sourceUrl = SourceUrl(
-            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
+            f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}{MOCK_DASHBOARD.url}"
         )
-        self.assertEqual(dashboard, EXPECTED_API_DASHBOARD)
+        assert dashboard == EXPECTED_API_DASHBOARD
 
         # TEST DB SOURCE
         self.superset_db.context.get().__dict__["charts"] = [chart.name.root for chart in EXPECTED_CHART_ENTITY]
         dashboard = next(self.superset_db.yield_dashboard(MOCK_DASHBOARD_DB)).right
         EXPECTED_DASH.sourceUrl = SourceUrl(
-            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
+            f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}/superset/dashboard/14/"
         )
         EXPECTED_DASH.owners = dashboard.owners
-        self.assertEqual(dashboard, EXPECTED_DASH)
+        assert dashboard == EXPECTED_DASH
 
     # disabled due to container being flaky
     def x_test_yield_dashboard_chart(self):
@@ -591,20 +573,20 @@ class SupersetUnitTest(TestCase):
         self.superset_api.prepare()
         dashboard_chart = next(self.superset_api.yield_dashboard_chart(MOCK_DASHBOARD)).right
         EXPECTED_CHART_2.sourceUrl = SourceUrl(
-            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
+            f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}/explore/?slice_id={dashboard_chart.name.root}"
         )
         EXPECTED_CHART_2.displayName = dashboard_chart.displayName
         EXPECTED_CHART_2.chartType = dashboard_chart.chartType
         EXPECTED_CHART_2.name = dashboard_chart.name
-        self.assertEqual(dashboard_chart, EXPECTED_CHART_2)
+        assert dashboard_chart == EXPECTED_CHART_2
 
         # TEST DB SOURCE
         self.superset_db.prepare()
         dashboard_charts = next(self.superset_db.yield_dashboard_chart(MOCK_DASHBOARD_DB)).right
         EXPECTED_CHART.sourceUrl = SourceUrl(
-            f"http://{superset_container.get_container_host_ip()}:{superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
+            f"http://{self.superset_container.get_container_host_ip()}:{self.superset_container.get_exposed_port(8088)}/explore/?slice_id=1"
         )
-        self.assertEqual(dashboard_charts, EXPECTED_CHART)
+        assert dashboard_charts == EXPECTED_CHART
 
     def test_api_get_datasource_fqn(self):
         """
@@ -626,54 +608,31 @@ class SupersetUnitTest(TestCase):
             fqn = self.superset_api._get_datasource_fqn(  # pylint: disable=protected-access
                 1, MOCK_DB_POSTGRES_SERVICE.name.root
             )
-            self.assertEqual(fqn, EXPECTED_API_DATASET_FQN)
+            assert fqn == EXPECTED_API_DATASET_FQN
 
     def test_db_get_datasource_fqn_for_lineage(self):
         with patch.object(OpenMetadata, "get_by_name", return_value=MOCK_DB_POSTGRES_SERVICE):
             fqn = self.superset_db._get_datasource_fqn_for_lineage(  # pylint: disable=protected-access
                 MOCK_CHART_DB, MOCK_DB_POSTGRES_SERVICE.name.root
             )
-            self.assertEqual(fqn, EXPECTED_DATASET_FQN)
+            assert fqn == EXPECTED_DATASET_FQN
 
     def test_db_get_database_name(self):
         sqa_str1 = "postgres://user:pass@localhost:8888/database"
-        self.assertEqual(
-            self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str1, MOCK_DB_POSTGRES_SERVICE
-            ),
-            "database",
-        )
+        assert self.superset_db._get_database_name(sqa_str1, MOCK_DB_POSTGRES_SERVICE) == "database"
 
         sqa_str2 = "postgres://user:pass@localhost:8888/database?ssl=required"
-        self.assertEqual(
-            self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str2, MOCK_DB_POSTGRES_SERVICE
-            ),
-            "database",
-        )
+        assert self.superset_db._get_database_name(sqa_str2, MOCK_DB_POSTGRES_SERVICE) == "database"
 
         sqa_str3 = "postgres://user:pass@localhost:8888/openmetadata_db"
-        self.assertEqual(
-            self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str3, MOCK_DB_MYSQL_SERVICE_1
-            ),
-            "default",
-        )
+        assert self.superset_db._get_database_name(sqa_str3, MOCK_DB_MYSQL_SERVICE_1) == "default"
 
         sqa_str4 = "postgres://user:pass@localhost:8888/openmetadata_db"
-        self.assertEqual(
-            self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str4, MOCK_DB_MYSQL_SERVICE_2
-            ),
-            "DUMMY_DB",
-        )
+        assert self.superset_db._get_database_name(sqa_str4, MOCK_DB_MYSQL_SERVICE_2) == "DUMMY_DB"
 
         sqa_str2 = "sqlite:////app/superset_home/superset.db"
-        self.assertEqual(
-            self.superset_db._get_database_name(  # pylint: disable=protected-access
-                sqa_str2, MOCK_DB_POSTGRES_SERVICE
-            ),
-            "/app/superset_home/superset.db",
+        assert (
+            self.superset_db._get_database_name(sqa_str2, MOCK_DB_POSTGRES_SERVICE) == "/app/superset_home/superset.db"
         )
 
     def test_broken_column_type_in_datamodel(self):
@@ -761,7 +720,7 @@ class SupersetUnitTest(TestCase):
         ):
             result = self.superset_api._get_input_tables(ChartResult(datasource_id=99))
         source_tables = [fetch_chart.table_name for fetch_chart, _ in result]
-        self.assertIn("sample_table", source_tables)
+        assert "sample_table" in source_tables
 
     def test_api_get_source_table_fqn_uses_parsed_table(self):
         """
@@ -776,7 +735,7 @@ class SupersetUnitTest(TestCase):
                 FetchChart(table_name="orders", schema="main", datasource_id=1),
                 MOCK_DB_POSTGRES_SERVICE.name.root,
             )
-        self.assertEqual(fqn, "test_postgres.*.main.orders")
+        assert fqn == "test_postgres.*.main.orders"
 
     def test_api_fetch_datasource_is_cached(self):
         """
@@ -786,7 +745,7 @@ class SupersetUnitTest(TestCase):
             self.superset_api.client.fetch_datasource(7)
             self.superset_api.client.fetch_datasource(7)
             self.superset_api.client.fetch_datasource(8)
-        self.assertEqual(mock_get.call_count, 2)
+        assert mock_get.call_count == 2
 
     def test_api_fetch_datasource_failure_is_retryable(self):
         """
@@ -796,9 +755,9 @@ class SupersetUnitTest(TestCase):
         with patch.object(self.superset_api.client.client, "get", side_effect=[None, {"id": 5}]) as mock_get:
             first = self.superset_api.client.fetch_datasource(5)
             second = self.superset_api.client.fetch_datasource(5)
-        self.assertIsNone(first.id)
-        self.assertEqual(second.id, 5)
-        self.assertEqual(mock_get.call_count, 2)
+        assert first.id is None
+        assert second.id == 5
+        assert mock_get.call_count == 2
 
     def test_api_source_table_fqn_missing_db_service_does_not_crash(self):
         """
@@ -814,8 +773,8 @@ class SupersetUnitTest(TestCase):
                 FetchChart(table_name="orders", schema="main", datasource_id=1),
                 "missing_service",
             )
-        self.assertIn("orders", fqn)
-        self.assertIn("missing_service", fqn)
+        assert "orders" in fqn
+        assert "missing_service" in fqn
 
     def test_is_table_to_table_lineage(self):
         table = Table(name="table_name", schema=Schema(name="schema_name"))
@@ -870,16 +829,16 @@ class SupersetUnitTest(TestCase):
             column_to._parent.add(column_to_parent)
 
             columns = (column_from, column_to)
-            self.assertEqual(self.superset_db._is_table_to_table_lineage(columns, table), expected)
+            assert self.superset_db._is_table_to_table_lineage(columns, table) == expected
 
     def test_append_value_to_dict_list(self):
         init_dict = {1: [2]}
 
         self.superset_db._append_value_to_dict_list(init_dict, 1, 3)
-        self.assertListEqual(init_dict[1], [2, 3])
+        assert init_dict[1] == [2, 3]
 
         self.superset_db._append_value_to_dict_list(init_dict, 2, 1)
-        self.assertListEqual(init_dict[2], [1])
+        assert init_dict[2] == [1]
 
     def test_get_table_schema(self):
         for test_case in [
@@ -896,7 +855,7 @@ class SupersetUnitTest(TestCase):
         ]:
             table, chart, expected = test_case
 
-            self.assertEqual(self.superset_db._get_table_schema(table, chart), expected)
+            assert self.superset_db._get_table_schema(table, chart) == expected
 
     def test_create_column_lineage_mapping_no_wildcard(self):
         sql = """
@@ -909,10 +868,7 @@ class SupersetUnitTest(TestCase):
 
         expected = {"id": ["id"], "timestamp": ["timestamp"]}
 
-        self.assertDictEqual(
-            self.superset_db._create_column_lineage_mapping(parser, table, chart),
-            expected,
-        )
+        assert self.superset_db._create_column_lineage_mapping(parser, table, chart) == expected
 
     def test_create_column_lineage_mapping_with_wildcard(self):
         sql = """
@@ -925,10 +881,7 @@ class SupersetUnitTest(TestCase):
 
         expected = {"id": ["id"], "timestamp": ["timestamp"], "price": ["price"]}
 
-        self.assertDictEqual(
-            self.superset_db._create_column_lineage_mapping(parser, table, chart),
-            expected,
-        )
+        assert self.superset_db._create_column_lineage_mapping(parser, table, chart) == expected
 
     def test_get_input_tables_from_dataset_sql(self):
         sql = """SELECT id, timestamp FROM sample_table"""
@@ -936,11 +889,11 @@ class SupersetUnitTest(TestCase):
 
         result = self.superset_db._get_input_tables(chart)[0]
 
-        self.assertSetEqual({"id", "timestamp"}, set(result[1]))
+        assert {"id", "timestamp"} == set(result[1])
 
     def test_get_input_tables_when_table_has_no_sql(self):
         chart = FetchChart(table_name="sample_table", table_schema="main", table_id=99)
 
         result = self.superset_db._get_input_tables(chart)[0]
 
-        self.assertSetEqual({"id", "timestamp", "price"}, set(result[1]))
+        assert {"id", "timestamp", "price"} == set(result[1])

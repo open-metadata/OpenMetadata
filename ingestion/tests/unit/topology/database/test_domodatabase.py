@@ -13,8 +13,9 @@
 Test Domo Dashboard using the topology
 """
 
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -227,30 +228,29 @@ EXPTECTED_TABLE = [
 ]
 
 
-class DomoDatabaseUnitTest(TestCase):
+class TestDomoDatabaseUnitTest:
     """
     Implements the necessary methods to extract
     Domo Database Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
-    @patch("metadata.ingestion.source.database.domodatabase.connection.Domo")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        domo_client,  # pylint: disable=unused-argument
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_domodatabase_config)
-        self.domodatabase = DomodatabaseSource.create(
-            mock_domodatabase_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.domodatabase.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.domodatabase.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.domodatabase.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.database.domodatabase.connection.Domo"),
+            patch(
+                "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_domodatabase_config)
+            self.domodatabase = DomodatabaseSource.create(
+                mock_domodatabase_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.domodatabase.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.domodatabase.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.domodatabase.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_schema(self):
         schema_list = []
@@ -261,7 +261,7 @@ class DomoDatabaseUnitTest(TestCase):
                 schema_list.append(schema)  # noqa: PERF401
 
         for _, (exptected, original) in enumerate(zip(EXPECTED_DATABASE_SCHEMA, schema_list)):  # noqa: B905
-            self.assertEqual(exptected, original)
+            assert exptected == original
 
     def test_yield_table(self):
         table_list = []
@@ -272,4 +272,4 @@ class DomoDatabaseUnitTest(TestCase):
                 table_list.append(table)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
