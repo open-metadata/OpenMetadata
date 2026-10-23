@@ -1,12 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
@@ -541,5 +546,47 @@ class ListFilterTest {
     assertFalse(condition.contains("OR 1=1"), condition);
     assertTrue(condition.contains(":folderIdParam"), condition);
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
+  }
+
+  /**
+   * The run list for an entity is only an index lookup when its condition is exactly the key of
+   * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
+   * PostgreSQL, the entityLinkHash virtual column on MySQL. Any drift in either text silently turns
+   * the lookup back into a scan of every run.
+   */
+  @Test
+  void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    filter.addQueryParam("entityLinkHash", "0cc175b9c0f1b6a831c399e269772661");
+
+    String postgres = filter.getCondition();
+    assertTrue(postgres.contains("md5(COALESCE(entityLink, '')) = :entityLinkHash"));
+    assertTrue(postgres.contains("entityLink = :entityLink"));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      String mysql = filter.getCondition();
+      assertTrue(mysql.contains("entityLinkHash = :entityLinkHash"));
+      assertFalse(mysql.contains("md5("));
+    }
+  }
+
+  @Test
+  void entityLinkHashCondition_absentWhenNotRequested() {
+    ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    assertFalse(filter.getCondition().contains("entityLinkHash"));
+  }
+
+  @Test
+  void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
+    ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains("workflowInstanceId"));
+
+    filter.addQueryParam("workflowInstanceId", "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains("workflowInstanceId = :workflowInstanceId"));
   }
 }
