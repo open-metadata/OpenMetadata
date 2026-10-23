@@ -161,7 +161,8 @@ function ActivityOwnersFeed({
   return (
     <Box direction="col" gap={2}>
       {!isEmpty(updatedOwner) && (
-        <Box align="center" wrap="wrap">
+        // gap-y: when the chips wrap under the label, keep them off it.
+        <Box align="center" className="tw:gap-y-2" wrap="wrap">
           <Box align="center" className="tw:min-w-0" wrap="wrap">
             <AddIcon className="text-success-hover" height={16} width={16} />
             <Typography className="owners-label">
@@ -173,7 +174,7 @@ function ActivityOwnersFeed({
         </Box>
       )}
       {!isEmpty(previousOwner) && (
-        <Box align="center" wrap="wrap">
+        <Box align="center" className="tw:gap-y-2" wrap="wrap">
           <div className="tw:max-w-full">
             <Box align="center" className="tw:min-w-0" wrap="wrap">
               <DeletedIcon className="text-error" height={14} width={14} />
