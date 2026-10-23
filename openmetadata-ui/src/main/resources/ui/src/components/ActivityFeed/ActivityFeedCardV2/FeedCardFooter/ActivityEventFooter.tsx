@@ -64,7 +64,7 @@ function ActivityEventFooter({
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
       <Box className="footer-container tw:w-full" direction="col">
         <div>
-          <Box align="center" className="w-full rounded-8" gap={2}>
+          <Box align="center" className="w-full rounded-8" gap={1}>
             <ButtonUtility
               aria-label={t('label.comment')}
               color="tertiary"
