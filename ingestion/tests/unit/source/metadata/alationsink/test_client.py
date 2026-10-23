@@ -16,6 +16,7 @@ from metadata.generated.schema.entity.services.connections.metadata.alationSinkC
     AlationSinkConnection,
 )
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
+from metadata.ingestion.source.metadata.alationsink.constants import JOB_POLL_REQUEST_TIMEOUT_SECONDS
 from metadata.ingestion.source.metadata.alationsink.models import (
     CreateColumnRequest,
     CreateColumnRequestList,
@@ -78,6 +79,30 @@ def test_job_still_running_at_timeout_is_a_failure():
         errors = client.write_entities(39, _columns(3))
 
     assert errors == ["Alation job [7] did not finish within 0s"]
+
+
+def test_no_poll_starts_after_the_deadline():
+    client = _client({"status": "running"}, {"status": "successful", "result": []})
+    # deadline = 0 + 10; first check passes at 0, the post-sleep check lands past the deadline
+    clock = iter([0, 0, 9.8, 11])
+
+    with (
+        patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
+        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+    ):
+        errors = client.write_entities(39, _columns(3))
+
+    assert errors == ["Alation job [7] did not finish within 10s"]
+    assert client.jobs_client.get.call_count == 1
+    # the sleep is cut to the time left rather than the full interval
+    assert client._sleep.call_args.args[0] < 0.5
+
+
+def test_job_polls_are_bounded():
+    client = AlationSinkClient(AlationSinkConnection(hostPort="http://alation", authType={"accessToken": "token"}))
+
+    assert client.jobs_client._timeout == (10, JOB_POLL_REQUEST_TIMEOUT_SECONDS)
+    assert client.jobs_client._retry == 0
 
 
 def test_response_without_job_is_synchronous_success():

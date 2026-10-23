@@ -19,8 +19,13 @@ POST at 1000 and waits for each job; Alation's docs state differing per-endpoint
 - Schema, table and column writes go out in batches of `WRITE_BATCH_SIZE` = 1000, the SDK default,
   which sits at or under every limit the docs state.
 - Each batch's job is polled, starting at 0.5 s and backing off to 5 s, until it finishes. A job
-  still running after `JOB_TIMEOUT_SECONDS` = 600 is a failure, not a success.
-- A `failed` job, and every per-object error of a `successful` one, is recorded on the run status.
+  still running after `JOB_TIMEOUT_SECONDS` = 600 is a failure, not a success. The deadline is
+  checked before every poll and no sleep runs past it; each poll has a 30 s read timeout
+  (`JOB_POLL_REQUEST_TIMEOUT_SECONDS`) and no retries, so a wait overruns the deadline by at most
+  one poll.
+- A `failed` job, and every per-object error of a `successful` one, is logged in full; the run
+  status records at most the first `MAX_REPORTED_ERRORS` = 5 of them per parent, plus a count of
+  the rest, so one bad table does not flood the run report.
 - Parents are written before their children and each write waits for its job, so a column write
   never races the job creating its table.
 

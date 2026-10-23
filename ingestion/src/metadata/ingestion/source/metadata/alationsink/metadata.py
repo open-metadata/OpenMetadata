@@ -67,6 +67,8 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
+# The run status keeps the first few of Alation's errors per parent; the logs keep them all
+# ADR:2026-10-23-alation-sink-writes-in-batches-and-waits-for-each-job
 MAX_REPORTED_ERRORS = 5
 
 DEFAULT_URL = "http://localhost:8080"

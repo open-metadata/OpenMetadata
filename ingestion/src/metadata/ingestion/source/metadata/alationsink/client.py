@@ -29,6 +29,7 @@ from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.metadata.alationsink.constants import (
     JOB_POLL_INITIAL_INTERVAL_SECONDS,
     JOB_POLL_MAX_INTERVAL_SECONDS,
+    JOB_POLL_REQUEST_TIMEOUT_SECONDS,
     JOB_TIMEOUT_SECONDS,
     ROUTES,
     TOTAL_RECORDS,
@@ -117,12 +118,16 @@ class AlationSinkClient:
         self._auth_provider = AlationSinkAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
         self.client = TrackedREST(self._client_config("integration", get_verify_ssl), source_name="alation")
-        # The job status API lives outside the integration APIs
-        self.jobs_client = TrackedREST(self._client_config("api/v1", get_verify_ssl), source_name="alation")
+        # The job status API lives outside the integration APIs. Its polls get a short read timeout and
+        # no retries, so a single poll cannot hold a job's wait far past JOB_TIMEOUT_SECONDS
+        self.jobs_client = TrackedREST(
+            self._client_config("api/v1", get_verify_ssl, timeout=(10, JOB_POLL_REQUEST_TIMEOUT_SECONDS), retry=0),
+            source_name="alation",
+        )
         self.pagination_limit = self.config.paginationLimit
         self._sleep = time.sleep
 
-    def _client_config(self, api_version: str, get_verify_ssl) -> ClientConfig:
+    def _client_config(self, api_version: str, get_verify_ssl, **overrides) -> ClientConfig:
         return ClientConfig(
             base_url=clean_uri(self.config.hostPort),
             auth_header="TOKEN",
@@ -130,6 +135,7 @@ class AlationSinkClient:
             auth_token=self._auth_provider.get_access_token,
             auth_token_mode="",
             verify=get_verify_ssl(self.config.sslConfig),
+            **overrides,
         )
 
     def paginate_entity(
@@ -236,17 +242,17 @@ class AlationSinkClient:
         """
         deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
         interval = JOB_POLL_INITIAL_INTERVAL_SECONDS
-        while True:
+        # The deadline is checked before every poll, and no sleep runs past it
+        while time.monotonic() < deadline:
             job = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id}) or {}
             status = job.get("status")
             if status == "failed":
                 return [f"Alation job [{job_id}] failed: {job.get('msg') or job.get('result')}"]
             if status == "successful":
                 return [f"Alation job [{job_id}]: {error}" for error in _job_object_errors(job.get("result"))]
-            if time.monotonic() >= deadline:
-                return [f"Alation job [{job_id}] did not finish within {JOB_TIMEOUT_SECONDS}s"]
-            self._sleep(interval)
+            self._sleep(max(min(interval, deadline - time.monotonic()), 0))
             interval = min(interval * 2, JOB_POLL_MAX_INTERVAL_SECONDS)
+        return [f"Alation job [{job_id}] did not finish within {JOB_TIMEOUT_SECONDS}s"]
 
 
 def _job_object_errors(result: Any) -> list:
