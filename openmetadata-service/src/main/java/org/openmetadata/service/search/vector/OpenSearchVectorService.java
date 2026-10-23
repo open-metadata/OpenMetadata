@@ -435,47 +435,59 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   @Override
   public void invalidateChunkAccess(List<String> entityIndices, String matchQueryJson) {
-    ObjectNode search = MAPPER.createObjectNode().put("size", ACCESS_INVALIDATION_PAGE);
-    search.put("_source", false).set("query", readJson(matchQueryJson));
-    JsonNode page =
-        readJson(
-            executeGenericRequest(
-                "POST",
-                "/"
-                    + String.join(",", entityIndices)
-                    + "/_search?scroll="
-                    + ACCESS_SCROLL_KEEP_ALIVE
-                    + "&"
-                    + TOLERATE_MISSING_INDICES,
-                search.toString()));
+    JsonNode page = firstMatchPage(entityIndices, matchQueryJson);
     String scrollId = page.path("_scroll_id").asText(null);
     try {
-      for (List<String> ids = hitIds(page); !ids.isEmpty(); ids = hitIds(page)) {
-        withholdChunksOfParents(ids);
-        page = nextScrollPage(scrollId);
-        scrollId = page.path("_scroll_id").asText(scrollId);
+      List<String> ids = hitIds(page);
+      if (!ids.isEmpty()) {
+        List<String> targets = liveAndStagedChunkTargets();
+        while (!ids.isEmpty()) {
+          withholdChunksOfParents(targets, ids);
+          page = nextScrollPage(scrollId);
+          scrollId = page.path("_scroll_id").asText(scrollId);
+          ids = hitIds(page);
+        }
+        refresh(targets);
       }
     } finally {
       clearScroll(scrollId);
     }
   }
 
-  private void withholdChunksOfParents(List<String> parentIds) {
+  private JsonNode firstMatchPage(List<String> entityIndices, String matchQueryJson) {
+    ObjectNode search = MAPPER.createObjectNode().put("size", ACCESS_INVALIDATION_PAGE);
+    search.put("_source", false).set("query", readJson(matchQueryJson));
+    return readJson(
+        executeGenericRequest(
+            "POST",
+            "/"
+                + String.join(",", entityIndices)
+                + "/_search?scroll="
+                + ACCESS_SCROLL_KEEP_ALIVE
+                + "&"
+                + TOLERATE_MISSING_INDICES,
+            search.toString()));
+  }
+
+  /** One batch of parents, unrefreshed: the caller refreshes once after the last batch. */
+  private void withholdChunksOfParents(List<String> targets, List<String> parentIds) {
     ObjectNode update = MAPPER.createObjectNode();
     update.putObject("query").putObject("terms").set("parentId", MAPPER.valueToTree(parentIds));
     update
         .putObject("script")
         .put("source", "ctx._source.remove('" + VectorDocBuilder.FIELD_ACCESS_STAMP + "')")
         .put("lang", "painless");
-    for (String target : liveAndStagedChunkTargets()) {
+    for (String target : targets) {
       executeGenericRequest(
           "POST",
-          "/"
-              + target
-              + "/_update_by_query?conflicts=proceed&refresh=true&"
-              + TOLERATE_MISSING_INDICES,
+          "/" + target + "/_update_by_query?conflicts=proceed&" + TOLERATE_MISSING_INDICES,
           update.toString());
     }
+  }
+
+  private void refresh(List<String> targets) {
+    executeGenericRequest(
+        "POST", "/" + String.join(",", targets) + "/_refresh?" + TOLERATE_MISSING_INDICES, "{}");
   }
 
   /** The live chunk index and, while a recreate is in flight, its staged generation. */
@@ -542,6 +554,10 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * As above, resolving context memory visibility for {@code subjectContext}. Needed even though the
    * parent is known: a parent may be a restricted memory, which yields no passages without it.
+   *
+   * <p>No search access clause applies: the caller must have authorized the parent itself, as
+   * {@code GetEntityTool} and {@code AIContextBuilder} do through REST before asking for its
+   * passages (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
    */
   public List<String> searchChunksByParent(
       String parentId, String query, int k, SubjectContext subjectContext) {

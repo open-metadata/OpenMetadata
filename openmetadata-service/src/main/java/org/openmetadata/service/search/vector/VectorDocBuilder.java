@@ -23,22 +23,33 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
+import org.openmetadata.service.search.indexes.ColumnFlattener;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
+import org.openmetadata.service.search.indexes.SchemaFieldFlattener;
+import org.openmetadata.service.search.indexes.TaggableIndex;
+import org.openmetadata.service.search.models.FlattenColumn;
+import org.openmetadata.service.search.models.FlattenSchemaField;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -359,8 +370,8 @@ public class VectorDocBuilder {
       fields.put("fqnParts", new ArrayList<>(fqnParts));
     }
 
-    ParseTags accessTags = accessTags(entity, entityType);
-    List<Map<String, Object>> tags = tagFqnObjects(accessTags.getTags());
+    AccessTags accessTags = accessTags(entity, entityType);
+    List<Map<String, Object>> tags = tagFqnObjects(accessTags.tags());
     if (!tags.isEmpty()) {
       fields.put("tags", tags);
     }
@@ -368,8 +379,8 @@ public class VectorDocBuilder {
     if (!domains.isEmpty()) {
       fields.put("domains", domains);
     }
-    if (accessTags.getTierTag() != null) {
-      fields.put("tier", Map.of("tagFQN", accessTags.getTierTag().getTagFQN()));
+    if (accessTags.tier() != null) {
+      fields.put("tier", Map.of("tagFQN", accessTags.tier().getTagFQN()));
     }
     String certification = extractCertificationLabel(entity);
     if (certification != null) {
@@ -570,26 +581,80 @@ public class VectorDocBuilder {
 
   /**
    * The tags search access policies read, as entity documents carry them: the tag set authorization
-   * evaluates ({@link Entity#getEntityTags}, which folds in a table's columns, a topic's schema
-   * fields and so on) with the Tier tag split off into {@code tier}. A type with no repository has
+   * evaluates ({@link Entity#getEntityTags}, which folds in a table's top-level columns, a topic's
+   * schema fields and so on) with the Tier tag split off into {@code tier}, plus the tags of the
+   * nested children the entity's index flattens into its document. A type with no repository has
    * only its own tags, as {@code EntityRepository#getAllTags} defaults to.
    */
-  static ParseTags accessTags(EntityInterface<?> entity, String entityType) {
+  static AccessTags accessTags(EntityInterface<?> entity, String entityType) {
     List<TagLabel> tags =
         !nullOrEmpty(entityType) && Entity.hasEntityRepository(entityType)
             ? Entity.getEntityTags(entityType, entity)
             : listOrEmpty(entity.getTags());
-    return new ParseTags(tags);
+    ParseTags own = new ParseTags(tags);
+    return new AccessTags(
+        TaggableIndex.mergedTags(listOrEmpty(own.getTags()), childTagSets(entity)),
+        own.getTierTag());
   }
+
+  /**
+   * The child tag sets the table, data model, worksheet, container, topic and API endpoint indexes
+   * merge into their documents ({@code TaggableIndex#mergeChildTags}), flattened with the same
+   * flatteners and limits.
+   */
+  static Set<List<TagLabel>> childTagSets(EntityInterface<?> entity) {
+    return switch (entity) {
+      case Table table -> columnTagSets(table.getColumns());
+      case DashboardDataModel model -> columnTagSets(model.getColumns());
+      case Worksheet worksheet -> columnTagSets(worksheet.getColumns());
+      case Container container -> columnTagSets(
+          container.getDataModel() == null ? null : container.getDataModel().getColumns());
+      case Topic topic -> fieldTagSets(
+          topic.getMessageSchema() == null ? null : topic.getMessageSchema().getSchemaFields());
+      case APIEndpoint endpoint -> apiEndpointTagSets(endpoint);
+      default -> Set.of();
+    };
+  }
+
+  private static Set<List<TagLabel>> columnTagSets(List<Column> columns) {
+    List<FlattenColumn> flattened = new ArrayList<>();
+    if (columns != null) {
+      ColumnFlattener.parseColumns(columns, flattened, null);
+    }
+    return tagSets(flattened.stream().map(FlattenColumn::getTags));
+  }
+
+  private static Set<List<TagLabel>> fieldTagSets(List<Field> fields) {
+    List<FlattenSchemaField> flattened = new ArrayList<>();
+    if (fields != null) {
+      SchemaFieldFlattener.parseSchemaFields(fields, flattened, null);
+    }
+    return tagSets(flattened.stream().map(FlattenSchemaField::getTags));
+  }
+
+  private static Set<List<TagLabel>> apiEndpointTagSets(APIEndpoint endpoint) {
+    Set<List<TagLabel>> tagSets = new LinkedHashSet<>(schemaTagSets(endpoint.getResponseSchema()));
+    tagSets.addAll(schemaTagSets(endpoint.getRequestSchema()));
+    return tagSets;
+  }
+
+  private static Set<List<TagLabel>> schemaTagSets(APISchema schema) {
+    return fieldTagSets(schema == null ? null : schema.getSchemaFields());
+  }
+
+  private static Set<List<TagLabel>> tagSets(Stream<List<TagLabel>> childTags) {
+    return childTags.filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  /** A chunk's {@code tags} and {@code tier}, as its entity document carries them. */
+  record AccessTags(List<TagLabel> tags, TagLabel tier) {}
 
   /** See {@link #FIELD_ACCESS_STAMP}. Only filter values feed it, never embedded text. */
   static String accessStamp(EntityInterface<?> entity) {
     EntityReference service = containerReference(entity, "getService");
-    ParseTags accessTags = accessTags(entity, entity.getEntityReference().getType());
+    AccessTags accessTags = accessTags(entity, entity.getEntityReference().getType());
     List<String> tagFqns =
-        Stream.concat(
-                listOrEmpty(accessTags.getTags()).stream(),
-                Stream.ofNullable(accessTags.getTierTag()))
+        Stream.concat(accessTags.tags().stream(), Stream.ofNullable(accessTags.tier()))
             .map(TagLabel::getTagFQN)
             .filter(Objects::nonNull)
             .sorted()

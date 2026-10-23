@@ -5,7 +5,8 @@
 - **Deciders:** Shreyansh Verma
 - **Guard:** `SearchAccessFilterTest`, `OpenSearchRBACConditionEvaluatorTest` (the chunk cases),
   `VectorSearchQueryBuilderTest` (the access filter cases), `VectorSearchAccessTest`,
-  `VectorDocBuilderChunkTest` (the access field and column tag cases), `OpenSearchVectorServiceTest`
+  `VectorDocBuilderChunkTest` (the access field, column and nested child tag cases),
+  `MergeChildTagsTest`, `ColumnIndexLimitTest`, `OpenSearchVectorServiceTest`
   (the restamp, outage and invalidation cases), `SearchRepositoryBehaviorTest` (the chunk
   withholding cases), `AIContextFinderTest`, `VectorSearchAccessFilterIT`, and Collate's
   `HybridSearchAccessControlIT`
@@ -49,11 +50,16 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
 - Chunk documents carry `domains[].id`, `id` on `service` / `database` / `databaseSchema`,
   `reviewers[].id` and `accessStamp`, a hash of the values policies read (owner, domain, reviewer
   and service ids; tag, tier and certification FQNs). `CHUNK_DOC_VERSION` is 9.
-- Chunk `tags` and `tier` come from the tag set authorization evaluates
-  (`Entity.getEntityTags`, a repository's `getAllTags`: a table's column and data-model tags
-  included), split as entity documents split them: the Tier tag in `tier`, never in `tags`. A
-  struct-nested column's tags, which the table index adds by its own flattening but `getAllTags`
-  does not, are not on chunks; there vector search follows REST.
+- Chunk `tags` and `tier` are the entity document's: the tag set authorization evaluates
+  (`Entity.getEntityTags`, a repository's `getAllTags`), split as entity documents split it (the
+  Tier tag in `tier`, never in `tags`), plus the tags of the nested children the table, data
+  model, worksheet, container, topic and API endpoint indexes flatten into their documents (a
+  struct column's fields, a schema's nested fields). Chunks flatten them with the same flatteners
+  and limits (`ColumnFlattener`, `SchemaFieldFlattener`) and merge them with the same rule
+  (`TaggableIndex.mergedTags`). Where `getAllTags` and the document differ, a nested field's tag
+  being the case, vector search therefore follows normal search, not REST: a chunk is never
+  visible where its entity document is not, so the hydration withholding below is a safety net,
+  not a source of short pages.
 - A chunk whose stored `accessStamp` differs from its entity's is restamped (no re-embedding), the
   same way memory status and anchor are, also while the embedding provider is unavailable. None of
   these values may enter the embedding fingerprint.
@@ -72,14 +78,17 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   request and pass it to every over-fetch page. `VectorSearchQueryBuilder` renders the clause as the
   second element of the knn filter's `filter` array, after the memory clause, in filter context.
   Its overloads without a `VectorSearchAccess` render no access clause and stay pure; every
-  production caller passes one.
+  production search passes one except `searchChunksByParent`, the excerpt lookup over one parent's
+  chunks, whose callers authorize that parent through REST first and already hold its full
+  content.
 - A hybrid caller ANDs the same clause into its lexical, fallback and aggregation legs, and passes it
   to the knn leg through `VectorSearchAccess`. Collate's `HybridSearchService` does so, and also into
   the lookup that hydrates chunk winners with their entity source, as a named clause that marks the
   entity docs the caller may see: a winner whose entity doc exists but is not marked is withheld,
   and one whose entity doc does not exist at all (deleted or re-created under a new id) is kept
   from its chunk fields exactly as without a policy, since its chunk already passed the caller's
-  chunk policy.
+  chunk policy. A failed lookup cannot tell the two apart, so under a policy it withholds every
+  chunk winner of that page.
 - Every vector search made for a caller passes the caller's subject, the AI context knowledge search
   (`AIContextFinder`) included.
 - Elasticsearch has no chunk index, so there the clause filters entity documents only; the chunk

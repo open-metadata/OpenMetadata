@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -39,13 +40,23 @@ import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Container;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.entity.data.Worksheet;
+import org.openmetadata.schema.type.APISchema;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -665,9 +676,121 @@ class VectorDocBuilderChunkTest {
   }
 
   private static List<TagLabel> tableAndColumnTags(Table table) {
-    List<TagLabel> tags = new ArrayList<>(table.getTags());
-    table.getColumns().forEach(column -> tags.addAll(column.getTags()));
+    List<TagLabel> tags = new ArrayList<>(listOrEmpty(table.getTags()));
+    table.getColumns().forEach(column -> tags.addAll(listOrEmpty(column.getTags())));
     return tags;
+  }
+
+  /**
+   * getAllTags folds in only top-level columns, but the table document also carries the tags of
+   * nested struct fields (TableIndex flattens the columns). Chunks carry the same, so a deny that
+   * hides the table from normal search also hides its chunks.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void chunkDocs_carryNestedColumnTagsAsTheTableDocumentDoes() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders_raw")
+            .withFullyQualifiedName("svc.db.sch.orders_raw")
+            .withDescription("raw orders")
+            .withColumns(List.of(nestedPiiColumn()));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(Entity.TABLE, Entity.TABLE);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository(Entity.TABLE)).thenReturn(true);
+      entity
+          .when(() -> Entity.getEntityTags(eq(Entity.TABLE), any()))
+          .thenAnswer(invocation -> tableAndColumnTags(invocation.getArgument(1)));
+      String withNestedTag = VectorDocBuilder.accessStamp(table);
+
+      Map<String, Object> chunk =
+          VectorDocBuilder.fromEntity(table, new MockEmbeddingClient()).getFirst();
+
+      List<String> tagFqns =
+          ((List<Map<String, Object>>) chunk.get("tags"))
+              .stream().map(tag -> (String) tag.get("tagFQN")).toList();
+      assertEquals(List.of(PII), tagFqns);
+      table.getColumns().getFirst().getChildren().getFirst().setTags(List.of());
+      assertNotEquals(withNestedTag, VectorDocBuilder.accessStamp(table));
+    }
+  }
+
+  /** Every index that merges child tags into its document: chunks of each carry them too. */
+  @Test
+  void accessTags_carryNestedChildTagsOfEveryFlattenedType() {
+    List<EntityInterface<?>> entities =
+        List.of(
+            new DashboardDataModel().withColumns(List.of(nestedPiiColumn())),
+            new Worksheet().withColumns(List.of(nestedPiiColumn())),
+            new Container()
+                .withDataModel(new ContainerDataModel().withColumns(List.of(nestedPiiColumn()))),
+            new Topic()
+                .withMessageSchema(new MessageSchema().withSchemaFields(List.of(nestedPiiField()))),
+            new APIEndpoint()
+                .withRequestSchema(new APISchema().withSchemaFields(List.of(nestedPiiField()))),
+            new APIEndpoint()
+                .withResponseSchema(new APISchema().withSchemaFields(List.of(nestedPiiField()))));
+
+    for (EntityInterface<?> entity : entities) {
+      assertEquals(
+          List.of(PII),
+          VectorDocBuilder.accessTags(entity, null).tags().stream()
+              .map(TagLabel::getTagFQN)
+              .toList(),
+          entity.getClass().getSimpleName());
+    }
+  }
+
+  /** Own tags first, then child tags, each FQN once: the order entity documents use. */
+  @Test
+  void accessTags_mergeChildTagsAfterOwnTagsWithoutDuplicates() {
+    Worksheet worksheet =
+        new Worksheet()
+            .withTags(List.of(new TagLabel().withTagFQN("Tier.Tier2"), tag("Finance.Ledger")))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("amount")
+                        .withDataType(ColumnDataType.STRING)
+                        .withTags(List.of(tag("Finance.Ledger"))),
+                    nestedPiiColumn()));
+
+    VectorDocBuilder.AccessTags tags = VectorDocBuilder.accessTags(worksheet, null);
+
+    assertEquals(
+        List.of("Finance.Ledger", PII), tags.tags().stream().map(TagLabel::getTagFQN).toList());
+    assertEquals("Tier.Tier2", tags.tier().getTagFQN());
+  }
+
+  private static final String PII = "PII.Sensitive";
+
+  private static TagLabel tag(String fqn) {
+    return new TagLabel().withTagFQN(fqn);
+  }
+
+  private static Column nestedPiiColumn() {
+    return new Column()
+        .withName("customer")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("email")
+                    .withDataType(ColumnDataType.STRING)
+                    .withTags(List.of(tag(PII)))));
+  }
+
+  private static Field nestedPiiField() {
+    return new Field()
+        .withName("customer")
+        .withDataType(FieldDataType.RECORD)
+        .withChildren(
+            List.of(
+                new Field()
+                    .withName("email")
+                    .withDataType(FieldDataType.STRING)
+                    .withTags(List.of(tag(PII)))));
   }
 
   /** Reviewers only filter; a reviewer change must restamp the chunks, never re-embed them. */

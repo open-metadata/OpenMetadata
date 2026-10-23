@@ -1116,15 +1116,13 @@ class OpenSearchVectorServiceTest {
         "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"},{\"_id\":\"e2\"}]}}",
         "{\"updated\":2}",
         "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}",
+        "{\"_shards\":{}}",
         "{\"succeeded\":true}");
 
     vectorService.invalidateChunkAccess(
         List.of("cluster_table"), "{\"term\":{\"databaseSchema.id\":\"schema-1\"}}");
 
-    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
-        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
-    verify(mockGenericClient, times(4)).execute(captor.capture());
-    List<os.org.opensearch.client.opensearch.generic.Request> requests = captor.getAllValues();
+    List<os.org.opensearch.client.opensearch.generic.Request> requests = sentRequests(5);
     assertTrue(requests.get(0).getEndpoint().startsWith("/cluster_table/_search"));
     assertTrue(bodyOf(requests.get(0)).contains("schema-1"), bodyOf(requests.get(0)));
     String update = bodyOf(requests.get(1));
@@ -1136,7 +1134,67 @@ class OpenSearchVectorServiceTest {
         requests.get(1).getEndpoint());
     assertTrue(update.contains("\"parentId\":[\"e1\",\"e2\"]"), update);
     assertTrue(update.contains(VectorDocBuilder.FIELD_ACCESS_STAMP), update);
-    assertEquals("DELETE", requests.get(3).getMethod());
+    assertEquals("DELETE", requests.get(4).getMethod());
+  }
+
+  /**
+   * A tag rename can match hundreds of thousands of entities: the batches are applied without a
+   * refresh each, and the chunk targets are refreshed once when every batch is in.
+   */
+  @Test
+  void invalidateChunkAccess_refreshesOnceAfterTheLastBatch() throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}",
+        "{\"updated\":1}",
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e2\"}]}}",
+        "{\"updated\":1}",
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}",
+        "{\"_shards\":{}}",
+        "{\"succeeded\":true}");
+
+    vectorService.invalidateChunkAccess(
+        List.of("cluster_table"), "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}");
+
+    List<String> endpoints =
+        sentRequests(7).stream()
+            .map(os.org.opensearch.client.opensearch.generic.Request::getEndpoint)
+            .toList();
+    List<String> updates = endpoints.stream().filter(e -> e.contains("_update_by_query")).toList();
+    assertEquals(2, updates.size(), endpoints.toString());
+    assertTrue(updates.stream().noneMatch(e -> e.contains("refresh=true")), updates.toString());
+    String refresh = "/" + vectorService.getChunkIndexName() + "/_refresh";
+    assertEquals(
+        1, endpoints.stream().filter(e -> e.contains("_refresh")).count(), endpoints.toString());
+    assertTrue(endpoints.get(3).contains("_update_by_query"), endpoints.toString());
+    assertTrue(
+        endpoints.get(5).startsWith(refresh), "refresh follows the last batch: " + endpoints);
+  }
+
+  @Test
+  void invalidateChunkAccess_neitherUpdatesNorRefreshesWhenNothingMatches() throws Exception {
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}", "{\"succeeded\":true}");
+
+    vectorService.invalidateChunkAccess(
+        List.of("cluster_table"), "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}");
+
+    List<String> endpoints =
+        sentRequests(2).stream()
+            .map(os.org.opensearch.client.opensearch.generic.Request::getEndpoint)
+            .toList();
+    assertTrue(endpoints.get(0).startsWith("/cluster_table/_search"), endpoints.toString());
+    assertEquals("/_search/scroll", endpoints.get(1));
+  }
+
+  private List<os.org.opensearch.client.opensearch.generic.Request> sentRequests(int count)
+      throws Exception {
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, times(count)).execute(captor.capture());
+    return captor.getAllValues();
   }
 
   /** Only new text needs the provider; a restamp reuses the stored vectors. */
