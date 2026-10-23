@@ -21,28 +21,39 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.StorageService;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -56,6 +67,9 @@ public class RenameCascadeSearchIT {
   private static final String GLOSSARY_TERM_INDEX = "glossary_term_search_index";
   private static final String TAG_INDEX = "tag_search_index";
   private static final String TABLE_INDEX = "table_search_index";
+  private static final String CONTAINER_INDEX = "container_search_index";
+  private static final String PAGE_INDEX = "knowledge_page_search_index";
+  private static final String PAGES_PATH = "v1/contextCenter/pages";
   private static final String COLUMN = "id";
 
   @Test
@@ -221,6 +235,51 @@ public class RenameCascadeSearchIT {
                 tagOf(doc.path("columns"), COLUMN, tagFqn).path("displayName").asText()));
   }
 
+  @Test
+  void containerMove_leavesSiblingsSharingThePrefixAlone(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container raw = container(service, "raw", null);
+    Container part = container(service, "part", raw);
+    Container rawData = container(service, "rawdata", null);
+    Container archive = container(service, "archive", null);
+    awaitFqn(CONTAINER_INDEX, part.getId(), part.getFullyQualifiedName());
+    awaitFqn(CONTAINER_INDEX, rawData.getId(), rawData.getFullyQualifiedName());
+
+    Container moved = client().containers().get(raw.getId().toString(), "parent");
+    moved.setParent(new EntityReference().withId(archive.getId()).withType("container"));
+    client().containers().update(raw.getId().toString(), moved);
+
+    String movedFqn = FullyQualifiedName.add(archive.getFullyQualifiedName(), "raw");
+    awaitFqn(CONTAINER_INDEX, part.getId(), FullyQualifiedName.add(movedFqn, "part"));
+    assertEquals(
+        rawData.getFullyQualifiedName(),
+        awaitDoc(CONTAINER_INDEX, rawData.getId(), doc -> true)
+            .path("fullyQualifiedName")
+            .asText());
+  }
+
+  @Test
+  void pageMove_leavesSiblingsSharingThePrefixAlone(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    String guideName = ns.shortPrefix("guide");
+    Page guide = page(rest, guideName, null);
+    Page step = page(rest, "step", guide);
+    Page guidelines = page(rest, guideName + "lines", null);
+    Page docs = page(rest, ns.shortPrefix("docs"), null);
+    awaitFqn(PAGE_INDEX, step.getId(), step.getFullyQualifiedName());
+    awaitFqn(PAGE_INDEX, guidelines.getId(), guidelines.getFullyQualifiedName());
+
+    String original = JsonUtils.pojoToJson(guide);
+    guide.setParent(new EntityReference().withId(docs.getId()).withType("page"));
+    rest.patch(PAGES_PATH, guide.getId(), original, guide, Page.class);
+
+    String movedFqn = FullyQualifiedName.add(docs.getFullyQualifiedName(), guideName);
+    awaitFqn(PAGE_INDEX, step.getId(), FullyQualifiedName.add(movedFqn, "step"));
+    assertEquals(
+        guidelines.getFullyQualifiedName(),
+        awaitDoc(PAGE_INDEX, guidelines.getId(), doc -> true).path("fullyQualifiedName").asText());
+  }
+
   private static void awaitFqn(String index, UUID id, String fqn) {
     awaitDoc(index, id, doc -> fqn.equals(doc.path("fullyQualifiedName").asText()));
   }
@@ -293,6 +352,30 @@ public class RenameCascadeSearchIT {
                             .withName(COLUMN)
                             .withDataType(ColumnDataType.BIGINT)
                             .withTags(columnTags))));
+  }
+
+  private static Container container(StorageService service, String name, Container parent) {
+    CreateContainer create =
+        new CreateContainer().withName(name).withService(service.getFullyQualifiedName());
+    if (parent != null) {
+      create.withParent(new EntityReference().withId(parent.getId()).withType("container"));
+    }
+    return client().containers().create(create);
+  }
+
+  private static Page page(RestClient rest, String name, Page parent) throws Exception {
+    Team organization = client().teams().getByName("Organization");
+    CreatePage create =
+        new CreatePage()
+            .withName(name)
+            .withPageType(PageType.ARTICLE)
+            .withDescription(name)
+            .withPage(new Article())
+            .withRelatedEntities(List.of(organization.getEntityReference()));
+    if (parent != null) {
+      create.withParent(new EntityReference().withId(parent.getId()).withType("page"));
+    }
+    return rest.create(PAGES_PATH, create, Page.class);
   }
 
   private static OpenMetadataClient client() {

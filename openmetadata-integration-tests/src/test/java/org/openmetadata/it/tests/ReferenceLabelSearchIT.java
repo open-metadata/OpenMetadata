@@ -23,11 +23,13 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -55,6 +57,7 @@ public class ReferenceLabelSearchIT {
   private static final String DOMAIN_INDEX = "domain_search_index";
   private static final String DATA_PRODUCT_INDEX = "data_product_search_index";
   private static final String GLOSSARY_TERM_INDEX = "glossary_term_search_index";
+  private static final String QUERY_INDEX = "query_search_index";
 
   @Test
   void userDisplayName_reachesOwnerReviewerAndExpertCopies(TestNamespace ns) {
@@ -94,6 +97,28 @@ public class ReferenceLabelSearchIT {
         () ->
             awaitLabel(GLOSSARY_TERM_INDEX, term.getId(), "reviewers", user.getId(), "Shown Owner"),
         () -> awaitLabel(DOMAIN_INDEX, domain.getId(), "experts", user.getId(), "Shown Owner"));
+  }
+
+  @Test
+  void userDisplayName_reachesQueryUserCopies(TestNamespace ns) {
+    User user = UserTestFactory.createUser(ns, "querier");
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    // query_entity is unique on the SQL text, so the statement carries the namespace.
+    Query query =
+        client()
+            .queries()
+            .create(
+                new CreateQuery()
+                    .withQuery("SELECT 1 AS " + ns.shortPrefix("ran_by"))
+                    .withService(service.getFullyQualifiedName())
+                    .withUsers(List.of(user.getName())));
+    awaitReference(QUERY_INDEX, query.getId(), "users", user.getId());
+
+    User edited = client().users().get(user.getId().toString());
+    edited.setDisplayName("Shown Querier");
+    client().users().update(user.getId().toString(), edited);
+
+    awaitLabel(QUERY_INDEX, query.getId(), "users", user.getId(), "Shown Querier");
   }
 
   @Test

@@ -842,8 +842,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     try {
+      // The entity itself or one under it: a bare prefix also matches a sibling whose name merely
+      // starts with the same text ("svc.raw" would match "svc.rawdata").
       Query prefixQuery =
-          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldParentFQN)));
+          Query.of(
+              q ->
+                  q.bool(
+                      b ->
+                          b.should(
+                                  s ->
+                                      s.term(
+                                          t ->
+                                              t.field(prefixFieldCondition)
+                                                  .value(FieldValue.of(oldParentFQN))))
+                              .should(
+                                  s ->
+                                      s.prefix(
+                                          p ->
+                                              p.field(prefixFieldCondition)
+                                                  .value(oldParentFQN + Entity.SEPARATOR)))
+                              .minimumShouldMatch("1")));
 
       Map<String, JsonData> params =
           Map.of(
@@ -869,7 +887,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                           .params(params)))
                       .refresh(Refresh.True));
 
-      runReconciled("updateByFqnPrefix", request, !newParentFQN.contains(oldParentFQN));
+      runReconciled(
+          "updateByFqnPrefix",
+          request,
+          UpdateByQueryReconciler.prefixRenameIsReplaySafe(oldParentFQN, newParentFQN));
 
       LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
 

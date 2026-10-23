@@ -499,7 +499,14 @@ public class SearchRepository {
   /** The reference lists in which other documents copy a user, team, domain or data product. */
   private static final Map<String, List<String>> REFERENCE_COPY_FIELDS =
       Map.of(
-          Entity.USER, List.of(FIELD_OWNERS, FIELD_REVIEWERS, FIELD_EXPERTS),
+          Entity.USER,
+              List.of(
+                  FIELD_OWNERS,
+                  FIELD_REVIEWERS,
+                  FIELD_EXPERTS,
+                  "editors",
+                  "lastModifiedBy",
+                  "users"),
           Entity.TEAM, List.of(FIELD_OWNERS, FIELD_REVIEWERS, "teams", "parents"),
           Entity.DOMAIN, List.of(FIELD_DOMAINS),
           Entity.DATA_PRODUCT, List.of(FIELD_DATA_PRODUCTS));
