@@ -23,6 +23,10 @@ const storedAvailabilityTime = '09:00 UTC';
 // the unmatched columnName preservation path.
 const unmatchedColumnName = 'UPDATED_AT';
 
+// Saved in beforeAll, reused in afterAll and the test so cleanup/verification
+// target exactly the contract this run created — never another run's contract.
+let contractId: string;
+
 test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
   test.beforeAll(
     'Seed a table and a contract with a non-HH:mm SLA',
@@ -43,6 +47,8 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
         },
       });
       expect(contractResponse.status()).toBe(201);
+      contractId = (await contractResponse.json()).id;
+      expect(contractId).toBeTruthy();
 
       await afterAction();
     }
@@ -51,15 +57,8 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Delete the contract(s) created for this table.
-    const contractList = await apiContext.get(
-      `/api/v1/dataContracts?entityId=${table.entityResponseData.id}&limit=100`
-    );
-    const listJson = await contractList.json();
-    for (const c of listJson.data ?? []) {
-      if (c.name?.startsWith('sla_roundtrip_contract_')) {
-        await apiContext.delete(`/api/v1/dataContracts/${c.id}`);
-      }
+    if (contractId) {
+      await apiContext.delete(`/api/v1/dataContracts/${contractId}`);
     }
 
     await table.delete(apiContext);
@@ -115,14 +114,14 @@ test.describe('Data contract SLA round-trip preservation (bug fix E2E)', () => {
       });
 
       await test.step('Verify the stored SLA kept availabilityTime and columnName', async () => {
-        const contractList = await apiContext.get(
-          `/api/v1/dataContracts?entityId=${table.entityResponseData.id}&limit=100`
+        const contractResponse = await apiContext.get(
+          `/api/v1/dataContracts/${contractId}`
         );
-        const listJson = await contractList.json();
-        const contract = (listJson.data ?? []).find((c: { name?: string }) =>
-          c.name?.startsWith('sla_roundtrip_contract_')
-        );
-        expect(contract, 'seeded contract should still exist').toBeTruthy();
+        expect(
+          contractResponse.status(),
+          'seeded contract should still exist'
+        ).toBe(200);
+        const contract = await contractResponse.json();
 
         const sla = contract.sla ?? {};
         // The headline bug fix: availabilityTime survives (normalized to "09:00").

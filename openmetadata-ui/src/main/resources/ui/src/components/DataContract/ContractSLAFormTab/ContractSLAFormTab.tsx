@@ -68,18 +68,43 @@ const findItem = (items: FormSelectItem[], id?: string) =>
 // name, or a value the table no longer exposes) against the form options,
 // which are keyed by fully qualified name (`id`) with the column name as the
 // `label`. Falling back to the leaf name keeps a round-trip lossless instead
-// of silently dropping an unmatched value.
+// of silently dropping an unmatched value. A top-level column (the shortest
+// matching FQN) is preferred over a struct child with the same leaf, since the
+// backend resolves bare names against top-level columns; if more than one
+// column shares that shortest FQN the name is ambiguous and we preserve the
+// stored value rather than guessing.
 const findColumnItem = (items: FormSelectItem[], id?: string) => {
   if (!id) {
     return null;
   }
 
-  return (
-    items.find((item) => item.id === id) ??
-    items.find((item) => item.label === id) ??
-    items.find((item) => item.id.endsWith(`.${id}`)) ??
-    null
-  );
+  // Exact FQN match.
+  const exact = items.find((item) => item.id === id);
+  if (exact) {
+    return exact;
+  }
+
+  // Exact leaf-name match against the column label.
+  const byLabel = items.find((item) => item.label === id);
+  if (byLabel) {
+    return byLabel;
+  }
+
+  // Leaf name that only appears as a suffix of one FQN. Prefer the top-level
+  // (shortest) match; if several columns tie at that depth the name is
+  // ambiguous, so keep the stored value intact instead of picking one.
+  const suffixMatches = items.filter((item) => item.id.endsWith(`.${id}`));
+  if (suffixMatches.length > 0) {
+    const minLength = Math.min(...suffixMatches.map((m) => m.id.length));
+    const topLevel = suffixMatches.filter((m) => m.id.length === minLength);
+    if (topLevel.length === 1) {
+      return topLevel[0];
+    }
+
+    return null;
+  }
+
+  return null;
 };
 
 const toNumberString = (value?: number) =>
@@ -112,42 +137,45 @@ const toTimeString = ({ hour, minute }: TimePickerValue) =>
 
 // For a modeled SLA field, decide its fate on save:
 //  - emit the form value when the form holds one (overwriting the spread),
-//  - remove the field when the form *could* represent the stored value but
-//    the user cleared/invalidated it (preserving the pre-migration clear
-//    behavior so edits still produce `replace`/`remove` ops as before),
+//  - remove the field once the user has *touched* it and then cleared it,
 //  - otherwise leave the value already spread from `storedSLA`, so data the
 //    form cannot round-trip (e.g. "09:00 UTC" availabilityTime, a leaf-name
 //    columnName, or unmodeled keys) survives instead of becoming a `remove`.
+// Tracking "touched" (instead of "seedable") means a field the form could not
+// seed but the user later selected and then cleared is still removed, rather
+// than silently reverting to the stored value the form cannot represent.
 const applyModelledField = (
   hasFormValue: boolean,
-  seedable: boolean,
+  wasTouched: boolean,
   emit: () => void,
   remove: () => void
 ) => {
   if (hasFormValue) {
     emit();
-  } else if (seedable) {
+  } else if (wasTouched) {
     remove();
   }
 };
 
-// Form option sets used to decide whether a stored, modeled field was
-// something the form could represent. A field the form *could* seed is owned
-// by the form on save (a cleared/invalid form value removes it); a field the
-// form *could not* seed is preserved from the stored SLA so editing an
-// unrelated SLA attribute never deletes data the form cannot round-trip.
-interface ContractSLASeedOptions {
-  columnItems: FormSelectItem[];
-  refreshUnitItems: FormSelectItem[];
-  latencyUnitItems: FormSelectItem[];
-  retentionUnitItems: FormSelectItem[];
-  timezoneItems: FormSelectItem[];
-}
+// Maps each RHF field name to the SLA key group it belongs to, so a single
+// "touched" set can track whether the user interacted with any of the form
+// fields that feed a given SLA attribute.
+const SLA_FIELD_GROUP: Partial<Record<keyof ContractSLAFormValues, string>> = {
+  availabilityTime: 'availabilityTime',
+  timezone: 'timezone',
+  columnName: 'columnName',
+  max_latency_value: 'maxLatency',
+  max_latency_unit: 'maxLatency',
+  refresh_frequency_interval: 'refreshFrequency',
+  refresh_frequency_unit: 'refreshFrequency',
+  retention_period: 'retention',
+  retention_unit: 'retention',
+};
 
 const toContractSLA = (
   values: Partial<ContractSLAFormValues>,
   storedSLA: ContractSLA = {},
-  options: ContractSLASeedOptions
+  touched: Set<string>
 ): ContractSLA => {
   // Start from the stored SLA so unmodeled/extra keys and values the form
   // cannot round-trip survive a save instead of becoming JSON-Patch `remove`
@@ -160,7 +188,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.availabilityTime),
-    toTimeValue(storedSLA.availabilityTime) !== null,
+    touched.has('availabilityTime'),
     () => {
       if (values.availabilityTime) {
         sla.availabilityTime = toTimeString(values.availabilityTime);
@@ -173,7 +201,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.timezone),
-    findItem(options.timezoneItems, storedSLA.timezone) !== null,
+    touched.has('timezone'),
     () => {
       if (values.timezone) {
         sla.timezone = values.timezone.id as Timezone;
@@ -186,7 +214,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.columnName),
-    findColumnItem(options.columnItems, storedSLA.columnName) !== null,
+    touched.has('columnName'),
     () => {
       if (values.columnName) {
         sla.columnName = values.columnName.id;
@@ -199,7 +227,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.max_latency_unit) && maxLatency !== undefined,
-    findItem(options.latencyUnitItems, storedSLA.maxLatency?.unit) !== null,
+    touched.has('maxLatency'),
     () => {
       if (values.max_latency_unit && maxLatency !== undefined) {
         sla.maxLatency = {
@@ -217,8 +245,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.refresh_frequency_unit) && refreshInterval !== undefined,
-    findItem(options.refreshUnitItems, storedSLA.refreshFrequency?.unit) !==
-      null,
+    touched.has('refreshFrequency'),
     () => {
       if (values.refresh_frequency_unit && refreshInterval !== undefined) {
         sla.refreshFrequency = {
@@ -236,7 +263,7 @@ const toContractSLA = (
 
   applyModelledField(
     Boolean(values.retention_unit) && retention !== undefined,
-    findItem(options.retentionUnitItems, storedSLA.retention?.unit) !== null,
+    touched.has('retention'),
     () => {
       if (values.retention_unit && retention !== undefined) {
         sla.retention = {
@@ -337,35 +364,38 @@ export const ContractSLAFormTab: React.FC<{
     storedSLARef.current = initialValues?.sla;
   });
 
+  // Track which SLA field groups the user has touched, so a cleared value is
+  // removed even when the form could not seed the stored value (e.g. an
+  // unparseable availabilityTime or an unmatched columnName). Reset whenever
+  // a new contract is loaded.
+  const touchedSLAFieldsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    const { unsubscribe } = form.watch((values, { type }) => {
+    if (initialValues) {
+      touchedSLAFieldsRef.current = new Set();
+    }
+  }, [initialValues]);
+
+  useEffect(() => {
+    const { unsubscribe } = form.watch((values, { type, name }) => {
       if (type === 'change') {
+        const group = name
+          ? SLA_FIELD_GROUP[name as keyof ContractSLAFormValues]
+          : undefined;
+        if (group) {
+          touchedSLAFieldsRef.current.add(group);
+        }
         onChange({
           sla: toContractSLA(
             values as ContractSLAFormValues,
             storedSLARef.current ?? {},
-            {
-              columnItems,
-              refreshUnitItems,
-              latencyUnitItems,
-              retentionUnitItems,
-              timezoneItems,
-            }
+            touchedSLAFieldsRef.current
           ),
         });
       }
     });
 
     return unsubscribe;
-  }, [
-    form,
-    onChange,
-    columnItems,
-    refreshUnitItems,
-    latencyUnitItems,
-    retentionUnitItems,
-    timezoneItems,
-  ]);
+  }, [form, onChange]);
 
   const numberField = (
     name: keyof ContractSLAFormValues,
