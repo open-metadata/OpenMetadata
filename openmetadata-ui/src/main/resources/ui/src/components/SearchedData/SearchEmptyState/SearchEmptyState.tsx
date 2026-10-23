@@ -178,7 +178,7 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
         </div>
       </div>
     );
-  }, [isQuery, tab, activeDomain]);
+  }, [isQuery, tab, activeDomain, search]);
 
   const elasticSearchError = useMemo(() => {
     const index = errorMessage?.split('[')[3]?.split(']')[0];

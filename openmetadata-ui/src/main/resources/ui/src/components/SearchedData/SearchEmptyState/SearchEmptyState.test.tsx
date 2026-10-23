@@ -40,8 +40,17 @@ const mockErrorMessage =
   'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
 
 describe('Test Error placeholder ingestion Component', () => {
-  it('shows filter guidance when only deleted assets are selected', () => {
-    render(
+  it('switches to filter guidance when search clears but deleted assets remain selected', () => {
+    const { rerender } = render(
+      <SearchEmptyState
+        query={{ search: 'missing', showDeleted: 'true' }}
+        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
+      />
+    );
+
+    expect(screen.getByText('label.no-result-found')).toBeInTheDocument();
+
+    rerender(
       <SearchEmptyState
         query={{ showDeleted: 'true' }}
         type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
