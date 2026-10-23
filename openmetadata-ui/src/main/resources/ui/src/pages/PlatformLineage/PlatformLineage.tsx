@@ -202,7 +202,7 @@ const PlatformLineage = () => {
     [setLineageConfig]
   );
 
-  const isAiMode = useIsAiMode() || true; // TEMP-PREVIEW
+  const isAiMode = useIsAiMode();
 
   const searchSelect = useMemo(
     () => (
