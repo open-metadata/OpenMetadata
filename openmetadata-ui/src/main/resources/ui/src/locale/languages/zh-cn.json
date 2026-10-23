@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "仪表板 & 报告",
     "entity-group-database-and-storage": "数据库 & 存储",
     "entity-group-pipelines-and-ml": "工作流 & 机器学习",
+    "entity-group-users-and-teams": "用户 & 团队",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
     "entity-id-match": "根据ID匹配",

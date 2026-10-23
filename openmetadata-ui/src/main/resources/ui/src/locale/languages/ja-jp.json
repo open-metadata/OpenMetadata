@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "ダッシュボード & レポート",
     "entity-group-database-and-storage": "データベース & ストレージ",
     "entity-group-pipelines-and-ml": "パイプライン & ML",
+    "entity-group-users-and-teams": "ユーザー & チーム",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
     "entity-id-match": "IDによる一致",

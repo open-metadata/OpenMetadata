@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Kontrol Panelleri & Raporlama",
     "entity-group-database-and-storage": "Veritabanı & Depolama",
     "entity-group-pipelines-and-ml": "İş Akışları & ML",
+    "entity-group-users-and-teams": "Kullanıcılar & Takımlar",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} Kimliği",
     "entity-id-match": "Kimliğe Göre Eşleştir",

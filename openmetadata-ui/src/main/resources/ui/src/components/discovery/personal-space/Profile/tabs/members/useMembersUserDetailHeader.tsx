@@ -14,6 +14,7 @@
 import {
   Avatar,
   Badge,
+  BadgeWithDot,
   Box,
   ButtonUtility,
   Skeleton,
@@ -28,7 +29,10 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { getTaskById } from '../../../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
-import { getVisibleEmail } from '../../../../../../utils/UsersPureUtils';
+import {
+  getUserOnlineStatus,
+  getVisibleEmail,
+} from '../../../../../../utils/UsersPureUtils';
 import { TASK_ID_PREFIX } from '../../../../../MyData/Widgets/MyTasksWidget/MyTasksWidget.constants';
 import { useUserActivityCount } from '../../../InboxPage/useInboxActivity';
 import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
@@ -69,38 +73,49 @@ const buildStatusBadges = (
   t: TranslateFn,
   user: User,
   isSelf: boolean
-): ReactNode => (
-  <Box align="center" className="tw:ml-1" gap={2}>
-    {isSelf && (
-      <Badge
-        color="gray"
-        data-testid="user-you-badge"
-        size="sm"
-        type="pill-color">
-        {t('label.you')}
-      </Badge>
-    )}
-    {user.isAdmin && !user.isBot && (
-      <Badge color="brand" size="sm" type="pill-color">
-        {t('label.admin')}
-      </Badge>
-    )}
-    {user.isBot && (
-      <Badge color="gray-blue" size="sm" type="pill-color">
-        {t('label.bot')}
-      </Badge>
-    )}
-    {user.deleted && (
-      <Badge
-        color="error"
-        data-testid="user-deleted-badge"
-        size="sm"
-        type="pill-color">
-        {t('label.deleted')}
-      </Badge>
-    )}
-  </Box>
-);
+): ReactNode => {
+  const onlineStatus = getUserOnlineStatus(user);
+
+  return (
+    <Box align="center" className="tw:ml-1" gap={2}>
+      {isSelf && (
+        <Badge
+          color="gray"
+          data-testid="user-you-badge"
+          size="sm"
+          type="pill-color">
+          {t('label.you')}
+        </Badge>
+      )}
+      {user.isAdmin && !user.isBot && (
+        <Badge color="brand" size="sm" type="pill-color">
+          {t('label.admin')}
+        </Badge>
+      )}
+      {user.isBot && (
+        <Badge color="gray-blue" size="sm" type="pill-color">
+          {t('label.bot')}
+        </Badge>
+      )}
+      {user.deleted && (
+        <Badge
+          color="error"
+          data-testid="user-deleted-badge"
+          size="sm"
+          type="pill-color">
+          {t('label.deleted')}
+        </Badge>
+      )}
+      {onlineStatus && (
+        <span data-testid="user-online-status">
+          <BadgeWithDot color="success" size="sm">
+            {onlineStatus.text}
+          </BadgeWithDot>
+        </span>
+      )}
+    </Box>
+  );
+};
 
 // Legacy parity: soft and hard delete share one entry point (the modal offers
 // both); a deleted user can only be purged, since Restore lives in its banner.

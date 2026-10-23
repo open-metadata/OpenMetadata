@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "대시보드 & 보고",
     "entity-group-database-and-storage": "데이터베이스 & 저장소",
     "entity-group-pipelines-and-ml": "파이프라인 & ML",
+    "entity-group-users-and-teams": "사용자 & 팀",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
     "entity-id-match": "ID로 매칭",

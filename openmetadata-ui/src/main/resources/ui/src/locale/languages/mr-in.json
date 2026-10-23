@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "डॅशबोर्ड्स & अहवाल",
     "entity-group-database-and-storage": "डेटाबेस & साठवण",
     "entity-group-pipelines-and-ml": "पाइपलाइन & ML",
+    "entity-group-users-and-teams": "वापरकर्ते & टीम्स",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} आयडी",
     "entity-id-match": "आयडी द्वारे जुळवा",

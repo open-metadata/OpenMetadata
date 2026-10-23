@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Instrumentpaneler & Rapportering",
     "entity-group-database-and-storage": "Databas & Lagring",
     "entity-group-pipelines-and-ml": "Pipelines & ML",
+    "entity-group-users-and-teams": "Användare & Team",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}}-ID",
     "entity-id-match": "Matcha efter ID",

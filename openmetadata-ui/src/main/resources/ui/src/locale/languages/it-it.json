@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Dashboard e Reporting",
     "entity-group-database-and-storage": "Database e Storage",
     "entity-group-pipelines-and-ml": "Pipeline e ML",
+    "entity-group-users-and-teams": "Utenti & Team",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "Id di {{entity}}",
     "entity-id-match": "Corrispondenza per Id",

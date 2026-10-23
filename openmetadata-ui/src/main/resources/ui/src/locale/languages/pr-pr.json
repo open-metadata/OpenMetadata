@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "داشبوردها & گزارش‌گیری",
     "entity-group-database-and-storage": "پایگاه داده & ذخیره‌سازی",
     "entity-group-pipelines-and-ml": "خطوط لوله & ML",
+    "entity-group-users-and-teams": "کاربران & تیم‌ها",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "شناسه {{entity}}",
     "entity-id-match": "مطابقت با شناسه",

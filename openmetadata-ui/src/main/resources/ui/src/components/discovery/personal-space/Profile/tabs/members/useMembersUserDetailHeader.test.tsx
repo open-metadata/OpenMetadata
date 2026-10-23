@@ -266,6 +266,28 @@ describe('useMembersUserDetailHeader', () => {
     );
   });
 
+  it.each([
+    [2, 'label.online-now'],
+    [30, 'label.active-recently'],
+  ])(
+    'shows the online status for activity %i minutes ago',
+    (minutesAgo, label) => {
+      renderHeader({
+        user: { ...ALICE, lastActivityTime: Date.now() - minutesAgo * 60000 },
+      });
+
+      expect(screen.getByTestId('user-online-status')).toHaveTextContent(label);
+    }
+  );
+
+  it('hides the online status after an hour of inactivity', () => {
+    renderHeader({
+      user: { ...ALICE, lastActivityTime: Date.now() - 2 * 3600000 },
+    });
+
+    expect(screen.queryByTestId('user-online-status')).not.toBeInTheDocument();
+  });
+
   it('pushes a loading header while the user is undefined', () => {
     const onSetHeader = jest.fn();
     renderHeader({ user: undefined, onSetHeader });

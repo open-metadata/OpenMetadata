@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "儀表板 & 報告",
     "entity-group-database-and-storage": "資料庫 & 儲存",
     "entity-group-pipelines-and-ml": "管線 & 機器學習",
+    "entity-group-users-and-teams": "使用者 & 團隊",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
     "entity-id-match": "依 ID 比對",

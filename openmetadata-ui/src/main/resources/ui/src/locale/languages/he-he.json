@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "דשבורדים ודיווח",
     "entity-group-database-and-storage": "בסיס נתונים ואחסון",
     "entity-group-pipelines-and-ml": "תהליכי טעינה & ML",
+    "entity-group-users-and-teams": "משתמשים & צוותים",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "מזהה {{entity}}",
     "entity-id-match": "התאם לפי זיהוי",

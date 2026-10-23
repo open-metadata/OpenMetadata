@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Dashboards & Rapportage",
     "entity-group-database-and-storage": "Database & Opslag",
     "entity-group-pipelines-and-ml": "Pijplijnen & ML",
+    "entity-group-users-and-teams": "Gebruikers & Teams",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}} ID",
     "entity-id-match": "Overeenkomen op ID",

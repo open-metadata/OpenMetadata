@@ -37,6 +37,8 @@ const USER_PROFILE_FIELDS = [
   TabSpecificField.DEFAULT_PERSONA,
   TabSpecificField.DOMAINS,
   TabSpecificField.EXTENSION,
+  TabSpecificField.LAST_ACTIVITY_TIME,
+  TabSpecificField.LAST_LOGIN_TIME,
 ];
 
 /**

@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Painéis & Relatórios",
     "entity-group-database-and-storage": "Base de Dados & Armazenamento",
     "entity-group-pipelines-and-ml": "Gasodutos & ML",
+    "entity-group-users-and-teams": "Usuários & Equipes",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "ID do {{entity}}",
     "entity-id-match": "Correspondência por ID de Entidade",

@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "Dashboards & Berichterstattung",
     "entity-group-database-and-storage": "Datenbank & Speicher",
     "entity-group-pipelines-and-ml": "Pipelines & ML",
+    "entity-group-users-and-teams": "Benutzer & Teams",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "{{entity}}-ID",
     "entity-id-match": "Entitäts-ID-Übereinstimmung",

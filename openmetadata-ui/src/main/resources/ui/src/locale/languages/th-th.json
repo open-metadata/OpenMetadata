@@ -1182,6 +1182,7 @@
     "entity-group-dashboards-and-reporting": "แดชบอร์ด & การรายงาน",
     "entity-group-database-and-storage": "ฐานข้อมูล & ที่จัดเก็บ",
     "entity-group-pipelines-and-ml": "ท่อ & ML",
+    "entity-group-users-and-teams": "ผู้ใช้ & ทีม",
     "entity-hyphen-value": "{{entity}} - {{value}}",
     "entity-id": "รหัส {{entity}}",
     "entity-id-match": "จับคู่ตาม ID",
