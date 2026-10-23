@@ -628,10 +628,10 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // refocus. The home page's My Tasks card caches the same open tasks, so a
   // return home within its TTL would still offer actions on a resolved one.
   const syncOpenTaskReaders = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(

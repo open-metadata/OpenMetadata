@@ -54,8 +54,10 @@ const getFirstLineEnd = (element: HTMLElement): number | undefined => {
  * after its last word on that line even when the text wraps: a wrapped box
  * spans its full width, so a sibling placed after it lands at the box's edge.
  *
- * Measured before paint, and again when the element resizes or `content`
- * changes. `undefined` until measured, or when the element holds no text.
+ * Measured before paint, and again when the element resizes, when `content`
+ * changes, and when web fonts finish loading: a font swap moves where the
+ * line ends without resizing the element. `undefined` until measured, or when
+ * the element holds no text.
  */
 export const useFirstLineEnd = <T extends HTMLElement>(content?: unknown) => {
   const ref = useRef<T>(null);
@@ -70,8 +72,15 @@ export const useFirstLineEnd = <T extends HTMLElement>(content?: unknown) => {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(node);
+    // Fires once every font loading at the time has loaded, including one that
+    // started before this mounted.
+    const { fonts } = document;
+    fonts?.addEventListener('loadingdone', measure);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      fonts?.removeEventListener('loadingdone', measure);
+    };
   }, [content]);
 
   return { ref, end };

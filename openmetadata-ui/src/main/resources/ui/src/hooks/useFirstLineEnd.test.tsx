@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { useFirstLineEnd } from './useFirstLineEnd';
 
 type Box = { top: number; bottom: number; right: number; width: number };
@@ -68,6 +68,27 @@ describe('useFirstLineEnd', () => {
     );
 
     expect(screen.getByTestId('probe')).toHaveAttribute('data-end', '200');
+  });
+
+  // A web font swapping in moves the line end without resizing the element.
+  it('measures again once web fonts finish loading', () => {
+    const fonts = new EventTarget();
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: fonts,
+    });
+    layOut([[line(0, 220)], [line(0, 240)]]);
+    render(<Probe>Approve orders</Probe>);
+
+    expect(screen.getByTestId('probe')).toHaveAttribute('data-end', '120');
+
+    act(() => {
+      fonts.dispatchEvent(new Event('loadingdone'));
+    });
+
+    expect(screen.getByTestId('probe')).toHaveAttribute('data-end', '140');
+
+    delete (document as { fonts?: unknown }).fonts;
   });
 
   it('has no end without text', () => {

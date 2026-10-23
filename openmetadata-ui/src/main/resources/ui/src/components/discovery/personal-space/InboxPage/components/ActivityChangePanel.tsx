@@ -17,6 +17,7 @@ import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { ActivityChange, INBOX_RECESSED_SURFACE_CLASS } from '../inbox.utils';
+import { ACTIVITY_CARD_PANEL_HOVER_CLASS } from './ActivityFeedItem.constants';
 
 type ChangeTone = 'error' | 'success';
 
@@ -139,12 +140,14 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
   const showAfter = after.length > 0 || unchanged.length > 0;
 
   return (
-    // On a hovered activity card (light) the panel keeps its white, so its
-    // Before stays distinct from the card's gray-blue.
-    <Box
-      className="tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:group-hover/activity-card:bg-surface tw:dark:group-hover/activity-card:bg-transparent"
-      data-testid="activity-change-panel"
-      direction="col">
+    // A bordered surface of its own, not a layout Box: on a hovered activity
+    // card it takes a background (ACTIVITY_CARD_PANEL_HOVER_CLASS).
+    <div
+      className={classNames(
+        'tw:flex tw:flex-col tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary',
+        ACTIVITY_CARD_PANEL_HOVER_CLASS
+      )}
+      data-testid="activity-change-panel">
       <ChangeHeader
         added={after.length}
         isText={isText}
@@ -182,7 +185,7 @@ const ActivityChangePanel = ({ change }: { change: ActivityChange }) => {
           />
         )}
       </Box>
-    </Box>
+    </div>
   );
 };
 
