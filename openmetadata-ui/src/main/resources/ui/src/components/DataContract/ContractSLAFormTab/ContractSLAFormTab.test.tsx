@@ -18,11 +18,14 @@ import {
   RefreshFrequencyUnit,
   RetentionUnit,
 } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
 import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { ContractSLAFormTab } from './ContractSLAFormTab';
 
+let mockTable: Table = mockTableData;
+
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: () => ({ data: mockTableData }),
+  useGenericContext: () => ({ data: mockTable }),
 }));
 
 const mockOnChange = jest.fn();
@@ -53,6 +56,7 @@ const getNumberInput = (label: string) =>
 describe('ContractSLAFormTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockTable = mockTableData;
   });
 
   it('renders the step header and every SLA section', () => {
@@ -260,6 +264,74 @@ describe('ContractSLAFormTab', () => {
       // ContractSLA is an open type; unknown keys must not become remove ops.
       expect(sla.customNote).toBe('important metadata');
       expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('resolves a leaf-name columnName to the top-level column, not a struct child with the same name', () => {
+      mockTable = {
+        ...mockTableData,
+        columns: [
+          {
+            name: 'payload',
+            fullyQualifiedName: 'svc.db.schema.orders.payload',
+            children: [
+              {
+                name: 'updated_at',
+                fullyQualifiedName: 'svc.db.schema.orders.payload.updated_at',
+              },
+            ],
+          },
+          {
+            name: 'updated_at',
+            fullyQualifiedName: 'svc.db.schema.orders.updated_at',
+          },
+        ],
+      } as Table;
+      renderForm({
+        sla: {
+          columnName: 'UPDATED_AT',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      expect(sla.columnName).toBe('svc.db.schema.orders.updated_at');
+    });
+
+    it('preserves a leaf-name columnName that only matches a struct child', () => {
+      mockTable = {
+        ...mockTableData,
+        columns: [
+          {
+            name: 'payload',
+            fullyQualifiedName: 'svc.db.schema.orders.payload',
+            children: [
+              {
+                name: 'updated_at',
+                fullyQualifiedName: 'svc.db.schema.orders.payload.updated_at',
+              },
+            ],
+          },
+        ],
+      } as Table;
+      renderForm({
+        sla: {
+          columnName: 'updated_at',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      expect(sla.columnName).toBe('updated_at');
     });
   });
 });

@@ -64,47 +64,27 @@ const toItems = (options: Array<{ label: string; value: string }>) =>
 const findItem = (items: FormSelectItem[], id?: string) =>
   items.find((item) => item.id === id) ?? null;
 
-// Match a stored `columnName` (which may be a fully qualified name, a leaf
-// name, or a value the table no longer exposes) against the form options,
-// which are keyed by fully qualified name (`id`) with the column name as the
-// `label`. Falling back to the leaf name keeps a round-trip lossless instead
-// of silently dropping an unmatched value. A top-level column (the shortest
-// matching FQN) is preferred over a struct child with the same leaf, since the
-// backend resolves bare names against top-level columns; if more than one
-// column shares that shortest FQN the name is ambiguous and we preserve the
-// stored value rather than guessing.
-const findColumnItem = (items: FormSelectItem[], id?: string) => {
+// The backend resolves a bare `columnName` against top-level columns only,
+// case-insensitively (`ODCSTableTarget.resolveColumn`), so a leaf name may only
+// resolve to a top-level column FQN; a struct child sharing the name would
+// retarget the SLA. Anything unmatched returns null and is preserved on save.
+const findColumnItem = (
+  items: FormSelectItem[],
+  topLevelIds: Set<string>,
+  id?: string
+) => {
   if (!id) {
     return null;
   }
+  const name = id.toLowerCase();
 
-  // Exact FQN match.
-  const exact = items.find((item) => item.id === id);
-  if (exact) {
-    return exact;
-  }
-
-  // Exact leaf-name match against the column label.
-  const byLabel = items.find((item) => item.label === id);
-  if (byLabel) {
-    return byLabel;
-  }
-
-  // Leaf name that only appears as a suffix of one FQN. Prefer the top-level
-  // (shortest) match; if several columns tie at that depth the name is
-  // ambiguous, so keep the stored value intact instead of picking one.
-  const suffixMatches = items.filter((item) => item.id.endsWith(`.${id}`));
-  if (suffixMatches.length > 0) {
-    const minLength = Math.min(...suffixMatches.map((m) => m.id.length));
-    const topLevel = suffixMatches.filter((m) => m.id.length === minLength);
-    if (topLevel.length === 1) {
-      return topLevel[0];
-    }
-
-    return null;
-  }
-
-  return null;
+  return (
+    items.find((item) => item.id === id) ??
+    items.find(
+      (item) => topLevelIds.has(item.id) && item.label?.toLowerCase() === name
+    ) ??
+    null
+  );
 };
 
 const toNumberString = (value?: number) =>
@@ -295,12 +275,19 @@ export const ContractSLAFormTab: React.FC<{
   const { t } = useTranslation();
   const { data: tableData } = useGenericContext();
 
-  const columnItems = useMemo(() => {
+  const { columnItems, topLevelColumnIds } = useMemo(() => {
     const { columns } = tableData as Table;
 
-    return isEmpty(columns)
-      ? []
-      : toItems(getColumnOptionsFromTableColumn(columns, true));
+    return {
+      columnItems: isEmpty(columns)
+        ? []
+        : toItems(getColumnOptionsFromTableColumn(columns, true)),
+      topLevelColumnIds: new Set(
+        (columns ?? []).map(
+          (column) => column.fullyQualifiedName ?? column.name
+        )
+      ),
+    };
   }, [tableData]);
 
   const { refreshUnitItems, latencyUnitItems, retentionUnitItems } = useMemo(
@@ -342,7 +329,11 @@ export const ContractSLAFormTab: React.FC<{
       retention_unit: findItem(retentionUnitItems, sla?.retention?.unit),
       availabilityTime: toTimeValue(sla?.availabilityTime),
       timezone: findItem(timezoneItems, sla?.timezone),
-      columnName: findColumnItem(columnItems, sla?.columnName),
+      columnName: findColumnItem(
+        columnItems,
+        topLevelColumnIds,
+        sla?.columnName
+      ),
     };
   };
 
