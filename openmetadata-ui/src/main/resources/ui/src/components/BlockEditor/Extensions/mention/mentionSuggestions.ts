@@ -43,7 +43,7 @@ export const mentionSuggestion = () => ({
   },
 
   render: () => {
-    let component: ReactRenderer;
+    let component: ReactRenderer | undefined;
     let popup: Instance<Props>[] = [];
     let hasPopup = !isEmpty(popup);
 
@@ -71,7 +71,7 @@ export const mentionSuggestion = () => ({
       },
 
       onUpdate(props: SuggestionProps) {
-        component.updateProps(props);
+        component?.updateProps(props);
 
         if (!props.clientRect) {
           return;

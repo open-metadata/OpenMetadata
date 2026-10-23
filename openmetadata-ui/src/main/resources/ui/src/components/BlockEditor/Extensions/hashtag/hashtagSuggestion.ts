@@ -52,7 +52,7 @@ export const hashtagSuggestion = () => ({
   },
 
   render: () => {
-    let component: ReactRenderer;
+    let component: ReactRenderer | undefined;
     let popup: Instance<Props>[] = [];
     let hasPopup = !isEmpty(popup);
 
@@ -85,7 +85,7 @@ export const hashtagSuggestion = () => ({
       },
 
       onUpdate(props: SuggestionProps) {
-        component.updateProps(props);
+        component?.updateProps(props);
 
         if (!props.clientRect) {
           return;

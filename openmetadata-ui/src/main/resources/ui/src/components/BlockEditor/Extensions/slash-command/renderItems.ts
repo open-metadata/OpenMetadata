@@ -18,7 +18,7 @@ import { getDialogContainer } from '../getDialogContainer';
 import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
-  let component: ReactRenderer;
+  let component: ReactRenderer | undefined;
   let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
   let hasPopup = !isEmpty(popup);
@@ -52,7 +52,7 @@ const renderItems = () => {
     },
     onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
-      component.updateProps(props);
+      component?.updateProps(props);
 
       if (!props.clientRect) {
         return;

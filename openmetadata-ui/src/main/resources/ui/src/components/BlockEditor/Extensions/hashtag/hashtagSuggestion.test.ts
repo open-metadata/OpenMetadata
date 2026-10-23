@@ -179,4 +179,31 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
       expect(getReferenceClientRect()).toBe(rect);
     });
   });
+
+  // Suggestion awaits async items before onStart, so a faster later query can
+  // deliver onUpdate first.
+  it('should not throw when onUpdate arrives before onStart', () => {
+    const handler = hashtagSuggestion().render();
+
+    expect(() =>
+      handler.onUpdate(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      )
+    ).not.toThrow();
+  });
+
+  it('should not throw on onUpdate after onStart on a non-editable editor', () => {
+    const handler = hashtagSuggestion().render();
+    handler.onStart(
+      makeSuggestionProps(() => new DOMRect(), {
+        isEditable: false,
+      }) as SuggestionProps
+    );
+
+    expect(() =>
+      handler.onUpdate(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      )
+    ).not.toThrow();
+  });
 });

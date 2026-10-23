@@ -173,4 +173,16 @@ describe('renderItems getReferenceClientRect null safety', () => {
       expect(getReferenceClientRect()).toBe(rect);
     });
   });
+
+  // Suggestion awaits async items before onStart, so a faster later query can
+  // deliver onUpdate first.
+  it('should not throw when onUpdate arrives before onStart', () => {
+    const handler = renderItems();
+
+    expect(() =>
+      handler.onUpdate(
+        makeSuggestionProps(() => new DOMRect()) as SuggestionProps
+      )
+    ).not.toThrow();
+  });
 });
