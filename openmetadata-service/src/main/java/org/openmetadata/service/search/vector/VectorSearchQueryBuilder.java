@@ -77,6 +77,12 @@ public class VectorSearchQueryBuilder {
   /** As above, with the anchors the request pins already evaluated for its subject. */
   static String build(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    return build(vector, parameters, new VectorSearchAccess(readableAnchorIds, null));
+  }
+
+  /** As above, with everything the subject may see evaluated once for the request. */
+  public static String build(
+      float[] vector, VectorSearchParameters parameters, VectorSearchAccess access) {
     StringBuilder sb =
         new StringBuilder(512)
             .append("{\"size\":")
@@ -85,7 +91,7 @@ public class VectorSearchQueryBuilder {
             .append(parameters.from())
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"query\":");
-    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
+    appendKnnQuery(sb, vector, parameters, access);
     sb.append('}');
     return sb.toString();
   }
@@ -116,8 +122,18 @@ public class VectorSearchQueryBuilder {
   /** As above, with the anchors the request pins already evaluated for its subject. */
   public static String buildQuery(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    return buildQuery(vector, parameters, new VectorSearchAccess(readableAnchorIds, null));
+  }
+
+  /**
+   * As above, with everything the subject may see evaluated once for the request, its search access
+   * policies included. Hybrid search uses this so its knn leg carries the same access clause as its
+   * lexical leg.
+   */
+  public static String buildQuery(
+      float[] vector, VectorSearchParameters parameters, VectorSearchAccess access) {
     StringBuilder sb = new StringBuilder(512);
-    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
+    appendKnnQuery(sb, vector, parameters, access);
     return sb.toString();
   }
 
@@ -125,7 +141,7 @@ public class VectorSearchQueryBuilder {
       StringBuilder sb,
       float[] vector,
       VectorSearchParameters parameters,
-      Set<String> readableAnchorIds) {
+      VectorSearchAccess access) {
     sb.append("{\"knn\":{\"embedding\":{\"vector\":").append(Arrays.toString(vector));
 
     // OpenSearch KNN supports either min_score or k, not both. When min_score is set,
@@ -141,7 +157,7 @@ public class VectorSearchQueryBuilder {
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]"); // close must array
-    appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
+    appendSecurityFilters(sb, parameters, access);
     sb.append("}}"); // close bool and filter
 
     sb.append("}}}"); // close embedding, knn, query
@@ -193,6 +209,19 @@ public class VectorSearchQueryBuilder {
       VectorSearchParameters parameters,
       int numCandidatesMultiplier,
       Set<String> readableAnchorIds) {
+    return buildNativeESQuery(
+        vector,
+        parameters,
+        numCandidatesMultiplier,
+        new VectorSearchAccess(readableAnchorIds, null));
+  }
+
+  /** As above, with everything the subject may see evaluated once for the request. */
+  static String buildNativeESQuery(
+      float[] vector,
+      VectorSearchParameters parameters,
+      int numCandidatesMultiplier,
+      VectorSearchAccess access) {
     // Compute in long to avoid int overflow when k * numCandidatesMultiplier exceeds
     // Integer.MAX_VALUE; clamp to Elasticsearch's engine maximum of 10,000 so any admitted k
     // (MAX_K = 10_000) yields a valid request — Elasticsearch rejects num_candidates above
@@ -219,7 +248,7 @@ public class VectorSearchQueryBuilder {
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]");
-    appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
+    appendSecurityFilters(sb, parameters, access);
     sb.append("}}");
     sb.append("}}");
     return sb.toString();
@@ -283,7 +312,20 @@ public class VectorSearchQueryBuilder {
     if (MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) && !ownerStatuses.isEmpty()) {
       appendOwnMemoriesInBranch(sb, subjectContext.user(), ownerStatuses);
     }
-    sb.append("]}}]");
+    sb.append("]}}");
+  }
+
+  /**
+   * The knn filter's sibling {@code filter} array: the memory visibility clause first, then the
+   * subject's search access policies when any apply. Both constrain without scoring.
+   */
+  private static void appendSecurityFilters(
+      StringBuilder sb, VectorSearchParameters parameters, VectorSearchAccess access) {
+    appendMemoryVisibilityFilter(sb, parameters, access.readableAnchorIds());
+    if (access.accessFilterJson() != null) {
+      sb.append(',').append(access.accessFilterJson());
+    }
+    sb.append(']');
   }
 
   /**

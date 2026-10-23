@@ -26,6 +26,15 @@ public interface VectorIndexService {
   default void deleteEntityChunks(String parentId) {}
 
   /**
+   * Withhold the chunks of the entity documents {@code matchQueryJson} selects on {@code
+   * entityIndices} from callers whose search access policies restrict anything, until each entity
+   * is restamped (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks). A propagation
+   * calls this before rewriting those documents' access fields in place. Default is a no-op for
+   * backends without a chunk index.
+   */
+  default void invalidateChunkAccess(List<String> entityIndices, String matchQueryJson) {}
+
+  /**
    * Strip the embedding fields from an entity document. Entity-doc embedding writes are partial
    * merges, so an entity whose repository stops considering it embeddable would otherwise keep a
    * stale {@code embedding} and stay matchable by kNN. Default is a no-op for backends without the

@@ -17,7 +17,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
@@ -41,26 +40,22 @@ public class ElasticSearchVectorService implements VectorIndexService {
   private final Rest5Client restClient;
   @Getter private final EmbeddingClient embeddingClient;
   private final int knnNumCandidatesMultiplier;
-  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
+  private final Function<VectorSearchParameters, VectorSearchAccess> requestAccess;
 
   public ElasticSearchVectorService(
       ElasticsearchClient client, EmbeddingClient embeddingClient, int knnNumCandidatesMultiplier) {
-    this(
-        client,
-        embeddingClient,
-        knnNumCandidatesMultiplier,
-        VectorSearchMemoryAccess::readableAnchorIds);
+    this(client, embeddingClient, knnNumCandidatesMultiplier, VectorSearchAccess::forElasticSearch);
   }
 
   ElasticSearchVectorService(
       ElasticsearchClient client,
       EmbeddingClient embeddingClient,
       int knnNumCandidatesMultiplier,
-      Function<VectorSearchParameters, Set<String>> readableAnchors) {
+      Function<VectorSearchParameters, VectorSearchAccess> requestAccess) {
     this.client = client;
     this.restClient = extractRestClient(client);
     this.embeddingClient = embeddingClient;
-    this.readableAnchors = readableAnchors;
+    this.requestAccess = requestAccess;
     this.knnNumCandidatesMultiplier =
         knnNumCandidatesMultiplier > 0
             ? knnNumCandidatesMultiplier
@@ -159,14 +154,14 @@ public class ElasticSearchVectorService implements VectorIndexService {
       overFetchSize = Math.min(overFetchSize, k);
 
       String indexName = getIndexAlias();
-      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
+      VectorSearchAccess access = requestAccess.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector,
                 parameters.withPagination(overFetchSize, rawOffset),
                 knnNumCandidatesMultiplier,
-                readableAnchorIds);
+                access);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + indexName + "/_search", parameters.preference());

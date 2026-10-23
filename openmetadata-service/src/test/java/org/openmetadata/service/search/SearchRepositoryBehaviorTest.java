@@ -1016,6 +1016,161 @@ class SearchRepositoryBehaviorTest {
             eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
   }
 
+  // A propagation rewrites child documents' access fields with no lifecycle event for the
+  // children, so it withholds their vector chunks first
+  // (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+
+  private VectorIndexService vectorsOn(SearchRepository target) throws Exception {
+    VectorIndexService vectors = mock(VectorIndexService.class);
+    setPrivateField(target, "vectorIndexService", vectors);
+    return vectors;
+  }
+
+  @Test
+  void inheritedAccessChangeWithholdsChildChunksBeforeRewritingThem() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    ChangeDescription ownerChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE, testCase.getId().toString(), ownerChange, TEST_CASE_MAPPING, testCase);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of("cluster_tableColumn")),
+            argThat(match -> match.contains(testCase.getId().toString())));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void displayNameOnlyPropagationKeepsChunkStamps() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.DATABASE_SERVICE,
+        "service-id",
+        displayNameChange,
+        DATABASE_SERVICE_MAPPING,
+        serviceEntity);
+
+    verify(vectors, never()).invalidateChunkAccess(anyList(), anyString());
+  }
+
+  @Test
+  void glossaryTagPropagationWithholdsTaggedChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    TagLabel term = new TagLabel().withTagFQN("Glossary.Term").withName("Term");
+    ChangeDescription termAdded =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(term)))),
+            List.of(),
+            List.of());
+
+    repository.propagateGlossaryTags(Entity.GLOSSARY_TERM, "Glossary.Term", termAdded);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("Glossary.Term")));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void certificationTagUpdateWithholdsCertifiedChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("Gold");
+    when(tag.getFullyQualifiedName()).thenReturn("Certification.Gold");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(), List.of()));
+
+    verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.DATA_ASSET_SEARCH_ALIAS))),
+            argThat(match -> match.contains("certification.tagLabel.tagFQN")));
+  }
+
+  @Test
+  void tagRenameWithholdsChunksByTheOldNameBeforeRewritingIt() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    Tag tag = mock(Tag.class);
+    UUID tagId = UUID.randomUUID();
+    when(tag.getId()).thenReturn(tagId);
+    when(tag.getEntityReference())
+        .thenReturn(new EntityReference().withId(tagId).withType(Entity.TAG));
+    when(tag.getFullyQualifiedName()).thenReturn("PII.Secret");
+    ChangeDescription rename =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_NAME)
+                    .withOldValue("Sensitive")
+                    .withNewValue("Secret")),
+            List.of());
+
+    repository.propagateToRelatedEntities(Entity.TAG, rename, TABLE_MAPPING, tag);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("prefix") && match.contains("PII.Sensitive")));
+    order
+        .verify(searchClient)
+        .updateByFqnPrefix(
+            SearchClient.GLOBAL_SEARCH_ALIAS, "PII.Sensitive", "PII.Secret", "tags.tagFQN");
+  }
+
+  @Test
+  void domainDeleteWithholdsItsAssetsChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    UUID domainId = UUID.randomUUID();
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, domainId, "finance");
+
+    repository.deleteOrUpdateChildren(domain, DOMAIN_MAPPING);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("domains.id") && match.contains(domainId.toString())));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
   @Test
   void propagateInheritedFieldsToChildrenSkipsNonTagChangesForTimeSeriesChildren()
       throws IOException {

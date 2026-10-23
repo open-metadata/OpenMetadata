@@ -17,6 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,6 +29,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -33,8 +39,10 @@ import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -42,6 +50,8 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
@@ -506,5 +516,169 @@ class VectorDocBuilderChunkTest {
     assertNotNull(textToEmbed);
     assertTrue(textToEmbed.contains("amount"), "textToEmbed must carry column names");
     assertTrue(textToEmbed.contains("country"), "textToEmbed must carry column names");
+  }
+
+  private static final UUID DOMAIN_ID = UUID.randomUUID();
+  private static final UUID SERVICE_ID = UUID.randomUUID();
+  private static final UUID REVIEWER_ID = UUID.randomUUID();
+
+  private static Table accessGovernedTable() {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("svc.db.sch.orders")
+        .withDescription("revenue ".repeat(900))
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withName("finance")
+                    .withType("team")))
+        .withDomains(
+            List.of(new EntityReference().withId(DOMAIN_ID).withName("sales").withType("domain")))
+        .withService(new EntityReference().withId(SERVICE_ID).withName("snowflake"))
+        .withTags(
+            List.of(
+                new TagLabel().withTagFQN("PII.Sensitive"),
+                new TagLabel().withTagFQN("Tier.Tier1")))
+        .withCertification(
+            new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Gold")));
+  }
+
+  private static GlossaryTerm reviewedTerm() {
+    return new GlossaryTerm()
+        .withId(UUID.randomUUID())
+        .withName("revenue")
+        .withFullyQualifiedName("finance.revenue")
+        .withDescription("Recognised revenue")
+        .withReviewers(
+            List.of(new EntityReference().withId(REVIEWER_ID).withName("ana").withType("user")));
+  }
+
+  /**
+   * Search access policies read these on chunk documents exactly as on entity documents, so every
+   * chunk must carry them, or a policy keyed on one silently stops applying to that chunk.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void chunkDocs_carryTheAccessFieldsSearchPoliciesRead() {
+    Table table = accessGovernedTable();
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1, "long body must yield multiple chunks");
+    for (Map<String, Object> doc : docs) {
+      List<Map<String, Object>> domains = (List<Map<String, Object>>) doc.get("domains");
+      assertEquals(DOMAIN_ID.toString(), domains.get(0).get("id"));
+      assertEquals("sales", domains.get(0).get("name"));
+      assertEquals(SERVICE_ID.toString(), ((Map<String, Object>) doc.get("service")).get("id"));
+      assertEquals(
+          VectorDocBuilder.accessStamp(table), doc.get(VectorDocBuilder.FIELD_ACCESS_STAMP));
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void chunkDocs_carryReviewerIds() {
+    List<Map<String, Object>> docs =
+        VectorDocBuilder.fromEntity(reviewedTerm(), new MockEmbeddingClient());
+
+    List<Map<String, Object>> reviewers = (List<Map<String, Object>>) docs.get(0).get("reviewers");
+    assertEquals(REVIEWER_ID.toString(), reviewers.get(0).get("id"));
+  }
+
+  @Test
+  void accessStamp_changesWithReviewer() {
+    GlossaryTerm term = reviewedTerm();
+    String before = VectorDocBuilder.accessStamp(term);
+
+    term.setReviewers(
+        List.of(new EntityReference().withId(UUID.randomUUID()).withName("bo").withType("user")));
+
+    assertNotEquals(before, VectorDocBuilder.accessStamp(term));
+  }
+
+  @Test
+  void accessStamp_changesWithCertification() {
+    Table table = accessGovernedTable();
+    String before = VectorDocBuilder.accessStamp(table);
+
+    table.setCertification(
+        new AssetCertification().withTagLabel(new TagLabel().withTagFQN("Certification.Bronze")));
+
+    assertNotEquals(before, VectorDocBuilder.accessStamp(table));
+  }
+
+  @Test
+  void accessStamp_ignoresDescription() {
+    Table table = accessGovernedTable();
+    String before = VectorDocBuilder.accessStamp(table);
+
+    table.setDescription("a different body");
+
+    assertEquals(before, VectorDocBuilder.accessStamp(table));
+  }
+
+  /**
+   * Chunks carry the tag set authorization evaluates (the repository's getAllTags, which for a
+   * table folds in its columns), split as entity documents split it: Tier in {@code tier}, never in
+   * {@code tags}. A PII tag that only a column carries must still reach a matchAnyTag deny.
+   */
+  @Test
+  @SuppressWarnings("unchecked")
+  void chunkDocs_carryColumnTagsAndSeparateTierAsEntityDocumentsDo() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("customers")
+            .withFullyQualifiedName("svc.db.sch.customers")
+            .withDescription("customer master")
+            .withTags(List.of(new TagLabel().withTagFQN("Tier.Tier1")))
+            .withColumns(
+                List.of(
+                    new Column()
+                        .withName("email")
+                        .withDataType(ColumnDataType.STRING)
+                        .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))));
+    // A Table resolves its entity type through this name map, as every registered type does.
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(Entity.TABLE, Entity.TABLE);
+    // Scoped stand-in for TableRepository#getAllTags (entity tags plus column tags), so no
+    // repository is left registered for the rest of the JVM.
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(() -> Entity.hasEntityRepository(Entity.TABLE)).thenReturn(true);
+      entity
+          .when(() -> Entity.getEntityTags(eq(Entity.TABLE), any()))
+          .thenAnswer(invocation -> tableAndColumnTags(invocation.getArgument(1)));
+      String withColumnTag = VectorDocBuilder.accessStamp(table);
+
+      Map<String, Object> chunk =
+          VectorDocBuilder.fromEntity(table, new MockEmbeddingClient()).getFirst();
+
+      List<String> tagFqns =
+          ((List<Map<String, Object>>) chunk.get("tags"))
+              .stream().map(tag -> (String) tag.get("tagFQN")).toList();
+      assertEquals(List.of("PII.Sensitive"), tagFqns);
+      assertEquals("Tier.Tier1", ((Map<String, Object>) chunk.get("tier")).get("tagFQN"));
+      table.getColumns().getFirst().setTags(List.of());
+      assertNotEquals(withColumnTag, VectorDocBuilder.accessStamp(table));
+    }
+  }
+
+  private static List<TagLabel> tableAndColumnTags(Table table) {
+    List<TagLabel> tags = new ArrayList<>(table.getTags());
+    table.getColumns().forEach(column -> tags.addAll(column.getTags()));
+    return tags;
+  }
+
+  /** Reviewers only filter; a reviewer change must restamp the chunks, never re-embed them. */
+  @Test
+  void contentFingerprint_ignoresReviewers() {
+    GlossaryTerm term = reviewedTerm();
+    String before = VectorDocBuilder.computeFingerprintForEntity(term);
+
+    term.setReviewers(
+        List.of(new EntityReference().withId(UUID.randomUUID()).withName("bo").withType("user")));
+
+    assertEquals(before, VectorDocBuilder.computeFingerprintForEntity(term));
   }
 }

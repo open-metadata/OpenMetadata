@@ -73,7 +73,8 @@ class ElasticSearchVectorServiceTest {
             2,
             parameters -> {
               resolutions.incrementAndGet();
-              return Set.of(anchorId);
+              return new VectorSearchAccess(
+                  Set.of(anchorId), "{\"term\":{\"accessProbe\":\"probe\"}}");
             });
     String firstPage =
         "{\"hits\":{\"total\":{\"value\":2},\"hits\":[{\"_score\":0.9,\"_source\":{\"parentId\":\"first\"}}]}}";
@@ -107,6 +108,8 @@ class ElasticSearchVectorServiceTest {
         var body = JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
         String visibility = body.path("knn").path("filter").path("bool").path("filter").toString();
         assertTrue(visibility.contains("\"anchorId\":[\"" + anchorId + "\"]"), visibility);
+        assertTrue(
+            visibility.contains("accessProbe"), "access filter on every page: " + visibility);
         assertEquals(i, body.path("from").asInt());
       }
     }

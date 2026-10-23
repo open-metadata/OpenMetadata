@@ -365,17 +365,18 @@ public final class SearchUtils {
    * unfiltered even with access control on, because a skipped injection leaves the query matching
    * everything rather than failing closed. {@code DefaultAuthorizer#authorize} already evaluates the
    * same policies on a bot's REST reads, so exempting search made it the laxer of the two. Admins
-   * stay exempt because their compiled query would match everything anyway.
+   * stay exempt because their compiled query would match everything anyway. The caller is checked
+   * before the setting so an exempt caller never needs the settings store.
    */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
+    return subjectContext != null
+        && !subjectContext.isAdmin()
+        && rbacConditionEvaluator != null
+        && Boolean.TRUE.equals(
             SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
                 .getGlobalSettings()
-                .getEnableAccessControl())
-        && subjectContext != null
-        && !subjectContext.isAdmin()
-        && rbacConditionEvaluator != null;
+                .getEnableAccessControl());
   }
 
   public static SSLContext createElasticSearchSSLContext(

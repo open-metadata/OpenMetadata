@@ -15,21 +15,58 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
  * Unit tests for {@link AIContextFinder}'s pure hit-mapping helpers and the Mode-B markdown that
  * routes company knowledge to candidate assets.
  */
 class AIContextFinderTest {
+
+  /**
+   * The knowledge search runs as the caller, so their search access policies filter which glossary
+   * terms, metrics and pages come back, as on every other vector path
+   * (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+   */
+  @Test
+  void find_searchesKnowledgeAsTheCaller() {
+    SubjectContext subject = mock(SubjectContext.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vectors = mock(OpenSearchVectorService.class);
+    Entity.setSearchRepository(searchRepository);
+    try (MockedStatic<OpenSearchVectorService> instance =
+        mockStatic(OpenSearchVectorService.class)) {
+      instance.when(OpenSearchVectorService::getInstance).thenReturn(vectors);
+
+      new AIContextFinder(subject).find("revenue", 5);
+
+      verify(vectors)
+          .search(eq("revenue"), any(), anyInt(), eq(0), anyInt(), eq(0.0), any(), eq(subject));
+    } finally {
+      Entity.setSearchRepository(null);
+    }
+  }
 
   @Test
   void knowledgeType_mapsKnownEntityTypesAndToleratesUnknown() {

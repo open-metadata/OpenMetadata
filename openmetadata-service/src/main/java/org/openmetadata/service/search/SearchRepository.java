@@ -2932,6 +2932,11 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
+        if (touchesAccessFields(changeDescription)) {
+          withholdChunksOf(
+              withClusterAlias(group.getValue()),
+              termMatch(parentMatch.getLeft(), parentMatch.getRight()));
+        }
         searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
       }
     }
@@ -2940,6 +2945,58 @@ public class SearchRepository {
     if (!nullOrEmpty(updates.getKey())) {
       propagateTagChangesToTimeSeriesChildren(indexMapping, parentMatch, updates);
     }
+  }
+
+  /** The fields search access policies read that a propagation can rewrite on child documents. */
+  private static final Set<String> ACCESS_FIELDS =
+      Set.of(
+          Entity.FIELD_OWNERS,
+          FIELD_DOMAINS,
+          Entity.FIELD_TAGS,
+          Entity.FIELD_REVIEWERS,
+          Entity.FIELD_CERTIFICATION);
+
+  private static boolean touchesAccessFields(ChangeDescription changeDescription) {
+    return Stream.of(
+            changeDescription.getFieldsAdded(),
+            changeDescription.getFieldsUpdated(),
+            changeDescription.getFieldsDeleted())
+        .flatMap(changes -> listOrEmpty(changes).stream())
+        .anyMatch(change -> ACCESS_FIELDS.contains(change.getName()));
+  }
+
+  /**
+   * A propagation rewrites child documents' access fields in place, with no lifecycle event for the
+   * children, so their vector chunks would keep the old values. They are withheld from restricted
+   * callers until restamped (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks). Called
+   * before the rewrite, so a match on a value the rewrite replaces (a renamed tag) still finds them.
+   * A failure is logged, not thrown: the entity documents are updated either way.
+   */
+  private void withholdChunksOf(List<String> entityIndices, String matchQueryJson) {
+    if (vectorIndexService != null) {
+      try {
+        vectorIndexService.invalidateChunkAccess(entityIndices, matchQueryJson);
+      } catch (RuntimeException e) {
+        LOG.error(
+            "Failed to withhold vector chunks matching {} on {}; restricted callers may see stale"
+                + " chunk access fields until Search Reindex",
+            matchQueryJson,
+            entityIndices,
+            e);
+      }
+    }
+  }
+
+  private static String termMatch(String field, String value) {
+    return JsonUtils.pojoToJson(Map.of("term", Map.of(field, value)));
+  }
+
+  private static String termsMatch(String field, List<String> values) {
+    return JsonUtils.pojoToJson(Map.of("terms", Map.of(field, values)));
+  }
+
+  private static String prefixMatch(String field, String prefix) {
+    return JsonUtils.pojoToJson(Map.of("prefix", Map.of(field, prefix)));
   }
 
   /** How one child index takes a change: the fields it skips, and the tag lists it narrows. */
@@ -3170,6 +3227,7 @@ public class SearchRepository {
     deferIfFlushScopeActive(
         () -> {
           try {
+            withholdChunksOf(childAliases, termsMatch(parentField, parentIds));
             searchClient.updateChildren(childAliases, parentField, parentIds, updates);
           } catch (IOException e) {
             String reason =
@@ -3219,6 +3277,8 @@ public class SearchRepository {
           fieldData.put("tagDeleted", tagLabels);
         }
       }
+      withholdChunksOf(
+          List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)), termMatch(TAGS_FQN, glossaryFQN));
       searchClient.updateChildren(
           GLOBAL_SEARCH_ALIAS,
           new ImmutablePair<>(TAGS_FQN, glossaryFQN),
@@ -3269,6 +3329,9 @@ public class SearchRepository {
     paramMap.put("description", tagEntity.getDescription());
     paramMap.put("tagFQN", tagEntity.getFullyQualifiedName());
     paramMap.put("style", tagEntity.getStyle());
+    withholdChunksOf(
+        List.of(getIndexOrAliasName(DATA_ASSET_SEARCH_ALIAS)),
+        termMatch(CERTIFICATION_TAG_FQN_FIELD, oldFQN));
     searchClient.updateChildren(
         DATA_ASSET_SEARCH_ALIAS,
         new ImmutablePair<>(CERTIFICATION_TAG_FQN_FIELD, oldFQN),
@@ -3491,6 +3554,8 @@ public class SearchRepository {
         }
 
         if (FIELD_NAME.equals(field.getName())) {
+          withholdChunksOf(
+              List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)), prefixMatch(TAGS_FQN, oldFQN));
           searchClient.updateByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFQN, newFQN, TAGS_FQN);
         }
 
@@ -4164,6 +4229,8 @@ public class SearchRepository {
         // Assets store the domain in the plural "domains" array, so strip the deleted domain from
         // every referencing asset by matching domains.id. Matching the singular "domain" field left
         // stale references behind, which a same-named recreated domain then inherited (#28923).
+        withholdChunksOf(
+            List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)), termMatch("domains.id", docId));
         searchClient.updateChildren(
             GLOBAL_SEARCH_ALIAS,
             new ImmutablePair<>("domains.id", docId),
@@ -4182,12 +4249,17 @@ public class SearchRepository {
               REMOVE_DATA_PRODUCTS_CHILDREN_SCRIPT,
               Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
 
-      case Entity.TAG, Entity.GLOSSARY_TERM -> searchClient.updateChildren(
-          GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
-          new ImmutablePair<>(
-              REMOVE_TAGS_CHILDREN_SCRIPT,
-              Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      case Entity.TAG, Entity.GLOSSARY_TERM -> {
+        withholdChunksOf(
+            List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+            termMatch(TAGS_FQN, entity.getFullyQualifiedName()));
+        searchClient.updateChildren(
+            GLOBAL_SEARCH_ALIAS,
+            new ImmutablePair<>("tags.tagFQN", entity.getFullyQualifiedName()),
+            new ImmutablePair<>(
+                REMOVE_TAGS_CHILDREN_SCRIPT,
+                Collections.singletonMap("fqn", entity.getFullyQualifiedName())));
+      }
       case Entity.TEST_SUITE -> {
         TestSuite testSuite = (TestSuite) entity;
         if (Boolean.TRUE.equals(testSuite.getBasic())) {

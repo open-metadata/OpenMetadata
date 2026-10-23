@@ -91,6 +91,28 @@ public class ElasticQueryBuilder implements OMQueryBuilder {
   }
 
   @Override
+  public OMQueryBuilder filter(List<OMQueryBuilder> queries) {
+    List<Query> queryList = queriesOf(queries);
+    if (!queryList.isEmpty()) {
+      BoolQuery.Builder boolBuilder = getOrCreateBoolQueryBuilder();
+      boolBuilder.filter(queryList);
+      this.query = Query.of(q -> q.bool(boolBuilder.build()));
+    }
+    return this;
+  }
+
+  private static List<Query> queriesOf(List<OMQueryBuilder> queries) {
+    List<Query> queryList = new ArrayList<>();
+    for (OMQueryBuilder q : queries) {
+      Query built = ((ElasticQueryBuilder) q).query;
+      if (built != null) {
+        queryList.add(built);
+      }
+    }
+    return queryList;
+  }
+
+  @Override
   public OMQueryBuilder must(OMQueryBuilder query) {
     return must(List.of(query));
   }

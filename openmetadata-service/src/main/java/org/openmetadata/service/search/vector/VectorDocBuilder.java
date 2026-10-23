@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.lang.reflect.Method;
@@ -15,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -35,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
@@ -53,7 +56,19 @@ public class VectorDocBuilder {
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */
-  public static final int CHUNK_DOC_VERSION = 8;
+  public static final int CHUNK_DOC_VERSION = 9;
+
+  /**
+   * A hash of the values search access policies read on a chunk (owner, domain, reviewer and
+   * service ids; tag, tier and certification FQNs). Its change restamps the chunks without
+   * re-embedding them, and its absence marks a chunk written before chunks carried those values,
+   * which a policy cannot be evaluated against
+   * (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+   */
+  public static final String FIELD_ACCESS_STAMP = "accessStamp";
+
+  private static final String FIELD_ID = "id";
+  private static final String FIELD_NAME = "name";
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
@@ -344,7 +359,8 @@ public class VectorDocBuilder {
       fields.put("fqnParts", new ArrayList<>(fqnParts));
     }
 
-    List<Map<String, Object>> tags = tagFqnObjects(entity);
+    ParseTags accessTags = accessTags(entity, entityType);
+    List<Map<String, Object>> tags = tagFqnObjects(accessTags.getTags());
     if (!tags.isEmpty()) {
       fields.put("tags", tags);
     }
@@ -352,9 +368,8 @@ public class VectorDocBuilder {
     if (!domains.isEmpty()) {
       fields.put("domains", domains);
     }
-    String tier = extractTierLabel(entity);
-    if (tier != null) {
-      fields.put("tier", Map.of("tagFQN", tier));
+    if (accessTags.getTierTag() != null) {
+      fields.put("tier", Map.of("tagFQN", accessTags.getTierTag().getTagFQN()));
     }
     String certification = extractCertificationLabel(entity);
     if (certification != null) {
@@ -367,6 +382,11 @@ public class VectorDocBuilder {
     addReferenceField(fields, entity, "service", "getService");
     addReferenceField(fields, entity, "database", "getDatabase");
     addReferenceField(fields, entity, "databaseSchema", "getDatabaseSchema");
+    List<Map<String, Object>> reviewers = reviewerIdObjects(entity);
+    if (!reviewers.isEmpty()) {
+      fields.put("reviewers", reviewers);
+    }
+    fields.put(FIELD_ACCESS_STAMP, accessStamp(entity));
 
     if (entity instanceof GlossaryTerm term
         && term.getSynonyms() != null
@@ -500,23 +520,97 @@ public class VectorDocBuilder {
    */
   private static void addReferenceField(
       Map<String, Object> fields, EntityInterface<?> entity, String key, String getter) {
+    EntityReference ref = containerReference(entity, getter);
+    if (ref != null) {
+      Map<String, Object> value = new HashMap<>();
+      putIfPresent(value, FIELD_NAME, ref.getName());
+      putIfPresent(value, "displayName", ref.getDisplayName());
+      putIdIfPresent(value, ref);
+      if (!value.isEmpty()) {
+        fields.put(key, value);
+      }
+    }
+  }
+
+  /** The container reference behind {@code getter}, or null when the entity type has none. */
+  private static EntityReference containerReference(EntityInterface<?> entity, String getter) {
+    EntityReference reference = null;
     try {
       Method method = entity.getClass().getMethod(getter);
-      Object result = method.invoke(entity);
-      if (result instanceof EntityReference ref) {
-        Map<String, Object> value = new HashMap<>();
-        putIfPresent(value, "name", ref.getName());
-        putIfPresent(value, "displayName", ref.getDisplayName());
-        if (!value.isEmpty()) {
-          fields.put(key, value);
-        }
+      if (method.invoke(entity) instanceof EntityReference ref) {
+        reference = ref;
       }
     } catch (NoSuchMethodException e) {
       // Expected: this entity type has no such reference; nothing to denormalize.
     } catch (ReflectiveOperationException e) {
       // A getter that exists but failed (e.g. threw) is a real problem worth surfacing.
-      LOG.debug("Failed to denormalize {} for entity {}: {}", key, entity.getId(), e.getMessage());
+      LOG.debug("Failed to read {} for entity {}: {}", getter, entity.getId(), e.getMessage());
     }
+    return reference;
+  }
+
+  private static void putIdIfPresent(Map<String, Object> fields, EntityReference reference) {
+    if (reference.getId() != null) {
+      fields.put(FIELD_ID, reference.getId().toString());
+    }
+  }
+
+  /** Reviewer ids, which the {@code isReviewer()} search policy condition matches on. */
+  private static List<Map<String, Object>> reviewerIdObjects(EntityInterface<?> entity) {
+    List<Map<String, Object>> reviewers = new ArrayList<>();
+    for (EntityReference reviewer : listOrEmpty(entity.getReviewers())) {
+      Map<String, Object> value = new HashMap<>();
+      putIdIfPresent(value, reviewer);
+      if (!value.isEmpty()) {
+        reviewers.add(value);
+      }
+    }
+    return reviewers;
+  }
+
+  /**
+   * The tags search access policies read, as entity documents carry them: the tag set authorization
+   * evaluates ({@link Entity#getEntityTags}, which folds in a table's columns, a topic's schema
+   * fields and so on) with the Tier tag split off into {@code tier}. A type with no repository has
+   * only its own tags, as {@code EntityRepository#getAllTags} defaults to.
+   */
+  static ParseTags accessTags(EntityInterface<?> entity, String entityType) {
+    List<TagLabel> tags =
+        !nullOrEmpty(entityType) && Entity.hasEntityRepository(entityType)
+            ? Entity.getEntityTags(entityType, entity)
+            : listOrEmpty(entity.getTags());
+    return new ParseTags(tags);
+  }
+
+  /** See {@link #FIELD_ACCESS_STAMP}. Only filter values feed it, never embedded text. */
+  static String accessStamp(EntityInterface<?> entity) {
+    EntityReference service = containerReference(entity, "getService");
+    ParseTags accessTags = accessTags(entity, entity.getEntityReference().getType());
+    List<String> tagFqns =
+        Stream.concat(
+                listOrEmpty(accessTags.getTags()).stream(),
+                Stream.ofNullable(accessTags.getTierTag()))
+            .map(TagLabel::getTagFQN)
+            .filter(Objects::nonNull)
+            .sorted()
+            .toList();
+    String canonical =
+        String.join(
+            "|",
+            sortedIds(entity.getOwners()),
+            sortedIds(entity.getDomains()),
+            sortedIds(entity.getReviewers()),
+            service == null ? "" : String.valueOf(service.getId()),
+            String.join(",", tagFqns),
+            String.valueOf(extractCertificationLabel(entity)));
+    return TextChunkManager.computeFingerprint(canonical);
+  }
+
+  private static String sortedIds(List<EntityReference> references) {
+    return listOrEmpty(references).stream()
+        .map(reference -> String.valueOf(reference.getId()))
+        .sorted()
+        .collect(Collectors.joining(","));
   }
 
   private static void putIfPresent(Map<String, Object> fields, String key, String value) {
@@ -525,11 +619,9 @@ public class VectorDocBuilder {
     }
   }
 
-  private static List<Map<String, Object>> tagFqnObjects(EntityInterface<?> entity) {
+  private static List<Map<String, Object>> tagFqnObjects(List<TagLabel> tagLabels) {
     List<Map<String, Object>> tags = new ArrayList<>();
-    List<TagLabel> tagLabels =
-        entity.getTags() != null ? entity.getTags() : Collections.emptyList();
-    for (TagLabel tag : tagLabels) {
+    for (TagLabel tag : listOrEmpty(tagLabels)) {
       if (tag.getTagFQN() != null) {
         tags.add(Map.of("tagFQN", tag.getTagFQN()));
       }
@@ -542,8 +634,12 @@ public class VectorDocBuilder {
     List<EntityReference> domainRefs =
         entity.getDomains() != null ? entity.getDomains() : Collections.emptyList();
     for (EntityReference domain : domainRefs) {
-      if (domain.getName() != null) {
-        domains.add(Map.of("name", domain.getName()));
+      Map<String, Object> value = new HashMap<>();
+      putIfPresent(value, FIELD_NAME, domain.getName());
+      // hasDomain() search policies match domains.id, the same field the entity indices carry.
+      putIdIfPresent(value, domain);
+      if (!value.isEmpty()) {
+        domains.add(value);
       }
     }
     return domains;
