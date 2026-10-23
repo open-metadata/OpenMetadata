@@ -195,8 +195,11 @@ jobs:
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
       # The visual and RDF lanes run whole projects, switched on by these
       # filters rather than by spec impact; manual and nightly runs take both.
-      visual: ${{ contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual }}
-      rdf: ${{ contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf }}
+      # Neither runs on h2: both start plain-HTTP Docker servers. Visual also
+      # skips the opt-in coarse bundle, which resolves CSS ties differently from
+      # production and so cannot match its baselines.
+      visual: ${{ !inputs.coarse_bundle && inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual) || 'false' }}
+      rdf: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf) || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -1604,9 +1607,8 @@ jobs:
 
       # The visual and RDF lanes cannot use the shared fixture (see
       # PW_PRESEEDED_STATE above), so each seeds its own environment from
-      # scratch. Both load the shared ingestion image instead of building it;
-      # RDF also reuses the shared distribution, while visual keeps the regular
-      # UI bundle its baselines were captured with and builds it as before.
+      # scratch. Both load the shared ingestion image and distribution instead
+      # of building them.
       - name: Free Disk Space (Ubuntu)
         if: ${{ contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
@@ -1713,6 +1715,8 @@ jobs:
       # Restore-only — same churn rationale as the yarn cache above.
       - name: Restore Playwright browser cache
         id: restore-browser
+        # Visual renders inside the Playwright image, which ships its browser.
+        if: ${{ matrix.lane != 'visual' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/ms-playwright
@@ -1724,6 +1728,7 @@ jobs:
       # on a bad-mirror day, see runs 30788758311 / 32157314266 / 32166970973).
       - name: Cache Playwright system deps
         id: apt-deps-cache
+        if: ${{ matrix.lane != 'visual' }}
         uses: awalsh128/cache-apt-pkgs-action@v1.6.3
         continue-on-error: true
         timeout-minutes: 10
@@ -1771,6 +1776,7 @@ jobs:
       # evaluate_playwright_performance.py from 480 → 300 in the same PR.
       - name: Install Playwright Browsers
         id: install-browsers
+        if: ${{ matrix.lane != 'visual' }}
         working-directory: openmetadata-ui/src/main/resources/ui/
         env:
           APT_DEPS_CACHE_HIT: ${{ steps.apt-deps-cache.outputs.cache-hit }}

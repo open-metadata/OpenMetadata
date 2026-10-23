@@ -43,7 +43,7 @@ Two lanes run a whole project on one shard and are switched on by their own path
 - `visual` runs `visual-regression` against its own MySQL environment seeded from scratch — the environment its baselines were captured on — reusing the shared distribution and ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason. The shared distribution must carry the regular bundle: the coarse bundle (`coarse_bundle=true`) folds lazy pages into the eager chunk, so their CSS loads before the global CSS and ties between equally specific rules resolve differently from production (the settings page header loses 4px; the explore page loses its fixed height).
 - `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
 
-Both are shards of the same run, so they count toward `playwright-summary`.
+Both are shards of the same run, so they count toward `playwright-summary`. Neither runs on `protocol=h2` (their Docker servers are plain HTTP), and `visual` does not run on `coarse_bundle=true` (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
 
 ## Entity matrix
 

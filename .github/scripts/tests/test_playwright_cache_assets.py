@@ -577,3 +577,27 @@ def test_prune_workflow_only_cancels_runs_on_dead_queue_refs() -> None:
     assert "set -euo pipefail" in listing
     # Refs listed after runs, or a just-created entry's runs read as dead.
     assert "actions/runs?event=merge_group" in listing
+
+
+def test_visual_runs_only_on_the_regular_bundle_and_neither_lane_runs_on_h2() -> None:
+    # ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle
+    workflows = ROOT / ".github/workflows"
+    reusable = (workflows / "playwright-e2e-reusable.yml").read_text()
+    outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
+    visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
+    rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
+    assert "!inputs.coarse_bundle" in visual
+    assert "inputs.protocol != 'h2'" in visual
+    assert "inputs.protocol != 'h2'" in rdf
+    assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
+
+    for workflow in ("playwright-e2e-reusable.yml", "playwright-postgresql-e2e.yml",
+                     "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):
+        block = (workflows / workflow).read_text().split("      coarse_bundle:\n", 1)[1]
+        assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "false", workflow
+    assert "      coarse_bundle: false\n" in (workflows / "populate-playwright-caches.yml").read_text()
+
+    shard = reusable.split("\n  playwright-ci:\n", 1)[1].split("\n  slack-notify:\n", 1)[0]
+    for step in ("Restore Playwright browser cache", "Cache Playwright system deps", "Install Playwright Browsers"):
+        body = shard.split(f"      - name: {step}\n", 1)[1].split("      - name:", 1)[0]
+        assert body.count("if: ${{ matrix.lane != 'visual' }}") == 1, step
