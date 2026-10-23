@@ -35,7 +35,7 @@ export type TopicEmptyStateProps = Pick<
 // The raised tile the footer-led empty states use: larger than the outlined
 // default and lifted by a soft shadow instead of a border.
 const RAISED_TILE_CLASS =
-  'tw:size-18 tw:rounded-2xl tw:shadow-md tw:outline-0 tw:*:data-icon:size-7.5';
+  'tw:size-16.5 tw:rounded-2xl tw:shadow-md tw:outline-0 tw:*:data-icon:size-7.5';
 
 /**
  * The body of a card with nothing in it yet: what will appear here, and the
@@ -72,15 +72,13 @@ const TopicEmptyState: React.FC<TopicEmptyStateProps> = ({
         'tw:text-text-primary!',
         layout === 'footer' ? 'tw:mt-7' : 'tw:mt-5'
       )}
-      // The footer-led empty state keeps the Widget Empty States design's
-      // larger type; the default one follows the landing page's 14px scale.
-      size={layout === 'footer' ? 'text-md' : 'text-sm'}
+      size="text-sm"
       weight="semibold">
       {title}
     </Typography>
     <Typography
       className="tw:mt-1 tw:max-w-90 tw:text-pretty tw:text-text-secondary!"
-      size={layout === 'footer' ? 'text-sm' : 'text-xs'}>
+      size="text-xs">
       {description}
     </Typography>
     {action && (

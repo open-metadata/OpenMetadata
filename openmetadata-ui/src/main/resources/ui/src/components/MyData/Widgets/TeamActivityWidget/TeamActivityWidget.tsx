@@ -126,6 +126,7 @@ const TeamActivityWidget: React.FC<TeamActivityWidgetProps> = ({
             getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED)
           ),
       }}
+      bodyClassName="tw:pt-3"
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}

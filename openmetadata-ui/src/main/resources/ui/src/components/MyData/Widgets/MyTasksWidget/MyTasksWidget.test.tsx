@@ -171,26 +171,23 @@ describe('MyTasksWidget', () => {
     expect(rowIds()).toEqual(['my-task-row-2']);
   });
 
-  it('says how much of the total the list holds', () => {
+  // The design drops the "x of y loaded" strip between the chips and the rows.
+  it('opens the rows straight under the chips, with no select-all strip', () => {
     renderWidget();
 
-    expect(screen.getByTestId('my-tasks-showing')).toHaveTextContent(
-      'label.count-of-total-loaded {"count":3,"total":25}'
-    );
+    expect(screen.queryByTestId('my-tasks-select-all')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('my-tasks-showing')).not.toBeInTheDocument();
   });
 
-  // Categories are counted over the loaded page: "1 of 1" alone would read as
-  // every access request when 22 more tasks were never loaded.
-  it('keeps the page limit in view while a category is selected', () => {
+  // Categories are counted over the loaded page: "Access 1" alone would read
+  // as every access request when 22 more tasks were never loaded.
+  it('keeps the page limit in the footer while a category is selected', () => {
     renderWidget();
 
     expect(screen.queryByTestId('my-tasks-page-limit')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('my-tasks-filter-access'));
 
-    expect(screen.getByTestId('my-tasks-showing')).toHaveTextContent(
-      'label.count-of-total-loaded {"count":1,"total":1}'
-    );
     expect(screen.getByTestId('my-tasks-page-limit')).toHaveTextContent(
       'label.loaded-x-of-y-entity {"entity":"label.task-plural","loaded":3,"total":25}'
     );
@@ -307,18 +304,6 @@ describe('MyTasksWidget', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/users/dale/task');
     expect(mockResolveTasks).not.toHaveBeenCalled();
-  });
-
-  it('selects every visible row from the header checkbox', () => {
-    renderWidget();
-
-    fireEvent.click(
-      within(screen.getByTestId('my-tasks-select-all')).getByRole('checkbox')
-    );
-
-    expect(screen.getByTestId('my-tasks-selected-count')).toHaveTextContent(
-      'label.n-selected {"count":3}'
-    );
   });
 
   it('clears the selection when the bucket changes', () => {

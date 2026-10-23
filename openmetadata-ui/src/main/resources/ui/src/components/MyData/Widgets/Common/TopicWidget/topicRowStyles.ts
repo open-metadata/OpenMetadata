@@ -12,6 +12,15 @@
  */
 
 /**
+ * The body of a card that opens on filter chips: the chips sit closer to the
+ * header rule than a plain body's content does.
+ */
+export const TOPIC_FILTERED_BODY_CLASSES = 'tw:pt-3.5';
+
+/** The gap between a card's filter row and the list it filters. */
+export const TOPIC_FILTERED_LIST_CLASSES = 'tw:mt-0.5';
+
+/**
  * The hover every topic card's list row shares: a rounded tint behind the row
  * instead of an underline. The row bleeds 8px past the card body on both sides
  * (`-mx-2` + `px-2`) so its content stays aligned with the filters above while

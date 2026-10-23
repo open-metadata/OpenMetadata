@@ -33,6 +33,8 @@ import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
 import TopicRowOwners from '../Common/TopicWidget/TopicRowOwners';
 import {
   TOPIC_BLUE_TILE_CLASSES,
+  TOPIC_FILTERED_BODY_CLASSES,
+  TOPIC_FILTERED_LIST_CLASSES,
   TOPIC_ROW_CLASSES,
   TOPIC_ROW_STRETCHED_LINK_CLASSES,
   TOPIC_ROW_TILE_CLASSES,
@@ -106,6 +108,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
         label: t('label.view-all-entity', { entity: t(DOMAINS_LABEL_KEY) }),
         onPress: () => navigate(ROUTES.DOMAIN),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
@@ -164,7 +167,10 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
           />
 
           <ul
-            className="tw:mt-3 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+            className={classNames(
+              'tw:flex tw:flex-col tw:divide-y tw:divide-secondary',
+              TOPIC_FILTERED_LIST_CLASSES
+            )}
             data-testid="domain-rows">
             {domains.map((domain) => (
               <li
@@ -191,7 +197,7 @@ const DomainsOverviewWidget: React.FC<DomainsOverviewWidgetProps> = ({
                       className="tw:min-w-0 tw:text-text-primary!"
                       data-testid="domain-name"
                       ellipsis={{ rows: 1 }}
-                      size="text-xs"
+                      size="text-sm"
                       weight="medium">
                       {domain.name}
                     </Typography>

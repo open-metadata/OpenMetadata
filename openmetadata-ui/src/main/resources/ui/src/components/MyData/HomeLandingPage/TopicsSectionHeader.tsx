@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  ButtonGroup,
-  ButtonGroupItem,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
 import {
   ChevronSelectorVertical,
   Columns01,
@@ -74,45 +69,43 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
           data-testid="toggle-all-widgets"
           iconLeading={ChevronSelectorVertical}
           isDisabled={isToggleAllDisabled}
-          size="xs"
+          size="md"
           onPress={onToggleAll}>
           {t(
             isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
           )}
         </Button>
 
-        <ButtonGroup
-          selectedKeys={[viewMode]}
-          selectionMode="single"
-          size="sm"
-          onSelectionChange={(keys) => {
-            const [selected] = [...keys] as TopicsViewMode[];
-            // react-aria allows deselecting the active item; a view has to
-            // stay chosen.
-            if (selected) {
-              onViewModeChange(selected);
-            }
-          }}>
-          <ButtonGroupItem
-            aria-label={t('label.list')}
-            data-testid="topics-list-view"
-            iconLeading={Rows03}
-            id="list"
-          />
-          <ButtonGroupItem
-            aria-label={t('label.grid')}
-            data-testid="topics-grid-view"
-            iconLeading={Columns01}
-            id="grid"
-          />
-        </ButtonGroup>
+        {/* The segmented control the design specifies; the view has no panel
+          of its own, so the tabs only carry the selection. */}
+        <Tabs
+          selectedKey={viewMode}
+          onSelectionChange={(key) => onViewModeChange(key as TopicsViewMode)}>
+          <Tabs.List
+            aria-label={t('label.view')}
+            size="sm"
+            type="button-border">
+            <Tabs.Item
+              aria-label={t('label.list')}
+              data-testid="topics-list-view"
+              id="list">
+              <Rows03 aria-hidden className="tw:size-4" />
+            </Tabs.Item>
+            <Tabs.Item
+              aria-label={t('label.grid')}
+              data-testid="topics-grid-view"
+              id="grid">
+              <Columns01 aria-hidden className="tw:size-4" />
+            </Tabs.Item>
+          </Tabs.List>
+        </Tabs>
 
         {onCustomize && (
           <Button
             color="secondary"
             data-testid="customize-home-page"
             iconLeading={Settings01}
-            size="xs"
+            size="md"
             onPress={onCustomize}>
             {t('label.customize')}
           </Button>

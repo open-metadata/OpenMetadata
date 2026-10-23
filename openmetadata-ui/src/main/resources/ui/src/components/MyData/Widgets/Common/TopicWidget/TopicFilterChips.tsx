@@ -77,7 +77,7 @@ const TONES: Record<
 const GROUP_CLASSES =
   'tw:flex tw:w-auto tw:max-w-full tw:flex-wrap tw:items-center tw:gap-x-1 tw:gap-y-2 tw:space-x-0 tw:shadow-none';
 const CHIP_CLASSES =
-  'tw:gap-2 tw:rounded-full tw:px-3 tw:py-1.5 tw:font-normal tw:shadow-none tw:first:rounded-full tw:last:rounded-full tw:not-last:pr-3';
+  'tw:gap-2 tw:rounded-full tw:px-2.5 tw:py-1 tw:font-normal tw:shadow-none tw:first:rounded-full tw:last:rounded-full tw:not-last:pr-2.5';
 const UNSELECTED_CLASSES = 'tw:bg-transparent tw:after:outline-transparent';
 
 export interface TopicFilterChipsProps {
@@ -144,13 +144,14 @@ const TopicFilterChips: React.FC<TopicFilterChipsProps> = ({
                 tone.dot
               )}
             />
-            <span className="tw:text-sm tw:text-text-secondary">
-              {chip.label}
-            </span>
-            <span
-              className={classNames('tw:text-sm tw:font-semibold', tone.count)}
-              data-testid={`${testIdPrefix}-filter-${chip.id}-count`}>
-              {chip.count}
+            {/* The count sits closer to its label than the label to the dot. */}
+            <span className="tw:flex tw:items-baseline tw:gap-1 tw:text-xs">
+              <span className="tw:text-text-secondary">{chip.label}</span>
+              <span
+                className={classNames('tw:font-semibold', tone.count)}
+                data-testid={`${testIdPrefix}-filter-${chip.id}-count`}>
+                {chip.count}
+              </span>
             </span>
           </ButtonGroupItem>
         );
