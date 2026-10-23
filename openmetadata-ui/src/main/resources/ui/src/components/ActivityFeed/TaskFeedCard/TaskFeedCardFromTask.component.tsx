@@ -361,10 +361,14 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
-          <Comment
-            className="tw:text-fg-quaternary"
-            size={20}
-            onClick={showReplies}
+          <Button
+            aria-label={t('label.reply')}
+            className="tw:size-6 tw:rounded-md! tw:p-1!"
+            color="tertiary"
+            data-testid="task-reply-button"
+            iconLeading={<Comment data-icon size={16} />}
+            size="xs"
+            onPress={showReplies}
           />
           {commentsCount > 0 ? (
             <Button

@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import {
   resolveTask,
@@ -33,6 +34,7 @@ import {
   isRecognizerFeedbackTask,
   isTagsTaskType,
 } from '../../../utils/TaskActionUtils';
+import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import TaskFeedCardFromTask from './TaskFeedCardFromTask.component';
 
 const MOCK_TASK: Task = {
@@ -263,6 +265,30 @@ describe('TaskFeedCardFromTask', () => {
     });
 
     expect(screen.getByTestId('replies-count')).toBeInTheDocument();
+  });
+
+  it('opens the task replies from the keyboard when there are no comments', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const showTaskDrawer = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={MOCK_TASK} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const replyButton = screen.getByRole('button', { name: 'label.reply' });
+
+    expect(screen.queryByTestId('replies-count')).not.toBeInTheDocument();
+
+    replyButton.focus();
+    await user.keyboard('{Enter}');
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
   });
 
   it('approves and rejects an assigned task through the Task V2 API', async () => {
