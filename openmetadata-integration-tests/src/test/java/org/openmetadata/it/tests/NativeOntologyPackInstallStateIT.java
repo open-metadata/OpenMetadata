@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -269,6 +270,44 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
     assertTrue(!installedIn(packs(), ontology.getId()));
     client.ontologies().restore(ontology.getId());
     assertTrue(installedIn(packs(), ontology.getId()));
+  }
+
+  @Test
+  void catalogueAppliesOwnerConditionsToInstallations(TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final Ontology owned =
+        ns.trackRoot(
+            Entity.ONTOLOGY,
+            admin
+                .ontologies()
+                .create(
+                    request(ns)
+                        .withName(ns.prefix("ownedLibrary"))
+                        .withOwners(
+                            List.of(admin.users().getByName("admin").getEntityReference()))));
+    final Ontology unowned = createOntology(ns, "unownedLibrary");
+    install(ns, owned, "fibo", Set.of("foundations"));
+    install(ns, unowned, "fibo", Set.of("foundations"));
+    assertTrue(installedIn(packs(), owned.getId()));
+    assertTrue(installedIn(packs(), unowned.getId()));
+
+    try (RdfAccessFixtures fixtures = new RdfAccessFixtures("pack" + ns.shortPrefix())) {
+      final var role =
+          fixtures.denyRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY, "!noOwner()");
+      final var allow = fixtures.allowRole(MetadataOperation.VIEW_BASIC, Entity.ONTOLOGY);
+      final var reader =
+          new OpenMetadataClient(
+              OpenMetadataConfig.builder()
+                  .serverUrl(SdkClients.baseUrl())
+                  .accessToken(fixtures.userToken("reader", List.of(allow.getId(), role.getId())))
+                  .build());
+      final OntologyPackList visible =
+          reader
+              .getHttpClient()
+              .execute(HttpMethod.GET, "/v1/ontologyPacks", null, OntologyPackList.class);
+      assertFalse(installedIn(visible, owned.getId()));
+      assertTrue(installedIn(visible, unowned.getId()));
+    }
   }
 
   private static org.openmetadata.schema.entity.data.OntologyChangeSet install(

@@ -36,8 +36,6 @@ import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 public final class OntologyPackInstallations {
-  public static final int MAX_INDEXED_ONTOLOGIES = 1000;
-
   private OntologyPackInstallations() {}
 
   public static OntologyPackSource sourcePack(

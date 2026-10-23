@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
@@ -259,6 +260,77 @@ class OntologyEntityDAOTest {
       names = {"MYSQL", "POSTGRES"})
   void storesIndependentEntitiesThroughStandardDaos(ConnectionType dialect) {
     withDatabase(dialect, handle -> assertStorageContract(handle, dialect));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void pagesInstalledOntologiesPastNonInstalledAndHiddenRows(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          final var dao = handle.attach(CollectionDAO.class).ontologyEntityDAO();
+          final List<UUID> ids =
+              List.of(
+                  UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                  UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                  UUID.fromString("00000000-0000-0000-0000-000000000004"),
+                  UUID.fromString("00000000-0000-0000-0000-000000000005"));
+          for (int index = 1; index <= 5; index++) {
+            final String name = "Page" + index;
+            final Ontology ontology =
+                ontology()
+                    .withId(UUID.fromString("00000000-0000-0000-0000-00000000000" + index))
+                    .withName(name)
+                    .withFullyQualifiedName(name)
+                    .withIri(URI.create("https://example.org/" + name))
+                    .withDeleted(false)
+                    .withInstalledPacks(
+                        index == 3
+                            ? null
+                            : List.of(
+                                new OntologyPackInstallation()
+                                    .withPackId("fibo")
+                                    .withVersion("1.0")
+                                    .withModules(List.of())
+                                    .withInstalledAt(1L)
+                                    .withInstalledBy("admin")));
+            dao.insert(ontology, ontology.getFullyQualifiedName());
+          }
+
+          final List<String> first = dao.listJsonWithInstalledPacks(2, "");
+          assertEquals(
+              ids.subList(0, 2),
+              first.stream()
+                  .map(json -> JsonUtils.readValue(json, Ontology.class).getId())
+                  .toList());
+          final List<String> second = dao.listJsonWithInstalledPacks(2, ids.get(1).toString());
+          assertEquals(
+              ids.subList(2, 4),
+              second.stream()
+                  .map(json -> JsonUtils.readValue(json, Ontology.class).getId())
+                  .toList());
+          assertTrue(dao.listJsonWithInstalledPacks(2, ids.get(3).toString()).isEmpty());
+
+          migrateRepositoryTables(handle, dialect);
+          final CollectionDAO previous = Entity.getCollectionDAO();
+          Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
+          try {
+            final OntologyRepository repository = new OntologyRepository();
+            assertEquals(
+                ids.subList(2, 4),
+                repository
+                    .listWithInstalledPacks(
+                        2, ontology -> !ids.subList(0, 2).contains(ontology.getId()))
+                    .stream()
+                    .map(Ontology::getId)
+                    .toList());
+          } finally {
+            Entity.setCollectionDAO(previous);
+          }
+        });
   }
 
   @ParameterizedTest

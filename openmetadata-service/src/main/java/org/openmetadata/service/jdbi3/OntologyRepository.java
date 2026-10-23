@@ -2,9 +2,11 @@ package org.openmetadata.service.jdbi3;
 
 import jakarta.json.JsonPatch;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.Include;
@@ -121,10 +123,29 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
     return updated;
   }
 
-  public List<Ontology> listWithInstalledPacks(final int limit) {
-    return daoCollection.ontologyEntityDAO().listJsonWithInstalledPacks(limit).stream()
-        .map(json -> JsonUtils.readValue(json, Ontology.class))
-        .toList();
+  public List<Ontology> listWithInstalledPacks(
+      final int pageSize, final Predicate<Ontology> include) {
+    if (pageSize <= 0) {
+      throw new IllegalArgumentException("pageSize must be positive");
+    }
+    final List<Ontology> included = new ArrayList<>();
+    String afterId = "";
+    List<Ontology> page;
+    do {
+      page =
+          daoCollection.ontologyEntityDAO().listJsonWithInstalledPacks(pageSize, afterId).stream()
+              .map(json -> JsonUtils.readValue(json, Ontology.class))
+              .toList();
+      for (final Ontology ontology : page) {
+        if (include.test(ontology)) {
+          included.add(ontology);
+        }
+      }
+      if (!page.isEmpty()) {
+        afterId = page.getLast().getId().toString();
+      }
+    } while (page.size() == pageSize);
+    return included;
   }
 
   @Override

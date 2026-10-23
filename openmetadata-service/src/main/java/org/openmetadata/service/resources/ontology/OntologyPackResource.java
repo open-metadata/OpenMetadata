@@ -63,6 +63,8 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 @Consumes(MediaType.APPLICATION_JSON)
 @Collection(name = "ontologyPacks", order = 6)
 public final class OntologyPackResource {
+  private static final int INSTALLATIONS_PAGE_SIZE = 1000;
+
   private final Authorizer authorizer;
   private final OntologyPackInstaller installer;
   private final OntologyPackSampler sampler;
@@ -104,22 +106,16 @@ public final class OntologyPackResource {
   private List<Ontology> viewable(final SecurityContext securityContext) {
     final OntologyRepository repository =
         (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY);
-    final List<Ontology> ontologies =
-        repository.listWithInstalledPacks(OntologyPackInstallations.MAX_INDEXED_ONTOLOGIES);
-    return ontologies.stream()
-        .filter(ontology -> canView(securityContext, repository, ontology))
-        .toList();
+    return repository.listWithInstalledPacks(
+        INSTALLATIONS_PAGE_SIZE, ontology -> canView(securityContext, ontology));
   }
 
-  private boolean canView(
-      final SecurityContext securityContext,
-      final OntologyRepository repository,
-      final Ontology ontology) {
+  private boolean canView(final SecurityContext securityContext, final Ontology ontology) {
     try {
       authorizer.authorize(
           securityContext,
           new OperationContext(Entity.ONTOLOGY, MetadataOperation.VIEW_BASIC),
-          new ResourceContext<>(Entity.ONTOLOGY, ontology, repository));
+          new ResourceContext<>(Entity.ONTOLOGY, ontology.getId(), ontology.getName()));
       return true;
     } catch (AuthorizationException exception) {
       return false;
