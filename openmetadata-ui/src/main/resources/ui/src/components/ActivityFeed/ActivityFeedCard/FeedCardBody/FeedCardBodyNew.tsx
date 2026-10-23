@@ -68,6 +68,7 @@ const FeedCardBodyNew = ({
   showThread,
   isForFeedTab,
   isFeedWidget,
+  isActive,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -176,6 +177,9 @@ const FeedCardBodyNew = ({
     <Card
       className={classNames(
         'tw:overflow-y-auto',
+        // On the selected card's dark brand tint the surface Card is a dark
+        // slab; let the tint show through. Light mode keeps the white surface.
+        isActive && 'tw:dark:bg-transparent',
         showThread
           ? [
               'tw:max-h-100',

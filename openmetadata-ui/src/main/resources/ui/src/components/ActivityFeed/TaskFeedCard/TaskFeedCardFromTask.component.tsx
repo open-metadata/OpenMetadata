@@ -34,7 +34,6 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -72,6 +71,7 @@ import {
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
   handleCardContainerKeyDown,
@@ -214,7 +214,7 @@ const TaskFeedCardFromTask = ({
             <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="m-r-xss  m-r-xss task-details-entity-link">
-              {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -235,7 +235,7 @@ const TaskFeedCardFromTask = ({
       handleTaskLinkClick,
       isEntityDetailsAvailable,
       t,
-      task.type,
+      task,
       taskDisplayId,
       taskColumnName,
     ]
@@ -427,7 +427,7 @@ const TaskFeedCardFromTask = ({
     <Card
       isClickable
       aria-label={`#${taskDisplayId} ${t(
-        TASK_ENTITY_TYPES[task.type] ?? 'label.task'
+        getTaskTypeMessageKey(task) ?? 'label.task'
       )}`}
       className={classNames(
         className,

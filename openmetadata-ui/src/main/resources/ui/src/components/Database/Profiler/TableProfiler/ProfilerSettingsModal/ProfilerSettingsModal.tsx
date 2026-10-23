@@ -115,7 +115,7 @@ const ProfilerSettingsModal = ({
           partitionIntervalType &&
           SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
             partitionIntervalType
-          ].includes(column.dataType)
+          ]?.includes(column.dataType)
         ) {
           items.push({ id: column.name, label: column.name });
         }

@@ -35,6 +35,7 @@ import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
   getRequiredFieldLabel,
+  isRevisionRequest,
 } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
@@ -210,19 +211,36 @@ const DEFAULT_TYPE_BADGE = {
   icon: 'approval' as TaskTypeBadge['icon'],
 };
 
-const getTypeBadgeConfig = (task: Pick<Task, 'type' | 'category'>) =>
-  TASK_TYPE_BADGE[task.type] ??
-  (task.category === TaskCategory.Incident
-    ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
-    : DEFAULT_TYPE_BADGE);
+// A Metadata Completion task that carries a rejection asks for a revision, not for fields.
+const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
+  labelKey: 'label.revise-and-resubmit',
+  color: 'warning',
+  icon: 'approval',
+};
+
+const getTypeBadgeConfig = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => {
+  if (isRevisionRequest(task)) {
+    return REVISION_BADGE;
+  }
+
+  return (
+    TASK_TYPE_BADGE[task.type] ??
+    (task.category === TaskCategory.Incident
+      ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
+      : DEFAULT_TYPE_BADGE)
+  );
+};
 
 /**
  * What a task reads as, as a stable key: two types that share a label (a test
  * case incident and an incident) are one kind to a reviewer, so the list
  * groups them under one header and the filter offers them as one option.
  */
-export const getTaskTypeKey = (task: Pick<Task, 'type' | 'category'>) =>
-  getTypeBadgeConfig(task).labelKey;
+export const getTaskTypeKey = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => getTypeBadgeConfig(task).labelKey;
 
 /**
  * The type chip shown in the detail header and on each list row. Falls back to
@@ -627,6 +645,21 @@ const describeMetadataCompletion = (
             },
           ]
         : []),
+      ...textRow(
+        'revisionComment',
+        'type',
+        t('label.comment'),
+        payload.revision
+          ? payload.revision.comment ??
+              t('message.metadata-completion-revision-no-comment')
+          : undefined
+      ),
+      ...textRow(
+        'revisionRequestedBy',
+        'user',
+        t('label.requested-by'),
+        payload.revision?.requestedBy
+      ),
       // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
       ...textRow(
         'conditions',

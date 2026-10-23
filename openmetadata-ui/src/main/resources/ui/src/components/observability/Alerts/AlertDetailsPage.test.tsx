@@ -29,7 +29,6 @@ import {
 import { ModifiedEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
 import AlertDetailsPage from './AlertDetailsPage';
-import { NOTIFICATION_ALERT_KIND } from './alertKinds';
 
 const mockNavigate = jest.fn();
 const mockUseAlertDetailsData = jest.fn();
@@ -732,53 +731,6 @@ describe('AlertDetailsPage', () => {
       '/observability/alert/service.alert/activity',
       { replace: true }
     );
-  });
-
-  describe('as a Settings → Notifications alert', () => {
-    it('loads the alert as a notification alert', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      expect(mockUseAlertFormData).toHaveBeenCalledWith(
-        expect.objectContaining({ alertType: AlertType.Notification })
-      );
-    });
-
-    it('hides the trigger section in the configuration view', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      expect(screen.getByTestId('form-shows-triggers')).toHaveTextContent(
-        'false'
-      );
-    });
-
-    it('keeps tab changes and the list breadcrumb under settings', () => {
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      fireEvent.click(screen.getByTestId('change-tab'));
-
-      expect(mockNavigate).toHaveBeenCalledWith(
-        '/settings/notifications/alerts/service.alert/activity',
-        { replace: true }
-      );
-      expect(
-        screen.getByRole('link', { name: 'label.alert-plural' })
-      ).toHaveAttribute('href', '/settings/notifications/alerts');
-    });
-
-    it('edits the alert as a notification alert', () => {
-      mockUseAlertDetailsData.mockImplementation(
-        ({ onEditAlert }: { onEditAlert: () => void }) =>
-          getDetailsState({ handleAlertEdit: onEditAlert })
-      );
-
-      renderPage(<AlertDetailsPage kind={NOTIFICATION_ALERT_KIND} />);
-
-      fireEvent.click(screen.getByTestId('edit-button'));
-
-      expect(screen.getByTestId('edit-modal-alert-type')).toHaveTextContent(
-        AlertType.Notification
-      );
-    });
   });
 
   it('shows the trigger section for observability alerts', () => {

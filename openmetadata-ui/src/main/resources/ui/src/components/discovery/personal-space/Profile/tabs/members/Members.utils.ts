@@ -26,6 +26,7 @@ import type { FC, Key } from 'react';
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
 import type { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import type {
   MembersView,
   OnlineStatusInfo,
@@ -148,17 +149,6 @@ const SECTION = 'section';
 const TEAM_DETAIL = 'team-detail';
 const TEAMS_ADD = 'teams-add';
 const TEAMS_IMPORT = 'teams-import';
-
-// A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
-// decodeURIComponent throw URIError, which would unmount the whole panel; fall
-// back to the raw value so a bad hash degrades gracefully instead of crashing.
-export const safeDecodeURIComponent = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
 
 // fqns are URL-encoded in the hash to survive the round-trip (they can contain
 // `%`, `.`, `/`); decode the fqn segments back here.

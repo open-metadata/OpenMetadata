@@ -198,7 +198,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       form={form}>
       <div className="tw:overflow-y-auto">
         <Box
-          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+          className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full tw:mx-auto"
           direction="col"
           gap={5}>
           <FormFields fields={nameFields} />

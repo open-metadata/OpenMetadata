@@ -37,7 +37,7 @@ import { AlertKind, OBSERVABILITY_ALERT_KIND } from './alertKinds';
 import ObservabilityAlertsAiTable from './ObservabilityAlertsAiTable.component';
 
 interface AlertsPageProps {
-  /** Which alerts this page serves; Settings → Notifications passes its kind. */
+  /** Which alerts this page serves (observability by default). */
   kind?: AlertKind;
 }
 
@@ -78,7 +78,6 @@ const AlertsPage = ({ kind = OBSERVABILITY_ALERT_KIND }: AlertsPageProps) => {
 
   const alertsState = useObservabilityAlerts({
     alertType: kind.alertType,
-    includeSystemAlerts: kind.includeSystemAlerts,
     getAlertDetailsPath: kind.getDetailsPath,
     onAddAlert: handleAddAlert,
   });

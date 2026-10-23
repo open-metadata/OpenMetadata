@@ -195,6 +195,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Style;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.type.ApiStatus;
@@ -6409,6 +6410,41 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Relationship fields a CSV import replaces with the row's values. */
   public Set<String> getRelationsReplacedByImport() {
     return Set.of(FIELD_TAGS, FIELD_OWNERS, FIELD_DOMAINS, FIELD_REVIEWERS, FIELD_DATA_PRODUCTS);
+  }
+
+  /**
+   * Relations an approval can hold that the entity's JSON does not carry, such as a data product's
+   * ports. A change request names them as list fields of the entity.
+   * ADR:2026-10-19-a-data-product-port-change-is-held-as-a-list-field-of-the-data-product
+   */
+  public Set<String> getStagedRelationFields() {
+    return Set.of();
+  }
+
+  /** Adds {@code fields}, relations of {@link #getStagedRelationFields()}, to the entity's JSON. */
+  public void addStagedRelations(
+      final ObjectNode entityJson, final UUID entityId, final Set<String> fields) {
+    // Entities without staged relations carry everything a change request names in their JSON.
+  }
+
+  /** Refuses, without saving anything, staged relation changes that can no longer be made. */
+  public void validateStagedRelations(final UUID entityId, final List<MutationOp> ops) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
+  }
+
+  /**
+   * Publishes approved changes of staged relations, as {@code requestedBy} would have. {@code
+   * withFieldChanges}: the same approval has just published field changes, which the relation
+   * changes join in the entity's change description.
+   */
+  public void applyStagedRelations(
+      final UUID entityId,
+      final List<MutationOp> ops,
+      final String requestedBy,
+      final boolean withFieldChanges) {
+    throw new IllegalArgumentException(
+        "%s has no relations an approval can hold".formatted(entityType));
   }
 
   protected List<String> getFieldsStrippedFromStorageJson() {

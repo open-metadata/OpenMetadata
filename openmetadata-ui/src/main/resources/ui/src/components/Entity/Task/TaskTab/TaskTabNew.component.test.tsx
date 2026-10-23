@@ -479,6 +479,11 @@ jest.mock('../../../common/InlineEdit/InlineEdit.component', () => ({
   default: jest.fn().mockImplementation(({ children }) => children),
 }));
 
+jest.mock('../MetadataCompletionTask/MetadataCompletionTask', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue(<p>MetadataCompletionTask</p>),
+}));
+
 const mockProps = {
   task: MOCK_TASK,
   owners: [],
@@ -686,6 +691,46 @@ describe('TaskTabNew Component', () => {
     });
 
     expect(screen.getByText('label.action-required')).toBeInTheDocument();
+  });
+
+  it('offers no action on a Revise and resubmit task but keeps its comments', async () => {
+    const { useAuth } = require('../../../../hooks/authHooks');
+    const {
+      useApplicationStore,
+    } = require('../../../../hooks/useApplicationStore');
+
+    useAuth.mockReturnValue({ isAdminUser: true });
+    useApplicationStore.mockReturnValue({
+      currentUser: {
+        id: 'd6764107-e8b4-4748-b256-c86fecc66064',
+        name: 'test-user',
+        teams: [],
+      },
+    });
+    const revisionTask = {
+      ...MOCK_TASK,
+      type: TaskEntityType.MetadataCompletion,
+      availableTransitions: [],
+      payload: {
+        missingFields: [],
+        revision: { comment: 'Add a definition', requestedBy: 'karan' },
+      },
+    } as Task;
+
+    await act(async () => {
+      render(<TaskTabNew {...mockProps} task={revisionTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('MetadataCompletionTask')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('label.action-required')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('edit-accept-task-dropdown')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('comments-input-field')).toBeInTheDocument();
   });
 
   it('should display comments section', async () => {

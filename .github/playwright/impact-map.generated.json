@@ -714,7 +714,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts"
       ]
     },
@@ -755,6 +754,7 @@
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeResolver.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/CustomMetric.spec.ts",
@@ -764,6 +764,7 @@
         "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/IncidentManager.spec.ts",
+        "playwright/e2e/Features/PersonaAppLayout.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/ProfilePreferences.spec.ts",
         "playwright/e2e/Features/WelcomeScreen.spec.ts",
@@ -1703,6 +1704,7 @@
         "playwright/e2e/Features/ActivityStream.spec.ts",
         "playwright/e2e/Features/AdvancedSearch.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/BlockEditorEmbedLink.spec.ts",
         "playwright/e2e/Features/BlockEditorMathEquations.spec.ts",
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
@@ -2798,6 +2800,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts",
         "playwright/e2e/Features/DataAssetRulesEnabled.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAdvancedOperations.spec.ts",
@@ -3500,6 +3503,7 @@
         "playwright/e2e/Features/AppMode/AppModePreferenceRoundTrip.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeRouteIsolation.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeSettings.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts",
         "playwright/e2e/Features/AutoPilot.spec.ts",
@@ -4739,7 +4743,8 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/pagination.ts"
       ],
       "specs": [
-        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts"
+        "playwright/e2e/Features/AppMode/AppModePageSizeIsolation.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts"
       ]
     },
     {
@@ -4816,6 +4821,7 @@
         "playwright/e2e/Features/ExploreUrlState.spec.ts",
         "playwright/e2e/Features/OntologyNativeOperations.spec.ts",
         "playwright/e2e/Features/OntologyNativeStudio.spec.ts",
+        "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/TableSorting.spec.ts",
         "playwright/e2e/Features/Tasks.spec.ts",
         "playwright/e2e/Features/Tasks/ActivityFeed.spec.ts",
@@ -5740,7 +5746,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/AlertRecipients.spec.ts",
@@ -8016,6 +8021,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/HomeLandingPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPage.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/LandingPageTopicWidgets.spec.ts",
         "playwright/e2e/Features/WelcomeScreen.spec.ts"
@@ -8705,7 +8711,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
@@ -9553,7 +9558,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/DeleteModal/DeleteModal.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
@@ -9586,7 +9590,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/DeleteWidget/DeleteEntityModal.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
@@ -9775,6 +9778,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/common/EntitySummaryDetails/EntitySummaryDetails.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryInheritedReviewerApproval.spec.ts",
         "playwright/e2e/Pages/DataProductAndSubdomains.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
@@ -9972,9 +9976,18 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/TeamPopoverTitle.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/UserPopOverCard.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts"
       ]
     },
@@ -10574,12 +10587,15 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUser.spec.ts",
-        "playwright/e2e/Pages/BotsProfile.spec.ts"
+        "playwright/e2e/Pages/BotsProfile.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts"
       ]
     },
     {
@@ -10991,6 +11007,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/MembersTeamDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileTeam.spec.ts"
       ]
@@ -11047,6 +11064,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationAlertDetail.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
@@ -11055,6 +11074,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationAlertsPanel.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
     },
@@ -11063,7 +11083,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationFiltersEditor.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
@@ -11083,6 +11102,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/NotificationPanel.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
         "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
       ]
@@ -11640,7 +11660,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertSeveralSources.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
         "playwright/e2e/Flow/AlertRecipients.spec.ts",
@@ -11651,27 +11670,11 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiDiagnosticTab.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiFormFields.component.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/Observability.spec.ts",
         "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/AlertAiRecentEventsTab.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts"
       ]
     },
     {
@@ -11688,7 +11691,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
@@ -11722,7 +11724,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/Observability.spec.ts"
       ]
     },
@@ -11810,7 +11811,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts"
       ]
     },
@@ -11864,6 +11864,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/AINotFoundPage/AINotFoundPage.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts"
       ]
     },
@@ -13223,7 +13224,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
