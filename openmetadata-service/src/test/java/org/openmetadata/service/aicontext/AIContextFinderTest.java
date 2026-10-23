@@ -149,6 +149,23 @@ class AIContextFinderTest {
   }
 
   @Test
+  void collectHit_skipsHitsTheCallerCannotView() {
+    AIContextFinder finder =
+        new AIContextFinder(null, item -> !"Secret".equals(item.getFullyQualifiedName()));
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+    finder.collectHit(
+        Map.of("entityType", "page", "fullyQualifiedName", "Secret", "name", "Secret"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of("entityType", "metric", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        items,
+        candidates);
+    assertEquals(List.of("metric:Revenue"), List.copyOf(items.keySet()));
+  }
+
+  @Test
   void renderFound_emitsKnowledgeAndCandidateAssets() {
     AIContextFinder.FoundContext found =
         new AIContextFinder.FoundContext(

@@ -17,8 +17,12 @@ import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextFinder.CandidateAsset;
 import org.openmetadata.service.aicontext.AIContextFinder.FoundContext;
@@ -43,6 +47,28 @@ public final class AIContextFinderAccess {
           new OperationContext(knowledgeType, VIEW_ALL),
           new ResourceContext<>(knowledgeType));
     }
+  }
+
+  /**
+   * The per-item check for knowledge returned to the caller: VIEW_BASIC on the item's type and
+   * FQN, the same check the asset-anchored path applies. The type-level gate in {@link
+   * #authorizeKnowledgeAccess} carries no entity, so it cannot decide entity-conditioned rules such
+   * as {@code hasDomain()}. Decisions are memoised per item, since one item can reach a request
+   * through several assets or vector chunks.
+   */
+  public static Predicate<KnowledgeItem> knowledgeViewer(
+      Authorizer authorizer, SecurityContext securityContext) {
+    Map<String, Boolean> decisions = new HashMap<>();
+    return item ->
+        decisions.computeIfAbsent(
+            item.getType().value() + ":" + item.getFullyQualifiedName(),
+            key ->
+                AIContextBuilder.canViewKnowledge(
+                    authorizer,
+                    securityContext,
+                    item.getType().value(),
+                    item.getFullyQualifiedName(),
+                    VIEW_BASIC));
   }
 
   /**
