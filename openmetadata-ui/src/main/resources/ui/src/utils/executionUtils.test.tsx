@@ -153,6 +153,29 @@ describe('executionUtils', () => {
       expect(collectTitles([first])).toEqual(['A', 'B', 'A']);
       expect(collectTitles([second])).toEqual(collectTitles([first]));
     });
+
+    it('bounds total expansion for a branching cycle so Tree View cannot freeze', () => {
+      // A complete graph of 8 tasks where each lists the other 7 as
+      // downstream. Every permutation is a valid path (no node repeats on a
+      // path), so without a total node bound this would produce ~8! nodes
+      // per root. The budget must cap the expansion well below that.
+      const names = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      const graph: Record<string, string[]> = {};
+      for (const name of names) {
+        graph[name] = names.filter((other) => other !== name);
+      }
+      const tasks = makeTasks(graph);
+      const labels = labelElementsFor(names);
+
+      const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
+
+      const totalNodes = collectKeys([tree]).length;
+
+      // Renders something (the root and at least its first children), but
+      // never millions of nodes — bounded by MAX_TREE_NODES (10000).
+      expect(totalNodes).toBeGreaterThan(0);
+      expect(totalNodes).toBeLessThanOrEqual(10000);
+    });
   });
 
   describe('getTreeData', () => {

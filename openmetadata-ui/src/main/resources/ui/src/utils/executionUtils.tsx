@@ -154,6 +154,15 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
     taskData.downstreamTasks?.includes(currentTask.name)
   );
 
+// Upper bound on the number of tree nodes a single root expansion can
+// produce. The backtracking `visited` set in `buildCompleteTree` is what
+// keeps cycles terminating, but it also lets a branching cycle expand every
+// distinct path through it (e.g. a complete graph of 10 tasks yields ~10!
+// nodes per root). Real pipeline task graphs are far smaller than this, so
+// the cap is invisible to them while preventing Tree View from freezing or
+// exhausting memory on a pathological cyclic graph.
+const MAX_TREE_NODES = 10000;
+
 // Function to build a tree for all nodes
 export const buildCompleteTree = (
   data: Task[],
@@ -164,41 +173,55 @@ export const buildCompleteTree = (
   icon: React.ReactNode | null,
   key: string,
   parentKey: string,
-  visited: Set<string> = new Set()
+  visited: Set<string> = new Set(),
+  budget: { remaining: number } = { remaining: MAX_TREE_NODES }
 ) => {
   let node: TreeNode;
 
   const nodeKey: string = parentKey + '-' + key;
 
+  // Charge every created node against the shared budget so the total
+  // expansion is bounded regardless of graph shape.
+  budget.remaining -= 1;
+
+  const title = viewElements.find((item) => item.key === key)?.value ?? null;
+
   if (icon != null) {
     node = {
       key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
+      title,
       children: [],
       icon,
     };
   } else {
     node = {
       key: nodeKey,
-      title: viewElements.find((item) => item.key === key)?.value ?? null,
+      title,
       children: [],
     };
   }
   const entry = data.find((item) => item.name === key);
 
-  if (entry && !visited.has(key)) {
+  // Expand children only while the path hasn't revisited this key (cycle
+  // termination) and the shared node budget hasn't been spent. The budget
+  // bounds the total expansion so branching cycles can't freeze Tree View.
+  if (entry && !visited.has(key) && budget.remaining > 0) {
     visited.add(key);
 
     const childrenKeys = entry.downstreamTasks ?? [];
 
     for (const childKey of childrenKeys) {
+      if (budget.remaining <= 0) {
+        break;
+      }
       const childNode = buildCompleteTree(
         data,
         viewElements,
         icon,
         childKey,
         parentKey + '-' + entry.name,
-        visited
+        visited,
+        budget
       );
       node.children?.push(childNode);
     }
