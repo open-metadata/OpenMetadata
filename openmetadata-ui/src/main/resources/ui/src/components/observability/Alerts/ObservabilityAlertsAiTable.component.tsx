@@ -323,7 +323,7 @@ function ObservabilityAlertsAiTable({
     : emptyStatePlaceholder;
 
   return (
-    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:outline-0">
+    <TableCard.Root className="tw:rounded-xl tw:shadow-none">
       {isAlertsEmpty ? (
         alertsEmptyPlaceholder
       ) : (
