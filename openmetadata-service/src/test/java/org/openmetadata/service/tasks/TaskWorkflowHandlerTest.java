@@ -784,6 +784,24 @@ class TaskWorkflowHandlerTest {
   }
 
   @Test
+  void testTagUpdate_resolvedWithNewValue_keepsTagsAddedAfterTheTask() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // PII.Sensitive was added to the column after the task was created, so the task never saw it
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
   void testTagUpdate_resolvedWithNewValue_removesWhatTheReviewerDropped() throws Exception {
     Map<String, Object> payload =
         Map.of(

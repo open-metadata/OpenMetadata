@@ -830,13 +830,26 @@ public class TaskWorkflowHandler {
             JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
         if (newTags != null && !newTags.isEmpty()) {
           tagsToAdd = newTags;
-          // Remove what the target holds now and newValue leaves out, so the replace is real. When
-          // the target can't be read, the payload's tagsToRemove is the best we have.
-          List<TagLabel> current = currentTags(entity, fieldPath);
-          if (current != null) {
+          // Remove what the task saw (its currentTags snapshot and tagsToRemove) and newValue
+          // leaves out, so the replace is real but tags added to the target after the task was
+          // created stay. Only without a snapshot fall back to the tags the target holds now.
+          List<TagLabel> seen =
+              payload == null
+                  ? null
+                  : readTagLabels(JsonUtils.valueToTree(payload), null, "currentTags", null);
+          List<TagLabel> baseline = seen != null ? seen : currentTags(entity, fieldPath);
+          if (baseline != null) {
             Set<String> kept =
                 newTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
-            tagsToRemove = current.stream().filter(t -> !kept.contains(t.getTagFQN())).toList();
+            List<TagLabel> removed =
+                new ArrayList<>(
+                    baseline.stream().filter(t -> !kept.contains(t.getTagFQN())).toList());
+            if (tagsToRemove != null) {
+              tagsToRemove.stream()
+                  .filter(t -> !kept.contains(t.getTagFQN()))
+                  .forEach(removed::add);
+            }
+            tagsToRemove = removed;
           }
         }
       }
