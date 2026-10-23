@@ -54,6 +54,7 @@ from metadata.utils.ssl_manager import get_ssl_connection
 logger = profiler_interface_registry_logger()
 
 RANDOM_LABEL = "random"
+ORIGINAL_COLUMN_NAME = "openmetadata_original_column_name"
 
 # Default maximum number of elements to extract from array columns to prevent OOM
 DEFAULT_MAX_ARRAY_ELEMENTS = 10
@@ -312,8 +313,12 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         else:
             # we can't directly use columns as it is bound to self.raw_dataset and not the rnd table.
             # If we use it, it will result in a cross join between self.raw_dataset and rnd table
-            names = [col.name for col in columns]
-            sqa_columns = [col for col in inspect(ds).c if col.name != RANDOM_LABEL and col.name in names]
+            requested_names = {col.name for col in columns}
+            sqa_columns = [
+                col
+                for col in inspect(ds).c
+                if col.name != RANDOM_LABEL and col.info.get(ORIGINAL_COLUMN_NAME, col.name) in requested_names
+            ]
 
         with self.session_factory() as client:
             # Handle array columns with special query modification
@@ -347,7 +352,7 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         if self.partition_details and not sqa_sample:
             self._warn_empty_partition()
         return TableData(
-            columns=[column.name for column in sqa_columns],
+            columns=[column.info.get(ORIGINAL_COLUMN_NAME, column.name) for column in sqa_columns],
             rows=processed_rows,
         )
 
@@ -471,12 +476,59 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         Build the CTE using Core select() so it does not require an active Session.
         """
         self.partition_details = cast(PartitionProfilerConfig, self.partition_details)  # noqa: TC006
+        raw_table = self.raw_dataset.__table__
         partition_filter = build_partition_predicate(
             self.partition_details,
-            self.raw_dataset.__table__.c,
+            raw_table.c,
         )
-        stmt = select(self.raw_dataset).where(partition_filter)
-        return stmt.cte(f"{self.get_sampler_table_name()}_partitioned")
+        cte_name = f"{self.get_sampler_table_name()}_partitioned"
+
+        column_names = [column.name for column in raw_table.c]
+        safe_names = []
+        used_names = {
+            column.name for column in raw_table.c if self._partition_cte_column_name(column.name) == column.name
+        }
+        for column in raw_table.c:
+            safe_name = self._partition_cte_column_name(column.name)
+            if safe_name != column.name:
+                base_name = safe_name
+                suffix = 1
+                while safe_name in used_names:
+                    safe_name = f"{base_name}_{suffix}"
+                    suffix += 1
+            used_names.add(safe_name)
+            safe_names.append(safe_name)
+
+        if column_names == safe_names:
+            stmt = select(self.raw_dataset).where(partition_filter)
+            return stmt.cte(cte_name)
+
+        inner_columns = []
+        for column, safe_name in zip(raw_table.c, safe_names, strict=True):
+            if column.name == safe_name:
+                inner_columns.append(column)
+                continue
+
+            safe_column = column.label(safe_name)
+            # Keep the profiler's logical key while giving the CTE the
+            # connector-specific alias it needs.
+            safe_column.key = column.key
+            inner_columns.append(safe_column)
+
+        cte = select(*inner_columns).where(partition_filter).cte(cte_name)
+        for column, logical_name in zip(cte.c, column_names, strict=True):
+            column.key = logical_name
+            if column.name != logical_name:
+                column.info[ORIGINAL_COLUMN_NAME] = logical_name
+        return cte
+
+    def _partition_cte_column_name(self, column_name: str) -> str:
+        """Return the CTE label for a physical column name.
+
+        Connectors can override this hook when their SQL dialect requires a
+        transformed identifier. The shared sampler preserves physical names.
+        """
+        return column_name
 
     def get_partitioned_query(self, query=None) -> Query:
         """Return the partitioned query"""
