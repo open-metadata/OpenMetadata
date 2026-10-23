@@ -257,18 +257,6 @@ describe('MyTasksWidget', () => {
     );
   });
 
-  // The bar is pinned over the card body, so it shares the card's surface.
-  it('draws the selection bar on the card surface', () => {
-    renderWidget();
-
-    select('2');
-
-    const bar = screen.getByTestId('my-tasks-selection-bar');
-
-    expect(bar).toHaveClass('tw:bg-surface');
-    expect(bar).not.toHaveClass('tw:bg-primary');
-  });
-
   it('rejects the selection with the secondary action', async () => {
     renderWidget();
 

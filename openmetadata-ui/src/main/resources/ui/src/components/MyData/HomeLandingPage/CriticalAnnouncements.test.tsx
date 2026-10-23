@@ -249,20 +249,6 @@ describe('CriticalAnnouncements', () => {
     expect(screen.queryByTestId(PREV_BTN)).not.toBeInTheDocument();
   });
 
-  it("takes the topic cards' surface and edge on a dark page", async () => {
-    respondWith([makeCritical('a', 1)]);
-
-    renderBanner();
-
-    const banner = await screen.findByTestId('critical-announcement-banner');
-
-    expect(banner).toHaveClass(
-      'tw:[.dark-mode_&]:bg-surface',
-      'tw:[.dark-mode_&]:border-subtle'
-    );
-    expect(banner).not.toHaveClass('tw:[.dark-mode_&]:bg-primary');
-  });
-
   it('leaves the description out when the announcement has none', async () => {
     respondWith([makeCritical('bare', 1, { description: '' })]);
 

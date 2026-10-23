@@ -31,6 +31,7 @@ import { ActivitySentence } from '../Common/TopicWidget/activityVerb';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 
@@ -51,11 +52,9 @@ const MAX_VISIBLE_ROWS = 6;
  */
 export const TEAM_ACTIVITY_COUNT_CAP = 20;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Teams,
-  // Dark gray-100 is the card's own surface, so the tile vanished; dark takes
-  // core's gray featured-icon tile instead.
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700 tw:dark:bg-utility-gray-50 tw:dark:text-utility-gray-600',
+  color: 'gray',
 };
 
 const fetchTeamActivity = async (): Promise<ActivityEvent[]> => {
