@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.apps.bundles.dataRetention;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.List;
 import java.util.stream.Stream;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus;
@@ -65,7 +67,7 @@ final class WorkflowRunRetention {
     final List<ExpiredRun> runs = runDAO.listExpiredRuns(page, ENDED_STATUSES);
     drained = runs.size() < page.limit();
     int deletedRuns = 0;
-    if (!runs.isEmpty()) {
+    if (!nullOrEmpty(runs)) {
       page = page.after(runs.getLast());
       deletedRuns = deleteRunsWithStates(runs.stream().map(ExpiredRun::id).toList());
     }

@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
 import { SubDomain } from '../../support/domain/SubDomain';
@@ -32,7 +31,7 @@ const subDomains: SubDomain[] = [];
 const SUBDOMAIN_COUNT = 60;
 const PAGE_SIZE = 9;
 
-test.describe('SubDomain Pagination', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.describe('SubDomain Pagination', () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
     subDomains.length = 0;
     test.slow(true);

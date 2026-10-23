@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
@@ -27,6 +28,9 @@ import { Task, TaskStatusGroup } from '../../../rest/tasksAPI';
 
 export interface ActivityFeedProviderContextType {
   loading: boolean;
+  // The last task/conversation list fetch failed, so an empty list is not an
+  // empty result.
+  listError?: AxiosError;
   isActivityLoading?: boolean;
   isPostsLoading?: boolean;
   isTestCaseResolutionLoading?: boolean;
