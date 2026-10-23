@@ -409,7 +409,7 @@ describe('AlertsClassBase', () => {
       expect(result.input).toEqual({ actions: [], filters: [] });
     });
 
-    it("never submits input for a legacy alert so the backend keeps its filteringRules", () => {
+    it('never submits input for a legacy alert so the backend keeps its filteringRules', () => {
       // A legacy WrittenByHand alert: rules live only in filteringRules, no input.
       // The form seeds input from the legacy shape for display, but the seeded rules
       // carry argument names without values the backend can recompile. Even if the
