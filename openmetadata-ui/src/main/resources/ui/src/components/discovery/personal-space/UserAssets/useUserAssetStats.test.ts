@@ -213,18 +213,20 @@ describe('useUserAssetStats', () => {
       ([params]) => params.searchIndex === SearchIndex.QUERY
     )[0];
 
-    expect(JSON.stringify(queryRequest.queryFilter)).toContain(
-      '"queryUsedIn.id":"tbl-1"'
-    );
+    expect(queryRequest.queryFilter).toEqual({
+      query: { terms: { 'queryUsedIn.id': ['tbl-1'] } },
+    });
 
     const ownedTablesRequest = mockSearchQuery.mock.calls.find(
       ([params]) => params.searchIndex === SearchIndex.TABLE
     )[0];
 
+    // The ids travel in the GET URL; past ~100 the server answers HTTP 414.
     expect(ownedTablesRequest).toEqual(
       expect.objectContaining({
         fetchSource: true,
         includeFields: ['id', 'name', 'displayName', 'fullyQualifiedName'],
+        pageSize: 100,
       })
     );
   });

@@ -21,10 +21,11 @@ export const INCIDENT_PAGE_SIZE = 100;
 export const INCIDENT_MAX_PAGES = 50;
 
 // Queries relate to data via `queryUsedIn.id` (the tables they touch), not via
-// ownership, so the query count is scoped to the user's owned tables. Only the
-// 1000 most-used ones are fetched: queries on owned tables past that cap are
-// not counted.
-export const OWNED_TABLES_LIMIT = 1000;
+// ownership, so the query count is scoped to the user's owned tables. Their ids
+// go in the search GET URL, so only the 100 most-used ones are counted: at 1000
+// the URL passed the server's limit (HTTP 414) on a well-populated catalog.
+// ponytail: undercounts owners of >100 tables; a POST count endpoint lifts it.
+export const OWNED_TABLES_LIMIT = 100;
 export const SKELETON_KEYS = [1, 2, 3];
 // Once the trail has collapsed to first + last, each crumb ellipsizes past this.
 export const CRUMB_MAX_WIDTH = 200;

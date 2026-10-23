@@ -228,15 +228,11 @@ export const useUserAssetStats = (user: User | undefined) => {
 
       let count = 0;
       if (ownedTableIds.length > 0) {
-        const queriesByTableFilter = getTermQuery(
-          { 'queryUsedIn.id': ownedTableIds },
-          'should',
-          1
-        ) as Record<string, unknown>;
-        count = await fetchCountForIndex(
-          SearchIndex.QUERY,
-          queriesByTableFilter
-        );
+        // One `terms` clause keeps the GET URL about half the size of a
+        // `term` per id.
+        count = await fetchCountForIndex(SearchIndex.QUERY, {
+          query: { terms: { 'queryUsedIn.id': ownedTableIds } },
+        });
       }
 
       const topHit = ownedTableHits[0]?._source;
