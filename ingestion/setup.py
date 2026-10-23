@@ -59,6 +59,7 @@ VERSIONS = {
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
+    "opentelemetry-exporter-otlp": "opentelemetry-exporter-otlp==1.45.1",
     "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -72,9 +73,9 @@ VERSIONS = {
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
-    "mongo": "pymongo~=4.3",
+    "mongo": "pymongo>=4.18.2,<5",
     "simple-salesforce": "simple_salesforce~=1.11",
-    "snowflake": "snowflake-sqlalchemy>=1.8.0",  # <1.8 caps snowflake-connector-python at <4, but we need 4.x for pyOpenSSL 26 (CVE-2026-27459)
+    "snowflake": "snowflake-sqlalchemy>=1.11.0",
     "elasticsearch": "elasticsearch>=8.19.3,<9",
     "giturlparse": "giturlparse",
     "validators": "validators~=0.22.0",
@@ -99,7 +100,8 @@ VERSIONS = {
     "griffe2md": "griffe2md~=1.2",
     "factory-boy": "factory-boy~=3.3.3",
     "rarfile": "rarfile~=4.2",
-    "py7zr": "py7zr~=1.1.0",
+    "py7zr": "py7zr~=1.1.3",
+    "pytest": "pytest==9.0.3",
 }
 
 COMMONS = {
@@ -201,9 +203,9 @@ base_requirements = {
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
-    "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
+    "mistune>=3.3.3",
     "mypy_extensions>=0.4.3",
-    "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
+    "PyJWT>=2.15.0",
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
@@ -221,7 +223,7 @@ base_requirements = {
     "tenacity>=8.0,<10",
     "typing-inspect",
     "packaging",  # For version parsing
-    "setuptools>=78.1.1",
+    "setuptools>=83",
     "shapely",
     "collate-data-diff>=0.11.18",  # get_stats_dict(sample_size=...) and UTC on every pooled connection
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
@@ -231,11 +233,12 @@ base_requirements = {
     "jaraco.functools<4.2.0",  # above 4.2 breaks the build
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
+    "urllib3>=2.8.0",
 }
 
 plugins: dict[str, set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.37.0",
+        VERSIONS["opentelemetry-exporter-otlp"],
         "attrs",
         VERSIONS["airflow"],
         VERSIONS["pygtrie"],
@@ -243,7 +246,7 @@ plugins: dict[str, set[str]] = {
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
-        "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
+        "tornado>=6.5.9",
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
@@ -393,7 +396,7 @@ plugins: dict[str, set[str]] = {
     "looker": {
         VERSIONS["looker-sdk"],
         VERSIONS["lkml"],
-        "gitpython>=3.1.50",
+        "gitpython>=3.2.1",
         VERSIONS["giturlparse"],
         "python-liquid",
     },
@@ -511,10 +514,10 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.1",
+    VERSIONS["pytest"],
     "pytest-cov",
     "pytest-order",
-    "pytest-rerunfailures",
+    "pytest-rerunfailures>=16.7",
     "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
@@ -532,7 +535,7 @@ exasol_test = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.37.0",
+    VERSIONS["opentelemetry-exporter-otlp"],
     VERSIONS["airflow"],
     VERSIONS["pygtrie"],
     "boto3-stubs",
@@ -540,7 +543,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "pytest==7.0.1",
+    VERSIONS["pytest"],
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
@@ -579,7 +582,7 @@ test = {
     "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
     *plugins["datalake-s3"],
     *plugins["kafka"],
-    "kafka-python==2.0.2",
+    "kafka-python==2.3.2",
     *plugins["pii-processor"],
     "requests>=2.32.4,<3",
     f"{DATA_DIFF['mysql']}",

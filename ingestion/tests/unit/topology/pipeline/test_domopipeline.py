@@ -5,8 +5,9 @@ Test Domo Dashboard using the topology
 import json
 from datetime import datetime
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -227,25 +228,29 @@ MOCK_PIPELINE_DETAILS = {
 }
 
 
-class DomoPipelineUnitTest(TestCase):
+class TestDomoPipelineUnitTest:
     """
     Implements the necessary methods to extract
     Domo Pipeline Unit Test
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
-        self.domopipeline = DomopipelineSource.create(
-            mock_domopipeline_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.domopipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("pydomo.Domo") as domo_client,
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            domo_client.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
+            self.domopipeline = DomopipelineSource.create(
+                mock_domopipeline_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+            self.domopipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_pipeline(self, get_runs):
@@ -256,7 +261,7 @@ class DomoPipelineUnitTest(TestCase):
             if isinstance(result, CreatePipelineRequest):
                 pipeline_list.append(result)  # noqa: PERF401
         for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
 
     @patch("metadata.clients.domo_client.DomoClient.get_runs")
     def test_yield_pipeline_status(self, get_runs):
@@ -268,4 +273,4 @@ class DomoPipelineUnitTest(TestCase):
                 pipeline_status_list.append(result.right)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original

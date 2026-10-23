@@ -18,6 +18,7 @@ from decimal import Decimal
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy.types import INTEGER, VARCHAR, BigInteger, Integer, Numeric
 
 import metadata.ingestion.source.database.mssql.utils as mssql_dialet
@@ -222,34 +223,36 @@ EXPECTED_TABLE = [
 ENTRY_POINT_DATABASE = "<entry point>"
 
 
-class MssqlUnitTest(TestCase):
+class TestMssqlUnitTest:
     """
     Implements the necessary methods to extract
     Mssql Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
-        self.mssql = MssqlSource.create(
-            mock_mssql_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.thread_id = self.mssql.context.get_current_thread_id()
-        self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.mssql._inspector_map[self.thread_id].get_columns = lambda table_name, schema_name, table_type, db_name: (
-            MOCK_COLUMN_VALUE
-        )
-        self.mssql._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
-        self.mssql._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-        self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
+            self.mssql = MssqlSource.create(
+                mock_mssql_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.mssql.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.mssql.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+            self.thread_id = self.mssql.context.get_current_thread_id()
+            self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
+            self.mssql._inspector_map[self.thread_id].get_columns = (
+                lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
+            )
+            self.mssql._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+            self.mssql._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+            self.mssql._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert [either.right for either in self.mssql.yield_database(MOCK_DATABASE.name.root)] == EXPECTED_DATABASE
@@ -269,7 +272,7 @@ class MssqlUnitTest(TestCase):
             "mock_connection",
             "your.schema",
         )
-        self.assertEqual(result, "[your.schema]")
+        assert result == "[your.schema]"
 
     def test_yield_schema(self):
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
@@ -316,29 +319,26 @@ class MssqlUnitTest(TestCase):
 
         results = list(self.mssql.get_stored_procedures())
 
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "sp_include")
+        assert len(results) == 1
+        assert results[0].name == "sp_include"
 
         # The executed SQL must scope sys.procedures by the routine's schema so a
         # same-named procedure in another schema cannot fan out and override the
         # definition (regression guard for the cross-schema join bug).
         executed_sql = str(mock_conn.execute.call_args.args[0])
-        self.assertIn("sch.name = r.ROUTINE_SCHEMA", executed_sql)
+        assert "sch.name = r.ROUTINE_SCHEMA" in executed_sql
         # The database and schema predicates are passed as bound parameters, not
         # interpolated into the SQL. This keeps names containing apostrophes (legal
         # SQL Server delimited identifiers like [O'Brien]) from breaking the query.
-        self.assertIn(":database_name", executed_sql)
-        self.assertIn(":schema_name", executed_sql)
-        self.assertNotIn(f"'{MOCK_DATABASE.name.root}'", executed_sql)
-        self.assertNotIn(f"'{MOCK_DATABASE_SCHEMA.name.root}'", executed_sql)
+        assert ":database_name" in executed_sql
+        assert ":schema_name" in executed_sql
+        assert f"'{MOCK_DATABASE.name.root}'" not in executed_sql
+        assert f"'{MOCK_DATABASE_SCHEMA.name.root}'" not in executed_sql
         executed_params = mock_conn.execute.call_args.args[1]
-        self.assertEqual(
-            executed_params,
-            {
-                "database_name": MOCK_DATABASE.name.root,
-                "schema_name": MOCK_DATABASE_SCHEMA.name.root,
-            },
-        )
+        assert executed_params == {
+            "database_name": MOCK_DATABASE.name.root,
+            "schema_name": MOCK_DATABASE_SCHEMA.name.root,
+        }
 
     def test_get_stored_procedures_with_apostrophe_in_schema_name(self):
         """
@@ -379,23 +379,17 @@ class MssqlUnitTest(TestCase):
 
         # The procedure for the apostrophe-named schema must be yielded: the
         # bound-parameter call must not raise, so the producer is not dropped.
-        self.assertEqual(len(results), 1)
-        self.assertEqual(results[0].name, "sp_apostrophe_schema")
+        assert len(results) == 1
+        assert results[0].name == "sp_apostrophe_schema"
 
         # The apostrophe must travel in the params dict, never in the SQL text.
         # Interpolating it (``ROUTINE_SCHEMA = 'O'Brien'``) is the regression we
         # guard against: it would create an unbalanced string literal.
         executed_sql = str(mock_conn.execute.call_args.args[0])
         executed_params = mock_conn.execute.call_args.args[1]
-        self.assertNotIn(apostrophe_schema, executed_sql)
-        self.assertNotIn(apostrophe_database, executed_sql)
-        self.assertEqual(
-            executed_params,
-            {
-                "database_name": apostrophe_database,
-                "schema_name": apostrophe_schema,
-            },
-        )
+        assert apostrophe_schema not in executed_sql
+        assert apostrophe_database not in executed_sql
+        assert executed_params == {"database_name": apostrophe_database, "schema_name": apostrophe_schema}
 
     def test_get_stored_procedures_degrades_gracefully_on_query_failure(self):
         """A permission/syntax failure listing stored procedures for one schema
@@ -412,7 +406,7 @@ class MssqlUnitTest(TestCase):
 
         results = list(self.mssql.get_stored_procedures())
 
-        self.assertEqual(results, [])
+        assert results == []
         self.mssql.status.warning.assert_called_once()
         self.mssql.status.failed.assert_not_called()
 

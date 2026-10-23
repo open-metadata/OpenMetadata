@@ -15,8 +15,9 @@ Test Cassandra using the topology
 
 import json
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -166,22 +167,28 @@ def custom_column_compare(self, other):
     return self.name == other.name and self.description == other.description and self.children == other.children
 
 
-class CassandraUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.cassandra.connection.CassandraConnection._get_client")
-    @patch("metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection")
-    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        get_client.return_value = False
-        test_connection.return_value = False
+class TestCassandraUnitTest:
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.database.cassandra.metadata.CassandraSource.test_connection"
+            ) as get_client,
+            patch(
+                "metadata.ingestion.source.database.cassandra.connection.CassandraConnection._get_client"
+            ) as test_connection,
+        ):
+            get_client.return_value = False
+            test_connection.return_value = False
 
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_cassandra_config)
-        self.cassandra_source = CassandraSource.create(
-            mock_cassandra_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
-        self.cassandra_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.cassandra_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.cassandra_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_cassandra_config)
+            self.cassandra_source = CassandraSource.create(
+                mock_cassandra_config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
+            self.cassandra_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.cassandra_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.cassandra_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.cassandra_source.get_database_names())  # noqa: SIM300

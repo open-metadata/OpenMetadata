@@ -15,8 +15,9 @@ Test Spline using the topology
 # pylint: disable=line-too-long
 import json
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -223,28 +224,29 @@ JDBC_PARSING_EXAMPLES = [
 ]
 
 
-class SplineUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(mock_spline_config)
-        self.spline = SplineSource.create(
-            mock_spline_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        self.spline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.spline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+class TestSplineUnitTest:
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            config = OpenMetadataWorkflowConfig.model_validate(mock_spline_config)
+            self.spline = SplineSource.create(
+                mock_spline_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            self.spline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+            self.spline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_client(self):
         with patch.object(REST, "get", return_value=mock_data.get("execution-events")):
-            self.assertEqual(list(self.spline.client.get_pipelines()), [EXPECTED_SPLINE_PIPELINES])
+            assert list(self.spline.client.get_pipelines()) == [EXPECTED_SPLINE_PIPELINES]
 
         with patch.object(REST, "get", return_value=mock_data.get("lineage-detailed")):
-            self.assertEqual(
-                self.spline.client.get_lineage_details(PIPELINE_ID),
-                EXPECTED_LINEAGE_DETAILS,
-            )
+            assert self.spline.client.get_lineage_details(PIPELINE_ID) == EXPECTED_LINEAGE_DETAILS
 
     def test_pipeline_name(self):
         assert (
@@ -259,4 +261,4 @@ class SplineUnitTest(TestCase):
     def test_jdbc_parsing(self):
         for example in JDBC_PARSING_EXAMPLES:
             result = parse_jdbc_url(example[0])
-            self.assertEqual(result, example[1:])
+            assert result == example[1:]

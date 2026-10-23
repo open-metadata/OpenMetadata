@@ -1,5 +1,7 @@
-import importlib
 import json
+import subprocess
+import sys
+from textwrap import dedent
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -731,7 +733,7 @@ def test_openmetadata_includes_new_client_mixins():
     assert issubclass(OpenMetadata, OMetaTaskMixin)
 
 
-def test_reimport_new_client_modules_for_coverage():
+def test_client_modules_can_be_reimported_in_isolated_process():
     expected_exports = {
         "metadata.ingestion.ometa.announcement_models": [
             "Announcement",
@@ -748,9 +750,25 @@ def test_reimport_new_client_modules_for_coverage():
         "metadata.ingestion.ometa.ometa_api": ["OpenMetadata"],
     }
 
-    for module_name, exported_names in expected_exports.items():
-        module = importlib.import_module(module_name)
-        reloaded = importlib.reload(module)
+    script = dedent(
+        """
+        import importlib
+        import json
+        import sys
 
-        for exported_name in exported_names:
-            assert hasattr(reloaded, exported_name)
+        for module_name, exported_names in json.loads(sys.argv[1]).items():
+            module = importlib.import_module(module_name)
+            reloaded = importlib.reload(module)
+            for exported_name in exported_names:
+                assert hasattr(reloaded, exported_name), f"{module_name}.{exported_name}"
+        """
+    )
+    # Reloading in this process replaces classes that other collected tests still reference.
+    result = subprocess.run(
+        [sys.executable, "-c", script, json.dumps(expected_exports)],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr

@@ -17,6 +17,8 @@ Test databricks using the topology
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
+import pytest
+
 from metadata.core.connections.lifetime import Borrowed
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
@@ -296,27 +298,33 @@ MOCK_DELTA_UNIFORM_ICEBERG_COLUMNS = [
 EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS = 3
 
 
-class DatabricksUnitTest(TestCase):
+class TestDatabricksUnitTest:
     """
     Databricks unit tests
     """
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    @patch("metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version")
-    def __init__(self, methodName, test_connection, db_init_version) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        db_init_version.return_value = None
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.database.databricks.metadata.DatabricksSource._init_version"
+            ) as test_connection,
+            patch(
+                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+            ) as db_init_version,
+        ):
+            test_connection.return_value = False
+            db_init_version.return_value = None
 
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
-        self.databricks_source = DatabricksSource.create(
-            mock_databricks_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.databricks_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.databricks_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
+            self.databricks_source = DatabricksSource.create(
+                mock_databricks_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.databricks_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.databricks_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
-        self.databricks_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+            self.databricks_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def _no_live_connection(self):
         """Patch the source's ``connection`` property to fail fast.
@@ -352,7 +360,7 @@ class DatabricksUnitTest(TestCase):
                     schema_list.append(schema)  # noqa: PERF401
 
         for _, (exptected, original) in enumerate(zip(EXPTECTED_DATABASE_SCHEMA, schema_list)):  # noqa: B905
-            self.assertEqual(exptected, original)
+            assert exptected == original
 
     def test_yield_table(self):
         table_list = []
@@ -364,7 +372,7 @@ class DatabricksUnitTest(TestCase):
                     table_list.append(table)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
 
     def test_yield_table_2(self):
         table_list = []
@@ -376,7 +384,7 @@ class DatabricksUnitTest(TestCase):
                     table_list.append(table)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE_2, table_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
 
     def test_get_schema_definition(self):
         """Test get_schema_definition for regular tables, views, and materialized views"""
@@ -437,13 +445,13 @@ class DatabricksUnitTest(TestCase):
             db_name="test_catalog",
         )
 
-        self.assertEqual(len(result), EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS)
-        self.assertEqual(result[0]["name"], "id")
-        self.assertEqual(result[1]["name"], "name")
-        self.assertEqual(result[2]["name"], "amount")
+        assert len(result) == EXPECTED_DELTA_UNIFORM_ICEBERG_COLUMNS
+        assert result[0]["name"] == "id"
+        assert result[1]["name"] == "name"
+        assert result[2]["name"] == "amount"
 
         for col in result:
-            self.assertNotEqual(col["name"], "metadata_col")
+            assert col["name"] != "metadata_col"
 
 
 class DatabricksConnectionTest(TestCase):

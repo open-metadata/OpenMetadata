@@ -3,9 +3,9 @@ Test Cockroach using the topology
 """
 
 import types
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
 from sqlalchemy.types import VARCHAR
 
 from metadata.generated.schema.entity.data.database import Database
@@ -290,7 +290,7 @@ def _make_inspector(column_names):
 # one row per schema, with ``comment=None`` when no namespace comment exists.
 #
 # ``database_name`` uses ``"default"`` to match the ``MOCK_DATABASE.name.root``
-# value the ``cockroachUnitTest.__init__`` wires into ``context.database``, so
+# value the ``TestCockroachUnitTest.setup_source`` wires into ``context.database``, so
 # ``get_schema_description`` lookups resolve against the live context without
 # needing to reassign it.
 SCHEMA_COMMENT_ROWS = [
@@ -319,20 +319,24 @@ def _make_schema_comments_engine(rows):
     return engine, conn
 
 
-class cockroachUnitTest(TestCase):  # noqa: N801
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_cockroach_config)
-        self.cockroach_source = CockroachSource.create(
-            mock_cockroach_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
+class TestCockroachUnitTest:
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_cockroach_config)
+            self.cockroach_source = CockroachSource.create(
+                mock_cockroach_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
 
-        self.cockroach_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.cockroach_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.cockroach_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+            self.cockroach_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.cockroach_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.cockroach_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_datatype(self):
         inspector = types.SimpleNamespace()
@@ -345,7 +349,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "public", "user", "cockroach", inspector, TableType.Regular
         )
         for i, _ in enumerate(EXPECTED_COLUMN_VALUE):
-            self.assertEqual(result[i], EXPECTED_COLUMN_VALUE[i])
+            assert result[i] == EXPECTED_COLUMN_VALUE[i]
 
     @patch("sqlalchemy.engine.base.Engine")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
@@ -364,19 +368,19 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         See: https://www.cockroachlabs.com/docs/stable/hash-sharded-indexes
         """
         # These should be identified as hidden shard columns
-        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16"))
-        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_user_id_shard_8"))
-        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_my_column_name_shard_32"))
-        self.assertTrue(CockroachSource._is_hidden_shard_column("crdb_internal_start_time_end_time_shard_4"))
+        assert CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16")
+        assert CockroachSource._is_hidden_shard_column("crdb_internal_user_id_shard_8")
+        assert CockroachSource._is_hidden_shard_column("crdb_internal_my_column_name_shard_32")
+        assert CockroachSource._is_hidden_shard_column("crdb_internal_start_time_end_time_shard_4")
 
         # These should NOT be identified as hidden shard columns
-        self.assertFalse(CockroachSource._is_hidden_shard_column("id"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("user_id"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_shard"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("my_crdb_internal_id_shard_16"))
-        self.assertFalse(CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16_extra"))
+        assert not CockroachSource._is_hidden_shard_column("id")
+        assert not CockroachSource._is_hidden_shard_column("user_id")
+        assert not CockroachSource._is_hidden_shard_column("crdb_internal")
+        assert not CockroachSource._is_hidden_shard_column("crdb_internal_shard")
+        assert not CockroachSource._is_hidden_shard_column("crdb_internal_id_shard")
+        assert not CockroachSource._is_hidden_shard_column("my_crdb_internal_id_shard_16")
+        assert not CockroachSource._is_hidden_shard_column("crdb_internal_id_shard_16_extra")
 
     def test_hidden_shard_columns_filtered_from_pk_constraints(self):
         """
@@ -409,9 +413,9 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         # Find the column named 'username' and check its constraint
         username_col = next((col for col in columns if col.name.root == "username"), None)
-        self.assertIsNotNone(username_col)
+        assert username_col is not None
         # Since we now have only one pk_column after filtering, it should be a column-level constraint
-        self.assertEqual(username_col.constraint, Constraint.PRIMARY_KEY)
+        assert username_col.constraint == Constraint.PRIMARY_KEY
 
     def test_all_hidden_shard_columns_filtered_results_in_no_pk(self):
         """
@@ -443,11 +447,11 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         # No table-level primary key constraint should be created
         pk_constraints = [tc for tc in (table_constraints or []) if tc.constraintType == ConstraintType.PRIMARY_KEY]
-        self.assertEqual(len(pk_constraints), 0)
+        assert len(pk_constraints) == 0
 
         # No column should have PRIMARY_KEY constraint
         for col in columns:
-            self.assertNotEqual(col.constraint, Constraint.PRIMARY_KEY)
+            assert col.constraint != Constraint.PRIMARY_KEY
 
     def test_multi_column_pk_with_hidden_shard_column(self):
         """
@@ -481,8 +485,8 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         # Should have a table-level PRIMARY_KEY constraint with the two visible columns
         pk_constraints = [tc for tc in (table_constraints or []) if tc.constraintType == ConstraintType.PRIMARY_KEY]
-        self.assertEqual(len(pk_constraints), 1)
-        self.assertEqual(pk_constraints[0].columns, ["username", "geom_c"])
+        assert len(pk_constraints) == 1
+        assert pk_constraints[0].columns == ["username", "geom_c"]
 
     # ── get_table_partition_details ─────────────────────────────────────────────
 
@@ -494,15 +498,15 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         matched `tables.name = 'events'` and their partitions were merged into a
         single TablePartition attached to whichever was being ingested.
         """
-        self.assertIn("tables.name = :table_name", COCKROACH_GET_PARTITION_DETAILS)
-        self.assertIn("tables.schema_name = :schema_name", COCKROACH_GET_PARTITION_DETAILS)
+        assert "tables.name = :table_name" in COCKROACH_GET_PARTITION_DETAILS
+        assert "tables.schema_name = :schema_name" in COCKROACH_GET_PARTITION_DETAILS
 
     def test_partition_query_filters_by_current_database(self):
         """The query must be scoped to the connected database. `crdb_internal.tables`
         lists every database on some versions (v23.1), so without the filter a
         same-named `<schema>.<table>` in another database could supply the
         partition key when `ingestAllDatabases` is set."""
-        self.assertIn("tables.database_name = current_database()", COCKROACH_GET_PARTITION_DETAILS)
+        assert "tables.database_name = current_database()" in COCKROACH_GET_PARTITION_DETAILS
 
     def test_partition_query_restricts_to_primary_index_and_top_level(self):
         """The query must join `crdb_internal.table_indexes` and restrict to the
@@ -514,10 +518,10 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         fix non-deterministic. The top-level filter avoids sampling subpartition
         rows whose `column_names` covers only the additional subpartition columns.
         """
-        self.assertIn("crdb_internal.table_indexes", COCKROACH_GET_PARTITION_DETAILS)
-        self.assertIn("partitions.index_id = table_indexes.index_id", COCKROACH_GET_PARTITION_DETAILS)
-        self.assertIn("table_indexes.index_type = 'primary'", COCKROACH_GET_PARTITION_DETAILS)
-        self.assertIn("partitions.parent_name IS NULL", COCKROACH_GET_PARTITION_DETAILS)
+        assert "crdb_internal.table_indexes" in COCKROACH_GET_PARTITION_DETAILS
+        assert "partitions.index_id = table_indexes.index_id" in COCKROACH_GET_PARTITION_DETAILS
+        assert "table_indexes.index_type = 'primary'" in COCKROACH_GET_PARTITION_DETAILS
+        assert "partitions.parent_name IS NULL" in COCKROACH_GET_PARTITION_DETAILS
 
     def test_get_table_partition_details_binds_schema_name_param(self):
         """The override must forward `schema_name` to the executed statement.
@@ -530,9 +534,9 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.cockroach_source.get_table_partition_details("events", "public", _make_inspector(["region"]))
 
-        self.assertEqual(conn.execute.call_count, 1)
+        assert conn.execute.call_count == 1
         params = conn.execute.call_args.args[1]
-        self.assertEqual(params, {"table_name": "events", "schema_name": "public"})
+        assert params == {"table_name": "events", "schema_name": "public"}
 
     def test_partition_details_public_events_excludes_analytics_columns(self):
         """`public.events` must carry only `public`'s partition columns.
@@ -548,14 +552,14 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "events", "public", _make_inspector(["region", "id"])
         )
 
-        self.assertTrue(is_partitioned)
-        self.assertIsNotNone(partition)
+        assert is_partitioned
+        assert partition is not None
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["region"])
+        assert column_names == ["region"]
         for col in partition.columns:
-            self.assertEqual(col.intervalType, PartitionIntervalTypes.COLUMN_VALUE)
+            assert col.intervalType == PartitionIntervalTypes.COLUMN_VALUE
         # No leakage from analytics.events (partitioned by `id`, range)
-        self.assertNotIn("id", column_names)
+        assert "id" not in column_names
 
     def test_partition_details_analytics_events_excludes_public_columns(self):
         """`analytics.events` must carry only `analytics`'s partition columns.
@@ -570,14 +574,14 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "events", "analytics", _make_inspector(["id"])
         )
 
-        self.assertTrue(is_partitioned)
-        self.assertIsNotNone(partition)
+        assert is_partitioned
+        assert partition is not None
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["id"])
+        assert column_names == ["id"]
         for col in partition.columns:
-            self.assertEqual(col.intervalType, PartitionIntervalTypes.TIME_UNIT)
+            assert col.intervalType == PartitionIntervalTypes.TIME_UNIT
         # No leakage from public.events (partitioned by `region`, list)
-        self.assertNotIn("region", column_names)
+        assert "region" not in column_names
 
     def test_partition_details_does_not_flag_non_partitioned_same_named_table(self):
         """A non-partitioned same-named table must NOT inherit partitions from a
@@ -599,8 +603,8 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "events", "reporting", MagicMock()
         )
 
-        self.assertFalse(is_partitioned)
-        self.assertIsNone(partition)
+        assert not is_partitioned
+        assert partition is None
 
     def test_get_table_partition_details_empty_returns_false_none(self):
         """No matching partition rows must yield ``(False, None)``."""
@@ -611,8 +615,8 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "ghost_table", "public", MagicMock()
         )
 
-        self.assertFalse(is_partitioned)
-        self.assertIsNone(partition)
+        assert not is_partitioned
+        assert partition is None
 
     def test_partition_details_interval_type_mapping_and_fallback(self):
         """Verify INTERVAL_TYPE_MAP mapping for ``list``/``range`` and the
@@ -634,7 +638,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
             _, partition = self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
 
-            self.assertEqual([col.intervalType for col in partition.columns], [expected])
+            assert [col.intervalType for col in partition.columns] == [expected]
 
     def test_partition_details_splits_multi_column_partition_key(self):
         """A multi-column partition key is comma-joined in `column_names`
@@ -656,14 +660,14 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "events", "public", _make_inspector(["region", "kind", "id"])
         )
 
-        self.assertTrue(is_partitioned)
+        assert is_partitioned
         column_names = [col.columnName for col in partition.columns]
-        self.assertEqual(column_names, ["region", "kind"])
+        assert column_names == ["region", "kind"]
         # The malformed comma-joined name must never be published
-        self.assertNotIn("region, kind", column_names)
+        assert "region, kind" not in column_names
         # Multi-column partitions collapse to a single representative row, so
         # each key column appears exactly once despite two partitions
-        self.assertEqual(len(column_names), len(set(column_names)))
+        assert len(column_names) == len(set(column_names))
 
     def test_partition_details_trims_whitespace_around_split_tokens(self):
         """Split tokens are trimmed so stray whitespace around the ", "
@@ -676,7 +680,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "t", "public", _make_inspector(["region", "kind"])
         )
 
-        self.assertEqual([col.columnName for col in partition.columns], ["region", "kind"])
+        assert [col.columnName for col in partition.columns] == ["region", "kind"]
 
     def test_partition_details_keeps_column_name_containing_comma(self):
         """CockroachDB emits identifiers unquoted, so `PARTITION BY LIST
@@ -691,7 +695,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "t", "public", _make_inspector(["My Col", "a,b", "Upper", "id"])
         )
 
-        self.assertEqual([col.columnName for col in partition.columns], ["My Col", "a,b", "Upper"])
+        assert [col.columnName for col in partition.columns] == ["My Col", "a,b", "Upper"]
 
     def test_partition_details_logs_dropped_tokens(self):
         """A token that is not a table column is dropped with a debug log, so a
@@ -704,7 +708,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             self.cockroach_source.get_table_partition_details("t", "public", _make_inspector(["region"]))
 
         logger.debug.assert_called_once()
-        self.assertIn(["ghost_col"], logger.debug.call_args.args)
+        assert ["ghost_col"] in logger.debug.call_args.args
 
     def test_partition_details_drops_tokens_not_in_table_columns(self):
         """Split tokens that are not real table columns are dropped, guarding
@@ -718,7 +722,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         )
 
         # Only the real column survives; the phantom token is dropped
-        self.assertEqual([col.columnName for col in partition.columns], ["region"])
+        assert [col.columnName for col in partition.columns] == ["region"]
 
     def test_partition_details_returns_false_none_when_all_tokens_invalid(self):
         """If every split token fails validation against the table's columns,
@@ -732,8 +736,8 @@ class cockroachUnitTest(TestCase):  # noqa: N801
             "t", "public", _make_inspector(["region", "kind"])
         )
 
-        self.assertFalse(is_partitioned)
-        self.assertIsNone(partition)
+        assert not is_partitioned
+        assert partition is None
 
     # ── set_schema_description_map ─────────────────────────────────────────────
 
@@ -761,14 +765,10 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.cockroach_source.set_schema_description_map()
 
-        self.assertEqual(
-            self.cockroach_source.schema_desc_map[("default", "public")],
-            "my real schema comment",
-        )
+        assert self.cockroach_source.schema_desc_map["default", "public"] == "my real schema comment"
         # The fabricated function comment must never be published
-        self.assertNotIn(
-            "Calculates y-intercept of the least-squares-fit",
-            str(self.cockroach_source.schema_desc_map.values()),
+        assert "Calculates y-intercept of the least-squares-fit" not in str(
+            self.cockroach_source.schema_desc_map.values()
         )
 
     def test_set_schema_description_map_uncommented_schema_yields_none(self):
@@ -786,11 +786,10 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.cockroach_source.set_schema_description_map()
 
-        self.assertIsNone(self.cockroach_source.schema_desc_map[("default", "pg_catalog")])
+        assert self.cockroach_source.schema_desc_map["default", "pg_catalog"] is None
         # No fabricated function doc-comment should be present
-        self.assertNotIn(
-            "Calculates the average of the dependent variable",
-            str(self.cockroach_source.schema_desc_map.values()),
+        assert "Calculates the average of the dependent variable" not in str(
+            self.cockroach_source.schema_desc_map.values()
         )
 
     def test_set_schema_description_map_get_schema_description_reads_map(self):
@@ -801,22 +800,19 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         (``common_db_source.py`` -> ``get_schema_description``) that
         previously had no coverage, guarding the end-to-end contract the
         fixed query feeds. The context database is ``"default"`` as wired by
-        ``cockroachUnitTest.__init__`` from ``MOCK_DATABASE.name.root``.
+        ``TestCockroachUnitTest.setup_source`` from ``MOCK_DATABASE.name.root``.
         """
         engine, _ = _make_schema_comments_engine(SCHEMA_COMMENT_ROWS)
         self.cockroach_source.engine = engine
 
         self.cockroach_source.set_schema_description_map()
 
-        # context.database is "default" (set in __init__ from MOCK_DATABASE)
-        self.assertEqual(
-            self.cockroach_source.get_schema_description("public"),
-            "my real schema comment",
-        )
+        # context.database is "default" (set in the fixture from MOCK_DATABASE)
+        assert self.cockroach_source.get_schema_description("public") == "my real schema comment"
         # A schema with no namespace comment (NULL description) resolves to None
-        self.assertIsNone(self.cockroach_source.get_schema_description("pg_catalog"))
+        assert self.cockroach_source.get_schema_description("pg_catalog") is None
         # A schema that never appeared in the result set resolves to None
-        self.assertIsNone(self.cockroach_source.get_schema_description("missing_schema"))
+        assert self.cockroach_source.get_schema_description("missing_schema") is None
 
     def test_set_schema_description_map_executes_the_fixed_query(self):
         """The map must be built by executing ``COCKROACH_SCHEMA_COMMENTS``
@@ -827,14 +823,14 @@ class cockroachUnitTest(TestCase):  # noqa: N801
 
         self.cockroach_source.set_schema_description_map()
 
-        self.assertEqual(conn.execute.call_count, 1)
+        assert conn.execute.call_count == 1
         executed_stmt = conn.execute.call_args.args[0]
         # text(...) wraps the SQL; assert the fixed predicates are present in
         # whatever SQLAlchemy renders to text.
         rendered = str(executed_stmt)
-        self.assertIn("d.classoid = 'pg_namespace'::regclass", rendered)
-        self.assertIn("d.objsubid = 0", rendered)
-        self.assertNotIn("WHERE", rendered.upper())
+        assert "d.classoid = 'pg_namespace'::regclass" in rendered
+        assert "d.objsubid = 0" in rendered
+        assert "WHERE" not in rendered.upper()
 
     # ── materialized view (relkind 'm') ingestion ──────────────────────────────
 
@@ -861,13 +857,10 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         with patch.object(CockroachSource, "connection", mock_connection):
             results = list(self.cockroach_source.query_view_names_and_types("public"))
 
-        self.assertEqual(
-            {r.name: r.type_ for r in results},
-            {
-                "plain_view": TableType.View,
-                "my_matview": TableType.MaterializedView,
-            },
-        )
+        assert {r.name: r.type_ for r in results} == {
+            "plain_view": TableType.View,
+            "my_matview": TableType.MaterializedView,
+        }
 
     def test_query_view_names_and_types_executes_view_names_query_with_schema(self):
         """``query_view_names_and_types`` must execute ``COCKROACH_GET_VIEW_NAMES``
@@ -879,11 +872,11 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         with patch.object(CockroachSource, "connection", mock_connection):
             list(self.cockroach_source.query_view_names_and_types("public"))
 
-        self.assertEqual(mock_connection.execute.call_count, 1)
+        assert mock_connection.execute.call_count == 1
         executed_stmt = mock_connection.execute.call_args.args[0]
-        self.assertIn(COCKROACH_GET_VIEW_NAMES, str(executed_stmt))
+        assert COCKROACH_GET_VIEW_NAMES in str(executed_stmt)
         params = mock_connection.execute.call_args.args[1]
-        self.assertEqual(params, {"schema": "public"})
+        assert params == {"schema": "public"}
 
     def test_query_table_names_and_types_still_returns_regular_tables(self):
         """The table-listing path must keep working for regular tables after
@@ -898,13 +891,10 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         with patch.object(CockroachSource, "connection", mock_connection):
             results = list(self.cockroach_source.query_table_names_and_types("public"))
 
-        self.assertEqual(
-            {r.name: r.type_ for r in results},
-            {
-                "base_table": TableType.Regular,
-                "part_table": TableType.Partitioned,
-            },
-        )
+        assert {r.name: r.type_ for r in results} == {
+            "base_table": TableType.Regular,
+            "part_table": TableType.Partitioned,
+        }
 
     def test_view_path_is_skipped_when_include_views_false(self):
         """``includeViews=False`` must not consult the view path at all, so
@@ -928,7 +918,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         ):
             emitted = [name for name, _ in self.cockroach_source.get_tables_name_and_type()]
 
-        self.assertEqual(emitted, ["base_table"])
+        assert emitted == ["base_table"]
         mock_view_query.assert_not_called()
 
     def test_materialized_views_ingested_when_include_tables_false(self):
@@ -960,7 +950,7 @@ class cockroachUnitTest(TestCase):  # noqa: N801
         ):
             emitted = dict(self.cockroach_source.get_tables_name_and_type())
 
-        self.assertIn("my_matview", emitted)
-        self.assertEqual(emitted["my_matview"], TableType.MaterializedView)
-        self.assertIn("plain_view", emitted)
-        self.assertEqual(emitted["plain_view"], TableType.View)
+        assert "my_matview" in emitted
+        assert emitted["my_matview"] == TableType.MaterializedView
+        assert "plain_view" in emitted
+        assert emitted["plain_view"] == TableType.View

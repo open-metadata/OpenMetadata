@@ -13,8 +13,9 @@ Test dbt cloud using the topology
 """
 
 import json
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
@@ -257,23 +258,27 @@ MOCK_PIPELINE = Pipeline(
 EXPECTED_PIPELINE_NAME = "redshift workflow"
 
 
-class GluePipelineUnitTest(TestCase):
+class TestGluePipelineUnitTest:
     """
     DBTCloud unit tests
     """
 
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
 
-        config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
-        self.gluepipeline = GluepipelineSource.create(
-            mock_glue_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        self.gluepipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.gluepipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+            config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+            self.gluepipeline = GluepipelineSource.create(
+                mock_glue_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            self.gluepipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+            self.gluepipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
 
     def test_pipeline_name(self):
         assert self.gluepipeline.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME

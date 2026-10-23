@@ -14,9 +14,9 @@ Test unitycatalog using the topology
 """
 
 from types import SimpleNamespace
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+import pytest
 from databricks.sdk.service.catalog import (
     CatalogInfo,
     CatalogInfoSecurableKind,
@@ -562,34 +562,35 @@ EXPTECTED_TABLE = [
 ]
 
 
-class unitycatalogUnitTest(TestCase):  # noqa: N801
+class TestUnitycatalogUnitTest:
     """
     unitycatalog unit tests
     """
 
-    @patch("metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection")
-    @patch("metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-        mock_sqlalchemy_connection,
-    ) -> None:
-        super().__init__(methodName)
-        test_connection.return_value = False
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch(
+                "metadata.ingestion.source.database.unitycatalog.metadata.UnitycatalogSource.test_connection"
+            ) as test_connection,
+            patch(
+                "metadata.ingestion.source.database.unitycatalog.connection.get_sqlalchemy_connection"
+            ) as mock_sqlalchemy_connection,
+        ):
+            test_connection.return_value = False
 
-        mock_engine = MagicMock()
-        mock_sqlalchemy_connection.return_value = mock_engine
+            mock_engine = MagicMock()
+            mock_sqlalchemy_connection.return_value = mock_engine
 
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
-        self.unitycatalog_source = UnitycatalogSource.create(
-            mock_unitycatalog_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
-        )
-        self.unitycatalog_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.unitycatalog_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_unitycatalog_config)
+            self.unitycatalog_source = UnitycatalogSource.create(
+                mock_unitycatalog_config["source"],
+                self.config.workflowConfig.openMetadataServerConfig,
+            )
+            self.unitycatalog_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.unitycatalog_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
 
-        self.unitycatalog_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+            self.unitycatalog_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch.object(UnitycatalogSource, "_process_table")
     @patch.object(UnitycatalogSource, "sql_connection", create=True)
@@ -659,7 +660,7 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
                 table_list.append(table)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPTECTED_TABLE, table_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
 
     def test_get_schema_definition(self):
         # Check view definition

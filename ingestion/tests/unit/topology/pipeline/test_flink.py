@@ -12,8 +12,9 @@
 Test flink using the topology
 """
 
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.services.pipelineService import (
@@ -123,21 +124,24 @@ EXPECTED_PIPELINE = [
 ]
 
 
-class FlinkUnitTest(TestCase):
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("metadata.ingestion.source.pipeline.flink.connection.FlinkConnection._get_client")
-    def __init__(self, methodName, flink_client, test_connection) -> None:  # noqa: N803
-
-        super().__init__(methodName)
-        test_connection.return_value = False
-        config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
-        self.flink = FlinkSource.create(
-            mock_flink_config["source"],
-            config.workflowConfig.openMetadataServerConfig,
-        )
-        self.flink.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name
-        self.flink.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
-        self.client = flink_client.return_value
+class TestFlinkUnitTest:
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.pipeline.flink.connection.FlinkConnection._get_client") as flink_client,
+            patch(
+                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+            ) as test_connection,
+        ):
+            test_connection.return_value = False
+            config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
+            self.flink = FlinkSource.create(
+                mock_flink_config["source"],
+                config.workflowConfig.openMetadataServerConfig,
+            )
+            self.flink.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name
+            self.flink.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+            self.client = flink_client.return_value
 
     def test_pipeline_name(self):
         assert self.flink.get_pipeline_name(MOCK_PIPELINE) == EXPECTED_PIPELINE_NAME
@@ -150,7 +154,7 @@ class FlinkUnitTest(TestCase):
 
         for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipelines_list)):  # noqa: B905
             expected.sourceUrl = original.sourceUrl
-            self.assertEqual(expected, original)
+            assert expected == original
 
 
 class TestFlinkTaskNames:

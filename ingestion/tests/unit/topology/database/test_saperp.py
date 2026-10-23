@@ -14,8 +14,9 @@ TestCase for SAP ERP using the topology
 
 import json
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -212,24 +213,26 @@ def mock_list_columns(self, table_name: str):  # pylint: disable=unused-argument
     return [SapErpColumn(**column) for column in columns if column["tabname"] == table_name]
 
 
-class SapErpUnitTest(TestCase):
+class TestSapErpUnitTest:
     """
     Implements the necessary methods to extract
     Alation Unit Test
     """
 
-    @patch("metadata.ingestion.source.database.saperp.metadata.SaperpSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_saperp_config)
-        self.saperp = SaperpSource.create(
-            mock_saperp_config["source"],
-            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-        )
-        self.saperp.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.saperp.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-        self.saperp.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    @pytest.fixture(autouse=True)
+    def setup_source(self):
+        with (
+            patch("metadata.ingestion.source.database.saperp.metadata.SaperpSource.test_connection") as test_connection,
+        ):
+            test_connection.return_value = False
+            self.config = OpenMetadataWorkflowConfig.model_validate(mock_saperp_config)
+            self.saperp = SaperpSource.create(
+                mock_saperp_config["source"],
+                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+            )
+            self.saperp.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+            self.saperp.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+            self.saperp.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     @patch.object(SapErpClient, "list_tables", mock_list_tables)
     @patch.object(SapErpClient, "list_columns", mock_list_columns)
@@ -242,4 +245,4 @@ class SapErpUnitTest(TestCase):
         for table in tables:
             returned_tables.extend([either.right for either in self.saperp.yield_table(table)])
         for _, (expected, original) in enumerate(zip(EXPECTED_TABLES_AND_COLUMNS, returned_tables)):  # noqa: B905
-            self.assertEqual(expected, original)
+            assert expected == original
