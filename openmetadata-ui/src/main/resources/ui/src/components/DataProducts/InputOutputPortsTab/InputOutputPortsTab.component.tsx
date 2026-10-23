@@ -32,7 +32,6 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactFlowProvider } from 'reactflow';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -212,8 +211,7 @@ const InputPortsAccordionSection = ({
               {inputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
-                    data-testid="no-data-placeholder"
-                    description={t('message.no-input-ports-added')}
+                    data-testid="no-input-ports-placeholder"
                     footer={
                       <>
                         {canEditAll && (
@@ -232,12 +230,7 @@ const InputPortsAccordionSection = ({
                         )}
                       </>
                     }
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="tw:w-16 tw:h-16"
-                        data-testid="no-input-ports-placeholder"
-                      />
-                    }
+                    title={t('message.no-input-ports-added')}
                   />
                 </div>
               ) : (
@@ -286,10 +279,11 @@ const OutputPortsAccordionSection = ({
   const { t } = useTranslation();
   const showHeaderAddButton =
     canEditAll && isOutputPortsExpanded && outputPortsCount > 0;
-  const emptyStateMessage =
+  // The no-assets copy is guidance (description); the other is a headline.
+  const emptyStateCopy =
     assetCount === 0
-      ? t('message.no-assets-for-output-ports')
-      : t('message.no-output-ports-added');
+      ? { description: t('message.no-assets-for-output-ports') }
+      : { title: t('message.no-output-ports-added') };
   const showEmptyStateAddButton = canEditAll && assetCount > 0;
 
   return (
@@ -338,8 +332,8 @@ const OutputPortsAccordionSection = ({
               {outputPortsCount === 0 ? (
                 <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
                   <NoDataPlaceholder
-                    data-testid="no-data-placeholder"
-                    description={emptyStateMessage}
+                    data-testid="no-output-ports-placeholder"
+                    {...emptyStateCopy}
                     footer={
                       <>
                         {showEmptyStateAddButton && (
@@ -357,12 +351,6 @@ const OutputPortsAccordionSection = ({
                           </Button>
                         )}
                       </>
-                    }
-                    icon={
-                      <AddPlaceHolderIcon
-                        className="tw:w-16 tw:h-16"
-                        data-testid="no-output-ports-placeholder"
-                      />
                     }
                   />
                 </div>

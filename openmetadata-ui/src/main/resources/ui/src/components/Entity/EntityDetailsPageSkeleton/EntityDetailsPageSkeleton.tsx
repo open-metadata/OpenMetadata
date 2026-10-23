@@ -12,12 +12,12 @@
  */
 import { Box, Card, Grid, Skeleton } from '@openmetadata/ui-core-components';
 
-import { getLayoutGutter } from '../../utils/common/layout.utils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 const CONTENT_ROW_WIDTHS = ['90%', '85%', '80%', '88%', '75%', '70%'];
 
 /**
- * Above-the-fold placeholder for an entity detail page while the initial table-fetch is
+ * Above-the-fold placeholder for an entity detail page while its page chunk or initial fetch is
  * resolving. Modelled on {@link TableDetailsPageV1} but generic enough that future entity
  * pages (Dashboard, Container, …) can reuse it.
  *
@@ -29,7 +29,7 @@ const CONTENT_ROW_WIDTHS = ['90%', '85%', '80%', '88%', '75%', '70%'];
  *  - Cheap: pure core `Skeleton`, no images / SVGs / theme tokens. The cost we pay for the
  *    perception win is one extra render of placeholder shapes.
  */
-export const TableDetailsPageSkeleton = () => {
+export const EntityDetailsPageSkeleton = () => {
   return (
     <Grid
       className="layout-row layout-grid entity-details-page-container"
@@ -127,4 +127,4 @@ export const TableDetailsPageSkeleton = () => {
   );
 };
 
-export default TableDetailsPageSkeleton;
+export default EntityDetailsPageSkeleton;

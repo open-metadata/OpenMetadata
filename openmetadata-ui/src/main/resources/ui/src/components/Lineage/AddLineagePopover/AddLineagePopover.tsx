@@ -344,7 +344,9 @@ const AddLineagePopover = ({
             <Typography as="h2" size="text-lg" weight="semibold">
               {t(isUpstream ? 'label.add-upstream' : 'label.add-downstream')}
             </Typography>
-            <Typography className="tw:mt-1 tw:text-tertiary" size="text-sm">
+            <Typography
+              className="tw:block tw:mt-1 tw:text-tertiary"
+              size="text-sm">
               {t(
                 isUpstream
                   ? 'message.add-upstream-lineage-description'

@@ -53,6 +53,7 @@ import {
   getTagsDetailsPath,
   getTeamsWithFqnPath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 
 export const getBreadcrumbForGlossaryOrTerm = (entity: GlossaryTerm) => {
   const glossary = entity.glossary;
@@ -179,7 +180,7 @@ export const getBreadcrumbForEventSubscription = (
     url:
       entity.alertType === AlertType.Observability
         ? ROUTES.OBSERVABILITY_ALERTS
-        : ROUTES.NOTIFICATION_ALERT_LIST,
+        : getSettingsLink(ROUTES.NOTIFICATION_ALERT_LIST),
   },
   {
     name: entity.name,
@@ -195,11 +196,11 @@ export const getBreadcrumbForEventSubscription = (
 export const getBreadcrumbForBot = (entityName: string, fqn: string) => [
   {
     name: startCase(EntityType.BOT),
-    url: getBotsPagePath(),
+    url: getSettingsLink(getBotsPagePath()),
   },
   {
     name: entityName,
-    url: getBotsPath(fqn),
+    url: getSettingsLink(getBotsPath(fqn)),
     iconType: EntityType.BOT,
   },
 ];
@@ -207,12 +208,14 @@ export const getBreadcrumbForBot = (entityName: string, fqn: string) => [
 export const getBreadcrumbForTeam = (entity: Team) => [
   {
     name: getEntityName(entity.parents?.[0]),
-    url: getTeamsWithFqnPath(entity.parents?.[0]?.fullyQualifiedName ?? ''),
+    url: getSettingsLink(
+      getTeamsWithFqnPath(entity.parents?.[0]?.fullyQualifiedName ?? '')
+    ),
     iconType: EntityType.TEAM,
   },
   {
     name: getEntityName(entity),
-    url: getTeamsWithFqnPath(entity.fullyQualifiedName ?? ''),
+    url: getSettingsLink(getTeamsWithFqnPath(entity.fullyQualifiedName ?? '')),
     iconType: EntityType.TEAM,
   },
 ];
@@ -223,11 +226,13 @@ export const getBreadcrumbForApplication = (
 ) => [
   {
     name: i18n.t('label.application-plural'),
-    url: getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS),
+    url: getSettingsLink(
+      getSettingPath(GlobalSettingsMenuCategory.APPLICATIONS)
+    ),
   },
   {
     name: entityName,
-    url: getApplicationDetailsPath(fqn),
+    url: getSettingsLink(getApplicationDetailsPath(fqn)),
     iconType: EntityType.APPLICATION,
   },
 ];
@@ -235,14 +240,16 @@ export const getBreadcrumbForApplication = (
 export const getBreadcrumbForPersona = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.persona-plural'),
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.MEMBERS,
-      GlobalSettingOptions.PERSONA
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.MEMBERS,
+        GlobalSettingOptions.PERSONA
+      )
     ),
   },
   {
     name: entityName,
-    url: getPersonaDetailsPath(fqn),
+    url: getSettingsLink(getPersonaDetailsPath(fqn)),
     iconType: EntityType.PERSONA,
   },
 ];
@@ -250,14 +257,16 @@ export const getBreadcrumbForPersona = (entityName: string, fqn: string) => [
 export const getBreadcrumbForRole = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.role-plural'),
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.ROLES
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.ROLES
+      )
     ),
   },
   {
     name: entityName,
-    url: getRoleWithFqnPath(fqn),
+    url: getSettingsLink(getRoleWithFqnPath(fqn)),
     iconType: EntityType.ROLE,
   },
 ];
@@ -265,14 +274,16 @@ export const getBreadcrumbForRole = (entityName: string, fqn: string) => [
 export const getBreadcrumbForPolicy = (entityName: string, fqn: string) => [
   {
     name: i18n.t('label.policy-plural'),
-    url: getSettingPath(
-      GlobalSettingsMenuCategory.ACCESS,
-      GlobalSettingOptions.POLICIES
+    url: getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.ACCESS,
+        GlobalSettingOptions.POLICIES
+      )
     ),
   },
   {
     name: entityName,
-    url: getPolicyWithFqnPath(fqn),
+    url: getSettingsLink(getPolicyWithFqnPath(fqn)),
     iconType: EntityType.POLICY,
   },
 ];

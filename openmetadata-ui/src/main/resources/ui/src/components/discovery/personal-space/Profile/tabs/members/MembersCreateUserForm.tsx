@@ -417,7 +417,7 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         form={form}>
         <div className="tw:overflow-y-auto">
           <Box
-            className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+            className="tw:flex-1 tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full tw:mx-auto"
             data-testid="create-user-container"
             direction="col"
             gap={5}>

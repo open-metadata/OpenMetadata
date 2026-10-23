@@ -250,7 +250,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
 
   return (
     <Box
-      className="tw:w-full tw:max-w-[800px]"
+      className="tw:w-full"
       data-testid="profile-permissions"
       direction="col"
       gap={6}>

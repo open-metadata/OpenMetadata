@@ -74,6 +74,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -498,8 +499,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddInputPorts(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddInputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -537,9 +539,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveInputPorts(
-            name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveInputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -577,8 +579,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkAddOutputPorts(name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddOutputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -616,9 +619,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveOutputPorts(
-            name, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveOutputPorts(name, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -658,8 +661,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkAddInputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddInputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -699,9 +703,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveInputPorts(
-            fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveInputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -741,8 +745,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkAddOutputPorts(fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkAddOutputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PUT
@@ -782,9 +787,9 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return buildBulkOperationResponse(
-        repository.bulkRemoveOutputPorts(
-            fqn, request, securityContext.getUserPrincipal().getName()));
+    return buildBulkAssetsResponse(
+        repository.bulkRemoveOutputPorts(fqn, request, ChangeActor.fromRequest(securityContext)),
+        false);
   }
 
   @PATCH
