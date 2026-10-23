@@ -223,7 +223,6 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
           <Typography className="tw:text-tertiary" size="text-xs">
             {group.count}
           </Typography>
-          <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
         </Box>
         {group.items.map(renderRow)}
       </Box>
