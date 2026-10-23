@@ -149,9 +149,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         # server catalogue (sys.schemas.name), so they already match, and a
         # case-sensitive collation can hold two distinct schemas that differ
         # only in casing — folding would silently drop one of them.
-        self.schema_desc_map = {
-            (row.DATABASE_NAME.casefold(), row.SCHEMA_NAME): row.COMMENT for row in results
-        }
+        self.schema_desc_map = {(row.DATABASE_NAME.casefold(), row.SCHEMA_NAME): row.COMMENT for row in results}
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
@@ -168,8 +166,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         # the map and the lookup path, so they already match; folding them would
         # collide distinct procedures on a case-sensitive collation.
         self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME.casefold(), row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT
-            for row in results
+            (row.DATABASE_NAME.casefold(), row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
 
     def get_schema_description(self, schema_name: str) -> str | None:
