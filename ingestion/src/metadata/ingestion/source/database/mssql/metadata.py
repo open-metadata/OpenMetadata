@@ -142,33 +142,44 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)).all()
-        self.schema_desc_map = {(row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results}
+        # Keys are case-folded: SQL Server's default collation is case-insensitive,
+        # so the database name reported by DB_NAME() (server-stored casing) can
+        # disagree with the user-configured casing used in single-database mode,
+        # and Python dict lookups are case-sensitive.
+        self.schema_desc_map = {
+            (row.DATABASE_NAME.casefold(), row.SCHEMA_NAME.casefold()): row.COMMENT for row in results
+        }
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)).all()
-        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+        self.database_desc_map = {row.DATABASE_NAME.casefold(): row.COMMENT for row in results}
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)).all()
         self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
+            (
+                row.DATABASE_NAME.casefold(),
+                row.SCHEMA_NAME.casefold(),
+                row.STORED_PROCEDURE.casefold(),
+            ): row.COMMENT
+            for row in results
         }
 
     def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get((self.context.get().database, schema_name))
+        return self.schema_desc_map.get((self.context.get().database.casefold(), schema_name.casefold()))
 
     def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         """
-        return self.database_desc_map.get(database_name)
+        return self.database_desc_map.get(database_name.casefold())
 
     def _get_encrypted_procedures(self, database_name: str, schema_name: str) -> set[str]:
         """Fetch and cache encrypted stored procedure names for a database and schema"""
@@ -196,9 +207,9 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """
         description = self.stored_procedure_desc_map.get(
             (
-                self.context.get().database,
-                self.context.get().database_schema,
-                stored_procedure,
+                self.context.get().database.casefold(),
+                self.context.get().database_schema.casefold(),
+                stored_procedure.casefold(),
             )
         )
         return Markdown(description) if description else None
