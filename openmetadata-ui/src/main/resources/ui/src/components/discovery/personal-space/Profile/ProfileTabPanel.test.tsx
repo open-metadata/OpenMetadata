@@ -214,6 +214,24 @@ describe('ProfileTabPanel', () => {
     expect(screen.getByTestId('profile-details-panel')).toBeInTheDocument();
   });
 
+  // A shared `#profile/<you>/tasks/<id>` link must open that task, not drop
+  // its tab and task segments and land on your own Profile.
+  it('opens your own task from a profile link that names it', () => {
+    mockHashState = {
+      tab: 'profile',
+      subPath: 'harsh/tasks/TASK-00170',
+      params: {},
+    };
+    render(<Harness />);
+
+    expect(screen.getByTestId('members-user-detail')).toHaveTextContent(
+      'harsh'
+    );
+    expect(
+      screen.queryByTestId('profile-details-panel')
+    ).not.toBeInTheDocument();
+  });
+
   it('clears the header on unmount', () => {
     const { unmount } = render(<Harness />);
     unmount();

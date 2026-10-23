@@ -16,24 +16,24 @@ import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import OtherUserProfile from './OtherUserProfile';
 import OwnProfile from './OwnProfile';
 import type { ProfileNavRenderContext } from './profileNavConfig';
-import { profileSubPathToUserView } from './tabs/members/membersRoute.utils';
+import { getProfileUserDetailView } from './tabs/members/membersRoute.utils';
 
 /**
  * The `profile` nav item: your own profile, or — when the hash names someone
- * else — that user's detail with the same tabs as Members.
+ * else, or a tab or task of yours — that user's detail with the same tabs as
+ * Members.
  */
 const ProfileTabPanel: FC<ProfileNavRenderContext> = (props) => {
   const { state } = useSettingsHash();
   const { userData, onHeaderChange } = props;
 
-  const otherView = useMemo(() => {
-    const view =
+  const otherView = useMemo(
+    () =>
       state.tab === 'profile'
-        ? profileSubPathToUserView(state.subPath)
-        : undefined;
-
-    return view && view.name !== userData.name ? view : undefined;
-  }, [state.tab, state.subPath, userData.name]);
+        ? getProfileUserDetailView(state.subPath, userData.name)
+        : undefined,
+    [state.tab, state.subPath, userData.name]
+  );
 
   if (otherView) {
     return (

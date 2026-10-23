@@ -219,4 +219,18 @@ export const profileSubPathToUserView = (
   return view.type === USER_DETAIL ? view : undefined;
 };
 
+// The user detail a `#profile/…` sub-path opens, if any. Your own name alone is
+// your own Profile; an explicit tab or task still opens the detail, so a shared
+// `#profile/<you>/tasks/<id>` link opens that task instead of your Profile.
+export const getProfileUserDetailView = (
+  subPath: string,
+  currentUserName?: string
+): MembersUserDetailView | undefined => {
+  const view = profileSubPathToUserView(subPath);
+  const isOwnProfile =
+    view?.name === currentUserName && view?.tab === 'overview' && !view?.taskId;
+
+  return isOwnProfile ? undefined : view;
+};
+
 export const userViewToProfileSubPath = userDetailTail;

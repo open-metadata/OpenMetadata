@@ -246,17 +246,48 @@ const TasksEmptyState = ({
     return noMatch;
   }
 
-  return userFirstName ? (
+  if (!userFirstName) {
+    return emptyStateByStatus[status];
+  }
+
+  // Another user's tab names them and keeps the status: their Closed tab must
+  // not say they have no tasks at all while Open has some. The viewer's own
+  // copy ("assigned to you") would misread here.
+  const userEmptyState: Record<
+    TaskStatusFilter,
+    { titleKey: string; descriptionKey: string; testId: string }
+  > = {
+    all: {
+      titleKey: 'label.no-tasks-yet',
+      descriptionKey: 'message.user-tasks-empty-description',
+      testId: 'inbox-tasks-user-empty',
+    },
+    open: {
+      titleKey: 'label.no-open-tasks-yet',
+      descriptionKey: 'message.user-open-tasks-empty-description',
+      testId: 'inbox-tasks-user-open-empty',
+    },
+    closed: {
+      titleKey: 'label.no-closed-tasks-yet',
+      descriptionKey: 'message.user-closed-tasks-empty-description',
+      testId: 'inbox-tasks-user-closed-empty',
+    },
+  };
+  const { titleKey, descriptionKey, testId } = userEmptyState[status];
+
+  return (
     <NoDataPlaceholder
-      data-testid="inbox-tasks-user-empty"
-      description={t('message.user-tasks-empty-description', {
-        name: userFirstName,
-      })}
-      icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
-      title={t('label.no-tasks-yet')}
+      data-testid={testId}
+      description={t(descriptionKey, { name: userFirstName })}
+      icon={
+        status === 'closed' ? (
+          <Inbox01 className="tw:size-7" />
+        ) : (
+          <CheckCircle className="tw:size-7 tw:text-utility-success-600" />
+        )
+      }
+      title={t(titleKey)}
     />
-  ) : (
-    emptyStateByStatus[status]
   );
 };
 

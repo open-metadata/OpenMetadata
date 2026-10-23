@@ -13,6 +13,7 @@
 
 import type { MembersView } from './Members.types';
 import {
+  getProfileUserDetailView,
   hashSubPathToView,
   profileSubPathToUserView,
   userViewToProfileSubPath,
@@ -235,5 +236,30 @@ describe('a user named "create"', () => {
 
     expect(subPath).toBe('create/tasks/TASK-7');
     expect(profileSubPathToUserView(subPath)).toEqual(view);
+  });
+});
+
+describe('getProfileUserDetailView', () => {
+  it('is your own Profile for your plain name', () => {
+    expect(getProfileUserDetailView('harsh', 'harsh')).toBeUndefined();
+  });
+
+  it('opens your own tab or task when the link names one', () => {
+    expect(getProfileUserDetailView('harsh/tasks/TASK-00170', 'harsh')).toEqual(
+      {
+        type: 'user-detail',
+        name: 'harsh',
+        tab: 'tasks',
+        taskId: 'TASK-00170',
+      }
+    );
+    expect(getProfileUserDetailView('harsh/activity', 'harsh')?.tab).toBe(
+      'activity'
+    );
+  });
+
+  it('opens anyone else, and nothing for an empty sub-path', () => {
+    expect(getProfileUserDetailView('jane', 'harsh')?.name).toBe('jane');
+    expect(getProfileUserDetailView('', 'harsh')).toBeUndefined();
   });
 });

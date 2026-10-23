@@ -1028,20 +1028,42 @@ describe('TasksTab', () => {
       ).toBeInTheDocument();
     });
 
-    it("names another user in their empty state instead of 'you'", () => {
+    it("names another user in their empty state instead of 'you', keeping the status", () => {
       hookState = { items: [], isLoading: false, total: 0 };
       renderTab({
         onOpenTask: jest.fn(),
         user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
       });
 
-      expect(screen.getByTestId('inbox-tasks-user-empty')).toBeInTheDocument();
+      // The tab opens on Open: an empty Open list says no open tasks, not none.
       expect(
-        screen.getByText('message.user-tasks-empty-description')
+        screen.getByTestId('inbox-tasks-user-open-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-open-tasks-yet')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.user-open-tasks-empty-description')
       ).toBeInTheDocument();
       expect(
-        screen.queryByText('label.no-open-tasks-yet')
+        screen.queryByText('message.tasks-open-empty-description')
       ).not.toBeInTheDocument();
+    });
+
+    // Alice may have only open tasks: her empty Closed list must not say she
+    // has no tasks at all.
+    it('says another user has no closed tasks on their Closed tab', () => {
+      hookState = { items: [], isLoading: false, total: 0 };
+      renderTab({
+        onOpenTask: jest.fn(),
+        user: { id: 'u1', name: 'alice', displayName: 'Alice Doe' } as User,
+      });
+
+      fireEvent.click(screen.getByTestId('task-status-closed'));
+
+      expect(
+        screen.getByTestId('inbox-tasks-user-closed-empty')
+      ).toBeInTheDocument();
+      expect(screen.getByText('label.no-closed-tasks-yet')).toBeInTheDocument();
+      expect(screen.queryByText('label.no-tasks-yet')).not.toBeInTheDocument();
     });
   });
 });

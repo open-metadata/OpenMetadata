@@ -43,7 +43,7 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { profileSubPathToUserView } from './tabs/members/membersRoute.utils';
+import { getProfileUserDetailView } from './tabs/members/membersRoute.utils';
 import { useUserProfile } from './useUserProfile';
 
 const ProfilePage: React.FC = () => {
@@ -63,11 +63,11 @@ const ProfilePage: React.FC = () => {
     updateUserDetails,
     refetch,
   } = useUserProfile(currentUser?.name);
-  const isViewingOtherUser =
+  // A user detail is open under Profile: someone else's, or a tab of yours.
+  const isViewingUserDetail =
     hashState.tab === DEFAULT_PROFILE_NAV_ID &&
     Boolean(currentUser?.name) &&
-    (profileSubPathToUserView(hashState.subPath)?.name ?? currentUser?.name) !==
-      currentUser?.name;
+    Boolean(getProfileUserDetailView(hashState.subPath, currentUser?.name));
 
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
@@ -151,7 +151,7 @@ const ProfilePage: React.FC = () => {
   const handleNavSelect = useCallback(
     (id: ProfileNavId) => {
       // Profile stays clickable while another user's detail is open under it.
-      if (id === selectedId && !isViewingOtherUser) {
+      if (id === selectedId && !isViewingUserDetail) {
         return;
       }
       const switchTab = () => {
@@ -164,7 +164,7 @@ const ProfilePage: React.FC = () => {
         switchTab();
       }
     },
-    [selectedId, isViewingOtherUser, setHash]
+    [selectedId, isViewingUserDetail, setHash]
   );
 
   // A tab the user cannot see (e.g. a settings link to a team for a user
