@@ -729,6 +729,20 @@ class TaskWorkflowHandlerTest {
   private static List<String> applyColumnTagUpdate(
       List<TagLabel> columnTags, Map<String, Object> payload, List<TagLabel> newValue)
       throws Exception {
+    return applyColumnTagUpdate(
+        columnTags,
+        payload,
+        newValue,
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, null, null, null, null, null, null));
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags,
+      Map<String, Object> payload,
+      List<TagLabel> newValue,
+      TaskExecutionAction action)
+      throws Exception {
     Column email = new Column().withName("email").withTags(new ArrayList<>(columnTags));
     Table table =
         new Table()
@@ -736,9 +750,6 @@ class TaskWorkflowHandlerTest {
             .withName("my_table")
             .withFullyQualifiedName("svc.db.schema.my_table")
             .withColumns(List.of(email));
-    TaskExecutionAction action =
-        new TaskExecutionAction(
-            ActionType.MERGE_TAGS, null, null, null, null, null, null, null, null);
 
     Method applyMergeTagsAction =
         TaskWorkflowHandler.class.getDeclaredMethod(
@@ -799,6 +810,33 @@ class TaskWorkflowHandlerTest {
         Set.copyOf(
             applyColumnTagUpdate(
                 List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_readsTheSnapshotFromTheConfiguredField()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email",
+            "operation",
+            "Replace",
+            "tagsToAdd",
+            List.of(tag("Tier.B")),
+            "seenTags",
+            List.of(tag("Tier.A")));
+    TaskExecutionAction action =
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, "seenTags", null, null, null, null, null);
+
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")),
+                payload,
+                List.of(tag("Tier.B")),
+                action)));
   }
 
   @Test

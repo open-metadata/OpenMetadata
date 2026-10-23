@@ -814,6 +814,7 @@ public class TaskWorkflowHandler {
       String fieldPath = null;
       List<TagLabel> tagsToAdd = null;
       List<TagLabel> tagsToRemove = null;
+      List<TagLabel> seen = null;
 
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
@@ -821,6 +822,7 @@ public class TaskWorkflowHandler {
         tagsToAdd =
             readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
         tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
+        seen = readTagLabels(payloadNode, action.currentTagsField(), "currentTags", null);
       }
 
       // A non-empty resolver-supplied newValue is the final desired tag set (reviewer-edited),
@@ -833,10 +835,6 @@ public class TaskWorkflowHandler {
           // Remove what the task saw (its currentTags snapshot and tagsToRemove) and newValue
           // leaves out, so the replace is real but tags added to the target after the task was
           // created stay. Only without a snapshot fall back to the tags the target holds now.
-          List<TagLabel> seen =
-              payload == null
-                  ? null
-                  : readTagLabels(JsonUtils.valueToTree(payload), null, "currentTags", null);
           List<TagLabel> baseline = seen != null ? seen : currentTags(entity, fieldPath);
           if (baseline != null) {
             Set<String> kept =
