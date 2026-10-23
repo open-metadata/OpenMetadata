@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-23 (initial)
 - **Deciders:** @IceS2, @ulixius9
-- **Guard:** `ingestion/scripts/verify_python_tls.py` run inside the built image (package floors, ensurepip and fresh-venv pip); `reviewer` for build order and constraints regeneration
+- **Guard:** `reviewer` — run `ingestion/scripts/verify_python_tls.py` by hand against a rebuilt image (`docker run --rm -i --entrypoint python IMAGE - < ingestion/scripts/verify_python_tls.py`); no build step runs it, and `patch_python_seeds.py` fails the build if ensurepip's layout changes
 - **Related:** #36011, open-metadata/openmetadata-collate#7720
 
 ## Context
