@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+import { Card } from '@openmetadata/ui-core-components';
 import { lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import { GlossaryTermDetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -88,8 +88,8 @@ export const getReviewTab = ({
     />
   ),
   children: (
-    <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface">
+    <Card className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
       <TasksTab aboutEntity={entityFqn} onCountChange={onTasksChange} />
-    </div>
+    </Card>
   ),
 });
