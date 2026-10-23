@@ -1568,6 +1568,38 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_importCsv_teamOwnerCreatesSubTeam(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("teamNestOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    Team ownedTeam =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("ownedDept"))
+                    .withTeamType(TeamType.DEPARTMENT)
+                    .withOwners(List.of(owner.getEntityReference())));
+    String subTeam = ns.prefix("subGroup");
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format(
+                "%s,%s,New sub team,Group,%s,,false,,", subTeam, subTeam, ownedTeam.getName());
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+
+    for (boolean dryRun : List.of(true, false)) {
+      String result = ownerClient.teams().importCsv(ownedTeam.getName(), csv, dryRun);
+      assertFalse(result.contains("failure"), result);
+    }
+    assertNotNull(admin.teams().getByName(subTeam));
+  }
+
+  @Test
   void test_importCsv_circularDependency_dryRun(TestNamespace ns) {
     String parentName = ns.prefix("ParentTeam");
     String childName = ns.prefix("ChildTeam");

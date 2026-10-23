@@ -1169,6 +1169,69 @@ public class DatabaseServiceResourceIT
         admin.tables().get(table.getId().toString()).getDescription());
   }
 
+  @Test
+  void test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvSvcOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("own_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    // Databases do not inherit their service's owners, so the user owns them directly.
+    Database existingDb = createDatabaseHierarchy(admin, service, ns.prefix("existing_db"), owner);
+    Database newDb = createDatabaseHierarchy(admin, service, ns.prefix("new_db"), owner);
+    String exported = exportCsvRecursive(service.getFullyQualifiedName());
+    admin
+        .databases()
+        .delete(newDb.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(service.getFullyQualifiedName(), exported, dryRun, ownerToken);
+      assertEquals(0, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+    }
+    assertNotNull(admin.databases().getByName(newDb.getFullyQualifiedName()));
+    assertNotNull(admin.tables().getByName(newDb.getFullyQualifiedName() + ".schema.table"));
+    assertNotNull(admin.databases().get(existingDb.getId().toString()));
+  }
+
+  private Database createDatabaseHierarchy(
+      OpenMetadataClient admin, DatabaseService service, String databaseName, User owner) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(databaseName)
+                    .withService(service.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+    return database;
+  }
+
   private CsvImportResult importCsvRecursive(String entityName, String csvData, boolean dryRun)
       throws IOException, InterruptedException {
     return importCsvRecursive(entityName, csvData, dryRun, SdkClients.getAdminToken());

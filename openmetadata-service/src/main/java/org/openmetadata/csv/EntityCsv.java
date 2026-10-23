@@ -1411,6 +1411,10 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
             });
   }
 
+  // Entities this import created after authorizing them; a new row under one is part of the subtree
+  // that check already allowed (e.g. a schema under a database created a few rows earlier).
+  private final Set<String> authorizedCreates = new HashSet<>();
+
   /**
    * The import endpoint authorizes only its root, but a row can name any entity by FQN, so each row
    * is authorized as its own write: EDIT_ALL on an existing entity, CREATE for a new one.
@@ -1427,12 +1431,39 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
           actor,
           new OperationContext(type, MetadataOperation.EDIT_ALL),
           new ResourceContext<>(type, original.getId(), null, Include.ALL));
-    } else {
+      return;
+    }
+    if (!createdUnderImportedParent(type, entity)) {
       authorizer.authorizeActor(
           actor,
           new OperationContext(type, MetadataOperation.CREATE),
           new CreateResourceContext<>(type, entity));
     }
+    authorizedCreates.add(entity.getFullyQualifiedName());
+  }
+
+  // A dry run persists nothing, so a parent made by an earlier row exists only as a simulation;
+  // that
+  // row was checked, and the real run fails this one anyway if it was refused.
+  private boolean createdUnderImportedParent(String type, EntityInterface<?> entity) {
+    return authorizedCreates.contains(parentFqn(entity))
+        || (Boolean.TRUE.equals(importResult.getDryRun()) && !parentPersisted(type, entity));
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  private static boolean parentPersisted(String type, EntityInterface<?> entity) {
+    EntityRepository repository = Entity.getEntityRepository(type);
+    try {
+      repository.getParentEntity(entity, "id");
+      return true;
+    } catch (EntityNotFoundException e) {
+      return false;
+    }
+  }
+
+  private static String parentFqn(EntityInterface<?> entity) {
+    String fqn = entity.getFullyQualifiedName();
+    return fqn == null ? null : FullyQualifiedName.getParentFQN(fqn);
   }
 
   /** Write pending CSV results to output */
