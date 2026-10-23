@@ -253,7 +253,7 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
             {isLoading ? (
               <InboxTaskListSkeleton />
             ) : (
-              <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
+              <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
                 {groupedList ?? tasks.map(renderRow)}
               </div>
             )}
