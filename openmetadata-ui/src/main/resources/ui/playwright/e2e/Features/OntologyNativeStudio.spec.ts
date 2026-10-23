@@ -593,9 +593,8 @@ test.describe(
       isolatedUserPage: page,
     }) => {
       // Other workers create native ontologies, so serve an empty catalog to this page only.
-      await page.route(
-        (url) => url.pathname === '/api/v1/ontologies',
-        (route) => route.fulfill({ json: { data: [], paging: { total: 0 } } })
+      await page.route(/^[^?#]*\/api\/v1\/ontologies(?:\?|$)/, (route) =>
+        route.fulfill({ json: { data: [], paging: { total: 0 } } })
       );
       const scopeTrigger = page.getByTestId('ontology-scope-menu-trigger');
 
