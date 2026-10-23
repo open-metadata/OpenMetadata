@@ -192,6 +192,7 @@ class PandasInterfaceMixin:
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
                 separator=None,
+                escapechar=service_connection_config.csvEscapeChar or None,
             ),
         )
         if data:

@@ -12586,6 +12586,13 @@
                           "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
                           "type": "string"
                         },
+                        "csvEscapeChar": {
+                          "title": "CSV Escape Character",
+                          "description": "Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for files that use doubled quotes and literal backslashes.",
+                          "type": "string",
+                          "maxLength": 1,
+                          "default": "\\"
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"

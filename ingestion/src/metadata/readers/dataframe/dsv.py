@@ -105,8 +105,10 @@ class DSVDataFrameReader(DataFrameReader):
         client: Any | None,
         separator: str = CSV_SEPARATOR,
         session: Any | None = None,
+        escapechar: str | None = "\\",
     ):
         self.separator = separator
+        self.escapechar = escapechar
         super().__init__(config_source, client, session=session)
 
     def read_from_pandas(
@@ -129,7 +131,7 @@ class DSVDataFrameReader(DataFrameReader):
                 storage_options=storage_options,
                 compression=compression,
                 encoding_errors="ignore",
-                escapechar="\\",
+                escapechar=self.escapechar,
             ) as reader:
                 for chunks in reader:
                     chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]  # noqa: PLW2901
@@ -169,7 +171,7 @@ class DSVDataFrameReader(DataFrameReader):
                     chunksize=CHUNKSIZE,
                     compression=compression,
                     encoding_errors="ignore",
-                    escapechar="\\",
+                    escapechar=self.escapechar,
                 ) as reader:
                     for chunks in reader:
                         fixed = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)
