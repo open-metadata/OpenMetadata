@@ -56,7 +56,7 @@ public class DataRetention extends AbstractNativeApplication {
    * Governance workflow runs deleted per page. Each run takes all of its stage states with it, a
    * handful of rows apiece, so a page stays a short transaction.
    */
-  private static final int WORKFLOW_RUN_PAGE_SIZE = 1_000;
+  static final int WORKFLOW_RUN_PAGE_SIZE = 1_000;
 
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
@@ -323,7 +323,7 @@ public class DataRetention extends AbstractNativeApplication {
             getRetentionCutoffMillis(retentionPeriod),
             WORKFLOW_RUN_PAGE_SIZE);
 
-    drainInBatches("workflow_runs", retention::deleteNextPage, deleted -> retention.isDrained());
+    recordDrain("workflow_runs", drainWorkflowRuns(retention));
     updateStats("workflow_run_states", retention.deletedStates(), 0);
 
     LOG.info("Governance workflow runs cleanup complete.");
@@ -637,9 +637,20 @@ public class DataRetention extends AbstractNativeApplication {
   }
 
   private void drainInBatches(
-      String entity, Supplier<Integer> deleteFunction, IntPredicate drainedWhen) {
-    BatchDrain.Result result = BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE);
+      final String entity, final Supplier<Integer> deleteFunction, final IntPredicate drainedWhen) {
+    recordDrain(entity, BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE));
+  }
 
+  /**
+   * Drains expired workflow runs page by page. A page that throws is charged as one page of runs,
+   * the most it could have left behind, not a full {@link #BATCH_SIZE}.
+   */
+  static BatchDrain.Result drainWorkflowRuns(final WorkflowRunRetention retention) {
+    return BatchDrain.drain(
+        retention::deleteNextPage, deleted -> retention.isDrained(), WORKFLOW_RUN_PAGE_SIZE);
+  }
+
+  private void recordDrain(final String entity, final BatchDrain.Result result) {
     if (result.failure() != null) {
       LOG.error("Failed to clean entity: {}", entity, result.failure());
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
