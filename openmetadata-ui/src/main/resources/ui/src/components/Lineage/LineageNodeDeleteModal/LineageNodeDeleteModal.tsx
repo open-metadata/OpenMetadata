@@ -13,9 +13,12 @@
 import {
   Button,
   Dialog,
+  FeaturedIcon,
   Modal,
   ModalOverlay,
+  Typography,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 
 export type LineageNodeDeleteModalProps = {
@@ -49,25 +52,41 @@ const LineageNodeDeleteModal = ({
         }
       }}>
       <Modal>
-        <Dialog data-testid="delete-node-confirmation-modal" width={400}>
-          <Dialog.Header title={t('label.delete')} />
+        <Dialog
+          data-testid="delete-node-confirmation-modal"
+          dividers="scroll"
+          width={400}>
+          <Dialog.Header className="tw:flex tw:flex-col tw:items-start tw:gap-4">
+            <FeaturedIcon
+              color="error"
+              icon={Trash01}
+              size="lg"
+              theme="light"
+            />
+            <Typography size="text-md" weight="semibold">
+              {t('label.delete')} &quot;{nodeName}&quot;
+            </Typography>
+          </Dialog.Header>
           <Dialog.Content>
-            {t('message.remove-lineage-node', { entity: nodeName })}
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('message.remove-lineage-node', { entity: nodeName })}
+            </Typography>
           </Dialog.Content>
           <Dialog.Footer>
             <Button
-              color="tertiary"
+              color="secondary"
               data-testid="cancel-button"
+              isDisabled={isDeleting}
               onPress={onCancel}>
               {t('label.cancel')}
             </Button>
             <Button
-              color="primary"
+              color="primary-destructive"
               data-testid="confirm-button"
               isDisabled={isDeleting}
               isLoading={isDeleting}
               onPress={onConfirm}>
-              {t('label.confirm')}
+              {t('label.delete')}
             </Button>
           </Dialog.Footer>
         </Dialog>

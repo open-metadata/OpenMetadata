@@ -288,7 +288,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       'lineage-scene-node': Boolean(sceneNode),
       // Container nodes (service, database, schema, domain, data product) use
       // the container card, with its centred drill cue, in every band.
-      'lineage-scene-layer-node tw:bg-surface':
+      'lineage-scene-layer-node tw:bg-raised':
         Boolean(sceneNode) &&
         (sceneBand === LineageBand.Layer || isContainerSceneNode(sceneNode)),
     }
@@ -460,7 +460,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className="lineage-node-badge-container tw:bg-surface">
+        <div className="lineage-node-badge-container tw:bg-raised">
           <div className="lineage-node-badge" />
         </div>
       )}
@@ -478,7 +478,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         />
         <Box
           align="start"
-          className="label-container tw:bg-surface"
+          className="label-container tw:bg-raised"
           justify="between">
           {nodeLabel}
         </Box>

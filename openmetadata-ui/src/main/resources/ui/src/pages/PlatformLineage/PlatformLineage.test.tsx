@@ -62,6 +62,7 @@ let lastLineageConfigModalProps:
     }
   | undefined;
 
+let mockIsAiMode = false;
 let mockFqn = 'test.fqn';
 let mockEntityType = EntityType.TABLE;
 let mockLocationSearch = '';
@@ -99,6 +100,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   return {
     Card: CardMock,
     Grid: GridMock,
+    FeaturedIcon: () => <span />,
+    PageLayout: {
+      PageHeader: ({
+        title,
+        actions,
+      }: {
+        title: React.ReactNode;
+        actions: React.ReactNode;
+      }) => (
+        <div data-testid="ai-page-header">
+          {title}
+          {actions}
+        </div>
+      ),
+    },
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -273,16 +289,22 @@ jest.mock(
   })
 );
 
-jest.mock('../../assets/svg/ic-download.svg', () => ({
-  ReactComponent: () => <div>DownloadIcon</div>,
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
 }));
 
-jest.mock('../../assets/svg/ic-settings-gear.svg', () => ({
-  ReactComponent: () => <div>SettingsIcon</div>,
-}));
+jest.mock(
+  '../../components/Learning/LearningIcon/LearningIcon.component',
+  () => ({
+    LearningIcon: () => <span />,
+  })
+);
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Download01: () => <div>Download01</div>,
   Expand05: () => <div>Expand05</div>,
+  PlatformLineage: () => <div>PlatformLineage</div>,
+  Settings01: () => <div>Settings01</div>,
   Home02: () => <div>Home02</div>,
   Minimize02: () => <div>Minimize02</div>,
 }));
@@ -297,6 +319,7 @@ describe('PlatformLineage Component Logic', () => {
     mockFqn = 'test.fqn';
     mockEntityType = EntityType.TABLE;
     mockLocationSearch = '';
+    mockIsAiMode = false;
     mockAppPreferences = MOCK_APP_PREFERENCES;
     mockStoreLineageConfig = {
       upstreamDepth: 3,
@@ -546,25 +569,24 @@ describe('PlatformLineage Component Logic', () => {
     });
   });
 
-  describe('Fullscreen Mode Logic', () => {
-    it('should parse fullscreen from query params', async () => {
-      mockLocationSearch = '?fullscreen=true';
+  describe('Full screen', () => {
+    it('offers no full screen toggle on the platform page', async () => {
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
 
-      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+      const { getByTestId, queryByText } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
       await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
+        expect(getByTestId('export-button')).toBeInTheDocument();
       });
-    });
 
-    it('should default to false when fullscreen param is not present', async () => {
-      mockLocationSearch = '';
-
-      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
-
-      await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
-      });
+      expect(queryByText('Expand05')).not.toBeInTheDocument();
+      expect(queryByText('Minimize02')).not.toBeInTheDocument();
     });
   });
 
@@ -597,6 +619,45 @@ describe('PlatformLineage Component Logic', () => {
       await waitFor(() => {
         expect(mockLineage).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Page header by app mode', () => {
+    it('keeps the classic header card and canvas toolbar outside AI mode', async () => {
+      const { queryByTestId, getByText } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalledWith(
+          expect.objectContaining({ platformHeader: expect.anything() }),
+          expect.anything()
+        );
+      });
+
+      expect(getByText('PageHeader')).toBeInTheDocument();
+      expect(queryByTestId('ai-page-header')).not.toBeInTheDocument();
+    });
+
+    it('moves search and actions into the AI header and drops the canvas toolbar', async () => {
+      mockIsAiMode = true;
+
+      const { getByTestId, queryByText } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalledWith(
+          expect.objectContaining({ platformHeader: undefined }),
+          expect.anything()
+        );
+      });
+
+      const header = getByTestId('ai-page-header');
+
+      expect(header).toContainElement(getByTestId('search-entity-select'));
+      expect(header).toContainElement(getByTestId('export-button'));
+      expect(queryByText('PageHeader')).not.toBeInTheDocument();
     });
   });
 
@@ -753,22 +814,17 @@ describe('PlatformLineage Component Logic', () => {
       });
     });
 
-    it.each(['', '?fullscreen=true'])(
-      'renders the page header and no breadcrumb for search %j',
-      async (search) => {
-        mockLocationSearch = search;
+    it('renders the page header and no breadcrumb', async () => {
+      const { container } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
 
-        const { container } = render(<PlatformLineage />, {
-          wrapper: QueryClientProviderWrapper,
-        });
+      await waitFor(() => {
+        expect(container.textContent).toContain('PageHeader');
+      });
 
-        await waitFor(() => {
-          expect(container.textContent).toContain('PageHeader');
-        });
-
-        expect(container.textContent).not.toContain('Breadcrumb');
-      }
-    );
+      expect(container.textContent).not.toContain('Breadcrumb');
+    });
   });
 
   describe('Navigation Logic', () => {

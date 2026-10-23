@@ -277,10 +277,10 @@ const ColumnContentInner = ({
 
   return (
     <div
-      className={classNames(`custom-node-column-container ${className}`, {
-        'custom-node-header-column-tracing': isColumnTraced,
-        'tw:dark:text-primary': isColumnTraced,
-      })}
+      className={classNames(
+        `custom-node-column-container tw:text-primary ${className}`,
+        { 'custom-node-header-column-tracing': isColumnTraced }
+      )}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
       style={{
@@ -294,16 +294,6 @@ const ColumnContentInner = ({
         <div className="custom-node-name-container">
           {columnNameContentRender}
         </div>
-
-        {onColumnLineageEdit && fullyQualifiedName && (
-          <span className="lineage-column-menu tw:ml-auto tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
-            <LineageColumnMenu
-              onEdit={(direction, triggerRef) =>
-                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
-              }
-            />
-          </span>
-        )}
 
         {'constraint' in column && column.constraint && (
           <div
@@ -323,6 +313,15 @@ const ColumnContentInner = ({
               summary={summary}
             />
           </div>
+        )}
+        {onColumnLineageEdit && fullyQualifiedName && (
+          <span className="lineage-column-menu tw:flex tw:items-center tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
+            <LineageColumnMenu
+              onEdit={(direction, triggerRef) =>
+                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
+              }
+            />
+          </span>
         )}
       </div>
     </div>
@@ -348,11 +347,12 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 
 /**
  * Dark swaps the static grey node/badge/handle borders (custom-node.less
- * `@lineage-border`) for border-primary. A variable rather than a border class so
- * the less hover/highlight/tracing states keep winning over it.
+ * `@lineage-border`) for border-primary, and the column panel's secondary fill
+ * (darker than the canvas in dark) for the node's own raised fill. Variables
+ * rather than classes so the less hover/highlight/tracing states keep winning.
  */
 export const LINEAGE_NODE_DARK_CLASS =
-  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
+  'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)] tw:dark:[--lineage-node-inset-bg:var(--tw-background-color-raised)]';
 
 export function getNodeClassNames({
   isSelected,

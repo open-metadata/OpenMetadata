@@ -29,6 +29,7 @@ import {
   getConnectedLineagePathHighlight,
   getDeleteKeyAction,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
@@ -126,6 +127,43 @@ describe('scene URL navigation', () => {
       band: LineageBand.Asset,
     });
     expect(getSceneOriginFocus(scene, {})).toEqual(focus);
+  });
+
+  it('offers the root breadcrumb as the way back only once drilled in', () => {
+    const root: LineageSceneBreadcrumb = {
+      id: 'root',
+      label: 'root',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+    const service: LineageSceneBreadcrumb = {
+      id: 'svc',
+      label: 'svc',
+      fullyQualifiedName: 'svc',
+      entityType: EntityType.DATABASE_SERVICE,
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root, service],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    // An empty drilled scene carries only the root crumb.
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    expect(
+      getDrilledRootBreadcrumb({ breadcrumb: [root], band: LineageBand.Layer })
+    ).toBeUndefined();
+    expect(getDrilledRootBreadcrumb(undefined)).toBeUndefined();
   });
 
   it('removes the previous focus when navigating to a root breadcrumb', () => {

@@ -382,7 +382,7 @@
       min-height: 48px;
       padding: var(--om-space-12);
       padding-top: 0;
-      background-color: var(--tw-background-color-secondary);
+      background-color: var(--lineage-node-inset-bg, var(--tw-background-color-secondary));
 
       .inside-current-page-item {
         margin-top: 0;
@@ -465,7 +465,7 @@
       .label-container {
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--tw-background-color-secondary);
+            background-color: var(--lineage-node-inset-bg, var(--tw-background-color-secondary));
           }
         }
       }
@@ -613,19 +613,29 @@
 }
 
 // The base node is a light brand card; selected / DQ states above still win.
+// Dark brand-primary is translucent, so it is painted once over an opaque
+// raised fill and the inner sections stay transparent: repeating it on each
+// nested section stacked the alpha into uneven bands of blue.
 .lineage-node.lineage-base-node {
   --lineage-node-border: var(--tw-border-color-brand);
-  background-color: var(--tw-background-color-brand-primary);
+  background: linear-gradient(
+      var(--tw-background-color-brand-primary),
+      var(--tw-background-color-brand-primary)
+    ),
+    var(--tw-background-color-raised);
 
   &:not(.custom-node-header-active) {
-    .lineage-node-badge-container,
     .lineage-node-content .label-container,
     .lineage-node-content .column-container,
     .lineage-node-content
       .label-container
       .custom-node-label-container
       .entity-footer {
-      background-color: var(--tw-background-color-brand-primary);
+      background-color: transparent;
+    }
+
+    .lineage-node-badge-container {
+      background: inherit;
     }
   }
 }
@@ -695,7 +705,7 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: var(--tw-background-color-surface) !important;
+  background-color: var(--tw-background-color-raised) !important;
 }
 
 .react-flow__node-load-more {
@@ -800,7 +810,7 @@
       --lineage-node-border,
       var(--tw-border-color-primary)
     ) !important;
-    background: var(--tw-background-color-surface) !important;
+    background: var(--tw-background-color-raised) !important;
     top: min(58px, 50%) !important;
 
     gap: var(--om-space-1);
@@ -861,7 +871,7 @@
     --lineage-node-border,
     var(--tw-border-color-primary)
   ) !important;
-  background: var(--tw-background-color-surface) !important;
+  background: var(--tw-background-color-raised) !important;
   top: 60px !important; // Need to show handles on top half
   top: min(58px, 50%) !important;
 

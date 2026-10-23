@@ -490,29 +490,27 @@ const EdgeInfoDrawer = ({
     <>
       {visible && (
         <div
-          className="tw:flex tw:h-full tw:flex-col tw:bg-utility-gray-blue-50"
+          className="tw:flex tw:h-full tw:flex-col"
           data-testid="edge-info-drawer-container">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <div className="tw:sticky tw:top-0 tw:z-999 tw:flex-1 tw:p-1">
-              <div className="tw:flex tw:h-[49px] tw:items-center tw:justify-between tw:rounded-lg tw:bg-utility-gray-blue-50 tw:px-3 tw:dark:bg-secondary_subtle">
-                <Tooltip
-                  excludeTriggerFromTabOrder
-                  delay={500}
-                  placement="bottom left"
-                  title={t('label.edge-information')}
-                  triggerClassName="tw:flex tw:items-center tw:gap-2">
-                  <span className="tw:flex tw:items-center tw:gap-2">
-                    <span className="tw:flex">
-                      <GitMerge height={16} width={16} />
-                    </span>
-                    <Typography
-                      className="tw:block tw:text-[15px] tw:leading-[1.5715] tw:font-semibold tw:text-utility-gray-800"
-                      data-testid="edge-header-title">
-                      {t('label.edge-information')}
-                    </Typography>
-                  </span>
-                </Tooltip>
-              </div>
+          {/* The 12px left inset and the close button's 10px of internal
+              padding line the icon and the × up with the card's edges below. */}
+          <div className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-1 tw:pr-0.5 tw:pl-3">
+            <div className="tw:min-w-0 tw:flex-1">
+              <Tooltip
+                excludeTriggerFromTabOrder
+                delay={500}
+                placement="bottom left"
+                title={t('label.edge-information')}
+                triggerClassName="tw:flex tw:items-center tw:gap-2">
+                <GitMerge className="tw:size-5 tw:shrink-0" />
+                <Typography
+                  className="tw:block tw:text-primary"
+                  data-testid="edge-header-title"
+                  size="text-lg"
+                  weight="semibold">
+                  {t('label.edge-information')}
+                </Typography>
+              </Tooltip>
             </div>
             <EdgeActionsMenu
               onDelete={onDelete}
@@ -520,7 +518,7 @@ const EdgeInfoDrawer = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              className="tw:mr-2 tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
+              className="tw:size-9 tw:rounded-lg tw:p-0 tw:text-primary tw:hover:bg-transparent tw:hover:text-primary"
               color="tertiary"
               data-testid="drawer-close-icon"
               icon={XClose}
@@ -531,7 +529,7 @@ const EdgeInfoDrawer = ({
           <div
             className={classNames(
               'tw:mx-3 tw:max-h-[calc(100vh-70px)] tw:flex-1 tw:overflow-x-hidden tw:overflow-y-auto',
-              'tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-primary tw:dark:border-subtle',
+              'tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:bg-surface tw:dark:border-subtle',
               'tw:[scrollbar-width:none] tw:[&::-webkit-scrollbar]:hidden'
             )}>
             {isLoading ? (

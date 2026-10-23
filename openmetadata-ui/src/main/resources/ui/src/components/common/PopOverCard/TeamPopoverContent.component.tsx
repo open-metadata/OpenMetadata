@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +52,9 @@ export const TeamPopoverContent = React.memo(
             markdown={team.description}
           />
         ) : (
-          <span className="text-grey-muted">{t('label.no-description')}</span>
+          <Typography as="span" className="tw:text-tertiary" size="text-xs">
+            {t('label.no-description')}
+          </Typography>
         )}
 
         <p className="d-flex flex-wrap m-t-xs">
