@@ -245,10 +245,9 @@ describe('TestSummaryGraph', () => {
       />
     );
 
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.no-test-result-for-days Last 7 days')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toHaveTextContent(
+      'message.no-test-result-for-days Last 7 days message.try-extending-time-frame'
+    );
     expect(mockComposedChart).not.toHaveBeenCalled();
   });
 

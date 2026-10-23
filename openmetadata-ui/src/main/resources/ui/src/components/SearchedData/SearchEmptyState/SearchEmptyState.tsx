@@ -13,9 +13,6 @@
 
 import { Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { Database01 } from '@openmetadata/ui-core-components/icons';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
-
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,9 +30,12 @@ import {
 import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 type Props = {
@@ -90,13 +90,17 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
 
   const noRecordForES = useMemo(() => {
     if (isQuery) {
+      const EmptyStatePlaceholder = search
+        ? NoSearchResultsPlaceholder
+        : NoFilteredResultsPlaceholder;
+
       return (
         <div className="text-center tw:w-full" data-testid="no-search-results">
           <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-            <NoSearchResultsPlaceholder
+            <EmptyStatePlaceholder
               data-testid="search-error-placeholder"
               description={t('message.try-adjusting-filter')}
-              title={t('label.no-result-found')}
+              title={search ? t('label.no-result-found') : undefined}
             />
           </div>
         </div>
@@ -131,13 +135,22 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={
-              <Transi18next
-                i18nKey="message.add-data-asset-domain"
-                renderElement={<b />}
-                values={{
-                  domain: activeDomain,
-                }}
-              />
+              <>
+                <Transi18next
+                  i18nKey="message.no-data-available-entity"
+                  renderElement={<b />}
+                  values={{
+                    entity: activeDomain,
+                  }}
+                />{' '}
+                <Transi18next
+                  i18nKey="message.add-data-asset-domain"
+                  renderElement={<b />}
+                  values={{
+                    domain: activeDomain,
+                  }}
+                />
+              </>
             }
             footer={
               <>
@@ -161,15 +174,6 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
               </>
             }
             icon={<Database01 />}
-            title={
-              <Transi18next
-                i18nKey="message.no-data-available-entity"
-                renderElement={<b />}
-                values={{
-                  entity: activeDomain,
-                }}
-              />
-            }
           />
         </div>
       </div>
