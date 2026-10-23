@@ -139,7 +139,8 @@ def get_all_table_ddls(self, connection, query, schema_name, **kw):  # pylint: d
         self.all_table_ddls: dict[tuple[str, str], str] = {}
         self.current_db: str = schema_name
         meta = MetaData()
-        meta.reflect(bind=connection, schema=schema_name)
+        reflection_options = {name: kw[name] for name in self.dialect.reflection_options if name in kw}
+        meta.reflect(bind=connection, schema=schema_name, **reflection_options)
         for table in meta.sorted_tables or []:
             self.all_table_ddls[(table.schema, table.name)] = str(CreateTable(table))
     except Exception as exc:
