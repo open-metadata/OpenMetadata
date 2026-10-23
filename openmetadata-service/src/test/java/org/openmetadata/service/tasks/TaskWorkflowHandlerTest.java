@@ -24,7 +24,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,20 +43,15 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.OntologyReviewTarget;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
-import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
-import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -726,142 +720,5 @@ class TaskWorkflowHandlerTest {
     assertTrue(
         parentTags == null || parentTags.isEmpty(),
         "Column tag suggestion must not tag the parent table");
-  }
-
-  @Test
-  void nonFinalOntologyVoteIsRecordedWithItsComment() {
-    UUID taskId = UUID.randomUUID();
-    Task task = ontologyReviewTask(taskId);
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class);
-        MockedStatic<OntologyApprovalWorkflow> reviewMock =
-            Mockito.mockStatic(OntologyApprovalWorkflow.class)) {
-      reviewMock.when(() -> OntologyApprovalWorkflow.isReview(any())).thenReturn(true);
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTaskOutcome(eq(taskId), any()))
-          .thenReturn(TaskResolutionOutcome.WAITING_FOR_VOTES);
-      when(workflowHandler.approvalTaskContext(taskId))
-          .thenReturn(
-              new WorkflowHandler.ApprovalTaskContext("process", "TaskReview", List.of("alice")));
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      Task result =
-          TaskWorkflowHandler.getInstance()
-              .resolveTask(
-                  task, "approve", TaskResolutionType.Approved, null, null, "Looks right", "alice");
-
-      assertSame(refreshedTask, result);
-      verify(taskRepository)
-          .recordReviewVote(taskId, "alice", TaskReviewVoteDecision.Approved, "Looks right");
-      verify(taskRepository, never())
-          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
-      verify(taskRepository, never())
-          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
-    }
-  }
-
-  @Test
-  void countedVoteWhoseRecordLosesEveryRetryStillCounts() {
-    UUID taskId = UUID.randomUUID();
-    Task task = ontologyReviewTask(taskId);
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class);
-        MockedStatic<OntologyApprovalWorkflow> reviewMock =
-            Mockito.mockStatic(OntologyApprovalWorkflow.class)) {
-      reviewMock.when(() -> OntologyApprovalWorkflow.isReview(any())).thenReturn(true);
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTaskOutcome(eq(taskId), any()))
-          .thenReturn(TaskResolutionOutcome.WAITING_FOR_VOTES);
-      when(workflowHandler.approvalTaskContext(taskId))
-          .thenReturn(
-              new WorkflowHandler.ApprovalTaskContext("process", "TaskReview", List.of("alice")));
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-      doThrow(new PreconditionFailedException("version moved"))
-          .when(taskRepository)
-          .recordReviewVote(taskId, "alice", TaskReviewVoteDecision.Approved, "Looks right");
-
-      Task result =
-          TaskWorkflowHandler.getInstance()
-              .resolveTask(
-                  task, "approve", TaskResolutionType.Approved, null, null, "Looks right", "alice");
-
-      assertSame(refreshedTask, result);
-    }
-  }
-
-  @Test
-  void voteTheWorkflowDroppedIsNotRecorded() {
-    UUID taskId = UUID.randomUUID();
-    Task task = ontologyReviewTask(taskId);
-    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
-    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
-    TaskRepository taskRepository = mock(TaskRepository.class);
-    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
-
-    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
-        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class);
-        MockedStatic<OntologyApprovalWorkflow> reviewMock =
-            Mockito.mockStatic(OntologyApprovalWorkflow.class)) {
-      reviewMock.when(() -> OntologyApprovalWorkflow.isReview(any())).thenReturn(true);
-      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
-      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
-      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
-          .thenAnswer(invocation -> invocation.getArgument(1));
-      when(workflowHandler.resolveTaskOutcome(eq(taskId), any()))
-          .thenReturn(TaskResolutionOutcome.WAITING_FOR_VOTES);
-      // Alice voted through her team earlier, so the workflow dropped this vote and lists only
-      // the voters it counted.
-      when(workflowHandler.approvalTaskContext(taskId))
-          .thenReturn(
-              new WorkflowHandler.ApprovalTaskContext("process", "TaskReview", List.of("bob")));
-      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
-      when(taskRepository.getFields(anyString())).thenReturn(fields);
-      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
-
-      Task result =
-          TaskWorkflowHandler.getInstance()
-              .resolveTask(
-                  task, "approve", TaskResolutionType.Approved, null, null, "Again", "alice");
-
-      assertSame(refreshedTask, result);
-      verify(taskRepository, never()).recordReviewVote(any(), anyString(), any(), any());
-    }
-  }
-
-  private static Task ontologyReviewTask(UUID taskId) {
-    UUID releaseId = UUID.randomUUID();
-    return new Task()
-        .withId(taskId)
-        .withWorkflowInstanceId(UUID.randomUUID())
-        .withStatus(TaskEntityStatus.Open)
-        .withType(TaskEntityType.RequestApproval)
-        .withAbout(new EntityReference().withId(releaseId).withType(Entity.ONTOLOGY_RELEASE))
-        .withOntologyReview(
-            new OntologyReviewTarget()
-                .withEntityId(releaseId)
-                .withOntologyId(UUID.randomUUID())
-                .withEntityVersion(0.1)
-                .withContentDigest("a".repeat(64))
-                .withAuthor("author"));
   }
 }

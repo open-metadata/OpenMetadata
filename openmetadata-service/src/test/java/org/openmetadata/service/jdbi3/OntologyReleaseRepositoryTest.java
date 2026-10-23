@@ -22,7 +22,8 @@ class OntologyReleaseRepositoryTest {
 
   @Test
   void firstPageHasNoBeforeCursorAndPointsAtTheNextRow() {
-    ResultList<OntologyReleaseReview> page = OntologyReleaseRepository.page(rows, 0, 2);
+    ResultList<OntologyReleaseReview> page =
+        OntologyReleaseRepository.page(rows.subList(0, 2), 0, 2, rows.size());
 
     assertEquals(List.of("TASK-00000", "TASK-00001"), taskIds(page));
     assertNull(page.getPaging().getBefore());
@@ -32,7 +33,8 @@ class OntologyReleaseRepositoryTest {
 
   @Test
   void middlePagePointsBothWays() {
-    ResultList<OntologyReleaseReview> page = OntologyReleaseRepository.page(rows, 2, 2);
+    ResultList<OntologyReleaseReview> page =
+        OntologyReleaseRepository.page(rows.subList(2, 4), 2, 2, rows.size());
 
     assertEquals(List.of("TASK-00002", "TASK-00003"), taskIds(page));
     assertEquals("0", RestUtil.decodeCursor(page.getPaging().getBefore()));
@@ -41,14 +43,20 @@ class OntologyReleaseRepositoryTest {
 
   @Test
   void lastPageHasNoAfterCursorAndAnOffsetPastTheEndIsEmpty() {
-    ResultList<OntologyReleaseReview> last = OntologyReleaseRepository.page(rows, 4, 2);
-    ResultList<OntologyReleaseReview> past = OntologyReleaseRepository.page(rows, 9, 2);
+    ResultList<OntologyReleaseReview> last =
+        OntologyReleaseRepository.page(rows.subList(4, 5), 4, 2, rows.size());
+    ResultList<OntologyReleaseReview> past =
+        OntologyReleaseRepository.page(List.of(), 9, 2, rows.size());
+    ResultList<OntologyReleaseReview> farPast =
+        OntologyReleaseRepository.page(List.of(), Integer.MAX_VALUE, 2, rows.size());
 
     assertEquals(List.of("TASK-00004"), taskIds(last));
     assertEquals("2", RestUtil.decodeCursor(last.getPaging().getBefore()));
     assertNull(last.getPaging().getAfter());
     assertEquals(List.of(), taskIds(past));
     assertNull(past.getPaging().getAfter());
+    assertEquals(List.of(), taskIds(farPast));
+    assertNull(farPast.getPaging().getAfter());
   }
 
   @Test
@@ -58,6 +66,7 @@ class OntologyReleaseRepositoryTest {
     assertThrows(BadRequestException.class, () -> OntologyReleaseRepository.offset("not base64!"));
     assertThrows(
         BadRequestException.class, () -> OntologyReleaseRepository.offset(cursor("three")));
+    assertThrows(BadRequestException.class, () -> OntologyReleaseRepository.offset(cursor("-1")));
   }
 
   private static String cursor(String offset) {

@@ -3,9 +3,11 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -236,36 +238,56 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
       final OntologyReleaseReviewReader.View view,
       final String caller,
       final int limit,
-      final String after) {
+      final String after,
+      final Predicate<OntologyRelease> canView) {
     final int offset = offset(after);
-    final List<OntologyReleaseReview> rows =
-        daoCollection
-            .ontologyReleaseDAO()
-            .listAllByStatus(EntityStatus.IN_REVIEW.value(), OPEN_REVIEW_SCAN_LIMIT)
-            .stream()
-            .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
-            .filter(release -> release.getReviewTask() != null)
-            .map(release -> reader(release, release.getReviewTask(), caller))
-            .filter(reader -> reader.matches(view))
-            .map(OntologyReleaseReviewReader::review)
-            .toList();
-    return page(rows, offset, limit);
+    final List<OntologyReleaseReview> rows = new ArrayList<>();
+    long afterUpdatedAt = Long.MAX_VALUE;
+    String afterId = "";
+    int total = 0;
+    List<String> batch;
+    do {
+      batch =
+          daoCollection
+              .ontologyReleaseDAO()
+              .listAllByStatus(
+                  EntityStatus.IN_REVIEW.value(), OPEN_REVIEW_SCAN_LIMIT, afterUpdatedAt, afterId);
+      for (final String json : batch) {
+        final OntologyRelease release = JsonUtils.readValue(json, OntologyRelease.class);
+        afterUpdatedAt = release.getUpdatedAt();
+        afterId = release.getId().toString();
+        if (release.getReviewTask() == null || !canView.test(release)) {
+          continue;
+        }
+        final OntologyReleaseReviewReader reader = reader(release, release.getReviewTask(), caller);
+        if (!reader.matches(view)) {
+          continue;
+        }
+        if (total >= offset && rows.size() < limit) {
+          rows.add(reader.review());
+        }
+        total++;
+      }
+    } while (batch.size() == OPEN_REVIEW_SCAN_LIMIT);
+    return page(rows, offset, limit, total);
   }
 
   static ResultList<OntologyReleaseReview> page(
-      final List<OntologyReleaseReview> rows, final int offset, final int limit) {
-    final int from = Math.min(offset, rows.size());
-    final int to = Math.min(offset + limit, rows.size());
+      final List<OntologyReleaseReview> rows, final int offset, final int limit, final int total) {
     return new ResultList<>(
-        rows.subList(from, to),
+        rows,
         offset == 0 ? null : String.valueOf(Math.max(0, offset - limit)),
-        to < rows.size() ? String.valueOf(to) : null,
-        rows.size());
+        total - offset > rows.size() ? String.valueOf(offset + rows.size()) : null,
+        total);
   }
 
   static int offset(final String after) {
     try {
-      return after == null ? 0 : Integer.parseInt(RestUtil.decodeCursor(after));
+      final int offset = after == null ? 0 : Integer.parseInt(RestUtil.decodeCursor(after));
+      if (offset < 0) {
+        throw new IllegalArgumentException("Negative review list offset");
+      }
+      return offset;
     } catch (IllegalArgumentException invalid) {
       throw new BadRequestException("The review list cursor is invalid");
     }

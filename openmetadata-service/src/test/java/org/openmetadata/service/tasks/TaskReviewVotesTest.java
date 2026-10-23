@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class TaskReviewVotesTest {
   private final EntityReference alice = user("alice");
@@ -36,6 +37,36 @@ class TaskReviewVotesTest {
     assertEquals(TaskReviewVoteDecision.Rejected, votes.get(1).getDecision());
     assertTrue(TaskReviewVotes.hasVoted(votes, "alice"));
     assertFalse(TaskReviewVotes.hasVoted(votes, "carol"));
+  }
+
+  @Test
+  void workflowResultsIdentifyCountedDecisionsIncludingNonTerminalApprovals() {
+    for (Object result : List.of(true, "true", " APPROVE ", "Approved")) {
+      assertEquals(TaskReviewVoteDecision.Approved, TaskReviewVotes.decisionForResult(result));
+    }
+    for (Object result : List.of(false, "false", " REJECT ", "Rejected")) {
+      assertEquals(TaskReviewVoteDecision.Rejected, TaskReviewVotes.decisionForResult(result));
+    }
+    assertNull(TaskReviewVotes.decisionForResult(null));
+    assertNull(TaskReviewVotes.decisionForResult("grant"));
+    assertNull(TaskReviewVotes.decisionForResult(1));
+  }
+
+  @Test
+  void durableVotesSurviveSerializationAndRepeatedProjection() {
+    List<TaskReviewVote> first =
+        List.of(vote(alice, alice, TaskReviewVoteDecision.Approved, "First", 1L));
+    List<TaskReviewVote> incoming =
+        List.of(
+            vote(alice, alice, TaskReviewVoteDecision.Approved, "Retry", 2L),
+            vote(bob, team, TaskReviewVoteDecision.Rejected, "Reason", 3L));
+    List<TaskReviewVote> merged = TaskReviewVotes.merge(first, incoming);
+    String json = JsonUtils.pojoToJson(merged);
+    assertEquals(merged, TaskReviewVotes.read(json));
+    assertEquals(merged, TaskReviewVotes.merge(merged, incoming));
+    assertEquals("First", merged.getFirst().getComment());
+    assertEquals(team, merged.getLast().getAssignee());
+    assertEquals(List.of(), TaskReviewVotes.read(null));
   }
 
   @Test
@@ -91,6 +122,21 @@ class TaskReviewVotesTest {
     assertTrue(TaskReviewVotes.sameEntity(alice, user("alice")));
     assertFalse(TaskReviewVotes.sameEntity(alice, aliceTheTeam));
     assertFalse(TaskReviewVotes.sameEntity(alice, null));
+  }
+
+  @Test
+  void onlyApprovalAndRejectionResolutionsRecordVotes() {
+    for (TaskResolutionType resolution : TaskResolutionType.values()) {
+      assertEquals(
+          List.of(
+                  TaskResolutionType.Approved,
+                  TaskResolutionType.AutoApproved,
+                  TaskResolutionType.Rejected,
+                  TaskResolutionType.AutoRejected)
+              .contains(resolution),
+          TaskReviewVotes.isDecision(resolution));
+    }
+    assertFalse(TaskReviewVotes.isDecision(null));
   }
 
   private static TaskReviewVote vote(

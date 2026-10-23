@@ -12477,7 +12477,8 @@ public class WorkflowDefinitionResourceIT {
 
     OpenMetadataClient candidate1Client =
         SdkClients.createClient(candidate1.getName(), candidate1.getEmail(), new String[] {});
-    ResolveTask resolveApproval = new ResolveTask().withResolutionType(TaskResolutionType.Approved);
+    ResolveTask resolveApproval =
+        new ResolveTask().withResolutionType(TaskResolutionType.Approved).withComment("First vote");
 
     Task intermediateTask =
         candidate1Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval);
@@ -12486,6 +12487,10 @@ public class WorkflowDefinitionResourceIT {
         TaskEntityStatus.Open,
         intermediateTask.getStatus(),
         "First approval should return the refreshed task in open state");
+    assertEquals(1, intermediateTask.getReviewVotes().size());
+    assertEquals("First vote", intermediateTask.getReviewVotes().getFirst().getComment());
+    assertEquals(
+        candidate1.getId(), intermediateTask.getReviewVotes().getFirst().getVoter().getId());
     assertNotNull(intermediateTask.getAssignees(), "Intermediate task should retain assignees");
     assertEquals(
         1,
@@ -12503,12 +12508,19 @@ public class WorkflowDefinitionResourceIT {
     OpenMetadataClient candidate2Client =
         SdkClients.createClient(candidate2.getName(), candidate2.getEmail(), new String[] {});
     Task resolvedTask =
-        candidate2Client.tasks().resolve(approvalTask.getId().toString(), resolveApproval);
+        candidate2Client
+            .tasks()
+            .resolve(approvalTask.getId().toString(), resolveApproval.withComment("Final vote"));
 
     assertEquals(
         TaskEntityStatus.Approved,
         resolvedTask.getStatus(),
         "Task should resolve only after the approval threshold is met");
+    assertEquals(2, resolvedTask.getReviewVotes().size());
+    assertEquals(
+        List.of("First vote", "Final vote"),
+        resolvedTask.getReviewVotes().stream().map(vote -> vote.getComment()).toList());
+    assertEquals(candidate2.getId(), resolvedTask.getReviewVotes().getLast().getVoter().getId());
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");

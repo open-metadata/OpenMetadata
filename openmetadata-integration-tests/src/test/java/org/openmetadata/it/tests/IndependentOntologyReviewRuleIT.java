@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -26,6 +28,7 @@ import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -37,11 +40,16 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
  * Release reviews decided by the ontology's approval rule. Every test uses the seeded approval
@@ -261,6 +269,107 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void assignedReviewsRemainVisibleBeyondTheFirstScanBatch(TestNamespace ns) {
+    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AllReviewers, user1(), user2());
+    OntologyRelease release = capture(ontology);
+    submit(ns, RELEASE, release.getFullyQualifiedName());
+    var releases = Entity.getCollectionDAO().ontologyReleaseDAO();
+    List<UUID> fillerIds = new ArrayList<>();
+    try {
+      for (int index = 0; index < 1001; index++) {
+        OntologyRelease filler =
+            JsonUtils.deepCopy(release, OntologyRelease.class)
+                .withId(UUID.randomUUID())
+                .withName("scan" + index)
+                .withFullyQualifiedName(ontology.getFullyQualifiedName() + ".scan" + index)
+                .withReleaseRevision(1000L + index)
+                .withReviewTask(null)
+                .withEntityStatus(EntityStatus.IN_REVIEW)
+                .withUpdatedAt(System.currentTimeMillis() + 1000);
+        releases.insert(filler, filler.getFullyQualifiedName());
+        fillerIds.add(filler.getId());
+      }
+      assertEquals(1, listed(SdkClients.user1Client(), "assigned", release));
+      assertEquals(1, listed(SdkClients.user1Client(), "pending", release));
+      assertEquals(1, listed(SdkClients.adminClient(), "created", release));
+    } finally {
+      releases.deleteByIds(fillerIds);
+    }
+  }
+
+  @Test
+  void finalVotePreservesACommittedVoteWhoseTaskWriteWasDelayed(TestNamespace ns) {
+    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AllReviewers, user1(), user2());
+    OntologyRelease release = capture(ontology);
+    Task task = submit(ns, RELEASE, release.getFullyQualifiedName());
+    TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task snapshot = tasks.get(null, task.getId(), tasks.getFields("*"));
+    WorkflowHandler workflow = WorkflowHandler.getInstance();
+    String firstVoter = user1().getName();
+    long firstVoteTime = System.currentTimeMillis();
+    Map<String, Object> variables =
+        workflow.transformToNodeVariables(
+            task.getId(), Map.of("result", "approve", "updatedBy", firstVoter));
+    OntologyApprovalWorkflow.recordDecision(
+        snapshot,
+        new OntologyWorkflowDecision(
+            task.getId(),
+            snapshot.getOntologyReview(),
+            TaskResolutionType.Approved,
+            firstVoter,
+            List.of(firstVoter),
+            null,
+            LOOKS_RIGHT),
+        variables);
+    variables.put(
+        "taskReviewVotes_" + task.getId(),
+        JsonUtils.pojoToJson(
+            List.of(
+                new TaskReviewVote()
+                    .withVoter(user1())
+                    .withAssignee(user1())
+                    .withDecision(TaskReviewVoteDecision.Approved)
+                    .withComment(LOOKS_RIGHT)
+                    .withTimestamp(firstVoteTime))));
+
+    assertEquals(
+        WorkflowHandler.TaskResolutionOutcome.WAITING_FOR_VOTES,
+        workflow.resolveTaskOutcome(task.getId(), variables));
+    assertTrue(taskVotes(task).isEmpty());
+    vote(SdkClients.user2Client(), task, TaskResolutionType.Approved, "Final approval");
+
+    OntologyReleaseReview reviewed = review(SdkClients.adminClient(), release);
+    assertEquals(EntityStatus.APPROVED, current(release).getEntityStatus());
+    assertEquals(2, taskVotes(task).size());
+    assertEquals(LOOKS_RIGHT, vote(reviewed, user1()).getComment());
+    assertEquals(firstVoteTime, vote(reviewed, user1()).getTimestamp());
+    assertEquals("Final approval", vote(reviewed, user2()).getComment());
+  }
+
+  @Test
+  void countedVotesCannotBeRemovedThroughTaskPatch(TestNamespace ns) {
+    Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AllReviewers, user1(), user2());
+    OntologyRelease release = capture(ontology);
+    Task task = submit(ns, RELEASE, release.getFullyQualifiedName());
+    vote(SdkClients.user1Client(), task, TaskResolutionType.Approved, LOOKS_RIGHT);
+
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .tasks()
+                    .patch(
+                        task.getId().toString(),
+                        JsonUtils.readTree(
+                            "[{\"op\":\"replace\",\"path\":\"/reviewVotes\",\"value\":[]}]")));
+
+    assertEquals(400, httpError(denied).getStatusCode());
+    assertEquals(1, taskVotes(task).size());
+    assertEquals(LOOKS_RIGHT, taskVotes(task).getFirst().getComment());
+  }
+
+  @Test
   void reviewReadNeedsAReviewTaskAndViewOnTheRelease(TestNamespace ns) {
     Ontology ontology = reviewedOntology(ns, OntologyApprovalRule.AnyReviewer, user1());
     OntologyRelease release = capture(ontology);
@@ -288,6 +397,28 @@ public class IndependentOntologyReviewRuleIT extends BaseOntologyApprovalIT {
           403,
           assertThrows(OpenMetadataException.class, () -> review(denied, release)).getStatusCode());
       assertEquals(0, listed(denied, "assigned", release));
+      User deniedUser =
+          denied
+              .getHttpClient()
+              .execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
+      Ontology deniedOntology =
+          SdkClients.adminClient()
+              .ontologies()
+              .create(
+                  request(ns)
+                      .withName(ns.prefix("deniedOntology"))
+                      .withOwners(List.of(deniedUser.getEntityReference())));
+      ns.trackRoot("ontology", deniedOntology);
+      OntologyRelease deniedRelease = capture(deniedOntology);
+      Task deniedTask =
+          denied.tasks().create(reviewRequest(ns, RELEASE, deniedRelease.getFullyQualifiedName()));
+      ns.trackRoot("task", deniedTask);
+      assertEquals(
+          403,
+          assertThrows(OpenMetadataException.class, () -> review(denied, deniedRelease))
+              .getStatusCode());
+      assertEquals(0, listed(denied, "created", deniedRelease));
+      assertEquals(0, reviews(denied, "created", null).path("paging").path("total").asInt());
     }
   }
 

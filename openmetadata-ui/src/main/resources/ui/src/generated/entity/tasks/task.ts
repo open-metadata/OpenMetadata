@@ -126,8 +126,8 @@ export interface Task {
      */
     reviewers?: EntityReference[];
     /**
-     * Counted votes on an ontology release review task, one per voter, including the deciding
-     * vote. Server-managed.
+     * Counted votes on a workflow approval task, one per voter, including the deciding vote.
+     * Server-managed.
      */
     reviewVotes?: TaskReviewVote[];
     status:       TaskStatus;

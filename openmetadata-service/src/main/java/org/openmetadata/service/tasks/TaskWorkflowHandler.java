@@ -53,7 +53,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.events.ChangeEvents;
-import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
@@ -334,6 +333,26 @@ public class TaskWorkflowHandler {
               comment),
           namespacedVariables);
     }
+    final TaskReviewVoteDecision voteDecision =
+        TaskReviewVotes.decisionForResult(variables.get(RESULT_VARIABLE));
+    final String voteProcessId;
+    if (namespacedVariables != null
+        && voteDecision != null
+        && workflowHandler.hasMultiApprovalSupport(taskId)) {
+      voteProcessId = workflowHandler.approvalTaskContext(taskId).processInstanceId();
+      namespacedVariables.put(
+          TaskReviewVotes.variable(taskId),
+          JsonUtils.pojoToJson(
+              List.of(
+                  TaskReviewVotes.vote(
+                      task,
+                      Entity.getEntityReferenceByName(Entity.USER, user, Include.NON_DELETED),
+                      voteDecision,
+                      comment,
+                      System.currentTimeMillis()))));
+    } else {
+      voteProcessId = null;
+    }
     TaskResolutionOutcome ontologyOutcome =
         ontologyReview && namespacedVariables != null
             ? workflowHandler.resolveTaskOutcome(taskId, namespacedVariables)
@@ -387,6 +406,20 @@ public class TaskWorkflowHandler {
               taskId, transitionId != null ? transitionId : defaultWorkflowResult(resolutionType)));
     }
 
+    final boolean waitingForVotes =
+        resolutionType != null
+            && (ontologyReview
+                ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
+                : workflowHandler.isAwaitingAdditionalVotes(taskId));
+    if (waitingForVotes) {
+      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
+      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
+    }
+    if (voteProcessId != null) {
+      taskRepository.recordReviewVotes(
+          taskId, workflowHandler.recordedReviewVotes(voteProcessId, taskId), user);
+    }
+
     // Non-terminal transition: the next stage's CreateTask already updated the Task
     // entity with the correct stageId, status, and availableTransitions. No resolution needed.
     if (resolutionType == null) {
@@ -400,15 +433,7 @@ public class TaskWorkflowHandler {
       return refreshTask(taskId);
     }
 
-    // Check if multi-approval task is still waiting for more votes
-    if (ontologyReview
-        ? ontologyOutcome == TaskResolutionOutcome.WAITING_FOR_VOTES
-        : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
-      LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
-      persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
-      if (ontologyReview) {
-        recordCountedVote(taskId, user, resolutionType, comment);
-      }
+    if (waitingForVotes) {
       return refreshTask(taskId);
     }
 
@@ -1379,48 +1404,6 @@ public class TaskWorkflowHandler {
     }
 
     return JsonUtils.convertValue(node, Object.class);
-  }
-
-  /**
-   * Only an ontology review records its votes, because only its decision reconciles the final list.
-   * WAITING_FOR_VOTES also covers a repeat or malformed vote the workflow dropped, so a vote is
-   * recorded only when the workflow lists its voter. The record is written after the workflow's
-   * own commit; a crash between the two is healed when the decision reconciles the workflow's
-   * voters.
-   */
-  private void recordCountedVote(
-      UUID taskId, String user, TaskResolutionType resolutionType, String comment) {
-    final List<String> voters;
-    try {
-      voters = WorkflowHandler.getInstance().approvalTaskContext(taskId).voters();
-    } catch (IllegalStateException unavailable) {
-      LOG.warn(
-          "[TaskWorkflowHandler] Vote by '{}' on task '{}' was not recorded: {}",
-          user,
-          taskId,
-          unavailable.getMessage());
-      return;
-    }
-    if (!voters.contains(user)) {
-      LOG.debug("[TaskWorkflowHandler] Vote by '{}' on task '{}' was not counted", user, taskId);
-      return;
-    }
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    try {
-      taskRepository.recordReviewVote(
-          taskId,
-          user,
-          isPositiveResolution(resolutionType)
-              ? TaskReviewVoteDecision.Approved
-              : TaskReviewVoteDecision.Rejected,
-          comment);
-    } catch (PreconditionFailedException conflict) {
-      LOG.warn(
-          "[TaskWorkflowHandler] Vote by '{}' on task '{}' counted but was not recorded; the decision records it: {}",
-          user,
-          taskId,
-          conflict.getMessage());
-    }
   }
 
   /**

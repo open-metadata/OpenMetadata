@@ -88,6 +88,7 @@ import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -342,7 +343,24 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final var releases =
         (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
     return releases.listReviews(
-        OntologyReleaseReviewReader.View.parse(view), user(securityContext), limit, after);
+        OntologyReleaseReviewReader.View.parse(view),
+        user(securityContext),
+        limit,
+        after,
+        release -> canViewRelease(securityContext, release));
+  }
+
+  private boolean canViewRelease(
+      final SecurityContext securityContext, final OntologyRelease release) {
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.ONTOLOGY_RELEASE, MetadataOperation.VIEW_ALL),
+          new ResourceContext<>(Entity.ONTOLOGY_RELEASE, release.getId(), null));
+      return true;
+    } catch (AuthorizationException denied) {
+      return false;
+    }
   }
 
   @GET

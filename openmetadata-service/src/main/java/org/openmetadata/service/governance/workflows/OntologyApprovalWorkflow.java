@@ -1,7 +1,5 @@
 package org.openmetadata.service.governance.workflows;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -200,13 +198,14 @@ public final class OntologyApprovalWorkflow {
   }
 
   /**
-   * Every counted voter once. Recorded votes keep their comments; the deciding vote carries the
-   * decision's comment; a voter the workflow counted but no record reached is an approval, because
-   * a rejection decides as soon as it is counted.
+   * Older receipts carry only voter names. The seeded ontology workflow rejects on the first
+   * rejection, so earlier voters without a durable record are approvals. New receipts retain
+   * each vote's decision, comment and timestamp.
    */
   static List<TaskReviewVote> decidedVotes(
       final Task task, final OntologyWorkflowDecision decision, final long decidedAt) {
-    List<TaskReviewVote> votes = listOrEmpty(task.getReviewVotes());
+    List<TaskReviewVote> votes =
+        TaskReviewVotes.merge(task.getReviewVotes(), decision.reviewVotes());
     for (final String voter : decision.voters()) {
       if (TaskReviewVotes.hasVoted(votes, voter)) {
         continue;

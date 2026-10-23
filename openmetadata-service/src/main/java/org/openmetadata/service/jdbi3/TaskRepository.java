@@ -59,7 +59,6 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.TaskReviewVote;
-import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -1391,35 +1390,34 @@ public class TaskRepository extends EntityRepository<Task> {
     updated.setResolution(resolution);
     if (reviewVotes != null) {
       updated.setReviewVotes(reviewVotes);
-    }
-    applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    return persistLifecycleChange(original, updated, updatedBy);
-  }
-
-  /**
-   * Record a counted vote that did not decide the task. The task is re-read because the caller's
-   * copy predates the assignee prune that follows a vote, and a review task writes with optimistic
-   * locking, so a write that loses a race with that prune is retried on a fresh read.
-   */
-  public Task recordReviewVote(
-      UUID taskId, String voter, TaskReviewVoteDecision decision, String comment) {
-    for (int attempt = 1; ; attempt++) {
-      Task original = get(null, taskId, getFields("*"));
-      if (TaskReviewVotes.hasVoted(original.getReviewVotes(), voter)) {
-        return original;
-      }
-      Task updated = JsonUtils.deepCopy(original, Task.class);
+    } else if ((original.getWorkflowInstanceId() != null || !nullOrEmpty(original.getReviewVotes()))
+        && TaskReviewVotes.isDecision(resolution.getType())) {
       updated.setReviewVotes(
           TaskReviewVotes.record(
               original.getReviewVotes(),
               TaskReviewVotes.vote(
                   original,
-                  Entity.getEntityReferenceByName(Entity.USER, voter, NON_DELETED),
-                  decision,
-                  comment,
-                  System.currentTimeMillis())));
+                  resolution.getResolvedBy(),
+                  TaskReviewVotes.decision(resolution.getType()),
+                  resolution.getComment(),
+                  resolution.getResolvedAt())));
+    }
+    applyTransitionTarget(updated, transition, resolution.getResolvedBy());
+    return persistLifecycleChange(original, updated, updatedBy);
+  }
+
+  /** Project durable workflow votes, retrying when a concurrent task update wins. */
+  public Task recordReviewVotes(UUID taskId, List<TaskReviewVote> votes, String updatedBy) {
+    for (int attempt = 1; ; attempt++) {
+      Task original = get(null, taskId, getFields("*"));
+      List<TaskReviewVote> merged = TaskReviewVotes.merge(original.getReviewVotes(), votes);
+      if (Objects.equals(listOrEmpty(original.getReviewVotes()), merged)) {
+        return original;
+      }
+      Task updated = JsonUtils.deepCopy(original, Task.class);
+      updated.setReviewVotes(merged);
       try {
-        return persistLifecycleChange(original, updated, voter);
+        return persistLifecycleChange(original, updated, updatedBy);
       } catch (PreconditionFailedException conflict) {
         if (attempt == REVIEW_VOTE_WRITE_ATTEMPTS) {
           throw conflict;
@@ -1855,7 +1853,9 @@ public class TaskRepository extends EntityRepository<Task> {
         Operation operation,
         org.openmetadata.schema.type.change.ChangeSource changeSource) {
       super(original, updated, operation, changeSource);
-      setUseOptimisticLocking(OntologyApprovalWorkflow.isReview(original));
+      setUseOptimisticLocking(
+          OntologyApprovalWorkflow.isReview(original)
+              || !Objects.equals(original.getReviewVotes(), updated.getReviewVotes()));
     }
 
     @Override

@@ -7,6 +7,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.OntologyReviewTarget;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 
@@ -18,8 +19,25 @@ public record OntologyWorkflowDecision(
     String user,
     List<String> voters,
     TaskAvailableTransition transition,
-    String comment) {
+    String comment,
+    List<TaskReviewVote> reviewVotes) {
   public static final String VARIABLE = "ontologyReviewDecision";
+
+  public OntologyWorkflowDecision(
+      UUID taskId,
+      OntologyReviewTarget target,
+      TaskResolutionType resolution,
+      String user,
+      List<String> voters,
+      TaskAvailableTransition transition,
+      String comment) {
+    this(taskId, target, resolution, user, voters, transition, comment, List.of());
+  }
+
+  public OntologyWorkflowDecision withReviewVotes(List<TaskReviewVote> votes) {
+    return new OntologyWorkflowDecision(
+        taskId, target, resolution, user, voters, transition, comment, votes);
+  }
 
   public OntologyWorkflowDecision {
     if (taskId == null
@@ -32,6 +50,7 @@ public record OntologyWorkflowDecision(
     }
     target = JsonUtils.deepCopy(target, OntologyReviewTarget.class);
     voters = List.copyOf(voters);
+    reviewVotes = reviewVotes == null ? List.of() : List.copyOf(reviewVotes);
   }
 
   public void requireTarget(final Task task) {
