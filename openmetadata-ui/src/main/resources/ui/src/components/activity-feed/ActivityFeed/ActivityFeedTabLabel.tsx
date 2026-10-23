@@ -18,7 +18,7 @@ import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
 import { getActivityFeedTabCount } from './ActivityFeed.utils';
 import { useActivityDatePresetParam } from './useActivityDatePresetParam';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
-import { useEntityFeedLink } from './useEntityFeedLink';
+import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
 import { useTaskStatusParam } from './useTaskStatusParam';
 
 export type ActivityFeedTabLabelProps = TabsLabelProps & {

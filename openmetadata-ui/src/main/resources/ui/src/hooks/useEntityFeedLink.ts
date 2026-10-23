@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../../enums/entity.enum';
-import { useFqn } from '../../../hooks/useFqn';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
+import { EntityType } from '../enums/entity.enum';
+import { useFqn } from './useFqn';
+import { getEntityFeedLink } from '../utils/EntityPureUtils';
 
 /**
  * The entity an entity page shows, as a feed link (`<#E::table::fqn>`), read

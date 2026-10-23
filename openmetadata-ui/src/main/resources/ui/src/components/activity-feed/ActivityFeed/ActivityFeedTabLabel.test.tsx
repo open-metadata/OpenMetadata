@@ -37,7 +37,7 @@ jest.mock('./useActivityDatePresetParam', () => ({
   useActivityDatePresetParam: () => [mockDateRange, jest.fn()],
 }));
 
-jest.mock('./useEntityFeedLink', () => ({
+jest.mock('../../../hooks/useEntityFeedLink', () => ({
   useEntityFeedLink: (...args: unknown[]) => {
     mockUseEntityFeedLink(...args);
 

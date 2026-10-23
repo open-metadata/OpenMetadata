@@ -73,7 +73,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getFeedTotalCount } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { useEntityFeedLink } from '../../activity-feed/ActivityFeed/useEntityFeedLink';
+import { useEntityFeedLink } from '../../../hooks/useEntityFeedLink';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';

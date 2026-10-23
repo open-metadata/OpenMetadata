@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { renderHook } from '@testing-library/react';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType } from '../enums/entity.enum';
 import { useEntityFeedLink } from './useEntityFeedLink';
 
 let mockRouteFqn = '';
 
 // The route alone is mocked, so useFqn splits it as on the page.
-jest.mock('../../../utils/useRequiredParams', () => ({
+jest.mock('../utils/useRequiredParams', () => ({
   useRequiredParams: () => ({ fqn: mockRouteFqn }),
 }));
 

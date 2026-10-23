@@ -233,39 +233,42 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
   return (
     // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
     // long unbreakable title would widen the list and push the detail off-screen.
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_auto_minmax(0,3fr)]">
-      <Box className="tw:min-h-0" direction="col">
-        {/* Lifts off the rows with a light shadow once they scroll under it. */}
-        <div
-          className={classNames(
-            'tw:relative tw:z-10 tw:transition-shadow',
-            isListScrolled && 'tw:shadow-sm'
-          )}>
-          {toolbar}
-        </div>
-        <div
-          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
-          data-testid="inbox-tasks-scroll"
-          ref={scrollRef}
-          onScroll={onListScroll}>
-          {isLoading ? (
-            <InboxTaskListSkeleton />
-          ) : (
-            <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
-              {groupedList ?? tasks.map(renderRow)}
-            </div>
-          )}
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+      {/* The rule sits inside the list's column, so it takes none of the
+          detail's width. */}
+      <Box className="tw:min-h-0">
+        <Box className="tw:min-h-0 tw:min-w-0 tw:flex-1" direction="col">
+          {/* Lifts off the rows with a light shadow once they scroll under it. */}
+          <div
+            className={classNames(
+              'tw:relative tw:z-10 tw:transition-shadow',
+              isListScrolled && 'tw:shadow-sm'
+            )}>
+            {toolbar}
+          </div>
+          <div
+            className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+            data-testid="inbox-tasks-scroll"
+            ref={scrollRef}
+            onScroll={onListScroll}>
+            {isLoading ? (
+              <InboxTaskListSkeleton />
+            ) : (
+              <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
+                {groupedList ?? tasks.map(renderRow)}
+              </div>
+            )}
 
-          <div ref={sentinelRef} />
-          {isLoadingMore && (
-            <div className="tw:flex tw:justify-center tw:py-4">
-              <Loader />
-            </div>
-          )}
-        </div>
+            <div ref={sentinelRef} />
+            {isLoadingMore && (
+              <div className="tw:flex tw:justify-center tw:py-4">
+                <Loader />
+              </div>
+            )}
+          </div>
+        </Box>
+        <Divider orientation="vertical" />
       </Box>
-
-      <Divider orientation="vertical" />
 
       <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
         {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
