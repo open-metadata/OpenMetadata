@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.entity.services.connections.TestConnectionResultS
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -1109,10 +1112,72 @@ public class DatabaseServiceResourceIT
     return response.body();
   }
 
+  @Test
+  void test_recursiveImportCannotEditEntitiesOutsideCallerPermissions(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService ownedService =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("owned_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+
+    DatabaseService otherService =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("other_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(otherService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT)))
+                    .withDescription("Original table description"));
+
+    String foreignRows =
+        exportCsvRecursive(otherService.getFullyQualifiedName())
+            .replace("Original table description", "Rewritten by another service import");
+    CsvImportResult result =
+        importCsvRecursive(ownedService.getFullyQualifiedName(), foreignRows, false, ownerToken);
+
+    assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    assertEquals(
+        "Original table description",
+        admin.tables().get(table.getId().toString()).getDescription());
+  }
+
   private CsvImportResult importCsvRecursive(String entityName, String csvData, boolean dryRun)
       throws IOException, InterruptedException {
+    return importCsvRecursive(entityName, csvData, dryRun, SdkClients.getAdminToken());
+  }
+
+  private CsvImportResult importCsvRecursive(
+      String entityName, String csvData, boolean dryRun, String token)
+      throws IOException, InterruptedException {
     String serverUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
 
     HttpClient client = HttpClient.newHttpClient();
     HttpRequest request =

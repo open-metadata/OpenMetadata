@@ -90,6 +90,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
@@ -112,7 +113,12 @@ import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.EntityUtil;
@@ -1131,6 +1137,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       // In case of updating entity, prepareInternal as update=True
       T original = repository.findMatchForImport(entity);
       boolean isUpdate = original != null;
+      authorizeRow(entityType, original, entity);
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
@@ -1232,6 +1239,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       // In case of updating entity, prepareInternal as update=True
       T original = (T) repository.findMatchForImport(entity);
       boolean isUpdate = original != null;
+      authorizeRow(type, original, entity);
 
       // Validate entity against platform rules (for BOTH dry run and actual import)
       if (isUpdate) {
@@ -1401,6 +1409,30 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
                 LOG.error("Error batch inserting change events", e);
               }
             });
+  }
+
+  /**
+   * The import endpoint authorizes only its root, but a row can name any entity by FQN, so each row
+   * is authorized as its own write: EDIT_ALL on an existing entity, CREATE for a new one.
+   */
+  protected void authorizeRow(String type, EntityInterface<?> original, EntityInterface<?> entity) {
+    Authorizer authorizer = Entity.getAuthorizer();
+    if (authorizer == null) {
+      throw new IllegalStateException(
+          "No authorizer is registered to check the import by " + importedBy);
+    }
+    ChangeActor actor = ChangeActor.recorded(importedBy, null);
+    if (original != null) {
+      authorizer.authorizeActor(
+          actor,
+          new OperationContext(type, MetadataOperation.EDIT_ALL),
+          new ResourceContext<>(type, original.getId(), null, Include.ALL));
+    } else {
+      authorizer.authorizeActor(
+          actor,
+          new OperationContext(type, MetadataOperation.CREATE),
+          new CreateResourceContext<>(type, entity));
+    }
   }
 
   /** Write pending CSV results to output */
@@ -2133,6 +2165,18 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         }
       }
 
+      try {
+        authorizeRow(
+            TABLE,
+            ((TableRepository) Entity.getEntityRepository(TABLE)).findMatchForImport(table),
+            table);
+      } catch (AuthorizationException ex) {
+        pendingCsvResults.put(csvRecord, ex.getMessage());
+        importResult.withNumberOfRowsProcessed((int) csvRecord.getRecordNumber() - 1);
+        importResult.withNumberOfRowsFailed(importResult.getNumberOfRowsFailed() + 1);
+        importResult.setStatus(ApiStatus.FAILURE);
+        return;
+      }
       Table originalEntity = JsonUtils.deepCopy(table, Table.class);
       tableContext = new TableUpdateContext(originalEntity, table);
       pendingTableUpdates.put(tableFQN, tableContext);

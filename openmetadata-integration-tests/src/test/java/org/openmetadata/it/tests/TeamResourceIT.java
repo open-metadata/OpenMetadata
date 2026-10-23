@@ -1527,6 +1527,47 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
   }
 
   @Test
+  void test_importCsv_cannotEditTeamOutsideCallerPermissions(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("teamCsvOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    Team ownedTeam =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("ownedTeam"))
+                    .withTeamType(TeamType.DEPARTMENT)
+                    .withOwners(List.of(owner.getEntityReference())));
+    Team otherTeam =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("otherTeam"))
+                    .withTeamType(TeamType.GROUP)
+                    .withDescription("Original team description"));
+
+    String csv =
+        "name*,displayName,description,teamType*,parents*,Owner,isJoinable,defaultRoles,policies\n"
+            + String.format(
+                "%s,%s,Rewritten by another team import,Group,%s,,false,,",
+                otherTeam.getName(), otherTeam.getName(), ownedTeam.getName());
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    String result = ownerClient.teams().importCsv(ownedTeam.getName(), csv, false);
+
+    assertTrue(result.contains("failure"), result);
+    assertEquals(
+        "Original team description",
+        admin.teams().get(otherTeam.getId().toString()).getDescription());
+  }
+
+  @Test
   void test_importCsv_circularDependency_dryRun(TestNamespace ns) {
     String parentName = ns.prefix("ParentTeam");
     String childName = ns.prefix("ChildTeam");
