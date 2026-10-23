@@ -12,6 +12,7 @@
  */
 
 import { GlobalSettingOptions } from '../../../../../../constants/GlobalSettings.constants';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
 import { USER_DETAIL_TABS } from './Members.constants';
 import type {
   MembersUserDetailView,
@@ -40,17 +41,6 @@ export const TEAMS_ADD = 'teams-add';
 export const TEAMS_IMPORT = 'teams-import';
 export const USER_DETAIL = 'user-detail';
 export const TASKS_TAB: UserDetailTab = 'tasks';
-
-// A malformed percent-escape (e.g. a hand-edited `#...%ZZ`) makes
-// decodeURIComponent throw URIError, which would unmount the whole panel; fall
-// back to the raw value so a bad hash degrades gracefully instead of crashing.
-export const safeDecodeURIComponent = (value: string): string => {
-  try {
-    return decodeURIComponent(value);
-  } catch {
-    return value;
-  }
-};
 
 // fqns are URL-encoded in the hash to survive the round-trip (they can contain
 // `%`, `.`, `/`); decode the fqn segments back here.

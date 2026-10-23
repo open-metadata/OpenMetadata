@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { useTourProvider } from '../../../context/TourProvider/TourProvider';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import { ReactComponent as CloseIcon } from './../../../assets/svg/close.svg';
 import { ReactComponent as WarningIcon } from './../../../assets/svg/ic-warning-2.svg';
 import './limit-banner.less';
@@ -38,7 +39,7 @@ export const LimitBanner = () => {
           <p className="pricing-header">{bannerDetails?.header}</p>
           <p className="pricing-subheader">
             {bannerDetails?.subheader} {t('message.learn-more-about')}{' '}
-            <Link to="/settings/billing/plans">
+            <Link to={getSettingsLink('/settings/billing/plans')}>
               {t('label.plans-and-pricing')}
             </Link>
           </p>

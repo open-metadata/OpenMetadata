@@ -58,6 +58,7 @@ jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
 }));
 
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
@@ -161,35 +162,25 @@ describe('profileNavConfig', () => {
     }
   });
 
-  it('opens Members to anyone who can view teams or users', () => {
-    const members = WORKSPACE_NAV_ITEMS.find((item) => item.id === 'members');
+  // The settings surfaces behind these tabs are admin-only, whatever view
+  // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).
+  it.each([
+    ['members', ResourceEntity.TEAM],
+    ['members', ResourceEntity.USER],
+    ['access-control', ResourceEntity.ROLE],
+    ['access-control', ResourceEntity.POLICY],
+    ['bots', ResourceEntity.BOT],
+  ])(
+    'hides %s from a non-admin even with %s view permission',
+    (id, resource) => {
+      const item = getProfileNavItem(id as never);
+      const canView = {
+        [resource]: { ViewAll: true },
+      } as unknown as UIPermission;
 
-    expect(
-      members?.isVisible?.(
-        { team: { ViewAll: true } } as unknown as UIPermission,
-        false
-      )
-    ).toBe(true);
-    expect(
-      members?.isVisible?.(
-        { user: { ViewBasic: true } } as unknown as UIPermission,
-        false
-      )
-    ).toBe(true);
-    expect(members?.isVisible?.({} as UIPermission, false)).toBe(false);
-  });
-
-  it('opens Access Control to non-admins only with the AuditLogs permission', () => {
-    const accessControl = PROFILE_NAV_ITEMS.find(
-      (item) => item.id === 'access-control'
-    );
-
-    expect(accessControl?.isVisible?.({} as UIPermission, false)).toBeFalsy();
-    expect(
-      accessControl?.isVisible?.(
-        { auditLog: { AuditLogs: true } } as unknown as UIPermission,
-        false
-      )
-    ).toBe(true);
-  });
+      expect(item.id).toBe(id);
+      expect(item.isVisible?.(canView, false)).toBe(false);
+      expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
+    }
+  );
 });

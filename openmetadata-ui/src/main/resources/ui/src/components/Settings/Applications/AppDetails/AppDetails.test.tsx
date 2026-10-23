@@ -357,13 +357,52 @@ describe('AppDetails component', () => {
 
     await renderAppDetails();
 
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
     expect(
-      within(screen.getByTestId('tabs')).queryByRole('tab', {
-        name: 'label.configuration',
-      })
-    ).not.toBeInTheDocument();
+      screen.getByText('message.app-no-settings-to-manage')
+    ).toBeInTheDocument();
     expect(
       screen.queryByText('MockMcpApplicationConfiguration')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should show an empty state instead of an empty tab card when the app has no tabs', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'AIChatApplication',
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+
+    await renderAppDetails();
+
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.app-no-settings-to-manage')
+    ).toBeInTheDocument();
+  });
+
+  it('should report a schema load failure instead of the no-settings empty state', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'AIChatApplication',
+      scheduleType: 'NoSchedule',
+      allowConfiguration: false,
+    });
+    mockImportSchema.mockImplementationOnce(() => {
+      throw new Error('schema missing');
+    });
+
+    await renderAppDetails();
+
+    expect(screen.queryByTestId('tabs')).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText('server.no-application-schema-found').length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('message.app-no-settings-to-manage')
     ).not.toBeInTheDocument();
   });
 });

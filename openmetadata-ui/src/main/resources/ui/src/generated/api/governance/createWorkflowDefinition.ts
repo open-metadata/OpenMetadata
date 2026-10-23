@@ -420,6 +420,13 @@ export interface NodeConfiguration {
      */
     fields?: RequiredField[];
     /**
+     * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+     * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+     * that request when the stage's approval opens again
+     * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+     */
+    revision?: Revision;
+    /**
      * The task applies while the asset is in this stage.
      */
     stage?: EntityStatus;
@@ -589,6 +596,17 @@ export interface QualityBand {
      * Name for this quality band (e.g., 'gold', 'excellent', 'tier1')
      */
     name: string;
+}
+
+/**
+ * Set on the steps a rejected approval adds instead of collecting fields: `request` asks
+ * the stage's assignees to revise the asset, with the reviewer's comment; `resubmit` closes
+ * that request when the stage's approval opens again
+ * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
+ */
+export enum Revision {
+    Request = "request",
+    Resubmit = "resubmit",
 }
 
 /**

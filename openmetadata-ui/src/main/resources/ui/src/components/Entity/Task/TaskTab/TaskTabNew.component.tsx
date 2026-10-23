@@ -52,7 +52,6 @@ import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -157,6 +156,10 @@ import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPane
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
+import {
+  getTaskTypeMessageKey,
+  isRevisionRequest,
+} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -625,7 +628,7 @@ export const TaskTabNew = ({
   }, [taskColumnLabel, t]);
 
   const taskDisplayMessage = useMemo(() => {
-    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? 'label.task');
+    const taskTypeLabel = t(getTaskTypeMessageKey(task) ?? 'label.task');
     const entityName = entityFQN
       ? getNameFromFQN(entityFQN)
       : task.about?.name ?? '';
@@ -634,7 +637,7 @@ export const TaskTabNew = ({
       : entityName;
 
     return [taskTypeLabel, taskScope].filter(Boolean).join(' ').trim();
-  }, [entityFQN, task.about, task.type, taskColumnLabel, t]);
+  }, [entityFQN, task, taskColumnLabel, t]);
   const shouldRenderTaskPayload = useMemo(() => {
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
@@ -710,7 +713,7 @@ export const TaskTabNew = ({
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="p-xss task-details">
-              {t(TASK_ENTITY_TYPES[task.type])}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -730,7 +733,7 @@ export const TaskTabNew = ({
       entityType,
       handleTaskLinkClick,
       isEntityDetailsAvailable,
-      task.type,
+      task,
       taskColumnName,
       taskDisplayId,
       t,
@@ -1909,7 +1912,8 @@ export const TaskTabNew = ({
   };
 
   const renderActionRequiredSection = () => {
-    if (!isTaskActionable || rest.isOpenInDrawer) {
+    // A Revise and resubmit task is completed by editing the asset; it has no action of its own.
+    if (!isTaskActionable || rest.isOpenInDrawer || isRevisionRequest(task)) {
       return null;
     }
 

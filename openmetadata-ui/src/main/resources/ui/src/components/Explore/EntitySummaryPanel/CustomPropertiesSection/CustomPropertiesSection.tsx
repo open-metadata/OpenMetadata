@@ -20,7 +20,6 @@ import {
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { CustomProperty } from '../../../../generated/entity/type';
 import { buildUpdatedExtension } from '../../../../utils/CustomProperty.utils';
@@ -131,7 +130,6 @@ const CustomPropertiesSection = ({
                 </span>
               </Tooltip>
             }
-            icon={<AddPlaceHolderIcon height={100} width={100} />}
           />
         </div>
       </div>

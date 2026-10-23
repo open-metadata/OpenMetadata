@@ -26,12 +26,14 @@ import {
   TabContribution,
 } from '../../../../utils/ExtensionPointTypes';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { useApplicationsProvider } from '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import './profile-page.less';
 import ProfileContentHeader from './ProfileContentHeader';
 import {
   DEFAULT_PROFILE_NAV_ID,
   FEATURES_NAV_ITEMS,
+  getProfileNavItem,
   ProfileHeaderOverride,
   ProfileNavGroup,
   ProfileNavId,
@@ -47,8 +49,8 @@ import { useUserProfile } from './useUserProfile';
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
-  const { permissions } = usePermissionProvider();
-  const { extensionRegistry } = useApplicationsProvider();
+  const { permissions, isPermissionsLoading } = usePermissionProvider();
+  const { getContributions, contributionsReady } = useApplicationsProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   // Every nav item is about the signed-in user; another user deep-linked as
@@ -88,7 +90,10 @@ const ProfilePage: React.FC = () => {
   }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
-  // tabs through the `profile.tabs` extension point. Map each surviving
+  // tabs through the `profile.tabs` extension point. Read them through
+  // `getContributions`, whose identity changes once plugins have registered —
+  // the registry itself never changes identity, so a refresh on a contributed
+  // tab's hash would otherwise never see it. Map each surviving
   // contribution onto a credentials-group nav item; `isAiMode` lets a plugin
   // pick the app-mode variant of a tab it also contributes to classic pages.
   const navItems: ProfileNavItem[] = useMemo(() => {
@@ -107,8 +112,9 @@ const ProfilePage: React.FC = () => {
       isLoggedInUser: true,
       isAiMode: true,
     };
-    const contributed: ProfileNavItem[] = extensionRegistry
-      .getContributions<TabContribution>(EXTENSION_POINTS.PROFILE_TABS)
+    const contributed: ProfileNavItem[] = getContributions<TabContribution>(
+      EXTENSION_POINTS.PROFILE_TABS
+    )
       .filter(
         (tab) => !tab.isHidden && (!tab.condition || tab.condition(context))
       )
@@ -139,7 +145,7 @@ const ProfilePage: React.FC = () => {
     );
 
     return [...coreItems, ...workspaceItems, ...featuresItems, ...contributed];
-  }, [currentUser?.isAdmin, extensionRegistry, permissions, userData]);
+  }, [currentUser?.isAdmin, getContributions, permissions, userData]);
 
   // Clear header override whenever the user switches nav items.
   const handleNavSelect = useCallback(
@@ -161,8 +167,11 @@ const ProfilePage: React.FC = () => {
     [selectedId, isViewingOtherUser, setHash]
   );
 
-  const activeItem =
-    navItems.find((item) => item.id === selectedId) ?? navItems[0];
+  // A tab the user cannot see (e.g. a settings link to a team for a user
+  // without team view permission) keeps its header and shows no-access rather
+  // than silently opening another tab.
+  const selectedItem = navItems.find((item) => item.id === selectedId);
+  const activeItem = selectedItem ?? getProfileNavItem(selectedId);
 
   // Resolve header props — prefer panel-supplied override, fall back to defaults.
   const headerIcon = headerOverride?.icon ?? activeItem.icon;
@@ -198,14 +207,29 @@ const ProfilePage: React.FC = () => {
       return <Loader />;
     }
 
-    const panel = activeItem.render({
-      userData,
-      isProfileLoading,
-      loadError,
-      onReload: refetch,
-      updateUserDetails,
-      onHeaderChange: setHeaderOverride,
-    });
+    // Permissions and plugin contributions load after the page mounts; until
+    // both are in, a permission-gated or contributed tab (e.g. `#billing`)
+    // reads as missing, so wait instead of flashing no-access. Wait on the
+    // provider's loading flag, not on an empty map: a failed request leaves
+    // the map empty for good and must show no-access, not spin forever.
+    if (!selectedItem && (isPermissionsLoading || !contributionsReady)) {
+      return <Loader />;
+    }
+
+    const panel = selectedItem ? (
+      activeItem.render({
+        userData,
+        isProfileLoading,
+        loadError,
+        onReload: refetch,
+        updateUserDetails,
+        onHeaderChange: setHeaderOverride,
+      })
+    ) : (
+      <Box className="tw:relative tw:flex-1">
+        <PermissionPlaceholder permissionValue={t('label.view')} />
+      </Box>
+    );
 
     return (
       <>

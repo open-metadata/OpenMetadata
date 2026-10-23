@@ -25,12 +25,7 @@ import {
 } from '../../../support/fixtures/isolatedUser';
 import { UserClass } from '../../../support/user/UserClass';
 import { insertActivityEventForTest } from '../../../utils/activityAPI';
-import {
-  openAiProfile,
-  openUsersPanel,
-  searchUserRow,
-  waitForUserPatch,
-} from '../../../utils/aiProfile';
+import { openAiProfile, waitForUserPatch } from '../../../utils/aiProfile';
 import { okJson } from '../../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
@@ -955,48 +950,6 @@ test.describe('User custom properties, password reset and read-only access', () 
       await expect(page.getByTestId('user-detail-delete-button')).toBeHidden();
       await expect(page.getByTestId('preferred-name-edit')).toBeHidden();
       await expect(page.getByTestId('change-password-button')).toBeHidden();
-    });
-  });
-
-  test('a data consumer reaches another user through Settings › Members', async ({
-    freshUserPage: { page },
-    seeded,
-  }) => {
-    test.slow();
-    const { subject } = seeded;
-    const table = await createOwnedTable(seeded);
-
-    await test.step('Find the user in Members › Users', async () => {
-      await enableAiAppMode(page);
-      await page.goto('/');
-      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
-      await page.goto('/#members');
-      await expect(page.getByTestId('members-landing')).toBeVisible();
-
-      await openUsersPanel(page);
-      const subjectCell = await searchUserRow(page, subject.responseData.name);
-      const subjectFetch = waitForResponseWithStatus(
-        page,
-        isUserByName(subject.responseData.name),
-        200
-      );
-      await subjectCell.click();
-      await subjectFetch;
-    });
-
-    await test.step('Their owned assets are listed', async () => {
-      const assetsFetch = waitForResponseWithStatus(
-        page,
-        isOwnedAssetsSearch(subject.responseData.id),
-        200
-      );
-      await page.getByTestId('user-detail-tab-owned-assets').click();
-      await assetsFetch;
-      await expect(
-        page.getByTestId(
-          `user-asset-card-${table.entityResponseData.fullyQualifiedName}`
-        )
-      ).toBeVisible();
     });
   });
 });
