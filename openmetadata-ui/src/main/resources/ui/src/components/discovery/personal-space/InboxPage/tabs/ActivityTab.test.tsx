@@ -31,7 +31,9 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  error?: unknown;
 };
+const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 // What the Mentions feed returns, read separately to mark mentioned cards.
 let mockMentionItems: MockInboxItem[] = [];
@@ -50,6 +52,8 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      error: activityState.error ?? null,
+      refetch: mockRefetch,
     };
   },
   useInboxActivityCounts: () => ({}),
@@ -135,15 +139,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: ({
     title,
     description,
+    actions,
     ...props
   }: {
     title?: ReactNode;
     description?: ReactNode;
+    actions?: { key: string; label: ReactNode; onPress?: () => void }[];
     'data-testid'?: string;
   }) => (
     <div data-testid={props['data-testid']}>
       <span>{title}</span>
       <span>{description}</span>
+      {actions?.map(({ key, label, onPress }) => (
+        <button key={key} onClick={onPress}>
+          {label}
+        </button>
+      ))}
     </div>
   ),
 }));
@@ -179,6 +190,33 @@ describe('ActivityTab', () => {
     render(<ActivityTab isFiltered />);
 
     expect(screen.getByText('label.no-activity-in-period')).toBeInTheDocument();
+  });
+
+  // A failed feed must not read as an empty one.
+  it('shows an error with a retry, not the empty state, when the feed fails', () => {
+    activityState = { ...activityState, error: { response: { status: 500 } } };
+    render(<ActivityTab />);
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.activity-feed-starts-here')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(mockRefetch).toHaveBeenCalled();
+  });
+
+  it('shows a permission placeholder when the feed is forbidden', () => {
+    activityState = { ...activityState, error: { response: { status: 403 } } };
+    render(<ActivityTab />);
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
   });
 
   it('shows the skeleton while loading', () => {

@@ -82,8 +82,8 @@ const UserProfilePersonas = ({
     () => (
       <>
         <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
-          <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center tw:cursor-pointer">
-            <Persona size={16} />
+          <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center tw:cursor-pointer">
+            <Persona size={14} />
           </div>
           <div className="d-flex justify-between w-full">
             <Typography
@@ -133,8 +133,8 @@ const UserProfilePersonas = ({
       className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5"
       data-testid="persona-details-card">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
-        <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center tw:cursor-pointer">
-          <Persona size={16} />
+        <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center tw:cursor-pointer">
+          <Persona size={14} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography

@@ -103,7 +103,11 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
     <>
       {isRendered ? null : feedMessageSkeleton}
       <div className={isRendered ? undefined : 'tw:hidden'} ref={containerRef}>
-        <RichTextEditorPreviewerNew className="text-wrap" markdown={markdown} />
+        <RichTextEditorPreviewerNew
+          clampByLines
+          className="text-wrap"
+          markdown={markdown}
+        />
       </div>
     </>
   );

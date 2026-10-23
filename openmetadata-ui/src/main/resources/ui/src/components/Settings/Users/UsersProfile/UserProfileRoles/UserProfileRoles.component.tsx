@@ -14,7 +14,6 @@
 import {
   Autocomplete,
   Button,
-  ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
@@ -25,7 +24,6 @@ import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { TERM_ADMIN } from '../../../../../constants/constants';
@@ -36,6 +34,7 @@ import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -231,12 +230,9 @@ const UserProfileRoles = ({
           </Typography>
           {isAdminUser && (
             <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
-              <ButtonUtility
-                color="tertiary"
+              <WidgetEditButton
                 data-testid="edit-roles-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
-                tooltip={t('label.edit-entity', {
+                title={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
               />
