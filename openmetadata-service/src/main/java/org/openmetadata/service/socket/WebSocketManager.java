@@ -79,10 +79,10 @@ public class WebSocketManager {
           Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
           List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
           List<String> sessionIdHeaders = listOrEmpty(initialHeaders.get("SessionId"));
-          String userId =
-              userIdHeaders.isEmpty()
-                  ? socket.getInitialQuery().get("userId")
-                  : userIdHeaders.get(0);
+          // The socket identity comes exclusively from the UserId/SessionId headers stamped by
+          // SocketAddressFilter after validating the handshake credential. The raw query param is
+          // client-controlled and must never key a socket.
+          String userId = userIdHeaders.isEmpty() ? null : userIdHeaders.get(0);
           String sessionId =
               sessionIdHeaders.isEmpty()
                   ? socket.getInitialQuery().get("sessionId")

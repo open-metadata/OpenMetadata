@@ -73,11 +73,17 @@ public class SocketAddressFilter implements Filter {
     this.jwtFilter = jwtFilterFor(authenticationConfiguration, authorizerConf);
   }
 
+  /**
+   * Socket handshakes are always authenticated: a presented token is validated against the
+   * authentication configuration, a session cookie is validated against the session store, and a
+   * handshake with neither is rejected. Token validation must not depend on
+   * {@code enableSecureSocketConnection} — that gate let the default configuration key sockets on a
+   * caller-supplied user id.
+   */
   private static JwtFilter jwtFilterFor(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConf) {
-    return authorizerConf != null
-            && Boolean.TRUE.equals(authorizerConf.getEnableSecureSocketConnection())
+    return authenticationConfiguration != null && authorizerConf != null
         ? new JwtFilter(authenticationConfiguration, authorizerConf)
         : null;
   }
@@ -107,8 +113,14 @@ public class SocketAddressFilter implements Filter {
       ValidatedTokenPrincipal tokenPrincipal = null;
 
       JwtFilter currentJwtFilter = jwtFilter;
-      if (currentJwtFilter != null) {
-        String tokenWithType = httpServletRequest.getHeader("Authorization");
+      String tokenWithType = httpServletRequest.getHeader("Authorization");
+      if (hasText(tokenWithType) && currentJwtFilter == null) {
+        // A credential was presented but this filter has no configuration to validate it.
+        sendHandshakeError(
+            response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+        return;
+      }
+      if (hasText(tokenWithType)) {
         tokenPrincipal = validatePrefixedTokenRequest(currentJwtFilter, tokenWithType);
         UUID resolvedUserId = getUserIdForPrincipal(tokenPrincipal.userName());
         if (requestedUserId != null && !requestedUserId.equals(resolvedUserId.toString())) {
@@ -157,28 +169,48 @@ public class SocketAddressFilter implements Filter {
     }
   }
 
+  /**
+   * Every handshake must carry at least one verifiable credential — a validated token principal or
+   * a session cookie. Handshakes with neither are rejected so a socket can never be keyed under a
+   * caller-supplied identity.
+   */
   private SessionValidationResult isSessionStillActive(
       HttpServletRequest request,
       HttpServletResponse response,
       ValidatedTokenPrincipal tokenPrincipal,
       String socketUserId)
       throws IOException {
-    if (sessionService == null) {
-      return SessionValidationResult.accepted();
-    }
     Optional<String> sessionId = SessionCookieUtil.getSessionId(request);
     if (sessionId.isEmpty()) {
-      if (tokenPrincipal == null) {
-        return SessionValidationResult.accepted();
-      }
-      if (tokenPrincipal.sessionId() != null) {
-        return validateSessionStillActive(
-            response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
-      }
-      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
+      return validateCookielessHandshake(response, tokenPrincipal, socketUserId);
+    }
+    if (sessionService == null) {
+      // A cookie was presented but there is no session store to validate it against.
+      sendHandshakeError(
+          response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
       return SessionValidationResult.rejected();
     }
     return validateSessionStillActive(response, sessionId.get(), tokenPrincipal, socketUserId);
+  }
+
+  private SessionValidationResult validateCookielessHandshake(
+      HttpServletResponse response, ValidatedTokenPrincipal tokenPrincipal, String socketUserId)
+      throws IOException {
+    if (tokenPrincipal == null) {
+      sendHandshakeError(
+          response, HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+      return SessionValidationResult.rejected();
+    }
+    if (sessionService == null) {
+      // No store to revalidate against; the validated token principal stands on its own.
+      return SessionValidationResult.accepted();
+    }
+    if (tokenPrincipal.sessionId() == null) {
+      response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Session is required");
+      return SessionValidationResult.rejected();
+    }
+    return validateSessionStillActive(
+        response, tokenPrincipal.sessionId(), tokenPrincipal, socketUserId);
   }
 
   private SessionValidationResult validateSessionStillActive(

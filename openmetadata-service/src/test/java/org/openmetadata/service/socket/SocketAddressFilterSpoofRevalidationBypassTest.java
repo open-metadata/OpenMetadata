@@ -90,7 +90,6 @@ class SocketAddressFilterSpoofRevalidationBypassTest {
   @BeforeEach
   void setUp() throws Exception {
     initializeJwtTokenGenerator();
-    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(true);
     when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
     when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
     when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
