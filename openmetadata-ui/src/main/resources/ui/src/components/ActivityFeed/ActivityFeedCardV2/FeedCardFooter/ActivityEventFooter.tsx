@@ -67,12 +67,18 @@ function ActivityEventFooter({
           <Box align="center" className="w-full rounded-8" gap={2}>
             <Button
               aria-label={t('label.comment')}
-              className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
+              className="tw:size-[22px] tw:rounded-md! tw:p-[3px]!"
               color="tertiary"
               data-testid="comment-button"
               iconLeading={
-                <ThreadIcon data-testid="comment-icon" height={18} width={18} />
+                <ThreadIcon
+                  data-icon
+                  data-testid="comment-icon"
+                  height={16}
+                  width={16}
+                />
               }
+              size="xs"
               onPress={handleCommentPress}
             />
             <Reactions
