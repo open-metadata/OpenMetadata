@@ -25,7 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -64,6 +64,24 @@ const toItems = (options: Array<{ label: string; value: string }>) =>
 const findItem = (items: FormSelectItem[], id?: string) =>
   items.find((item) => item.id === id) ?? null;
 
+// Match a stored `columnName` (which may be a fully qualified name, a leaf
+// name, or a value the table no longer exposes) against the form options,
+// which are keyed by fully qualified name (`id`) with the column name as the
+// `label`. Falling back to the leaf name keeps a round-trip lossless instead
+// of silently dropping an unmatched value.
+const findColumnItem = (items: FormSelectItem[], id?: string) => {
+  if (!id) {
+    return null;
+  }
+
+  return (
+    items.find((item) => item.id === id) ??
+    items.find((item) => item.label === id) ??
+    items.find((item) => item.id.endsWith(`.${id}`)) ??
+    null
+  );
+};
+
 const toNumberString = (value?: number) =>
   value === undefined ? '' : String(value);
 
@@ -72,8 +90,17 @@ const toNonNegative = (value?: string) =>
     ? undefined
     : Number(value);
 
+// Parse an `HH:mm` prefix tolerantly so documented, server-supported values
+// such as "09:00 UTC" round-trip through the form instead of being dropped.
 const toTimeValue = (time?: string): TimePickerValue | null => {
-  const [hour, minute] = (time ?? '').split(':').map(Number);
+  const match = (time ?? '').trim().match(/^(\d{1,2}):(\d{2})/);
+
+  if (!match) {
+    return null;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
 
   return Number.isInteger(hour) && Number.isInteger(minute)
     ? { hour, minute }
@@ -83,45 +110,147 @@ const toTimeValue = (time?: string): TimePickerValue | null => {
 const toTimeString = ({ hour, minute }: TimePickerValue) =>
   `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-const toContractSLA = (values: Partial<ContractSLAFormValues>): ContractSLA => {
-  const sla: ContractSLA = {};
+// For a modeled SLA field, decide its fate on save:
+//  - emit the form value when the form holds one (overwriting the spread),
+//  - remove the field when the form *could* represent the stored value but
+//    the user cleared/invalidated it (preserving the pre-migration clear
+//    behavior so edits still produce `replace`/`remove` ops as before),
+//  - otherwise leave the value already spread from `storedSLA`, so data the
+//    form cannot round-trip (e.g. "09:00 UTC" availabilityTime, a leaf-name
+//    columnName, or unmodeled keys) survives instead of becoming a `remove`.
+const applyModelledField = (
+  hasFormValue: boolean,
+  seedable: boolean,
+  emit: () => void,
+  remove: () => void
+) => {
+  if (hasFormValue) {
+    emit();
+  } else if (seedable) {
+    remove();
+  }
+};
+
+// Form option sets used to decide whether a stored, modeled field was
+// something the form could represent. A field the form *could* seed is owned
+// by the form on save (a cleared/invalid form value removes it); a field the
+// form *could not* seed is preserved from the stored SLA so editing an
+// unrelated SLA attribute never deletes data the form cannot round-trip.
+interface ContractSLASeedOptions {
+  columnItems: FormSelectItem[];
+  refreshUnitItems: FormSelectItem[];
+  latencyUnitItems: FormSelectItem[];
+  retentionUnitItems: FormSelectItem[];
+  timezoneItems: FormSelectItem[];
+}
+
+const toContractSLA = (
+  values: Partial<ContractSLAFormValues>,
+  storedSLA: ContractSLA = {},
+  options: ContractSLASeedOptions
+): ContractSLA => {
+  // Start from the stored SLA so unmodeled/extra keys and values the form
+  // cannot round-trip survive a save instead of becoming JSON-Patch `remove`
+  // ops (ContractSLA is an open type, e.g. "09:00 UTC" availabilityTime,
+  // leaf-name columnName, or custom keys added out-of-band).
+  const sla: ContractSLA = { ...storedSLA };
   const refreshInterval = toNonNegative(values.refresh_frequency_interval);
   const maxLatency = toNonNegative(values.max_latency_value);
   const retention = toNonNegative(values.retention_period);
 
-  if (values.availabilityTime) {
-    sla.availabilityTime = toTimeString(values.availabilityTime);
-  }
-  if (values.timezone) {
-    sla.timezone = values.timezone.id as Timezone;
-  }
-  if (values.columnName) {
-    sla.columnName = values.columnName.id;
-  }
-  if (values.max_latency_unit && maxLatency !== undefined) {
-    sla.maxLatency = {
-      unit: values.max_latency_unit.id as NonNullable<
-        ContractSLA['maxLatency']
-      >['unit'],
-      value: maxLatency,
-    };
-  }
-  if (values.refresh_frequency_unit && refreshInterval !== undefined) {
-    sla.refreshFrequency = {
-      interval: refreshInterval,
-      unit: values.refresh_frequency_unit.id as NonNullable<
-        ContractSLA['refreshFrequency']
-      >['unit'],
-    };
-  }
-  if (values.retention_unit && retention !== undefined) {
-    sla.retention = {
-      period: retention,
-      unit: values.retention_unit.id as NonNullable<
-        ContractSLA['retention']
-      >['unit'],
-    };
-  }
+  applyModelledField(
+    Boolean(values.availabilityTime),
+    toTimeValue(storedSLA.availabilityTime) !== null,
+    () => {
+      if (values.availabilityTime) {
+        sla.availabilityTime = toTimeString(values.availabilityTime);
+      }
+    },
+    () => {
+      delete sla.availabilityTime;
+    }
+  );
+
+  applyModelledField(
+    Boolean(values.timezone),
+    findItem(options.timezoneItems, storedSLA.timezone) !== null,
+    () => {
+      if (values.timezone) {
+        sla.timezone = values.timezone.id as Timezone;
+      }
+    },
+    () => {
+      delete sla.timezone;
+    }
+  );
+
+  applyModelledField(
+    Boolean(values.columnName),
+    findColumnItem(options.columnItems, storedSLA.columnName) !== null,
+    () => {
+      if (values.columnName) {
+        sla.columnName = values.columnName.id;
+      }
+    },
+    () => {
+      delete sla.columnName;
+    }
+  );
+
+  applyModelledField(
+    Boolean(values.max_latency_unit) && maxLatency !== undefined,
+    findItem(options.latencyUnitItems, storedSLA.maxLatency?.unit) !== null,
+    () => {
+      if (values.max_latency_unit && maxLatency !== undefined) {
+        sla.maxLatency = {
+          unit: values.max_latency_unit.id as NonNullable<
+            ContractSLA['maxLatency']
+          >['unit'],
+          value: maxLatency,
+        };
+      }
+    },
+    () => {
+      delete sla.maxLatency;
+    }
+  );
+
+  applyModelledField(
+    Boolean(values.refresh_frequency_unit) && refreshInterval !== undefined,
+    findItem(options.refreshUnitItems, storedSLA.refreshFrequency?.unit) !==
+      null,
+    () => {
+      if (values.refresh_frequency_unit && refreshInterval !== undefined) {
+        sla.refreshFrequency = {
+          interval: refreshInterval,
+          unit: values.refresh_frequency_unit.id as NonNullable<
+            ContractSLA['refreshFrequency']
+          >['unit'],
+        };
+      }
+    },
+    () => {
+      delete sla.refreshFrequency;
+    }
+  );
+
+  applyModelledField(
+    Boolean(values.retention_unit) && retention !== undefined,
+    findItem(options.retentionUnitItems, storedSLA.retention?.unit) !== null,
+    () => {
+      if (values.retention_unit && retention !== undefined) {
+        sla.retention = {
+          period: retention,
+          unit: values.retention_unit.id as NonNullable<
+            ContractSLA['retention']
+          >['unit'],
+        };
+      }
+    },
+    () => {
+      delete sla.retention;
+    }
+  );
 
   return sla;
 };
@@ -186,7 +315,7 @@ export const ContractSLAFormTab: React.FC<{
       retention_unit: findItem(retentionUnitItems, sla?.retention?.unit),
       availabilityTime: toTimeValue(sla?.availabilityTime),
       timezone: findItem(timezoneItems, sla?.timezone),
-      columnName: findItem(columnItems, sla?.columnName),
+      columnName: findColumnItem(columnItems, sla?.columnName),
     };
   };
 
@@ -201,15 +330,42 @@ export const ContractSLAFormTab: React.FC<{
     }
   }, [initialValues]);
 
+  // Keep the latest stored SLA available to the `watch` subscription without
+  // forcing a re-subscribe whenever the parent re-renders the contract.
+  const storedSLARef = useRef<ContractSLA | undefined>(initialValues?.sla);
+  useEffect(() => {
+    storedSLARef.current = initialValues?.sla;
+  });
+
   useEffect(() => {
     const { unsubscribe } = form.watch((values, { type }) => {
       if (type === 'change') {
-        onChange({ sla: toContractSLA(values as ContractSLAFormValues) });
+        onChange({
+          sla: toContractSLA(
+            values as ContractSLAFormValues,
+            storedSLARef.current ?? {},
+            {
+              columnItems,
+              refreshUnitItems,
+              latencyUnitItems,
+              retentionUnitItems,
+              timezoneItems,
+            }
+          ),
+        });
       }
     });
 
     return unsubscribe;
-  }, [form, onChange]);
+  }, [
+    form,
+    onChange,
+    columnItems,
+    refreshUnitItems,
+    latencyUnitItems,
+    retentionUnitItems,
+    timezoneItems,
+  ]);
 
   const numberField = (
     name: keyof ContractSLAFormValues,

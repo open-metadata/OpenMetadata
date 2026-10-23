@@ -131,4 +131,135 @@ describe('ContractSLAFormTab', () => {
       screen.queryByRole('button', { name: /label.next/ })
     ).not.toBeInTheDocument();
   });
+
+  describe('round-trip preservation (non-form-shaped stored SLA)', () => {
+    // The single mocked table column exposes this fully qualified name.
+    const SHOP_ID_FQN = 'sample_data.ecommerce_db.shopify."dim.shop".shop_id';
+
+    it('does not report changes when seeding non-form-shaped SLA values', () => {
+      renderForm({
+        sla: {
+          availabilityTime: '09:00 UTC',
+          columnName: SHOP_ID_FQN,
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      expect(mockOnChange).not.toHaveBeenCalled();
+    });
+
+    it('keeps a non-HH:mm availabilityTime when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          availabilityTime: '09:00 UTC',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      // The form can represent "09:00 UTC" (it parses the HH:mm prefix), so the
+      // value is preserved (normalized to "09:00") rather than removed.
+      expect(sla.availabilityTime).toBe('09:00');
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('preserves an unparseable availabilityTime when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          availabilityTime: '9 AM',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      // The form cannot represent "9 AM"; the stored value must survive intact.
+      expect(sla.availabilityTime).toBe('9 AM');
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('normalizes a leaf-name columnName to the FQN when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          columnName: 'shop_id',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      // The leaf matches a table column, so it is preserved (as the resolved FQN).
+      expect(sla.columnName).toBe(SHOP_ID_FQN);
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('preserves an unmatched columnName when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          columnName: 'DELETED_COLUMN',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      // No table column matches; the stored value must survive intact.
+      expect(sla.columnName).toBe('DELETED_COLUMN');
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('preserves an FQN columnName when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          columnName: SHOP_ID_FQN,
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      expect(sla.columnName).toBe(SHOP_ID_FQN);
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+
+    it('preserves unmodeled extra SLA keys when an unrelated SLA field is edited', () => {
+      renderForm({
+        sla: {
+          customNote: 'important metadata',
+          retention: { period: 30, unit: RetentionUnit.Day },
+        },
+      });
+
+      fireEvent.change(getNumberInput('label.period'), {
+        target: { value: '45' },
+      });
+
+      const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+      // ContractSLA is an open type; unknown keys must not become remove ops.
+      expect(sla.customNote).toBe('important metadata');
+      expect(sla.retention).toEqual({ period: 45, unit: RetentionUnit.Day });
+    });
+  });
 });
