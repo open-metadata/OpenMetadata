@@ -262,7 +262,7 @@ const ActivityFeedCardNew = ({
       );
     } else {
       return (
-        <Box inline align="center" className="tw:min-w-0 tw:gap-1.5">
+        <Box align="center" className="tw:min-w-0 tw:gap-1.5">
           <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
             <Box
               align="center"
