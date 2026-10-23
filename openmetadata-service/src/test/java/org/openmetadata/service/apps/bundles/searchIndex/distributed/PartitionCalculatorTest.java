@@ -404,6 +404,17 @@ class PartitionCalculatorTest {
     assertEquals(0, count);
   }
 
+  @Test
+  void testGetEntityCount_tableColumnReturnsZeroWithoutRepositoryLookup() {
+    // tableColumn has no standalone EntityRepository; the guard must return 0
+    // immediately without ever calling Entity.getEntityRepository.
+    long count = partitionCalculator.getEntityCount(Entity.TABLE_COLUMN);
+
+    assertEquals(0, count);
+    // Verify no repository lookup was attempted for tableColumn
+    entityMock.verify(() -> Entity.getEntityRepository(Entity.TABLE_COLUMN), org.mockito.Mockito.never());
+  }
+
   private int getEffectivePartitionSize(PartitionCalculator calculator) {
     // Test by checking partition generation for a known count
     EntityRepository<?> mockRepo = mock(EntityRepository.class);
