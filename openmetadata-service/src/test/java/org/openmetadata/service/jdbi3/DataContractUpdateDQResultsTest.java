@@ -134,6 +134,11 @@ class DataContractUpdateDQResultsTest {
   }
 
   private DataContractResult finalize(TestSuite testSuite, PipelineStatusType pipelineState) {
+    return finalize(testSuite, pipelineState, runningResultJson);
+  }
+
+  private DataContractResult finalize(
+      TestSuite testSuite, PipelineStatusType pipelineState, String storedResultJson) {
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
       mockedEntity
@@ -148,7 +153,7 @@ class DataContractUpdateDQResultsTest {
       when(collectionDAO
               .entityExtensionTimeSeriesDao()
               .getLatestExtensionByKey(any(), any(), any(), any()))
-          .thenReturn(runningResultJson);
+          .thenReturn(storedResultJson);
 
       return repository.updateContractDQResults(contractRef, testSuite, pipelineState);
     }
@@ -277,5 +282,36 @@ class DataContractUpdateDQResultsTest {
     QualityValidation qv = result.getQualityValidation();
     assertNotNull(qv);
     assertEquals(1, qv.getFailed());
+  }
+
+  @Test
+  @DisplayName(
+      "a SUCCESS retry after a FAILED run clears the stale failure message from the prior run")
+  void successfulRetryAfterFailedRun_clearsStaleFailureMessage() {
+    // Simulate the state left by a prior failed finalization: the stored result was finalized as
+    // Aborted with the pipeline-failure message and a blank quality validation. A retry reuses
+    // this same DataContractResult (no fresh validateContract call), so without clearing the
+    // message it would persist into the now-Success result. See PR #36036 review thread.
+    DataContractResult priorFailed =
+        new DataContractResult()
+            .withId(UUID.randomUUID())
+            .withDataContractFQN(CONTRACT_FQN)
+            .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+            .withTimestamp(System.currentTimeMillis())
+            .withResult(
+                "DQ validation pipeline ended with status failed without recording any test results")
+            .withQualityValidation(new QualityValidation());
+    String storedAfterFailure = JsonUtils.pojoToJson(priorFailed);
+
+    DataContractResult result =
+        finalize(blankSuite(), PipelineStatusType.SUCCESS, storedAfterFailure);
+
+    assertEquals(
+        ContractExecutionStatus.Success,
+        result.getContractExecutionStatus(),
+        "A successful retry must finalize the contract as Success");
+    assertNull(
+        result.getResult(),
+        "A SUCCESS retry must clear the stale pipeline-failure message from the prior failed run");
   }
 }
