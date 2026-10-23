@@ -123,8 +123,16 @@ jest.mock(
   '../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: ({ displayName }: { displayName?: string }) => (
-      <span data-testid="profile-picture">{displayName}</span>
+    default: ({
+      displayName,
+      name,
+    }: {
+      displayName?: string;
+      name: string;
+    }) => (
+      <span data-name={name} data-testid="profile-picture">
+        {displayName}
+      </span>
     ),
   })
 );
@@ -237,6 +245,18 @@ describe('AIUserMenu', () => {
 
     expect(trigger).toHaveTextContent('Test User');
     expect(trigger).toHaveTextContent('Banking');
+  });
+
+  it('looks up every avatar by username, not email', () => {
+    renderMenu();
+
+    const avatars = screen.getAllByTestId('profile-picture');
+
+    expect(avatars.length).toBeGreaterThan(0);
+
+    avatars.forEach((avatar) =>
+      expect(avatar).toHaveAttribute('data-name', 'test-user')
+    );
   });
 
   it('shows only the avatar in the collapsed rail, with name and domain in a tooltip', () => {
