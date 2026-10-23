@@ -2763,6 +2763,9 @@ public class SearchRepository {
       return;
     }
     try {
+      // The assets move in bulk with no update event each, so their chunks would keep the old
+      // domains: withhold them first, as every in-place rewrite of an access field does.
+      withholdChunksOf(List.of(getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)), idsMatch(assetIds));
       getSearchClient().updateAssetDomainsByIds(assetIds, oldDomainFqns, newDomains);
     } catch (Exception e) {
       for (UUID assetId : listOrEmpty(assetIds)) {
@@ -2902,7 +2905,8 @@ public class SearchRepository {
         Pair<String, Map<String, Object>> updates =
             getInheritedFieldChanges(changeDescription, entity, entityType, descriptor -> true);
         if (!nullOrEmpty(updates.getKey())) {
-          propagateToDomainChildren(entityId, indexMapping, updates);
+          propagateToDomainChildren(
+              entityId, indexMapping, updates, touchesAccessFields(changeDescription));
         }
       } else {
         propagateToEntityChildren(entityType, entityId, changeDescription, indexMapping, entity);
@@ -2970,21 +2974,18 @@ public class SearchRepository {
    * children, so their vector chunks would keep the old values. They are withheld from restricted
    * callers until restamped (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks). Called
    * before the rewrite, so a match on a value the rewrite replaces (a renamed tag) still finds them.
-   * A failure is logged, not thrown: the entity documents are updated either way.
+   * A failure fails the propagation before the rewrite, as a failed child rewrite does, so the
+   * search retry queue re-runs both.
    */
   private void withholdChunksOf(List<String> entityIndices, String matchQueryJson) {
     if (vectorIndexService != null) {
-      try {
-        vectorIndexService.invalidateChunkAccess(entityIndices, matchQueryJson);
-      } catch (RuntimeException e) {
-        LOG.error(
-            "Failed to withhold vector chunks matching {} on {}; restricted callers may see stale"
-                + " chunk access fields until Search Reindex",
-            matchQueryJson,
-            entityIndices,
-            e);
-      }
+      vectorIndexService.invalidateChunkAccess(entityIndices, matchQueryJson);
     }
+  }
+
+  private static String idsMatch(List<UUID> ids) {
+    List<String> values = listOrEmpty(ids).stream().map(UUID::toString).toList();
+    return JsonUtils.pojoToJson(Map.of("ids", Map.of("values", values)));
   }
 
   private static String termMatch(String field, String value) {
@@ -3242,16 +3243,33 @@ public class SearchRepository {
   }
 
   private void propagateToDomainChildren(
-      String domainId, IndexMapping indexMapping, Pair<String, Map<String, Object>> updates)
+      String domainId,
+      IndexMapping indexMapping,
+      Pair<String, Map<String, Object>> updates,
+      boolean accessChanged)
       throws IOException {
+    rewriteDomainChildren(
+        getWriteIndexName(indexMapping), PARENT_ID, domainId, updates, accessChanged);
+    rewriteDomainChildren(
+        getWriteIndexName(entityIndexMap.get(Entity.DATA_PRODUCT)),
+        DOMAINS_ID,
+        domainId,
+        updates,
+        accessChanged);
+  }
+
+  private void rewriteDomainChildren(
+      String index,
+      String domainField,
+      String domainId,
+      Pair<String, Map<String, Object>> updates,
+      boolean accessChanged)
+      throws IOException {
+    if (accessChanged) {
+      withholdChunksOf(List.of(index), termMatch(domainField, domainId));
+    }
     searchClient.updateChildren(
-        List.of(getWriteIndexName(indexMapping)),
-        new ImmutablePair<>(PARENT_ID, domainId),
-        updates);
-    searchClient.updateChildren(
-        List.of(getWriteIndexName(entityIndexMap.get(Entity.DATA_PRODUCT))),
-        new ImmutablePair<>(DOMAINS_ID, domainId),
-        updates);
+        List.of(index), new ImmutablePair<>(domainField, domainId), updates);
   }
 
   public void propagateGlossaryTags(

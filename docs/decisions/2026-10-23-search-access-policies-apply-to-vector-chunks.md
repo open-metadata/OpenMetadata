@@ -63,13 +63,15 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
 - A chunk whose stored `accessStamp` differs from its entity's is restamped (no re-embedding), the
   same way memory status and anchor are, also while the embedding provider is unavailable. None of
   these values may enter the embedding fingerprint.
-- A propagation that rewrites child entity documents' access fields in place (inherited owners,
-  domains, tags, reviewers or certification; inherited domains; glossary tag propagation; a
-  certification tag or tag rename; a domain, tag or glossary term delete) first removes
-  `accessStamp` from the matched entities' chunks (`VectorIndexService.invalidateChunkAccess`), since
-  no lifecycle event reaches those children. The removal runs before the rewrite, so a match on a
-  replaced value still finds them. A failure is logged at ERROR; the entity documents update
-  regardless.
+- A propagation that rewrites entity documents' access fields in place (inherited owners,
+  domains, tags, reviewers or certification, a domain's included, which reach its sub-domains and
+  data products; inherited domains; a data product's assets moving with it to another domain;
+  glossary tag propagation; a certification tag or tag rename; a domain, tag or glossary term
+  delete) first removes `accessStamp` from the matched entities' chunks
+  (`VectorIndexService.invalidateChunkAccess`), since no lifecycle event reaches those entities.
+  The removal runs before the rewrite, so a match on a replaced value still finds them. A failed
+  removal fails the propagation before the rewrite, as a failed child rewrite does, so the search
+  retry queue re-runs both and chunks never keep a valid stamp beside rewritten entity documents.
 - A chunk with no `accessStamp` was written before chunks carried access fields and cannot be
   evaluated. A caller whose chunk policy does not grant everything does not see it; everyone else
   does. The gate is the presence of the field, not a version number, so a later
@@ -90,7 +92,8 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   chunk policy. A failed lookup cannot tell the two apart, so under a policy it withholds every
   chunk winner of that page.
 - Every vector search made for a caller passes the caller's subject, the AI context knowledge search
-  (`AIContextFinder`) included.
+  (`AIContextFinder`) included, except MCP `semantic_search`, which authorizes each hit through
+  REST instead.
 - Elasticsearch has no chunk index, so there the clause filters entity documents only; the chunk
   branch matches nothing.
 

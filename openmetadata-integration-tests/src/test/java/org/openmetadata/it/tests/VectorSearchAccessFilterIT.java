@@ -349,6 +349,31 @@ class VectorSearchAccessFilterIT {
     assertFalse(other.contains(id(otherTable)), other.toString());
   }
 
+  /**
+   * A propagation strips the stamp from the matched entities' chunks on the real engine: they
+   * leave a restricted caller's results, stay with a caller whose policy grants everything, and
+   * come back once restamped.
+   */
+  @Test
+  void invalidatedChunksLeaveRestrictedCallersUntilRestamped() {
+    accessControl(true);
+    String tableIndex = Entity.getSearchRepository().getIndexOrAliasName(Entity.TABLE);
+    String owned = id(ownedTable);
+    try {
+      vectorService.invalidateChunkAccess(
+          List.of(tableIndex),
+          JsonUtils.pojoToJson(Map.of("ids", Map.of("values", List.of(owned)))));
+
+      assertFalse(parents(tableOwner).contains(owned), "the owner loses the unstamped chunks");
+      assertTrue(parents(dataConsumer).contains(owned), "a grants-everything caller keeps them");
+    } finally {
+      vectorService.writeEntityChunks(owned, VectorDocBuilder.fromEntity(ownedTable, EMBEDDINGS));
+      vectorService.executeGenericRequest("POST", "/_refresh", null);
+    }
+
+    assertTrue(parents(tableOwner).contains(owned), "restamped chunks answer the owner again");
+  }
+
   @Test
   void accessDisabledMatchesAdmin() {
     accessControl(false);

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
@@ -1171,6 +1172,37 @@ class OpenSearchVectorServiceTest {
     assertTrue(endpoints.get(3).contains("_update_by_query"), endpoints.toString());
     assertTrue(
         endpoints.get(5).startsWith(refresh), "refresh follows the last batch: " + endpoints);
+  }
+
+  /** Clearing the scroll is cleanup: its failure must not replace the failure that matters. */
+  @Test
+  void invalidateChunkAccess_surfacesTheUpdateFailureWhenClearingTheScrollFailsToo()
+      throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    Response page = mock(Response.class);
+    os.org.opensearch.client.opensearch.generic.Body pageBody =
+        mock(os.org.opensearch.client.opensearch.generic.Body.class);
+    when(page.getStatus()).thenReturn(200);
+    when(page.getBody()).thenReturn(Optional.of(pageBody));
+    when(pageBody.bodyAsBytes())
+        .thenReturn(
+            "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    when(mockGenericClient.execute(any()))
+        .thenReturn(page)
+        .thenThrow(new IOException("update failed"))
+        .thenThrow(new IOException("clear failed"));
+
+    RuntimeException failure =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                vectorService.invalidateChunkAccess(
+                    List.of("cluster_table"), "{\"term\":{\"owners.id\":\"u1\"}}"));
+
+    assertEquals("update failed", failure.getCause().getMessage());
   }
 
   @Test

@@ -509,11 +509,16 @@ public class OpenSearchVectorService implements VectorIndexService {
     return readJson(executeGenericRequest("POST", "/_search/scroll", body.toString()));
   }
 
+  /** Cleanup only: a failure is logged, so it never replaces the failure the caller acts on. */
   private void clearScroll(String scrollId) {
     if (scrollId != null) {
       ObjectNode body = MAPPER.createObjectNode();
       body.putArray("scroll_id").add(scrollId);
-      executeGenericRequest("DELETE", "/_search/scroll", body.toString());
+      try {
+        executeGenericRequest("DELETE", "/_search/scroll", body.toString());
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to clear chunk-access scroll {}: {}", scrollId, e.getMessage());
+      }
     }
   }
 
