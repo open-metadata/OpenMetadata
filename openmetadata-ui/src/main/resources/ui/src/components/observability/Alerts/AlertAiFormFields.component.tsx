@@ -207,7 +207,11 @@ function AlertAiFormFields({
   const handleSourceChange = (next: string[], previous: string[]) =>
     onChange?.((prev) => ({
       ...prev,
-      ...getAlertSourceChanges(next, previous),
+      ...getAlertSourceChanges(
+        next,
+        previous,
+        alert?.hasRulesWithoutSelections
+      ),
     }));
 
   return (

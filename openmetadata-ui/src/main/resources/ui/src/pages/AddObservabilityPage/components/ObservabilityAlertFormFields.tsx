@@ -135,7 +135,9 @@ function ObservabilityAlertFormFields({
               error={validationErrors.resources}
               value={resources}
               onChange={(next, previous) => {
-                onValuesChange(getAlertSourceChanges(next, previous));
+                onValuesChange(
+                  getAlertSourceChanges(next, previous, areRulesReadOnly)
+                );
               }}
             />
           </Box>

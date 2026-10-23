@@ -2103,6 +2103,33 @@ describe('AlertAi form field components', () => {
       );
     });
 
+    it("keeps a legacy-shaped alert's rules listed when its sources change", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+      const onChange = jest.fn();
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.change(screen.getByTestId('source-select-options'), {
+        target: { value: 'pipeline' },
+      });
+
+      expect(applyLastUpdater(onChange, seeded)).toEqual(
+        expect.objectContaining({
+          input: seeded.input,
+          resources: ['table', 'pipeline'],
+        })
+      );
+    });
+
     it("keeps a legacy-shaped alert's rules read-only in edit mode", () => {
       const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
 
