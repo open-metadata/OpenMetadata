@@ -51,7 +51,12 @@ import {
   WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 import ProfileSideNav from './ProfileSideNav';
-import { getProfileUserDetailView } from './tabs/members/membersRoute.utils';
+import { getMembersAccess } from './tabs/members/Members.utils';
+import {
+  getProfileUserDetailView,
+  hashSubPathToView as membersHashToView,
+  userViewToProfileSubPath,
+} from './tabs/members/membersRoute.utils';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
@@ -110,6 +115,29 @@ const ProfilePage: React.FC = () => {
       setHeaderOverride(null);
     }
   }, [hashState.tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // User links open `#members/user/<name>`; a viewer who may not browse users
+  // there gets the same read-only detail under `#profile/<name>`.
+  useEffect(() => {
+    if (hashState.tab !== 'members' || isPermissionsLoading) {
+      return;
+    }
+    const view = membersHashToView(hashState.subPath ?? '');
+    const isAdmin = Boolean(currentUser?.isAdmin);
+    if (
+      view.type === 'user-detail' &&
+      !getMembersAccess(permissions, isAdmin).users
+    ) {
+      setHash(DEFAULT_PROFILE_NAV_ID, userViewToProfileSubPath(view));
+    }
+  }, [
+    currentUser?.isAdmin,
+    hashState.subPath,
+    hashState.tab,
+    isPermissionsLoading,
+    permissions,
+    setHash,
+  ]);
 
   // Plugins (e.g. Query Runner's "My Connections") contribute extra profile
   // tabs through the `profile.tabs` extension point. Read them through

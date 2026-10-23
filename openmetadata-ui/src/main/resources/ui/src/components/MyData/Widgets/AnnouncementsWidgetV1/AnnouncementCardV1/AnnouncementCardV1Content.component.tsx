@@ -18,6 +18,7 @@ import { Link } from 'react-router-dom';
 import { getShortRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import entityUtilClassBase from '../../../../../utils/EntityUtilClassBase';
 import { getUserPath } from '../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
@@ -130,7 +131,7 @@ const AnnouncementCardV1Content = ({
             className="user-name"
             data-testid="user-link"
             style={userNameStyle}
-            to={getUserPath(userName)}
+            to={getSettingsLink(getUserPath(userName))}
             onClick={handleUserClick}>
             {userName}
           </Link>

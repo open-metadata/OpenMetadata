@@ -44,7 +44,9 @@ import {
   hashSubPathToView as platformHashToView,
   viewToSubPath as platformViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/platform-settings/PlatformSettings.utils';
+import { UserPageTabs } from '../components/Settings/Users/Users.interface';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { EntityTabs } from '../enums/entity.enum';
 import type { Type } from '../generated/entity/type';
 import type { CustomProperty } from '../generated/type/customProperty';
 import { useAppModeStore } from '../hooks/useAppMode';
@@ -70,9 +72,14 @@ import {
   getRoleWithFqnPath,
   getSettingPath,
   getTeamsWithFqnPath,
+  getUserPath,
 } from './RouterUtils';
 import { safeDecodeURIComponent } from './SettingsHashUtils';
-import { getSettingsLink, settingsPathToHash } from './SettingsModalLinkUtils';
+import {
+  getSettingsHashForHref,
+  getSettingsLink,
+  settingsPathToHash,
+} from './SettingsModalLinkUtils';
 
 const mockIsDev = jest.fn().mockReturnValue(false);
 
@@ -630,5 +637,81 @@ describe('settings hash name encoding', () => {
       fqn: '100%ZZ',
       name: '100%ZZ',
     });
+  });
+});
+
+describe('user page links', () => {
+  afterEach(() => {
+    useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+    globalThis.history.replaceState(null, '', '/');
+  });
+
+  it('keeps the classic user page in classic mode', () => {
+    expect(getSettingsLink(getUserPath('alice', UserPageTabs.TASK))).toBe(
+      '/users/alice/task'
+    );
+  });
+
+  it.each([
+    [undefined, 'members/user/alice'],
+    [EntityTabs.ACTIVITY_FEED, 'members/user/alice/activity'],
+    [UserPageTabs.TASK, 'members/user/alice/tasks'],
+    [UserPageTabs.MY_DATA, 'members/user/alice/owned-assets'],
+    [UserPageTabs.FOLLOWING, 'members/user/alice/following'],
+    [UserPageTabs.PERMISSIONS, 'members/user/alice/access'],
+    [UserPageTabs.CUSTOM_PROPERTIES, 'members/user/alice/custom-properties'],
+    [UserPageTabs.ACCESS_TOKEN, 'members/user/alice'],
+  ])('opens the %s tab as #%s in AI mode', (tab, hash) => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+    globalThis.history.replaceState(null, '', '/x?a=1');
+
+    expect(getSettingsLink(getUserPath('alice', tab))).toBe(`?a=1#${hash}`);
+  });
+
+  it.each(['john.doe', 'a b', '100%', 'x/y', 'why?', 'u#1'])(
+    'opens the Members user detail for %s',
+    (name) => {
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      const hash = new URL(
+        getSettingsLink(getUserPath(name, UserPageTabs.TASK)),
+        'http://localhost/page'
+      ).hash.slice(1);
+
+      expect(membersHashToView(hash.split('/').slice(1).join('/'))).toEqual({
+        type: 'user-detail',
+        name,
+        tab: 'tasks',
+      });
+    }
+  );
+});
+
+describe('getSettingsHashForHref', () => {
+  const { origin } = globalThis.location;
+
+  afterEach(() => useAppModeStore.getState().setMode(DEFAULT_APP_MODE));
+
+  it('maps a stored mention URL to the modal hash in AI mode', () => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+
+    expect(getSettingsHashForHref(`${origin}/users/alice`)).toBe(
+      'members/user/alice'
+    );
+    expect(
+      getSettingsHashForHref(`${origin}/settings/members/teams/PW%25team`)
+    ).toBe('members/teams/PW%25team');
+  });
+
+  it.each([
+    'https://example.com/users/alice',
+    `${globalThis.location.origin}/table/svc.db.schema.orders`,
+  ])('leaves %s alone', (href) => {
+    useAppModeStore.getState().setMode(AI_APP_MODE);
+
+    expect(getSettingsHashForHref(href)).toBeUndefined();
+  });
+
+  it('leaves every link alone in classic mode', () => {
+    expect(getSettingsHashForHref(`${origin}/users/alice`)).toBeUndefined();
   });
 });

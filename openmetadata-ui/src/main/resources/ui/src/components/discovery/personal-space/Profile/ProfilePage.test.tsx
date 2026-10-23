@@ -345,13 +345,13 @@ describe('ProfilePage', () => {
     expect(screen.getByTestId('content-profile')).toHaveTextContent('After');
   });
 
-  // A settings link to a team opens `#members/teams/<fqn>`; Members is
-  // admin-only, so a non-admin gets no-access even with team view permission.
+  // A settings link to a role opens `#access-control/roles/<fqn>`; Access
+  // Control is admin-only, so a non-admin gets no-access even with role view.
   it('shows no-access, not the profile, for a tab the user cannot see', async () => {
-    mockPermissions = { team: { ViewAll: true }, user: { ViewAll: true } };
+    mockPermissions = { role: { ViewAll: true } };
     mockHashState = {
-      tab: 'members',
-      subPath: 'teams/Engineering',
+      tab: 'access-control',
+      subPath: 'roles/DataSteward',
       params: {},
     };
 
@@ -362,10 +362,39 @@ describe('ProfilePage', () => {
     expect(
       screen.getByTestId('permission-error-placeholder')
     ).toBeInTheDocument();
-    expect(screen.queryByTestId('content-members')).not.toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('profile-nav-members')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('profile-nav-access-control')
+    ).not.toBeInTheDocument();
   });
+
+  // User links open `#members/user/<name>`; a viewer who can see teams but not
+  // users is sent on to the read-only `#profile/<name>` detail.
+  it.each([
+    [{ team: { ViewAll: true } }, true],
+    [{ user: { ViewAll: true } }, false],
+  ])(
+    'redirects a Members user link for permissions %j: %s',
+    async (permissions, redirects) => {
+      mockPermissions = permissions;
+      mockHashState = {
+        tab: 'members',
+        subPath: 'user/alice/tasks',
+        params: {},
+      };
+
+      await act(async () => {
+        render(<ProfilePage />);
+      });
+
+      if (redirects) {
+        expect(mockSetHash).toHaveBeenCalledWith('profile', 'alice/tasks');
+      } else {
+        expect(mockSetHash).not.toHaveBeenCalled();
+        expect(screen.getByTestId('content-members')).toBeInTheDocument();
+      }
+    }
+  );
 
   it('waits on the loader while permissions are still loading', async () => {
     mockIsPermissionsLoading = true;

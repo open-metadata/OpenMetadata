@@ -165,8 +165,6 @@ describe('profileNavConfig', () => {
   // The settings surfaces behind these tabs are admin-only, whatever view
   // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).
   it.each([
-    ['members', ResourceEntity.TEAM],
-    ['members', ResourceEntity.USER],
     ['access-control', ResourceEntity.ROLE],
     ['access-control', ResourceEntity.POLICY],
     ['bots', ResourceEntity.BOT],
@@ -183,4 +181,19 @@ describe('profileNavConfig', () => {
       expect(item.isVisible?.({} as UIPermission, true)).toBe(true);
     }
   );
+
+  // As in classic, Members opens to anyone who may view teams or users.
+  it.each([
+    [ResourceEntity.TEAM, true],
+    [ResourceEntity.USER, true],
+    [ResourceEntity.ROLE, false],
+  ])('shows members to a non-admin with %s view: %s', (resource, visible) => {
+    const canView = {
+      [resource]: { ViewAll: true },
+    } as unknown as UIPermission;
+
+    expect(getProfileNavItem('members').isVisible?.(canView, false)).toBe(
+      visible
+    );
+  });
 });

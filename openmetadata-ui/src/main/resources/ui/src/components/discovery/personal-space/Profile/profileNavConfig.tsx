@@ -42,6 +42,7 @@ import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
+import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
@@ -262,9 +263,10 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    // Admin-only whatever view permissions a non-admin holds
-    // (ADR:2026-10-21-settings-pages-are-classic-only).
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    // As in classic: anyone who may view teams or users; the panel gates each
+    // section (ADR:2026-10-21-settings-pages-are-classic-only).
+    isVisible: (permissions, isAdmin) =>
+      canOpenMembers(getMembersAccess(permissions, isAdmin)),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />
