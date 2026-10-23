@@ -98,7 +98,7 @@ const toNonNegative = (value?: string) =>
 // Parse an `HH:mm` prefix tolerantly so documented, server-supported values
 // such as "09:00 UTC" round-trip through the form instead of being dropped.
 const toTimeValue = (time?: string): TimePickerValue | null => {
-  const match = (time ?? '').trim().match(/^(\d{1,2}):(\d{2})/);
+  const match = /^(\d{1,2}):(\d{2})/.exec((time ?? '').trim());
 
   if (!match) {
     return null;
@@ -115,32 +115,19 @@ const toTimeValue = (time?: string): TimePickerValue | null => {
 const toTimeString = ({ hour, minute }: TimePickerValue) =>
   `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-// For a modeled SLA field, decide its fate on save:
-//  - emit the form value when the form holds one (overwriting the spread),
-//  - remove the field once the user has *touched* it and then cleared it,
-//  - otherwise leave the value already spread from `storedSLA`, so data the
-//    form cannot round-trip (e.g. "09:00 UTC" availabilityTime, a leaf-name
-//    columnName, or unmodeled keys) survives instead of becoming a `remove`.
-// Tracking "touched" (instead of "seedable") means a field the form could not
-// seed but the user later selected and then cleared is still removed, rather
-// than silently reverting to the stored value the form cannot represent.
-const applyModelledField = (
-  hasFormValue: boolean,
-  wasTouched: boolean,
-  emit: () => void,
-  remove: () => void
-) => {
-  if (hasFormValue) {
-    emit();
-  } else if (wasTouched) {
-    remove();
-  }
-};
+type ModelledSLAKey =
+  | 'availabilityTime'
+  | 'timezone'
+  | 'columnName'
+  | 'maxLatency'
+  | 'refreshFrequency'
+  | 'retention';
 
-// Maps each RHF field name to the SLA key group it belongs to, so a single
-// "touched" set can track whether the user interacted with any of the form
-// fields that feed a given SLA attribute.
-const SLA_FIELD_GROUP: Partial<Record<keyof ContractSLAFormValues, string>> = {
+// Maps each RHF field name to the SLA key it feeds, so a single "touched" set
+// can track whether the user interacted with any form field behind that key.
+const SLA_FIELD_GROUP: Partial<
+  Record<keyof ContractSLAFormValues, ModelledSLAKey>
+> = {
   availabilityTime: 'availabilityTime',
   timezone: 'timezone',
   columnName: 'columnName',
@@ -152,112 +139,68 @@ const SLA_FIELD_GROUP: Partial<Record<keyof ContractSLAFormValues, string>> = {
   retention_unit: 'retention',
 };
 
-const toContractSLA = (
-  values: Partial<ContractSLAFormValues>,
-  storedSLA: ContractSLA = {},
-  touched: Set<string>
-): ContractSLA => {
-  // Start from the stored SLA so unmodeled/extra keys and values the form
-  // cannot round-trip survive a save instead of becoming JSON-Patch `remove`
-  // ops (ContractSLA is an open type, e.g. "09:00 UTC" availabilityTime,
-  // leaf-name columnName, or custom keys added out-of-band).
-  const sla: ContractSLA = { ...storedSLA };
+const toModelledSLA = (
+  values: Partial<ContractSLAFormValues>
+): Pick<ContractSLA, ModelledSLAKey> => {
   const refreshInterval = toNonNegative(values.refresh_frequency_interval);
   const maxLatency = toNonNegative(values.max_latency_value);
   const retention = toNonNegative(values.retention_period);
 
-  applyModelledField(
-    Boolean(values.availabilityTime),
-    touched.has('availabilityTime'),
-    () => {
-      if (values.availabilityTime) {
-        sla.availabilityTime = toTimeString(values.availabilityTime);
-      }
-    },
-    () => {
-      delete sla.availabilityTime;
-    }
-  );
+  return {
+    availabilityTime: values.availabilityTime
+      ? toTimeString(values.availabilityTime)
+      : undefined,
+    timezone: values.timezone?.id as Timezone | undefined,
+    columnName: values.columnName?.id,
+    maxLatency:
+      values.max_latency_unit && maxLatency !== undefined
+        ? {
+            unit: values.max_latency_unit.id as NonNullable<
+              ContractSLA['maxLatency']
+            >['unit'],
+            value: maxLatency,
+          }
+        : undefined,
+    refreshFrequency:
+      values.refresh_frequency_unit && refreshInterval !== undefined
+        ? {
+            interval: refreshInterval,
+            unit: values.refresh_frequency_unit.id as NonNullable<
+              ContractSLA['refreshFrequency']
+            >['unit'],
+          }
+        : undefined,
+    retention:
+      values.retention_unit && retention !== undefined
+        ? {
+            period: retention,
+            unit: values.retention_unit.id as NonNullable<
+              ContractSLA['retention']
+            >['unit'],
+          }
+        : undefined,
+  };
+};
 
-  applyModelledField(
-    Boolean(values.timezone),
-    touched.has('timezone'),
-    () => {
-      if (values.timezone) {
-        sla.timezone = values.timezone.id as Timezone;
-      }
-    },
-    () => {
-      delete sla.timezone;
-    }
-  );
+// Start from the stored SLA so values the form cannot round-trip (a
+// "09:00 UTC" availabilityTime, an unmatched columnName, unmodeled keys —
+// ContractSLA is an open type) survive a save instead of becoming JSON-Patch
+// `remove` ops. A modeled key is removed only once the user touched and
+// cleared it, so clearing a field the form could not seed still removes it.
+const toContractSLA = (
+  values: Partial<ContractSLAFormValues>,
+  storedSLA: ContractSLA,
+  touched: Set<ModelledSLAKey>
+): ContractSLA => {
+  const sla: ContractSLA = { ...storedSLA };
 
-  applyModelledField(
-    Boolean(values.columnName),
-    touched.has('columnName'),
-    () => {
-      if (values.columnName) {
-        sla.columnName = values.columnName.id;
-      }
-    },
-    () => {
-      delete sla.columnName;
+  Object.entries(toModelledSLA(values)).forEach(([key, value]) => {
+    if (value !== undefined) {
+      sla[key] = value;
+    } else if (touched.has(key as ModelledSLAKey)) {
+      delete sla[key];
     }
-  );
-
-  applyModelledField(
-    Boolean(values.max_latency_unit) && maxLatency !== undefined,
-    touched.has('maxLatency'),
-    () => {
-      if (values.max_latency_unit && maxLatency !== undefined) {
-        sla.maxLatency = {
-          unit: values.max_latency_unit.id as NonNullable<
-            ContractSLA['maxLatency']
-          >['unit'],
-          value: maxLatency,
-        };
-      }
-    },
-    () => {
-      delete sla.maxLatency;
-    }
-  );
-
-  applyModelledField(
-    Boolean(values.refresh_frequency_unit) && refreshInterval !== undefined,
-    touched.has('refreshFrequency'),
-    () => {
-      if (values.refresh_frequency_unit && refreshInterval !== undefined) {
-        sla.refreshFrequency = {
-          interval: refreshInterval,
-          unit: values.refresh_frequency_unit.id as NonNullable<
-            ContractSLA['refreshFrequency']
-          >['unit'],
-        };
-      }
-    },
-    () => {
-      delete sla.refreshFrequency;
-    }
-  );
-
-  applyModelledField(
-    Boolean(values.retention_unit) && retention !== undefined,
-    touched.has('retention'),
-    () => {
-      if (values.retention_unit && retention !== undefined) {
-        sla.retention = {
-          period: retention,
-          unit: values.retention_unit.id as NonNullable<
-            ContractSLA['retention']
-          >['unit'],
-        };
-      }
-    },
-    () => {
-      delete sla.retention;
-    }
-  );
+  });
 
   return sla;
 };
@@ -359,7 +302,7 @@ export const ContractSLAFormTab: React.FC<{
   // removed even when the form could not seed the stored value (e.g. an
   // unparseable availabilityTime or an unmatched columnName). Reset whenever
   // a new contract is loaded.
-  const touchedSLAFieldsRef = useRef<Set<string>>(new Set());
+  const touchedSLAFieldsRef = useRef<Set<ModelledSLAKey>>(new Set());
   useEffect(() => {
     if (initialValues) {
       touchedSLAFieldsRef.current = new Set();
