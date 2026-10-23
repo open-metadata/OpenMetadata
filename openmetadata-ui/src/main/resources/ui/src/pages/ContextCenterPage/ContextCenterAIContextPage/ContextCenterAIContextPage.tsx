@@ -259,13 +259,13 @@ const ContextCenterAIContextPage = () => {
               <Typography
                 ellipsis
                 className="tw:text-primary"
-                weight="semibold">
+                weight="medium">
                 {getEntityName(persona)}
               </Typography>
               <Typography
                 ellipsis
-                className="tw:font-mono tw:text-tertiary"
-                size="text-sm">
+                className="tw:text-tertiary"
+                size="text-xs">
                 {persona.name}
               </Typography>
             </Box>
