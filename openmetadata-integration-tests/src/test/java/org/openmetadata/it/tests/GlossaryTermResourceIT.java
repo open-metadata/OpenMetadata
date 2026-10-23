@@ -244,6 +244,30 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // ===================================================================
 
   @Test
+  void createMany_deniedCallerCannotCreateTerms(TestNamespace ns) throws Exception {
+    final Glossary glossary = getOrCreateGlossary(ns);
+    final String termName = ns.prefix("bulkDenied");
+    final CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Should not be created");
+    final String token = deniedGlossaryOperationToken(ns, "bulkCreate", MetadataOperation.CREATE);
+    final HttpRequest httpRequest =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/glossaryTerms/createMany"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(request))))
+            .build();
+    final HttpResponse<String> response =
+        HttpClient.newHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    assertEquals(403, response.statusCode(), response.body());
+    final String fqn = glossary.getFullyQualifiedName() + "." + termName;
+    assertThrows(Exception.class, () -> getEntityByName(fqn));
+  }
+
+  @Test
   void post_glossaryTermWithSynonyms_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Glossary glossary = getOrCreateGlossary(ns);
@@ -3981,13 +4005,18 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
    * restricted caller needs an explicit DENY rule — deny wins over the inherited allow.
    */
   private String deniedGlossaryEditToken(TestNamespace ns, String suffix) {
+    return deniedGlossaryOperationToken(ns, suffix, MetadataOperation.EDIT_GLOSSARY_TERMS);
+  }
+
+  private String deniedGlossaryOperationToken(
+      TestNamespace ns, String suffix, MetadataOperation operation) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String prefix = ns.shortPrefix("gtNoEdit_" + suffix);
     Rule deny =
         new Rule()
             .withName("DenyGlossaryTermEdit")
             .withResources(List.of("All"))
-            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withOperations(List.of(operation))
             .withEffect(Rule.Effect.DENY);
     Policy policy =
         admin
