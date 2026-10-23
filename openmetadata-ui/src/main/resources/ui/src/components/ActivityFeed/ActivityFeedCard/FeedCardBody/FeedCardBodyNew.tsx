@@ -17,6 +17,7 @@ import { isUndefined } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
+import { FEED_MESSAGE_RENDERED_CONTENT_SELECTOR } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import {
   getFrontEndFormat,
@@ -58,10 +59,6 @@ const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
 );
 
-// Content that renders without text, such as an image-only post or a divider.
-const RENDERED_CONTENT_SELECTOR =
-  'img, hr, table, iframe, video, svg, [data-type]';
-
 const feedMessageSkeleton = (
   <Box data-testid="feed-message-skeleton" direction="col" gap={2}>
     <Skeleton height={14} variant="text" width="100%" />
@@ -83,7 +80,7 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
     const checkRendered = () => {
       if (
         container.textContent?.trim() ||
-        container.querySelector(RENDERED_CONTENT_SELECTOR)
+        container.querySelector(FEED_MESSAGE_RENDERED_CONTENT_SELECTOR)
       ) {
         setIsRendered(true);
       }
