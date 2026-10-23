@@ -3768,6 +3768,7 @@
     "value-boost": "Boost de valeur",
     "value-count": "Décompte de la Valeur",
     "value-plural": "Valeurs",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Variance",
     "variant": "Variante",
     "variant-plural": "Variantes",

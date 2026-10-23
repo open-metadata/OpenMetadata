@@ -50,6 +50,9 @@ const GlossaryHeader = withSuspenseFallback(
   lazy(() => import('../GlossaryHeader/GlossaryHeader.component'))
 );
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(() => import('../../activity-feed/ActivityFeed/ActivityFeedTabLabel'))
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import('../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component').then(
@@ -189,8 +192,9 @@ const GlossaryDetails = ({
             },
             {
               label: (
-                <TabsLabel
+                <ActivityFeedTabLabel
                   count={feedCount.totalCount}
+                  entityType={EntityType.GLOSSARY}
                   id={EntityTabs.ACTIVITY_FEED}
                   isActive={activeTab === EntityTabs.ACTIVITY_FEED}
                   name={

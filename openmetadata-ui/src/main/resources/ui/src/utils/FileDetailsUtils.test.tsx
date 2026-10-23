@@ -105,17 +105,19 @@ describe('FileDetailsUtils', () => {
       expect(screen.getByText('label.overview - Active')).toBeInTheDocument();
     });
 
-    it('should render activity feed tab with correct count', () => {
+    it('should render activity feed tab with correct count', async () => {
       const tabs = getFileDetailsPageTabs(mockProps);
       const activityTab = tabs[1];
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByTestId('tab-label-label.activity-feed-and-task-plural')
+        await screen.findByTestId(
+          'tab-label-label.activity-feed-and-task-plural'
+        )
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (15)')
+        await screen.findByText('label.activity-feed-and-task-plural (15)')
       ).toBeInTheDocument();
     });
 
@@ -206,7 +208,7 @@ describe('FileDetailsUtils', () => {
       expect(screen.getByText('label.lineage')).toBeInTheDocument();
     });
 
-    it('should handle zero feed count', () => {
+    it('should handle zero feed count', async () => {
       const propsWithZeroCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -218,11 +220,11 @@ describe('FileDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
-    it('should handle large feed count', () => {
+    it('should handle large feed count', async () => {
       const propsWithLargeCount = {
         ...mockProps,
         feedCount: { totalCount: 999 },
@@ -234,7 +236,7 @@ describe('FileDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (999)')
+        await screen.findByText('label.activity-feed-and-task-plural (999)')
       ).toBeInTheDocument();
     });
   });
@@ -384,7 +386,7 @@ describe('FileDetailsUtils', () => {
   });
 
   describe('edge cases', () => {
-    it('should handle missing feedCount gracefully', () => {
+    it('should handle missing feedCount gracefully', async () => {
       const propsWithoutFeedCount = {
         ...mockProps,
         feedCount: { totalCount: 0 },
@@ -396,7 +398,7 @@ describe('FileDetailsUtils', () => {
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
       expect(
-        screen.getByText('label.activity-feed-and-task-plural (0)')
+        await screen.findByText('label.activity-feed-and-task-plural (0)')
       ).toBeInTheDocument();
     });
 
@@ -489,7 +491,7 @@ describe('FileDetailsUtils', () => {
       ).toBeInTheDocument();
     });
 
-    it('should use custom label for activity feed tab from labelMap', () => {
+    it('should use custom label for activity feed tab from labelMap', async () => {
       const propsWithLabelMap = {
         ...mockProps,
         labelMap: {
@@ -502,7 +504,9 @@ describe('FileDetailsUtils', () => {
 
       render(<MemoryRouter>{activityTab.label}</MemoryRouter>);
 
-      expect(screen.getByText('Custom Activity (15)')).toBeInTheDocument();
+      expect(
+        await screen.findByText('Custom Activity (15)')
+      ).toBeInTheDocument();
     });
 
     it('should use custom label for lineage tab from labelMap', () => {

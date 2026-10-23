@@ -3768,6 +3768,7 @@
     "value-boost": "値のブースト",
     "value-count": "値の件数",
     "value-plural": "値",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "分散",
     "variant": "バリアント",
     "variant-plural": "バリアント",

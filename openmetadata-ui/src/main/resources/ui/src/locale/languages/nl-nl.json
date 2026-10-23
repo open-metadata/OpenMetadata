@@ -3768,6 +3768,7 @@
     "value-boost": "Waarde boost",
     "value-count": "Aantal waarden",
     "value-plural": "Waarden",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Variantie",
     "variant": "Metriekvariant",
     "variant-plural": "Varianten",

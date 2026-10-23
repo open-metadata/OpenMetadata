@@ -3768,6 +3768,7 @@
     "value-boost": "เพิ่มประสิทธิภาพค่า",
     "value-count": "จำนวนค่า",
     "value-plural": "ค่าหลายรายการ",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "ความแปรปรวน",
     "variant": "รูปแบบย่อย",
     "variant-plural": "รูปแบบย่อยหลายรายการ",

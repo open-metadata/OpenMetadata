@@ -22,6 +22,7 @@ import { countBy } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { TASK_GROUPING_LABEL_KEY } from '../../inbox.constants';
 import { getTaskTypeKey } from '../taskDetail.utils';
 import {
   TaskStatusBucket,
@@ -31,6 +32,30 @@ import ActivityToolbarMenu from './ActivityToolbarMenu';
 
 /** How the loaded tasks are broken up in the list. */
 export type InboxTaskGrouping = 'none' | 'type';
+
+/**
+ * The Type filter's options: one per label, not per type, since a test case
+ * incident and an incident both read "Incident" and listing them apart showed
+ * "Incident" twice. Taken from the tasks on screen rather than the full enum,
+ * so it never offers a type the queue does not hold; a chosen type stays
+ * offered (at 0) when none of its tasks are loaded, so it can be unticked.
+ */
+export const useTaskTypeOptions = (tasks: Task[], typeFilter: string[]) => {
+  const { t } = useTranslation();
+
+  return useMemo(() => {
+    const counts = countBy(tasks, getTaskTypeKey);
+    typeFilter.forEach((key) => {
+      counts[key] ??= 0;
+    });
+
+    return Object.entries(counts).map(([key, count]) => ({
+      value: key,
+      label: t(key),
+      count,
+    }));
+  }, [tasks, typeFilter, t]);
+};
 
 export interface InboxTaskListToolbarProps {
   /** The All / Open / Closed control, sharing the first row with grouping. */
@@ -74,10 +99,10 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
 
   // The trigger reads "Group: Type"; the menu rows show the bare option.
   const groupingOptions = useMemo(
-    () => [
-      { value: 'type', label: t('label.type') },
-      { value: 'none', label: t('label.none') },
-    ],
+    () =>
+      (Object.keys(TASK_GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map(
+        (value) => ({ value, label: t(TASK_GROUPING_LABEL_KEY[value]) })
+      ),
     [t]
   );
 
@@ -90,22 +115,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
     [statusOptions, t]
   );
 
-  // One option per label, not per type: a test case incident and an incident
-  // both read "Incident", and listing them apart showed "Incident" twice. A
-  // chosen type stays offered (at 0) when none of its tasks are loaded, e.g.
-  // after switching tab, so it can still be unticked.
-  const typeOptions = useMemo(() => {
-    const counts = countBy(tasks, getTaskTypeKey);
-    typeFilter.forEach((key) => {
-      counts[key] ??= 0;
-    });
-
-    return Object.entries(counts).map(([key, count]) => ({
-      value: key,
-      label: t(key),
-      count,
-    }));
-  }, [tasks, typeFilter, t]);
+  const typeOptions = useTaskTypeOptions(tasks, typeFilter);
 
   return (
     <Box

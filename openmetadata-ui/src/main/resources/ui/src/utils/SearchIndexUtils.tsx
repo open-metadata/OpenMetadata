@@ -45,6 +45,12 @@ const CustomPropertyTable = withSuspenseFallback(
   props: CustomPropertyProps<T>
 ) => JSX.Element;
 
+const ActivityFeedTabLabel = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../components/activity-feed/ActivityFeed/ActivityFeedTabLabel')
+  )
+);
 const ActivityFeedTab = withSuspenseFallback(
   lazy(() =>
     import(
@@ -126,8 +132,9 @@ export const getSearchIndexDetailsTabs = ({
     },
     {
       label: (
-        <TabsLabel
+        <ActivityFeedTabLabel
           count={feedCount.totalCount}
+          entityType={EntityType.SEARCH_INDEX}
           id={EntityTabs.ACTIVITY_FEED}
           isActive={activeTab === EntityTabs.ACTIVITY_FEED}
           name={

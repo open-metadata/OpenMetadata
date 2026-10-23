@@ -3768,6 +3768,7 @@
     "value-boost": "Усиление значения",
     "value-count": "Количество значений",
     "value-plural": "Значения",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Дисперсия",
     "variant": "Вариант",
     "variant-plural": "Варианты",

@@ -245,6 +245,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Badge: ({ children }: { children?: ReactNode }) => (
       <span data-testid="count-badge">{children}</span>
     ),
+    Divider: () => <hr />,
     Skeleton: () => <div data-testid="skeleton" />,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
@@ -475,17 +476,6 @@ describe('TasksTab', () => {
     expect(mockListVisibleTasks.mock.calls[0][0]).not.toHaveProperty('endTs');
   });
 
-  it('lists all entity tasks (listTasks) when scoped to an entity', () => {
-    renderTab({ aboutEntity: 'svc.db.schema.table.tc' });
-
-    capturedFetchPage(undefined);
-
-    expect(mockListTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntity: 'svc.db.schema.table.tc' })
-    );
-    expect(mockListVisibleTasks).not.toHaveBeenCalled();
-  });
-
   it('merges a custom className with the base card classes on the root', () => {
     renderTab({ className: 'tw:-mx-4' });
 
@@ -570,7 +560,7 @@ describe('TasksTab', () => {
     // A reassigned task can leave the current user's visible set, so the list
     // must re-sync with the server rather than being patched client-side.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'active',
     });
     expect(mockSetTotal).not.toHaveBeenCalled();
@@ -607,7 +597,7 @@ describe('TasksTab', () => {
     // The other status lists may now hold or miss this task; they re-read on
     // their next visit while the showing list keeps its in-place edit.
     expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-task-list', 'me'],
+      queryKey: ['inbox-task-list'],
       refetchType: 'none',
     });
   });

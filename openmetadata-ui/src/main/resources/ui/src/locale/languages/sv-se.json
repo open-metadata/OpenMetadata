@@ -3768,6 +3768,7 @@
     "value-boost": "Värdeförstärkning",
     "value-count": "Värdeantal",
     "value-plural": "Värden",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varians",
     "variant": "Metrikvariant",
     "variant-plural": "Varianter",

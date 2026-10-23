@@ -3768,6 +3768,7 @@
     "value-boost": "Boost del Valore",
     "value-count": "Conteggio Valori",
     "value-plural": "Valori",
+    "value-with-count": "{{value}} · {{count}}",
     "variance": "Varianza",
     "variant": "Variante",
     "variant-plural": "Varianti",
