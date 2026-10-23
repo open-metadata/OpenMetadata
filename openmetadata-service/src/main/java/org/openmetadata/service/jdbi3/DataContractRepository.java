@@ -1426,6 +1426,20 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             .anyMatch(Boolean.FALSE::equals);
   }
 
+  /**
+   * The contract-status fallback used when finalizing a DQ run. A pipeline that did not end
+   * SUCCESS cannot serve as evidence that the contract's quality expectations were evaluated, so
+   * it must not default to Success — use {@link ContractExecutionStatus#Aborted} instead, mirroring
+   * the trigger-failure path. {@link #compileResult} still demotes to {@link
+   * ContractExecutionStatus#Failed} when recorded results contain actual failures.
+   */
+  private static ContractExecutionStatus dqFallbackStatus(PipelineStatusType pipelineState) {
+    return pipelineState == PipelineStatusType.FAILED
+            || pipelineState == PipelineStatusType.PARTIAL_SUCCESS
+        ? ContractExecutionStatus.Aborted
+        : ContractExecutionStatus.Success;
+  }
+
   private SlaValidation validateSla(DataContract dataContract) {
     SlaValidation validation;
     try {
@@ -1498,7 +1512,37 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     // Get the latest result or throw if none exists
     DataContractResult result = getLatestResult(dataContract);
-    applyDQPipelineOutcome(result, testSuite, pipelineState);
+    QualityValidation validation = validateDQ(testSuite);
+
+    result.withQualityValidation(validation);
+
+    // Only a pipeline that ends SUCCESS confirms the contract's quality expectations were
+    // evaluated this run. The per-test-case result summary carries the latest result with no run
+    // boundary, so on a FAILED/PARTIAL_SUCCESS run it is either empty (nothing recorded) or holds
+    // results from a previous run; in neither case is it evidence that quality was evaluated
+    // *this* run. Pre-fix this finalized as Success (a false positive on the exact guarantee data
+    // contracts exist to provide), so use Aborted as the fallback instead — mirroring the
+    // trigger-failure path in validateContract. compileResult still demotes Aborted to Failed when
+    // recorded results contain actual failures (common-failure case), leaving it untouched.
+    ContractExecutionStatus fallbackStatus = dqFallbackStatus(pipelineState);
+    if (fallbackStatus == ContractExecutionStatus.Aborted) {
+      Integer qualityFailed = validation.getFailed();
+      if (qualityFailed == null || qualityFailed == 0) {
+        // No recorded quality failures, so pre-fix this run would have reported Success; attach an
+        // explanatory message. When failures were recorded, compileResult carries the detail via
+        // the qualityValidation and no pipeline message is needed.
+        result.withResult(
+            validation.getTotal() == null
+                ? String.format(
+                    "DQ validation pipeline ended with status %s without recording any test results",
+                    pipelineState.value())
+                : String.format(
+                    "DQ validation pipeline ended with status %s; recorded results may not reflect "
+                        + "the current run",
+                    pipelineState.value()));
+      }
+    }
+    compileResult(result, fallbackStatus);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
 
@@ -1516,26 +1560,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
-  }
-
-  void applyDQPipelineOutcome(
-      DataContractResult result, TestSuite testSuite, PipelineStatusType pipelineState) {
-    if (didPipelineAbort(pipelineState)) {
-      // The test suite summary may carry results from an earlier run, so it is not trusted here.
-      result.withResult(
-          "DQ validation pipeline ended with status "
-              + pipelineState
-              + " before recording test results");
-      compileResult(result, ContractExecutionStatus.Aborted);
-    } else {
-      result.withQualityValidation(validateDQ(testSuite));
-      compileResult(result, ContractExecutionStatus.Success);
-    }
-  }
-
-  static boolean didPipelineAbort(PipelineStatusType pipelineState) {
-    return pipelineState == PipelineStatusType.FAILED
-        || pipelineState == PipelineStatusType.PARTIAL_SUCCESS;
   }
 
   public DataContractResult getLatestResult(DataContract dataContract) {
