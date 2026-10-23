@@ -107,6 +107,30 @@ describe('executionUtils', () => {
       expect(tree.children?.map((child) => child.title)).toEqual(['B', 'D']);
     });
 
+    it('expands a shared task under every branch that reaches it (diamond with tail)', () => {
+      // A -> [B, D], B -> C -> E, D -> C -> E.
+      // C and E must appear under both the B and D branches, not just the
+      // first one visited.
+      const tasks = makeTasks({
+        A: ['B', 'D'],
+        B: ['C'],
+        D: ['C'],
+        C: ['E'],
+        E: [],
+      });
+      const labels = labelElementsFor(['A', 'B', 'C', 'D', 'E']);
+
+      const tree = buildCompleteTree(tasks, labels, null, 'A', 'root');
+
+      const [bBranch, dBranch] = tree.children ?? [];
+
+      expect(String(bBranch.title)).toBe('B');
+      expect(String(dBranch.title)).toBe('D');
+      // Both branches must expand C and its downstream E.
+      expect(collectTitles([bBranch])).toEqual(['B', 'C', 'E']);
+      expect(collectTitles([dBranch])).toEqual(['D', 'C', 'E']);
+    });
+
     it('renders a dangling downstream reference as a leaf', () => {
       const tasks = makeTasks({ A: ['X'] }); // X is not present in tasks
       const labels = labelElementsFor(['A']);
@@ -200,6 +224,29 @@ describe('executionUtils', () => {
 
       expect(treeLabelList.map((node) => String(node.title))).toEqual(['A']);
       expect(collectTitles(treeLabelList)).toEqual(['A', 'B', 'C', 'B']);
+      expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
+    });
+
+    it('renders a disconnected cycle alongside a separate acyclic component', () => {
+      // A -> B is a normal acyclic component; C <-> D is a disconnected
+      // cycle. Both components must be visible: A as the detected root and
+      // C, D as unreached roots.
+      const tasks = makeTasks({ A: ['B'], B: [], C: ['D'], D: ['C'] });
+      const { treeLabelList, treeDataList } = getTreeData(
+        tasks,
+        makeViewData(['A', 'B', 'C', 'D'])
+      );
+
+      expect(treeLabelList.length).toBe(3);
+      expect(treeLabelList.map((node) => String(node.title))).toEqual([
+        'A',
+        'C',
+        'D',
+      ]);
+      // Every task shows up somewhere in the combined tree.
+      expect(new Set(collectTitles(treeLabelList))).toEqual(
+        new Set(['A', 'B', 'C', 'D'])
+      );
       expect(collectKeys(treeDataList)).toEqual(collectKeys(treeLabelList));
     });
 

@@ -202,6 +202,12 @@ export const buildCompleteTree = (
       );
       node.children?.push(childNode);
     }
+
+    // Backtrack so a shared task (e.g. a diamond merge node) is still
+    // expanded under a different parent branch. This keeps cycle
+    // termination (a node is only visited once per path) while not
+    // pruning valid acyclic paths that converge on the same task.
+    visited.delete(key);
   }
 
   if (node.children?.length === 0) {
@@ -293,8 +299,33 @@ export const getTreeData = (
     }
   }
 
-  const effectiveRoots =
-    roots.length > 0 ? roots : tasks.map((task) => task.name);
+  // Compute the set of tasks reachable from the detected roots so that
+  // disconnected components (e.g. a cycle C<->D alongside A->B) are still
+  // shown. When roots is empty (a pure cycle), nothing is reachable yet and
+  // every task becomes a root — matching the previous fallback behaviour.
+  const reached = new Set<string>();
+  const reachQueue: string[] = [...roots];
+  while (reachQueue.length > 0) {
+    const name = reachQueue.shift() as string;
+    if (reached.has(name)) {
+      continue;
+    }
+    reached.add(name);
+    const task = tasks.find((t) => t.name === name);
+    for (const child of task?.downstreamTasks ?? []) {
+      if (!reached.has(child)) {
+        reachQueue.push(child);
+      }
+    }
+  }
+
+  // Any task not reached from the detected roots (a disconnected cycle or
+  // any other disconnected component) gets its own root so it is visible.
+  const unreachedRoots = tasks
+    .map((task) => task.name)
+    .filter((name) => !reached.has(name));
+
+  const effectiveRoots = [...roots, ...unreachedRoots];
 
   effectiveRoots.forEach((taskName) => {
     treeDataList.push(
