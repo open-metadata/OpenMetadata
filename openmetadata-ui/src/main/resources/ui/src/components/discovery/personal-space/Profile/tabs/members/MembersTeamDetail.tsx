@@ -1381,7 +1381,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
           <TableCard.Root
-            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            className="tw:rounded-xl tw:shadow-none"
             size="compact">
             <Tabs
               selectedKey={activeTab}
