@@ -27,6 +27,7 @@ import { UseAssetSelectionStateReturn } from './useAssetSelectionState';
 export interface AssetSelectionContentBodyProps
   extends Pick<
     UseAssetSelectionStateReturn,
+    | 'assetsFilter'
     | 'search'
     | 'setSearch'
     | 'items'
@@ -56,6 +57,7 @@ export interface AssetSelectionContentBodyProps
 
 type AssetSelectionHeaderProps = Pick<
   AssetSelectionContentBodyProps,
+  | 'assetsFilter'
   | 'infoBannerText'
   | 'search'
   | 'setSearch'
@@ -100,6 +102,7 @@ const AssetSelectionHeader = ({
   filters,
   handleQuickFiltersValueSelect,
   clearFilters,
+  assetsFilter,
 }: AssetSelectionHeaderProps) => {
   const { t } = useTranslation();
 
@@ -133,6 +136,10 @@ const AssetSelectionHeader = ({
         <ExploreQuickFilters
           untitledDropdown
           aggregations={aggregations}
+          // The option counts of each filter follow the list: a port picker offers no columns.
+          defaultQueryFilter={
+            assetsFilter as Record<string, unknown> | undefined
+          }
           fields={filters}
           index={SearchIndex.ALL}
           showDeleted={false}
@@ -225,7 +232,7 @@ const AssetSelectionList = ({
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={emptyPlaceHolderText}
+            title={emptyPlaceHolderText}
           />
         </div>
       )}
@@ -262,6 +269,7 @@ const AssetSelectionContentBody = ({
   getErrorStatusAndMessage,
   handleQuickFiltersValueSelect,
   clearFilters,
+  assetsFilter,
 }: AssetSelectionContentBodyProps) => {
   const { t } = useTranslation();
 
@@ -273,6 +281,7 @@ const AssetSelectionContentBody = ({
       <AssetSelectionHeader
         aggregations={aggregations}
         assetJobResponse={assetJobResponse}
+        assetsFilter={assetsFilter}
         clearFilters={clearFilters}
         exportJob={exportJob}
         failedStatus={failedStatus}

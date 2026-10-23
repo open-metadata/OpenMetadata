@@ -63,6 +63,7 @@ import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
+import { useFillViewportHeight } from '../../hooks/useFillViewportHeight';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -630,6 +631,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
+  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -1389,48 +1391,48 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <ResizableLeftPanels
-        showLearningIcon
-        className={classNames('content-height-with-resizable-panel', {
-          'filter-applied': Boolean(sqlQuery),
-        })}
-        firstPanel={{
-          className: 'content-resizable-panel-container',
-          flex: 0.2,
-          minWidth: 280,
-          title: t('label.browse-estate'),
-          titleClassName: 'tw:capitalize tw:font-medium',
-          titleContainerClassName: 'tw:items-center tw:pb-2',
-          titleStrong: false,
-          children: <div className="p-x-sm">{exploreLeftPanel}</div>,
-        }}
-        secondPanel={{
-          flex: 0.8,
-          minWidth: 800,
-          children: (
-            <ExploreResultsPanel
-              entityDetails={entityDetails}
-              firstEntity={firstEntity}
-              handleClosePanel={handleClosePanel}
-              handleExplorePageChange={handleExplorePageChange}
-              handleExplorePageSizeChange={handleExplorePageSizeChange}
-              handleSummaryPanelDisplay={handleSummaryPanelDisplay}
-              hasActiveFilters={hasActiveFilters}
-              isElasticSearchIssue={isElasticSearchIssue}
-              loading={loading}
-              pageSize={pageSize}
-              parsedSearch={parsedSearch}
-              searchResults={searchResults}
-              selectedQuickFilters={selectedQuickFilters}
-              showRankingDetails={showRankingDetails}
-              showSummaryPanel={showSummaryPanel}
-              totalPages={totalPages}
-              totalValue={totalValue}
-              validCurrentPage={validCurrentPage}
-            />
-          ),
-        }}
-      />
+      <div ref={panelsRef}>
+        <ResizableLeftPanels
+          showLearningIcon
+          className="tw:h-full"
+          firstPanel={{
+            className: 'content-resizable-panel-container',
+            flex: 0.2,
+            minWidth: 280,
+            title: t('label.browse-estate'),
+            titleClassName: 'tw:capitalize tw:font-medium',
+            titleContainerClassName: 'tw:items-center tw:pb-2',
+            titleStrong: false,
+            children: <div className="p-x-sm">{exploreLeftPanel}</div>,
+          }}
+          secondPanel={{
+            flex: 0.8,
+            minWidth: 800,
+            children: (
+              <ExploreResultsPanel
+                entityDetails={entityDetails}
+                firstEntity={firstEntity}
+                handleClosePanel={handleClosePanel}
+                handleExplorePageChange={handleExplorePageChange}
+                handleExplorePageSizeChange={handleExplorePageSizeChange}
+                handleSummaryPanelDisplay={handleSummaryPanelDisplay}
+                hasActiveFilters={hasActiveFilters}
+                isElasticSearchIssue={isElasticSearchIssue}
+                loading={loading}
+                pageSize={pageSize}
+                parsedSearch={parsedSearch}
+                searchResults={searchResults}
+                selectedQuickFilters={selectedQuickFilters}
+                showRankingDetails={showRankingDetails}
+                showSummaryPanel={showSummaryPanel}
+                totalPages={totalPages}
+                totalValue={totalValue}
+                validCurrentPage={validCurrentPage}
+              />
+            ),
+          }}
+        />
+      </div>
 
       {searchQueryParam && tabItems.length === 0 && loading && <Loader />}
 

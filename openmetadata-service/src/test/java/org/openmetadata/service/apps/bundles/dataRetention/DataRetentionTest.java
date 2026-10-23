@@ -46,6 +46,21 @@ class DataRetentionTest {
   }
 
   /**
+   * Installs upgraded from a release without workflowInstanceRetentionPeriod have it missing from
+   * their stored configuration; it must read back as the 30-day default, not as null, which the app
+   * would take to mean "keep forever" and silently never clean the run history.
+   */
+  @Test
+  void workflowRunRetentionFallsBackToDefaultForConfigsSavedWithoutIt() {
+    DataRetentionConfiguration config =
+        JsonUtils.readValue(
+            "{\"changeEventRetentionPeriod\": 7}", DataRetentionConfiguration.class);
+
+    assertEquals(30, config.getWorkflowInstanceRetentionPeriod());
+    assertTrue(DataRetention.isRetentionEnabled(config.getWorkflowInstanceRetentionPeriod()));
+  }
+
+  /**
    * Models the drain the automation-workflow cleanup runs: each batch fetches up to BATCH_SIZE ids
    * oldest-first and reports only the rows it actually deleted, so one permanently undeletable row
    * heads every batch. This pins the predicate choice, not the delete itself - that needs a live

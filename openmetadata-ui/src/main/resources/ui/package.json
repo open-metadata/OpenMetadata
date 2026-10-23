@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.23.4",
     "yarn": "^1.22.0"
   },
   "repository": {
@@ -338,6 +338,7 @@
     "esbuild": "^0.28.2",
     "js-yaml": "^5.4.3",
     "postcss": "8.5.29",
+    "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
     "undici": "^6.28.1",
     "@codemirror/state": "^6",

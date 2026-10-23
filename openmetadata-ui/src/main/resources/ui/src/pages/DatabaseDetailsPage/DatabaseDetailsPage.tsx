@@ -32,11 +32,12 @@ import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../constants/constants';
@@ -124,7 +125,7 @@ const renderDatabasePageGuard = ({
   t: TFunction;
 }): JSX.Element | null => {
   if (permissionsLoading || databaseLoading || loading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (isError) {
@@ -132,10 +133,7 @@ const renderDatabasePageGuard = ({
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <NoDataPlaceholder
           data-testid="no-data-placeholder"
-          description={getEntityMissingError(
-            EntityType.DATABASE,
-            decodedDatabaseFQN
-          )}
+          title={getEntityMissingError(EntityType.DATABASE, decodedDatabaseFQN)}
         />
       </div>
     );
@@ -226,6 +224,7 @@ const DatabaseDetails: FunctionComponent = () => {
     useState<boolean>(false);
 
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
   const isMounting = useRef(true);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
 
@@ -329,9 +328,10 @@ const DatabaseDetails: FunctionComponent = () => {
         decodedDatabaseFQN,
         databasePermission,
         database ?? ({} as Database),
-        navigate
+        navigate,
+        showModal
       ),
-    [decodedDatabaseFQN, databasePermission, database]
+    [decodedDatabaseFQN, databasePermission, database, showModal]
   );
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
@@ -749,7 +749,7 @@ const DatabaseDetails: FunctionComponent = () => {
   }
 
   if (!database) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (
@@ -758,7 +758,7 @@ const DatabaseDetails: FunctionComponent = () => {
         <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
-            description={getEntityMissingError(
+            title={getEntityMissingError(
               EntityType.DATABASE,
               decodedDatabaseFQN
             )}
