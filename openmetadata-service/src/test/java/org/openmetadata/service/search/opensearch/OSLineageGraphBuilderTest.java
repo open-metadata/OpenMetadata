@@ -426,6 +426,21 @@ class OSLineageGraphBuilderTest {
     return entityDoc;
   }
 
+  /**
+   * A slim walk document as returned by the depth-walk search — only {@code
+   * LINEAGE_WALK_FIELDS} (fqn + upstreamLineage edge refs), no {@code id} or {@code
+   * entityType}. getEntitiesAtSpecificDepthWithPagination overwrites the root's entry in
+   * allEntitiesUpToDepth with one of these for UPSTREAM, so the root-edge fix must read the
+   * full document from result.getNodes() instead.
+   */
+  private Map<String, Object> walkDoc(String fqn, List<EsLineageData> upstreamLineage) {
+    Map<String, Object> walkDoc = new HashMap<>();
+    walkDoc.put("fullyQualifiedName", fqn);
+    walkDoc.put("upstreamLineage", upstreamLineage);
+
+    return walkDoc;
+  }
+
   private EsLineageData lineageEdge(String fromFqn, String toFqn) {
     return new EsLineageData()
         .withDocId(fromFqn + "->" + toFqn)
@@ -1013,11 +1028,15 @@ class OSLineageGraphBuilderTest {
                       anyString(),
                       any(),
                       anyList()))
-          .thenReturn(entityDoc(ROOT_FQN, List.of()));
+          .thenReturn(
+              entityDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN))));
 
       Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      // The depth-0 walk returns a slim LINEAGE_WALK_FIELDS document (no id/entityType) —
+      // the production shape. The root-edge fix reads the full document from result.getNodes()
+      // (loaded by addRootEntityWithPagingCounts), not this walk document.
       Map<String, Object> rootWalkDoc =
-          entityDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN)));
+          walkDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN)));
       List<Hit<JsonData>> rootHits = List.of(hitFor(docs, rootWalkDoc));
       List<Hit<JsonData>> upstreamHits =
           List.of(hitFor(docs, entityDoc(up1, List.of())), hitFor(docs, entityDoc(up2, List.of())));
