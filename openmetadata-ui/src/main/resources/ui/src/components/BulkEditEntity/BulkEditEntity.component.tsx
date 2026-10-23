@@ -47,8 +47,8 @@ import { ENTITY_BULK_EDIT_STEPS } from '../../constants/BulkEdit.constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { useFqn } from '../../hooks/useFqn';
-import { mergeGridRows } from '../../utils/CSV/GridRowsUtils';
 import entityBulkEditConfigClassBase from '../../utils/CSV/EntityBulkEditConfigClassBase';
+import { mergeGridRows } from '../../utils/CSV/GridRowsUtils';
 import { getTestCaseExportFiltersFromSearch } from '../../utils/DataQuality/DataQualityPureUtils';
 import {
   getBulkEditCSVExportEntityApi,
