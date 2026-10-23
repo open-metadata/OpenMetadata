@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-23 (initial)
 - **Deciders:** UI team
-- **Guard:** `PageLayoutV1.test.tsx` › "Should never gate the entity tabs fill classes with a :has() variant"
+- **Guard:** `PageLayoutV1.test.tsx` › "Should never render a :has() class on any layout wrapper" and "Should be told fillEntityTabs by every page that renders entity tabs"
 - **Related:** #35730 (introduced the selectors), openmetadata-nightly run 39873031604
 
 ## Context
@@ -26,8 +26,9 @@ the built bundle did.
 - A page-level wrapper (`PageLayoutV1`, and any element that wraps a whole page's content) never
   carries a `:has()` / `tw:has-[...]` selector.
 - `PageLayoutV1` applies the entity tabs fill classes only when the page passes `fillEntityTabs`.
-  Every page that renders `.entity-details-page-tabs` passes it. The classes stay scoped to
-  `.assistant-content` with plain descendant variants.
+  Every page that renders `.entity-details-page-tabs` passes it, here and in downstream
+  distributions that render `PageLayoutV1` (Collate's Observability pipeline page). The classes
+  stay scoped to `.assistant-content` with plain descendant variants.
 
 ## Consequences
 

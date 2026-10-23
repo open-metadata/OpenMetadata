@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import fs from 'fs';
+import path from 'path';
 import PageLayoutV1 from './PageLayoutV1';
 import {
   ENTITY_TABS_FILL_COLUMN_CLASS,
@@ -194,14 +196,53 @@ describe('PageLayoutV1', () => {
   });
 
   // ADR:2026-10-23-page-layout-wrappers-never-use-has-selectors
-  it('Should never gate the entity tabs fill classes with a :has() variant', () => {
-    const fillClasses = [
-      ...splitClasses(ENTITY_TABS_FILL_GRID_CLASS),
-      ...splitClasses(ENTITY_TABS_FILL_COLUMN_CLASS),
-    ];
-
-    expect(fillClasses.filter((name) => /has-\[|:has\(/.test(name))).toEqual(
-      []
+  it('Should never render a :has() class on any layout wrapper', () => {
+    const { container } = render(
+      <PageLayoutV1
+        fillEntityTabs
+        fullHeight
+        leftPanel={<div>Left panel</div>}
+        pageTitle="Test Page"
+        rightPanel={<div>Right panel</div>}>
+        Center content
+      </PageLayoutV1>
     );
+
+    const hasClasses = Array.from(container.querySelectorAll('[class]'))
+      .flatMap((element) => Array.from(element.classList))
+      .filter((name) => /(^|:)has-\[/.test(name));
+
+    expect(hasClasses).toEqual([]);
+  });
+
+  // Pages opt in to the fill instead of the layout detecting their tabs, so a
+  // page that renders entity tabs without `fillEntityTabs` silently loses it.
+  it('Should be told fillEntityTabs by every page that renders entity tabs', () => {
+    const srcRoot = path.resolve(__dirname, '../..');
+    const collectPages = (directory: string): string[] =>
+      fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+        const fullPath = path.join(directory, entry.name);
+
+        if (entry.isDirectory()) {
+          return entry.name === 'node_modules' ? [] : collectPages(fullPath);
+        }
+
+        return entry.name.endsWith('.tsx') && !entry.name.includes('.test.')
+          ? [fullPath]
+          : [];
+      });
+
+    const pagesMissingFill = collectPages(srcRoot)
+      .filter((file) => {
+        const contents = fs.readFileSync(file, 'utf8');
+
+        return (
+          contents.includes('className="entity-details-page-tabs"') &&
+          !/<PageLayoutV1\s[^>]*\bfillEntityTabs\b/.test(contents)
+        );
+      })
+      .map((file) => path.relative(srcRoot, file));
+
+    expect(pagesMissingFill).toEqual([]);
   });
 });
