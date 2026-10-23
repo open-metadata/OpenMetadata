@@ -176,6 +176,10 @@ describe('MyTasksWidget', () => {
 
     expect(screen.queryByTestId('my-tasks-select-all')).not.toBeInTheDocument();
     expect(screen.queryByTestId('my-tasks-showing')).not.toBeInTheDocument();
+    expect(screen.getByTestId('my-tasks-filter-chips').nextElementSibling).toBe(
+      screen.getByTestId('my-task-rows')
+    );
+    expect(rowIds()).toHaveLength(3);
   });
 
   // The chips are counted over the loaded page: "Incidents 1" alone would read

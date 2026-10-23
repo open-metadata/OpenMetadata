@@ -21,7 +21,7 @@ export const MY_TASKS_QUERY_KEY = ['landingPage', 'widgets', 'myTasks'];
 /**
  * One request's worth. The bucket counts are taken over this page, so past it
  * they describe the loaded tasks rather than every task — the card's footer
- * says "Loaded N of M tasks" when that happens.
+ * shows the loaded and total counts ("100/250 Tasks") when that happens.
  */
 // ADR:2026-10-16-landing-task-and-pipeline-cards-read-one-page
 export const MY_TASKS_PAGE_SIZE = 100;

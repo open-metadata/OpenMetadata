@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import TopicsSectionHeader, {
   TopicsSectionHeaderProps,
+  TopicsViewMode,
 } from './TopicsSectionHeader';
 
 jest.mock('react-i18next', () => ({
@@ -61,12 +63,26 @@ describe('TopicsSectionHeader', () => {
     expect(onViewModeChange).toHaveBeenCalledWith('list');
   });
 
+  // Driven through real state: a press that deselected would hand the parent
+  // no view, and the switch would render with neither option chosen.
   it('keeps a view chosen when the current one is pressed again', () => {
-    const { onViewModeChange } = renderHeader();
+    const StatefulHeader = () => {
+      const [viewMode, setViewMode] = useState<TopicsViewMode>('grid');
+
+      return (
+        <TopicsSectionHeader
+          isEveryWidgetCollapsed={false}
+          isToggleAllDisabled={false}
+          viewMode={viewMode}
+          onToggleAll={jest.fn()}
+          onViewModeChange={setViewMode}
+        />
+      );
+    };
+    render(<StatefulHeader />);
 
     fireEvent.click(screen.getByTestId('topics-grid-view'));
 
-    expect(onViewModeChange).not.toHaveBeenCalledWith('list');
     expect(screen.getByTestId('topics-grid-view')).toHaveAttribute(
       'aria-checked',
       'true'
@@ -79,6 +95,15 @@ describe('TopicsSectionHeader', () => {
     expect(screen.getByText('label.collapse-all')).toHaveClass(
       'tw:font-semibold',
       'tw:text-primary'
+    );
+  });
+
+  it('greys the collapse label out with the button when there is nothing to toggle', () => {
+    renderHeader({ isToggleAllDisabled: true });
+
+    expect(screen.getByTestId('toggle-all-widgets')).toBeDisabled();
+    expect(screen.getByText('label.collapse-all')).toHaveClass(
+      'tw:group-disabled:text-fg-disabled'
     );
   });
 

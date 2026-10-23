@@ -99,9 +99,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
           size="sm"
           onSelectionChange={(keys) => {
             const [selected] = [...keys] as TopicsViewMode[];
-            if (selected) {
-              onViewModeChange(selected);
-            }
+            onViewModeChange(selected);
           }}>
           <ButtonGroupItem
             aria-label={t('label.list')}

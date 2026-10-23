@@ -27,6 +27,6 @@ export const getSegmentedItemClasses = (isSelected: boolean) =>
   classNames(
     'tw:rounded-lg tw:px-3 tw:py-1.5 tw:shadow-none tw:first:rounded-lg tw:last:rounded-lg tw:not-last:pr-3',
     isSelected
-      ? 'tw:bg-raised tw:text-primary tw:shadow-xs tw:after:outline-secondary tw:hover:bg-raised tw:selected:bg-raised'
+      ? 'tw:bg-raised tw:text-primary tw:shadow-xs tw:after:outline-secondary tw:hover:bg-raised tw:selected:bg-raised tw:selected:text-primary'
       : 'tw:bg-transparent tw:text-tertiary tw:after:outline-transparent tw:hover:bg-transparent tw:hover:text-secondary'
   );

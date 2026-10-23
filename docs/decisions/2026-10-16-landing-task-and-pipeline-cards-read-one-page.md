@@ -18,10 +18,8 @@ requires a time window.
 
 - **My Tasks** reads one page of `MY_TASKS_PAGE_SIZE = 100` open tasks from `/tasks/assigned`.
   "All" is the server's total; the Incidents, Access and Approvals chips and the incident headline
-  are counted over that page. When the total exceeds the page, the card's footer says "Loaded N of
-  M tasks" under every chip, so a bucket count that covers only the loaded tasks is never presented
-  as the whole. (v2: this replaces the "N of M loaded" strip above the rows, which the design review
-  removed along with its select-all checkbox.)
+  are counted over that page. When the total exceeds the page, the card says "Showing N of M", so
+  a bucket count that covers only the loaded tasks is never presented as the whole.
 - **Pipeline Status** chip counts are the server's per-bucket totals (one request per state). Only
   the rows are capped — `PIPELINE_STATUS_PAGE_SIZE = 10` per bucket — and runs are read from the
   last `PIPELINE_RUN_WINDOW_DAYS = 30` days, enough for ten runs of anything scheduled at least
@@ -34,3 +32,9 @@ requires a time window.
 - A pipeline whose last run is older than 30 days shows no run history on the card.
 - Revisit My Tasks when `/tasks/assigned` can count or filter by category: the chips should then
   become server totals like Pipeline Status's.
+
+## Amendment — v2: the My Tasks notice moves to the card footer
+
+The landing page design review (Set 4) removed the strip above the rows that carried "N of M
+loaded" and its select-all checkbox. The notice now sits in the card footer as the loaded and total
+counts ("100/250 Tasks"), under every chip including All, whenever the total exceeds the page.
