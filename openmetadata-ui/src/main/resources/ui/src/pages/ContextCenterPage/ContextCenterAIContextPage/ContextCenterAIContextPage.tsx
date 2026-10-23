@@ -256,10 +256,10 @@ const ContextCenterAIContextPage = () => {
               theme="light"
             />
             <Box className="tw:min-w-0" direction="col">
-              <Typography ellipsis className="tw:text-primary" weight="medium">
+              <Typography ellipsis weight="medium">
                 {getEntityName(persona)}
               </Typography>
-              <Typography ellipsis className="tw:text-tertiary" size="text-xs">
+              <Typography ellipsis color="secondary" size="text-xs">
                 {persona.name}
               </Typography>
             </Box>
