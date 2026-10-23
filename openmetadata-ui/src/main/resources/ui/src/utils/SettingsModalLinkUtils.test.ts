@@ -711,6 +711,23 @@ describe('getSettingsHashForHref', () => {
     expect(getSettingsHashForHref(href)).toBeUndefined();
   });
 
+  // On a classic `/users/alice` page served in the AI shell, a link that is
+  // already a modal hash must not be remapped to Alice.
+  it.each(['?a=1#members/user/bob', '#members/teams/Eng', '?page=2', '#top'])(
+    'leaves the same-page link %s alone on a user page',
+    (href) => {
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      globalThis.history.replaceState(null, '', '/users/alice');
+
+      expect(getSettingsHashForHref(href)).toBeUndefined();
+      expect(
+        getSettingsHashForHref(`${origin}/users/alice#members/user/bob`)
+      ).toBeUndefined();
+
+      globalThis.history.replaceState(null, '', '/');
+    }
+  );
+
   it('leaves every link alone in classic mode', () => {
     expect(getSettingsHashForHref(`${origin}/users/alice`)).toBeUndefined();
   });

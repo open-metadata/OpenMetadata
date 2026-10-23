@@ -14,7 +14,6 @@
 import { performAdminLogin } from '../../../utils/admin';
 import {
   navigateToMembersPanel,
-  openAiProfile,
   openOnlineUsersPanel,
 } from '../../../utils/aiProfile';
 import { expect, test } from '../../fixtures/pages';

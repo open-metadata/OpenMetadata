@@ -332,15 +332,18 @@ export const isAiShell = (): boolean =>
 
 /**
  * Modal hash for an href in the AI shell: a same-origin link (absolute, as rich
- * text stores mentions, or relative) to a page the settings modal hosts.
+ * text stores mentions, or relative) to a page the settings modal hosts. A
+ * same-page link (`#…`, `?…`) or one already carrying a hash, such as a
+ * `getSettingsLink` result, is left alone: its path is the current page's, which
+ * may itself be a classic `/users/<name>` route.
  */
 export const getSettingsHashForHref = (href: string): string | undefined => {
-  if (!isAiShell()) {
+  if (!isAiShell() || href.startsWith('#') || href.startsWith('?')) {
     return undefined;
   }
   const url = new URL(href, globalThis.location.href);
 
-  return url.origin === globalThis.location.origin
+  return url.origin === globalThis.location.origin && !url.hash
     ? settingsPathToHash(url.pathname + url.search)
     : undefined;
 };
