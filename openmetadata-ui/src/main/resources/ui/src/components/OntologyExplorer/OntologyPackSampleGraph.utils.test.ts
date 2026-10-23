@@ -77,4 +77,29 @@ describe('layoutOntologyPackSample', () => {
 
     expect(layoutOntologyPackSample(cycle).nodes).toHaveLength(2);
   });
+
+  it('keeps shallow sibling nodes apart', () => {
+    const shallow: OntologyPackSample = {
+      ...SAMPLE,
+      concepts: Array.from({ length: 6 }, (_, index) => ({
+        iri: `urn:concept-${index}`,
+        label: `Concept ${index}`,
+      })),
+      relations: [],
+    };
+    const layout = layoutOntologyPackSample(shallow);
+
+    expect(layout.width).toBeGreaterThan(720);
+    expect(layout.nodes.map((node) => node.x)).toEqual(
+      [...layout.nodes.map((node) => node.x)].sort((a, b) => a - b)
+    );
+    expect(
+      layout.nodes
+        .slice(1)
+        .every(
+          (node, index) =>
+            node.x - layout.nodes[index].x >= layout.nodeWidth + 16
+        )
+    ).toBe(true);
+  });
 });

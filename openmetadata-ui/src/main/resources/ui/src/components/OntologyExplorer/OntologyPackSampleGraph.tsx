@@ -91,68 +91,71 @@ const OntologyPackSampleGraph = ({
 
   return (
     <Box direction="col" gap={2}>
-      <svg
-        aria-label={t('message.ontology-pack-sample-graph', {
-          concepts: sample.conceptCount,
-          relations: sample.relationCount,
-        })}
-        className="tw:w-full tw:h-auto tw:text-fg-brand-primary"
-        data-testid="ontology-pack-sample"
-        preserveAspectRatio="xMidYMin meet"
-        role="img"
-        viewBox={`0 0 ${layout.width} ${layout.height}`}>
-        <defs>
-          <marker
-            id="ontology-pack-sample-arrow"
-            markerHeight="6"
-            markerWidth="6"
-            orient="auto-start-reverse"
-            refX="5"
-            refY="3">
-            <path d="M 0 0 L 6 3 L 0 6 Z" fill="currentColor" />
-          </marker>
-        </defs>
-        {layout.edges.map((edge, index) => (
-          <path
-            d={edge.path}
-            data-testid={`ontology-pack-sample-edge-${index}`}
-            fill="none"
-            key={`${edge.sourceIri}-${edge.propertyIri}-${edge.targetIri}`}
-            markerEnd="url(#ontology-pack-sample-arrow)"
-            stroke="currentColor"
-            strokeWidth="2">
-            <title>{edge.label}</title>
-          </path>
-        ))}
-        {layout.nodes.map((node, index) => (
-          <g
-            data-testid={`ontology-pack-sample-node-${index}`}
-            key={node.iri}
-            transform={`translate(${node.x - layout.nodeWidth / 2}, ${
-              node.y - layout.nodeHeight / 2
-            })`}>
-            <rect
-              fill="var(--tw-background-color-surface)"
-              height={layout.nodeHeight}
-              rx="8"
-              stroke="var(--tw-border-color-secondary)"
-              width={layout.nodeWidth}
-            />
-            <text
-              dominantBaseline="middle"
-              fill="var(--tw-text-color-primary)"
-              fontSize="13"
-              textAnchor="middle"
-              x={layout.nodeWidth / 2}
-              y={layout.nodeHeight / 2}>
-              {node.label.length > 20
-                ? `${node.label.slice(0, 19)}…`
-                : node.label}
-            </text>
-            <title>{node.label}</title>
-          </g>
-        ))}
-      </svg>
+      <Box className="tw:overflow-x-auto">
+        <svg
+          aria-label={t('message.ontology-pack-sample-graph', {
+            concepts: sample.conceptCount,
+            relations: sample.relationCount,
+          })}
+          className="tw:w-full tw:h-auto tw:text-fg-brand-primary"
+          data-testid="ontology-pack-sample"
+          preserveAspectRatio="xMidYMin meet"
+          role="img"
+          style={{ minWidth: layout.width }}
+          viewBox={`0 0 ${layout.width} ${layout.height}`}>
+          <defs>
+            <marker
+              id="ontology-pack-sample-arrow"
+              markerHeight="6"
+              markerWidth="6"
+              orient="auto-start-reverse"
+              refX="5"
+              refY="3">
+              <path d="M 0 0 L 6 3 L 0 6 Z" fill="currentColor" />
+            </marker>
+          </defs>
+          {layout.edges.map((edge, index) => (
+            <path
+              d={edge.path}
+              data-testid={`ontology-pack-sample-edge-${index}`}
+              fill="none"
+              key={`${edge.sourceIri}-${edge.propertyIri}-${edge.targetIri}`}
+              markerEnd="url(#ontology-pack-sample-arrow)"
+              stroke="currentColor"
+              strokeWidth="2">
+              <title>{edge.label}</title>
+            </path>
+          ))}
+          {layout.nodes.map((node, index) => (
+            <g
+              data-testid={`ontology-pack-sample-node-${index}`}
+              key={node.iri}
+              transform={`translate(${node.x - layout.nodeWidth / 2}, ${
+                node.y - layout.nodeHeight / 2
+              })`}>
+              <rect
+                fill="var(--tw-background-color-surface)"
+                height={layout.nodeHeight}
+                rx="8"
+                stroke="var(--tw-border-color-secondary)"
+                width={layout.nodeWidth}
+              />
+              <text
+                dominantBaseline="middle"
+                fill="var(--tw-text-color-primary)"
+                fontSize="13"
+                textAnchor="middle"
+                x={layout.nodeWidth / 2}
+                y={layout.nodeHeight / 2}>
+                {node.label.length > 20
+                  ? `${node.label.slice(0, 19)}…`
+                  : node.label}
+              </text>
+              <title>{node.label}</title>
+            </g>
+          ))}
+        </svg>
+      </Box>
       {sample.concepts.length < sample.conceptCount && (
         <Typography color="secondary" size="text-xs">
           {t('message.ontology-pack-sample-truncated', {

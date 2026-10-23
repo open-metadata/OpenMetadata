@@ -20,6 +20,7 @@ const NODE_WIDTH = 148;
 const NODE_HEIGHT = 44;
 const LAYER_HEIGHT = 110;
 const GRAPH_WIDTH = 720;
+const NODE_GAP = 16;
 
 export const layoutOntologyPackSample = (sample: OntologyPackSample) => {
   const byIri = new Map(
@@ -60,10 +61,18 @@ export const layoutOntologyPackSample = (sample: OntologyPackSample) => {
     const depth = depths.get(concept.iri) ?? 0;
     layers.set(depth, [...(layers.get(depth) ?? []), concept]);
   });
+  const widestLayer = Math.max(
+    0,
+    ...[...layers.values()].map((layer) => layer.length)
+  );
+  const width = Math.max(
+    GRAPH_WIDTH,
+    (widestLayer + 1) * (NODE_WIDTH + NODE_GAP)
+  );
   const nodes = [...layers.entries()].flatMap(([depth, layer]) =>
     layer.map((concept, index) => ({
       ...concept,
-      x: ((index + 1) * GRAPH_WIDTH) / (layer.length + 1),
+      x: ((index + 1) * width) / (layer.length + 1),
       y: 36 + depth * LAYER_HEIGHT,
     }))
   );
@@ -89,7 +98,7 @@ export const layoutOntologyPackSample = (sample: OntologyPackSample) => {
   return {
     nodes,
     edges,
-    width: GRAPH_WIDTH,
+    width,
     height: Math.max(160, 70 + layers.size * LAYER_HEIGHT),
     nodeWidth: NODE_WIDTH,
     nodeHeight: NODE_HEIGHT,
