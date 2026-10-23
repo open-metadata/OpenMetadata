@@ -14,7 +14,7 @@ import { Select, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 import { useMemo, useRef, useState } from 'react';
-import { t } from '../i18next/LocalUtil';
+import { useTranslation } from 'react-i18next';
 import { QUERY_BUILDER_POPOVER_CLASS } from '../queryBuilder/types';
 
 type FieldNode = {
@@ -70,6 +70,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
   placeholder,
   dataTestId,
 }) => {
+  const { t } = useTranslation();
   // RAQB recreates `items` on every render.
   const itemsKey = buildItemsKey(items as FieldNode[]);
   const selectItems: SelectItemType[] = useMemo(
