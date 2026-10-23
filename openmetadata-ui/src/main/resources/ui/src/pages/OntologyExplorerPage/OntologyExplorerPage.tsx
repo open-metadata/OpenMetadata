@@ -1590,8 +1590,8 @@ const OntologyExplorerPage: React.FC = () => {
 
     if (availableOntologies.length === 0) {
       return (
-        <Box
-          className="tw:relative tw:min-h-80 tw:flex-1"
+        <div
+          className="tw:relative tw:h-full tw:min-h-70"
           data-testid="all-ontologies-empty">
           <EmptyPlaceholder
             actions={[
@@ -1606,21 +1606,20 @@ const OntologyExplorerPage: React.FC = () => {
               ...(canCreateOntology
                 ? [
                     {
-                      iconLeading: Plus,
-                      key: 'create',
+                      key: 'new-ontology',
                       label: t('label.new-entity', {
                         entity: t('label.ontology'),
                       }),
+                      iconLeading: Plus,
                       onPress: () => setIsCreatingOntology(true),
                     },
                   ]
                 : []),
             ]}
-            description={t('message.ontology-empty-description')}
-            title={t('message.ontology-empty-title')}
-            variant="blank"
+            icon={<Share07 className="tw:text-fg-brand-primary" />}
+            title={t('label.no-entity', { entity: t('label.ontology-plural') })}
           />
-        </Box>
+        </div>
       );
     }
     if (!allModels.graph) {

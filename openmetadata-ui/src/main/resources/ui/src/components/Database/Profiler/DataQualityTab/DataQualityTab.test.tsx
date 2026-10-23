@@ -1010,6 +1010,27 @@ describe('DataQualityTab test', () => {
     expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
   });
 
+  it('Should not show NextPrevious when there are no test cases, even with showPagination', async () => {
+    const pagingData = {
+      paging: { total: 0 },
+      currentPage: 1,
+      pageSize: 25,
+      pagingHandler: jest.fn(),
+    };
+    await act(async () => {
+      render(
+        <DataQualityTab
+          {...mockProps}
+          showPagination
+          pagingData={pagingData as never}
+          testCases={[]}
+        />
+      );
+    });
+
+    expect(screen.queryByTestId('next-previous')).not.toBeInTheDocument();
+  });
+
   it('Should stop click propagation from interactive cell wrappers', async () => {
     await act(async () => {
       render(<DataQualityTab {...mockProps} />);
