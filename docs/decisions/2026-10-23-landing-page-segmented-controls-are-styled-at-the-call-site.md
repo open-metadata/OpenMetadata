@@ -8,20 +8,18 @@
 
 ## Context
 Design review Set 4 specifies a segmented control for the landing page: a borderless gray track
-with the chosen option raised on it, every option 12px semibold, and list, grid and collapse glyphs
-drawn at a heavier stroke than core's icons. No core component expresses it — `ButtonGroup` draws
-joined bordered buttons, `Tabs`' `button-border` an outlined track with 14px labels, and core icons
-hard-code a 1.3 stroke on their paths. Changing core was out of scope for the release that needed
-the design.
+with the chosen option raised on it, every option 12px semibold. No core component expresses it —
+`ButtonGroup` draws joined bordered buttons and `Tabs`' `button-border` an outlined track with 14px
+labels. Changing those core components was out of scope for the release that needed the design.
 
 ## Decision
-Until `@openmetadata/ui-core-components` ships a segmented variant (and the glyphs at the design's
-stroke), these landing-page controls may restyle core components from the call site, as an
-exception to ADR:2026-10-11-migrated-antd-components-adopt-core-styling:
+Until `@openmetadata/ui-core-components` ships a segmented variant, these landing-page controls may
+restyle core components from the call site, as an exception to
+ADR:2026-10-11-migrated-antd-components-adopt-core-styling:
 
 - the Topics list/grid switch over core `ButtonGroup`, and the Collapse/Expand all label and icon
-  on core `Button` — classes in `TopicsSectionHeader.constants.ts`, glyphs in
-  `TopicsSectionHeaderIcons.tsx`;
+  on core `Button` — classes in `TopicsSectionHeader.constants.ts`. The glyphs are core icons
+  (`LayoutRows`, `LayoutColumns`, `ChevronSelectorVertical02`);
 - the filter and stat chips' padding over core `ButtonGroup` / `Button` (`TopicFilterChips`,
   `TopicStatChips`);
 - Collate's "Needs you now" tabs over core `Tabs` (`NeedsYouNow.utils.ts`).
@@ -31,4 +29,4 @@ The overrides stay in those modules; no other call site copies them.
 ## Consequences
 These controls can drift when core restyles `ButtonGroup`, `Tabs` or `Button`, so a core change to
 them is checked against the landing page in both themes. When core ships the variant, these call
-sites move to it, the local glyphs are deleted, and this record is superseded.
+sites move to it and this record is superseded.

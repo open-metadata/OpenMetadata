@@ -16,18 +16,18 @@ import {
   ButtonGroupItem,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Settings01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronSelectorVertical02,
+  LayoutColumns,
+  LayoutRows,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getSegmentedItemClasses,
   SEGMENTED_GROUP_CLASSES,
 } from './TopicsSectionHeader.constants';
-import {
-  CollapseAllIcon,
-  GridViewIcon,
-  ListViewIcon,
-} from './TopicsSectionHeaderIcons';
 
 export type TopicsViewMode = 'grid' | 'list';
 
@@ -79,7 +79,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
           color="secondary"
           data-testid="toggle-all-widgets"
           iconLeading={
-            <CollapseAllIcon className="tw:size-3.5 tw:text-fg-primary tw:group-disabled:text-fg-disabled" />
+            <ChevronSelectorVertical02 className="tw:size-3.5 tw:text-fg-primary tw:group-disabled:text-fg-disabled" />
           }
           isDisabled={isToggleAllDisabled}
           size="md"
@@ -106,14 +106,14 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
             className={getSegmentedItemClasses(viewMode === 'list')}
             data-testid="topics-list-view"
             id="list">
-            <ListViewIcon className="tw:size-4" />
+            <LayoutRows className="tw:size-4" />
           </ButtonGroupItem>
           <ButtonGroupItem
             aria-label={t('label.grid')}
             className={getSegmentedItemClasses(viewMode === 'grid')}
             data-testid="topics-grid-view"
             id="grid">
-            <GridViewIcon className="tw:size-4" />
+            <LayoutColumns className="tw:size-4" />
           </ButtonGroupItem>
         </ButtonGroup>
 
