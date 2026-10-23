@@ -18,8 +18,10 @@
   overflow-y: scroll;
 }
 
-// :where() keeps the old specificity so the panel's own tw: classes still win;
-// unscoped, this lazily loaded rule also painted the column detail drawer.
+// Scoped to the summary panel: unscoped, this lazily loaded rule also painted
+// the column detail drawer. :where() keeps the old specificity so the scoping
+// changes nothing else. Being unlayered, it still beats the panel's layered
+// tw: utilities (e.g. tw:bg-surface), exactly as before.
 :where(.entity-summary-panel-container) .summary-panel-container {
   border-radius: var(--om-radius-xl);
   border: 1px solid var(--om-color-gray-blue-100);
