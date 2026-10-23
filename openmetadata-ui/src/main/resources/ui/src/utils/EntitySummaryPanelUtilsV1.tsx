@@ -365,6 +365,7 @@ const SchemaFieldCardsV1: React.FC<{
 
     return (
       <Button
+        boxed
         className="tw:w-full"
         color="link-color"
         isLoading={isLoading && currentPage > 1}

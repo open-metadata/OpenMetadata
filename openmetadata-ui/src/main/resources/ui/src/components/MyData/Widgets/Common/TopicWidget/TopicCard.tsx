@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
@@ -321,9 +321,9 @@ const TopicCard: React.FC<TopicCardProps> = ({
   );
 
   return (
-    <section
+    <Card
       className={classNames(
-        'tw:flex tw:min-w-0 tw:flex-col tw:overflow-hidden tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-xs',
+        'tw:flex tw:min-w-0 tw:flex-col',
         // Expanded, the card fills its grid cell so the body can scroll inside
         // it. Collapsed, it is only a header — stretching would hang an empty
         // half-card below the summary, which is the cell's height showing
@@ -384,7 +384,7 @@ const TopicCard: React.FC<TopicCardProps> = ({
           topicKey={topicKey}
         />
       )}
-    </section>
+    </Card>
   );
 };
 
