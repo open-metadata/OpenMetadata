@@ -40,6 +40,12 @@ import org.quartz.JobExecutionContext;
 public class DataRetention extends AbstractNativeApplication {
   private static final int BATCH_SIZE = 10_000;
 
+  /**
+   * Governance workflow runs deleted per page. Each run takes all of its stage states with it, a
+   * handful of rows apiece, so a page stays a short transaction.
+   */
+  static final int WORKFLOW_RUN_PAGE_SIZE = 1_000;
+
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
   private final Stats retentionStats = new Stats();
@@ -53,6 +59,8 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
+  private final CollectionDAO.WorkflowInstanceTimeSeriesDAO workflowRunDAO;
+  private final CollectionDAO.WorkflowInstanceStateTimeSeriesDAO workflowRunStateDAO;
 
   private final DataRetentionExtensionRegistry extensionRegistry;
 
@@ -63,6 +71,8 @@ public class DataRetention extends AbstractNativeApplication {
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.workflowRunDAO = collectionDAO.workflowInstanceTimeSeriesDAO();
+    this.workflowRunStateDAO = collectionDAO.workflowInstanceStateTimeSeriesDAO();
     this.extensionRegistry = DataRetentionExtensionRegistry.discover();
   }
 
@@ -134,6 +144,8 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
     entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("workflow_runs", new StepStats());
+    entityStats.withAdditionalProperty("workflow_run_states", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -205,6 +217,16 @@ public class DataRetention extends AbstractNativeApplication {
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
 
+    Integer workflowRunRetentionPeriod = config.getWorkflowInstanceRetentionPeriod();
+    if (isRetentionEnabled(workflowRunRetentionPeriod)) {
+      LOG.info(
+          "Starting cleanup for governance workflow runs with retention period: {} days.",
+          workflowRunRetentionPeriod);
+      cleanWorkflowRuns(workflowRunRetentionPeriod);
+    } else {
+      LOG.info("Governance workflow runs are retained indefinitely.");
+    }
+
     LOG.info("Starting cleanup for registered retention extensions.");
     cleanExtensions(config);
   }
@@ -246,6 +268,21 @@ public class DataRetention extends AbstractNativeApplication {
         "activity_threads", () -> feedRepository.deleteThreadsInBatch(threadIdsToDelete));
 
     LOG.info("Activity threads cleanup complete.");
+  }
+
+  private void cleanWorkflowRuns(int retentionPeriod) {
+    LOG.info("Initiating governance workflow runs cleanup: Retention = {} days.", retentionPeriod);
+    WorkflowRunRetention retention =
+        new WorkflowRunRetention(
+            workflowRunDAO,
+            workflowRunStateDAO,
+            getRetentionCutoffMillis(retentionPeriod),
+            WORKFLOW_RUN_PAGE_SIZE);
+
+    recordDrain("workflow_runs", drainWorkflowRuns(retention));
+    updateStats("workflow_run_states", retention.deletedStates(), 0);
+
+    LOG.info("Governance workflow runs cleanup complete.");
   }
 
   @Transaction
@@ -463,9 +500,20 @@ public class DataRetention extends AbstractNativeApplication {
   }
 
   private void drainInBatches(
-      String entity, Supplier<Integer> deleteFunction, IntPredicate drainedWhen) {
-    BatchDrain.Result result = BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE);
+      final String entity, final Supplier<Integer> deleteFunction, final IntPredicate drainedWhen) {
+    recordDrain(entity, BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE));
+  }
 
+  /**
+   * Drains expired workflow runs page by page. A page that throws is charged as one page of runs,
+   * the most it could have left behind, not a full {@link #BATCH_SIZE}.
+   */
+  static BatchDrain.Result drainWorkflowRuns(final WorkflowRunRetention retention) {
+    return BatchDrain.drain(
+        retention::deleteNextPage, deleted -> retention.isDrained(), WORKFLOW_RUN_PAGE_SIZE);
+  }
+
+  private void recordDrain(final String entity, final BatchDrain.Result result) {
     if (result.failure() != null) {
       LOG.error("Failed to clean entity: {}", entity, result.failure());
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
@@ -486,6 +534,10 @@ public class DataRetention extends AbstractNativeApplication {
     return Instant.now()
         .minusMillis(Duration.ofDays(retentionPeriodInDays).toMillis())
         .toEpochMilli();
+  }
+
+  static boolean isRetentionEnabled(Integer retentionPeriod) {
+    return retentionPeriod != null && retentionPeriod > 0;
   }
 
   private synchronized void updateStats(String entity, int successCount, int failureCount) {
