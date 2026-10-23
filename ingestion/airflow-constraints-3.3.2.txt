@@ -1,6 +1,6 @@
 
 #
-# Security overrides update certifi, uv, virtualenv and its python-discovery dependency.
+# Security overrides update certifi, dnspython, uv, virtualenv and its python-discovery dependency.
 # Re-apply these overrides after regenerating from upstream: ADR:2026-10-23-ingestion-images-pin-python-security-packages-in-tree
 # This constraints file was automatically generated on 2026-09-17T09:17:15.849003
 # via `uv pip install --resolution highest` for the "v3-3-test" branch of Airflow.
@@ -288,7 +288,7 @@ deprecation==2.1.0
 dill==0.4.1
 distlib==0.4.3
 distro==1.9.0
-dnspython==2.8.0
+dnspython==2.9.0
 docker==7.2.0
 docopt==0.6.2
 docstring_parser==0.18.0
