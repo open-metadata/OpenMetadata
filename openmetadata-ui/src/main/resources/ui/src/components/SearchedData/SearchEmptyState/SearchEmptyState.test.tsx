@@ -73,12 +73,19 @@ describe('Test Error placeholder ingestion Component', () => {
     expect(getByTestId(container, 'es-error')).toBeInTheDocument();
   });
 
-  it('Component should render no data placeholder', () => {
+  it('keeps the domain status in the headline, with separate guidance and documentation', () => {
     const { container } = render(
       <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
     );
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-data-available-entity').parentElement
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(
+      screen.getByText('message.add-data-asset-domain').parentElement
+    ).toHaveClass('tw:text-xs');
+    expect(screen.getByText('message.refer-to-our-doc')).toBeInTheDocument();
   });
 
   it('Component should render Filter Placeholder for query search', () => {

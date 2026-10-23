@@ -23,6 +23,11 @@ import {
   Lock01 as Lock,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { isEmpty, map, uniqBy, uniqueId } from 'lodash';
@@ -70,15 +75,11 @@ import {
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
-import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
-import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
-import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
@@ -218,24 +219,19 @@ const KnowledgePageEmptyState = ({
     <div className="tw:relative tw:flex-1 tw:min-h-[320px]">
       <NoDataPlaceholder
         description={
-          <>
-            {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: t('label.article'),
-            })}{' '}
-            <Transi18next
-              i18nKey="message.refer-to-our-doc"
-              renderElement={
-                <a
-                  aria-label={t('label.documentation')}
-                  href={KNOWLEDGE_CENTER_DOC_LINK}
-                  rel="noreferrer"
-                  style={{ color: theme.primaryColor }}
-                  target="_blank"
-                />
-              }
-              values={{ doc: t('label.doc-plural-lowercase') }}
-            />
-          </>
+          <Transi18next
+            i18nKey="message.refer-to-our-doc"
+            renderElement={
+              <a
+                aria-label={t('label.documentation')}
+                href={KNOWLEDGE_CENTER_DOC_LINK}
+                rel="noreferrer"
+                style={{ color: theme.primaryColor }}
+                target="_blank"
+              />
+            }
+            values={{ doc: t('label.doc-plural-lowercase') }}
+          />
         }
         footer={
           <>
@@ -271,6 +267,9 @@ const KnowledgePageEmptyState = ({
           </>
         }
         icon={<Articles />}
+        title={t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
+          entity: t('label.article'),
+        })}
         width={320}
       />
     </div>

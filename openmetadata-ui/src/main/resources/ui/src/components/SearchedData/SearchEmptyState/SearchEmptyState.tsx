@@ -135,22 +135,13 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
           <NoDataPlaceholder
             data-testid="no-data-placeholder"
             description={
-              <>
-                <Transi18next
-                  i18nKey="message.no-data-available-entity"
-                  renderElement={<b />}
-                  values={{
-                    entity: activeDomain,
-                  }}
-                />{' '}
-                <Transi18next
-                  i18nKey="message.add-data-asset-domain"
-                  renderElement={<b />}
-                  values={{
-                    domain: activeDomain,
-                  }}
-                />
-              </>
+              <Transi18next
+                i18nKey="message.add-data-asset-domain"
+                renderElement={<b />}
+                values={{
+                  domain: activeDomain,
+                }}
+              />
             }
             footer={
               <>
@@ -174,6 +165,15 @@ const SearchEmptyState = ({ type, errorMessage, query }: Props) => {
               </>
             }
             icon={<Database01 />}
+            title={
+              <Transi18next
+                i18nKey="message.no-data-available-entity"
+                renderElement={<b />}
+                values={{
+                  entity: activeDomain,
+                }}
+              />
+            }
           />
         </div>
       </div>
