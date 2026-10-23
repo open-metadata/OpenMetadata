@@ -57,9 +57,9 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   struct column's fields, a schema's nested fields). Chunks flatten them with the same flatteners
   and limits (`ColumnFlattener`, `SchemaFieldFlattener`) and merge them with the same rule
   (`TaggableIndex.mergedTags`). Where `getAllTags` and the document differ, a nested field's tag
-  being the case, vector search therefore follows normal search, not REST: a chunk is never
-  visible where its entity document is not, so the hydration withholding below is a safety net,
-  not a source of short pages.
+  being the case, vector search therefore follows normal search, not REST: a chunk's tags never
+  admit it where its entity document's tags do not, so the hydration withholding below is a
+  safety net, not a source of short pages.
 - A chunk whose stored `accessStamp` differs from its entity's is restamped (no re-embedding), the
   same way memory status and anchor are, also while the embedding provider is unavailable. None of
   these values may enter the embedding fingerprint.
@@ -74,7 +74,9 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   path's search retry re-runs both: an entity update (single or bulk) is re-queued with its
   propagation, a data product move re-queues its assets, and an inherited-domain move re-queues
   its parents. A delete's child cleanup has no retry, since the entity is gone: there the failure
-  is logged and the cleanup rewrite still runs, leaving those chunks stale until Search Reindex.
+  is logged and the cleanup rewrite still runs, leaving those chunks stale until each child's
+  next update or a Search Reindex. A retried entity is reindexed with its chunks restamped,
+  whether the retry writes one entity or many.
 - A chunk with no `accessStamp` was written before chunks carried access fields and cannot be
   evaluated. A caller whose chunk policy does not grant everything does not see it; everyone else
   does. The gate is the presence of the field, not a version number, so a later
