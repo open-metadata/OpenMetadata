@@ -226,7 +226,7 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
               aria-label={t('label.more-action-plural')}
               color="secondary"
               data-testid="task-actions-menu"
-              iconLeading={<DotsVertical className="tw:size-4" />}
+              iconLeading={DotsVertical}
               // Like the header buttons, the menu waits out a running
               // transition, so no second one can start.
               isDisabled={loadingTransitionId !== undefined}
