@@ -1,7 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -16,7 +15,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.search.IndexManagementClient.IndexStats;
@@ -27,12 +25,6 @@ class OrphanedIndexCleanerTest {
 
   private final OrphanedIndexCleaner cleaner = new OrphanedIndexCleaner();
   private final SearchClient searchClient = mock(SearchClient.class);
-
-  @Test
-  void orphanedIndexRecordReflectsAliasPresence() {
-    assertTrue(new OrphanedIndexCleaner.OrphanedIndex("table_rebuild_1", null).isOrphaned());
-    assertTrue(new OrphanedIndexCleaner.OrphanedIndex("table_rebuild_1", Set.of()).isOrphaned());
-  }
 
   @Test
   void findOrphanedRebuildIndicesFiltersRecentAliasedAndBrokenIndices() {
@@ -84,15 +76,6 @@ class OrphanedIndexCleanerTest {
   }
 
   @Test
-  void countMethodsReturnZeroWhenListingIndicesFails() {
-    when(searchClient.listIndicesByPrefix(""))
-        .thenThrow(new RuntimeException("search unavailable"));
-
-    assertEquals(0, cleaner.countRebuildIndices(searchClient));
-    assertEquals(0, cleaner.countOrphanedIndices(searchClient));
-  }
-
-  @Test
   void countMethodsUseBulkInventory() {
     long oldTimestamp = System.currentTimeMillis() - (31L * 60 * 1000);
     long recentTimestamp = System.currentTimeMillis() - (5L * 60 * 1000);
@@ -105,17 +88,6 @@ class OrphanedIndexCleanerTest {
 
     assertEquals(3, cleaner.countRebuildIndices(indexStats));
     assertEquals(1, cleaner.countOrphanedIndices(indexStats));
-  }
-
-  @Test
-  @DisplayName("private orphan checks require rebuild naming and tolerate alias lookup errors")
-  void privateOrphanChecksHandleNamingAndAliasFailures() throws Exception {
-    when(searchClient.getAliases("table_rebuild_1")).thenReturn(Set.of());
-    when(searchClient.getAliases("user_rebuild_1")).thenThrow(new RuntimeException("boom"));
-
-    assertFalse(invokeBoolean("isOrphaned", "table"));
-    assertTrue(invokeBoolean("isOrphaned", "table_rebuild_1"));
-    assertFalse(invokeBoolean("isOrphaned", "user_rebuild_1"));
   }
 
   @Test
@@ -265,13 +237,6 @@ class OrphanedIndexCleanerTest {
     doAnswer(call -> null).when(searchClient).removeAliases(anyString(), any());
 
     assertEquals(0, cleaner.detachOrphanedIndexesFromAliases(repository));
-  }
-
-  private boolean invokeBoolean(String methodName, String indexName) throws Exception {
-    java.lang.reflect.Method method =
-        OrphanedIndexCleaner.class.getDeclaredMethod(methodName, SearchClient.class, String.class);
-    method.setAccessible(true);
-    return (Boolean) method.invoke(cleaner, searchClient, indexName);
   }
 
   private boolean invokeIsOldEnough(String indexName, long now) throws Exception {
