@@ -15,8 +15,6 @@ Test OpenSearch using the topology
 from unittest import TestCase
 from unittest.mock import patch
 
-import pytest
-
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
 )
@@ -178,22 +176,23 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 )
 
 
-class TestOpenSearchUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with patch(
-            "metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection", return_value=False
-        ):
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_os_config)
-            self.os_source = OpensearchSource.create(
-                mock_os_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
-            )
-            self.os_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
+class OpenSearchUnitTest(TestCase):
+    @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        # Set the test_connection to return False so that test_connection doesn't interfere.
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_os_config)
+        self.os_source = OpensearchSource.create(
+            mock_os_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        # Manually set the search_service context to our mock search service name.
+        self.os_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.os_source.yield_search_index(MOCK_DETAILS)).right
-        assert actual_index == EXPECTED_RESULT
+        self.assertEqual(actual_index, EXPECTED_RESULT)
 
 
 class OpenSearchConnectionTest(TestCase):

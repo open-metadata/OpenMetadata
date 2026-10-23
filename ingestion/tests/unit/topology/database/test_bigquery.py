@@ -19,6 +19,7 @@ import types
 from copy import deepcopy
 from types import SimpleNamespace
 from typing import ClassVar
+from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call, patch
 
 import pytest
@@ -402,53 +403,43 @@ MOCK_TABLE_CONSTRAINT = [
 ]
 
 
-class TestBigqueryUnitTest:
+class BigqueryUnitTest(TestCase):
     """
     Implements the necessary methods to extract
     Bigquery Unit Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client"
-            ) as get_connection,
-            patch(
-                "metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"
-            ) as set_project_id,
-            patch(
-                "metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"
-            ) as test_connection,
-        ):
-            get_connection.return_value = Mock()
-            test_connection.return_value = False
-            set_project_id.return_value = "random-project-id"
-            self.config = parse_workflow_config_gracefully(mock_bq_config)
-            self.metadata = OpenMetadata(
-                OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
-            )
-            self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
-            self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
-            self.bq_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-            self.thread_id = self.bq_source.context.get_current_thread_id()
-            self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
-            self.bq_source._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema: []
-            self.bq_source._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-            self.bq_source._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema: []
-            self.bq_source._inspector_map[self.thread_id].get_columns = lambda table_name, schema, db_name: []
-            self.bq_source.client = Mock()
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
+    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        get_connection.return_value = Mock()
+        test_connection.return_value = False
+        set_project_id.return_value = "random-project-id"
+        self.config = parse_workflow_config_gracefully(mock_bq_config)
+        self.metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_bq_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.bq_source = BigquerySource.create(mock_bq_config["source"], self.metadata)
+        self.bq_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.thread_id = self.bq_source.context.get_current_thread_id()
+        self.bq_source._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.bq_source._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.bq_source._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema: []
+        self.bq_source._inspector_map[self.thread_id].get_columns = lambda table_name, schema, db_name: []
+        self.bq_source.client = Mock()
 
     def test_source_url(self):
-        assert (
+        self.assertEqual(
             self.bq_source.get_source_url(
                 database_name=MOCK_DB_NAME,
                 schema_name=MOCK_SCHEMA_NAME,
                 table_name=MOCK_TABLE_NAME,
                 table_type=TableType.Regular,
-            )
-            == EXPECTED_URL
+            ),
+            EXPECTED_URL,
         )
 
     def test_region_life_cycle_query_selects_last_modified(self):
@@ -456,15 +447,15 @@ class TestBigqueryUnitTest:
             database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME, region="EU"
         )
 
-        assert "creation_time as created_at" in query
-        assert "storage_last_modified_time as updated_at" in query
-        assert "`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE" in query
+        self.assertIn("creation_time as created_at", query)
+        self.assertIn("storage_last_modified_time as updated_at", query)
+        self.assertIn("`region-EU`.INFORMATION_SCHEMA.TABLE_STORAGE", query)
 
     def test_dataset_life_cycle_query_is_created_only(self):
         query = BIGQUERY_LIFE_CYCLE_QUERY.format(database_name=MOCK_DB_NAME, schema_name=MOCK_SCHEMA_NAME)
 
-        assert "creation_time as created_at" in query
-        assert "TABLE_STORAGE" not in query
+        self.assertIn("creation_time as created_at", query)
+        self.assertNotIn("TABLE_STORAGE", query)
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.get_database_tag_labels")
     def test_yield_database(self, get_database_tag_labels):
@@ -630,8 +621,8 @@ class TestBigqueryUnitTest:
 
         results = list(self.bq_source.get_stored_procedures())
 
-        assert len(results) == 1
-        assert results[0].name == "sp_include"
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
 
     def test_stored_procedures_queries_include_function_routine_type(self):
         """
@@ -752,28 +743,33 @@ class TestBigqueryUnitTest:
             ]
 
 
-class TestBigqueryLineageSourceTest:
+class BigqueryLineageSourceTest(TestCase):
     """
     Implements the necessary methods to extract
     Bigquery Lineage Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id"),
-            patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection"),
-            patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client"),
-        ):
-            mock_credentials_path_bq_config = deepcopy(mock_bq_config)
-            mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
-                "path": "credentials.json",
-                "projectId": "my-gcp-project",
-            }
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
-            self.bq_query_parser = BigqueryLineageSource(
-                self.config.source, self.config.workflowConfig.openMetadataServerConfig
-            )
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
+    @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection")
+    @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        set_project_id_lineage,  # pylint: disable=unused-argument
+        test_connection,  # pylint: disable=unused-argument
+        get_connection,  # pylint: disable=unused-argument
+    ) -> None:
+        super().__init__(methodName)
+
+        mock_credentials_path_bq_config = deepcopy(mock_bq_config)
+        mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
+            "path": "credentials.json",
+            "projectId": "my-gcp-project",
+        }
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_credentials_path_bq_config)
+        self.bq_query_parser = BigqueryLineageSource(
+            self.config.source, self.config.workflowConfig.openMetadataServerConfig
+        )
 
     def test_get_engine_without_project_id_specified(self):
         for engine in self.bq_query_parser.get_engine():

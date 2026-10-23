@@ -14,6 +14,7 @@ Test athena source
 
 import hashlib
 import json
+import unittest
 from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
@@ -289,23 +290,19 @@ def _athena_config_with_catalog_id(catalog_id):
     return config
 
 
-class TestAthenaService:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_athena_config)
-            self.athena_source = AthenaSource.create(
-                mock_athena_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
-            )
-            self.athena_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-            self.athena_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.athena_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+class TestAthenaService(unittest.TestCase):
+    @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_athena_config)
+        self.athena_source = AthenaSource.create(
+            mock_athena_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.athena_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.athena_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.athena_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_get_database_name(self):
         assert list(self.athena_source.get_database_names()) == EXPECTED_DATABASE_NAMES

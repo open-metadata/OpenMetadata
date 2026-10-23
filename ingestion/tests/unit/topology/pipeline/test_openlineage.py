@@ -195,45 +195,41 @@ EXPECTED_OL_EVENT = OpenLineageEvent(
 )
 
 
-class TestOpenLineageUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection",
-                return_value=False,
-            ),
-            patch("metadata.ingestion.source.pipeline.openlineage.connection.KafkaConsumer") as mock_consumer,
-            patch("metadata.ingestion.source.pipeline.openlineage.connection.AWSClient.get_kinesis_client"),
-        ):
-            # Kafka source
-            config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
-            self.open_lineage_source = OpenlineageSource.create(
-                MOCK_OL_CONFIG["source"],
-                config.workflowConfig.openMetadataServerConfig,
-            )
-            self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
-            self.open_lineage_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
-            self.open_lineage_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
+class OpenLineageUnitTest(unittest.TestCase):
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
 
-            # Kinesis source
-            kinesis_config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
-            self.open_lineage_kinesis_source = OpenlineageSource.create(
-                MOCK_OL_KINESIS_CONFIG["source"],
-                kinesis_config.workflowConfig.openMetadataServerConfig,
-            )
-            self.open_lineage_kinesis_source.context.get().pipeline = MOCK_PIPELINE.name.root
-            self.open_lineage_kinesis_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
-            self.open_lineage_kinesis_source.source_config.lineageInformation = LineageInformation(
-                dbServiceNames=["skun"]
-            )
-            self.mock_consumer = mock_consumer.return_value
-            for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
-                source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
-            connections = (self.open_lineage_source._connection, self.open_lineage_kinesis_source._connection)
-            yield
-            for connection in connections:
-                connection.close()
+        # Kafka source
+        config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_CONFIG)
+        self.open_lineage_source = OpenlineageSource.create(
+            MOCK_OL_CONFIG["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
+        self.open_lineage_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
+
+        # Kinesis source
+        kinesis_config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
+        self.open_lineage_kinesis_source = OpenlineageSource.create(
+            MOCK_OL_KINESIS_CONFIG["source"],
+            kinesis_config.workflowConfig.openMetadataServerConfig,
+        )
+        self.open_lineage_kinesis_source.context.get().pipeline = MOCK_PIPELINE.name.root
+        self.open_lineage_kinesis_source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_kinesis_source.source_config.lineageInformation = LineageInformation(dbServiceNames=["skun"])
+
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+    @patch("confluent_kafka.Consumer")
+    def setUp(self, mock_consumer, mock_test_connection):
+        mock_test_connection.return_value = False
+        self.mock_consumer = mock_consumer
+        # Fresh per-test resolution cache, mirroring what prepare() sets up in
+        # production, so each test starts with no memoized resolutions.
+        for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
+            source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
 
     def setup_mock_consumer_with_kafka_event(self, event):
         mock_msg = MagicMock()
@@ -268,53 +264,54 @@ class TestOpenLineageUnitTest:
     def test_message_to_ol_event_valid_event(self):
         """Test conversion with a valid event."""
         result = message_to_open_lineage_event(VALID_EVENT)
-        assert isinstance(result, OpenLineageEvent)
+        self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_missing_run_facets_parent_job_name(self):
         """Test that parent facet is optional - missing parent job name is allowed."""
         result = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
-        assert isinstance(result, OpenLineageEvent)
+        self.assertIsInstance(result, OpenLineageEvent)
 
     def test_message_to_ol_event_malformed_nested_structure(self):
         """Test that parent facet is optional - malformed parent structure is allowed."""
         result = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
-        assert isinstance(result, OpenLineageEvent)
+        self.assertIsInstance(result, OpenLineageEvent)
 
     def test_render_pipeline_name_falls_back_to_job_when_no_parent_facet(self):
         """Test that pipeline name uses job namespace/name when parent facet is absent."""
         event = message_to_open_lineage_event(EVENT_WITHOUT_PARENT_FACET)
         result = OpenlineageSource._render_pipeline_name(event)
-        assert result == "standalone-namespace-standalone-job"
+        self.assertEqual(result, "standalone-namespace-standalone-job")
 
     def test_render_pipeline_name_falls_back_to_job_when_parent_job_name_missing(self):
         """Test that pipeline name falls back to job fields when parent.job.name is missing."""
         event = message_to_open_lineage_event(MISSING_RUN_FACETS_PARENT_JOB_NAME_EVENT)
         result = OpenlineageSource._render_pipeline_name(event)
-        assert result == "test-namespace-test-job"
+        self.assertEqual(result, "test-namespace-test-job")
 
     def test_render_pipeline_name_falls_back_to_job_when_parent_job_malformed(self):
         """Test that pipeline name falls back to job fields when parent.job is not a dict."""
         event = message_to_open_lineage_event(MALFORMED_NESTED_STRUCTURE_EVENT)
         result = OpenlineageSource._render_pipeline_name(event)
-        assert result == "test-namespace-test-job"
+        self.assertEqual(result, "test-namespace-test-job")
 
-    def test_get_pipelines_list_event_without_parent_facet(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_event_without_parent_facet(self, mock_consumer_class):
         """Test that events without a parent facet are processed successfully."""
         self.setup_mock_consumer_with_kafka_event(EVENT_WITHOUT_PARENT_FACET)
 
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "COMPLETE"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
 
     def test_poll_message_receives_message(self):
         """Test if poll_message receives a kafka  message."""
         self.setup_mock_consumer_with_kafka_event(VALID_EVENT)
         result = self.open_lineage_source.client.poll(timeout=1)
-        assert result is not None
-        assert json.loads(result.value().decode()) == VALID_EVENT
+        self.assertIsNotNone(result)
+        self.assertEqual(json.loads(result.value().decode()), VALID_EVENT)
 
     def read_openlineage_event_from_kafka(self, kafka_event):
         self.setup_mock_consumer_with_kafka_event(kafka_event)
@@ -330,7 +327,7 @@ class TestOpenLineageUnitTest:
     def test_create_output_lineage_dict_empty_input(self):
         """Test with an empty input list."""
         result = self.open_lineage_source._create_output_lineage_dict([])
-        assert result == {}
+        self.assertEqual(result, {})
 
     def test_create_output_lineage_dict_single_lineage_entry(self):
         """Test with a single lineage entry."""
@@ -339,7 +336,7 @@ class TestOpenLineageUnitTest:
         expected = {
             "output_table": {"input_table": [ColumnLineage(toColumn="output_column", fromColumns=["input_column"])]}
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     def test_create_output_lineage_dict_multiple_entries_different_outputs(self):
         """Test with multiple entries having different output tables."""
@@ -352,7 +349,7 @@ class TestOpenLineageUnitTest:
             "output_table1": {"input_table": [ColumnLineage(toColumn="output_column1", fromColumns=["input_column"])]},
             "output_table2": {"input_table": [ColumnLineage(toColumn="output_column2", fromColumns=["input_column"])]},
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     def test_create_output_lineage_dict_multiple_entries_same_output(self):
         """Test with multiple entries sharing the same output table."""
@@ -367,14 +364,14 @@ class TestOpenLineageUnitTest:
                 "input_table2": [ColumnLineage(toColumn="output_column", fromColumns=["input_column2"])],
             }
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     def test_get_column_lineage_empty_inputs_outputs(self):
         """Test with empty input and output lists."""
         inputs = []
         outputs = []
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
-        assert result == {}
+        self.assertEqual(result, {})
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_valid_data(self, mock_get_table_fqn):
@@ -393,8 +390,8 @@ class TestOpenLineageUnitTest:
 
         result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
 
-        assert result == expected_map
-        assert mock_get_table_fqn.call_count == 2
+        self.assertEqual(result, expected_map)
+        self.assertEqual(mock_get_table_fqn.call_count, 2)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_missing_fqn(self, mock_get_table_fqn):
@@ -407,7 +404,7 @@ class TestOpenLineageUnitTest:
 
         result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
 
-        assert result == expected_map
+        self.assertEqual(result, expected_map)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
     def test_build_ol_name_to_fqn_map_with_empty_tables(self, mock_get_table_fqn):
@@ -419,7 +416,7 @@ class TestOpenLineageUnitTest:
 
         result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
 
-        assert result == expected_map
+        self.assertEqual(result, expected_map)
         mock_get_table_fqn.assert_not_called()
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
@@ -450,9 +447,12 @@ class TestOpenLineageUnitTest:
         result = self.open_lineage_source._build_ol_name_to_fqn_map(tables)
 
         # Both the top-level and the symlink identity must key into the same FQN.
-        assert "s3://bucket/warehouse/db/users_raw" in result
-        assert "arn:aws:glue:us-east-1:1/table/db/users_raw" in result
-        assert result["s3://bucket/warehouse/db/users_raw"] == result["arn:aws:glue:us-east-1:1/table/db/users_raw"]
+        self.assertIn("s3://bucket/warehouse/db/users_raw", result)
+        self.assertIn("arn:aws:glue:us-east-1:1/table/db/users_raw", result)
+        self.assertEqual(
+            result["s3://bucket/warehouse/db/users_raw"],
+            result["arn:aws:glue:us-east-1:1/table/db/users_raw"],
+        )
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
@@ -518,7 +518,7 @@ class TestOpenLineageUnitTest:
                 ],
             }
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     @staticmethod
     def _mock_table_with_columns(*column_names):
@@ -607,7 +607,7 @@ class TestOpenLineageUnitTest:
                 ],
             }
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
@@ -662,7 +662,7 @@ class TestOpenLineageUnitTest:
                 ],
             }
         }
-        assert result == expected
+        self.assertEqual(result, expected)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
@@ -726,9 +726,9 @@ class TestOpenLineageUnitTest:
             first = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t")
             second = self.open_lineage_source._get_by_name_cached(Table, "svc.db.schema.t", fields=["columns"])
 
-            assert first is bare_table
-            assert second is full_table
-            assert mock_metadata.get_by_name.call_count == 2
+            self.assertIs(first, bare_table)
+            self.assertIs(second, full_table)
+            self.assertEqual(mock_metadata.get_by_name.call_count, 2)
 
     def test_get_column_lineage__invalid_inputs_outputs_structure(self):
         """Datasets with no resolvable identity are skipped, not fatal.
@@ -739,7 +739,7 @@ class TestOpenLineageUnitTest:
         inputs = [{"invalid": "data"}]
         outputs = [{"invalid": "data"}]
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
-        assert result == {}
+        self.assertEqual(result, {})
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
@@ -777,7 +777,7 @@ class TestOpenLineageUnitTest:
             }
         ]
         result = self.open_lineage_source._get_column_lineage(inputs, outputs)
-        assert result == {}
+        self.assertEqual(result, {})
 
     def test_get_column_lineage_tolerates_null_facets_at_any_level(self):
         """An explicit None at facets, columnLineage, fields, or inputFields
@@ -817,7 +817,7 @@ class TestOpenLineageUnitTest:
                 outputs_null_fields,
                 outputs_null_input_fields,
             ):
-                assert self.open_lineage_source._get_column_lineage([], outputs) == {}
+                self.assertEqual(self.open_lineage_source._get_column_lineage([], outputs), {})
 
     def test_get_column_lineage_tolerates_non_dict_facets_at_any_level(self):
         """A malformed event where facets/columnLineage/fields is the wrong
@@ -856,51 +856,51 @@ class TestOpenLineageUnitTest:
                 outputs_fields_list,
                 outputs_fields_string,
             ):
-                assert self.open_lineage_source._get_column_lineage([], outputs) == {}
+                self.assertEqual(self.open_lineage_source._get_column_lineage([], outputs), {})
 
     def test_get_entity_details_tolerates_null_namespace(self):
         """Explicit ``"namespace": null`` on a dataset must not crash the
         Kafka prefix check. The dataset is treated as a table candidate that
         downstream candidate parsing will then evaluate or skip."""
         result = OpenlineageSource._get_entity_details({"namespace": None, "name": "schema.t"})
-        assert result.entity_type == "table"
+        self.assertEqual(result.entity_type, "table")
 
     def test_iter_table_candidates_with_symlinks(self):
         """Symlink identity is a candidate; dotted name parsed to schema.table."""
         data = {"facets": {"symlinks": {"identifiers": [{"name": "project.schema.table", "type": "TABLE"}]}}}
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert candidates[0][0].name == "table"
-        assert candidates[0][0].schema == "schema"
+        self.assertEqual(candidates[0][0].name, "table")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
     def test_iter_table_candidates_without_symlinks(self):
         """Top-level dotted name is the sole candidate when no symlinks."""
         data = {"name": "schema.table"}
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 1
-        assert candidates[0][0].name == "table"
-        assert candidates[0][0].schema == "schema"
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "table")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
     def test_iter_table_candidates_normalizes_caps_symlinks_to_lowercase(self):
         """CAPS names from a symlink identifier are normalized to lowercase."""
         data = {"facets": {"symlinks": {"identifiers": [{"name": "PROJECT.SCHEMA.CASE_TEST_SOURCE", "type": "TABLE"}]}}}
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert candidates[0][0].name == "case_test_source"
-        assert candidates[0][0].schema == "schema"
+        self.assertEqual(candidates[0][0].name, "case_test_source")
+        self.assertEqual(candidates[0][0].schema, "schema")
 
     def test_iter_table_candidates_normalizes_caps_name_to_lowercase(self):
         """CAPS names from the top-level name attribute are normalized to lowercase."""
         data = {"name": "HK_SCHEMA.CASE_TEST_SOURCE"}
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert candidates[0][0].name == "case_test_source"
-        assert candidates[0][0].schema == "hk_schema"
+        self.assertEqual(candidates[0][0].name, "case_test_source")
+        self.assertEqual(candidates[0][0].schema, "hk_schema")
 
     def test_iter_table_candidates_missing_symlinks_and_name_is_empty(self):
         """No name and no symlinks yields no candidates (no exception raised)."""
-        assert OpenlineageSource._iter_table_candidates({}) == []
+        self.assertEqual(OpenlineageSource._iter_table_candidates({}), [])
 
     def test_iter_table_candidates_unparseable_name_is_empty(self):
         """A single-segment top-level name parses to nothing and is skipped."""
-        assert OpenlineageSource._iter_table_candidates({"name": "invalidname"}) == []
+        self.assertEqual(OpenlineageSource._iter_table_candidates({"name": "invalidname"}), [])
 
     def test_iter_table_candidates_glue_symlink_over_s3_toplevel(self):
         """Customer scenario: Spark writes a Glue-cataloged table stored in S3.
@@ -925,9 +925,9 @@ class TestOpenLineageUnitTest:
             },
         }
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert candidates[0][0].schema == "store_of_value"
-        assert candidates[0][0].name == "gsheet_recon_stats_notes"
-        assert candidates[0][1] == "arn:aws:glue:us-west-2:012621376717"
+        self.assertEqual(candidates[0][0].schema, "store_of_value")
+        self.assertEqual(candidates[0][0].name, "gsheet_recon_stats_notes")
+        self.assertEqual(candidates[0][1], "arn:aws:glue:us-west-2:012621376717")
 
     def test_iter_table_candidates_skips_location_symlink(self):
         """LOCATION symlinks are physical paths and must be excluded entirely."""
@@ -943,9 +943,9 @@ class TestOpenLineageUnitTest:
             },
         }
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 1
-        assert candidates[0][0].schema == "analytics"
-        assert candidates[0][0].name == "daily_revenue"
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].schema, "analytics")
+        self.assertEqual(candidates[0][0].name, "daily_revenue")
 
     def test_iter_table_candidates_dedupes_identical_identities(self):
         """A symlink byte-identical to the top-level identity is de-duplicated."""
@@ -957,7 +957,7 @@ class TestOpenLineageUnitTest:
             },
         }
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 1
+        self.assertEqual(len(candidates), 1)
 
     def test_iter_table_candidates_keeps_same_table_under_different_namespaces(self):
         """Same schema.table under different namespaces are distinct resolution
@@ -972,8 +972,8 @@ class TestOpenLineageUnitTest:
             },
         }
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 2
-        assert {ns for _, ns in candidates} == {"arn:aws:glue:r:a", "trino://host:8080"}
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual({ns for _, ns in candidates}, {"arn:aws:glue:r:a", "trino://host:8080"})
 
     def test_iter_table_candidates_keeps_distinct_databases_under_same_namespace(self):
         """Two three-part identities that differ only in the database/catalog
@@ -992,28 +992,34 @@ class TestOpenLineageUnitTest:
             },
         }
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 2
-        assert {d.database for d, _ in candidates} == {"cata", "catb"}
+        self.assertEqual(len(candidates), 2)
+        self.assertEqual({d.database for d, _ in candidates}, {"cata", "catb"})
 
     def test_symlink_identifiers_tolerates_malformed_facets(self):
         """Missing, null, or wrongly typed facet shapes yield an empty list."""
-        assert OpenlineageSource._symlink_identifiers({}) == []
-        assert OpenlineageSource._symlink_identifiers({"facets": None}) == []
-        assert OpenlineageSource._symlink_identifiers({"facets": {"symlinks": None}}) == []
-        assert OpenlineageSource._symlink_identifiers({"facets": {"symlinks": {"identifiers": {}}}}) == []
+        self.assertEqual(OpenlineageSource._symlink_identifiers({}), [])
+        self.assertEqual(OpenlineageSource._symlink_identifiers({"facets": None}), [])
+        self.assertEqual(OpenlineageSource._symlink_identifiers({"facets": {"symlinks": None}}), [])
+        self.assertEqual(
+            OpenlineageSource._symlink_identifiers({"facets": {"symlinks": {"identifiers": {}}}}),
+            [],
+        )
 
     def test_symlink_identifiers_drops_non_dict_entries(self):
         """Non-dictionary identifier entries are skipped, valid ones kept."""
         data = {"facets": {"symlinks": {"identifiers": ["bad", None, {"name": "schema.tbl", "type": "TABLE"}]}}}
-        assert OpenlineageSource._symlink_identifiers(data) == [{"name": "schema.tbl", "type": "TABLE"}]
+        self.assertEqual(
+            OpenlineageSource._symlink_identifiers(data),
+            [{"name": "schema.tbl", "type": "TABLE"}],
+        )
 
     def test_iter_table_candidates_tolerates_malformed_facets(self):
         """A malformed facets block must not abort candidate extraction; the
         top-level identity is still returned."""
         data = {"namespace": "trino://host", "name": "schema.tbl", "facets": None}
         candidates = OpenlineageSource._iter_table_candidates(data)
-        assert len(candidates) == 1
-        assert candidates[0][0].name == "tbl"
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "tbl")
 
     def test_iter_table_candidates_tolerates_null_namespace_and_name(self):
         """Explicit ``null`` (not just missing) in namespace/name must be
@@ -1026,19 +1032,19 @@ class TestOpenLineageUnitTest:
             "facets": {"symlinks": {"identifiers": [{"namespace": None, "name": "schema.tbl", "type": "TABLE"}]}}
         }
         candidates = OpenlineageSource._iter_table_candidates(symlink_null_ns)
-        assert len(candidates) == 1
-        assert candidates[0][0].name == "tbl"
-        assert candidates[0][1] == ""
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0][0].name, "tbl")
+        self.assertEqual(candidates[0][1], "")
 
         # Symlink with explicit-null name -> no parseable identity, no crash.
         symlink_null_name = {
             "facets": {"symlinks": {"identifiers": [{"namespace": "arn:aws:glue:r:a", "name": None, "type": "TABLE"}]}}
         }
-        assert OpenlineageSource._iter_table_candidates(symlink_null_name) == []
+        self.assertEqual(OpenlineageSource._iter_table_candidates(symlink_null_name), [])
 
         # Top-level explicit-null name -> no parseable identity, no crash.
         top_null_name = {"namespace": "trino://host", "name": None}
-        assert OpenlineageSource._iter_table_candidates(top_null_name) == []
+        self.assertEqual(OpenlineageSource._iter_table_candidates(top_null_name), [])
 
     def test_resolve_table_falls_back_to_toplevel_when_symlink_unresolved(self):
         """Resolution-aware: a symlink that parses but does not resolve to a
@@ -1058,20 +1064,20 @@ class TestOpenLineageUnitTest:
             ),
         ):
             resolved = self.open_lineage_source._resolve_table(data)
-        assert resolved is not None
-        assert resolved.fqn == "svc.schema.real_table"
-        assert resolved.details.name == "real_table"
+        self.assertIsNotNone(resolved)
+        self.assertEqual(resolved.fqn, "svc.schema.real_table")
+        self.assertEqual(resolved.details.name, "real_table")
 
     def test_resolve_table_returns_none_when_nothing_resolves(self):
         """No candidate resolves -> None (event continues, warning logged)."""
         data = {"namespace": "s3://b", "name": "schema.table"}
         with patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None):
-            assert self.open_lineage_source._resolve_table(data) is None
+            self.assertIsNone(self.open_lineage_source._resolve_table(data))
 
     def test_resolve_table_returns_none_for_location_only_dataset(self):
         """An object-store-only dataset (no parseable identity) resolves to None."""
         data = {"namespace": "s3://bucket", "name": "warehouse/path/to/file"}
-        assert self.open_lineage_source._resolve_table(data) is None
+        self.assertIsNone(self.open_lineage_source._resolve_table(data))
 
     def test_resolve_table_memoizes_within_event(self):
         """The underlying resolution runs once per dataset; repeated calls for
@@ -1081,8 +1087,8 @@ class TestOpenLineageUnitTest:
         with patch.object(self.open_lineage_source, "_resolve_table_uncached", return_value=sentinel) as mock_uncached:
             first = self.open_lineage_source._resolve_table(data)
             second = self.open_lineage_source._resolve_table(data)
-        assert first is second
-        assert mock_uncached.call_count == 1
+        self.assertIs(first, second)
+        self.assertEqual(mock_uncached.call_count, 1)
 
     def test_resolve_table_memoizes_negative_result(self):
         """An unresolvable dataset is cached too, so its warning is logged once."""
@@ -1090,7 +1096,7 @@ class TestOpenLineageUnitTest:
         with patch.object(self.open_lineage_source, "_resolve_table_uncached", return_value=None) as mock_uncached:
             self.open_lineage_source._resolve_table(data)
             self.open_lineage_source._resolve_table(data)
-        assert mock_uncached.call_count == 1
+        self.assertEqual(mock_uncached.call_count, 1)
 
     def test_resolve_table_cache_distinguishes_symlink_only_datasets(self):
         """Two symlink-only datasets without a top-level identity must not
@@ -1117,9 +1123,9 @@ class TestOpenLineageUnitTest:
             resolved_a = self.open_lineage_source._resolve_table(dataset_a)
             resolved_b = self.open_lineage_source._resolve_table(dataset_b)
 
-        assert resolved_a.fqn == "svc.schema.alpha"
-        assert resolved_b.fqn == "svc.schema.beta"
-        assert mock_uncached.call_count == 2
+        self.assertEqual(resolved_a.fqn, "svc.schema.alpha")
+        self.assertEqual(resolved_b.fqn, "svc.schema.beta")
+        self.assertEqual(mock_uncached.call_count, 2)
 
     def test_yield_pipeline_lineage_details_resets_resolution_cache(self):
         """Each event starts with a fresh resolution cache, so a result from an
@@ -1135,14 +1141,14 @@ class TestOpenLineageUnitTest:
         with patch.object(OpenMetadataConnection, "get_by_name", create=True, return_value=None):
             list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
-        assert self.open_lineage_source._resolution_cache is not cache_before
-        assert "stale-key" not in self.open_lineage_source._resolution_cache
+        self.assertIsNot(self.open_lineage_source._resolution_cache, cache_before)
+        self.assertNotIn("stale-key", self.open_lineage_source._resolution_cache)
 
     def test_get_pipelines_list(self):
         """Test get_pipelines_list method"""
         ol_event = self.read_openlineage_event_from_kafka(FULL_OL_KAFKA_EVENT)
-        assert isinstance(ol_event, OpenLineageEvent)
-        assert ol_event == EXPECTED_OL_EVENT
+        self.assertIsInstance(ol_event, OpenLineageEvent)
+        self.assertEqual(ol_event, EXPECTED_OL_EVENT)
 
     def test_yield_pipeline_sets_owners_from_job_ownership_facet(self):
         """Test pipeline owners are populated from OpenLineage job ownership facet."""
@@ -1175,15 +1181,21 @@ class TestOpenLineageUnitTest:
         ):
             results = list(self.open_lineage_source.yield_pipeline(ol_event))
 
-        assert len(results) == 1
-        assert results[0].right.owners == owners
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].right.owners, owners)
         owner_resolver.get_pipeline_job_owners.assert_called_once()
-        assert owner_resolver.get_pipeline_job_owners.call_args.args == (ol_event.job,)
-        assert owner_resolver.get_pipeline_job_owners.call_args.kwargs["pipeline_fqn"] == fqn.build(
-            metadata=self.open_lineage_source.metadata,
-            entity_type=Pipeline,
-            service_name=MOCK_PIPELINE_SERVICE.name.root,
-            pipeline_name=self.open_lineage_source.get_pipeline_name(ol_event),
+        self.assertEqual(
+            owner_resolver.get_pipeline_job_owners.call_args.args,
+            (ol_event.job,),
+        )
+        self.assertEqual(
+            owner_resolver.get_pipeline_job_owners.call_args.kwargs["pipeline_fqn"],
+            fqn.build(
+                metadata=self.open_lineage_source.metadata,
+                entity_type=Pipeline,
+                service_name=MOCK_PIPELINE_SERVICE.name.root,
+                pipeline_name=self.open_lineage_source.get_pipeline_name(ol_event),
+            ),
         )
 
     def test_prepare_passes_include_owners_to_owner_resolver(self):
@@ -1271,8 +1283,8 @@ class TestOpenLineageUnitTest:
             ),
         ]
 
-        assert col_lineage == expected_col_lineage
-        assert table_lineage == expected_table_lineage
+        self.assertEqual(col_lineage, expected_col_lineage)
+        self.assertEqual(table_lineage, expected_table_lineage)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details_glue_symlink_datasets(self, mock_get_table_from_om):
@@ -1328,10 +1340,10 @@ class TestOpenLineageUnitTest:
             results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
         lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
-        assert len(lineage) == 1, "Glue-symlink datasets must produce exactly one lineage edge"
+        self.assertEqual(len(lineage), 1, "Glue-symlink datasets must produce exactly one lineage edge")
         edge = lineage[0].edge
-        assert str(edge.fromEntity.id.root) == src_uuid
-        assert str(edge.toEntity.id.root) == dst_uuid
+        self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
+        self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details_glue_symlink_backticked_database(self, mock_get_table_from_om):
@@ -1389,12 +1401,13 @@ class TestOpenLineageUnitTest:
             results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
         lineage = [r.right for r in results if r.right and isinstance(r.right, AddLineageRequest)]
-        assert len(lineage) == 1, "Backtick-quoted Glue database must still produce a lineage edge"
+        self.assertEqual(len(lineage), 1, "Backtick-quoted Glue database must still produce a lineage edge")
         edge = lineage[0].edge
-        assert str(edge.fromEntity.id.root) == src_uuid
-        assert str(edge.toEntity.id.root) == dst_uuid
+        self.assertEqual(str(edge.fromEntity.id.root), src_uuid)
+        self.assertEqual(str(edge.toEntity.id.root), dst_uuid)
 
-    def test_get_pipelines_list_filters_complete_events(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_complete_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns COMPLETE events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "COMPLETE"
@@ -1403,11 +1416,12 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "COMPLETE"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
 
-    def test_get_pipelines_list_filters_running_events(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_running_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns RUNNING events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "RUNNING"
@@ -1416,11 +1430,12 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "RUNNING"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "RUNNING")
 
-    def test_get_pipelines_list_filters_start_events(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_start_events(self, mock_consumer_class):
         """Test that get_pipelines_list returns START events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "START"
@@ -1429,11 +1444,12 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "START"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "START")
 
-    def test_get_pipelines_list_filters_out_fail_events(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_fail_events(self, mock_consumer_class):
         """Test that get_pipelines_list filters out FAIL events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "FAIL"
@@ -1442,9 +1458,10 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 0
+        self.assertEqual(len(results), 0)
 
-    def test_get_pipelines_list_filters_out_abort_events(self):
+    @patch("confluent_kafka.Consumer")
+    def test_get_pipelines_list_filters_out_abort_events(self, mock_consumer_class):
         """Test that get_pipelines_list filters out ABORT events"""
         event = copy.deepcopy(VALID_EVENT)
         event["eventType"] = "ABORT"
@@ -1453,7 +1470,7 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 0
+        self.assertEqual(len(results), 0)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_lineage_merge_start_with_data_running_without(self, mock_get_table_from_om):
@@ -1533,16 +1550,22 @@ class TestOpenLineageUnitTest:
         start_requests_with_columns = [
             req for req in start_lineage_requests if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage
         ]
-        assert len(start_requests_with_columns) > 0, "START event should produce lineage requests with column details"
+        self.assertGreater(
+            len(start_requests_with_columns),
+            0,
+            "START event should produce lineage requests with column details",
+        )
 
         # Count column lineage entries from START
         start_column_count = sum(len(req.edge.lineageDetails.columnsLineage) for req in start_requests_with_columns)
-        assert start_column_count > 0, "START event should have column lineage"
+        self.assertGreater(start_column_count, 0, "START event should have column lineage")
 
         # Key assertion: RUNNING event with empty inputs/outputs produces no lineage requests
         # This prevents empty data from being sent to the database
-        assert len(running_lineage_requests) == 0, (
-            "RUNNING event with empty inputs/outputs should not produce any lineage requests"
+        self.assertEqual(
+            len(running_lineage_requests),
+            0,
+            "RUNNING event with empty inputs/outputs should not produce any lineage requests",
         )
 
     def _build_mock_kinesis_client(self, events):
@@ -1569,11 +1592,11 @@ class TestOpenLineageUnitTest:
         """Test that Kinesis config is parsed and validated correctly."""
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_OL_KINESIS_CONFIG)
         connection = config.source.serviceConnection.root.config
-        assert connection.type.value == "OpenLineage"
+        self.assertEqual(connection.type.value, "OpenLineage")
         broker = connection.brokerConfig
-        assert broker.streamName == "test-openlineage-stream"
-        assert broker.awsConfig.awsRegion == "us-east-1"
-        assert broker.consumerOffsets == ConsumerOffsets1.TRIM_HORIZON
+        self.assertEqual(broker.streamName, "test-openlineage-stream")
+        self.assertEqual(broker.awsConfig.awsRegion, "us-east-1")
+        self.assertEqual(broker.consumerOffsets, ConsumerOffsets1.TRIM_HORIZON)
 
     def test_get_pipelines_list_kinesis(self):
         """Test get_pipelines_list with Kinesis broker."""
@@ -1582,9 +1605,9 @@ class TestOpenLineageUnitTest:
         result_generator = self.open_lineage_kinesis_source.get_pipelines_list()
         results = list(result_generator)
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0] == EXPECTED_OL_EVENT
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0], EXPECTED_OL_EVENT)
 
     def test_get_pipelines_list_kinesis_filters_complete_events(self):
         """Test that Kinesis get_pipelines_list returns COMPLETE events."""
@@ -1594,9 +1617,9 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "COMPLETE"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "COMPLETE")
 
     def test_get_pipelines_list_kinesis_filters_running_events(self):
         """Test that Kinesis get_pipelines_list returns RUNNING events."""
@@ -1606,9 +1629,9 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "RUNNING"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "RUNNING")
 
     def test_get_pipelines_list_kinesis_filters_start_events(self):
         """Test that Kinesis get_pipelines_list returns START events."""
@@ -1618,9 +1641,9 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 1
-        assert isinstance(results[0], OpenLineageEvent)
-        assert results[0].event_type == "START"
+        self.assertEqual(len(results), 1)
+        self.assertIsInstance(results[0], OpenLineageEvent)
+        self.assertEqual(results[0].event_type, "START")
 
     def test_get_pipelines_list_kinesis_filters_out_fail_events(self):
         """Test that Kinesis get_pipelines_list filters out FAIL events."""
@@ -1630,7 +1653,7 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 0
+        self.assertEqual(len(results), 0)
 
     def test_get_pipelines_list_kinesis_filters_out_abort_events(self):
         """Test that Kinesis get_pipelines_list filters out ABORT events."""
@@ -1640,7 +1663,7 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 0
+        self.assertEqual(len(results), 0)
 
     def test_get_pipelines_list_kinesis_multiple_records(self):
         """Test Kinesis polling with multiple records in a single batch."""
@@ -1654,7 +1677,7 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 2
+        self.assertEqual(len(results), 2)
 
     def test_get_pipelines_list_kinesis_empty_stream(self):
         """Test Kinesis polling with no records."""
@@ -1674,7 +1697,7 @@ class TestOpenLineageUnitTest:
 
         results = list(self.open_lineage_kinesis_source.get_pipelines_list())
 
-        assert len(results) == 0
+        self.assertEqual(len(results), 0)
 
     @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om")
     def test_yield_pipeline_lineage_details_kinesis(self, mock_get_table_from_om):
@@ -1706,11 +1729,11 @@ class TestOpenLineageUnitTest:
             pip_results = list(self.open_lineage_kinesis_source.yield_pipeline_lineage_details(ol_event))
 
         lineage_requests = [r.right for r in pip_results if r.right and isinstance(r.right, AddLineageRequest)]
-        assert len(lineage_requests) > 0
+        self.assertGreater(len(lineage_requests), 0)
 
         for req in lineage_requests:
             if req.edge.lineageDetails and req.edge.lineageDetails.columnsLineage:
-                assert len(req.edge.lineageDetails.columnsLineage) > 0
+                self.assertGreater(len(req.edge.lineageDetails.columnsLineage), 0)
 
     def test_entity_detection_kafka_namespace_returns_topic(self):
         """_get_entity_details identifies kafka:// datasets as topics and
@@ -1721,12 +1744,12 @@ class TestOpenLineageUnitTest:
             "facets": {},
         }
         result = OpenlineageSource._get_entity_details(kafka_data)
-        assert isinstance(result, EntityDetails)
-        assert result.entity_type == "topic"
-        assert result.topic_details is not None
-        assert result.table_details is None
-        assert result.topic_details.name == "my-events-topic"
-        assert result.topic_details.broker_hostname == "broker-host:9092"
+        self.assertIsInstance(result, EntityDetails)
+        self.assertEqual(result.entity_type, "topic")
+        self.assertIsNotNone(result.topic_details)
+        self.assertIsNone(result.table_details)
+        self.assertEqual(result.topic_details.name, "my-events-topic")
+        self.assertEqual(result.topic_details.broker_hostname, "broker-host:9092")
 
     def test_entity_detection_non_kafka_namespace_returns_table(self):
         """Non-kafka namespaces are classified as tables; identity resolution
@@ -1737,28 +1760,28 @@ class TestOpenLineageUnitTest:
             "facets": {},
         }
         result = OpenlineageSource._get_entity_details(table_data)
-        assert result.entity_type == "table"
-        assert result.topic_details is None
+        self.assertEqual(result.entity_type, "table")
+        self.assertIsNone(result.topic_details)
 
     def test_topic_details_extraction_various_broker_formats(self):
         """Test _get_topic_details extracts broker hostname correctly from various
         kafka:// namespace formats (with port, without port, multi-segment hostname)."""
         # Standard broker:port format
         result = OpenlineageSource._get_topic_details({"name": "topic1", "namespace": "kafka://my-broker:9092"})
-        assert result.name == "topic1"
-        assert result.broker_hostname == "my-broker:9092"
+        self.assertEqual(result.name, "topic1")
+        self.assertEqual(result.broker_hostname, "my-broker:9092")
 
         # Broker without port
         result = OpenlineageSource._get_topic_details({"name": "topic2", "namespace": "kafka://broker-only"})
-        assert result.name == "topic2"
-        assert result.broker_hostname == "broker-only"
+        self.assertEqual(result.name, "topic2")
+        self.assertEqual(result.broker_hostname, "broker-only")
 
     def test_topic_details_missing_fields_raises_value_error(self):
         """Test that _get_topic_details raises ValueError when namespace or name is missing."""
-        with pytest.raises(ValueError):
+        with self.assertRaises(ValueError):
             OpenlineageSource._get_topic_details({"name": "topic1"})  # missing namespace
 
-        with pytest.raises(ValueError):
+        with self.assertRaises(ValueError):
             OpenlineageSource._get_topic_details({"namespace": "kafka://broker:9092"})  # missing name
 
     def _run_lineage_with_kafka_broker(self, ol_event, get_by_name_fn, extra_patches=None):
@@ -1842,12 +1865,12 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == input_topic_id
-        assert edge.fromEntity.type == "topic"
-        assert edge.toEntity.id.root == output_topic_id
-        assert edge.toEntity.type == "topic"
+        self.assertEqual(edge.fromEntity.id.root, input_topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, output_topic_id)
+        self.assertEqual(edge.toEntity.type, "topic")
 
     def test_yield_pipeline_lineage_with_kafka_topic_input_and_table_output(self):
         """End-to-end test: Kafka topic input and table output produces a single
@@ -1917,12 +1940,12 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == topic_id
-        assert edge.fromEntity.type == "topic"
-        assert edge.toEntity.id.root == table_id
-        assert edge.toEntity.type == "table"
+        self.assertEqual(edge.fromEntity.id.root, topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
 
     def test_namespace_resolution_skips_when_service_not_in_configured_names(self):
         """Edge case 1: When the namespace maps to a service that is NOT in get_db_service_names(),
@@ -2105,7 +2128,7 @@ class TestOpenLineageUnitTest:
             custom_result = source._get_table_fqn(table, namespace="custom://lakehouse-host:8080/lake")
             assert custom_result == "custom_lakehouse.lake.analytics.user_stat"
 
-    def test_table_found_in_multiple_services_raises_ambiguous(self, caplog):
+    def test_table_found_in_multiple_services_raises_ambiguous(self):
         """When the same table exists in multiple DB services,
         AmbiguousServiceException is raised, caught in _get_table_fqn,
         logged as a warning, and None is returned (lineage skipped for this entity).
@@ -2141,7 +2164,7 @@ class TestOpenLineageUnitTest:
         with (
             patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
             patch.object(source, "metadata"),
-            caplog.at_level(logging.WARNING, logger="metadata.Ingestion"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
         ):
             result = source._get_table_fqn(table, namespace="mysql://some-host:3306/db")
 
@@ -2149,10 +2172,10 @@ class TestOpenLineageUnitTest:
         # The handler now logs the AmbiguousServiceException message itself
         # without a traceback, so the warning carries the actionable hint
         # rather than a stack trace.
-        assert any("found in multiple services" in msg for msg in caplog.messages)
-        assert any("namespaceToServiceMapping" in msg for msg in caplog.messages)
+        assert any("found in multiple services" in msg for msg in cm.output)
+        assert any("namespaceToServiceMapping" in msg for msg in cm.output)
 
-    def test_yield_pipeline_lineage_skips_when_pipeline_fqn_unbuildable(self, caplog):
+    def test_yield_pipeline_lineage_skips_when_pipeline_fqn_unbuildable(self):
         """If fqn.build returns None for the pipeline (e.g. an unexpected
         service/name combination), the connector logs a clear warning and
         skips the event without raising or calling get_by_name with None."""
@@ -2173,18 +2196,18 @@ class TestOpenLineageUnitTest:
             patch.object(self.open_lineage_source, "metadata") as mock_metadata,
             patch.object(self.open_lineage_source, "_get_table_fqn", return_value="svc.db.schema.in"),
             patch("metadata.utils.fqn.build", return_value=None),
-            caplog.at_level(logging.WARNING, logger="metadata.Ingestion"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
         ):
             mock_metadata.get_by_name.return_value = mock_table
             results = list(self.open_lineage_source.yield_pipeline_lineage_details(ol_event))
 
-        assert [r for r in results if r.right and isinstance(r.right, AddLineageRequest)] == []
-        assert any("Could not build pipeline FQN" in msg for msg in caplog.messages)
+        self.assertEqual([r for r in results if r.right and isinstance(r.right, AddLineageRequest)], [])
+        self.assertTrue(any("Could not build pipeline FQN" in msg for msg in cm.output))
         # get_by_name must never be called with fqn=None for the Pipeline lookup.
         for call in mock_metadata.get_by_name.call_args_list:
-            assert call.kwargs.get("fqn", call.args[1] if len(call.args) > 1 else "ok") is not None
+            self.assertIsNotNone(call.kwargs.get("fqn", call.args[1] if len(call.args) > 1 else "ok"))
 
-    def test_log_unmatched_dataset_attempts_carry_database_segment(self, caplog):
+    def test_log_unmatched_dataset_attempts_carry_database_segment(self):
         """The diagnostic log for an unmatched 3-part identity must include the
         database segment so operators can tell which catalog was searched."""
         data = {"namespace": "trino://h:8080", "name": "mycat.myschema.mytable"}
@@ -2192,14 +2215,14 @@ class TestOpenLineageUnitTest:
 
         with (
             patch.object(self.open_lineage_source, "_get_table_fqn", return_value=None),
-            caplog.at_level(logging.WARNING, logger="metadata.Ingestion"),
+            self.assertLogs("metadata.Ingestion", level=logging.WARNING) as cm,
         ):
-            assert self.open_lineage_source._resolve_table(data) is None
+            self.assertIsNone(self.open_lineage_source._resolve_table(data))
 
-        joined = caplog.text
-        assert "database='mycat'" in joined
-        assert "schema='myschema'" in joined
-        assert "table='mytable'" in joined
+        joined = "\n".join(cm.output)
+        self.assertIn("database='mycat'", joined)
+        self.assertIn("schema='myschema'", joined)
+        self.assertIn("table='mytable'", joined)
 
     def test_yield_pipeline_lineage_topic_not_found_skips_gracefully(self):
         """When a Kafka topic input cannot be resolved (no matching messaging service),
@@ -2275,14 +2298,16 @@ class TestOpenLineageUnitTest:
 
         # The topic input never resolves, so there is no dataset to pair the table
         # output with — the pipeline takes its place as the upstream endpoint.
-        assert len(lineage_requests) == 1, (
-            "The resolvable table output must still be linked, with the pipeline as its upstream"
+        self.assertEqual(
+            len(lineage_requests),
+            1,
+            "The resolvable table output must still be linked, with the pipeline as its upstream",
         )
         edge = lineage_requests[0].edge
-        assert str(edge.fromEntity.id.root) == pipeline_id
-        assert edge.fromEntity.type == "pipeline"
-        assert str(edge.toEntity.id.root) == table_id
-        assert edge.toEntity.type == "table"
+        self.assertEqual(str(edge.fromEntity.id.root), pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(str(edge.toEntity.id.root), table_id)
+        self.assertEqual(edge.toEntity.type, "table")
 
     def test_yield_pipeline_lineage_producer_only_no_inputs(self):
         """When an event has only outputs (producer), the pipeline itself becomes the
@@ -2331,13 +2356,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == pipeline_id
-        assert edge.fromEntity.type == "pipeline"
-        assert edge.toEntity.id.root == output_topic_id
-        assert edge.toEntity.type == "topic"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, output_topic_id)
+        self.assertEqual(edge.toEntity.type, "topic")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_consumer_only_no_outputs(self):
         """When an event has only inputs (consumer), each input becomes the
@@ -2386,13 +2411,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == input_topic_id
-        assert edge.fromEntity.type == "topic"
-        assert edge.toEntity.id.root == pipeline_id
-        assert edge.toEntity.type == "pipeline"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, input_topic_id)
+        self.assertEqual(edge.fromEntity.type, "topic")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_consumer_only_table_input(self):
         """When an event has only a table input (consumer/batch job), the table
@@ -2448,13 +2473,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == table_id
-        assert edge.fromEntity.type == "table"
-        assert edge.toEntity.id.root == pipeline_id
-        assert edge.toEntity.type == "pipeline"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_producer_only_table_output(self):
         """When an event has only a table output (producer/batch job), the pipeline
@@ -2510,13 +2535,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == pipeline_id
-        assert edge.fromEntity.type == "pipeline"
-        assert edge.toEntity.id.root == table_id
-        assert edge.toEntity.type == "table"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_pipeline_as_node_when_inputs_do_not_resolve(self):
         """An event that declares inputs which none resolve in OpenMetadata is
@@ -2572,13 +2597,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == pipeline_id
-        assert edge.fromEntity.type == "pipeline"
-        assert edge.toEntity.id.root == table_id
-        assert edge.toEntity.type == "table"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, pipeline_id)
+        self.assertEqual(edge.fromEntity.type, "pipeline")
+        self.assertEqual(edge.toEntity.id.root, table_id)
+        self.assertEqual(edge.toEntity.type, "table")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_pipeline_as_node_when_outputs_do_not_resolve(self):
         """Mirror of the inputs case: an event whose declared outputs are all
@@ -2633,13 +2658,13 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert len(lineage_requests) == 1
+        self.assertEqual(len(lineage_requests), 1)
         edge = lineage_requests[0].edge
-        assert edge.fromEntity.id.root == table_id
-        assert edge.fromEntity.type == "table"
-        assert edge.toEntity.id.root == pipeline_id
-        assert edge.toEntity.type == "pipeline"
-        assert edge.lineageDetails.pipeline is None
+        self.assertEqual(edge.fromEntity.id.root, table_id)
+        self.assertEqual(edge.fromEntity.type, "table")
+        self.assertEqual(edge.toEntity.id.root, pipeline_id)
+        self.assertEqual(edge.toEntity.type, "pipeline")
+        self.assertIsNone(edge.lineageDetails.pipeline)
 
     def test_yield_pipeline_lineage_no_edges_when_no_side_resolves(self):
         """With neither side resolvable there is nothing to attach the pipeline to,
@@ -2668,7 +2693,7 @@ class TestOpenLineageUnitTest:
 
         lineage_requests = self._run_lineage_with_kafka_broker(ol_event, get_by_name, extra_patches)
 
-        assert lineage_requests == []
+        self.assertEqual(lineage_requests, [])
 
     def test_cleanup_only_deletes_edges_matching_current_event_datasets(self):
         """When a both-sided event arrives, cleanup should only remove
@@ -2706,9 +2731,9 @@ class TestOpenLineageUnitTest:
 
             mock_metadata.delete_lineage_edge.assert_called_once()
             deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
-            assert str(deleted_edge.fromEntity.id.root) == topic_a_id
-            assert deleted_edge.fromEntity.type == "topic"
-            assert str(deleted_edge.toEntity.id.root) == pipeline_id
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), topic_a_id)
+            self.assertEqual(deleted_edge.fromEntity.type, "topic")
+            self.assertEqual(str(deleted_edge.toEntity.id.root), pipeline_id)
 
     def test_cleanup_preserves_non_openlineage_edges(self):
         """Cleanup should not touch edges that were not sourced from OpenLineage,
@@ -2776,67 +2801,67 @@ class TestOpenLineageUnitTest:
 
             mock_metadata.delete_lineage_edge.assert_called_once()
             deleted_edge = mock_metadata.delete_lineage_edge.call_args[0][0]
-            assert str(deleted_edge.fromEntity.id.root) == pipeline_id
-            assert str(deleted_edge.toEntity.id.root) == table_b_id
-            assert deleted_edge.toEntity.type == "table"
+            self.assertEqual(str(deleted_edge.fromEntity.id.root), pipeline_id)
+            self.assertEqual(str(deleted_edge.toEntity.id.root), table_b_id)
+            self.assertEqual(deleted_edge.toEntity.type, "table")
 
     def test_parse_glue_table_name_trino_glue_catalog_schema(self):
         """Trino backed by AWS Glue Data Catalog uses the public schema and underscore-separated table names.
         Verifies the parser handles the common Glue catalog table naming pattern correctly.
         """
         result = OpenlineageSource._parse_glue_table_name("table/public/order_line_items")
-        assert result.name == "order_line_items"
-        assert result.schema == "public"
+        self.assertEqual(result.name, "order_line_items")
+        self.assertEqual(result.schema, "public")
 
     def test_parse_glue_table_name_happy_path(self):
         """Glue OL naming: table/{database}/{table} — source: Naming.java GlueNaming."""
         result = OpenlineageSource._parse_glue_table_name("table/sales/users")
-        assert result.name == "users"
-        assert result.schema == "sales"
+        self.assertEqual(result.name, "users")
+        self.assertEqual(result.schema, "sales")
 
     def test_parse_table_identity_glue_namespace_uses_glue_parser(self):
         """A conformant Glue name on a Glue namespace uses the Glue parser."""
         result = OpenlineageSource._parse_table_identity("arn:aws:glue:us-east-1:123456789012", "table/sales/users")
-        assert result.schema == "sales"
-        assert result.name == "users"
+        self.assertEqual(result.schema, "sales")
+        self.assertEqual(result.name, "users")
 
     def test_parse_table_identity_falls_back_to_dotted_for_nonconformant_name(self):
         """A dotted name on a Glue namespace falls back to dotted parsing
         instead of being dropped when the Glue parser does not match."""
         result = OpenlineageSource._parse_table_identity("arn:aws:glue:us-east-1:123456789012", "sales.users")
-        assert result is not None
-        assert result.schema == "sales"
-        assert result.name == "users"
+        self.assertIsNotNone(result)
+        self.assertEqual(result.schema, "sales")
+        self.assertEqual(result.name, "users")
 
     def test_parse_dotted_table_name_captures_database_for_three_part_names(self):
         """Three-part db.schema.table names populate database so OpenMetadata
         can disambiguate the same schema.table across multiple databases."""
         result = OpenlineageSource._parse_dotted_table_name("mydb.myschema.mytable")
-        assert result.database == "mydb"
-        assert result.schema == "myschema"
-        assert result.name == "mytable"
+        self.assertEqual(result.database, "mydb")
+        self.assertEqual(result.schema, "myschema")
+        self.assertEqual(result.name, "mytable")
 
     def test_parse_dotted_table_name_two_part_leaves_database_none(self):
         """Two-part schema.table names (MySQL, Hive, Teradata, Cassandra)
         leave database as None for OpenMetadata's partial FQN search."""
         result = OpenlineageSource._parse_dotted_table_name("myschema.mytable")
-        assert result.database is None
-        assert result.schema == "myschema"
-        assert result.name == "mytable"
+        self.assertIsNone(result.database)
+        self.assertEqual(result.schema, "myschema")
+        self.assertEqual(result.name, "mytable")
 
     def test_get_ol_table_name_preserves_uri_scheme(self):
         """The namespace/name boundary is normalized without collapsing the
         URI scheme, so distinct datasets do not collide as cache keys."""
         leading_slash = OpenlineageSource._get_ol_table_name({"namespace": "s3://bucket", "name": "/path/obj"})
         no_leading_slash = OpenlineageSource._get_ol_table_name({"namespace": "s3://bucket", "name": "path/obj"})
-        assert leading_slash == "s3://bucket/path/obj"
-        assert leading_slash == no_leading_slash
+        self.assertEqual(leading_slash, "s3://bucket/path/obj")
+        self.assertEqual(leading_slash, no_leading_slash)
 
     def test_parse_glue_table_name_normalizes_to_lowercase(self):
         """Glue table and database names are normalized to lowercase for FQN matching."""
         result = OpenlineageSource._parse_glue_table_name("table/Sales/Users")
-        assert result.name == "users"
-        assert result.schema == "sales"
+        self.assertEqual(result.name, "users")
+        self.assertEqual(result.schema, "sales")
 
     def test_parse_glue_table_name_strips_iceberg_quoting_backticks(self):
         """Iceberg backtick-quotes namespace/table parts that contain special
@@ -2845,15 +2870,15 @@ class TestOpenLineageUnitTest:
         of the identifier and must be stripped, otherwise the FQN never matches a
         catalogued table."""
         result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/`order-lines`")
-        assert result.schema == "silver-stagingdb"
-        assert result.name == "order-lines"
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "order-lines")
 
     def test_parse_glue_table_name_strips_backticks_on_quoted_schema_only(self):
         """Iceberg only quotes the parts that need it, so a quoted database can be
         paired with an unquoted table in the same name."""
         result = OpenlineageSource._parse_glue_table_name("table/`silver-stagingdb`/orders")
-        assert result.schema == "silver-stagingdb"
-        assert result.name == "orders"
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
 
     def test_parse_table_identity_glue_backticked_name(self):
         """The backtick stripping must survive the namespace-based dispatch that
@@ -2861,8 +2886,8 @@ class TestOpenLineageUnitTest:
         result = OpenlineageSource._parse_table_identity(
             "arn:aws:glue:us-west-2:012621376717", "table/`silver-stagingdb`/`Orders`"
         )
-        assert result.schema == "silver-stagingdb"
-        assert result.name == "orders"
+        self.assertEqual(result.schema, "silver-stagingdb")
+        self.assertEqual(result.name, "orders")
 
     def test_candidate_glue_backticked_symlink_name(self):
         """The candidate path used for Glue symlink identifiers yields the unquoted
@@ -2872,32 +2897,32 @@ class TestOpenLineageUnitTest:
             "name": "table/`silver-stagingdb`/`order-lines`",
         }
         details, _ = OpenlineageSource._iter_table_candidates(data)[0]
-        assert details.schema == "silver-stagingdb"
-        assert details.name == "order-lines"
+        self.assertEqual(details.schema, "silver-stagingdb")
+        self.assertEqual(details.name, "order-lines")
 
     def test_parse_glue_table_name_not_glue_format_returns_none(self):
         """Names without the table/ prefix are not Glue format and return None."""
-        assert OpenlineageSource._parse_glue_table_name("sales.users") is None
+        self.assertIsNone(OpenlineageSource._parse_glue_table_name("sales.users"))
 
     def test_parse_glue_table_name_missing_table_part_returns_none(self):
         """table/ prefix with only one path segment is malformed and returns None."""
-        assert OpenlineageSource._parse_glue_table_name("table/only_db") is None
+        self.assertIsNone(OpenlineageSource._parse_glue_table_name("table/only_db"))
 
     def test_parse_slash_table_name_happy_path(self):
         """Kusto OL naming: {database}/{table} — source: Naming.java KustoNaming."""
         result = OpenlineageSource._parse_slash_table_name("mydb/mytable")
-        assert result.name == "mytable"
-        assert result.schema == "mydb"
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "mydb")
 
     def test_parse_slash_table_name_normalizes_to_lowercase(self):
         """Kusto table and database names are normalized to lowercase for FQN matching."""
         result = OpenlineageSource._parse_slash_table_name("MyDB/MyTable")
-        assert result.name == "mytable"
-        assert result.schema == "mydb"
+        self.assertEqual(result.name, "mytable")
+        self.assertEqual(result.schema, "mydb")
 
     def test_parse_slash_table_name_single_part_returns_none(self):
         """A single path segment without a slash cannot be split into db/table and returns None."""
-        assert OpenlineageSource._parse_slash_table_name("only_table") is None
+        self.assertIsNone(OpenlineageSource._parse_slash_table_name("only_table"))
 
     def test_parse_cosmos_table_name_happy_path(self):
         """Cosmos OL naming: db from namespace /dbs/{db}, name colls/{coll} — source: Naming.java CosmosNaming."""
@@ -2905,22 +2930,22 @@ class TestOpenLineageUnitTest:
             "azurecosmos://myaccount.documents.azure.com/dbs/mydb",
             "colls/mycollection",
         )
-        assert result.name == "mycollection"
-        assert result.schema == "mydb"
+        self.assertEqual(result.name, "mycollection")
+        self.assertEqual(result.schema, "mydb")
 
     def test_parse_cosmos_table_name_normalizes_to_lowercase(self):
         """Cosmos database and collection names are normalized to lowercase for FQN matching."""
         result = OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/MyDB", "colls/MyCollection")
-        assert result.name == "mycollection"
-        assert result.schema == "mydb"
+        self.assertEqual(result.name, "mycollection")
+        self.assertEqual(result.schema, "mydb")
 
     def test_parse_cosmos_table_name_no_dbs_segment_returns_none(self):
         """A Cosmos namespace without /dbs/{db} cannot provide the database name and returns None."""
-        assert OpenlineageSource._parse_cosmos_table_name("azurecosmos://host", "colls/mycoll") is None
+        self.assertIsNone(OpenlineageSource._parse_cosmos_table_name("azurecosmos://host", "colls/mycoll"))
 
     def test_parse_cosmos_table_name_non_colls_name_returns_none(self):
         """A Cosmos name not matching colls/{collection} is non-conformant and returns None."""
-        assert OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/mydb", "mycollection") is None
+        self.assertIsNone(OpenlineageSource._parse_cosmos_table_name("azurecosmos://host/dbs/mydb", "mycollection"))
 
     def test_candidate_glue_namespace_parses_slash_name(self):
         """AWS Glue EMR events use arn:aws:glue namespace + table/{db}/{table} name."""
@@ -2929,8 +2954,8 @@ class TestOpenLineageUnitTest:
             "name": "table/sales/users",
         }
         details, _ = OpenlineageSource._iter_table_candidates(data)[0]
-        assert details.name == "users"
-        assert details.schema == "sales"
+        self.assertEqual(details.name, "users")
+        self.assertEqual(details.schema, "sales")
 
     def test_candidate_kusto_namespace_parses_slash_name(self):
         """Azure Kusto events use azurekusto namespace + {db}/{table} name."""
@@ -2939,8 +2964,8 @@ class TestOpenLineageUnitTest:
             "name": "mydb/mytable",
         }
         details, _ = OpenlineageSource._iter_table_candidates(data)[0]
-        assert details.name == "mytable"
-        assert details.schema == "mydb"
+        self.assertEqual(details.name, "mytable")
+        self.assertEqual(details.schema, "mydb")
 
     def test_candidate_cosmos_namespace_parses_colls_name(self):
         """Azure Cosmos DB events carry the database in the namespace path."""
@@ -2949,8 +2974,8 @@ class TestOpenLineageUnitTest:
             "name": "colls/orders",
         }
         details, _ = OpenlineageSource._iter_table_candidates(data)[0]
-        assert details.name == "orders"
-        assert details.schema == "mydb"
+        self.assertEqual(details.name, "orders")
+        self.assertEqual(details.schema, "mydb")
 
     def test_entity_details_glue_namespace_classified_as_table(self):
         """Glue ARN namespace is classified as a table; identity parses via candidates."""
@@ -2959,16 +2984,16 @@ class TestOpenLineageUnitTest:
             "name": "table/sales/users",
             "facets": {},
         }
-        assert OpenlineageSource._get_entity_details(data).entity_type == "table"
+        self.assertEqual(OpenlineageSource._get_entity_details(data).entity_type, "table")
         details, _ = OpenlineageSource._iter_table_candidates(data)[0]
-        assert details.name == "users"
-        assert details.schema == "sales"
+        self.assertEqual(details.name, "users")
+        self.assertEqual(details.schema, "sales")
 
     def test_unparseable_name_yields_no_candidates(self):
         """Unrecognised name formats yield no candidates instead of raising,
         so a single bad dataset never aborts the whole event."""
         data = {"namespace": "trino://host:8080", "name": "invalidname"}
-        assert OpenlineageSource._iter_table_candidates(data) == []
+        self.assertEqual(OpenlineageSource._iter_table_candidates(data), [])
 
 
 def _encode_varint(value: int) -> bytes:

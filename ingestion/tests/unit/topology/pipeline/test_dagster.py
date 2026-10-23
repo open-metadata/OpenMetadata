@@ -17,8 +17,6 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-import pytest
-
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
@@ -254,31 +252,28 @@ MOCK_PIPELINE = Pipeline(
 )
 
 
-class TestDagsterUnitTest:
+class DagsterUnitTest(TestCase):
     """
     Implements the necessary methods to extract
     Dagster Pipeline Unit Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch("dagster_graphql.DagsterGraphQLClient") as graphql_client,
-            patch(
-                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            graphql_client.return_value = False
-            config = OpenMetadataWorkflowConfig.model_validate(mock_dagster_config)
-            self.dagster = DagsterSource.create(
-                mock_dagster_config["source"],
-                config.workflowConfig.openMetadataServerConfig,
-            )
-            self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-            self.dagster.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
-            self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
-            self.dagster.context.get().__dict__["repository_location"] = "project_fully_featured"
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+    @patch("dagster_graphql.DagsterGraphQLClient")
+    # @patch("metadata.ingestion.source.pipeline.dagster.get_tag_labels")
+    def __init__(self, methodName, graphql_client, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        graphql_client.return_value = False
+        config = OpenMetadataWorkflowConfig.model_validate(mock_dagster_config)
+        self.dagster = DagsterSource.create(
+            mock_dagster_config["source"],
+            config.workflowConfig.openMetadataServerConfig,
+        )
+        self.dagster.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.dagster.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+        self.dagster.context.get().__dict__["repository_name"] = "hacker_new_repository"
+        self.dagster.context.get().__dict__["repository_location"] = "project_fully_featured"
 
     def test_pipeline_name(self):
         assert self.dagster.get_pipeline_name(GraphOrError(**EXPECTED_DAGSTER_DETAILS)) in EXPTECTED_PIPELINE_NAME
@@ -295,7 +290,7 @@ class TestDagsterUnitTest:
             pipelines_list.append(result.right)  # noqa: PERF401
 
         for _, (expected, original) in enumerate(zip(EXPECTED_CREATED_PIPELINES, pipelines_list)):  # noqa: B905
-            assert expected == original
+            self.assertEqual(expected, original)
 
 
 class TestAssetKey(TestCase):

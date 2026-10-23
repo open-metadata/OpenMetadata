@@ -15,9 +15,8 @@ Test nifi using the topology
 # pylint: disable=line-too-long
 import json
 from pathlib import Path
+from unittest import TestCase
 from unittest.mock import PropertyMock, patch
-
-import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -254,48 +253,44 @@ EXPECTED_PIPELINE_BULK_LINEAGE_DETAILS = [
 ]
 
 
-class TestNifiUnitTest:
+class NifiUnitTest(TestCase):
     """
     Nifi unit tests
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
-                new_callable=PropertyMock,
-            ) as nifi_token_prop,
-            patch(
-                "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
+    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
+    @patch(
+        "metadata.ingestion.source.pipeline.nifi.client.NifiClient.token",
+        new_callable=PropertyMock,
+    )
+    def __init__(self, methodName, nifi_token_prop, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
 
-            nifi_token_prop.return_value.token.return_value = "token"
+        nifi_token_prop.return_value.token.return_value = "token"
 
-            config = OpenMetadataWorkflowConfig.model_validate(mock_nifi_config)
-            self.nifi = NifiSource.create(
-                mock_nifi_config["source"],
-                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+        config = OpenMetadataWorkflowConfig.model_validate(mock_nifi_config)
+        self.nifi = NifiSource.create(
+            mock_nifi_config["source"],
+            OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+        )
+        self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        self.nifi.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+
+        # Mock metadata.get_by_name to return different pipeline entities based on FQN
+        self.original_get_by_name = self.nifi.metadata.get_by_name
+        self.nifi.metadata.get_by_name = self._mock_get_by_name
+
+        self.nifi.pipeline_parents_mapping = {
+            EXPECTED_NIFI_DETAILS.id_: [EXPECTED_NIFI_DETAILS.parent_pipeline_id],
+        }
+        self.nifi.process_group_connections = [
+            NifiProcessorConnections(
+                id_="fd99b000-6117-47c1-a075-b09591b04d61",
+                source_id="d3d6b945-0182-1000-d7e4-d81b8f79f310",
+                destination_id="364e6ed1-feab-403c-a0c7-0003a55ea8aa",
             )
-            self.nifi.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-            self.nifi.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
-
-            # Mock metadata.get_by_name to return different pipeline entities based on FQN
-            self.original_get_by_name = self.nifi.metadata.get_by_name
-            self.nifi.metadata.get_by_name = self._mock_get_by_name
-
-            self.nifi.pipeline_parents_mapping = {
-                EXPECTED_NIFI_DETAILS.id_: [EXPECTED_NIFI_DETAILS.parent_pipeline_id],
-            }
-            self.nifi.process_group_connections = [
-                NifiProcessorConnections(
-                    id_="fd99b000-6117-47c1-a075-b09591b04d61",
-                    source_id="d3d6b945-0182-1000-d7e4-d81b8f79f310",
-                    destination_id="364e6ed1-feab-403c-a0c7-0003a55ea8aa",
-                )
-            ]
+        ]
 
     def _mock_get_by_name(self, entity, fqn):
         """Mock function to return different pipeline entities based on FQN"""

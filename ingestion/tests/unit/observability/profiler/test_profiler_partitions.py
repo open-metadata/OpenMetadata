@@ -10,9 +10,9 @@
 #  limitations under the License.
 
 from typing import cast
+from unittest import TestCase
 from unittest.mock import patch
 
-import pytest
 from google.cloud.bigquery import PartitionRange, RangePartitioning, TimePartitioning
 from pydantic import BaseModel
 
@@ -113,22 +113,26 @@ MOCK_INGESTION_TIME_PARTITIONING = TimePartitioning(expiration_ms=None, type_="H
 MOCK_RANGE_PARTITIONING = RangePartitioning(field="test_column", range_=PartitionRange(end=100, interval=10, start=0))
 
 
-class TestProfilerPartitionUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch("sqlalchemy_bigquery._helpers.create_bigquery_client"),
-            patch("sqlalchemy.engine.base.Engine.connect"),
-            patch("google.auth.default") as auth_default,
-            patch(
-                "metadata.profiler.source.metadata.OpenMetadataSource._validate_service_name"
-            ) as validate_service_name,
-            patch.object(ProfilerWorkflow, "test_connection") as mock_test_connection,
-        ):
-            mock_test_connection.return_value = True
-            validate_service_name.return_value = True
-            auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
-            self.profiler_workflow = ProfilerWorkflow.create(mock_bigquery_config)
+class ProfilerPartitionUnitTest(TestCase):
+    @patch.object(ProfilerWorkflow, "test_connection")
+    @patch("metadata.profiler.source.metadata.OpenMetadataSource._validate_service_name")
+    @patch("google.auth.default")
+    @patch("sqlalchemy.engine.base.Engine.connect")
+    @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        mock_create_bigquery_client,
+        mock_connect,
+        auth_default,
+        validate_service_name,
+        mock_test_connection,
+    ):
+        super().__init__(methodName)
+        mock_test_connection.return_value = True
+        validate_service_name.return_value = True
+        auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
+        self.profiler_workflow = ProfilerWorkflow.create(mock_bigquery_config)
 
     def test_partition_details_time_unit(self):
         table_entity = MockTable(

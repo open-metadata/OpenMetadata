@@ -16,7 +16,6 @@ import types
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-import pytest
 from sqlalchemy.sql import sqltypes as sa_types
 from sqlalchemy.types import INTEGER, VARCHAR
 
@@ -197,42 +196,41 @@ EXPECTED_TABLE = [
 ]
 
 
-class TestDb2UnitTest:
+class Db2UnitTest(TestCase):
     """
     Implements the necessary methods to extract
     Db2 Unit Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-            ) as test_connection,
-            patch("metadata.ingestion.source.database.common_db_source.create_connection") as get_connection,
-        ):
-            test_connection.return_value = False
-            get_connection.return_value = MagicMock()
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_db2_config)
-            self.metadata = OpenMetadata(
-                OpenMetadataConnection.model_validate(mock_db2_config["workflowConfig"]["openMetadataServerConfig"])
-            )
-            self.db2 = Db2Source.create(
-                mock_db2_config["source"],
-                self.metadata,
-            )
-            self.db2.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-            self.db2.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-            self.thread_id = self.db2.context.get_current_thread_id()
-            self.db2._inspector_map[self.thread_id] = types.SimpleNamespace()
-            self.db2._inspector_map[self.thread_id].get_columns = (
-                lambda table_name, schema_name, db_name, table_type=None: MOCK_COLUMN_VALUE
-            )
-            self.db2._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
-            self.db2._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-            self.db2._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
-            self.db2._inspector_map[self.thread_id].get_table_comment = lambda table_name, schema_name: {"text": None}
+    @patch("metadata.ingestion.source.database.common_db_source.create_connection")
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        test_connection,
+        get_connection,
+    ) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        get_connection.return_value = MagicMock()
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_db2_config)
+        self.metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_db2_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.db2 = Db2Source.create(
+            mock_db2_config["source"],
+            self.metadata,
+        )
+        self.db2.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.thread_id = self.db2.context.get_current_thread_id()
+        self.db2._inspector_map[self.thread_id] = types.SimpleNamespace()
+        self.db2._inspector_map[self.thread_id].get_columns = lambda table_name, schema_name, db_name, table_type=None: (
+            MOCK_COLUMN_VALUE
+        )
+        self.db2._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+        self.db2._inspector_map[self.thread_id].get_table_comment = lambda table_name, schema_name: {"text": None}
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300

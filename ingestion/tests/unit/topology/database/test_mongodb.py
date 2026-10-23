@@ -16,9 +16,8 @@ Test MongoDB using the topology
 import json
 from copy import deepcopy
 from pathlib import Path
+from unittest import TestCase
 from unittest.mock import patch
-
-import pytest
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -183,23 +182,19 @@ def custom_column_compare(self, other):
     return self.name == other.name and self.description == other.description and self.children == other.children
 
 
-class TestMongoDBUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.mongodb.metadata.MongodbSource.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
-            self.mongo_source = MongodbSource.create(
-                mock_mongo_config["source"],
-                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-            )
-            self.mongo_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.mongo_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-            self.mongo_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+class MongoDBUnitTest(TestCase):
+    @patch("metadata.ingestion.source.database.mongodb.metadata.MongodbSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_mongo_config)
+        self.mongo_source = MongodbSource.create(
+            mock_mongo_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.mongo_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.mongo_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.mongo_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.mongo_source.get_database_names())  # noqa: SIM300

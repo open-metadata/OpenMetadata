@@ -102,7 +102,6 @@ VERSIONS = {
     "factory-boy": "factory-boy~=3.3.3",
     "rarfile": "rarfile~=4.2",
     "py7zr": "py7zr~=1.1.3",
-    "pytest": "pytest==9.0.3",
 }
 
 COMMONS = {
@@ -506,10 +505,10 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    VERSIONS["pytest"],
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-order",
-    "pytest-rerunfailures>=16.7",
+    "pytest-rerunfailures",
     "pytest-timeout~=2.4",
     "dirty-equals",
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
@@ -535,7 +534,7 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    VERSIONS["pytest"],
+    "pytest==7.0.1",
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",

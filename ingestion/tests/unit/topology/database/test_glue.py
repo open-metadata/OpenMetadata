@@ -21,6 +21,7 @@ import textwrap
 import time
 from copy import deepcopy
 from pathlib import Path
+from unittest import TestCase
 from unittest.mock import Mock, patch
 from uuid import UUID, uuid4
 
@@ -173,25 +174,23 @@ EXPECTED_LOCATION_PATHS = [
 ]
 
 
-class TestGlueUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection") as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
-            self.glue_source = GlueSource.create(
-                mock_glue_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
-            )
-            self.glue_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-            self.glue_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
-            self.glue_source._get_glue_database_and_schemas = lambda: [
-                DatabasePage(**mock_data.get("mock_database_paginator"))
-            ]
-            self.glue_source._get_glue_tables = lambda: [TablePage(**mock_data.get("mock_table_paginator"))]
+class GlueUnitTest(TestCase):
+    @patch("metadata.ingestion.source.database.glue.metadata.GlueSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+        self.glue_source = GlueSource.create(
+            mock_glue_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.glue_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.glue_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.glue_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.glue_source._get_glue_database_and_schemas = lambda: [
+            DatabasePage(**mock_data.get("mock_database_paginator"))
+        ]
+        self.glue_source._get_glue_tables = lambda: [TablePage(**mock_data.get("mock_table_paginator"))]
 
     def get_table_requests(self):
         tables = self.glue_source.get_tables_name_and_type()
@@ -208,7 +207,7 @@ class TestGlueUnitTest:
             mock_glue_config_db_test["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        assert list(glue_source_new.get_database_names()) == [MOCK_CUSTOM_DB_NAME]
+        self.assertEqual(list(glue_source_new.get_database_names()), [MOCK_CUSTOM_DB_NAME])
 
     def test_database_schema_names(self):
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.glue_source.get_database_schema_names())  # noqa: SIM300
@@ -294,12 +293,12 @@ class TestGlueUnitTest:
         current_column_names = current_columns
 
         # Should include current_col and normal_col, but not non_current_col
-        assert "current_col" in current_column_names
-        assert "normal_col" in current_column_names
-        assert "non_current_col" not in current_column_names
+        self.assertIn("current_col", current_column_names)
+        self.assertIn("normal_col", current_column_names)
+        self.assertNotIn("non_current_col", current_column_names)
 
         # Verify that exactly 2 columns are returned (current_col and normal_col)
-        assert len(current_columns) == 2
+        self.assertEqual(len(current_columns), 2)
 
     def test_iceberg_table_detection(self):
         """Test that Iceberg tables are correctly detected"""
@@ -323,9 +322,9 @@ class TestGlueUnitTest:
         is_iceberg_2 = mock_regular_table.Parameters and mock_regular_table.Parameters.table_type == "ICEBERG"
         is_iceberg_3 = mock_no_params_table.Parameters and mock_no_params_table.Parameters.table_type == "ICEBERG"
 
-        assert is_iceberg_1
-        assert not is_iceberg_2
-        assert not is_iceberg_3
+        self.assertTrue(is_iceberg_1)
+        self.assertFalse(is_iceberg_2)
+        self.assertFalse(is_iceberg_3)
 
     def _custom_db_name_source(self, pages):
         """A source configured with a custom databaseName, reading the given catalog pages."""
@@ -418,7 +417,7 @@ class TestGlueUnitTest:
 
         paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")
 
-    def test_iceberg_columns_are_filtered_in_any_catalog_without_a_lookup(self, monkeypatch):
+    def test_iceberg_columns_are_filtered_in_any_catalog_without_a_lookup(self):
         """Iceberg filtering must not depend on a per-table GetTable.
 
         A schema owned by another catalog is what the old lookup got wrong, and its broad
@@ -452,7 +451,8 @@ class TestGlueUnitTest:
         )
         source.context.get().__dict__["database_schema"] = "foreign_schema"
         # The topology context is shared, so a stray table_data leaks into later tests.
-        monkeypatch.setitem(source.context.get().__dict__, "table_data", iceberg_table)
+        source.context.get().__dict__["table_data"] = iceberg_table
+        self.addCleanup(source.context.get().__dict__.pop, "table_data", None)
         source.glue = Mock()
 
         columns = list(source.get_columns(iceberg_table.StorageDescriptor))
@@ -1178,7 +1178,7 @@ class TestTableParametersPreservesUnknownKeys:
 
 class TestGlueGetTableExtensionsEarlyExits:
     def test_returns_none_when_flag_disabled(self, custom_property_source):
-        """TestGlueUnitTest drives yield_table against a real OpenMetadata object, so the flag check
+        """GlueUnitTest drives yield_table against a real OpenMetadata object, so the flag check
         has to come before anything that would touch self.metadata."""
         custom_property_source.source_config.includeCustomProperties = False
         table = _glue_table_with_params({"EXTERNAL": "TRUE"})

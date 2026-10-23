@@ -271,23 +271,22 @@ class TestDatalakeUtils(TestCase):
                 self.assertEqual(GenericDataFrameColumnParser.fetch_col_types(df, "col"), expected)
 
 
-class TestParquetDataFrameColumnParser:
+class TestParquetDataFrameColumnParser(TestCase):
     """Test parquet dataframe column parser"""
 
-    @pytest.fixture(autouse=True)
-    def setup_parser(self, subtests) -> None:
+    @classmethod
+    def setUpClass(cls) -> None:
         resources_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources")  # noqa: PTH118, PTH120
-        self.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
+        cls.parquet_path = os.path.join(resources_path, "datalake", "example.parquet")  # noqa: PTH118
 
-        self.df = pd.read_parquet(self.parquet_path)
+        cls.df = pd.read_parquet(cls.parquet_path)
 
-        self.parquet_parser = ParquetDataFrameColumnParser(self.df)
-        self.subtests = subtests
+        cls.parquet_parser = ParquetDataFrameColumnParser(cls.df)
 
     def test_parser_instantiation(self):
         """Test the right parser is instantiated from the creator method"""
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
-        assert isinstance(parquet_parser.parser, ParquetDataFrameColumnParser)
+        self.assertIsInstance(parquet_parser.parser, ParquetDataFrameColumnParser)
 
         parquet_types = [
             SupportedTypes.PARQUET,
@@ -298,20 +297,20 @@ class TestParquetDataFrameColumnParser:
         ]
         other_types = [typ for typ in SupportedTypes if typ not in parquet_types]
         for other_type in other_types:
-            with self.subtests.test(other_type=other_type.value):
+            with self.subTest(other_type=other_type):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
-                assert isinstance(generic_parser.parser, GenericDataFrameColumnParser)
+                self.assertIsInstance(generic_parser.parser, GenericDataFrameColumnParser)
 
     def test_shuffle_and_sample_from_parser(self):
         """test the shuffle and sampling logic from the parser creator method"""
         parquet_parser = DataFrameColumnParser.create(self.df, SupportedTypes.PARQUET)
-        assert parquet_parser.parser.data_frame.shape == self.df.shape
+        self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
         parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET)
-        assert parquet_parser.parser.data_frame.shape == self.df.shape
+        self.assertEqual(parquet_parser.parser.data_frame.shape, self.df.shape)
 
         parquet_parser = DataFrameColumnParser.create([self.df, self.df], SupportedTypes.PARQUET, sample=False)
-        assert parquet_parser.parser.data_frame.shape == pd.concat([self.df, self.df]).shape
+        self.assertEqual(parquet_parser.parser.data_frame.shape, pd.concat([self.df, self.df]).shape)
 
     def test_get_columns(self):
         """test `get_columns` method of the parquet column parser"""
@@ -517,21 +516,21 @@ class TestParquetDataFrameColumnParser:
         ]
         actual = self.parquet_parser.get_columns()
         for validation in zip(expected, actual):  # noqa: B905
-            with self.subtests.test(validation=validation[0].name.root):
+            with self.subTest(validation=validation):
                 expected_col, actual_col = validation
-                assert expected_col.name == actual_col.name
-                assert expected_col.displayName == actual_col.displayName
-                assert expected_col.dataType == actual_col.dataType
+                self.assertEqual(expected_col.name, actual_col.name)
+                self.assertEqual(expected_col.displayName, actual_col.displayName)
+                self.assertEqual(expected_col.dataType, actual_col.dataType)
 
     def _validate_parsed_column(self, expected, actual):
         """validate parsed column"""
-        assert expected.name == actual.name
-        assert expected.dataType == actual.dataType
-        assert expected.displayName == actual.displayName
+        self.assertEqual(expected.name, actual.name)
+        self.assertEqual(expected.dataType, actual.dataType)
+        self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
-            assert len(expected.children) == len(actual.children)
+            self.assertEqual(len(expected.children), len(actual.children))
             for validation in zip(expected.children, actual.children):  # noqa: B905
-                with self.subtests.test(validation=validation[0].name.root):
+                with self.subTest(validation=validation):
                     expected_col, actual_col = validation
                     self._validate_parsed_column(expected_col, actual_col)
 
@@ -539,37 +538,37 @@ class TestParquetDataFrameColumnParser:
         """test get_file_format_type function for csv.gz files"""
         # Test csv.gz file detection
         result = get_file_format_type("data.csv.gz")
-        assert result == SupportedTypes.CSVGZ
+        self.assertEqual(result, SupportedTypes.CSVGZ)
 
         # Test regular csv file detection (should still work)
         result = get_file_format_type("data.csv")
-        assert result == SupportedTypes.CSV
+        self.assertEqual(result, SupportedTypes.CSV)
 
         # Test other gzipped files
         result = get_file_format_type("data.json.gz")
-        assert result == SupportedTypes.JSONGZ
+        self.assertEqual(result, SupportedTypes.JSONGZ)
 
         # Test unsupported gzipped format
         result = get_file_format_type("data.txt.gz")
-        assert result is False
+        self.assertEqual(result, False)
 
     def test_csv_gz_file_format_detection_edge_cases(self):
         """test edge cases for csv.gz file format detection"""
         # Test with nested paths
         result = get_file_format_type("folder/subfolder/data.csv.gz")
-        assert result == SupportedTypes.CSVGZ
+        self.assertEqual(result, SupportedTypes.CSVGZ)
 
         # Test with multiple dots
         result = get_file_format_type("data.backup.csv.gz")
-        assert result == SupportedTypes.CSVGZ
+        self.assertEqual(result, SupportedTypes.CSVGZ)
 
         # Test with no extension
         result = get_file_format_type("data")
-        assert result is False
+        self.assertEqual(result, False)
 
         # Test with just .gz
         result = get_file_format_type("data.gz")
-        assert result is False
+        self.assertEqual(result, False)
 
     def test_csv_gz_compression_detection(self):
         """test compression detection for various file types"""
@@ -587,9 +586,9 @@ class TestParquetDataFrameColumnParser:
         ]
 
         for filename, expected in test_cases:
-            with self.subtests.test(filename=filename):
+            with self.subTest(filename=filename):
                 result = get_file_format_type(filename)
-                assert result == expected, f"Failed for {filename}"
+                self.assertEqual(result, expected, f"Failed for {filename}")
 
     def test_csv_gz_reader_factory_integration(self):
         """test that csv.gz is properly integrated with reader factory"""
@@ -598,24 +597,24 @@ class TestParquetDataFrameColumnParser:
         # Test that CSVGZ is properly handled
         try:
             # Test that the enum value exists
-            assert SupportedTypes.CSVGZ.value == "csv.gz"
+            self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
 
             # Test that it's different from regular CSV
-            assert SupportedTypes.CSVGZ != SupportedTypes.CSV
-            assert SupportedTypes.CSVGZ.value != SupportedTypes.CSV.value
+            self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
+            self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
 
         except Exception as e:
-            pytest.fail(f"CSVGZ enum test failed: {e}")
+            self.fail(f"CSVGZ enum test failed: {e}")
 
     def test_csv_gz_supported_types_enum(self):
         """test that CSVGZ is properly defined in SupportedTypes enum"""
         # Test that CSVGZ exists in the enum
-        assert SupportedTypes.CSVGZ in SupportedTypes
-        assert SupportedTypes.CSVGZ.value == "csv.gz"
+        self.assertIn(SupportedTypes.CSVGZ, SupportedTypes)
+        self.assertEqual(SupportedTypes.CSVGZ.value, "csv.gz")
 
         # Test that it's different from regular CSV
-        assert SupportedTypes.CSVGZ != SupportedTypes.CSV
-        assert SupportedTypes.CSVGZ.value != SupportedTypes.CSV.value
+        self.assertNotEqual(SupportedTypes.CSVGZ, SupportedTypes.CSV)
+        self.assertNotEqual(SupportedTypes.CSVGZ.value, SupportedTypes.CSV.value)
 
     def test_csv_gz_dsv_reader_compression_detection(self):
         """test that DSV reader properly detects compression for csv.gz files"""
@@ -640,13 +639,17 @@ class TestParquetDataFrameColumnParser:
         ]
 
         for filename, expected_compression in test_cases:
-            with self.subtests.test(filename=filename):
+            with self.subTest(filename=filename):
                 # Simulate the compression detection logic from the dispatch methods
                 compression = None
                 if filename.endswith(".gz"):
                     compression = "gzip"
 
-                assert compression == expected_compression, f"Compression detection failed for {filename}"
+                self.assertEqual(
+                    compression,
+                    expected_compression,
+                    f"Compression detection failed for {filename}",
+                )
 
     def test_csv_gz_integration_completeness(self):
         """test that csv.gz support is complete across all components"""
@@ -657,7 +660,7 @@ class TestParquetDataFrameColumnParser:
         )
 
         # Check that CSVGZ is mapped to CSVDataFrameReader
-        assert SupportedTypes.CSVGZ.value in DF_READER_MAP
+        self.assertIn(SupportedTypes.CSVGZ.value, DF_READER_MAP)
 
         # Test that the get_df_reader function includes CSVGZ in DSV handling
 
@@ -665,9 +668,9 @@ class TestParquetDataFrameColumnParser:
         try:
             # Test that CSVGZ is included in the DSV types
             dsv_types = {SupportedTypes.CSV, SupportedTypes.CSVGZ, SupportedTypes.TSV}
-            assert SupportedTypes.CSVGZ in dsv_types
+            self.assertIn(SupportedTypes.CSVGZ, dsv_types)
         except Exception as e:
-            pytest.fail(f"CSVGZ integration test failed: {e}")
+            self.fail(f"CSVGZ integration test failed: {e}")
 
 
 class TestIcebergDeltaLakeMetadataParsing(TestCase):

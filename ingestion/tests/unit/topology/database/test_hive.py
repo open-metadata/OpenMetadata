@@ -14,9 +14,9 @@ Test Hive using the topology
 
 import types
 from contextlib import contextmanager
+from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
-import pytest
 from sqlalchemy.types import INTEGER, VARCHAR, Integer, String
 
 import metadata.ingestion.source.database.hive.utils as hive_dialect
@@ -310,41 +310,43 @@ mock_hive_connection_https = HiveConnection(
 )
 
 
-class TestHiveUnitTest:
+class HiveUnitTest(TestCase):
     """
     Implements the necessary methods to extract
     Hive Unit Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_hive_config)
-            self.hive = HiveSource.create(
-                mock_hive_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
-            )
-            self.thread_id = self.hive.context.get_current_thread_id()
-            self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        test_connection,
+    ) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_hive_config)
+        self.hive = HiveSource.create(
+            mock_hive_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.thread_id = self.hive.context.get_current_thread_id()
+        self.hive._inspector_map[self.thread_id] = types.SimpleNamespace()
 
-            self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
-            self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
-            self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_pk_constraint = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_unique_constraints = lambda table_name, schema_name: []
+        self.hive._inspector_map[self.thread_id].get_foreign_keys = lambda table_name, schema_name: []
 
-        with patch.dict(
+    def setUp(self):
+        context_patch = patch.dict(
             self.hive.context.get().__dict__,
             {
                 "database_service": MOCK_DATABASE_SERVICE.name.root,
                 "database": MOCK_DATABASE.name.root,
                 "database_schema": MOCK_DATABASE_SCHEMA.name.root,
             },
-        ):
-            yield
+        )
+        context_patch.start()
+        self.addCleanup(context_patch.stop)
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.hive.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
@@ -447,27 +449,33 @@ class TestHiveUnitTest:
                 schema="test_schema",
             )
 
-        assert [col["name"] for col in col_list] == [
-            "id",
-            "plain",
-            "name",
-            "nested_struct",
-            "nested_array",
-            "nested_map",
-            "nested_union",
-        ]
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            [
+                "id",
+                "plain",
+                "name",
+                "nested_struct",
+                "nested_array",
+                "nested_map",
+                "nested_union",
+            ],
+        )
 
         columns = {col["name"]: col for col in col_list}
 
         # The raw type is what the nested fields are resolved from downstream
-        assert columns["nested_array"]["system_data_type"] == "array<struct<fee:decimal(16,4),amount:bigint>>"
+        self.assertEqual(
+            columns["nested_array"]["system_data_type"],
+            "array<struct<fee:decimal(16,4),amount:bigint>>",
+        )
         for name in ("nested_struct", "nested_array", "nested_map"):
-            assert columns[name]["is_complex"], f"{name} should be complex"
+            self.assertTrue(columns[name]["is_complex"], f"{name} should be complex")
 
         # Parameters of top-level types are still picked up
-        assert columns["plain"]["type"].precision == 16
-        assert columns["plain"]["type"].scale == 4
-        assert columns["name"]["type"].length == 255
+        self.assertEqual(columns["plain"]["type"].precision, 16)
+        self.assertEqual(columns["plain"]["type"].scale, 4)
+        self.assertEqual(columns["name"]["type"].length, 255)
 
     def test_get_columns_deduplicates_partition_column_no_sentinel(self):
         """
@@ -501,8 +509,22 @@ class TestHiveUnitTest:
 
         col_names = [col["name"] for col in col_list]
 
-        assert col_names.count("process_date") == 1, f"process_date should appear exactly once but got: {col_names}"
-        assert col_names == ["audio_only", "close_id", "device_name", "process_date", "start_time", "streaming"]
+        self.assertEqual(
+            col_names.count("process_date"),
+            1,
+            f"process_date should appear exactly once but got: {col_names}",
+        )
+        self.assertEqual(
+            col_names,
+            [
+                "audio_only",
+                "close_id",
+                "device_name",
+                "process_date",
+                "start_time",
+                "streaming",
+            ],
+        )
 
     def test_get_columns_deduplicates_partition_column_with_sentinel(self):
         """
@@ -534,12 +556,16 @@ class TestHiveUnitTest:
 
         col_names = [col["name"] for col in col_list]
 
-        assert col_names.count("dt") == 1, f"dt should appear exactly once but got: {col_names}"
-        assert col_names == ["id", "name", "dt"]
+        self.assertEqual(
+            col_names.count("dt"),
+            1,
+            f"dt should appear exactly once but got: {col_names}",
+        )
+        self.assertEqual(col_names, ["id", "name", "dt"])
         columns = {col["name"]: col for col in col_list}
-        assert not columns["id"]["is_partition"]
-        assert not columns["name"]["is_partition"]
-        assert columns["dt"]["is_partition"]
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertFalse(columns["name"]["is_partition"])
+        self.assertTrue(columns["dt"]["is_partition"])
 
     def test_get_columns_marks_partition_only_keys_after_sentinel(self):
         """Partition keys that appear only under Partition Information are kept."""
@@ -573,12 +599,15 @@ class TestHiveUnitTest:
                 only_partition_columns=True,
             )
 
-        assert [col["name"] for col in col_list] == ["id", "amount", "year", "country"]
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            ["id", "amount", "year", "country"],
+        )
         columns = {col["name"]: col for col in col_list}
-        assert not columns["id"]["is_partition"]
-        assert columns["year"]["is_partition"]
-        assert columns["country"]["is_partition"]
-        assert [col["name"] for col in partition_only] == ["year", "country"]
+        self.assertFalse(columns["id"]["is_partition"])
+        self.assertTrue(columns["year"]["is_partition"])
+        self.assertTrue(columns["country"]["is_partition"])
+        self.assertEqual([col["name"] for col in partition_only], ["year", "country"])
 
     def test_get_table_partition_details(self):
         """Fallback path: when cache is empty, fetch columns once and mark partitions."""
@@ -607,9 +636,12 @@ class TestHiveUnitTest:
             inspector=mock_inspector,
         )
 
-        assert is_partitioned
-        assert partition_details is not None
-        assert [col.columnName for col in partition_details.columns] == ["year", "country"]
+        self.assertTrue(is_partitioned)
+        self.assertIsNotNone(partition_details)
+        self.assertEqual(
+            [col.columnName for col in partition_details.columns],
+            ["year", "country"],
+        )
         mock_inspector.get_columns.assert_called_once_with(
             table_name="sales",
             schema="analytics",
@@ -631,8 +663,8 @@ class TestHiveUnitTest:
             db_name="default",
             inspector=mock_inspector,
         )
-        assert [col["name"] for col in fetched] == ["id", "year", "country"]
-        assert mock_inspector.get_columns.call_count == 1
+        self.assertEqual([col["name"] for col in fetched], ["id", "year", "country"])
+        self.assertEqual(mock_inspector.get_columns.call_count, 1)
 
         is_partitioned, partition_details = self.hive.get_table_partition_details(
             table_name="sales",
@@ -640,9 +672,16 @@ class TestHiveUnitTest:
             inspector=mock_inspector,
         )
 
-        assert is_partitioned
-        assert [col.columnName for col in partition_details.columns] == ["year", "country"]
-        assert mock_inspector.get_columns.call_count == 1, "get_table_partition_details should reuse cached raw columns"
+        self.assertTrue(is_partitioned)
+        self.assertEqual(
+            [col.columnName for col in partition_details.columns],
+            ["year", "country"],
+        )
+        self.assertEqual(
+            mock_inspector.get_columns.call_count,
+            1,
+            "get_table_partition_details should reuse cached raw columns",
+        )
 
     def test_get_table_partition_details_non_partitioned(self):
         """No partition-flagged columns -> Regular table (False, None)."""
@@ -658,8 +697,8 @@ class TestHiveUnitTest:
             inspector=mock_inspector,
         )
 
-        assert not is_partitioned
-        assert partition_details is None
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
 
     def test_get_table_partition_details_handles_errors(self):
         """A failure while fetching columns degrades to Regular, never raising."""
@@ -672,8 +711,8 @@ class TestHiveUnitTest:
             inspector=mock_inspector,
         )
 
-        assert not is_partitioned
-        assert partition_details is None
+        self.assertFalse(is_partitioned)
+        self.assertIsNone(partition_details)
 
     def test_ssl_connection_configuration(self):
         """
@@ -695,11 +734,17 @@ class TestHiveUnitTest:
             ),
         )
 
-        assert ssl_connection.useSSL
-        assert ssl_connection.sslConfig is not None
-        assert ssl_connection.sslConfig.root.sslCertificate.get_secret_value() == "test_cert.pem"
-        assert ssl_connection.sslConfig.root.sslKey.get_secret_value() == "test_key.pem"
-        assert ssl_connection.sslConfig.root.caCertificate.get_secret_value() == "test_ca.pem"
+        self.assertTrue(ssl_connection.useSSL)
+        self.assertIsNotNone(ssl_connection.sslConfig)
+        self.assertEqual(
+            ssl_connection.sslConfig.root.sslCertificate.get_secret_value(),
+            "test_cert.pem",
+        )
+        self.assertEqual(ssl_connection.sslConfig.root.sslKey.get_secret_value(), "test_key.pem")
+        self.assertEqual(
+            ssl_connection.sslConfig.root.caCertificate.get_secret_value(),
+            "test_ca.pem",
+        )
 
     def test_https_scheme_configuration(self):
         """
@@ -714,10 +759,10 @@ class TestHiveUnitTest:
             auth=Auth.BASIC,
         )
 
-        assert https_connection.scheme == HiveScheme.hive_https
-        assert https_connection.auth == Auth.BASIC
-        assert https_connection.username == "username"
-        assert https_connection.password.get_secret_value() == "password"
+        self.assertEqual(https_connection.scheme, HiveScheme.hive_https)
+        self.assertEqual(https_connection.auth, Auth.BASIC)
+        self.assertEqual(https_connection.username, "username")
+        self.assertEqual(https_connection.password.get_secret_value(), "password")
 
     @patch("metadata.ingestion.source.database.hive.connection.check_ssl_and_init")
     @patch("metadata.ingestion.source.database.hive.connection.create_generic_db_connection")
@@ -745,7 +790,7 @@ class TestHiveUnitTest:
         mock_create_connection.assert_called_once()
 
         # Verify result
-        assert result == mock_engine
+        self.assertEqual(result, mock_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.check_ssl_and_init")
     @patch("metadata.ingestion.source.database.hive.connection.create_generic_db_connection")
@@ -778,7 +823,7 @@ class TestHiveUnitTest:
         mock_create_connection.assert_called_once()
 
         # Verify result
-        assert result == mock_engine
+        self.assertEqual(result, mock_engine)
 
     def test_connection_url_with_ssl(self):
         """
@@ -794,7 +839,7 @@ class TestHiveUnitTest:
         )
 
         url = HiveConnectionHandler.get_connection_url(ssl_connection)
-        assert url == "hive://username@localhost:1466"
+        self.assertEqual(url, "hive://username@localhost:1466")
 
         # Test HTTPS scheme connection
         https_connection = HiveConnection(
@@ -807,7 +852,7 @@ class TestHiveUnitTest:
         )
 
         url = HiveConnectionHandler.get_connection_url(https_connection)
-        assert url == "hive+https://username:password@localhost:1000"
+        self.assertEqual(url, "hive+https://username:password@localhost:1000")
 
     def test_custom_hive_connection_ssl_initialization(self):
         """
@@ -830,11 +875,17 @@ class TestHiveUnitTest:
         )
 
         # Test the configuration parsing
-        assert ssl_connection.useSSL
-        assert ssl_connection.sslConfig is not None
-        assert ssl_connection.sslConfig.root.sslCertificate.get_secret_value() == "test_cert.pem"
-        assert ssl_connection.sslConfig.root.sslKey.get_secret_value() == "test_key.pem"
-        assert ssl_connection.sslConfig.root.caCertificate.get_secret_value() == "test_ca.pem"
+        self.assertTrue(ssl_connection.useSSL)
+        self.assertIsNotNone(ssl_connection.sslConfig)
+        self.assertEqual(
+            ssl_connection.sslConfig.root.sslCertificate.get_secret_value(),
+            "test_cert.pem",
+        )
+        self.assertEqual(ssl_connection.sslConfig.root.sslKey.get_secret_value(), "test_key.pem")
+        self.assertEqual(
+            ssl_connection.sslConfig.root.caCertificate.get_secret_value(),
+            "test_ca.pem",
+        )
 
     def test_ssl_config_validation(self):
         """
@@ -847,44 +898,44 @@ class TestHiveUnitTest:
             caCertificate=CustomSecretStr("valid_ca.pem"),
         )
 
-        assert valid_ssl_config.sslCertificate.get_secret_value() == "valid_cert.pem"
-        assert valid_ssl_config.sslKey.get_secret_value() == "valid_key.pem"
-        assert valid_ssl_config.caCertificate.get_secret_value() == "valid_ca.pem"
+        self.assertEqual(valid_ssl_config.sslCertificate.get_secret_value(), "valid_cert.pem")
+        self.assertEqual(valid_ssl_config.sslKey.get_secret_value(), "valid_key.pem")
+        self.assertEqual(valid_ssl_config.caCertificate.get_secret_value(), "valid_ca.pem")
 
         # Test SSL config with only some certificates
         partial_ssl_config = ValidateSslClientConfig(sslCertificate=CustomSecretStr("cert_only.pem"))
 
-        assert partial_ssl_config.sslCertificate.get_secret_value() == "cert_only.pem"
-        assert partial_ssl_config.sslKey is None
-        assert partial_ssl_config.caCertificate is None
+        self.assertEqual(partial_ssl_config.sslCertificate.get_secret_value(), "cert_only.pem")
+        self.assertIsNone(partial_ssl_config.sslKey)
+        self.assertIsNone(partial_ssl_config.caCertificate)
 
     def test_hive_scheme_enum_values(self):
         """
         Test HiveScheme enum values for SSL support
         """
-        assert HiveScheme.hive.value == "hive"
-        assert HiveScheme.hive_http.value == "hive+http"
-        assert HiveScheme.hive_https.value == "hive+https"
+        self.assertEqual(HiveScheme.hive.value, "hive")
+        self.assertEqual(HiveScheme.hive_http.value, "hive+http")
+        self.assertEqual(HiveScheme.hive_https.value, "hive+https")
 
         # Verify all schemes are available
         schemes = [scheme.value for scheme in HiveScheme]
-        assert "hive" in schemes
-        assert "hive+http" in schemes
-        assert "hive+https" in schemes
+        self.assertIn("hive", schemes)
+        self.assertIn("hive+http", schemes)
+        self.assertIn("hive+https", schemes)
 
     def test_auth_enum_values(self):
         """
         Test Auth enum values for SSL authentication
         """
-        assert Auth.NONE.value == "NONE"
-        assert Auth.LDAP.value == "LDAP"
-        assert Auth.KERBEROS.value == "KERBEROS"
-        assert Auth.CUSTOM.value == "CUSTOM"
-        assert Auth.NOSASL.value == "NOSASL"
-        assert Auth.BASIC.value == "BASIC"
-        assert Auth.GSSAPI.value == "GSSAPI"
-        assert Auth.JWT.value == "JWT"
-        assert Auth.PLAIN.value == "PLAIN"
+        self.assertEqual(Auth.NONE.value, "NONE")
+        self.assertEqual(Auth.LDAP.value, "LDAP")
+        self.assertEqual(Auth.KERBEROS.value, "KERBEROS")
+        self.assertEqual(Auth.CUSTOM.value, "CUSTOM")
+        self.assertEqual(Auth.NOSASL.value, "NOSASL")
+        self.assertEqual(Auth.BASIC.value, "BASIC")
+        self.assertEqual(Auth.GSSAPI.value, "GSSAPI")
+        self.assertEqual(Auth.JWT.value, "JWT")
+        self.assertEqual(Auth.PLAIN.value, "PLAIN")
 
     @patch("metadata.ingestion.source.database.hive.connection.check_ssl_and_init")
     def test_ssl_manager_integration(self, mock_ssl_manager):
@@ -906,7 +957,7 @@ class TestHiveUnitTest:
         )
 
         # Test the configuration
-        assert ssl_connection.useSSL
+        self.assertTrue(ssl_connection.useSSL)
 
         # Note: The SSL manager would be called when get_connection is actually invoked
         # This test just verifies the SSL configuration is properly set
@@ -925,11 +976,11 @@ class TestHiveUnitTest:
         }
 
         # Verify SSL parameters are properly structured
-        assert ssl_params["use_ssl"]
-        assert ssl_params["ssl_certfile"] == "test_cert.pem"
-        assert ssl_params["ssl_keyfile"] == "test_key.pem"
-        assert ssl_params["ssl_ca_certs"] == "test_ca.pem"
-        assert ssl_params["ssl_cert_reqs"] == 0
+        self.assertTrue(ssl_params["use_ssl"])
+        self.assertEqual(ssl_params["ssl_certfile"], "test_cert.pem")
+        self.assertEqual(ssl_params["ssl_keyfile"], "test_key.pem")
+        self.assertEqual(ssl_params["ssl_ca_certs"], "test_ca.pem")
+        self.assertEqual(ssl_params["ssl_cert_reqs"], 0)
 
     def test_https_scheme_authentication_modes(self):
         """
@@ -945,8 +996,8 @@ class TestHiveUnitTest:
             auth=Auth.BASIC,
         )
 
-        assert basic_auth_connection.auth == Auth.BASIC
-        assert basic_auth_connection.scheme == HiveScheme.hive_https
+        self.assertEqual(basic_auth_connection.auth, Auth.BASIC)
+        self.assertEqual(basic_auth_connection.scheme, HiveScheme.hive_https)
 
         # Test NOSASL authentication
         nosasl_auth_connection = HiveConnection(
@@ -957,7 +1008,7 @@ class TestHiveUnitTest:
             auth=Auth.NOSASL,
         )
 
-        assert nosasl_auth_connection.auth == Auth.NOSASL
+        self.assertEqual(nosasl_auth_connection.auth, Auth.NOSASL)
 
         # Test NONE authentication
         none_auth_connection = HiveConnection(
@@ -968,7 +1019,7 @@ class TestHiveUnitTest:
             auth=Auth.NONE,
         )
 
-        assert none_auth_connection.auth == Auth.NONE
+        self.assertEqual(none_auth_connection.auth, Auth.NONE)
 
     def test_ssl_certificate_parameter_mapping(self):
         """
@@ -981,13 +1032,13 @@ class TestHiveUnitTest:
             "required": 2,  # CERT_REQUIRED
         }
 
-        assert ssl_cert_parameter_map["none"] == 0
-        assert ssl_cert_parameter_map["optional"] == 1
-        assert ssl_cert_parameter_map["required"] == 2
+        self.assertEqual(ssl_cert_parameter_map["none"], 0)
+        self.assertEqual(ssl_cert_parameter_map["optional"], 1)
+        self.assertEqual(ssl_cert_parameter_map["required"], 2)
 
         # Test default value handling
         default_ssl_cert = "none"
-        assert ssl_cert_parameter_map.get(default_ssl_cert, 0) == 0
+        self.assertEqual(ssl_cert_parameter_map.get(default_ssl_cert, 0), 0)
 
     def test_connection_arguments_ssl_setup(self):
         """
@@ -1010,14 +1061,14 @@ class TestHiveUnitTest:
         )
 
         # Verify SSL configuration is present
-        assert ssl_connection.useSSL
-        assert ssl_connection.sslConfig is not None
+        self.assertTrue(ssl_connection.useSSL)
+        self.assertIsNotNone(ssl_connection.sslConfig)
 
         # Test that SSL config values are accessible
         ssl_config = ssl_connection.sslConfig.root
-        assert ssl_config.sslCertificate.get_secret_value() == "test_cert.pem"
-        assert ssl_config.sslKey.get_secret_value() == "test_key.pem"
-        assert ssl_config.caCertificate.get_secret_value() == "test_ca.pem"
+        self.assertEqual(ssl_config.sslCertificate.get_secret_value(), "test_cert.pem")
+        self.assertEqual(ssl_config.sslKey.get_secret_value(), "test_key.pem")
+        self.assertEqual(ssl_config.caCertificate.get_secret_value(), "test_ca.pem")
 
     def test_kerberos_ssl_integration(self):
         """
@@ -1034,9 +1085,9 @@ class TestHiveUnitTest:
             useSSL=True,
         )
 
-        assert kerberos_ssl_connection.auth == Auth.KERBEROS
-        assert kerberos_ssl_connection.kerberosServiceName == "hive"
-        assert kerberos_ssl_connection.useSSL
+        self.assertEqual(kerberos_ssl_connection.auth, Auth.KERBEROS)
+        self.assertEqual(kerberos_ssl_connection.kerberosServiceName, "hive")
+        self.assertTrue(kerberos_ssl_connection.useSSL)
 
     def test_ldap_ssl_integration(self):
         """
@@ -1053,10 +1104,10 @@ class TestHiveUnitTest:
             useSSL=True,
         )
 
-        assert ldap_ssl_connection.auth == Auth.LDAP
-        assert ldap_ssl_connection.username == "username"
-        assert ldap_ssl_connection.password.get_secret_value() == "password"
-        assert ldap_ssl_connection.useSSL
+        self.assertEqual(ldap_ssl_connection.auth, Auth.LDAP)
+        self.assertEqual(ldap_ssl_connection.username, "username")
+        self.assertEqual(ldap_ssl_connection.password.get_secret_value(), "password")
+        self.assertTrue(ldap_ssl_connection.useSSL)
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_get_client_with_postgres_connection_object(self, mock_get_metastore):
@@ -1081,7 +1132,7 @@ class TestHiveUnitTest:
         client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once_with(postgres_conn)
-        assert client == mock_metastore_engine
+        self.assertEqual(client, mock_metastore_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_get_client_with_mysql_connection_object(self, mock_get_metastore):
@@ -1106,7 +1157,7 @@ class TestHiveUnitTest:
         client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once_with(mysql_conn)
-        assert client == mock_metastore_engine
+        self.assertEqual(client, mock_metastore_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_close_disposes_metastore_engine(self, mock_get_metastore):
@@ -1127,7 +1178,7 @@ class TestHiveUnitTest:
         )
 
         connection = HiveConnectionHandler(hive_conn)
-        assert connection.client == mock_metastore_engine
+        self.assertEqual(connection.client, mock_metastore_engine)
 
         connection.close()
 
@@ -1147,7 +1198,7 @@ class TestHiveUnitTest:
         client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_not_called()
-        assert client.url.drivername == "hive"
+        self.assertEqual(client.url.drivername, "hive")
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_get_client_with_postgres_dict(self, mock_get_metastore):
@@ -1173,8 +1224,8 @@ class TestHiveUnitTest:
         client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once()
-        assert client == mock_metastore_engine
-        assert isinstance(mock_get_metastore.call_args.args[0], PostgresConnection)
+        self.assertEqual(client, mock_metastore_engine)
+        self.assertIsInstance(mock_get_metastore.call_args.args[0], PostgresConnection)
 
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
     def test_get_client_with_mysql_dict(self, mock_get_metastore):
@@ -1200,9 +1251,9 @@ class TestHiveUnitTest:
         client = HiveConnectionHandler(hive_conn)._get_client()
 
         mock_get_metastore.assert_called_once()
-        assert client == mock_metastore_engine
-        assert isinstance(mock_get_metastore.call_args.args[0], MysqlConnection)
-        assert isinstance(hive_conn.metastoreConnection, MysqlConnection)
+        self.assertEqual(client, mock_metastore_engine)
+        self.assertIsInstance(mock_get_metastore.call_args.args[0], MysqlConnection)
+        self.assertIsInstance(hive_conn.metastoreConnection, MysqlConnection)
 
     @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
@@ -1233,7 +1284,7 @@ class TestHiveUnitTest:
         handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
-        assert mock_test_db_schema.call_args.kwargs["engine"] == mock_engine
+        self.assertEqual(mock_test_db_schema.call_args.kwargs["engine"], mock_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
@@ -1269,7 +1320,7 @@ class TestHiveUnitTest:
         handler.test_connection(mock_metadata)
 
         mock_get_metastore.assert_not_called()
-        assert mock_test_db_schema.call_args.kwargs["engine"] == mock_engine
+        self.assertEqual(mock_test_db_schema.call_args.kwargs["engine"], mock_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
@@ -1294,7 +1345,7 @@ class TestHiveUnitTest:
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
         call_kwargs = mock_test_db_schema.call_args
-        assert call_kwargs.kwargs["engine"] == mock_engine
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_engine)
 
     @patch("metadata.ingestion.source.database.hive.connection.test_connection_db_schema_sources")
     @patch("metadata.ingestion.source.database.hive.connection.get_metastore_connection")
@@ -1319,7 +1370,7 @@ class TestHiveUnitTest:
         mock_get_metastore.assert_not_called()
         mock_test_db_schema.assert_called_once()
         call_kwargs = mock_test_db_schema.call_args
-        assert call_kwargs.kwargs["engine"] == mock_engine
+        self.assertEqual(call_kwargs.kwargs["engine"], mock_engine)
 
 
 class TestGetValidatedMetastoreConnection:

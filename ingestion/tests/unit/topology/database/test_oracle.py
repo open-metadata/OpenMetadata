@@ -12,9 +12,8 @@
 Test Oracle using the topology
 """
 
+from unittest import TestCase
 from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -180,31 +179,31 @@ EXPECTED_STORED_PACKAGE = [
 ]
 
 
-class TestOracleUnitTest:
+class OracleUnitTest(TestCase):
     """
     Implements the necessary methods to extract
     Oracle Unit Test
     """
 
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
-            self.metadata = OpenMetadata(
-                OpenMetadataConnection.model_validate(mock_oracle_config["workflowConfig"]["openMetadataServerConfig"])
-            )
-            self.oracle = OracleSource.create(
-                mock_oracle_config["source"],
-                self.metadata,
-            )
-            self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-            self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
+    def __init__(
+        self,
+        methodName,  # noqa: N803
+        test_connection,
+    ) -> None:
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_oracle_config)
+        self.metadata = OpenMetadata(
+            OpenMetadataConnection.model_validate(mock_oracle_config["workflowConfig"]["openMetadataServerConfig"])
+        )
+        self.oracle = OracleSource.create(
+            mock_oracle_config["source"],
+            self.metadata,
+        )
+        self.oracle.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.oracle.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.oracle.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.oracle.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
@@ -238,11 +237,19 @@ class TestOracleUnitTest:
         """
         assert "ORDER BY OWNER, NAME, LINE" in ORACLE_GET_STORED_PROCEDURES
         assert (
-            "ORDER BY OWNER, NAME, CASE type\n        WHEN 'PACKAGE' THEN 1\n        WHEN 'PACKAGE BODY' THEN 2\n        ELSE 3\n    END, LINE"
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
             in ORACLE_GET_STORED_PACKAGES
         )
         assert (
-            "ORDER BY OWNER, NAME, CASE type\n        WHEN 'PACKAGE' THEN 1\n        WHEN 'PACKAGE BODY' THEN 2\n        ELSE 3\n    END, LINE"
+            """ORDER BY OWNER, NAME, CASE type
+        WHEN 'PACKAGE' THEN 1
+        WHEN 'PACKAGE BODY' THEN 2
+        ELSE 3
+    END, LINE"""
             in TEST_ORACLE_GET_STORED_PACKAGES
         )
 
@@ -336,8 +343,8 @@ class TestOracleUnitTest:
 
         results = list(self.oracle.get_stored_procedures())
 
-        assert len(results) == 1
-        assert results[0].name == "sp_include"
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "sp_include")
 
     def test_preserve_case_false_normalize_name_lowercases(self):
         """preserveIdentifierCase=False (default): dialect.normalize_name lowercases UPPERCASE names."""

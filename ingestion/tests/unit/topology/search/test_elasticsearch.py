@@ -13,9 +13,8 @@
 Test ES using the topology
 """
 
+from unittest import TestCase
 from unittest.mock import patch
-
-import pytest
 
 from metadata.generated.schema.api.data.createSearchIndex import (
     CreateSearchIndexRequest,
@@ -170,22 +169,18 @@ EXPECTED_RESULT = CreateSearchIndexRequest(
 )
 
 
-class TestElasticSearchUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection"
-            ) as test_connection,
-        ):
-            test_connection.return_value = False
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_es_config)
-            self.es_source = ElasticsearchSource.create(
-                mock_es_config["source"],
-                self.config.workflowConfig.openMetadataServerConfig,
-            )
-            self.es_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
+class ElasticSearchUnitTest(TestCase):
+    @patch("metadata.ingestion.source.search.search_service.SearchServiceSource.test_connection")
+    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        test_connection.return_value = False
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_es_config)
+        self.es_source = ElasticsearchSource.create(
+            mock_es_config["source"],
+            self.config.workflowConfig.openMetadataServerConfig,
+        )
+        self.es_source.context.get().__dict__["search_service"] = MOCK_SEARCH_SERVICE.name.root
 
     def test_partition_parse_columns(self):
         actual_index = next(self.es_source.yield_search_index(MOCK_DETAILS)).right
-        assert actual_index == EXPECTED_RESULT
+        self.assertEqual(actual_index, EXPECTED_RESULT)

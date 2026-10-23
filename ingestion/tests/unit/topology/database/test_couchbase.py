@@ -13,9 +13,8 @@
 Test Couchbase using the topology
 """
 
+from unittest import TestCase
 from unittest.mock import patch
-
-import pytest
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
@@ -174,28 +173,22 @@ def custom_column_compare(self, other):
     return self.name == other.name and self.description == other.description and self.children == other.children
 
 
-class TestCouchbaseUnitTest:
-    @pytest.fixture(autouse=True)
-    def setup_source(self):
-        with (
-            patch(
-                "metadata.ingestion.source.database.couchbase.connection.CouchbaseConnection._get_client"
-            ) as get_client,
-            patch(
-                "metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection"
-            ) as test_connection,
-        ):
-            get_client.return_value = False
-            test_connection.return_value = False
+class CouchbaseUnitTest(TestCase):
+    @patch("metadata.ingestion.source.database.couchbase.metadata.CouchbaseSource.test_connection")
+    @patch("metadata.ingestion.source.database.couchbase.connection.CouchbaseConnection._get_client")
+    def __init__(self, methodName, get_client, test_connection) -> None:  # noqa: N803
+        super().__init__(methodName)
+        get_client.return_value = False
+        test_connection.return_value = False
 
-            self.config = OpenMetadataWorkflowConfig.model_validate(mock_couch_config)
-            self.couch_source = CouchbaseSource.create(
-                mock_couch_config["source"],
-                OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
-            )
-            self.couch_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
-            self.couch_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-            self.couch_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
+        self.config = OpenMetadataWorkflowConfig.model_validate(mock_couch_config)
+        self.couch_source = CouchbaseSource.create(
+            mock_couch_config["source"],
+            OpenMetadata(self.config.workflowConfig.openMetadataServerConfig),
+        )
+        self.couch_source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        self.couch_source.context.get().__dict__["database"] = MOCK_DATABASE.name.root
+        self.couch_source.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_database_names(self):
         assert EXPECTED_DATABASE_NAMES == list(self.couch_source.get_database_names())  # noqa: SIM300
