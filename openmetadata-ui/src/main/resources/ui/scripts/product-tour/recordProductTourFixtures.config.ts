@@ -24,7 +24,6 @@ export default defineConfig({
   reporter: 'list',
   use: {
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://localhost:8585',
-    storageState: 'playwright/.auth/admin.json',
     viewport: { width: 1440, height: 900 },
   },
 });

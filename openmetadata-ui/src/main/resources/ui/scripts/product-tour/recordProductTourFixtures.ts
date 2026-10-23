@@ -16,10 +16,12 @@
  * Runs the tour against a server with sample data, with the fixtures switched
  * off, and saves every API response its pages read. Record from a clean
  * sample-data instance only: the fixtures ship with the app, so anything the
- * server returns ends up in front of every user who takes the tour.
+ * server returns ends up in front of every user who takes the tour. That rules
+ * out an instance any Playwright project has run against, `setup` included:
+ * it creates users the tour's pages list. The recorder signs the admin in
+ * itself, so it needs no setup.
  *
  *   node scripts/product-tour/seedProductTourData.mjs   # showcase content
- *   npx playwright test --project=setup        # once, for the admin session
  *   TOUR_FIXTURES_OUT=src/constants/product-tour/classicTour.fixtures.json \
  *     npx playwright test -c scripts/product-tour/recordProductTourFixtures.config.ts
  *
@@ -27,6 +29,7 @@
  */
 import { expect, Page, Request, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
+import { AdminClass } from '../../playwright/support/user/AdminClass';
 import {
   PRODUCT_TOUR_RECORD_KEY,
   TOUR_WRITE_METHODS,
@@ -74,6 +77,9 @@ const isRecordable = (request: Request) => {
 test('record the product tour fixtures', async ({ page }) => {
   const out = process.env.TOUR_FIXTURES_OUT;
   test.skip(!out, 'Set TOUR_FIXTURES_OUT to the fixtures file to write.');
+  // Settled before the listener: the sign-in lands on Home outside the tour.
+  await new AdminClass().signIn(page);
+  await page.waitForLoadState('networkidle');
   const fixtures = new Map<string, ProductTourFixture>();
 
   page.on('response', async (response) => {

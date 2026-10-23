@@ -84,6 +84,50 @@ const MEMORIES = [
   },
 ];
 
+// Sample data ingests no glossary, and the Glossary step highlights the list of
+// glossaries while Ontology Studio draws its terms and their relations.
+const GLOSSARY = {
+  name: 'product-tour-business-glossary',
+  displayName: 'Business Glossary',
+  description: 'The business terms finance and analytics agree on.',
+};
+
+// A term's related terms are created before it.
+const GLOSSARY_TERMS = [
+  {
+    name: 'Revenue',
+    description: 'Income from orders, net of refunds and discounts.',
+  },
+  {
+    name: 'AnnualRecurringRevenue',
+    displayName: 'Annual Recurring Revenue',
+    description: 'Annualised value of active subscriptions at month end.',
+    synonyms: ['ARR'],
+    relatedTerms: ['Revenue'],
+  },
+  {
+    name: 'NetRevenueRetention',
+    displayName: 'Net Revenue Retention',
+    description:
+      'This year’s revenue from last year’s customers, over last year’s revenue.',
+    synonyms: ['NRR'],
+    relatedTerms: ['Revenue', 'AnnualRecurringRevenue'],
+  },
+  {
+    name: 'ActiveCustomer',
+    displayName: 'Active Customer',
+    description: 'A customer who placed an order in the last 90 days.',
+  },
+  {
+    name: 'CustomerLifetimeValue',
+    displayName: 'Customer Lifetime Value',
+    description:
+      'Revenue a customer is expected to bring over the whole relationship.',
+    synonyms: ['CLV'],
+    relatedTerms: ['Revenue', 'ActiveCustomer'],
+  },
+];
+
 // Row-count tests on the first tables, one failing, so the Data Quality
 // dashboard shows coverage, healthy and unhealthy assets, and test results.
 const TEST_CASE_NAME = 'product-tour-row-count';
@@ -142,6 +186,36 @@ const seed = async (token, label, existsPath, createPath, items, toRequest) => {
   }
 };
 
+const seedGlossary = async (token) => {
+  await seed(
+    token,
+    'glossary',
+    '/glossaries/name',
+    '/glossaries',
+    [GLOSSARY],
+    (glossary) => glossary
+  );
+  const toFqn = (term) => `${GLOSSARY.name}.${term}`;
+  for (const { relatedTerms = [], ...term } of GLOSSARY_TERMS) {
+    const termFqn = toFqn(term.name);
+    const existing = await request(
+      token,
+      'GET',
+      `/glossaryTerms/name/${encodeURIComponent(termFqn)}`
+    );
+    if (existing) {
+      console.log(`glossary term ${termFqn}: already there`);
+      continue;
+    }
+    await request(token, 'POST', '/glossaryTerms', {
+      ...term,
+      glossary: GLOSSARY.name,
+      relatedTerms: relatedTerms.map(toFqn),
+    });
+    console.log(`glossary term ${termFqn}: created`);
+  }
+};
+
 const seedDataQuality = async (token) => {
   const { data: tables } = await request(
     token,
@@ -196,4 +270,5 @@ await seed(
   MEMORIES,
   (memory) => ({ ...memory, entityStatus: 'Approved', sourceType: 'Manual' })
 );
+await seedGlossary(token);
 await seedDataQuality(token);

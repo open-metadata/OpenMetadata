@@ -29,8 +29,9 @@ page it visits, and would break the same way each time a page changes.
     server.
 - Fixtures are recorded from a sample-data instance by the recorder script. They are not written
   by hand. Re-record them when a page or its API changes. Content that sample data does not
-  ingest but a step shows (Context Center articles and memories, data quality tests and results)
-  is created first by the seed script, so no step records an empty state.
+  ingest but a step shows (a glossary with related terms, Context Center articles and memories,
+  data quality tests and results) is created first by the seed script, so no step records an
+  empty state.
 - Ending the tour reloads the page, so nothing the fixtures put into in-memory caches or stores
   outlives it. Code that writes fixture-derived data to persistent storage (localStorage) checks
   `isTourMockActive()` and skips the write, as pruning dismissed announcements does.
