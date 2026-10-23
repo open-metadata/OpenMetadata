@@ -74,6 +74,11 @@ const POST_SKELETON_KEYS = ['first', 'second', 'third'];
 // entity link truncate (otherwise a long name pushed the field path past the
 // card edge); first:shrink-0 keeps the verb whole.
 const SPACE_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0 tw:first:shrink-0';
+// The verb/entity row: the verb may wrap too, for cards narrower than it. In
+// list cards the entity item (last) takes the rest of the verb's line (basis
+// 0) and wraps under the verb only below min-w-24 (icon plus a few characters).
+const HEADER_ITEM_CLASS_NAME = 'tw:empty:hidden tw:min-w-0';
+const LIST_HEADER_ITEM_CLASS_NAME = `${HEADER_ITEM_CLASS_NAME} tw:last:min-w-24 tw:last:flex-1 tw:last:basis-0`;
 
 interface ActivityFeedCardNewProps {
   feed?: Conversation;
@@ -110,11 +115,13 @@ const getFeedCardWrapperClassName = (
 const getHeaderTagsClassName = (showThread: boolean | undefined): string =>
   classNames('d-flex', {
     'header-container-card': !showThread,
-    // List cards: one line, the field path wraps under the link when they do
-    // not fit, so align to the first line. Thread panel: the entity moves
-    // under the verb (as in 1.13), so the row wraps.
+    // Both wrap: when the verb leaves the entity less than its minimum, the
+    // entity moves to the next line instead of running past the card edge.
+    // List cards align to the first line; the thread panel always puts the
+    // entity under the verb (as in 1.13).
+    'flex-wrap': true,
     'items-start': !showThread,
-    'flex-wrap items-center': showThread,
+    'items-center': showThread,
   });
 
 // The side panel (a thread, or an activity opened from the list) has room for
@@ -277,7 +284,6 @@ const ActivityFeedCardNew = ({
         <Box
           align="center"
           className={classNames('tw:min-w-0 tw:gap-x-1.5 tw:gap-y-0.5', {
-            'tw:flex-1 tw:basis-0': !isPanelLayout,
             'tw:max-w-full': isPanelLayout,
           })}
           wrap="wrap">
@@ -476,7 +482,9 @@ const ActivityFeedCardNew = ({
       <Box
         className={getHeaderTagsClassName(isPanelLayout)}
         gap={2}
-        itemClassName={SPACE_ITEM_CLASS_NAME}>
+        itemClassName={
+          isPanelLayout ? HEADER_ITEM_CLASS_NAME : LIST_HEADER_ITEM_CLASS_NAME
+        }>
         <Typography
           className="card-style-feed-header"
           data-testid="headerText"

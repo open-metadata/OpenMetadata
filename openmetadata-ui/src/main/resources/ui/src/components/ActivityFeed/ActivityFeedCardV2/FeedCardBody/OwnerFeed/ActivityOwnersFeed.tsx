@@ -100,28 +100,29 @@ function ActivityOwnersFeed({
   const getOwnerItems = useCallback(
     (ownerList: EntityReference[]) => {
       return ownerList.length <= maxVisibleOwners ? (
-        <Box align="center" className="tw:min-w-0" wrap="wrap">
+        <Box align="center" className="tw:min-w-0 tw:gap-y-2" wrap="wrap">
           {ownerList.map((owner: EntityReference) =>
             owner.type === EntityType.USER ? (
               <UserPopOverCard key={owner.id} userName={owner.name ?? ''}>
                 <div
-                  className={`owner-chip d-flex items-center ${
-                    showThread && 'bg-white'
-                  }`}
+                  className={classNames(
+                    'owner-chip d-flex items-center tw:min-w-0 tw:max-w-full',
+                    { 'bg-white': showThread }
+                  )}
                   key={owner.id}>
                   <ProfilePicture
                     displayName={owner.displayName}
                     name={owner.name ?? ''}
                     width="24"
                   />
-                  <Typography className="owner-chip-text">
+                  <Typography ellipsis className="owner-chip-text">
                     {owner.displayName}
                   </Typography>
                 </div>
               </UserPopOverCard>
             ) : (
               <div
-                className={classNames('owner-chip', {
+                className={classNames('owner-chip tw:min-w-0 tw:max-w-full', {
                   'bg-white': showThread,
                 })}
                 key={owner.id}>
