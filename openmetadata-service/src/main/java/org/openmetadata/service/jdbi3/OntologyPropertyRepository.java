@@ -17,9 +17,11 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.openmetadata.schema.entity.data.OntologyProperty;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
@@ -67,6 +69,42 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
   }
 
   /**
+   * A restore brings back the inverse the property held when it was deleted. When that partner
+   * has gone since, the link is dropped rather than refused: the property cannot be edited while
+   * deleted, so refusing would leave it unrestorable.
+   */
+  @Override
+  public EntityUpdater getUpdater(
+      final OntologyProperty original,
+      final OntologyProperty updated,
+      final Operation operation,
+      final ChangeSource source) {
+    if (operation.isPut()
+        && Boolean.TRUE.equals(original.getDeleted())
+        && updated.getInverse() != null
+        && Boolean.TRUE.equals(find(original.getId(), Include.ALL).getDeleted())
+        && !declaresObjectProperty(
+            updated.getOntology().getId(), updated.getInverse().toString())) {
+      updated.setInverse(null);
+    }
+    return super.getUpdater(original, updated, operation, source);
+  }
+
+  private boolean declaresObjectProperty(final UUID ontologyId, final String iri) {
+    if (OwlEntityDeclarations.vocabularyKind(iri)
+        == OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY) {
+      return true;
+    }
+    final var properties = daoCollection.ontologyPropertyDAO();
+    return properties
+        .findDeclarations(
+            properties.getTableName(), ontologyId, List.of(DigestUtils.md5Hex(iri)), 2, "")
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
+        .anyMatch(property -> property.getKind() == OntologyPropertyKind.OBJECT);
+  }
+
+  /**
    * Keeps {@code inverse} an involution over the ontology's live object properties once a
    * mutation's writes are in: the side that states a link decides it, the latest statement wins,
    * and a partner that is no longer pointed back at is released. Partners are written through the
@@ -84,12 +122,10 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     String actor = null;
     for (final InverseAssertion assertion : assertions) {
       actor = assertion.actor();
-      if (!assertion.live()) {
-        links.remove(assertion.iri());
-      } else if (assertion.revived() && links.dangles(assertion.inverse())) {
-        links.link(assertion.iri(), null);
-      } else {
+      if (assertion.live()) {
         links.link(assertion.iri(), assertion.inverse());
+      } else {
+        links.remove(assertion.iri());
       }
     }
     for (final var change : links.changes().entrySet()) {
@@ -167,10 +203,10 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
 
   /**
    * What one write states about a property's inverse: the link it now holds, or that the property
-   * no longer takes part. A write that leaves the link as it was states nothing.
+   * no longer takes part. A write that leaves the link as it was, or brings a property to life
+   * without one, states nothing.
    */
-  private record InverseAssertion(
-      String iri, String inverse, boolean live, boolean revived, String actor) {
+  private record InverseAssertion(String iri, String inverse, boolean live, String actor) {
     static InverseAssertion of(final OntologyWorkingModel.Change change) {
       final OntologyProperty before =
           change.before() instanceof OntologyProperty property ? property : null;
@@ -182,7 +218,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
           || (wasLive
               && isLive
               && Objects.equals(iriText(before.getInverse()), iriText(after.getInverse())))
-          || (before == null && isLive && after.getInverse() == null)) {
+          || (!wasLive && isLive && after.getInverse() == null)) {
         return null;
       }
       final OntologyProperty subject = after == null ? before : after;
@@ -190,7 +226,6 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
           subject.getIri().toString(),
           isLive ? iriText(after.getInverse()) : null,
           isLive,
-          !wasLive && isLive && before != null,
           subject.getUpdatedBy());
     }
   }
@@ -203,14 +238,6 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     InverseLinks(final Map<String, OntologyProperty> live) {
       live.forEach((iri, property) -> stored.put(iri, iriText(property.getInverse())));
       links.putAll(stored);
-    }
-
-    /** True when {@code iri} is neither a live object property here nor fixed vocabulary. */
-    boolean dangles(final String iri) {
-      return iri != null
-          && !links.containsKey(iri)
-          && OwlEntityDeclarations.vocabularyKind(iri)
-              != OwlEntityDeclarations.EntityKind.OBJECT_PROPERTY;
     }
 
     void link(final String iri, final String inverse) {

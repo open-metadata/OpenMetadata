@@ -48,7 +48,7 @@ final class OntologyWorkingState {
         settle();
         CHANGES.get().definitions().entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
-            .forEach(entry -> model.requireValid(entry.getKey(), entry.getValue()));
+            .forEach(entry -> model.requireValid(entry.getKey(), net(entry.getValue())));
         CHANGES.get().graphs().stream()
             .sorted()
             .forEach(id -> RdfUpdater.enqueueOntologyGraph(dao, id));
@@ -63,7 +63,7 @@ final class OntologyWorkingState {
 
   /**
    * Registers work for the end of the outermost mutation in progress: it runs after every nested
-   * write and before validation, sees each ontology's changes so far, may write through the
+   * write and before validation, sees each ontology's net changes so far, may write through the
    * repositories, and runs again until a pass adds no change. A key registers once per mutation.
    */
   void beforeValidation(
@@ -85,13 +85,31 @@ final class OntologyWorkingState {
       final int before = changes.count();
       for (final var finalizer : List.copyOf(changes.finalizers().values())) {
         for (final UUID ontologyId : changes.definitions().keySet().stream().sorted().toList()) {
-          finalizer.accept(ontologyId, List.copyOf(changes.definitions().get(ontologyId)));
+          finalizer.accept(ontologyId, net(changes.definitions().get(ontologyId)));
         }
       }
       if (changes.count() == before) {
         return;
       }
     }
+  }
+
+  /**
+   * One change per definition, from its state before the mutation to its latest. A nested write
+   * of a definition already in the list, such as a finalizer's, supersedes the earlier state, so
+   * validation never sees a row a later write has replaced.
+   */
+  private static List<OntologyWorkingModel.Change> net(
+      final List<OntologyWorkingModel.Change> changes) {
+    final Map<UUID, OntologyWorkingModel.Change> byId = new LinkedHashMap<>();
+    for (final OntologyWorkingModel.Change change : changes) {
+      final OntologyDefinition subject = change.after() == null ? change.before() : change.after();
+      final OntologyWorkingModel.Change first = byId.get(subject.getId());
+      byId.put(
+          subject.getId(),
+          first == null ? change : new OntologyWorkingModel.Change(first.before(), change.after()));
+    }
+    return List.copyOf(byId.values());
   }
 
   private <T extends OntologyDefinition, R> R mutateLocked(

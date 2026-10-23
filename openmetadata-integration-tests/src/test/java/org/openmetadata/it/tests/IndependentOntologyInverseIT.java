@@ -166,6 +166,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
     service.delete(partOf.getId().toString(), Map.of("hardDelete", "true"));
 
     assertNull(service.restore(hasPart.getId()).getInverse());
+    assertNull(service.get(hasPart.getId().toString()).getInverse());
   }
 
   @Test
