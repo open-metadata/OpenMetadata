@@ -536,6 +536,41 @@ describe('AlertsClassBase', () => {
       expect(result.input).toBeUndefined();
       expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
     });
+
+    it('submits input for a rule-less alert so newly added filters are not dropped', () => {
+      // A saved alert with no input and no legacy filteringRules.rules/actions is empty —
+      // there are no hand-written rules to protect, so the form lets the user add new
+      // filters. getAlertUpdateData must submit those selections; dropping them would
+      // leave the alert matching all events for its source (greptile: "New filters
+      // disappear").
+      const ruleLess: EventSubscription = {
+        ...mockInitialData,
+        input: undefined,
+        filteringRules: { resources: ['table'] },
+      } as EventSubscription;
+
+      const seeded = alertsClass.getModifiedAlertDataForForm(ruleLess);
+
+      // The form shows no seeded rules, and the user adds one filter.
+      expect(seeded.input).toBeUndefined();
+
+      const formData: ModifiedCreateEventSubscription = {
+        ...(seeded as unknown as ModifiedCreateEventSubscription),
+        resources: ['table'],
+        input: {
+          actions: [],
+          filters: [{ effect: Effect.Include, name: 'pipelineStateList' }],
+        },
+      };
+
+      const result = alertsClass.getAlertUpdateData(formData, ruleLess);
+
+      // No legacy rules to protect, so the user's new filter is submitted.
+      expect(result.input).toEqual({
+        actions: [],
+        filters: [{ effect: Effect.Include, name: 'pipelineStateList' }],
+      });
+    });
   });
 
   describe('handleAlertSave', () => {

@@ -153,16 +153,23 @@ const getAlertInputForForm = (
  * the save. And submitting an `input` from which the user deleted or toggled a legacy rule
  * still leaves `filteringRules` untouched, so the edit is silently ignored.
  *
- * So a legacy alert never submits `input`: the backend's `WrittenByHand` policy keeps the
- * original `filteringRules` unchanged. The user can still edit the alert's name, description,
- * destinations, and sources. A modern alert carries its own `input`, which the form edits
- * directly, so it is passed through unchanged.
+ * So a legacy alert (one that actually has hand-written `filteringRules.rules`/`actions`)
+ * never submits `input`: the backend's `WrittenByHand` policy keeps the original
+ * `filteringRules` unchanged, and the user can still edit the alert's name, description,
+ * destinations, and sources. A saved alert with no `input` AND no legacy rules is empty
+ * (the form lets the user add new filters), so its selections are submitted normally. A
+ * modern alert carries its own `input`, which the form edits directly, so it is passed
+ * through unchanged.
  */
 const getSubmittedInput = (
   input: AlertFilteringInput | undefined,
   initialData: EventSubscription
 ): { actions: ArgumentsInput[]; filters: ArgumentsInput[] } | undefined => {
-  if (initialData.input == null) {
+  if (
+    initialData.input == null &&
+    (initialData.filteringRules?.rules?.length ||
+      initialData.filteringRules?.actions?.length)
+  ) {
     return undefined;
   }
 
