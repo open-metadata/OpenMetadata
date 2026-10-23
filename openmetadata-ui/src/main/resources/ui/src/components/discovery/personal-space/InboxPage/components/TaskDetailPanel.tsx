@@ -24,16 +24,19 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   Task,
   TaskAvailableTransition,
   TaskCategory,
-  TaskType,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
@@ -270,6 +273,62 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   );
 };
 
+// A filer is denied their own task (self-approval); anyone else is not one of
+// its approvers.
+const TaskResolveDeniedHint = ({ isFiler }: { isFiler: boolean }) => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="task-resolve-denied-hint"
+      size="text-sm">
+      {isFiler
+        ? t('message.no-permission-for-action')
+        : t('message.only-reviewers-can-approve-or-reject')}
+    </Typography>
+  );
+};
+
+/** Why no task shows: only a 404 means it is gone; anything else failed to load. */
+const TaskUnavailable = ({
+  error,
+  onRetry,
+}: {
+  error?: AxiosError;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  const status = error?.response?.status;
+  let placeholder = (
+    <SomethingWentWrongPlaceholder
+      description={t('server.entity-fetch-error', { entity: t('label.task') })}
+      onReload={onRetry}
+    />
+  );
+  if (!error || status === ClientErrors.NOT_FOUND) {
+    placeholder = (
+      <NoDataPlaceholder
+        data-testid="task-not-found"
+        description={t('message.no-task-found-desc')}
+        title={t('label.no-task-found')}
+      />
+    );
+  } else if (status === ClientErrors.FORBIDDEN) {
+    placeholder = (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', { entity: t('label.task') })}
+      />
+    );
+  }
+
+  return (
+    <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:p-8">
+      {placeholder}
+    </div>
+  );
+};
+
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   taskId,
   fallbackTask,
@@ -284,6 +343,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { extensionRegistry } = useApplicationsProvider();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<AxiosError>();
+  // A failed first load renders its own placeholder; only a failed reload of a
+  // task already on screen needs the toast.
+  const hasTaskRef = useRef(Boolean(fallbackTask));
+  hasTaskRef.current = Boolean(task);
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -295,10 +359,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
-  // Gates DAR approve/reject/resolve so a self-approval deny (isTaskFiler) hides
-  // the buttons. Fail closed: false until the permission resolves so a self-filed
-  // DAR never flashes the buttons. Non-DAR tasks are never gated below.
-  const [canResolveTask, setCanResolveTask] = useState(false);
+  // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
+  // reviewer, owner; self-approval denied). Fail closed: undefined until the
+  // permission resolves so the buttons never flash for a user who can't act.
+  const [canResolveTask, setCanResolveTask] = useState<boolean>();
   const [loadingTransitionId, setLoadingTransitionId] = useState<string>();
   // Actions stay hidden while re-reading, so a consumed transition can't be
   // re-submitted — that hits a workflow with no active task (500).
@@ -317,9 +381,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       const res = await getTask(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
       setLoadedTaskId(taskId);
+      setLoadError(undefined);
       result = res.data;
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setLoadError(error as AxiosError);
+      if (hasTaskRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -341,9 +409,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   // The endpoint evaluates policy conditions (isTaskFiler) against this task, so
   // a requester who is also an assignee resolves false on their own request.
+  // Incident tasks are exempt: the server lets EditStatus/EditTests on the test
+  // case resolve them even when ResolveTask on the task is denied.
   useEffect(() => {
     let active = true;
-    if (!task?.id || task.type !== TaskType.DataAccessRequest) {
+    if (!task?.id || INCIDENT_TASK_TYPES.has(task.type)) {
       setCanResolveTask(true);
 
       return undefined;
@@ -351,7 +421,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
     // Fail closed while (re)resolving so switching to a self-filed DAR can't
     // briefly show the buttons with a stale allow from the previous task.
-    setCanResolveTask(false);
+    setCanResolveTask(undefined);
     getEntityPermission(ResourceEntity.TASK, task.id)
       .then(
         (perm: OperationPermission) =>
@@ -414,9 +484,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
-  const actions = useMemo(() => {
+  const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
-      return [];
+      return { actions: [], isResolveDenied: false };
     }
     const effective = applyActionLabels(
       getTaskResolveActions(
@@ -427,22 +497,32 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
-    // Drop resolve actions when ResolveTask is denied (self-approval); keep
-    // assignee transitions — those are permissioned by EditTask, not ResolveTask.
-    if (task.type === TaskType.DataAccessRequest && !canResolveTask) {
-      return effective.filter(
+    // Drop resolve actions when ResolveTask is denied; keep assignee
+    // transitions — those are permissioned by EditTask, not ResolveTask.
+    if (!canResolveTask) {
+      const permitted = effective.filter(
         (action) =>
           action.kind !== 'approve' &&
           action.kind !== 'reject' &&
           action.id !== 'resolve'
       );
+
+      return {
+        actions: permitted,
+        isResolveDenied:
+          canResolveTask === false && permitted.length < effective.length,
+      };
     }
 
-    return isOntologyReviewTask(task) && readyReviewTask !== task.id
-      ? effective.filter(
-          (action) => action.kind !== 'approve' && action.kind !== 'reject'
-        )
-      : effective;
+    return {
+      actions:
+        isOntologyReviewTask(task) && readyReviewTask !== task.id
+          ? effective.filter(
+              (action) => action.kind !== 'approve' && action.kind !== 'reject'
+            )
+          : effective,
+      isResolveDenied: false,
+    };
   }, [
     readyReviewTask,
     task,
@@ -648,12 +728,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return isLoading ? (
       <TaskDetailSkeleton />
     ) : (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:p-8">
-        <NoDataPlaceholder
-          description={t('message.no-task-found-desc')}
-          title={t('label.no-task-found')}
-        />
-      </div>
+      <TaskUnavailable error={loadError} onRetry={loadTask} />
     );
   }
 
@@ -729,13 +804,18 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <Box direction="col" gap={2}>
           {title}
           <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
+          {isResolveDenied && (
+            <TaskResolveDeniedHint
+              isFiler={currentUserIds.has(task.createdBy?.id)}
+            />
+          )}
         </Box>
       </Box>
 
       {/* Sections keep their height and the body scrolls: a flex child with
           overflow-hidden (the asset card) would otherwise shrink to nothing. */}
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:py-6 tw:*:shrink-0"
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:pt-6 tw:pb-12 tw:*:shrink-0"
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
@@ -753,11 +833,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
         direction="col"
         gap={2}>
-        {/* A soft shade above the footer, so the activity reads as scrolling
-            under the composer rather than stopping at a line. */}
+        {/* A soft fade into the card above the footer, so the activity reads
+            as scrolling under the composer rather than stopping at a line. The
+            body's bottom padding clears it, so nothing sits under it at rest. */}
         <span
           aria-hidden
-          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
+          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-bg-surface tw:to-transparent"
         />
         <CommentComposer onSave={handleAddComment} />
       </Box>

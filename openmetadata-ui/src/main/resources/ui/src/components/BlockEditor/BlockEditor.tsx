@@ -78,8 +78,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
-      // Born read-only so a previewed "@name" can't open a mention popup before
-      // the deferred setEditable(false) below runs.
+      // Born read-only when it is a viewer: an editable editor whose content
+      // lands with the cursor after "@name" opens the mention popup, and the
+      // later setEditable(false) never closes it, leaving it pinned top-left.
       editable,
       extensions,
       onUpdate({ editor }) {

@@ -85,8 +85,10 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
 
   const breadcrumbRow = (
     <Breadcrumbs
+      autoCollapse
       divider="chevron"
       items={resolvedBreadcrumbs}
+      maxItemWidth={256}
       size="xs"
       type="text"
       onAction={onBreadcrumbAction}
@@ -125,12 +127,13 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             theme="dark"
           />
         )}
-        <Box className="tw:flex-1" direction="col">
-          <Box align="center" direction="row" gap={1}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Box align="center" className="tw:min-w-0" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary"
+                className="tw:min-w-0 tw:text-primary"
                 data-testid="profile-content-header-title"
+                ellipsis={{ tooltip: true }}
                 size="text-lg"
                 weight="bold">
                 {title}
@@ -148,7 +151,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
         </Box>
         {actions && (
           <Box
-            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            className="tw:ml-auto tw:flex tw:shrink-0 tw:items-center tw:gap-2"
             direction="row">
             {actions}
           </Box>

@@ -10,39 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render } from '@testing-library/react';
+import { act, render } from '@testing-library/react';
+import { createRef } from 'react';
 import BlockEditor from './BlockEditor';
+import { BlockEditorRef } from './BlockEditor.interface';
 
-jest.mock(
-  '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider',
-  () => ({
-    useEntityAttachment: () => ({ isPopoverOpenRef: { current: false } }),
-  })
-);
+jest.mock('./EditorSlots', () => () => null);
 
 describe('BlockEditor', () => {
-  afterEach(() => jest.useRealTimers());
-
-  // The editor used to start editable and switch on a deferred timer, so in
-  // between a click on a previewed "@name" could open a mention popup.
-  it('starts read-only when not editable, before any timer runs', () => {
+  // An editor that starts editable and is made read-only a tick later lets a
+  // trailing "@name" in its content open the mention popup, which then stays
+  // pinned to the page's top-left.
+  it('is read-only from its first render when not editable', () => {
+    // Fake timers hold back the deferred setEditable(false), so only an editor
+    // created read-only passes.
     jest.useFakeTimers();
-    const { container } = render(
-      <BlockEditor content="<p>hello @alice</p>" editable={false} />
-    );
+    const ref = createRef<BlockEditorRef>();
 
-    expect(container.querySelector('.ProseMirror')).toHaveAttribute(
-      'contenteditable',
-      'false'
-    );
+    try {
+      act(() => {
+        render(
+          <BlockEditor
+            content="<p>uireview comment @admin</p>"
+            editable={false}
+            ref={ref}
+          />
+        );
+      });
+
+      expect(ref.current?.editor).toBeTruthy();
+      expect(ref.current?.editor?.isEditable).toBe(false);
+      expect(
+        document.querySelector('.ProseMirror[contenteditable="true"]')
+      ).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
-  it('starts editable by default', () => {
-    const { container } = render(<BlockEditor content="<p>hello</p>" />);
+  it('is editable by default', async () => {
+    const ref = createRef<BlockEditorRef>();
 
-    expect(container.querySelector('.ProseMirror')).toHaveAttribute(
-      'contenteditable',
-      'true'
-    );
+    await act(async () => {
+      render(<BlockEditor ref={ref} />);
+    });
+
+    expect(ref.current?.editor?.isEditable).toBe(true);
   });
 });

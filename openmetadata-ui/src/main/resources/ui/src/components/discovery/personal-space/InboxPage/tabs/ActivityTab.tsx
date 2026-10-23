@@ -16,12 +16,16 @@ import {
   FilterFunnel01,
   Hourglass01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
@@ -115,6 +119,66 @@ const GROUPING: Record<
   },
 };
 
+// A failed feed says so; an empty one says whether the filters emptied it.
+const ActivityEmptyState = ({
+  error,
+  isFiltered,
+  userFirstName,
+  onRetry,
+}: {
+  error: unknown;
+  isFiltered: boolean;
+  // Set when the feed is another user's, so the empty state names them.
+  userFirstName?: string;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (error) {
+    return (error as AxiosError)?.response?.status ===
+      ClientErrors.FORBIDDEN ? (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.activity'),
+        })}
+      />
+    ) : (
+      <SomethingWentWrongPlaceholder
+        description={t('server.entity-fetch-error', {
+          entity: t('label.activity'),
+        })}
+        onReload={onRetry}
+      />
+    );
+  }
+
+  return isFiltered ? (
+    <NoFilteredResultsPlaceholder
+      data-testid="inbox-activity-no-results"
+      description={t('message.activity-feed-no-results-description')}
+      icon={<FilterFunnel01 className="tw:size-7" />}
+      title={t('label.no-activity-in-period')}
+    />
+  ) : (
+    <NoDataPlaceholder
+      data-testid="inbox-activity-empty"
+      description={
+        userFirstName
+          ? t('message.user-activity-empty-description', {
+              name: userFirstName,
+            })
+          : t('message.activity-feed-empty-description')
+      }
+      icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
+      title={
+        userFirstName
+          ? t('label.no-activity-yet')
+          : t('label.activity-feed-starts-here')
+      }
+    />
+  );
+};
+
 export interface ActivityTabProps {
   // Without one the tab keeps its own window, starting at the default preset.
   dateRange?: InboxDateRange;
@@ -160,43 +224,85 @@ const useActivityDateRange = ({
       };
 };
 
-const ActivityEmptyState = ({
-  isFiltered,
+interface ActivityGroup {
+  key: string;
+  first: InboxActivityItem;
+  title: string;
+  items: InboxActivityItem[];
+  total: number;
+}
+
+// The loaded feed, one block per group, with the incremental-render sentinel.
+const ActivityGroupList = ({
+  groups,
+  GroupIcon,
+  mentionedIds,
   userFirstName,
+  timeFormat,
+  hasMore,
+  sentinelRef,
 }: {
-  isFiltered: boolean;
+  groups: ActivityGroup[];
+  GroupIcon?: React.FC<{ item: InboxActivityItem }>;
+  mentionedIds: Set<string>;
   userFirstName?: string;
+  timeFormat: string;
+  hasMore: boolean;
+  sentinelRef: React.RefObject<HTMLDivElement>;
 }) => {
   const { t } = useTranslation();
 
-  if (isFiltered) {
-    return (
-      <NoFilteredResultsPlaceholder
-        data-testid="inbox-activity-no-results"
-        description={t('message.activity-feed-no-results-description')}
-        icon={<FilterFunnel01 className="tw:size-7" />}
-        title={t('label.no-activity-in-period')}
-      />
-    );
-  }
-
   return (
-    <NoDataPlaceholder
-      data-testid="inbox-activity-empty"
-      description={
-        userFirstName
-          ? t('message.user-activity-empty-description', {
-              name: userFirstName,
-            })
-          : t('message.activity-feed-empty-description')
-      }
-      icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
-      title={
-        userFirstName
-          ? t('label.no-activity-yet')
-          : t('label.activity-feed-starts-here')
-      }
-    />
+    <Box direction="col" gap={4}>
+      {groups.map((group) => (
+        <Box
+          data-testid="activity-group"
+          direction="col"
+          gap={3}
+          key={group.key}>
+          <Box align="center" gap={2}>
+            {GroupIcon && <GroupIcon item={group.first} />}
+            <Typography
+              className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
+              size="text-xs"
+              weight="semibold">
+              {group.title}
+            </Typography>
+            <Typography
+              className="tw:shrink-0 tw:text-quaternary"
+              size="text-xs">
+              {group.total === 1
+                ? t('label.one-update')
+                : t('label.number-update-plural', {
+                    number: group.total,
+                  })}
+            </Typography>
+          </Box>
+          {group.items.map((item) => {
+            const itemId = getInboxItemId(item);
+
+            return (
+              <ActivityFeedItem
+                activity={item.activity}
+                feed={item.feed}
+                isMentioned={mentionedIds.has(itemId)}
+                key={itemId}
+                mentionedName={userFirstName}
+                timeFormat={timeFormat}
+              />
+            );
+          })}
+        </Box>
+      ))}
+      {hasMore && (
+        <div
+          aria-hidden
+          className="tw:h-px"
+          data-testid="inbox-activity-sentinel"
+          ref={sentinelRef}
+        />
+      )}
+    </Box>
   );
 };
 
@@ -228,7 +334,11 @@ const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
   }, [isOtherUser, markInboxActivitySeen]);
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isLoading } = useInboxActivity(filter, dateRange, userId);
+  const { items, isLoading, error, refetch } = useInboxActivity(
+    filter,
+    dateRange,
+    userId
+  );
   const counts = useInboxActivityCounts(dateRange, userId);
   // The Mentions feed (already read for its count) marks the cards that name
   // the feed's user, whichever tab they appear under.
@@ -288,65 +398,26 @@ const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
   let activityContent: React.ReactNode;
   if (isLoading) {
     activityContent = <ActivitySkeleton />;
-  } else if (filteredItems.length === 0) {
+  } else if (error || filteredItems.length === 0) {
     activityContent = (
       <ActivityEmptyState
+        error={error}
         isFiltered={Boolean(isFiltered || typeKeys.length)}
         userFirstName={userFirstName}
+        onRetry={refetch}
       />
     );
   } else {
     activityContent = (
-      <Box direction="col" gap={4}>
-        {groups.map((group) => (
-          <Box
-            data-testid="activity-group"
-            direction="col"
-            gap={3}
-            key={group.key}>
-            <Box align="center" gap={2}>
-              {GroupIcon && <GroupIcon item={group.first} />}
-              <Typography
-                className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-primary"
-                size="text-xs"
-                weight="semibold">
-                {group.title}
-              </Typography>
-              <Typography
-                className="tw:shrink-0 tw:text-quaternary"
-                size="text-xs">
-                {group.total === 1
-                  ? t('label.one-update')
-                  : t('label.number-update-plural', {
-                      number: group.total,
-                    })}
-              </Typography>
-            </Box>
-            {group.items.map((item) => {
-              const itemId = getInboxItemId(item);
-
-              return (
-                <ActivityFeedItem
-                  activity={item.activity}
-                  feed={item.feed}
-                  isMentioned={mentionedIds.has(itemId)}
-                  key={itemId}
-                  mentionedName={userFirstName}
-                  timeFormat={timeFormat}
-                />
-              );
-            })}
-          </Box>
-        ))}
-        {hasMore && (
-          <div
-            aria-hidden
-            className="tw:h-px"
-            data-testid="inbox-activity-sentinel"
-            ref={sentinelRef}
-          />
-        )}
-      </Box>
+      <ActivityGroupList
+        GroupIcon={GroupIcon}
+        groups={groups}
+        hasMore={hasMore}
+        mentionedIds={mentionedIds}
+        sentinelRef={sentinelRef}
+        timeFormat={timeFormat}
+        userFirstName={userFirstName}
+      />
     );
   }
 

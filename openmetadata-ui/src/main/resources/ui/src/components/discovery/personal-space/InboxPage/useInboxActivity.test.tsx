@@ -173,16 +173,14 @@ describe('fetchInboxActivity', () => {
     expect(threads).toEqual([]);
   });
 
-  it('still returns conversations when the activity fetch fails', async () => {
-    mockGetActivityEvents.mockRejectedValue(new Error('boom'));
+  // The conversations alone would read as the whole feed, with counts to match.
+  it('fails when the activity fetch fails', async () => {
+    const failure = new Error('boom');
+    mockGetActivityEvents.mockRejectedValue(failure);
 
-    const { activities, threads } = await fetchInboxActivity(
-      ActivityFilter.All,
-      'u1'
+    await expect(fetchInboxActivity(ActivityFilter.All, 'u1')).rejects.toBe(
+      failure
     );
-
-    expect(activities).toEqual([]);
-    expect(threads).toHaveLength(2);
   });
 
   // The server's whole-day `days` reaches back past startTs (a 7-day preset
