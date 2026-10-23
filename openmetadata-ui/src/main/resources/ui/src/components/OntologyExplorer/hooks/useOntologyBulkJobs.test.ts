@@ -171,6 +171,57 @@ describe('useOntologyBulkJobs', () => {
     await waitFor(() => expect(result.current.jobs[0].id).toBe(42));
   });
 
+  it('clears the pending flag once the submitted job appears so polling stops when the job finishes', async () => {
+    // The list is initially empty, so the pending flag is the only thing
+    // keeping polling alive after the background submission.
+    mockListResolves([]);
+
+    const { result } = renderHook(() => useOntologyBulkJobs(GLOSSARY_ID));
+
+    await waitFor(() => expect(result.current.jobs).toEqual([]));
+
+    act(() => {
+      result.current.noteBackgroundSubmission(42);
+    });
+
+    // Polling runs while the job is not yet visible.
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+
+    // The job appears as running. The pending flag should clear, but polling
+    // continues because the job itself is active.
+    mockListResolves([makeJob({ id: 42, status: Status.Running })]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() => expect(result.current.jobs[0].id).toBe(42));
+
+    // The job completes. With the pending flag already cleared, polling stops
+    // because no job is active.
+    mockListResolves([makeJob({ id: 42, status: Status.Completed })]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() =>
+      expect(result.current.jobs[0].status).toBe(Status.Completed)
+    );
+
+    const callsAfterCompletion = mockList.mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS * 3);
+    });
+
+    expect(mockList.mock.calls.length).toBe(callsAfterCompletion);
+  });
+
   it('stops polling after the pending submission safety valve expires', async () => {
     mockListResolves([]);
 

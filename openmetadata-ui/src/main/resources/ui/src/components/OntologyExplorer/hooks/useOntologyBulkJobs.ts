@@ -99,6 +99,19 @@ export const useOntologyBulkJobs = (
     return () => clearTimeout(timeout);
   }, [pendingBackgroundJobId]);
 
+  // Once the submitted job appears in the list, clear the pending flag so the
+  // job's own status controls polling rather than the 60s safety valve. The
+  // safety valve above still covers jobs that never appear (e.g. unknown id).
+  useEffect(() => {
+    if (
+      pendingBackgroundJobId !== undefined &&
+      pendingBackgroundJobId !== PENDING_WITHOUT_ID &&
+      jobs.some((job) => job.id === pendingBackgroundJobId)
+    ) {
+      setPendingBackgroundJobId(undefined);
+    }
+  }, [jobs, pendingBackgroundJobId]);
+
   const hasActiveJobs = useMemo(
     () =>
       jobs.some(isActiveOntologyBulkJob) ||
