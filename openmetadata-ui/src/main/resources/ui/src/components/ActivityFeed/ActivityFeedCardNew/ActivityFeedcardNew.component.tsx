@@ -281,41 +281,49 @@ const ActivityFeedCardNew = ({
             'tw:max-w-full': isPanelLayout,
           })}
           wrap="wrap">
-          <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
-            <Box
-              align={isPanelLayout ? 'start' : 'center'}
-              className="tw:min-w-0 text-sm"
-              gap={1}
-              justify="center">
-              {searchClassBase.getEntityIcon(entityType ?? '') && (
-                // h-5 = the text-sm line height, so the icon centres on the
-                // link's first line.
-                <Box inline align="center" className="tw:h-5 tw:shrink-0">
-                  {searchClassBase.getEntityIcon(
-                    entityType ?? '',
-                    'tw:h-4 tw:w-4'
-                  )}
-                </Box>
-              )}
-              <Link
-                className={classNames('text-sm header-link', {
-                  // Ellipsis, not a word-wrapped one-line clamp: in a narrow
-                  // card the clamp showed only the start of the first word.
-                  // nowrap! beats the unlayered `.header-link` white-space.
-                  'tw:block tw:min-w-0 tw:truncate tw:whitespace-nowrap!':
-                    !isPanelLayout,
-                  'tw:min-w-0 tw:wrap-break-word': isPanelLayout,
-                })}
-                data-testid="entity-link"
-                to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
-                <span>
-                  {entityRef
-                    ? getEntityName(entityRef)
-                    : entityDisplayName(entityType, entityFQN)}
-                </span>
-              </Link>
-            </Box>
-          </EntityPopOverCard>
+          {/* List cards: the link takes what the path leaves (basis 0), so
+              "› Field" stays on the same line and the link truncates; the
+              path wraps only when even a short link no longer fits. */}
+          <Box
+            className={
+              isPanelLayout ? 'tw:min-w-0' : 'tw:min-w-12 tw:flex-1 tw:basis-0'
+            }>
+            <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
+              <Box
+                align={isPanelLayout ? 'start' : 'center'}
+                className="tw:min-w-0 text-sm"
+                gap={1}
+                justify="start">
+                {searchClassBase.getEntityIcon(entityType ?? '') && (
+                  // h-5 = the text-sm line height, so the icon centres on the
+                  // link's first line.
+                  <Box inline align="center" className="tw:h-5 tw:shrink-0">
+                    {searchClassBase.getEntityIcon(
+                      entityType ?? '',
+                      'tw:h-4 tw:w-4'
+                    )}
+                  </Box>
+                )}
+                <Link
+                  className={classNames('text-sm header-link', {
+                    // Ellipsis, not a word-wrapped one-line clamp: in a narrow
+                    // card the clamp showed only the start of the first word.
+                    // nowrap! beats the unlayered `.header-link` white-space.
+                    'tw:block tw:min-w-0 tw:truncate tw:whitespace-nowrap!':
+                      !isPanelLayout,
+                    'tw:min-w-0 tw:wrap-break-word': isPanelLayout,
+                  })}
+                  data-testid="entity-link"
+                  to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
+                  <span>
+                    {entityRef
+                      ? getEntityName(entityRef)
+                      : entityDisplayName(entityType, entityFQN)}
+                  </span>
+                </Link>
+              </Box>
+            </EntityPopOverCard>
+          </Box>
           <FeedFieldPath
             about={about}
             entityType={entityType}
