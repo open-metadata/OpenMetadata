@@ -323,7 +323,11 @@ public class DataRetention extends AbstractNativeApplication {
             getRetentionCutoffMillis(retentionPeriod),
             WORKFLOW_RUN_PAGE_SIZE);
 
-    drainInBatches("workflow_runs", retention::deleteNextPage, deleted -> retention.isDrained());
+    drainInBatches(
+        "workflow_runs",
+        retention::deleteNextPage,
+        deleted -> retention.isDrained(),
+        WORKFLOW_RUN_PAGE_SIZE);
     updateStats("workflow_run_states", retention.deletedStates(), 0);
 
     LOG.info("Governance workflow runs cleanup complete.");
@@ -638,7 +642,19 @@ public class DataRetention extends AbstractNativeApplication {
 
   private void drainInBatches(
       String entity, Supplier<Integer> deleteFunction, IntPredicate drainedWhen) {
-    BatchDrain.Result result = BatchDrain.drain(deleteFunction, drainedWhen, BATCH_SIZE);
+    drainInBatches(entity, deleteFunction, drainedWhen, BATCH_SIZE);
+  }
+
+  /**
+   * @param failedRowsPerBatch charged to the failed count when a batch throws: the most rows one
+   *     batch of this cleanup could have left behind
+   */
+  private void drainInBatches(
+      String entity,
+      Supplier<Integer> deleteFunction,
+      IntPredicate drainedWhen,
+      int failedRowsPerBatch) {
+    BatchDrain.Result result = BatchDrain.drain(deleteFunction, drainedWhen, failedRowsPerBatch);
 
     if (result.failure() != null) {
       LOG.error("Failed to clean entity: {}", entity, result.failure());
