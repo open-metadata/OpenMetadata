@@ -200,6 +200,32 @@ export const useUserProfile = (username: string | undefined) => {
     [isSelf, loadError, updateCurrentUser, t]
   );
 
+  // Re-reads the user in place: no skeleton and no reset, so a view coming back
+  // into focus picks up edits made elsewhere without flashing. A failure keeps
+  // what is on screen; the next full load reports it.
+  const refresh = useCallback(async () => {
+    if (!username || loadError) {
+      return;
+    }
+    const reqId = ++requestRef.current;
+    try {
+      const res = isSelf
+        ? await getLoggedInUser({ fields: USER_PROFILE_FIELDS })
+        : await getUserByName(username, {
+            fields: USER_PROFILE_FIELDS,
+            include: Include.All,
+          });
+      if (reqId === requestRef.current) {
+        setUserData((prev) => ({
+          ...res,
+          isAdmin: res.isAdmin ?? prev?.isAdmin,
+        }));
+      }
+    } catch {
+      // Keep the values on screen.
+    }
+  }, [username, isSelf, loadError]);
+
   return {
     userData,
     isProfileLoading,
@@ -207,6 +233,7 @@ export const useUserProfile = (username: string | undefined) => {
     loadError,
     updateUserDetails,
     refetch: fetchUser,
+    refresh,
   };
 };
 

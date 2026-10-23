@@ -38,6 +38,16 @@ export const USER_DETAIL_TABS: UserDetailTab[] = [
 
 // User-detail tabs whose list scrolls inside a bounded body; the rest grow so
 // the panel scrolls and the bottom padding stays below the content.
+export const USER_DETAIL_TAB_LABEL_KEYS: Record<UserDetailTab, string> = {
+  overview: 'label.overview',
+  access: 'label.access',
+  activity: 'label.activity',
+  tasks: 'label.task-plural',
+  'owned-assets': 'label.owned-asset-plural',
+  following: 'label.following',
+  'custom-properties': 'label.custom-property-plural',
+};
+
 export const SCROLLING_USER_DETAIL_TABS: ReadonlySet<UserDetailTab> = new Set([
   'activity',
   'tasks',

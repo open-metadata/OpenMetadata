@@ -34,7 +34,10 @@ import { useUserActivityCount } from '../../../InboxPage/useInboxActivity';
 import { useUserOpenTaskCount } from '../../../InboxPage/useUserTasks';
 import { useUserAssetCount } from '../../../UserAssets/useUserAssetCount';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
-import { USER_DETAIL_TABS } from './Members.constants';
+import {
+  USER_DETAIL_TABS,
+  USER_DETAIL_TAB_LABEL_KEYS,
+} from './Members.constants';
 import type {
   MembersUserDetailProps,
   MembersUserDetailView,
@@ -47,16 +50,6 @@ export type TranslateFn = (
   options?: Record<string, unknown>
 ) => string;
 type TabCounts = Partial<Record<UserDetailTab, number>>;
-
-const TAB_LABEL_KEYS: Record<UserDetailTab, string> = {
-  overview: 'label.overview',
-  access: 'label.access',
-  activity: 'label.activity',
-  tasks: 'label.task-plural',
-  'owned-assets': 'label.owned-asset-plural',
-  following: 'label.following',
-  'custom-properties': 'label.custom-property-plural',
-};
 
 const buildLoadingHeader = (): Partial<ProfileHeaderOverride> => ({
   iconNode: <Skeleton height={44} variant="circular" width={44} />,
@@ -156,7 +149,7 @@ const buildTabs = (
           data-testid={`user-detail-tab-${id}`}
           id={id}
           key={id}>
-          {t(TAB_LABEL_KEYS[id])}
+          {t(USER_DETAIL_TAB_LABEL_KEYS[id])}
         </Tabs.Item>
       ))}
     </Tabs.List>

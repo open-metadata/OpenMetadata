@@ -13,7 +13,14 @@
 
 import { Box } from '@openmetadata/ui-core-components';
 import { Link01, User01 } from '@openmetadata/ui-core-components/icons';
-import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -62,6 +69,7 @@ const ProfilePage: React.FC = () => {
     loadError,
     updateUserDetails,
     refetch,
+    refresh,
   } = useUserProfile(currentUser?.name);
   // A user detail is open under Profile: someone else's, or a tab of yours.
   const isViewingUserDetail =
@@ -72,6 +80,20 @@ const ProfilePage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<ProfileNavId>(
     (hashState.tab as ProfileNavId) || DEFAULT_PROFILE_NAV_ID
   );
+
+  // The user detail (Members, or `#profile/<you>/<tab>`) loads and saves its own
+  // copy of you, so this page's copy goes stale while you edit there. Re-read it
+  // in place when your own Profile comes back into view; not on the first
+  // render, which the hook already loads.
+  const isOwnProfileShown =
+    selectedId === DEFAULT_PROFILE_NAV_ID && !isViewingUserDetail;
+  const wasOwnProfileShownRef = useRef(isOwnProfileShown);
+  useEffect(() => {
+    if (isOwnProfileShown && !wasOwnProfileShownRef.current) {
+      refresh();
+    }
+    wasOwnProfileShownRef.current = isOwnProfileShown;
+  }, [isOwnProfileShown, refresh]);
 
   // Allows panels (e.g. Access Control) to override the header breadcrumbs
   // and title without needing a separate route.

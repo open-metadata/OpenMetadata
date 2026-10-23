@@ -31,7 +31,7 @@ import { useSettingsHash } from '../../../../../hooks/useSettingsHash';
 import { entityTypeDetailSubPath } from '../panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
 import CustomPropertyRow from './CustomPropertyRow';
 import { COLLAPSED_ROW_COUNT } from './UserCustomProperties.constants';
-import { UserCustomPropertiesProps } from './UserCustomProperties.interface';
+import { UserCustomPropertiesProps } from './UserCustomProperties.types';
 
 const CUSTOM_PROPERTIES_NAV_ID = 'custom-properties';
 

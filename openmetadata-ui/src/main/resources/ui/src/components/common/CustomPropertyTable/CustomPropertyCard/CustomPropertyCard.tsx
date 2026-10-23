@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { WidgetEditButton } from '../../WidgetActionButton/WidgetActionButton';
+import { COMPACT_CARD_CLASS } from './CustomPropertyCard.constants';
 import { CustomPropertyCardProps } from './CustomPropertyCard.interface';
 import {
   getPropertyTypeMeta,
@@ -32,11 +33,6 @@ import {
 import { CustomPropertyEditModal } from './CustomPropertyEditModal';
 import { CustomPropertyHeader } from './CustomPropertyHeader';
 import { getPropertyRenderer } from './CustomPropertyRenderers';
-
-// Half-width ("compact") cards keep title, description and value on one line
-// and share one minimum height (icon row 40px + one-line value or empty state
-// 38px + padding and border), so collapsed cards line up across a row.
-const COMPACT_CARD_CLASS = 'tw:min-h-32';
 
 export const CustomPropertyCard = ({
   isCompact = false,

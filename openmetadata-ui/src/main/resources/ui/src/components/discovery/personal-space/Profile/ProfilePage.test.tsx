@@ -315,6 +315,36 @@ describe('ProfilePage', () => {
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
   });
 
+  // Your entry in a user detail (Members, or #profile/<you>/<tab>) saves through
+  // its own copy; coming back to Profile must show what was saved there.
+  it('re-reads your profile when you come back to it, without a reload state', async () => {
+    mockGetLoggedInUser.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'harsh',
+      displayName: 'Before',
+    });
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('content-profile')).toHaveTextContent('Before');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-permissions'));
+    });
+    mockGetLoggedInUser.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'harsh',
+      displayName: 'After',
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-profile'));
+    });
+
+    expect(mockGetLoggedInUser).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('content-profile')).toHaveTextContent('After');
+  });
+
   // A settings link to a team opens `#members/teams/<fqn>`; Members is
   // admin-only, so a non-admin gets no-access even with team view permission.
   it('shows no-access, not the profile, for a tab the user cannot see', async () => {

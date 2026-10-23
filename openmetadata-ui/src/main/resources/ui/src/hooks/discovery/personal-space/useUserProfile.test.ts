@@ -316,3 +316,47 @@ describe('useProfileCopy', () => {
     );
   });
 });
+
+describe('useUserProfile refresh', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+  });
+
+  it('re-reads the user in place without a loading state', async () => {
+    mockGetUserByName
+      .mockResolvedValueOnce({ id: 'u2', name: 'alice', displayName: 'Old' })
+      .mockResolvedValueOnce({ id: 'u2', name: 'alice', displayName: 'New' });
+    const { result } = renderHook(() => useUserProfile('alice'));
+    await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
+
+    let refreshed!: Promise<void>;
+    act(() => {
+      refreshed = result.current.refresh();
+    });
+
+    expect(result.current.isProfileLoading).toBe(false);
+    expect(result.current.userData?.displayName).toBe('Old');
+
+    await act(async () => {
+      await refreshed;
+    });
+
+    expect(result.current.userData?.displayName).toBe('New');
+  });
+
+  it('keeps the values on screen when the re-read fails', async () => {
+    mockGetUserByName
+      .mockResolvedValueOnce({ id: 'u2', name: 'alice', displayName: 'Old' })
+      .mockRejectedValueOnce({ response: { status: 500 } });
+    const { result } = renderHook(() => useUserProfile('alice'));
+    await waitFor(() => expect(result.current.isProfileLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.refresh();
+    });
+
+    expect(result.current.userData?.displayName).toBe('Old');
+    expect(result.current.loadError).toBe(false);
+    expect(mockShowErrorToast).not.toHaveBeenCalled();
+  });
+});
