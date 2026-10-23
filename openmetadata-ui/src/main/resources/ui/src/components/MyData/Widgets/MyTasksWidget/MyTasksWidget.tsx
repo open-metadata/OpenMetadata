@@ -108,10 +108,10 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
     }
   };
 
-  // Categories are counted over the loaded page, so past it a category's
-  // count covers only that page; the page limit in the footer keeps that
-  // visible.
-  const isPartialCategory = bucket !== MyTaskBucket.ALL && tasks.length < total;
+  // The chips and the incident headline are counted over the loaded page, so
+  // past it the footer says how much of the total that page is.
+  // ADR:2026-10-16-landing-task-and-pipeline-cards-read-one-page
+  const isPartialPage = tasks.length < total;
 
   // An empty list is good news, not a setup gap — nothing to configure.
   const emptyState: TopicEmptyStateConfig | undefined =
@@ -145,7 +145,7 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
       isFetching={isFetching}
       isLoading={isLoading}
       meta={
-        isPartialCategory ? (
+        isPartialPage ? (
           <span data-testid="my-tasks-page-limit">
             {t('label.loaded-x-of-y-entity', {
               entity: t('label.task-plural'),

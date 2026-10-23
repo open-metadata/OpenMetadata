@@ -37,21 +37,20 @@ const renderHeader = (props: Partial<TopicsSectionHeaderProps> = {}) => {
 };
 
 describe('TopicsSectionHeader', () => {
-  // The design's segmented control: one gray track, the chosen view raised.
-  it('offers the views as one segmented control with the current view chosen', () => {
+  // A view switch, not tabs: there is no panel behind either option.
+  it('offers the views as one single-choice group with the current view chosen', () => {
     renderHeader();
 
-    expect(screen.getByRole('tablist')).toHaveAccessibleName('label.view');
-    expect(screen.getByRole('tablist')).toHaveClass('tw:bg-tertiary');
-    expect(screen.getByTestId('topics-grid-view')).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('radiogroup')).toHaveAccessibleName('label.view');
+    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'label.grid' })).toHaveAttribute(
+      'aria-checked',
       'true'
     );
-    expect(screen.getByTestId('topics-list-view')).toHaveAttribute(
-      'aria-selected',
+    expect(screen.getByRole('radio', { name: 'label.list' })).toHaveAttribute(
+      'aria-checked',
       'false'
     );
-    expect(screen.getByRole('tab', { name: 'label.list' })).toBeInTheDocument();
   });
 
   it('reports the view the user picks', () => {
@@ -60,6 +59,18 @@ describe('TopicsSectionHeader', () => {
     fireEvent.click(screen.getByTestId('topics-list-view'));
 
     expect(onViewModeChange).toHaveBeenCalledWith('list');
+  });
+
+  it('keeps a view chosen when the current one is pressed again', () => {
+    const { onViewModeChange } = renderHeader();
+
+    fireEvent.click(screen.getByTestId('topics-grid-view'));
+
+    expect(onViewModeChange).not.toHaveBeenCalledWith('list');
+    expect(screen.getByTestId('topics-grid-view')).toHaveAttribute(
+      'aria-checked',
+      'true'
+    );
   });
 
   it('labels the collapse control in bold primary text, as the design does', () => {

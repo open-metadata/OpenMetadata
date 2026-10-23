@@ -10,24 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { borderAfter } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 
 /**
- * The design's segmented control, laid over core's `button-border` tabs: a
- * borderless gray track with the chosen option raised on it, every option
- * 12px semibold. Core has no such tab type yet, so the landing page carries it.
+ * The design's segmented view switch, laid over core's ButtonGroup: a
+ * borderless gray track with the chosen view raised on it. The joined-edge
+ * group look is undone so the options sit apart on the track.
+ *
+ * `bg-raised` keeps the chosen view lighter than the track in dark mode too,
+ * where `bg-tertiary` is gray-800.
  */
-export const SEGMENTED_TAB_LIST_CLASSES = 'tw:bg-tertiary tw:outline-0';
+export const SEGMENTED_GROUP_CLASSES =
+  'tw:gap-1 tw:space-x-0 tw:rounded-[10px] tw:bg-tertiary tw:p-1 tw:shadow-none';
 
-export const getSegmentedTabClasses = ({
-  isSelected,
-}: {
-  isSelected: boolean;
-}) =>
+export const getSegmentedItemClasses = (isSelected: boolean) =>
   classNames(
-    'tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-xs tw:font-semibold',
+    'tw:rounded-lg tw:px-3 tw:py-1.5 tw:shadow-none tw:first:rounded-lg tw:last:rounded-lg tw:not-last:pr-3',
     isSelected
-      ? `tw:bg-primary_alt tw:text-primary tw:shadow-xs ${borderAfter} tw:after:outline-secondary`
-      : 'tw:bg-transparent tw:text-tertiary tw:shadow-none tw:hover:text-secondary'
+      ? 'tw:bg-raised tw:text-primary tw:shadow-xs tw:after:outline-secondary tw:hover:bg-raised tw:selected:bg-raised'
+      : 'tw:bg-transparent tw:text-tertiary tw:after:outline-transparent tw:hover:bg-transparent tw:hover:text-secondary'
   );

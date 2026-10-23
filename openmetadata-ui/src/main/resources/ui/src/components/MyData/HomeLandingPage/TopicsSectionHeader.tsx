@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  getSegmentedTabClasses,
-  SEGMENTED_TAB_LIST_CLASSES,
+  getSegmentedItemClasses,
+  SEGMENTED_GROUP_CLASSES,
 } from './TopicsSectionHeader.constants';
 import {
   CollapseAllIcon,
@@ -74,44 +79,45 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
           color="secondary"
           data-testid="toggle-all-widgets"
           iconLeading={
-            <CollapseAllIcon className="tw:size-3.5 tw:text-fg-primary" />
+            <CollapseAllIcon className="tw:size-3.5 tw:text-fg-primary tw:group-disabled:text-fg-disabled" />
           }
           isDisabled={isToggleAllDisabled}
           size="md"
           onPress={onToggleAll}>
-          <span className="tw:ml-1 tw:font-semibold tw:text-primary">
+          <span className="tw:ml-1 tw:font-semibold tw:text-primary tw:group-disabled:text-fg-disabled">
             {t(
               isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
             )}
           </span>
         </Button>
 
-        {/* The view has no panel of its own, so the tabs only carry the
-          selection. */}
-        <Tabs
-          selectedKey={viewMode}
-          onSelectionChange={(key) => onViewModeChange(key as TopicsViewMode)}>
-          <Tabs.List
-            aria-label={t('label.view')}
-            className={SEGMENTED_TAB_LIST_CLASSES}
-            size="sm"
-            type="button-border">
-            <Tabs.Item
-              aria-label={t('label.list')}
-              className={getSegmentedTabClasses}
-              data-testid="topics-list-view"
-              id="list">
-              <ListViewIcon className="tw:size-4" />
-            </Tabs.Item>
-            <Tabs.Item
-              aria-label={t('label.grid')}
-              className={getSegmentedTabClasses}
-              data-testid="topics-grid-view"
-              id="grid">
-              <GridViewIcon className="tw:size-4" />
-            </Tabs.Item>
-          </Tabs.List>
-        </Tabs>
+        <ButtonGroup
+          disallowEmptySelection
+          aria-label={t('label.view')}
+          className={SEGMENTED_GROUP_CLASSES}
+          selectedKeys={[viewMode]}
+          size="sm"
+          onSelectionChange={(keys) => {
+            const [selected] = [...keys] as TopicsViewMode[];
+            if (selected) {
+              onViewModeChange(selected);
+            }
+          }}>
+          <ButtonGroupItem
+            aria-label={t('label.list')}
+            className={getSegmentedItemClasses(viewMode === 'list')}
+            data-testid="topics-list-view"
+            id="list">
+            <ListViewIcon className="tw:size-4" />
+          </ButtonGroupItem>
+          <ButtonGroupItem
+            aria-label={t('label.grid')}
+            className={getSegmentedItemClasses(viewMode === 'grid')}
+            data-testid="topics-grid-view"
+            id="grid">
+            <GridViewIcon className="tw:size-4" />
+          </ButtonGroupItem>
+        </ButtonGroup>
 
         {onCustomize && (
           <Button

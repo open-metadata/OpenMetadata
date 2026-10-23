@@ -144,7 +144,6 @@ const TopicFilterChips: React.FC<TopicFilterChipsProps> = ({
                 tone.dot
               )}
             />
-            {/* The count sits closer to its label than the label to the dot. */}
             <span className="tw:flex tw:items-baseline tw:gap-1 tw:text-xs">
               <span className="tw:text-text-secondary">{chip.label}</span>
               <span

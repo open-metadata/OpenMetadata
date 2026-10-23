@@ -171,7 +171,6 @@ describe('MyTasksWidget', () => {
     expect(rowIds()).toEqual(['my-task-row-2']);
   });
 
-  // The design drops the "x of y loaded" strip between the chips and the rows.
   it('opens the rows straight under the chips, with no select-all strip', () => {
     renderWidget();
 
@@ -179,17 +178,22 @@ describe('MyTasksWidget', () => {
     expect(screen.queryByTestId('my-tasks-showing')).not.toBeInTheDocument();
   });
 
-  // Categories are counted over the loaded page: "Access 1" alone would read
-  // as every access request when 22 more tasks were never loaded.
-  it('keeps the page limit in the footer while a category is selected', () => {
+  // The chips are counted over the loaded page: "Incidents 1" alone would read
+  // as every incident when 22 more tasks were never loaded.
+  it('says how much of the total the page holds, under every chip', () => {
     renderWidget();
 
-    expect(screen.queryByTestId('my-tasks-page-limit')).not.toBeInTheDocument();
+    const pageLimit =
+      'label.loaded-x-of-y-entity {"entity":"label.task-plural","loaded":3,"total":25}';
+
+    expect(screen.getByTestId('my-tasks-page-limit')).toHaveTextContent(
+      pageLimit
+    );
 
     fireEvent.click(screen.getByTestId('my-tasks-filter-access'));
 
     expect(screen.getByTestId('my-tasks-page-limit')).toHaveTextContent(
-      'label.loaded-x-of-y-entity {"entity":"label.task-plural","loaded":3,"total":25}'
+      pageLimit
     );
   });
 

@@ -1,9 +1,9 @@
 # The My Tasks and Pipeline Status cards read one page, and say so where it shows
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-10-23 (the My Tasks notice moves to the card footer)
 - **Deciders:** Landing page owners
-- **Guard:** `useMyTasks.test.tsx`, `MyTasksWidget.test.tsx` ("Showing N of M"), `usePipelineStatus.test.tsx`
+- **Guard:** `useMyTasks.test.tsx`, `MyTasksWidget.test.tsx` ("says how much of the total the page holds, under every chip"), `usePipelineStatus.test.tsx`
 - **Related:** ADR:2026-10-16-landing-overview-cards-match-the-pages-they-open
 
 ## Context
@@ -18,8 +18,10 @@ requires a time window.
 
 - **My Tasks** reads one page of `MY_TASKS_PAGE_SIZE = 100` open tasks from `/tasks/assigned`.
   "All" is the server's total; the Incidents, Access and Approvals chips and the incident headline
-  are counted over that page. When the total exceeds the page, the card says "Showing N of M", so
-  a bucket count that covers only the loaded tasks is never presented as the whole.
+  are counted over that page. When the total exceeds the page, the card's footer says "Loaded N of
+  M tasks" under every chip, so a bucket count that covers only the loaded tasks is never presented
+  as the whole. (v2: this replaces the "N of M loaded" strip above the rows, which the design review
+  removed along with its select-all checkbox.)
 - **Pipeline Status** chip counts are the server's per-bucket totals (one request per state). Only
   the rows are capped — `PIPELINE_STATUS_PAGE_SIZE = 10` per bucket — and runs are read from the
   last `PIPELINE_RUN_WINDOW_DAYS = 30` days, enough for ten runs of anything scheduled at least
