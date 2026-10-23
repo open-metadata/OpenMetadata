@@ -76,11 +76,11 @@ const LineagePreviewCard = ({
     size="sm">
     <Card.Content>
       <Box direction="col">
-        <Typography className="tw:text-tertiary" size="text-xs">
+        <Typography color="secondary" size="text-xs">
           {label}
         </Typography>
         <Typography
-          className={name ? 'tw:text-primary' : 'tw:text-placeholder'}
+          color={name ? undefined : 'secondary'}
           ellipsis={Boolean(name)}
           size="text-sm"
           weight="medium">
@@ -426,7 +426,8 @@ const AddLineagePopover = ({
               <CloseButton size="sm" onClick={close} />
             </Box>
             <Typography
-              className="tw:mt-1 tw:block tw:text-tertiary"
+              className="tw:mt-1 tw:block"
+              color="secondary"
               size="text-sm">
               {t(
                 isUpstream

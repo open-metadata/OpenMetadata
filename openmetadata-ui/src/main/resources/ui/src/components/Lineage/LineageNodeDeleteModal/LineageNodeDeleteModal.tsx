@@ -71,7 +71,7 @@ const LineageNodeDeleteModal = ({
             </Typography>
           </Dialog.Header>
           <Dialog.Content>
-            <Typography className="tw:text-tertiary" size="text-sm">
+            <Typography color="secondary" size="text-sm">
               {t('message.remove-lineage-node', { entity: nodeName })}
             </Typography>
           </Dialog.Content>

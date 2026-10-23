@@ -354,6 +354,21 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 export const LINEAGE_NODE_DARK_CLASS =
   'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
 
+/**
+ * The base node's own fill is a gradient layer, which would sit above the
+ * background-color that the selected and failed-quality states set, so it is
+ * painted only when no state supplies a fill.
+ */
+export const hasBaseNodeFill = ({
+  isBaseNode,
+  isSelected,
+  showDqTracing,
+}: {
+  isBaseNode: boolean;
+  isSelected: boolean;
+  showDqTracing: boolean;
+}) => isBaseNode && !isSelected && !showDqTracing;
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,
@@ -374,7 +389,12 @@ export function getNodeClassNames({
     {
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
-      [`lineage-base-node ${BASE_NODE_FILL_CLASS}`]: isBaseNode,
+      'lineage-base-node': isBaseNode,
+      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({
+        isBaseNode,
+        isSelected,
+        showDqTracing,
+      }),
       'columns-expanded': isChildrenListExpanded,
     }
   );

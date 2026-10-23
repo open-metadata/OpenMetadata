@@ -53,7 +53,7 @@ export const TeamPopoverContent = React.memo(
             markdown={team.description}
           />
         ) : (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          <Typography as="span" color="secondary" size="text-xs">
             {t('label.no-description')}
           </Typography>
         )}

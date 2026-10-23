@@ -503,7 +503,7 @@ const EdgeInfoDrawer = ({
                 triggerClassName="tw:flex tw:items-center tw:gap-2">
                 <GitMerge className="tw:size-5 tw:shrink-0" />
                 <Typography
-                  className="tw:block tw:text-primary"
+                  className="tw:block"
                   data-testid="edge-header-title"
                   size="text-lg"
                   weight="semibold">

@@ -42,6 +42,7 @@ import {
   getCollapseHandle,
   getExpandHandle,
   getNodeClassNames,
+  hasBaseNodeFill,
 } from './CustomNode.utils';
 import {
   ExpandCollapseHandlesProps,
@@ -276,6 +277,14 @@ const CustomNodeV1 = (props: NodeProps) => {
     [isDQEnabled, dataQualityLineage, id]
   );
 
+  const badgeClass = classNames('lineage-node-badge-container', {
+    [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({
+      isBaseNode: isRootNode,
+      isSelected,
+      showDqTracing: Boolean(showDqTracing),
+    }),
+  });
+
   const containerClass = classNames(
     getNodeClassNames({
       isSelected,
@@ -462,7 +471,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       data-testid={`lineage-node-${fullyQualifiedName}`}
       style={{ width: nodeWidth }}>
       {isRootNode && (
-        <div className={`lineage-node-badge-container ${BASE_NODE_FILL_CLASS}`}>
+        <div className={badgeClass}>
           <div className="lineage-node-badge" />
         </div>
       )}
