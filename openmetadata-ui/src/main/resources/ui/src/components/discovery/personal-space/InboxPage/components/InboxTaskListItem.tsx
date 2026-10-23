@@ -21,8 +21,7 @@ import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
-import ClampedText from './ClampedText';
-import TaskTitleEntityBadge from './TaskTitleEntityBadge';
+import TaskTitle from './TaskTitle';
 import TaskTypeIcon from './TaskTypeIcon';
 
 export interface InboxTaskListItemProps {
@@ -128,15 +127,14 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
       <TaskTypeIcon badge={getTaskTypeBadge(task, t)} />
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
         {taskTitle && (
-          <ClampedText text={taskTitle}>
+          <TaskTitle entityType={entityType} size="text-sm" text={taskTitle}>
             <Typography
               className="tw:text-primary"
               size="text-sm"
               weight="medium">
               {taskTitle}
             </Typography>
-            <TaskTitleEntityBadge entityType={entityType} />
-          </ClampedText>
+          </TaskTitle>
         )}
         <TaskCardMeta task={task} />
       </Box>

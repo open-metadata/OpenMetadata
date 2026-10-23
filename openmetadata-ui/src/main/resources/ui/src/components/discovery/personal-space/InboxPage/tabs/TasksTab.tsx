@@ -341,7 +341,6 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <Typography className="tw:text-tertiary" size="text-xs">
             {group.count}
           </Typography>
-          <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
         </Box>
         {group.items.map(renderRow)}
       </Box>
@@ -629,10 +628,10 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // refocus. The home page's My Tasks card caches the same open tasks, so a
   // return home within its TTL would still offer actions on a resolved one.
   const syncOpenTaskReaders = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(

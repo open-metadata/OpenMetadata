@@ -4006,6 +4006,7 @@
     "alert-not-found-description": "Não foi possível encontrar este alerta. Pode ter sido eliminado ou mudado de nome.",
     "alert-pick-a-trigger-description": "Escolha o que monitorizar — resultados de testes, estado dos pipelines, alterações a ativos específicos.",
     "alert-recent-events-description": "Lista de eventos de alerta recentes ativados para o alerta {{alertName}}.",
+    "alert-rules-read-only": "Estes filtros e acionadores não foram criados neste formulário, pelo que não podem ser editados aqui. As restantes alterações são guardadas sem os afetar.",
     "alert-stay-ahead-description": "A sua equipa fica a saber dos problemas nas ferramentas que usa — antes de os stakeholders repararem.",
     "alert-synced-successfully": "Alerta sincronizado com sucesso",
     "alerts-description": "Mantenha-se atualizado com alertas oportunos usando webhooks.",

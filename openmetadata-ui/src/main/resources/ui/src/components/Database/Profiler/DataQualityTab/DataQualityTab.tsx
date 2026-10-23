@@ -935,14 +935,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
         gap={3}
         wrap="wrap">
-        <Box>
+        <Box align="center" gap={2}>
           <Typography size="text-sm">
             {t('label.bundle-test-case-selected-count', {
               count: selectedTestCases.length,
             })}
           </Typography>
           <Button
-            className="tw:ml-2"
             color="tertiary"
             data-testid="bulk-clear-test-case-selection"
             size="sm"

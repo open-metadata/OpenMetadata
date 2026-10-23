@@ -4006,6 +4006,7 @@
     "alert-not-found-description": "Cette alerte est introuvable. Elle a peut-être été supprimée ou renommée.",
     "alert-pick-a-trigger-description": "Choisissez ce qu'il faut surveiller — résultats de tests, statut des pipelines, modifications d'actifs spécifiques.",
     "alert-recent-events-description": "Liste des événements d'alerte récents déclenchés pour l'alerte {{alertName}}.",
+    "alert-rules-read-only": "Ces filtres et déclencheurs n'ont pas été créés dans ce formulaire et ne peuvent donc pas être modifiés ici. Les autres modifications sont enregistrées sans les affecter.",
     "alert-stay-ahead-description": "Votre équipe est informée des problèmes dans ses propres outils — avant même que les parties prenantes ne les remarquent.",
     "alert-synced-successfully": "Alerta sincronizada exitosamente",
     "alerts-description": "Rester informé avec des alertes en temps réel à l'aide de webhooks.",

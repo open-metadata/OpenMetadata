@@ -152,6 +152,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Explore/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntitySummaryPanelUtils*",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
       ],
       "projects": [
@@ -822,6 +823,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/MetricEntityUtils/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useGridEditController.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EntityImport/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
@@ -837,6 +840,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/BulkEditTableGridInteractions.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts"
       ]

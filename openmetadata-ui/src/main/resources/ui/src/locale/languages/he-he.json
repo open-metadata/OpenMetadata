@@ -4006,6 +4006,7 @@
     "alert-not-found-description": "לא ניתן היה למצוא את ההתראה הזו. ייתכן שהיא נמחקה או ששמה שונה.",
     "alert-pick-a-trigger-description": "בחרו על מה לעקוב — תוצאות בדיקות, סטטוס Pipeline, שינויים בנכסים מסוימים.",
     "alert-recent-events-description": "רשימת אירועי התראה אחרונים שהופעלו עבור ההתראה {{alertName}}.",
+    "alert-rules-read-only": "מסננים וטריגרים אלה לא נוצרו בטופס זה, ולכן לא ניתן לערוך אותם כאן. שינויים אחרים נשמרים מבלי להשפיע עליהם.",
     "alert-stay-ahead-description": "הצוות שלכם שומע על תקלות בכלים שלו עצמו — לפני שבעלי העניין שמים לב.",
     "alert-synced-successfully": "ההתראה סונכרנה בהצלחה",
     "alerts-description": "הישאר עם התראות מזמינות באמצעות webhooks.",

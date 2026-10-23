@@ -81,14 +81,13 @@ import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
-import ClampedText from './ClampedText';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
 import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
-import TaskTitleEntityBadge from './TaskTitleEntityBadge';
+import TaskTitle from './TaskTitle';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -743,12 +742,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Two lines, the full title in a tooltip when clamped; see ClampedText for
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <ClampedText text={titleText}>
+    <TaskTitle entityType={titleEntityType} size="text-md" text={titleText}>
       <Typography size="text-md" weight="medium">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
-      <TaskTitleEntityBadge entityType={titleEntityType} />
-    </ClampedText>
+    </TaskTitle>
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {

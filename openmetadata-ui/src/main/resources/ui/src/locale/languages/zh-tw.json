@@ -4006,6 +4006,7 @@
     "alert-not-found-description": "找不到此警示，它可能已被刪除或重新命名。",
     "alert-pick-a-trigger-description": "選擇要監控的項目 — 測試結果、管道狀態，或特定資產的變更。",
     "alert-recent-events-description": "為警示 {{alertName}} 觸發的最近警示事件清單。",
+    "alert-rules-read-only": "這些篩選器和觸發器不是在此表單中建立的，因此無法在此處編輯。其他變更的儲存不會影響它們。",
     "alert-stay-ahead-description": "讓您的團隊在其慣用的工具中率先得知問題 — 早在利害關係人察覺之前。",
     "alert-synced-successfully": "警示同步成功",
     "alerts-description": "使用 webhook 及時獲取最新警示。",
