@@ -57,9 +57,18 @@ const chooseFile = (page: Page, name: string, content: string) =>
 const createFixture = async (name: string) => {
   const api = await getWorkerAdminAPIContext();
   const namespace = `https://example.org/${name}/`;
+  const reviewer = await okJson<{ id: string }>(
+    await api.get('/api/v1/users/loggedInUser'),
+    'Read native import reviewer'
+  );
   const ontology = await okJson<Ontology>(
     await api.post('/api/v1/ontologies', {
-      data: { name, iri: `https://example.org/${name}`, namespace },
+      data: {
+        name,
+        iri: `https://example.org/${name}`,
+        namespace,
+        reviewers: [{ id: reviewer.id, type: 'user' }],
+      },
     }),
     'Create native import fixture'
   );
@@ -81,6 +90,9 @@ test.describe(
 
       try {
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
+        await expect(
+          page.getByTestId('ontology-publication-trigger')
+        ).toContainText('(1)');
         await openImportTab(page);
         await chooseFile(page, 'customer.ttl', CUSTOMER_RDF_XML(namespace));
         await expect(
@@ -113,7 +125,7 @@ test.describe(
         expect((await applied).status()).toBe(200);
         await expect(
           page.getByTestId('ontology-publication-trigger')
-        ).toContainText('(2)');
+        ).toContainText('(3)');
 
         await page.getByTestId('ontology-publication-trigger').click();
         await expect(
