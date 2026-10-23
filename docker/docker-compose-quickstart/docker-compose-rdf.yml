@@ -92,7 +92,7 @@ services:
     container_name: openmetadata_fuseki
     # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
     # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
-    image: openmetadata/fuseki:6.2.0-600514c
+    image: openmetadata/fuseki:6.2.0-c75b095
     restart: always
     environment:
       # The image's environment contract, set as OpenMetadata needs it: the serving dataset and

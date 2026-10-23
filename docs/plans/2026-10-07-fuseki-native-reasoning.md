@@ -539,7 +539,7 @@ The published image `openmetadata/fuseki` is built in the
 All reasoning code and packaging below goes on the release branch, next to the existing extension,
 and is carried forward when a new release branch is cut. The published image is OpenMetadata's
 image of record (ADR:2026-10-14-fuseki-image-of-record): integration tests, Compose files and the
-Kubernetes example run the pinned `openmetadata/fuseki:6.2.0-600514c` with the environment
+Kubernetes example run the pinned `openmetadata/fuseki:6.2.0-c75b095` with the environment
 OpenMetadata needs, and this repository's former `docker/rdf-store/` build is retired.
 
 ### Image layout

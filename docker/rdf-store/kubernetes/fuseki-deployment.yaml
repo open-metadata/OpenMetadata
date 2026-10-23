@@ -59,7 +59,7 @@ spec:
       containers:
         - name: fuseki
           # The published image of record, pinned to its immutable <version>-<commit> tag.
-          image: openmetadata/fuseki:6.2.0-600514c
+          image: openmetadata/fuseki:6.2.0-c75b095
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3030

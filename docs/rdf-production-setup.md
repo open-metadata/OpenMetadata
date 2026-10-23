@@ -13,7 +13,7 @@ resource peaks, cancellation, and restart persistence against a specified catalo
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
-(today `6.2.0-600514c`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+(today `6.2.0-c75b095`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
 environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
 - **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,

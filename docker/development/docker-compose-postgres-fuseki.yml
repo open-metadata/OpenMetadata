@@ -608,7 +608,7 @@ services:
   fuseki:
     # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
     # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
-    image: openmetadata/fuseki:6.2.0-600514c
+    image: openmetadata/fuseki:6.2.0-c75b095
     container_name: openmetadata-fuseki
     hostname: fuseki
     ports:
