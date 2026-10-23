@@ -66,7 +66,6 @@ import {
   PROFILE_NAV_GROUP_LABEL,
   PROFILE_NAV_GROUP_ORDER,
   PROFILE_NAV_ITEMS,
-  WORKSPACE_NAV_ITEMS,
 } from './profileNavConfig';
 
 describe('profileNavConfig', () => {
@@ -150,17 +149,32 @@ describe('profileNavConfig', () => {
     );
   });
 
-  it('keeps Applications and Custom Properties to admins, as classic does', () => {
-    const items = [...FEATURES_NAV_ITEMS, ...WORKSPACE_NAV_ITEMS];
+  it('keeps Applications to admins, as classic does', () => {
     const viewAll = { all: { ViewAll: true } } as unknown as UIPermission;
+    const item = FEATURES_NAV_ITEMS.find(
+      (navItem) => navItem.id === 'applications'
+    );
 
-    for (const id of ['applications', 'custom-properties']) {
-      const item = items.find((navItem) => navItem.id === id);
-
-      expect(item?.isVisible?.(viewAll, false)).toBeFalsy();
-      expect(item?.isVisible?.({} as UIPermission, true)).toBe(true);
-    }
+    expect(item?.isVisible?.(viewAll, false)).toBeFalsy();
+    expect(item?.isVisible?.({} as UIPermission, true)).toBe(true);
   });
+
+  it.each([
+    [{ type: { ViewAll: true } }, true],
+    [{ table: { ViewAll: true } }, false],
+  ])(
+    'shows Custom Properties to a non-admin by type view permission (%j)',
+    (permissions, visible) => {
+      expect(
+        Boolean(
+          getProfileNavItem('custom-properties').isVisible?.(
+            permissions as unknown as UIPermission,
+            false
+          )
+        )
+      ).toBe(visible);
+    }
+  );
 
   // The settings surfaces behind these tabs are admin-only, whatever view
   // permissions a non-admin holds (ADR:2026-10-21-settings-pages-are-classic-only).

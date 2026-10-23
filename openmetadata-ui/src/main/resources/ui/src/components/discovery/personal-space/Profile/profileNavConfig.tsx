@@ -278,8 +278,8 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
     icon: Settings02 as FC<{ className?: string }>,
-    // Classic shows every custom property settings card to admins only.
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    isVisible: (permissions) =>
+      userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <CustomPropertiesPanel onHeaderChange={onHeaderChange} />
