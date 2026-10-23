@@ -1185,6 +1185,14 @@
       ]
     },
     {
+      "_comment": "The AI-mode bundle test suite page and its test case search. TestSuiteDetailsPage.spec.ts runs the suite search in Classic and AI mode; the generated map reaches only the shared classic components it renders.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestSuiteDetail/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"]
+    },
+    {
       "_comment": "The AI-mode test case Run now / Retry controls. Only the AI-mode detail page and the run execution error banner render them, so the generated map does not reach them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/RunTestCaseButton/**"
