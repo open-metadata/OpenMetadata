@@ -22,6 +22,9 @@ import type { User } from '../generated/entity/teams/user';
 import type { CreateEventSubscription } from '../generated/events/api/createEventSubscription';
 import {
   SubscriptionCategory,
+  type AlertFilteringInput,
+  type ArgumentsInput,
+  type EventFilterRule,
   type EventSubscription,
 } from '../generated/events/eventSubscription';
 import { searchContracts } from '../rest/contractAPI';
@@ -90,6 +93,49 @@ const searchDataContractNames: NameSearch = async (searchText) => {
 
     return [];
   }
+};
+
+/**
+ * Converts the legacy `filteringRules.rules`/`actions` shape — `EventFilterRule[]`, where each
+ * rule's `arguments` are argument names — into the modern `input` selections (`ArgumentsInput[]`)
+ * the AI alert form edits. Each rule's name, effect and prefix condition are preserved, and its
+ * arguments are carried by name. The argument *values* of a hand-written rule live only in its SpEL
+ * `condition`, which the selection-based form cannot represent; carrying the names is enough to
+ * list a saved rule instead of hiding it, so a saved alert never shows its rules blank.
+ */
+const rulesToArgumentsInput = (rules?: EventFilterRule[]): ArgumentsInput[] =>
+  (rules ?? []).map((rule) => ({
+    arguments: rule.arguments?.map((argumentName) => ({ name: argumentName })),
+    effect: rule.effect,
+    name: rule.name,
+    prefixCondition: rule.prefixCondition,
+  }));
+
+/**
+ * Returns the `input` the AI alert form should display and submit. A modern alert already carries
+ * its selections in `input`. A legacy alert whose rules live only in `filteringRules.rules`/`actions`
+ * with no `input` — the backend's `WrittenByHand` classification, still evaluated at runtime — is
+ * seeded from that legacy shape so the form shows its saved rules and submits them intentionally,
+ * instead of hiding them and silently deleting them on save. This mirrors the existing
+ * `filteringRules.resources` fallback the Sources section already relies on.
+ */
+const getAlertInputForForm = (
+  alert: Pick<EventSubscription, 'input' | 'filteringRules'>
+): AlertFilteringInput | undefined => {
+  if (alert.input) {
+    return alert.input;
+  }
+  const rules = alert.filteringRules?.rules;
+  const actions = alert.filteringRules?.actions;
+
+  if (!rules?.length && !actions?.length) {
+    return undefined;
+  }
+
+  return {
+    filters: rulesToArgumentsInput(rules),
+    actions: rulesToArgumentsInput(actions),
+  };
 };
 
 class AlertsClassBase {
@@ -276,8 +322,14 @@ class AlertsClassBase {
   public getModifiedAlertDataForForm(
     alertData: EventSubscription
   ): ModifiedEventSubscription {
+    // Seed `input` from the legacy `filteringRules` shape when it is absent, so a saved
+    // WrittenByHand alert's rules/actions are shown in view mode and editable in the drawer —
+    // and so a save carries them in `input` instead of the backend recompiling them away.
+    const input = getAlertInputForForm(alertData);
+
     return {
       ...alertData,
+      ...(input ? { input } : {}),
       timeout: alertData.destinations[0].timeout ?? 10,
       readTimeout:
         alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
