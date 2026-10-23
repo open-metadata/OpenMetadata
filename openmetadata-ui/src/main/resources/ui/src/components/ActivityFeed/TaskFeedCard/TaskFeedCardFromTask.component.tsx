@@ -208,7 +208,7 @@ const TaskFeedCardFromTask = ({
             color="link-color"
             data-testid="redirect-task-button-link"
             tooltip={`#${taskDisplayId} ${t(
-              TASK_ENTITY_TYPES[task.type] ?? 'label.task'
+              getTaskTypeMessageKey(task) ?? 'label.task'
             )} ${getNameFromFQN(entityFQN)} (${entityType})`}
             onClick={handleTaskLinkClick}>
             <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
