@@ -21,3 +21,6 @@ export const BASE_NODE_FILL_CLASS =
 
 /** Column panel fill: secondary in light, the node's own raised fill in dark. */
 export const NODE_INSET_FILL_CLASS = 'tw:bg-secondary tw:dark:bg-raised';
+
+/** The base node's brand fill washes out the gray link title; use primary. */
+export const BASE_NODE_TITLE_CLASS = 'tw:text-primary tw:hover:text-primary';

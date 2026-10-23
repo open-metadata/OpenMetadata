@@ -37,7 +37,10 @@ import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext
 import { isContainerSceneNode } from '../../Lineage/LineageMap/LineageMap.utils';
 import LineageNodeMenu from '../../Lineage/LineageNodeMenu/LineageNodeMenu';
 import './custom-node.less';
-import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
+import {
+  BASE_NODE_FILL_CLASS,
+  BASE_NODE_TITLE_CLASS,
+} from './CustomNode.constants';
 import {
   getCollapseHandle,
   getExpandHandle,
@@ -374,6 +377,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         isChildrenListExpanded={columnsExpanded}
         isOnlyShowColumnsWithLineageFilterActive={showColumnsWithLineageOnly}
         node={node}
+        titleClassName={isRootNode ? BASE_NODE_TITLE_CLASS : undefined}
         toggleColumnsList={toggleColumnsExpanded}
         toggleOnlyShowColumnsWithLineageFilterActive={
           toggleShowColumnsWithLineageOnly

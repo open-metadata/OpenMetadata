@@ -279,7 +279,8 @@
         }
 
         .entity-label-container {
-          padding: var(--om-space-8) var(--om-space-16) 0 var(--om-space-16);
+          padding: calc(var(--tw-spacing) * 3) var(--om-space-16) 0
+            var(--om-space-16);
 
           .entity-service-icon svg {
             height: 32px;
@@ -670,10 +671,6 @@
       }
     }
   }
-
-  .lineage-node-content {
-    margin-top: var(--om-space-10);
-  }
 }
 
 .react-flow__node-default,
@@ -683,7 +680,9 @@
   padding: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  background-color: var(--tw-background-color-raised) !important;
+  // The node inside draws the fill and the rounded corners; a filled wrapper
+  // shows its own square corners behind them.
+  background-color: transparent !important;
 }
 
 .react-flow__node-load-more {
