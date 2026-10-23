@@ -150,7 +150,9 @@ const LinkedAssetCard: FC<{
         align="center"
         className="tw:flex-1 tw:min-w-0 tw:gap-2.5"
         justify="between">
-        <div className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight">
+        <Box
+          className="tw:min-w-0 tw:flex-1 tw:pr-2 tw:[&_.prose]:leading-tight"
+          direction="col">
           <Typography
             ellipsis
             className="tw:leading-tight"
@@ -164,7 +166,7 @@ const LinkedAssetCard: FC<{
             size="text-xs">
             {asset.reference?.fullyQualifiedName ?? ''}
           </Typography>
-        </div>
+        </Box>
         <div className="tw:flex tw:items-center tw:gap-2.5 tw:shrink-0">
           {asset.reference?.type && (
             <Badge
@@ -1258,6 +1260,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                 {memoryToEdit && (
                   <MemoryDerivedTerm
+                    isViewOnly={isViewOnly}
                     memory={memoryToEdit}
                     onNavigate={handleClose}
                   />

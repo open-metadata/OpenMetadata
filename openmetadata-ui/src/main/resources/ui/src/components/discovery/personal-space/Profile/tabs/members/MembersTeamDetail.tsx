@@ -177,7 +177,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { showModal } = useEntityExportModalProvider();
   const { currentUser } = useApplicationStore();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
-  const { goTo } = useSettingsHash();
+  const { goTo, state: hashState, updateParams } = useSettingsHash();
 
   const [team, setTeam] = useState<Team>();
   const [childTeams, setChildTeams] = useState<Team[]>([]);
@@ -1049,6 +1049,23 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   pluginTabKeysRef.current = pluginTabs.map((tab) => tab.key);
 
+  // `#members/teams/<fqn>?activeTab=<key>` (`getSettingsLink(getTeamsWithFqnPath(fqn, {
+  // activeTab }))`) opens on that tab once it exists: built-in tabs follow the
+  // team type, contributed ones register after mount. Applied once per request
+  // so later tab clicks are not pulled back to it.
+  const requestedTab = hashState.params.activeTab;
+  const appliedTabRef = useRef<string>();
+  useEffect(() => {
+    if (
+      requestedTab &&
+      requestedTab !== appliedTabRef.current &&
+      allTabKeys.includes(requestedTab)
+    ) {
+      appliedTabRef.current = requestedTab;
+      setActiveTab(requestedTab);
+    }
+  }, [requestedTab, allTabKeys]);
+
   const filteredChildTeams = useMemo(() => {
     if (!searchTerm) {
       return childTeams;
@@ -1364,11 +1381,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
             height and scroll. `min-h-0` keeps the flex parent from growing. */}
         <div className="tw:flex-1 tw:min-h-0 tw:w-full tw:overflow-y-auto tw:py-4">
           <TableCard.Root
-            className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+            className="tw:rounded-xl tw:shadow-none"
             size="compact">
             <Tabs
               selectedKey={activeTab}
-              onSelectionChange={(key: Key) => setActiveTab(String(key))}>
+              onSelectionChange={(key: Key) => {
+                setActiveTab(String(key));
+                // Record the tab in the hash, so a later link to another tab of
+                // this team changes the hash and is applied, as is Back/Forward.
+                updateParams({ activeTab: String(key) });
+              }}>
               {/* -mb-px lays the tab underline over the row border so the divider
                   also runs under the actions. */}
               <Box

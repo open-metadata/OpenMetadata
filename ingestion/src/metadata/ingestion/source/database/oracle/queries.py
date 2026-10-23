@@ -36,9 +36,7 @@ SELECT
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
 UNION ALL
 SELECT
     LOWER(m.mview_name) AS "view_name",
@@ -49,9 +47,7 @@ SELECT
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
 
@@ -78,9 +74,7 @@ SELECT
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
 UNION ALL
 SELECT
     m.mview_name AS "view_name",
@@ -91,9 +85,7 @@ SELECT
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
 
@@ -108,17 +100,14 @@ ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES = textwrap.dedent(
     """
 SELECT v.owner AS "owner", v.view_name AS "name", 'VIEW' AS "object_type"
 FROM {prefix}_VIEWS v
-JOIN {prefix}_USERS u
-    ON v.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE v.owner = :owner
 UNION ALL
 SELECT m.owner AS "owner", m.mview_name AS "name", 'MATERIALIZED_VIEW' AS "object_type"
 FROM {prefix}_MVIEWS m
-JOIN {prefix}_USERS u
-    ON m.owner = u.username
-WHERE u.oracle_maintained = 'N'
+WHERE m.owner = :owner
 """
 )
+
 
 # Per-view read of the LONG text. Fetching a single row is not an array fetch,
 # so it does not hit the ORA-01406 truncation, and it needs no privileges beyond

@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 import test, { APIRequestContext, expect, Page } from '@playwright/test';
-import { Glossary } from '../../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import {
-  createNewPage,
-  disableEtagConditionalReads,
-} from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
+import { createNewPage, disableEtagConditionalReads } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   excludeGlossaryFromApprovalWorkflow,
   includeGlossaryInApprovalWorkflow,
-} from '../../../utils/glossary';
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
+} from '../../utils/glossary';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',

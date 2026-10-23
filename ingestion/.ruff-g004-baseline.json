@@ -814,7 +814,6 @@
       "0e4b67846d6ac21cf22779e353a9e73ebc238ee498280288713aff6233ef2c37": 1,
       "0ef37f6a373e1f3046ed8a57b9a4f97ac7d50bf34118652f1146972cab352aad": 1,
       "111208f15725b7c11da73fa79b79ac700f226ca75a6be084970979f0bab892e7": 1,
-      "117a855d14d12d4d1df17a2544401c9083e205857d6c9a68ed406253d91517c1": 1,
       "2125d7c0c4ef351acee029c9b05a234ebe2648391ddda2d983c833d13ebb306a": 1,
       "2261d340e66f83f00204f2446fd9e65f832b9bfd24e1367c870e84eca42f32ef": 1,
       "252f9e4b0bbb4de43419136bb26e4a89951fa8c986a52e5d8499c0babb4884a5": 1,
@@ -1418,11 +1417,6 @@
     },
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {
       "928513e7aa27d5d37cff0d421a2e922fe584511d1d93de62feaae334043edf66": 1
-    },
-    "ingestion/src/metadata/ingestion/source/database/oracle/utils.py": {
-      "a0b688a553eba79b874b78b582542b972ba3784daa47530774f096c4aab2c7c4": 1,
-      "ddec48d112f126917f6d09e292a05c817a6a59e766fd20f1a35ff8d10e5b82cd": 1,
-      "e115e333945dda291258a24521ea9fd9a5580354577d3a2012951b897838fa78": 1
     },
     "ingestion/src/metadata/ingestion/source/database/postgres/lineage.py": {
       "70b0fd48c9a44a37c50e5e0908901463e649b4af9fac5a9708ad272e5aedee7c": 1,

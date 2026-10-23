@@ -112,7 +112,8 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
       className="tw:shrink-0 tw:gap-3 tw:px-4 tw:pt-4 tw:pb-3"
       data-testid="inbox-tasks-toolbar"
       direction="col">
-      {/* Each row wraps rather than spill into the detail pane when the list column is narrow. */}
+      {/* Wraps rather than pushing the menu past the column's edge once the
+          tab counts widen the tabs. */}
       <Box align="center" className="tw:justify-between tw:gap-2" wrap="wrap">
         {statusTabs}
         {/* A grouping always has a value, so it is a menu, not a filter whose

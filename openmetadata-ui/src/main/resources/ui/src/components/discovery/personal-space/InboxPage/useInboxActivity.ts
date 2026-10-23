@@ -125,17 +125,21 @@ export const fetchInboxActivity = async (
     endTs,
   });
 
-  // allSettled, not all: these two feed independent halves of the tab, and the
-  // conversation list is only the fallback shown when there is no activity.
-  // Failing the pair together let a single bad conversation request blank the
-  // activity list as well, which is how a 400 on `limit` emptied the whole tab.
+  // allSettled, not all: the conversation list is only the fallback shown when
+  // there is no activity, so a bad conversation request (a 400 on `limit` once
+  // emptied the whole tab) must not blank the activity. A failed activity
+  // request does fail the fetch: the conversations alone would read as the
+  // whole feed, with counts to match.
   const [activityRes, conversationRes] = await Promise.allSettled([
     activityRequest,
     conversationRequest,
   ]);
 
-  const activities =
-    activityRes.status === 'fulfilled' ? activityRes.value?.data ?? [] : [];
+  if (activityRes.status === 'rejected') {
+    throw activityRes.reason;
+  }
+
+  const activities = activityRes.value?.data ?? [];
   const threads =
     conversationRes.status === 'fulfilled'
       ? conversationRes.value.data ?? []
@@ -201,6 +205,8 @@ const inboxActivityQuery = (
 export interface UseInboxActivity extends InboxCount {
   items: InboxActivityItem[];
   isLoading: boolean;
+  error: unknown;
+  refetch: () => void;
 }
 
 /**
@@ -215,7 +221,7 @@ export const useInboxActivity = (
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     inboxActivityQuery(filter, userId, dateRange)
   );
 
@@ -246,6 +252,9 @@ export const useInboxActivity = (
     total: items.length,
     isCapped: data?.isCapped ?? false,
     isLoading,
+    // A failed background refresh keeps the cached feed on screen.
+    error: data ? null : error,
+    refetch,
   };
 };
 

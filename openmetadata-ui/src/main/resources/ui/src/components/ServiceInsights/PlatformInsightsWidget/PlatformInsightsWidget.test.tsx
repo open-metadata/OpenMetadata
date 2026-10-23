@@ -158,7 +158,12 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ variant: 'embedded' });
 
       expect(screen.getByText('85%')).toBeVisible();
-      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      // Truncated titles are tooltip triggers; only a collapse header carries aria-expanded.
+      expect(
+        screen
+          .queryAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-expanded'))
+      ).toHaveLength(0);
     });
 
     it('should render the export class for platform insights chart', () => {
@@ -388,22 +393,25 @@ describe('PlatformInsightsWidget', () => {
   });
 
   describe('CSS Classes and Styling', () => {
-    it('should apply correct container class for 5 charts (database services)', () => {
+    it('should size the grid to the container instead of a fixed column count', () => {
       renderComponent();
 
-      const colElement = document.querySelector('.other-charts-container');
+      const grid = document.querySelector('.other-charts-container');
 
-      expect(colElement).toBeInTheDocument();
-      expect(colElement).not.toHaveClass('four-chart-container');
+      expect(grid).toHaveClass(
+        'tw:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]'
+      );
     });
 
-    it('should apply correct container class for non-4 charts', () => {
-      const limitedChartsData = mockChartsData.slice(0, 2);
-      renderComponent({ chartsData: limitedChartsData });
+    it('should keep the day range outside the badge row', () => {
+      renderComponent();
 
-      const colElement = document.querySelector('.four-chart-container');
+      const badge = screen.getByText('5%').closest('.percent-change-tag');
 
-      expect(colElement).not.toBeInTheDocument();
+      expect(badge?.parentElement).toContainElement(screen.getByText('85%'));
+      expect(badge?.parentElement).not.toContainElement(
+        screen.getAllByText('label.in-last-number-of-days')[0]
+      );
     });
 
     it('should apply correct CSS classes to chart cards', () => {

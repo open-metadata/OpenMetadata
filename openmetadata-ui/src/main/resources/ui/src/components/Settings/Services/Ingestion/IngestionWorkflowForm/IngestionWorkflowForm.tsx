@@ -438,7 +438,7 @@ const IngestionWorkflowForm = forwardRef<
               className="layout-space layout-space-horizontal"
               gap={2}
               itemClassName="layout-space-item">
-              <Button color="link-color" onClick={onCancel}>
+              <Button color="secondary" onClick={onCancel}>
                 {cancelText ?? t('label.cancel')}
               </Button>
 

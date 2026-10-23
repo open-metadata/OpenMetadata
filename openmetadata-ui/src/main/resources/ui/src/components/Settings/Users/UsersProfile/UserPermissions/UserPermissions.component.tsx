@@ -48,6 +48,7 @@ import {
   getRoleWithFqnPath,
   getTeamsWithFqnPath,
 } from '../../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import './UserPermissions.style.less';
@@ -68,11 +69,11 @@ const UserPermissions: React.FC<UserPermissionsProps> = ({
   const getEntityLink = (entityType: string, fqn: string) => {
     switch (entityType) {
       case EntityType.POLICY:
-        return getPolicyWithFqnPath(fqn);
+        return getSettingsLink(getPolicyWithFqnPath(fqn));
       case EntityType.ROLE:
-        return getRoleWithFqnPath(fqn);
+        return getSettingsLink(getRoleWithFqnPath(fqn));
       case EntityType.TEAM:
-        return getTeamsWithFqnPath(fqn);
+        return getSettingsLink(getTeamsWithFqnPath(fqn));
       default:
         return getEntityDetailsPath(entityType as EntityType, fqn);
     }

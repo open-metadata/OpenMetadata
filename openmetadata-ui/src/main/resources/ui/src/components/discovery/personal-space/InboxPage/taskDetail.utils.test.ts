@@ -25,6 +25,7 @@ import {
   getProposingAgent,
   getTaskDetailDescriptor,
   getTaskTypeBadge,
+  getTaskTypeKey,
   resolveIncidentTestCaseFqn,
   withExistingValues,
 } from './taskDetail.utils';
@@ -764,6 +765,34 @@ describe('metadata completion tasks', () => {
         ['missingFields', 'conditions'].includes(row.key)
       )
     ).toEqual([]);
+  });
+
+  it('reads a revise and resubmit task as its own kind, with the reviewer comment', () => {
+    const revision = buildTask({
+      type: TaskType.MetadataCompletion,
+      payload: {
+        stage: 'In Review',
+        missingFields: [],
+        revision: { comment: 'Name a business owner', requestedBy: 'karan' },
+      },
+    });
+    const descriptor = getTaskDetailDescriptor(revision, t);
+
+    expect(getTaskTypeBadge(revision, t)).toEqual({
+      label: 'label.revise-and-resubmit',
+      color: 'warning',
+      icon: 'approval',
+    });
+    expect(getTaskTypeKey(revision)).not.toBe(getTaskTypeKey(task));
+    expect(descriptor.callout?.text).toBe(
+      'message.metadata-completion-revision'
+    );
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionComment')?.value
+    ).toEqual({ kind: 'text', text: 'Name a business owner' });
+    expect(
+      descriptor.rows.find((row) => row.key === 'revisionRequestedBy')?.value
+    ).toEqual({ kind: 'text', text: 'karan' });
   });
 });
 

@@ -58,13 +58,16 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
           name={proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
         />
       ) : (
-        <Box align="center" gap={2}>
+        <Box align="center" className="tw:min-w-0" gap={2}>
           <Avatar
             alt={author}
             initials={author.charAt(0).toUpperCase()}
             size="xs"
           />
-          <Typography size="text-xs" weight="semibold">
+          <Typography
+            className="tw:min-w-0 tw:wrap-anywhere"
+            size="text-xs"
+            weight="semibold">
             {author}
           </Typography>
         </Box>
