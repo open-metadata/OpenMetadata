@@ -35,9 +35,11 @@ LABEL org.open-metadata.build-date=$BUILD_DATE
 LABEL org.open-metadata.commit-id=$COMMIT_ID
 
 EXPOSE 8585 8586
+# '!ssl_client' removes busybox wget's HTTPS helper (CVE-2025-60876) and keeps it out: it
+# auto-installs with busybox + libssl3, so a plain `apk del` leaves it in place.
 RUN adduser -D openmetadata && apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk21-jre
+    apk add --update --no-cache bash openjdk21-jre '!ssl_client'
 
 # CVE-2026-91403: eMudhra's compromised intermediates chain to three emSign roots
 # (ECC G3, ECC C3, C1). Alpine's current ca-certificates (20261020) already leaves them out of
