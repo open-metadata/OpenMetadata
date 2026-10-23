@@ -65,7 +65,7 @@ VERSIONS = {
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
     "databricks-sdk": "databricks-sdk~=0.20.0",
-    "databricks-sql-connector": "databricks-sql-connector>=4.0.0",
+    "databricks-sql-connector": "databricks-sql-connector>=4.7.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy>=3.8.2,<3.9",
@@ -73,6 +73,7 @@ VERSIONS = {
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
     "pyhive": "pyhive[hive_pure_sasl]~=0.7",
+    "thrift": "thrift>=0.25.0,<1",  # CVE-2026-66858 / CVE-2026-85494: protocol recursion and size limits
     "mongo": "pymongo>=4.18.2,<5",  # CVE-2026-96747/96748/96749: endpoint redirection and BSON buffer overflow
     "simple-salesforce": "simple_salesforce~=1.11",
     "snowflake": "snowflake-sqlalchemy>=1.11.0",  # CVE-2026-15736 SQL/DDL injection; <1.8 also caps the connector below pyOpenSSL 26 support (CVE-2026-27459)
@@ -129,6 +130,7 @@ COMMONS = {
         "pure-transport==0.2.0",
         "presto-types-parser>=0.0.2",
         VERSIONS["pyhive"],
+        VERSIONS["thrift"],
     },
     "kafka": {
         VERSIONS["avro"],
@@ -313,6 +315,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["databricks-sqlalchemy"],
         VERSIONS["databricks-sdk"],
         VERSIONS["databricks-sql-connector"],
+        VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
         "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
@@ -359,15 +362,7 @@ plugins: dict[str, set[str]] = {
     },
     "hive": {
         *COMMONS["hive"],
-        # CVE-2026-66053 (improper certificate validation) + CVE-2026-41608 / CVE-2026-48586
-        # (data amplification): thrift <0.24.0 is vulnerable. impyla hard-pinned thrift==0.16.0
-        # from 0.18.0 through 0.23.0 and only relaxed it to >=0.23.0 in 0.24.0, so the driver
-        # has to move for this floor to be satisfiable.
-        # CVE-2026-66858 + CVE-2026-85494 need >=0.25.0 and are NOT fixed here: the latest
-        # databricks-sql-connector (4.6.0) requires thrift<0.25.0, and the "all" extra installs
-        # both, so raising this floor makes "all" unresolvable. Revisit when Databricks relaxes
-        # its ceiling.
-        "thrift>=0.24.0,<1",
+        # impyla >=0.24.0 accepts the security-fixed Thrift releases.
         # Replacing sasl with pure-sasl based on https://github.com/cloudera/python-sasl/issues/30 for py 3.11
         "pure-sasl",
         "thrift-sasl~=0.4",
@@ -380,11 +375,8 @@ plugins: dict[str, set[str]] = {
     },
     "impala": {
         "presto-types-parser>=0.0.2",
-        # See the hive extra: impyla <0.24.0 hard-pins thrift==0.16.0, which is what holds
-        # thrift below the fixed 0.24.0, and why CVE-2026-66858 / CVE-2026-85494 cannot be
-        # cleared here either.
         "impyla[kerberos]~=0.24.0",
-        "thrift>=0.24.0,<1",
+        VERSIONS["thrift"],
         "pure-sasl",
         "thrift-sasl~=0.4",
     },
