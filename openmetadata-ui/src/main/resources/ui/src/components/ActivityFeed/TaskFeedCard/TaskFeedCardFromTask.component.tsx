@@ -203,10 +203,13 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            wrap
-            className="tw:w-[98%]"
+            ellipsis
+            className="tw:max-w-full"
             color="link-color"
             data-testid="redirect-task-button-link"
+            tooltip={`#${taskDisplayId} ${t(
+              getTaskTypeMessageKey(task) ?? 'label.task'
+            )} ${getNameFromFQN(entityFQN)} (${entityType})`}
             onClick={handleTaskLinkClick}>
             <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
@@ -353,10 +356,10 @@ const TaskFeedCardFromTask = ({
   const renderTaskFooter = () => (
     <Box
       align="center"
-      className="task-feed-card-footer w-full"
+      className="task-feed-card-footer w-full tw:gap-y-3"
       justify="between"
       wrap="wrap">
-      <Box>
+      <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
           <ReplyIcon height={20} width={20} onClick={showReplies} />
           {commentsCount > 0 ? (
@@ -371,12 +374,7 @@ const TaskFeedCardFromTask = ({
           ) : null}
         </Box>
 
-        <Box
-          align="center"
-          className={classNames('text-grey-muted', {
-            'task-card-assignee': commentsCount > 0,
-          })}
-          gap={2}>
+        <Box align="center" className="tw:text-tertiary" gap={2}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
@@ -386,13 +384,17 @@ const TaskFeedCardFromTask = ({
       </Box>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <Box gap={2}>
+        <Box gap={4}>
           {canQuickResolve() && (
             <Button
-              color="tertiary"
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              color="link-gray"
               data-testid="approve-button"
               iconLeading={
-                <CheckCircleFilled className="tw:shrink-0" size={14} />
+                <CheckCircleFilled
+                  className="tw:shrink-0 tw:text-fg-success-primary"
+                  size={14}
+                />
               }
               size="xs"
               onPress={onTaskResolve}>
@@ -401,7 +403,8 @@ const TaskFeedCardFromTask = ({
           )}
           {canQuickResolve() && (
             <Button
-              color="tertiary-destructive"
+              className="tw:gap-1.5"
+              color="link-destructive"
               data-testid="reject-button"
               iconLeading={
                 <CloseCircleFilled className="tw:shrink-0" size={14} />
@@ -448,12 +451,14 @@ const TaskFeedCardFromTask = ({
         )}
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
-          <div className="tw:w-full">
+          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
             <TaskStatusIcon
-              className="tw:mr-1 tw:mt-1 tw:size-3.5 tw:shrink-0"
+              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
-            {taskLinkTitleElement}
+            <div className="tw:flex tw:min-w-0 tw:flex-1">
+              {taskLinkTitleElement}
+            </div>
           </div>
           <div className="tw:mt-1">
             <Typography>
