@@ -1840,6 +1840,7 @@
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -3245,6 +3246,7 @@
         "playwright/e2e/Pages/AssetHealthWidget.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -3784,6 +3786,7 @@
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -4332,6 +4335,7 @@
         "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts",
         "playwright/e2e/Pages/CustomProperties.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
@@ -6263,6 +6267,7 @@
       ],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
@@ -6273,6 +6278,7 @@
       ],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
@@ -12724,6 +12730,7 @@
         "playwright/e2e/Pages/CustomPropertiesApiContract.spec.ts",
         "playwright/e2e/Pages/CustomThemeConfig.spec.ts",
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSLARoundTrip.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
