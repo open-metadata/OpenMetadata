@@ -18,7 +18,9 @@
   overflow-y: scroll;
 }
 
-.summary-panel-container {
+// :where() keeps the old specificity so the panel's own tw: classes still win;
+// unscoped, this lazily loaded rule also painted the column detail drawer.
+:where(.entity-summary-panel-container) .summary-panel-container {
   border-radius: var(--om-radius-xl);
   border: 1px solid var(--om-color-gray-blue-100);
   background-color: var(--tw-color-bg-primary);
