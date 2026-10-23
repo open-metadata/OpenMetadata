@@ -212,7 +212,7 @@ const LineageTimeFilter: FC<LineageTimeFilterProps> = ({
           className="tw:px-3.5 tw:py-2.5"
           color="tertiary"
           data-testid="lineage-time-filter"
-          // The button's 20px icon slot outweighs the 14px label; 16px matches it.
+          // Sized to the label; the button's default icon slot outweighs it.
           iconLeading={<Calendar className="tw:size-4 tw:shrink-0" />}
           iconTrailing={ChevronDown}>
           <Typography as="span" className="tw:font-normal">

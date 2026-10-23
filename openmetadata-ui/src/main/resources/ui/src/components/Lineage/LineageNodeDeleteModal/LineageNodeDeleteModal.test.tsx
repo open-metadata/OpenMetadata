@@ -49,5 +49,6 @@ describe('LineageNodeDeleteModal', () => {
     render(<LineageNodeDeleteModal {...props} isDeleting />);
 
     expect(screen.getByTestId('confirm-button')).toBeDisabled();
+    expect(screen.getByTestId('cancel-button')).toBeDisabled();
   });
 });

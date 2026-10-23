@@ -492,8 +492,7 @@ const EdgeInfoDrawer = ({
         <div
           className="tw:flex tw:h-full tw:flex-col"
           data-testid="edge-info-drawer-container">
-          {/* The 12px left inset and the close button's 10px of internal
-              padding line the icon and the × up with the card's edges below. */}
+          {/* Insets line the icon and the × up with the card's edges. */}
           <div className="tw:flex tw:h-14 tw:shrink-0 tw:items-center tw:gap-1 tw:pr-0.5 tw:pl-3">
             <div className="tw:min-w-0 tw:flex-1">
               <Tooltip

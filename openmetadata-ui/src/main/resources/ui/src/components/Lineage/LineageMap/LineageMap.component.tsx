@@ -903,7 +903,7 @@ const LineageMapBreadcrumbs = ({
 
 // A drilled-in scene with nothing in it replaces the canvas, breadcrumb
 // included, so the empty state carries the way back to the root.
-const LineageMapEmptyState = ({
+const LineageMapEmptyPlaceholder = ({
   scene,
   onBack,
 }: {
@@ -1960,7 +1960,10 @@ const LineageMapCanvas = ({
         />
       ),
       empty: (
-        <LineageMapEmptyState scene={scene} onBack={handleBreadcrumbFocus} />
+        <LineageMapEmptyPlaceholder
+          scene={scene}
+          onBack={handleBreadcrumbFocus}
+        />
       ),
     };
 

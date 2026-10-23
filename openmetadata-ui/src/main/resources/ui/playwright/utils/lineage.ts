@@ -1004,6 +1004,8 @@ export const addColumnLineage = async (
   fromOwnerFqn?: string
 ) => {
   const fromColumn = await revealColumn(page, fromColumnFqn, fromOwnerFqn);
+  // The column menu only connects to nodes already on the canvas, so callers
+  // must put the target there first.
 
   await addLineageViaMenu(page, {
     trigger: fromColumn,
@@ -1012,8 +1014,7 @@ export const addColumnLineage = async (
     columnFqn: toColumnFqn,
   });
 
-  // The canvas only draws edges whose nodes are in view, and a target the
-  // popover just added lands wherever the layout puts it.
+  // The canvas only draws edges whose nodes are in view.
   await fitToScreen(page);
   await expect(
     page.getByTestId(`column-edge-${fromColumnFqn}-${toColumnFqn}`)

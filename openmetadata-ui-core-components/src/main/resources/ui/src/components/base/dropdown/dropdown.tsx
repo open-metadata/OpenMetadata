@@ -230,9 +230,7 @@ const DropdownDotsButton = forwardRef<HTMLButtonElement, AriaButtonProps>(
         aria-label={props['aria-label'] ?? t('label.open-menu', 'Open menu')}
         className={(state) =>
           cx(
-            // inline-flex centres the glyph when a flex parent stretches the
-            // button to the row height; as a plain inline box it sat on the
-            // baseline at the top.
+            // Centres the glyph when a flex parent stretches the button.
             'tw:inline-flex tw:items-center tw:justify-center tw:cursor-pointer tw:rounded-md tw:text-fg-tertiary tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
             (state.isPressed || state.isHovered) && 'tw:text-fg-tertiary_hover',
             (state.isPressed || state.isFocusVisible) &&
