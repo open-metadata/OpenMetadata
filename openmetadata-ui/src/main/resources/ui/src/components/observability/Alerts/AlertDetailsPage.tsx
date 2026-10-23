@@ -35,10 +35,7 @@ import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/Header
 import Loader from '../../../components/common/Loader/Loader';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
-import {
-  AlertType,
-  ProviderType,
-} from '../../../generated/events/eventSubscription';
+import { ProviderType } from '../../../generated/events/eventSubscription';
 import { useAlertDetailsData } from '../../../hooks/observability/alerts/useAlertDetailsData';
 import { useFqn } from '../../../hooks/useFqn';
 import { useAlertFormData } from '../../../pages/AddObservabilityPage/hooks/useAlertFormData';
@@ -64,7 +61,7 @@ const ACTION_BUTTON_CLASS_NAME = 'tw:rounded-lg';
 const ACTION_ICON_CLASS_NAME = 'tw:h-4 tw:w-4 tw:text-fg-quaternary';
 
 interface AlertDetailsPageProps {
-  /** Which alerts this page serves; Settings → Notifications passes its kind. */
+  /** Which alerts this page serves (observability by default). */
   kind?: AlertKind;
 }
 
@@ -78,7 +75,6 @@ const AlertDetailsPage = ({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const alertListPath = kind.listPath;
-  const isNotificationAlert = kind.alertType === AlertType.Notification;
 
   const handleAfterDelete = useCallback(async () => {
     await invalidateQueriesWithoutInitialRace(queryClient, {
@@ -102,7 +98,6 @@ const AlertDetailsPage = ({
 
   const detailsState = useAlertDetailsData({
     afterDeleteAction: handleAfterDelete,
-    isNotificationAlert,
     onEditAlert: handleEditAlert,
     onTabChange: (tab) => handleTabChange(tab),
   });
@@ -216,11 +211,11 @@ const AlertDetailsPage = ({
 
       return (
         <AlertAiForm
+          shouldShowActionsSection
           shouldShowFiltersSection
           alert={alertConfigValue}
           mode="view"
           selection={selection}
-          shouldShowActionsSection={kind.hasTriggers}
           templateResourcePermission={alertFormState.templateResourcePermission}
           templates={alertFormState.templates}
           templatesLoading={alertFormState.loadingState.templates}
@@ -237,7 +232,6 @@ const AlertDetailsPage = ({
     alertFormState.loadingState.templates,
     alertFormState.templateResourcePermission,
     alertFormState.templates,
-    kind.hasTriggers,
     selection,
     tab,
   ]);

@@ -214,7 +214,8 @@ const EntityHeaderTitle = ({
   const renderContent = () => (
     <div
       className={classNames(
-        'entity-header-title tw:flex tw:flex-nowrap tw:items-center tw:gap-3',
+        // min-w-0 lets a long name shrink so its ellipsis applies instead of overlapping the header actions.
+        'entity-header-title tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-3',
         className
       )}
       data-testid={`${serviceName}-${name}`}>
@@ -284,7 +285,7 @@ const EntityHeaderTitle = ({
 
   return link && !isTourRoute ? (
     <Link
-      className="no-underline d-inline-block w-max-full entity-header-title-link"
+      className="no-underline d-inline-block w-max-full tw:min-w-0 entity-header-title-link"
       data-testid="entity-link"
       target={openEntityInNewPage ? '_blank' : '_self'}
       to={link}
