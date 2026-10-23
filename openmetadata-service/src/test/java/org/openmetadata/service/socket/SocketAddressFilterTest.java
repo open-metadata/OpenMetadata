@@ -58,7 +58,6 @@ class SocketAddressFilterTest {
   @BeforeEach
   void setUp() throws Exception {
     initializeJwtTokenGenerator();
-    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(true);
     when(authConfig.getPublicKeyUrls()).thenReturn(List.of());
     when(authConfig.getJwtPrincipalClaims()).thenReturn(List.of("sub"));
     when(authConfig.getJwtPrincipalClaimsMapping()).thenReturn(List.of());
@@ -169,23 +168,71 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * Regression test: a handshake carrying neither a token nor a session cookie used to be accepted
+   * under the default socket configuration, and the caller-supplied {@code userId} query param was
+   * adopted as the socket identity — keying the socket under an arbitrary user's feed channels.
+   */
   @Test
-  void insecureSocketWithoutUserIdDoesNotAddUserIdHeader() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
+  void credentiallessHandshakeIsRejectedAndNeverAdoptsRequestedUserId() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
+    UUID requestedUserId = UUID.randomUUID();
+    when(request.getQueryString()).thenReturn("userId=" + requestedUserId);
+    when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    // No Authorization header and no cookies.
+
+    defaultFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void sessionCookieWithoutSessionStoreIsRejected() throws Exception {
+    // Session store not yet wired (early startup): a cookie cannot be validated, fail closed.
+    SocketAddressFilter storelessFilter = new SocketAddressFilter(authConfig, authorizerConfig);
     when(request.getQueryString()).thenReturn(null);
     when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, validSessionId('s'))});
 
-    insecureFilter.doFilter(request, response, chain);
+    storelessFilter.doFilter(request, response, chain);
+
+    verify(response)
+        .sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized WebSocket handshake");
+    verify(chain, never()).doFilter(any(), any());
+  }
+
+  @Test
+  void tokenOnlyHandshakeWithoutSessionStoreIsAccepted() throws Exception {
+    // Session store not yet wired: the validated token principal is accepted on its own.
+    SocketAddressFilter storelessFilter = new SocketAddressFilter(authConfig, authorizerConfig);
+    Field jwtFilterField = SocketAddressFilter.class.getDeclaredField("jwtFilter");
+    jwtFilterField.setAccessible(true);
+    jwtFilterField.set(storelessFilter, jwtFilter);
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      storelessFilter.doFilter(request, response, chain);
+    }
 
     ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
     verify(chain).doFilter(requestCaptor.capture(), eq(response));
     HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
-    org.junit.jupiter.api.Assertions.assertNull(wrappedRequest.getHeader("UserId"));
+    org.junit.jupiter.api.Assertions.assertEquals(
+        tokenUserId.toString(), wrappedRequest.getHeader("UserId"));
   }
 
   @Test
-  void insecureSocketUsesActiveSessionUserIdWhenQueryUserIdIsMissing() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
+  void defaultSocketUsesActiveSessionUserIdWhenQueryUserIdIsMissing() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
     UUID sessionUserId = UUID.randomUUID();
     String sessionId = validSessionId('s');
     when(request.getQueryString()).thenReturn(null);
@@ -195,7 +242,7 @@ class SocketAddressFilterTest {
     when(sessionService.getFreshSessionById(sessionId))
         .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
 
-    insecureFilter.doFilter(request, response, chain);
+    defaultFilter.doFilter(request, response, chain);
 
     ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
     verify(chain).doFilter(requestCaptor.capture(), eq(response));
@@ -206,8 +253,8 @@ class SocketAddressFilterTest {
   }
 
   @Test
-  void insecureSocketRejectsUserIdThatDoesNotMatchActiveSession() throws Exception {
-    SocketAddressFilter insecureFilter = insecureFilter();
+  void defaultSocketRejectsUserIdThatDoesNotMatchActiveSession() throws Exception {
+    SocketAddressFilter defaultFilter = defaultConfigFilter();
     UUID requestedUserId = UUID.randomUUID();
     UUID sessionUserId = UUID.randomUUID();
     String sessionId = validSessionId('m');
@@ -218,7 +265,7 @@ class SocketAddressFilterTest {
     when(sessionService.getFreshSessionById(sessionId))
         .thenReturn(Optional.of(activeSession(sessionId, "sam", sessionUserId.toString())));
 
-    insecureFilter.doFilter(request, response, chain);
+    defaultFilter.doFilter(request, response, chain);
 
     verify(response)
         .sendError(HttpServletResponse.SC_FORBIDDEN, "Socket user does not match session");
@@ -257,8 +304,7 @@ class SocketAddressFilterTest {
         .build();
   }
 
-  private SocketAddressFilter insecureFilter() {
-    when(authorizerConfig.getEnableSecureSocketConnection()).thenReturn(false);
+  private SocketAddressFilter defaultConfigFilter() {
     return new SocketAddressFilter(authConfig, authorizerConfig, sessionService);
   }
 

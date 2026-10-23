@@ -105,7 +105,7 @@
     },
     "enableSecureSocketConnection": {
       "title": "Enable Secure Socket Connection.",
-      "description": "Enable Secure Socket Connection.",
+      "description": "Deprecated — has no effect. Socket handshakes are always authenticated under every configuration.",
       "type": "boolean"
     },
     "useRolesFromProvider": {
