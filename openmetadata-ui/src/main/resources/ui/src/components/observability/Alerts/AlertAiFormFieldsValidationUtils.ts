@@ -125,10 +125,8 @@ const validateAlertAiRuleFields = ({
         'input'
       );
 
-      // Legacy rules seeded from filteringRules carry argument names but no
-      // `input` value (undefined) — their values live in the SpEL condition the
-      // form cannot represent. Only require a value for arguments the user can
-      // fill in: those created by the form have `input: []`, not `undefined`.
+      // Rules shown from `filteringRules` carry no `input`: their values live in
+      // the stored SpEL condition, and the form keeps them read-only.
       if (
         argument.input !== undefined &&
         isRequiredValueMissing(argument.input)

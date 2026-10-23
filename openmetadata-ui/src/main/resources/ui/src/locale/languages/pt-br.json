@@ -4003,6 +4003,7 @@
     "alert-choose-destination-description": "Envie para o Slack, Teams, e-mail ou qualquer webhook.",
     "alert-pick-a-trigger-description": "Escolha o que monitorar — resultados de testes, status de pipelines, alterações em ativos específicos.",
     "alert-recent-events-description": "Lista de eventos de alerta recentes acionados para o alerta{{alertName}}.",
+    "alert-rules-read-only": "Estes filtros e gatilhos não foram criados neste formulário, portanto não podem ser editados aqui. As demais alterações são salvas sem afetá-los.",
     "alert-stay-ahead-description": "Sua equipe fica sabendo dos problemas nas próprias ferramentas — antes dos stakeholders perceberem.",
     "alert-synced-successfully": "Alerta sincronizado com sucesso",
     "alerts-description": "Mantenha-se atualizado com alertas oportunos usando webhooks.",

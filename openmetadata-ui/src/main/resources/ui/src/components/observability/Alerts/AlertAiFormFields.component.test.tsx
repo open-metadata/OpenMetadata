@@ -2038,42 +2038,44 @@ describe('AlertAi form field components', () => {
       ).not.toBeInTheDocument();
     });
 
+    // Rules stored only in filteringRules, with no `input` selections.
+    const legacyAlert: EventSubscription = {
+      alertType: EventSubscriptionAlertType.Observability,
+      destinations: [
+        {
+          category: SubscriptionCategory.External,
+          config: { endpoint: 'https://hooks.slack.com/services/x' },
+          readTimeout: 12,
+          timeout: 10,
+          type: SubscriptionType.Slack,
+        },
+      ],
+      id: 'legacy-alert-id',
+      name: 'legacy-alert',
+      filteringRules: {
+        actions: [
+          {
+            arguments: ['testSuiteList'],
+            condition: 'matchTestResult(true)',
+            effect: Effect.Include,
+            name: 'testResultTrigger',
+          },
+        ],
+        resources: ['table'],
+        rules: [
+          {
+            arguments: ['domainList'],
+            condition: 'matchAnyDomain(true)',
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      },
+    } as EventSubscription;
+
     it("renders a legacy-shaped alert's rules in view mode after seeding from filteringRules", () => {
       // A WrittenByHand alert carries its rules only in the legacy filteringRules
       // shape with no `input`; getModifiedAlertDataForForm seeds `input` from it.
-      const legacyAlert: EventSubscription = {
-        alertType: EventSubscriptionAlertType.Observability,
-        destinations: [
-          {
-            category: SubscriptionCategory.External,
-            config: { endpoint: 'https://hooks.slack.com/services/x' },
-            readTimeout: 12,
-            timeout: 10,
-            type: SubscriptionType.Slack,
-          },
-        ],
-        id: 'legacy-alert-id',
-        name: 'legacy-alert',
-        filteringRules: {
-          actions: [
-            {
-              arguments: ['testSuiteList'],
-              condition: 'matchTestResult(true)',
-              effect: Effect.Include,
-              name: 'testResultTrigger',
-            },
-          ],
-          resources: ['table'],
-          rules: [
-            {
-              arguments: ['domainList'],
-              condition: 'matchAnyDomain(true)',
-              effect: Effect.Include,
-              name: 'domainList',
-            },
-          ],
-        },
-      } as EventSubscription;
       const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
 
       render(
@@ -2099,6 +2101,29 @@ describe('AlertAi form field components', () => {
       expect(screen.getByTestId('actions-select-0')).toHaveValue(
         'testResultTrigger'
       );
+    });
+
+    it("keeps a legacy-shaped alert's rules read-only in edit mode", () => {
+      const seeded = alertsClassBase.getModifiedAlertDataForForm(legacyAlert);
+
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          alert={seeded}
+          selection={selectionOf()}
+          value={seeded}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByTestId('alert-brand')).toHaveTextContent(
+        'message.alert-rules-read-only'
+      );
+      expect(screen.getByTestId('filters-select-0')).toHaveValue('domainList');
+      expect(screen.queryByTestId('add-filters')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-actions')).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
     });
   });
 

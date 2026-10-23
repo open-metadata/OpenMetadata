@@ -4003,6 +4003,7 @@
     "alert-choose-destination-description": "Stuur het naar Slack, Teams, e-mail of een willekeurige webhook.",
     "alert-pick-a-trigger-description": "Kies wat je wilt volgen — testresultaten, pipelinestatus, wijzigingen aan specifieke assets.",
     "alert-recent-events-description": "Lijst van recente alertgebeurtenissen die zijn geactiveerd voor de alert {{alertName}}.",
+    "alert-rules-read-only": "Deze filters en triggers zijn niet in dit formulier gemaakt en kunnen hier dus niet worden bewerkt. Andere wijzigingen worden opgeslagen zonder ze te beïnvloeden.",
     "alert-stay-ahead-description": "Je team hoort over problemen in hun eigen tools — voordat belanghebbenden het merken.",
     "alert-synced-successfully": "Waarschuwing succesvol gesynchroniseerd",
     "alerts-description": "Blijf op de hoogte met tijdige alerts via Webhooks.",

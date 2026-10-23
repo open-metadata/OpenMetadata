@@ -12,6 +12,7 @@
  */
 
 import {
+  Alert,
   Box,
   Input,
   TextArea,
@@ -61,6 +62,31 @@ const AlertAiTemplateField = ({
       <TemplateSection {...sectionProps} />
     </div>
   ) : null;
+
+/** Says why an editable form lists rules it cannot change. */
+const ReadOnlyRulesNotice = ({
+  alert,
+  hasActionsSection,
+  hasFiltersSection,
+  isViewOnly,
+}: Pick<AlertAiFormFieldsProps, 'alert' | 'isViewOnly'> & {
+  hasActionsSection: boolean;
+  hasFiltersSection: boolean;
+}) => {
+  const { t } = useTranslation();
+  const isShown =
+    !isViewOnly &&
+    alert?.hasRulesWithoutSelections &&
+    (hasFiltersSection || hasActionsSection);
+
+  return isShown ? (
+    <Alert
+      data-testid="alert-rules-read-only"
+      title={t('message.alert-rules-read-only')}
+      variant="brand"
+    />
+  ) : null;
+};
 
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
 function AlertAiFormFields({
@@ -130,6 +156,8 @@ function AlertAiFormFields({
     shouldShowActionsSection: shouldDisplayActionsSection,
     shouldShowFiltersSection: shouldDisplayFiltersSection,
   });
+
+  const areRulesReadOnly = isViewOnly || alert?.hasRulesWithoutSelections;
 
   // `rendered` gates registration on the section actually being on screen.
   // useFieldDoc registers on the doc alone, so without it a source with no
@@ -247,11 +275,18 @@ function AlertAiFormFields({
         </div>
       )}
 
+      <ReadOnlyRulesNotice
+        alert={alert}
+        hasActionsSection={shouldRenderActionsSection}
+        hasFiltersSection={shouldRenderFiltersSection}
+        isViewOnly={isViewOnly}
+      />
+
       {shouldRenderFiltersSection && (
         <div {...filtersDoc}>
           <AlertAiRuleSection
             field="filters"
-            isViewOnly={isViewOnly}
+            isViewOnly={areRulesReadOnly}
             selectedSources={selectedSources}
             sourceSearch={search}
             supportedEventTypes={support.supportedEventTypes}
@@ -268,7 +303,7 @@ function AlertAiFormFields({
         <div {...triggerDoc}>
           <AlertAiRuleSection
             field="actions"
-            isViewOnly={isViewOnly}
+            isViewOnly={areRulesReadOnly}
             selectedSources={selectedSources}
             sourceSearch={search}
             supportedRules={support.supportedTriggers}

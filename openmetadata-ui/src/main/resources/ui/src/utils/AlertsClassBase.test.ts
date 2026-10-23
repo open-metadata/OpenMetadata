@@ -537,25 +537,24 @@ describe('AlertsClassBase', () => {
       expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
     });
 
-    it('submits input for a rule-less alert so newly added filters are not dropped', () => {
-      // A saved alert with no input and no legacy filteringRules.rules/actions is empty —
-      // there are no hand-written rules to protect, so the form lets the user add new
-      // filters. getAlertUpdateData must submit those selections; dropping them would
-      // leave the alert matching all events for its source (greptile: "New filters
-      // disappear").
-      const ruleLess: EventSubscription = {
+    it('leaves the empty input an earlier save stored on a legacy alert untouched', () => {
+      const legacy: EventSubscription = {
         ...mockInitialData,
-        input: undefined,
-        filteringRules: { resources: ['table'] },
+        input: { actions: [], filters: [] },
+        filteringRules: {
+          resources: ['table'],
+          rules: [
+            {
+              arguments: ['domainList'],
+              condition: 'matchAnyDomain(true)',
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
       } as EventSubscription;
-
-      const seeded = alertsClass.getModifiedAlertDataForForm(ruleLess);
-
-      // The form shows no seeded rules, and the user adds one filter.
-      expect(seeded.input).toBeUndefined();
-
       const formData: ModifiedCreateEventSubscription = {
-        ...(seeded as unknown as ModifiedCreateEventSubscription),
+        ...mockModifiedData,
         resources: ['table'],
         input: {
           actions: [],
@@ -563,13 +562,25 @@ describe('AlertsClassBase', () => {
         },
       };
 
-      const result = alertsClass.getAlertUpdateData(formData, ruleLess);
+      const result = alertsClass.getAlertUpdateData(formData, legacy);
 
-      // No legacy rules to protect, so the user's new filter is submitted.
-      expect(result.input).toEqual({
-        actions: [],
-        filters: [{ effect: Effect.Include, name: 'pipelineStateList' }],
-      });
+      expect(result.input).toBe(legacy.input);
+    });
+
+    it('submits rules added to an alert that has neither input nor rules', () => {
+      const sourcesOnly: EventSubscription = {
+        ...mockInitialData,
+        filteringRules: { resources: ['table'] },
+      };
+      delete sourcesOnly.input;
+      const added = { effect: Effect.Include, name: 'pipelineStateList' };
+
+      const result = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, input: { actions: [], filters: [added] } },
+        sourcesOnly
+      );
+
+      expect(result.input).toEqual({ actions: [], filters: [added] });
     });
   });
 
@@ -904,6 +915,33 @@ describe('AlertsClassBase', () => {
 
         // No spurious input: the form keeps hiding sections for a rule-less alert.
         expect(result.input).toBeUndefined();
+      });
+
+      it('seeds from legacy rules when an earlier save stored an empty input', () => {
+        const result = alertsClass.getModifiedAlertDataForForm({
+          ...legacyAlertData,
+          input: { actions: [], filters: [] },
+        });
+
+        expect(result.input?.filters).toHaveLength(legacyRules.length);
+        expect(result.input?.actions).toHaveLength(legacyActions.length);
+        expect(result.hasRulesWithoutSelections).toBe(true);
+      });
+
+      it('marks only alerts whose rules have no selections as read-only', () => {
+        const modern = alertsClass.getModifiedAlertDataForForm({
+          ...legacyAlertData,
+          input: {
+            actions: [],
+            filters: [{ effect: Effect.Include, name: 'modernFilter' }],
+          },
+        });
+
+        expect(
+          alertsClass.getModifiedAlertDataForForm(legacyAlertData)
+            .hasRulesWithoutSelections
+        ).toBe(true);
+        expect(modern.hasRulesWithoutSelections).toBe(false);
       });
 
       it('keeps the legacy filteringRules intact so the save path can still spread them', () => {

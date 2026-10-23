@@ -12,7 +12,10 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
+import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
+import { useFqn } from '../../hooks/useFqn';
 import AddObservabilityPage from './AddObservabilityPage';
 
 const MOCK_DATA = [
@@ -135,11 +138,20 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>Triggers</div>)
 );
 
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn().mockReturnValue({ fqn: '' }),
+}));
+
 const mockProps = {
   pageTitle: 'add-observability',
 };
 
 describe('Add ObservabilityPage Alerts Page Tests', () => {
+  afterEach(() => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: '' });
+    mockGetModifiedAlertDataForForm.mockReset();
+  });
+
   it('should render Add Observability Page', async () => {
     await act(async () => {
       render(<AddObservabilityPage {...mockProps} />, {
@@ -310,6 +322,33 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
     expect(await screen.findByTestId('extra-button')).toHaveTextContent(
       'typed-alert'
+    );
+  });
+
+  it('should keep rules stored without selections read-only when editing', async () => {
+    (useFqn as jest.Mock).mockReturnValue({ fqn: 'alert-test' });
+    mockGetModifiedAlertDataForForm.mockReturnValue({
+      ...MOCK_DATA[0],
+      filteringRules: { ...MOCK_DATA[0].filteringRules, resources: [] },
+      hasRulesWithoutSelections: true,
+    });
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.alert-rules-read-only')
+    ).toBeInTheDocument();
+    expect(ObservabilityFormFiltersItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(ObservabilityFormTriggerItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
     );
   });
 
