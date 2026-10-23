@@ -94,6 +94,6 @@ jobs:
             --no-transfer-progress \
             --batch-mode \
             -Dgpg.passphrase=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} \
-            -pl .,common,openmetadata-spec,openmetadata-sdk,openmetadata-clients,openmetadata-clients/openmetadata-java-client,openmetadata-shaded-deps,openmetadata-shaded-deps/elasticsearch-dep,openmetadata-shaded-deps/opensearch-dep,openmetadata-service \
+            -pl .,common,openmetadata-spec,openmetadata-sdk,openmetadata-clients,openmetadata-clients/openmetadata-java-client \
             -DskipPublishing=false \
             -DskipTests -Prelease clean deploy

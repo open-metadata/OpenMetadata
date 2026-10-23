@@ -22,11 +22,14 @@ distributions all build these modules from source; they do not resolve them from
   `-pl` and passes `-DskipPublishing=false`, which overrides the pom default for those modules.
   This applies to releases and to SNAPSHOTs alike.
 - The list: the root (`platform`), `common`, `openmetadata-spec`, `openmetadata-sdk`,
-  `openmetadata-clients`, `openmetadata-java-client`, `openmetadata-shaded-deps`,
-  `elasticsearch-deps`, `opensearch-deps`, `openmetadata-service`.
+  `openmetadata-clients`, `openmetadata-java-client`. These are what the Java SDK and the Java
+  client need to resolve; the client is regenerated each release from the server's API spec, so it
+  is published every release.
+- `openmetadata-service` and its search jars (`openmetadata-shaded-deps`, `elasticsearch-deps`,
+  `opensearch-deps`) are not published: the server is built from source everywhere it runs, and
+  the SDK and client do not depend on them.
 - A published module's parent pom must be in the list too (`openmetadata-clients` for the Java
-  client, `openmetadata-shaded-deps` for the search jars, the root for everything), or the jar
-  cannot be resolved.
+  client, the root for everything), or the jar cannot be resolved.
 - Extra artifacts inside a published module are not controlled by the list: the Java client's
   `jar-with-dependencies` is built but not attached.
 - `maven.deploy.skip` does not stop this plugin and must not be relied on.
