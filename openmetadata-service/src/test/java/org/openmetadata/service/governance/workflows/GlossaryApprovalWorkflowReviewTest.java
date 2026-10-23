@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -34,14 +36,18 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.rules.RuleEngine;
 
 /**
- * The shipped GlossaryTermApprovalWorkflow reviews a term an automation proposed even in a glossary
- * without reviewers, and its approval steps fall back to the admins rather than approving a term
- * nobody was assigned. The checks are read from the seed itself, so they pin what ships.
+ * The shipped GlossaryTermApprovalWorkflow sends a term an automation proposed, until a person
+ * approves it, down a branch of its own right after the start, whatever the glossary's reviewers,
+ * whose approval steps fall back to the admins rather than approving a proposal nobody was assigned.
+ * A person's term takes the steps it always took, unchanged. The checks are read from the seed
+ * itself, so they pin what ships.
  */
 class GlossaryApprovalWorkflowReviewTest {
   private static final String SEED_PATH =
       ".*json/data/governance/workflows/GlossaryApprovalWorkflow\\.json$";
   private static final String ADMIN_FALLBACK = "assignAdmins";
+  private static final String NO_FALLBACK = "none";
+  private static final String PROPOSAL_CHECK = "CheckIfGlossaryTermIsAutomationProposal";
 
   private static WorkflowDefinition seed;
 
@@ -54,30 +60,91 @@ class GlossaryApprovalWorkflowReviewTest {
   }
 
   @Test
-  void anAutomationTermTakesTheReviewPathEvenWithoutReviewers() {
-    String check = rulesOf("CheckGlossaryTermHasReviewers");
+  void aProposalNobodyApprovedYetTakesTheProposalBranch() {
+    String check = rulesOf(PROPOSAL_CHECK);
 
-    assertTrue(passes(check, term(ProviderType.AUTOMATION, List.of())));
-    assertTrue(passes(check, term(ProviderType.USER, List.of(reviewer()))));
-    assertFalse(passes(check, term(ProviderType.USER, List.of())));
+    assertTrue(passes(check, term(ProviderType.AUTOMATION, EntityStatus.DRAFT, List.of())));
+    assertTrue(passes(check, term(ProviderType.AUTOMATION, EntityStatus.IN_REVIEW, List.of())));
+    assertTrue(
+        passes(check, term(ProviderType.AUTOMATION, EntityStatus.REJECTED, List.of(reviewer()))));
+    assertFalse(passes(check, term(ProviderType.AUTOMATION, EntityStatus.APPROVED, List.of())));
+    assertFalse(passes(check, term(ProviderType.USER, EntityStatus.DRAFT, List.of(reviewer()))));
   }
 
   @Test
-  void approvalStepsFallBackToTheAdminsWhenNobodyIsAssigned() {
-    assertEquals(ADMIN_FALLBACK, assigneesOf("ApproveGlossaryTerm").get("emptyAssigneeStrategy"));
-    assertEquals(ADMIN_FALLBACK, assigneesOf("ApprovalForUpdates").get("emptyAssigneeStrategy"));
+  void theProposalBranchComesFirstAndHandsEveryOtherTermToTheReviewersCheck() {
+    assertTrue(hasEdge("GlossaryTermCreated", PROPOSAL_CHECK, null));
+    assertTrue(hasEdge(PROPOSAL_CHECK, "CheckGlossaryTermHasReviewers", "false"));
+    assertTrue(hasEdge(PROPOSAL_CHECK, "CheckIfAutomationProposalUpdatedByIsReviewer", "true"));
+    assertTrue(
+        hasEdge(
+            "CheckIfAutomationProposalUpdatedByIsReviewer",
+            "SetAutomationProposalStatusToApprovedByReviewer",
+            "true"));
+    assertTrue(
+        hasEdge(
+            "CheckIfAutomationProposalUpdatedByIsReviewer",
+            "CheckIfAutomationProposalIsNew",
+            "false"));
+  }
+
+  @Test
+  void aPersonsTermWithoutReviewersIsStillApprovedAsBefore() {
+    String check = rulesOf("CheckGlossaryTermHasReviewers");
+
+    assertFalse(passes(check, term(ProviderType.USER, EntityStatus.DRAFT, List.of())));
+    assertTrue(passes(check, term(ProviderType.USER, EntityStatus.DRAFT, List.of(reviewer()))));
+  }
+
+  @Test
+  void aRejectedProposalIsRejectedAndARejectedChangeToItIsRolledBack() {
+    assertTrue(
+        hasEdge("ApproveAutomationProposal", "SetAutomationProposalStatusToRejected", "reject"));
+    assertTrue(
+        hasEdge("ApproveAutomationProposalUpdate", "RollbackAutomationProposalChanges", "reject"));
+  }
+
+  @Test
+  void aProposalsApprovalStepsFallBackToTheAdminsWhenNobodyIsAssigned() {
+    List.of("ApproveAutomationProposal", "ApproveAutomationProposalUpdate")
+        .forEach(
+            step ->
+                assertEquals(ADMIN_FALLBACK, assigneesOf(step).get("emptyAssigneeStrategy"), step));
+  }
+
+  @Test
+  void aPersonsTermIsApprovedWhenNobodyIsAssignedAsBefore() {
+    List.of("ApproveGlossaryTerm", "ApprovalForUpdates")
+        .forEach(
+            step ->
+                assertEquals(
+                    NO_FALLBACK,
+                    String.valueOf(
+                        assigneesOf(step).getOrDefault("emptyAssigneeStrategy", NO_FALLBACK)),
+                    step));
+  }
+
+  private static boolean hasEdge(String from, String to, String condition) {
+    return seed.getEdges().stream()
+        .anyMatch(
+            edge ->
+                from.equals(edge.getFrom())
+                    && to.equals(edge.getTo())
+                    && Objects.equals(condition, edge.getCondition()));
   }
 
   private static boolean passes(String rule, GlossaryTerm term) {
     return Boolean.TRUE.equals(RuleEngine.getInstance().apply(rule, JsonUtils.getMap(term)));
   }
 
-  private static GlossaryTerm term(ProviderType provider, List<EntityReference> reviewers) {
+  private static GlossaryTerm term(
+      ProviderType provider, EntityStatus status, List<EntityReference> reviewers) {
     return new GlossaryTerm()
         .withId(UUID.randomUUID())
         .withName("GDPR")
         .withFullyQualifiedName("Compliance.GDPR")
         .withProvider(provider)
+        .withEntityStatus(status)
         .withReviewers(reviewers);
   }
 

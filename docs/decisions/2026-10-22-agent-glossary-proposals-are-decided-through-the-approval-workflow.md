@@ -1,9 +1,9 @@
 # Agents' glossary-term proposals are decided through the approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-22 (initial)
+- **Revisions:** v1 2026-10-22 (initial) · v2 2026-10-23 (a proposal branch after the start; lifecycles ask for an approval)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `GlossaryTermAutomationDraftIT`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowReviewTest`, `GlossaryAutomationReviewMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `AutomationProposalsTest`, `ContextMemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
+- **Guard:** `GlossaryTermAutomationDraftIT`, `JSONLogicSearchClassBase.test.ts`, Collate `LifecycleWorkflow.behavior.test.ts`, `WorkflowEventConsumerTest`, `GlossaryApprovalWorkflowReviewTest`, `GlossaryAutomationReviewMigrationTest`, `GlossaryTermRepositoryStageDecisionTest`, `AutomationProposalsTest`, `ContextMemoryDerivationIT`, `useGlossaryProposals.test.tsx`, `ProposalCard.test.tsx`, `GlossaryAiGeneratedTerm.spec.ts`
 - **Related:** ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 
 ## Context
@@ -61,3 +61,33 @@ whose reviewers are teams without members now goes to the admins instead of bein
 AI terms created between ADR:2026-10-19-memories-become-draft-glossary-terms-through-the-ai-provider
 and this change have no request: the next edit sends them to review, or deleting them lets the
 memory derive them again.
+
+## Amendment (v2, 2026-10-23)
+
+The automation clause no longer lives in the reviewers check. An admin may reshape the workflow
+or rewrite that check, and the workflow editor could not show the clause and dropped it on save,
+after which a proposal reached the auto-approve step, which a bot never takes, and stopped there
+with no request. So:
+
+- **A branch of its own, right after the start.** `CheckIfGlossaryTermIsAutomationProposal`
+  (`provider == automation` and the term is not Approved) sends a proposal to approval steps of its
+  own; every other term continues to the workflow's first step as before, and the reviewers check is
+  the 2.0 check again. A new proposal that is rejected is Rejected; a rejected change to a proposal
+  is rolled back. The 2.1.0 migration splices the branch onto the stored workflow's start edge, so
+  it does not depend on the rest of the workflow's shape; a start with several edges is left for an
+  admin to wire.
+- **The editor shows `provider`.** The check node offers Provider (user, system, automation) for
+  glossary terms, so the condition is visible and survives a save.
+- **Lifecycles ask a person too.** Where a glossary term lifecycle moves a term to Approved by
+  itself, the compiled workflow first asks whether an automation proposed the term; if it did, the
+  move waits for a person's approval and a rejection makes it Rejected. Other terms move on by
+  themselves as configured. A lifecycle published before this reads back unchanged and gains the
+  approval when it is published again.
+
+A reviewer's own edit still approves a proposal, as it approves any term: the branch checks it first.
+
+- **A person's term is reviewed exactly as in 2.0.** Only the proposal branch's approval steps fall
+  back to the admins. `ApproveGlossaryTerm` and `ApprovalForUpdates` keep no fallback, so a person's
+  term nobody can be assigned is approved as before (v1's admin fallback on them, and its
+  consequence for reviewers that are teams without members, is withdrawn), and the migration no
+  longer touches them.
