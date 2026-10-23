@@ -99,6 +99,7 @@ import {
   getTestCaseDetailPagePath,
   getUserPath,
 } from './RouterUtils';
+import { getSettingsLink } from './SettingsModalLinkUtils';
 import { ExtraTableDropdownOptions } from './TableDropdownOptions';
 import { getTestSuiteDetailsPath } from './TestSuiteUtils';
 
@@ -184,9 +185,11 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.WEBHOOK]: ({ fullyQualifiedName }) =>
     getEditWebhookPath(fullyQualifiedName),
   [EntityType.TYPE]: ({ fullyQualifiedName }) =>
-    getSettingPath(
-      GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
-      `${fullyQualifiedName}s`
+    getSettingsLink(
+      getSettingPath(
+        GlobalSettingsMenuCategory.CUSTOM_PROPERTIES,
+        `${fullyQualifiedName}s`
+      )
     ),
   [EntityType.TAG]: ({ fullyQualifiedName, tab, subTab }) =>
     getClassificationTagPath(fullyQualifiedName, tab, subTab),
@@ -201,25 +204,26 @@ const ENTITY_LINK_HANDLERS: Record<
   [EntityType.DATA_PRODUCT]: ({ fullyQualifiedName, tab, subTab }) =>
     getDataProductDetailsPath(fullyQualifiedName, tab, subTab),
   [EntityType.APPLICATION]: ({ fullyQualifiedName }) =>
-    getApplicationDetailsPath(fullyQualifiedName),
+    getSettingsLink(getApplicationDetailsPath(fullyQualifiedName)),
   [EntityType.USER]: ({ fullyQualifiedName, tab, subTab }) =>
     getUserPath(fullyQualifiedName, tab, subTab),
   [EntityType.TEAM]: ({ fullyQualifiedName }) =>
-    getTeamsWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getTeamsWithFqnPath(fullyQualifiedName)),
   [EntityType.EVENT_SUBSCRIPTION]: ({
     fullyQualifiedName,
     isObservabilityAlert,
   }) =>
     isObservabilityAlert
       ? getObservabilityAlertDetailsPath(fullyQualifiedName)
-      : getNotificationAlertDetailsPath(fullyQualifiedName),
+      : getSettingsLink(getNotificationAlertDetailsPath(fullyQualifiedName)),
   [EntityType.ROLE]: ({ fullyQualifiedName }) =>
-    getRoleWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getRoleWithFqnPath(fullyQualifiedName)),
   [EntityType.POLICY]: ({ fullyQualifiedName }) =>
-    getPolicyWithFqnPath(fullyQualifiedName),
+    getSettingsLink(getPolicyWithFqnPath(fullyQualifiedName)),
   [EntityType.PERSONA]: ({ fullyQualifiedName }) =>
-    getPersonaDetailsPath(fullyQualifiedName),
-  [EntityType.BOT]: ({ fullyQualifiedName }) => getBotsPath(fullyQualifiedName),
+    getSettingsLink(getPersonaDetailsPath(fullyQualifiedName)),
+  [EntityType.BOT]: ({ fullyQualifiedName }) =>
+    getSettingsLink(getBotsPath(fullyQualifiedName)),
   [EntityType.KPI]: ({ fullyQualifiedName }) => getKpiPath(fullyQualifiedName),
   [EntityType.KNOWLEDGE_PAGE]: ({ fullyQualifiedName, tab, subTab }) =>
     getKnowledgePagePath(fullyQualifiedName, tab, subTab),
