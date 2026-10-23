@@ -13,6 +13,7 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import Loader from '../../common/Loader/Loader';
 import './video-player.less';
 
@@ -93,8 +94,10 @@ const getEmbedUrl = (url: string): string => {
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ resource }) => {
   const [isLoading, setIsLoading] = useState(true);
 
+  // getEmbedUrl falls back to the raw URL for non-YouTube/Vimeo hosts, and new URL() accepts a
+  // javascript: URL, so pass the result through getSafeHttpUrl before framing it.
   const embedUrl = useMemo(
-    () => getEmbedUrl(resource.source.url),
+    () => getSafeHttpUrl(getEmbedUrl(resource.source.url)),
     [resource.source.url]
   );
 
