@@ -1318,22 +1318,25 @@ export const fillColumnDetails = async (
 
 /**
  * A bulk edit grid cell by row name and CSV column key (e.g. `column.tags`).
- * Matched by column class, not header position: react-data-grid only renders
- * the columns in view, so a header can be missing from the DOM.
+ * The row is pinned by its `rdg-row-<id>` test id, read once while its name
+ * is shown: unlike `aria-rowindex` it survives a search re-filtering the rows,
+ * and unlike the name text it survives the grid scrolling the name column out
+ * of view. The cell is matched by column class because react-data-grid only
+ * renders the columns in view, so its header may be missing from the DOM.
  */
 export const getBulkEditGridCell = async (
   page: Page,
   rowName: string,
   columnKey: string
 ) => {
-  const rowIndex = await page
-    .getByRole('row')
+  const rowTestId = await page
+    .locator('.rdg-row')
     .filter({ hasText: rowName })
-    .getAttribute('aria-rowindex');
+    .getAttribute('data-testid');
 
-  return page.locator(
-    `.rdg-row[aria-rowindex="${rowIndex}"] .${getGridColumnClass(columnKey)}`
-  );
+  return page
+    .getByTestId(rowTestId ?? '')
+    .locator(`.${getGridColumnClass(columnKey)}`);
 };
 
 /**
