@@ -11,7 +11,8 @@
 
 # Same runtime as docker/docker-compose-quickstart/Dockerfile -- keep the two in
 # sync -- but unpacked from the locally built tarball instead of a GitHub
-# release. Read that file for why the base is distroless cc debug.
+# release. Read that file for why the base is distroless base debug plus the C++
+# runtime packages from distroless cc.
 
 FROM alpine:3 AS dist
 
@@ -63,11 +64,25 @@ RUN find /javaruntime/bin -type f \
       ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
       -delete
 
-FROM gcr.io/distroless/cc-debian13:debug-nonroot
+FROM gcr.io/distroless/cc-debian13:debug-nonroot AS cxx-runtime
+
+USER 0
+SHELL ["/busybox/sh", "-c"]
+RUN set -eu; \
+    for pkg in gcc-14-base libgcc-s1 libstdc++6; do \
+      for f in var/lib/dpkg/status.d/$pkg var/lib/dpkg/status.d/$pkg.md5sums usr/share/doc/$pkg \
+               $(awk '{print $2}' /var/lib/dpkg/status.d/$pkg.md5sums); do \
+        mkdir -p "/out/$(dirname "$f")"; cp -a "/$f" "/out/$f"; \
+      done; \
+    done; \
+    for f in /usr/lib/*-linux-gnu/libstdc++.so.6; do cp -a "$f" "/out$f"; done
+
+FROM gcr.io/distroless/base-debian13:debug-nonroot
 
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
+COPY --from=cxx-runtime /out /
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 COPY --from=dist /shim/bin /bin
 COPY --from=dist /opt/openmetadata /opt/openmetadata
