@@ -25,6 +25,7 @@ import { useContextCenterPageLayout } from '../../../components/ContextCenter/Co
 import { PersonaAIContext } from '../../../components/ContextCenter/PersonaAIContext/PersonaAIContext.component';
 import { Persona } from '../../../generated/entity/teams/persona';
 import { useAuth } from '../../../hooks/authHooks';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName } from '../../../rest/PersonaAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -33,6 +34,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 
 const ContextCenterAIContextDetailPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { fqn } = useFqn();
   const { isAdminUser } = useAuth();
@@ -64,7 +66,9 @@ const ContextCenterAIContextDetailPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-ai-context-detail-page">
       <DocumentTitle title={personaName} />
       <PageLayout

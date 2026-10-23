@@ -286,7 +286,7 @@ const getUserEntityLink = (
   return (
     <Link
       className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={getUserPath(userNameForLink)}>
+      to={getSettingsLink(getUserPath(userNameForLink))}>
       {entityLabel ?? userNameForLink}
     </Link>
   );
@@ -350,7 +350,7 @@ const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
           </Typography>{' '}
           <Link
             className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-            to={getUserPath(impersonatedBy)}>
+            to={getSettingsLink(getUserPath(impersonatedBy))}>
             {impersonatedBy}
           </Link>
         </>
@@ -658,19 +658,16 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     );
   }, [normalizedType, entityFQN, entityLabel, log]);
 
-  const userLink = useMemo(() => {
-    if (log.userName) {
-      return (
-        <Link
-          className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-          to={getUserPath(log.userName)}>
-          {userName}
-        </Link>
-      );
-    }
-
-    return <Typography weight="semibold">{userName}</Typography>;
-  }, [log.userName, userName]);
+  // Built per render: `getSettingsLink` reads the current mode and search.
+  const userLink = log.userName ? (
+    <Link
+      className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
+      to={getSettingsLink(getUserPath(log.userName))}>
+      {userName}
+    </Link>
+  ) : (
+    <Typography weight="semibold">{userName}</Typography>
+  );
 
   return (
     <Box
