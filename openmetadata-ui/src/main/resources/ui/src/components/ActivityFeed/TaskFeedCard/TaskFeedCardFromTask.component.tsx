@@ -368,7 +368,7 @@ const TaskFeedCardFromTask = ({
             data-testid="task-reply-button"
             icon={Comment}
             size="sm"
-            onPress={showReplies}
+            onClick={showReplies}
           />
           {commentsCount > 0 ? (
             <Button

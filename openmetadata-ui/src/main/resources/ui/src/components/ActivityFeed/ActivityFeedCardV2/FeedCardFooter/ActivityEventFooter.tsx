@@ -16,7 +16,10 @@ import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
-import { PressEvent } from 'react-aria-components';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
@@ -59,6 +62,12 @@ function ActivityEventFooter({
     },
     [isForFeedTab, onActivityClick, activity]
   );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const commentPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleCommentPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isForFeedTab })}>
@@ -71,7 +80,7 @@ function ActivityEventFooter({
               data-testid="comment-button"
               icon={Comment}
               size="sm"
-              onPress={handleCommentPress}
+              {...commentPressProps}
             />
             <Reactions
               reactions={activity.reactions ?? []}

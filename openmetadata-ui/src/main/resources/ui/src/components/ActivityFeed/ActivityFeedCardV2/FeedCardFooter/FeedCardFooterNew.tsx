@@ -20,7 +20,10 @@ import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
-import { PressEvent } from 'react-aria-components';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
@@ -95,6 +98,12 @@ function FeedCardFooterNew({
     },
     [isForFeedTab, showReplies]
   );
+  // ButtonUtility forwards its props to a react-aria Button but does not declare
+  // onPress, and onClick would not let the click bubble, so the press handler is
+  // passed as typed react-aria props.
+  const repliesPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: handleRepliesPress,
+  };
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
@@ -121,7 +130,7 @@ function FeedCardFooterNew({
                     }
                     key={user}
                     size="xs"
-                    onPress={handleRepliesPress}
+                    {...repliesPressProps}
                   />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
@@ -136,7 +145,7 @@ function FeedCardFooterNew({
                 data-testid="reply-button"
                 icon={Comment}
                 size="sm"
-                onPress={handleRepliesPress}
+                {...repliesPressProps}
               />
             )}
             <Reactions
