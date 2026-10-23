@@ -82,6 +82,9 @@ jobs:
         run: |
           cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
+      - name: Build openmetadata-service
+        # Not published, but the Java client is generated from the swagger.json its compile writes.
+        run: mvn --no-transfer-progress --batch-mode -DskipTests -pl openmetadata-service -am install
       - name: Publish to Central Repository
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}

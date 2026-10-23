@@ -27,7 +27,9 @@ distributions all build these modules from source; they do not resolve them from
   is published every release.
 - `openmetadata-service` and its search jars (`openmetadata-shaded-deps`, `elasticsearch-deps`,
   `opensearch-deps`) are not published: the server is built from source everywhere it runs, and
-  the SDK and client do not depend on them.
+  the SDK and client do not depend on them. The publish job still builds the service (`install`,
+  never `deploy`) first, because the Java client is generated from the `swagger.json` that the
+  service's compile writes.
 - A published module's parent pom must be in the list too (`openmetadata-clients` for the Java
   client, the root for everything), or the jar cannot be resolved.
 - Extra artifacts inside a published module are not controlled by the list: the Java client's
