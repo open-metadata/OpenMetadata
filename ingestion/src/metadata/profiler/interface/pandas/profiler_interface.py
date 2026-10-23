@@ -328,7 +328,9 @@ class PandasProfilerInterface(ProfilerInterface, PandasInterfaceMixin):
         for metric in metrics:
             if not is_safe_pandas_query(metric.expression):
                 logger.warning(
-                    f"Skipping custom metric {metric.name.root}: Unsafe pandas query expression\n\n{metric.expression}"
+                    "Skipping custom metric %s: Unsafe pandas query expression\n\n%s",
+                    metric.name.root,
+                    metric.expression,
                 )
                 continue
             try:
