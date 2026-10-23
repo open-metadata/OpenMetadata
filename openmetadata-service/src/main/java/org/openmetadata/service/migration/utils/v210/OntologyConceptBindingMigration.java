@@ -193,19 +193,7 @@ public final class OntologyConceptBindingMigration {
       UUID conceptId,
       UUID assetId,
       OntologyBindingAssetType assetType,
-      OntologyAssetBinding binding) {
-    @Override
-    public boolean equals(final Object other) {
-      return other instanceof Row row
-          && conceptId.equals(row.conceptId)
-          && assetId.equals(row.assetId);
-    }
-
-    @Override
-    public int hashCode() {
-      return 31 * conceptId.hashCode() + assetId.hashCode();
-    }
-  }
+      OntologyAssetBinding binding) {}
 
   private static final class Counts {
     int documents;
