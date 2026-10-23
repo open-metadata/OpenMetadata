@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
 import java.net.URI;
@@ -13,10 +14,47 @@ import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /** The reciprocity finalizer and the restore exception, at the repository, on both engines. */
 class OntologyPropertyInverseStorageTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void rejectedDeletionRollsBackThePartnerUpdate(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final var properties = new OntologyPropertyRepository();
+          final var hasPart = properties.create(null, property(fixture, "hasPart"));
+          final var partOf =
+              properties.create(null, property(fixture, "partOf").withInverse(hasPart.getIri()));
+          final long revision =
+              fixture.ontologies.getState(fixture.ontology.getId()).getWorkingRevision();
+          final var rejected =
+              new OntologyPropertyRepository() {
+                @Override
+                protected void preDelete(final OntologyProperty property, final String deletedBy) {
+                  super.preDelete(property, deletedBy);
+                  throw new BadRequestException("Rejected delete");
+                }
+              };
+
+          assertThrows(
+              BadRequestException.class,
+              () -> rejected.delete("reviewer", partOf.getId(), false, true));
+
+          assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
+          final var partner = properties.find(hasPart.getId(), Include.NON_DELETED);
+          assertEquals(partOf.getIri(), partner.getInverse());
+          assertEquals("admin", partner.getUpdatedBy());
+          assertEquals(
+              revision, fixture.ontologies.getState(fixture.ontology.getId()).getWorkingRevision());
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,

@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -19,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.OntologyChangeSetTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -26,6 +29,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -152,6 +156,36 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
 
     service.delete(partOf.getId().toString(), Map.of("hardDelete", "true"));
     assertNull(service.get(hasPart.getId().toString()).getInverse());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void deletingOneSideAttributesPartnerCleanupToTheDeleter(boolean hardDelete, TestNamespace ns) {
+    final String name = ns.prefix("inverseDeleter");
+    final var deleter =
+        ns.trackRoot(
+            "user",
+            SdkClients.adminClient()
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(name)
+                        .withEmail(name + "@example.com")
+                        .withIsAdmin(true)));
+    final Ontology ontology = createOntology(ns, "inverseModel");
+    final OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+    final OntologyProperty hasPart = service.create(objectProperty(ontology, "hasPart", HAS_PART));
+    final OntologyProperty partOf =
+        service.create(objectProperty(ontology, "partOf", PART_OF).withInverse(HAS_PART));
+    assertNotEquals(deleter.getName(), service.get(hasPart.getId().toString()).getUpdatedBy());
+
+    SdkClients.createClient(deleter.getEmail(), deleter.getEmail(), new String[] {})
+        .ontologyProperties()
+        .delete(partOf.getId().toString(), Map.of("hardDelete", Boolean.toString(hardDelete)));
+
+    final OntologyProperty cleared = service.get(hasPart.getId().toString());
+    assertNull(cleared.getInverse());
+    assertEquals(deleter.getName(), cleared.getUpdatedBy());
   }
 
   @Test

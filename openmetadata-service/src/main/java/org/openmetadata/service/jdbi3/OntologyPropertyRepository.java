@@ -68,6 +68,19 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         });
   }
 
+  @Override
+  protected void preDelete(final OntologyProperty property, final String deletedBy) {
+    // A hard delete leaves only the stored preimage, which still names its previous writer.
+    // Release partners while the delete actor is available, inside the retained transaction.
+    final OntologyProperty deleted =
+        JsonUtils.deepCopy(property, OntologyProperty.class)
+            .withDeleted(true)
+            .withUpdatedBy(deletedBy);
+    reconcileInverses(
+        property.getOntology().getId(),
+        List.of(new OntologyWorkingModel.Change(property, deleted)));
+  }
+
   /**
    * A restore brings back the inverse the property held when it was deleted. When that partner
    * has gone since, the link is dropped rather than refused: the property cannot be edited while

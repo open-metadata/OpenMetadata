@@ -420,6 +420,41 @@ describe('OntologyNativeRelation.utils', () => {
     expect(plan(HAS_PART)).toEqual(['axiom']);
   });
 
+  it('plans one property and a source restriction for a registry type without an inverse', () => {
+    expect(
+      planNativeRelation({
+        from: account,
+        model,
+        to: customer,
+        type: toNativeRelationType({ ...partOf, inverse: undefined }, types),
+      })
+    ).toEqual([
+      {
+        kind: 'property',
+        request: {
+          displayName: 'Part Of',
+          inverse: undefined,
+          iri: PART_OF,
+          kind: 'OBJECT',
+          name: 'partOf',
+          ontology: 'RetailCommerce',
+        },
+      },
+      {
+        kind: 'axiom',
+        request: expect.objectContaining({
+          subjectIri: account.iri,
+          expressions: [
+            expect.objectContaining({
+              propertyIri: PART_OF,
+              filler: { classIri: customer.iri, kind: 'NAMED_CLASS' },
+            }),
+          ],
+        }),
+      },
+    ]);
+  });
+
   it('plans one self-inverse property for a symmetric type', () => {
     expect(
       planNativeRelation({

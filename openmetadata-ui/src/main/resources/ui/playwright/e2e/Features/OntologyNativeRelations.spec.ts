@@ -138,10 +138,14 @@ test.describe(
           await expect(
             picker.getByTestId(`relation-type-${HAS_PART}`)
           ).toContainText('Part Of');
+          await picker.getByTestId('relation-type-search').fill('part');
+          await scrollIntoViewAndSettle(partOf);
+          await expect(partOf).toBeVisible();
           await testInfo.attach('native-relation-groups', {
             body: await page.screenshot(),
             contentType: 'image/png',
           });
+          await picker.getByTestId('relation-type-search').fill('');
         });
 
         await test.step('Add Part Of from Account to Customer', async () => {
@@ -371,6 +375,8 @@ test.describe(
           await expect(picker.getByTestId('relation-type-create')).toHaveCount(
             0
           );
+          await scrollIntoViewAndSettle(picker.getByTestId('group-custom'));
+          await expect(picker.getByTestId('group-custom')).toBeVisible();
           await testInfo.attach('native-relation-steward', {
             body: await authorPage.screenshot(),
             contentType: 'image/png',
