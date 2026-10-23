@@ -163,21 +163,109 @@ const checkIsDownStreamTask = (currentTask: Task, tasks: Task[]) =>
 // exhausting memory on a pathological cyclic graph.
 const MAX_TREE_NODES = 10000;
 
-// Function to build a tree for all nodes
-export const buildCompleteTree = (
+type ViewElement = { key: string; value: React.ReactNode };
+type Budget = { remaining: number };
+
+// Create a tree node with the given key, title, and optional icon.
+const createNode = (
+  nodeKey: string,
+  title: React.ReactNode,
+  icon: React.ReactNode | null
+): TreeNode => {
+  if (icon != null) {
+    return { key: nodeKey, title, children: [], icon };
+  }
+
+  return { key: nodeKey, title, children: [] };
+};
+
+// Render a child as a leaf (no recursion) without charging the budget.
+// Used when the node budget is exhausted so tasks still appear in Tree
+// View instead of being silently dropped. Leaf creation is bounded by
+// the input graph (no recursion), so it can't blow up the way a
+// branching cycle does.
+const makeLeafNode = (
+  parentNodeKey: string,
+  childKey: string,
+  viewElements: ViewElement[],
+  icon: React.ReactNode | null
+): TreeNode => {
+  const leaf: TreeNode = {
+    key: parentNodeKey + '-' + childKey,
+    title: viewElements.find((item) => item.key === childKey)?.value ?? null,
+  };
+  if (icon != null) {
+    leaf.icon = icon;
+  }
+
+  return leaf;
+};
+
+// Expand the children of a node. While the budget remains, children are
+// expanded recursively; once the budget is exhausted, remaining children
+// (and children of a node whose own expansion was stopped) are rendered
+// as leaves so no task silently disappears from Tree View.
+function expandNodeChildren(
+  node: TreeNode,
+  entry: Task | undefined,
   data: Task[],
-  viewElements: {
-    key: string;
-    value: React.ReactNode;
-  }[],
+  viewElements: ViewElement[],
+  icon: React.ReactNode | null,
+  nodeKey: string,
+  parentKey: string,
+  visited: Set<string>,
+  budget: Budget
+): void {
+  if (!entry || visited.has(entry.name)) {
+    return;
+  }
+
+  const childParentKey = parentKey + '-' + entry.name;
+  const childrenKeys = entry.downstreamTasks ?? [];
+
+  if (budget.remaining > 0) {
+    visited.add(entry.name);
+    for (const childKey of childrenKeys) {
+      if (budget.remaining > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutual recursion with buildCompleteTree
+        const childNode = buildCompleteTree(
+          data,
+          viewElements,
+          icon,
+          childKey,
+          childParentKey,
+          visited,
+          budget
+        );
+        node.children?.push(childNode);
+      } else {
+        node.children?.push(
+          makeLeafNode(nodeKey, childKey, viewElements, icon)
+        );
+      }
+    }
+    // Backtrack so a shared task (e.g. a diamond merge node) is still
+    // expanded under a different parent branch. This keeps cycle
+    // termination (a node is only visited once per path) while not
+    // pruning valid acyclic paths that converge on the same task.
+    visited.delete(entry.name);
+  } else {
+    for (const childKey of childrenKeys) {
+      node.children?.push(makeLeafNode(nodeKey, childKey, viewElements, icon));
+    }
+  }
+}
+
+// Function to build a tree for all nodes
+export function buildCompleteTree(
+  data: Task[],
+  viewElements: ViewElement[],
   icon: React.ReactNode | null,
   key: string,
   parentKey: string,
   visited: Set<string> = new Set(),
-  budget: { remaining: number } = { remaining: MAX_TREE_NODES }
-) => {
-  let node: TreeNode;
-
+  budget: Budget = { remaining: MAX_TREE_NODES }
+) {
   const nodeKey: string = parentKey + '-' + key;
 
   // Charge every created node against the shared budget so the total
@@ -185,60 +273,27 @@ export const buildCompleteTree = (
   budget.remaining -= 1;
 
   const title = viewElements.find((item) => item.key === key)?.value ?? null;
-
-  if (icon != null) {
-    node = {
-      key: nodeKey,
-      title,
-      children: [],
-      icon,
-    };
-  } else {
-    node = {
-      key: nodeKey,
-      title,
-      children: [],
-    };
-  }
+  const node = createNode(nodeKey, title, icon);
   const entry = data.find((item) => item.name === key);
 
-  // Expand children only while the path hasn't revisited this key (cycle
-  // termination) and the shared node budget hasn't been spent. The budget
-  // bounds the total expansion so branching cycles can't freeze Tree View.
-  if (entry && !visited.has(key) && budget.remaining > 0) {
-    visited.add(key);
-
-    const childrenKeys = entry.downstreamTasks ?? [];
-
-    for (const childKey of childrenKeys) {
-      if (budget.remaining <= 0) {
-        break;
-      }
-      const childNode = buildCompleteTree(
-        data,
-        viewElements,
-        icon,
-        childKey,
-        parentKey + '-' + entry.name,
-        visited,
-        budget
-      );
-      node.children?.push(childNode);
-    }
-
-    // Backtrack so a shared task (e.g. a diamond merge node) is still
-    // expanded under a different parent branch. This keeps cycle
-    // termination (a node is only visited once per path) while not
-    // pruning valid acyclic paths that converge on the same task.
-    visited.delete(key);
-  }
+  expandNodeChildren(
+    node,
+    entry,
+    data,
+    viewElements,
+    icon,
+    nodeKey,
+    parentKey,
+    visited,
+    budget
+  );
 
   if (node.children?.length === 0) {
     delete node.children;
   }
 
   return node;
-};
+}
 
 export const getTreeData = (
   tasks: Task[],

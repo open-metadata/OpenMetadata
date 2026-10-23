@@ -172,9 +172,62 @@ describe('executionUtils', () => {
       const totalNodes = collectKeys([tree]).length;
 
       // Renders something (the root and at least its first children), but
-      // never millions of nodes — bounded by MAX_TREE_NODES (10000).
+      // never millions of nodes — the recursive expansion is bounded by
+      // MAX_TREE_NODES (10000). Leaf preservation for tasks that fall
+      // outside the budget can add at most O(tasks × fan-out) extra leaf
+      // nodes on top, which stays tiny for real graphs.
       expect(totalNodes).toBeGreaterThan(0);
-      expect(totalNodes).toBeLessThanOrEqual(10000);
+      expect(totalNodes).toBeLessThanOrEqual(
+        10000 + names.length * names.length
+      );
+    });
+
+    it('preserves later siblings as leaves when the node budget is exhausted', () => {
+      // A root that points first into a chain (which spends the budget)
+      // and then to a separate task Z. Z must still appear as a leaf
+      // even when the budget runs out while expanding the chain, instead
+      // of being silently dropped by a break.
+      const tasks = makeTasks({
+        A: ['B', 'Z'],
+        B: ['C'],
+        C: ['D'],
+        D: [],
+        Z: [],
+      });
+      const labels = labelElementsFor(['A', 'B', 'C', 'D', 'Z']);
+
+      // Budget of 3: A (1), B (2), C (3). D and Z would exceed the budget.
+      const tree = buildCompleteTree(
+        tasks,
+        labels,
+        null,
+        'A',
+        'root',
+        new Set(),
+        { remaining: 3 }
+      );
+
+      // Every task appears at least once; no task is silently dropped.
+      expect(new Set(collectTitles([tree]))).toEqual(
+        new Set(['A', 'B', 'C', 'D', 'Z'])
+      );
+
+      // Z is a direct child of A and must be present as a leaf.
+      const rootChildren = tree.children ?? [];
+
+      expect(rootChildren.some((child) => String(child.title) === 'Z')).toBe(
+        true
+      );
+
+      // D is a child of C and must be present as a leaf even though C's
+      // expansion was stopped by the budget.
+      const bNode = rootChildren.find((child) => String(child.title) === 'B');
+      const cNode = bNode?.children?.[0];
+
+      expect(String(cNode?.title)).toBe('C');
+      expect(
+        cNode?.children?.some((child) => String(child.title) === 'D')
+      ).toBe(true);
     });
   });
 
