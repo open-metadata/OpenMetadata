@@ -24,7 +24,7 @@ import {
   Table as TableIcon,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { capitalize, isUndefined } from 'lodash';
+import { isUndefined } from 'lodash';
 import {
   memo,
   ReactNode,
@@ -48,7 +48,10 @@ import { getTestCaseExecutionSummary } from '../../../rest/testAPI';
 import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
 import { getEntityIcon } from '../../../utils/EntityIconUtils';
 import { getEntityChildrenAndLabel } from '../../../utils/EntityLineageNodeUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  getEntityName,
+  getEntityNameLabel,
+} from '../../../utils/EntityNameUtils';
 import { getServiceIcon } from '../../../utils/EntityServiceIconUtils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
@@ -339,7 +342,7 @@ const EntityFooter = ({
           iconLeading={renderEntityTypeIcon}
           size="md"
           type="color">
-          {capitalize(node.entityType)}
+          {getEntityNameLabel(node.entityType)}
         </BadgeWithIcon>
         <Button
           className={classNames(

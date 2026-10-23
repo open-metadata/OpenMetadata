@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   Tooltip,
@@ -47,6 +46,7 @@ import { getMarketPlaceApplicationByFqn } from '../../../../../../rest/applicati
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import type { ApplicationsViewProps } from './Applications.types';
@@ -313,7 +313,7 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
   if (!appData) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="app-not-found"
           description={fqn}
           icon={GridView}

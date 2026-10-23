@@ -67,10 +67,8 @@ export interface TaskStatTileGridProps {
 
 /**
  * The asset card's strip of stat tiles. Shared so a plugin supplying its own
- * tiles for a task type renders them exactly as the inbox does.
- *
- * A `metric` tile puts its value first — a count or a time. A `field` tile puts
- * its label first — a named property such as a test type.
+ * tiles for a task type renders them exactly as the inbox does. Every tile
+ * reads value first, label under it.
  */
 export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   tiles,
@@ -104,30 +102,22 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
     <Box
       className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary"
       data-testid={`${testIdPrefix}-tiles`}>
-      {tiles.map((tile) => {
-        const label = (
+      {tiles.map((tile) => (
+        <Box
+          align="start"
+          className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3"
+          data-testid={`${testIdPrefix}-${tile.key}`}
+          direction="col"
+          gap={1}
+          key={tile.key}>
+          <TileValue tile={tile} />
           <Typography
             className="tw:whitespace-nowrap tw:text-tertiary"
             size="text-xs">
             {tile.label}
           </Typography>
-        );
-        const isField = tile.layout === 'field';
-
-        return (
-          <Box
-            align="start"
-            className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3"
-            data-testid={`${testIdPrefix}-${tile.key}`}
-            direction="col"
-            gap={1}
-            key={tile.key}>
-            {isField && label}
-            <TileValue tile={tile} />
-            {!isField && label}
-          </Box>
-        );
-      })}
+        </Box>
+      ))}
     </Box>
   );
 };

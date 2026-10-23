@@ -39,6 +39,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Bell01: jest.fn(() => <span data-testid="bell-icon" />),
+  Database01: jest.fn(() => <span />),
   Lightbulb05: jest.fn(() => <span />),
   Lock01: jest.fn(() => <span data-testid="lock-icon" />),
 }));

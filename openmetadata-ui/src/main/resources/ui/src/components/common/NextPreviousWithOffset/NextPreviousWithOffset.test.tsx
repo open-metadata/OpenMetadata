@@ -67,6 +67,13 @@ describe('NextPreviousWithOffset', () => {
     expect(screen.getByTestId('next')).toBeDisabled();
   });
 
+  it('should disable next button when there are no results', () => {
+    const props = { ...defaultProps, paging: { total: 0 } };
+    render(<NextPreviousWithOffset {...props} />);
+
+    expect(screen.getByTestId('next')).toBeDisabled();
+  });
+
   it('should disable both buttons when loading', () => {
     const props = { ...defaultProps, isLoading: true };
     render(<NextPreviousWithOffset {...props} />);

@@ -50,6 +50,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -150,19 +151,29 @@ const ActivityFeedCardNew = ({
   const isActivityEvent = !isUndefined(activity);
   const timeFormat = useActiveTimeFormat();
 
+  const entityRef = feed?.entityRef ?? activity?.entity;
+
   const { entityFQN, entityType, about } = useMemo(() => {
     const aboutValue = feed?.about ?? activity?.about ?? '';
-    // `||`, not `??`: the EntityLink accessors return '' for a missing or
-    // unparseable link, and an activity event's `about` is optional. `??` would
-    // keep that '' and skip the entity reference the event does carry, leaving
-    // the card with no entity link, icon or popover.
-    const entityFQN =
-      getEntityFQN(aboutValue) || activity?.entity?.fullyQualifiedName || '';
-    const entityType =
-      getEntityType(aboutValue) || (activity?.entity?.type as EntityType) || '';
+    // Read the entity reference rather than parse `about`. For an activity
+    // event, and a Conversation the server created from one, `about` carries
+    // the changed field (`<#E::topic::fqn::entityStatus>`), and a field the
+    // EntityLink grammar does not list makes ANTLR log a syntax error on every
+    // render.
+    if (entityRef?.fullyQualifiedName) {
+      return {
+        entityFQN: entityRef.fullyQualifiedName,
+        entityType: entityRef.type as EntityType,
+        about: aboutValue,
+      };
+    }
 
-    return { entityFQN, entityType, about: aboutValue };
-  }, [feed?.about, activity?.about, activity?.entity]);
+    return {
+      entityFQN: getEntityFQN(aboutValue),
+      entityType: getEntityType(aboutValue) as EntityType,
+      about: aboutValue,
+    };
+  }, [feed?.about, activity?.about, entityRef]);
 
   const createdBy = useMemo(() => {
     const postAuthor = post?.author.name ?? post?.author.fullyQualifiedName;
@@ -227,7 +238,6 @@ const ActivityFeedCardNew = ({
       isUserOrTeam: [EntityType.USER, EntityType.TEAM].includes(entityType),
     };
   }, [entityFQN, entityType]);
-  const entityRef = feed?.entityRef ?? activity?.entity;
 
   const renderEntityLink = useMemo(() => {
     if (isUserOrTeam) {
@@ -500,7 +510,7 @@ const ActivityFeedCardNew = ({
                       'reply-card-user-name': isPost,
                     })}
                     userName={createdBy}>
-                    <Link to={getUserPath(createdBy)}>
+                    <Link to={getSettingsLink(getUserPath(createdBy))}>
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
@@ -512,6 +522,7 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
+              isActive={isActive}
               isEditPost={isEditPost}
               isFeedWidget={isFeedWidget}
               isForFeedTab={isForFeedTab}
@@ -598,6 +609,7 @@ const ActivityFeedCardNew = ({
 
           {/* Only opens the editor, so it is a button rather than an input. */}
           <Button
+            ellipsis
             className="tw:w-full tw:justify-start"
             color="secondary"
             data-testid="comments-input-field"
@@ -665,7 +677,7 @@ const ActivityFeedCardNew = ({
                           'reply-card-user-name': isPost,
                         })}
                         userName={createdBy}>
-                        <Link to={getUserPath(createdBy)}>
+                        <Link to={getSettingsLink(getUserPath(createdBy))}>
                           {getEntityName(user)}
                         </Link>
                       </UserPopOverCard>
@@ -685,6 +697,7 @@ const ActivityFeedCardNew = ({
             <FeedCardBodyNew
               activity={activity}
               feed={feed}
+              isActive={isActive}
               isEditPost={isEditPost}
               isForFeedTab={isForFeedTab}
               isPost={isPost}

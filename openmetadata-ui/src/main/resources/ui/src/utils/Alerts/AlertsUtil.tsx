@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Divider, Skeleton } from '@openmetadata/ui-core-components';
+import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   CheckCircle,
@@ -40,8 +40,7 @@ import { Status as DestinationStatus } from '../../generated/events/testDestinat
 import { searchQuery } from '../../rest/searchAPI';
 import alertsClassBase from '../AlertsClassBase';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
-import { EntityIconSize } from '../EntityIconUtils';
-import { getEntityName, getEntityNameLabel } from '../EntityNameUtils';
+import { getEntityName } from '../EntityNameUtils';
 import { t } from '../i18next/LocalUtil';
 import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
@@ -238,35 +237,6 @@ export const getEntityByIdOptions = async (
     return [];
   }
 };
-
-export const getSourceOptionsFromResourceList = (
-  resources: Array<string>,
-  showCheckbox?: boolean,
-  selectedResource?: string[],
-  showIcon?: boolean
-) =>
-  resources.map((resource) => ({
-    label: (
-      <div
-        className="d-flex items-center gap-2"
-        data-testid={`${resource}-option`}>
-        {showCheckbox && (
-          <Checkbox
-            isReadOnly
-            aria-label={getEntityNameLabel(resource)}
-            isSelected={selectedResource?.includes(resource)}
-          />
-        )}
-        {showIcon &&
-          searchClassBase.getEntityIconWithBg(
-            resource ?? '',
-            EntityIconSize.Size14
-          )}
-        <span>{getEntityNameLabel(resource ?? '')}</span>
-      </div>
-    ),
-    value: resource ?? '',
-  }));
 
 export const getAlertRecentEventsFilterOptions = () =>
   Object.values(AlertRecentEventFilters).map((status) => ({

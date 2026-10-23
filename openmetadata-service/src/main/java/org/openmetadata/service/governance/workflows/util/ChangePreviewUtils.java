@@ -30,6 +30,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -242,6 +243,11 @@ public final class ChangePreviewUtils {
           hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
+      if (hasNoChanges(pending)) {
+        // An approval workflow moves the entity's status itself (e.g. to In Review right before it
+        // opens the task), so a status change read off the entity is the workflow's own write.
+        merged.remove(Entity.FIELD_ENTITY_STATUS);
+      }
       if (LOG.isDebugEnabled()) {
         LOG.debug(
             "[ChangePreview] entity='{}' v={} cdAdded={} cdDeleted={} cdUpdated={} priorPayload={} newDiff={} merged={}",

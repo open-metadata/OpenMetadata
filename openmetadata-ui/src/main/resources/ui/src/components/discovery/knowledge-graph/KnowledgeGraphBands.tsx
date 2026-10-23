@@ -50,7 +50,7 @@ const KnowledgeGraphBands = ({
               {layout === 'lanes' ? (
                 <>
                   <rect
-                    className={classNames('kg-band', 'kg-band-' + variant)}
+                    className={classNames('tw:stroke-1', 'kg-band-' + variant)}
                     height={ring.radiusY * 2}
                     rx={BAND_RADIUS * zoom}
                     strokeDasharray="6 7"

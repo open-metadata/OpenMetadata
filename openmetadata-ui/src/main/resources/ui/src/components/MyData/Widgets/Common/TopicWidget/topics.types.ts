@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
-import { BadgeColors } from '@openmetadata/ui-core-components';
+import { BadgeColors, FeaturedIcon } from '@openmetadata/ui-core-components';
 import { IconProps } from '@openmetadata/ui-core-components/icons';
-import { FC } from 'react';
+import { ComponentProps, FC } from 'react';
 
 /**
  * Stable ids for the cards in "Topics to catch up on". They key the per-card
@@ -80,11 +80,14 @@ export interface TopicEmptyStateFooter {
   action?: TopicAction;
 }
 
-export interface TopicIconTone {
-  icon: FC<IconProps>;
-  /** Tinted tile behind the icon — surface plus its matching foreground. */
-  tile: string;
-}
+/**
+ * The tile behind a topic card's icon: a core `FeaturedIcon` colour where core
+ * ships one, so both themes come from core; otherwise a utility tint (indigo,
+ * purple, blue-light, …) with its matching foreground.
+ */
+export type TopicIconTone =
+  | { icon: FC<IconProps>; color: ComponentProps<typeof FeaturedIcon>['color'] }
+  | { icon: FC<IconProps>; tile: string };
 
 /** One size for every icon-button affordance in a topic card's header. */
 export const TOGGLE_ICON_CLASS = 'tw:*:data-icon:size-3.5';

@@ -114,29 +114,81 @@ const buildTitleInput = (
 const getJoinableLabel = (t: TranslateFn, team: Team): string =>
   team.isJoinable ? t('label.make-private') : t('label.make-public');
 
-// The manage items (make public/private, restore, delete) split out to keep
-// buildTeamActionsMenu's branching under the complexity budget.
-const buildManageMenuItems = (
+interface TeamMenuItems {
+  exportTeam: boolean;
+  importTeam: boolean;
+  toggleJoinable: boolean;
+  restore: boolean;
+  remove: boolean;
+}
+
+// Classic hides a team's Manage menu from anyone who cannot edit it, except
+// on the Organization; the "..." trigger goes with it when nothing is left.
+const getTeamMenuItems = (
+  team: Team,
+  params: UseMembersTeamHeaderParams
+): TeamMenuItems => {
+  const {
+    canCreateTeam,
+    canDelete,
+    canEditAll,
+    canRestore,
+    isGroupType,
+    isOrgType,
+  } = params;
+  const isLive = !team.deleted;
+  // Can't restore into a deleted parent — mirrors the legacy team page.
+  const parentDeleted = Boolean(team.parents?.[0]?.deleted);
+  const canManage = isOrgType || canEditAll;
+  const exportTeam = !isGroupType && isLive && canManage;
+
+  return {
+    exportTeam,
+    importTeam: exportTeam && canCreateTeam,
+    toggleJoinable: !isOrgType && isLive && canEditAll,
+    restore: !isLive && canRestore && !parentDeleted,
+    remove: canDelete && !isOrgType,
+  };
+};
+
+// Renders only the items getTeamMenuItems allows, in menu order.
+const buildTeamActionsMenu = (
   t: TranslateFn,
+  items: TeamMenuItems,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
   const {
-    canDelete,
-    canEditAll,
-    canRestore,
-    isOrgType,
-    onToggleJoinable,
-    onRestoreTeam,
     onDelete,
+    onRestoreTeam,
+    onTeamExport,
+    onTeamImport,
+    onToggleJoinable,
   } = params;
-  const notDeleted = !team.deleted;
-  // Can't restore into a deleted parent — mirrors the legacy team page.
-  const parentDeleted = Boolean(team.parents?.[0]?.deleted);
 
   return (
-    <>
-      {!isOrgType && notDeleted && canEditAll && (
+    <Dropdown.Menu>
+      {items.exportTeam && (
+        <Dropdown.Item
+          data-testid="export-team"
+          icon={Download01}
+          onAction={onTeamExport}>
+          {t('label.export-entity', {
+            entity: t('label.team'),
+          })}
+        </Dropdown.Item>
+      )}
+      {items.importTeam && (
+        <Dropdown.Item
+          data-testid="import-team"
+          icon={Upload01}
+          onAction={onTeamImport}>
+          {t('label.import-entity', {
+            entity: t('label.team'),
+          })}
+        </Dropdown.Item>
+      )}
+      {items.toggleJoinable && (
         <Dropdown.Item
           data-testid="toggle-joinable"
           icon={Lock01}
@@ -144,7 +196,7 @@ const buildManageMenuItems = (
           {getJoinableLabel(t, team)}
         </Dropdown.Item>
       )}
-      {team.deleted && canRestore && !parentDeleted && (
+      {items.restore && (
         <Dropdown.Item
           data-testid="restore-team"
           icon={Restore}
@@ -154,7 +206,7 @@ const buildManageMenuItems = (
           })}
         </Dropdown.Item>
       )}
-      {canDelete && !isOrgType && (
+      {items.remove && (
         <Dropdown.Item
           data-testid="delete-team"
           icon={Trash01}
@@ -162,63 +214,29 @@ const buildManageMenuItems = (
           {t('label.delete')}
         </Dropdown.Item>
       )}
-    </>
-  );
-};
-
-const buildTeamActionsMenu = (
-  t: TranslateFn,
-  team: Team,
-  params: UseMembersTeamHeaderParams
-): ReactNode => {
-  const { canCreateTeam, isGroupType, onTeamExport, onTeamImport } = params;
-
-  return (
-    <Dropdown.Menu>
-      {!isGroupType && !team.deleted && (
-        <>
-          <Dropdown.Item
-            data-testid="export-team"
-            icon={Download01}
-            onAction={onTeamExport}>
-            {t('label.export-entity', {
-              entity: t('label.team'),
-            })}
-          </Dropdown.Item>
-          {canCreateTeam && (
-            <Dropdown.Item
-              data-testid="import-team"
-              icon={Upload01}
-              onAction={onTeamImport}>
-              {t('label.import-entity', {
-                entity: t('label.team'),
-              })}
-            </Dropdown.Item>
-          )}
-        </>
-      )}
-      {buildManageMenuItems(t, team, params)}
     </Dropdown.Menu>
   );
 };
+
+// A member can always leave; joining is only offered on joinable teams (admins
+// hold canEditAll, so they can still join a private team).
+const canJoinOrLeave = (
+  team: Team,
+  { canEditAll, isCurrentUserMember, isGroupType }: UseMembersTeamHeaderParams
+): boolean =>
+  Boolean(isGroupType) &&
+  !team.deleted &&
+  Boolean(isCurrentUserMember || team.isJoinable || canEditAll);
 
 const buildHeaderActions = (
   t: TranslateFn,
   team: Team,
   params: UseMembersTeamHeaderParams
 ): ReactNode => {
-  const {
-    canEditAll,
-    isGroupType,
-    isCurrentUserMember,
-    onJoinTeam,
-    onLeaveTeam,
-  } = params;
-
-  // A member can always leave; joining is only offered on joinable teams (admins
-  // hold canEditAll, so they can still join a private team).
-  const canJoinable = isCurrentUserMember || team.isJoinable || canEditAll;
-  const showJoinLeave = isGroupType && !team.deleted && canJoinable;
+  const { isCurrentUserMember, onJoinTeam, onLeaveTeam } = params;
+  const showJoinLeave = canJoinOrLeave(team, params);
+  const menuItems = getTeamMenuItems(team, params);
+  const hasMenu = Object.values(menuItems).some(Boolean);
 
   return (
     <Box align="center" direction="row" gap={2}>
@@ -233,12 +251,14 @@ const buildHeaderActions = (
           {isCurrentUserMember ? t('label.leave-team') : t('label.join-team')}
         </Button>
       )}
-      <Dropdown.Root>
-        <Dropdown.DotsButton />
-        <Dropdown.Popover className="tw:w-min">
-          {buildTeamActionsMenu(t, team, params)}
-        </Dropdown.Popover>
-      </Dropdown.Root>
+      {hasMenu && (
+        <Dropdown.Root>
+          <Dropdown.DotsButton />
+          <Dropdown.Popover className="tw:w-min">
+            {buildTeamActionsMenu(t, menuItems, team, params)}
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      )}
     </Box>
   );
 };

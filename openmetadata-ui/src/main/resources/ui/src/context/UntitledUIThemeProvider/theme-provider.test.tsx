@@ -265,6 +265,25 @@ describe('ThemeProvider', () => {
     expect(screen.getByTestId('theme-class-ready')).toHaveTextContent('true');
   });
 
+  it('suppresses colour transitions only while the theme flips', () => {
+    jest.useFakeTimers();
+    setSystemTheme('light');
+    renderProvider();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use dark theme' }));
+
+    expect(document.documentElement).toHaveClass('dark-mode');
+    expect(document.documentElement).toHaveClass('theme-switching');
+
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(document.documentElement).not.toHaveClass('theme-switching');
+
+    jest.useRealTimers();
+  });
+
   it('does not rewrite a root class that already matches the stored theme', () => {
     localStorage.setItem('ui-theme', 'dark');
     document.documentElement.classList.add('dark-mode');

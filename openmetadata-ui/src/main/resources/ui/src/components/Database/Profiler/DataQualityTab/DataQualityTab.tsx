@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Tooltip,
@@ -75,6 +74,7 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -601,12 +601,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       // actually clip the cell height. Chromium/Firefox are unaffected.
       <div className="tw:max-h-11 tw:overflow-hidden">
         <Tooltip
-          containerClassName="tw:break-all"
+          containerClassName="tw:wrap-break-word"
           placement="top"
           title={result.result}>
           <TooltipTrigger>
             <Typography
-              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:break-all tw:whitespace-normal"
+              className="tw:m-0 tw:max-w-54 tw:w-54 tw:line-clamp-2 tw:wrap-break-word tw:text-left tw:whitespace-normal"
               data-testid={`reason-text-${record.name}`}
               size="text-sm">
               {result.result}
@@ -848,7 +848,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word tw:min-w-0"
+                className="tw:block tw:min-w-0 tw:truncate"
                 data-testid="table-link"
                 title={tableFqn}
                 to={getEntityDetailsPath(
@@ -935,14 +935,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         className="tw:mb-3 tw:rounded-md tw:bg-(--color-bg-secondary) tw:px-4 tw:py-2"
         gap={3}
         wrap="wrap">
-        <Box>
+        <Box align="center" gap={2}>
           <Typography size="text-sm">
             {t('label.bundle-test-case-selected-count', {
               count: selectedTestCases.length,
             })}
           </Typography>
           <Button
-            className="tw:ml-2"
             color="tertiary"
             data-testid="bulk-clear-test-case-selection"
             size="sm"
@@ -1160,7 +1159,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </div>
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     actions={
                       !hasActiveFilters && emptyStateAction
                         ? [emptyStateAction]
@@ -1177,7 +1176,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases'
                         : 'message.no-test-cases-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )
@@ -1186,7 +1184,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           </Table.Body>
         </Table>
       </div>
-      {pagingData && showPagination && <NextPrevious {...pagingData} />}
+      {pagingData && showPagination && pagingData.paging.total > 0 && (
+        <NextPrevious {...pagingData} />
+      )}
       {renderTestCaseModals()}
     </div>
   );

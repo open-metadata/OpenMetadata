@@ -16,7 +16,6 @@ import {
   ButtonUtility,
   Card,
   Dot,
-  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -27,6 +26,7 @@ import { ReactComponent as RefreshIcon } from '../../../assets/svg/action-icons/
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ArchiveIcon } from '../../../assets/svg/sidebar-icons/archive.svg';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
 
 const ArchiveRowSkeleton: FC = () => (
@@ -163,11 +163,10 @@ const ArchiveView: FC<ArchiveViewProps> = ({
   if (data.length === 0) {
     return (
       <div className="tw:relative tw:flex-1 tw:min-h-0">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.archived-items-appear-here')}
-          icon={<ArchiveIcon className="tw:text-utility-gray-600" />}
+          icon={<ArchiveIcon />}
           title={t('label.no-archived-item-plural-yet')}
-          variant="blank"
         />
       </div>
     );

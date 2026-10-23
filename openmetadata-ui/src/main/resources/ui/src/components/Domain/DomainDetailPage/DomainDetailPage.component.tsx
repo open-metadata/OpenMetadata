@@ -18,7 +18,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -42,7 +41,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import '../domain.less';
@@ -248,14 +248,14 @@ const DomainDetailPage = () => {
 
   if (!canViewDomain) {
     return (
-      <ErrorPlaceHolder
-        className="mt-0-important"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.domain'),
-        })}
-        size={SIZE.LARGE}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.domain'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -265,14 +265,21 @@ const DomainDetailPage = () => {
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError('domain', domainFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('domain', domainFqn)}
+        />
+      </div>
     );
   }
 
   if (!activeDomain) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

@@ -34,6 +34,7 @@ import {
   getTaskResolveBody,
   isOntologyReviewTask,
 } from '../../../../utils/TaskUtils';
+import { isRevisionRequest } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { isTaskOpen } from './inbox.utils';
 import { TaskActionLabelOverrides } from './taskDetail.types';
 import { isApproveTransition, isRejectTransition } from './taskList.utils';
@@ -208,7 +209,8 @@ export const getTaskResolveActions = (
     }));
   }
 
-  return isOntologyReviewTask(task)
+  // A Revise and resubmit task is completed by editing the asset, not resolved here.
+  return isOntologyReviewTask(task) || isRevisionRequest(task)
     ? []
     : getLegacyActions(task, labels, schema);
 };

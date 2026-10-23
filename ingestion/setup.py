@@ -188,6 +188,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
+    "certifi>=2026.10.19",
     "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
@@ -209,7 +210,7 @@ base_requirements = {
     "python-dateutil>=2.8.1",
     "python-dotenv>=0.19.0",  # For environment variable support in dbt ingestion
     "PyYAML~=6.0",
-    "requests>=2.32.4",
+    "requests>=2.33.0",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
     # snowflake-sqlalchemy subclasses sqlalchemy.orm.context.ORMSelectCompileState, which is
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
@@ -462,7 +463,11 @@ plugins: dict[str, set[str]] = {
     "sftp": {"paramiko>=3.5,<6"},
     "singlestore": {VERSIONS["pymysql"]},
     "sklearn": {VERSIONS["scikit-learn"]},
-    "snowflake": {VERSIONS["snowflake"], DATA_DIFF["snowflake"]},
+    "snowflake": {
+        VERSIONS["snowflake"],
+        "snowflake-connector-python>=4.7.3,<5",  # CVE-2026-86597 sensitive data in logs
+        DATA_DIFF["snowflake"],
+    },
     "ssrs": {"requests-ntlm"},
     "superset": {},  # uses requests
     "tableau": {VERSIONS["tableau"], VERSIONS["validators"], VERSIONS["packaging"]},
@@ -580,7 +585,7 @@ test = {
     *plugins["kafka"],
     "kafka-python==2.0.2",
     *plugins["pii-processor"],
-    "requests>=2.32.4,<3",
+    "requests>=2.33.0,<3",
     f"{DATA_DIFF['mysql']}",
     *plugins["datalake-gcs"],
     *plugins["pgspider"],

@@ -324,7 +324,7 @@
             box-shadow: none;
 
             background-color: var(--tw-color-utility-brand-100);
-            color: var(--tw-color-fg-brand-primary);
+            color: var(--tw-color-utility-brand-700);
             font-size: var(--om-font-size-xs);
             font-weight: var(--om-font-weight-medium);
             line-height: 18px;
@@ -334,7 +334,7 @@
             &:hover {
               box-shadow: none;
               background-color: var(--tw-color-utility-brand-100);
-              color: var(--tw-color-fg-brand-primary);
+              color: var(--tw-color-utility-brand-700);
             }
 
             &::after {
@@ -472,16 +472,18 @@
     }
   }
 
+  // Only the node carries the tint: bg-brand-primary is translucent in dark,
+  // so repeating it on nested containers stacks into a saturated fill.
   &.custom-node-header-active {
     background-color: var(--tw-background-color-brand-primary);
 
     .lineage-node-content {
       .label-container {
-        background-color: var(--tw-background-color-brand-primary);
+        background-color: transparent;
 
         .custom-node-label-container {
           .entity-footer {
-            background-color: var(--tw-background-color-brand-primary);
+            background-color: transparent;
           }
         }
       }
@@ -618,14 +620,19 @@
   background-color: var(--tw-background-color-brand-primary);
 
   &:not(.custom-node-header-active) {
-    .lineage-node-badge-container,
+    // The badge sits outside the node box, so it takes its own tint; inner
+    // containers stay transparent so the translucent tint is not stacked.
+    .lineage-node-badge-container {
+      background-color: var(--tw-background-color-brand-primary);
+    }
+
     .lineage-node-content .label-container,
     .lineage-node-content .column-container,
     .lineage-node-content
       .label-container
       .custom-node-label-container
       .entity-footer {
-      background-color: var(--tw-background-color-brand-primary);
+      background-color: transparent;
     }
   }
 }

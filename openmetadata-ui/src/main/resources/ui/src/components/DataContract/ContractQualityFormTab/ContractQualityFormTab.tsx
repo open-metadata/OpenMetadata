@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Dropdown,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
+  ClipboardCheck,
+  NoSearch,
   Plus as PlusIcon,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -78,6 +84,7 @@ export const ContractQualityFormTab: React.FC<{
   buttonProps,
 }) => {
   const [testType, setTestType] = useState<TestCaseType>(TestCaseType.all);
+  const [searchValue, setSearchValue] = useState('');
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const { data: table } = useGenericContext<TableType>();
   const [isTestsLoading, setIsTestsLoading] = useState<boolean>(false);
@@ -187,6 +194,10 @@ export const ContractQualityFormTab: React.FC<{
     []
   );
 
+  const isFiltered = Boolean(searchValue) || testType !== TestCaseType.all;
+  // Nothing to narrow down until the table has at least one test.
+  const hasNoTests = !isFiltered && allTestCases.length === 0;
+
   const paginationProps = useMemo(
     () => ({
       currentPage,
@@ -264,7 +275,12 @@ export const ContractQualityFormTab: React.FC<{
           dataSource={allTestCases}
           extraTableFilters={
             <Dropdown.Root>
-              <Button color="secondary" iconTrailing={ChevronDown} size="sm">
+              <Button
+                color="secondary"
+                data-testid="quality-filter-button"
+                iconTrailing={ChevronDown}
+                isDisabled={hasNoTests}
+                size="sm">
                 {t('label.filter-plural')}
               </Button>
               <Dropdown.Popover className="tw:w-auto">
@@ -282,6 +298,24 @@ export const ContractQualityFormTab: React.FC<{
             </Dropdown.Root>
           }
           loading={isTestsLoading}
+          locale={{
+            emptyText: isFiltered ? (
+              <EmptyPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch className="tw:text-secondary" />}
+                title={t('label.no-matching-result-plural')}
+                variant="blank"
+              />
+            ) : (
+              <EmptyPlaceholder
+                icon={<ClipboardCheck className="tw:text-fg-quaternary" />}
+                title={t('label.no-entity-available', {
+                  entity: t('label.test-case-plural'),
+                })}
+                variant="blank"
+              />
+            ),
+          }}
           pagination={false}
           rowKey="id"
           rowSelection={{
@@ -297,6 +331,7 @@ export const ContractQualityFormTab: React.FC<{
               type: t('label.name'),
             }),
             onSearch: (value) => {
+              setSearchValue(value);
               fetchAllTests({
                 offset: 0,
                 limit: pageSize,

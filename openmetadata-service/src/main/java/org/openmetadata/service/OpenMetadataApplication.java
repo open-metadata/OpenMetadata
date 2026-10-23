@@ -1191,6 +1191,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void reRegisterAuthorizer(
@@ -1227,6 +1228,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       ContainerRequestFilter filter = new NoopFilter(authenticationConfiguration, null);
       ContainerRequestFilterManager.getInstance().registerFilter(filter);
     }
+    Entity.setAuthorizer(authorizer);
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
