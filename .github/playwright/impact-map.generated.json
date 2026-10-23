@@ -238,7 +238,6 @@
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts",
@@ -569,7 +568,6 @@
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/Users.spec.ts",
@@ -1099,7 +1097,6 @@
         "playwright/e2e/Pages/GlossaryTermRightPanel.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/TeamAssetsRightPanel.spec.ts",
@@ -1120,7 +1117,6 @@
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/UserDetails.spec.ts"
       ]
     },
@@ -2422,7 +2418,6 @@
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
@@ -3835,7 +3830,6 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
@@ -4076,8 +4070,7 @@
         "playwright/e2e/Pages/Domains.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
         "playwright/e2e/Pages/InputOutputPorts.spec.ts",
-        "playwright/e2e/Pages/IntakeForm.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts"
+        "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
     {
@@ -4354,7 +4347,6 @@
         "playwright/e2e/Pages/Policies.spec.ts",
         "playwright/e2e/Pages/Roles.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
@@ -4830,7 +4822,6 @@
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageFilters.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts"
       ]
@@ -5169,7 +5160,6 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
         "playwright/e2e/Pages/Teams.spec.ts",
@@ -9900,7 +9890,6 @@
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
@@ -9929,7 +9918,6 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
-        "playwright/e2e/Pages/DataProducts.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
       ]
@@ -12765,7 +12753,6 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
@@ -12952,7 +12939,6 @@
         "playwright/e2e/Pages/Lineage/LineageNodePagination.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
-        "playwright/e2e/Pages/SubDomainPagination.spec.ts",
         "playwright/e2e/Pages/Tag.spec.ts",
         "playwright/e2e/Pages/TagPageRightPanel.spec.ts",
         "playwright/e2e/Pages/Tags.spec.ts",
