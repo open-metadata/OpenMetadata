@@ -40,7 +40,7 @@ The `@ingestion` project is excluded from common Chromium only when the dynamic 
 
 Two lanes run a whole project on one shard and are switched on by their own path filters in `check-changes` (always on for manual and nightly runs), not by spec impact:
 
-- `visual` runs `visual-regression` against its own MySQL environment seeded from scratch with the regular UI bundle — the environment its baselines were captured on — reusing the shared ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason.
+- `visual` runs `visual-regression` against its own MySQL environment seeded from scratch — the environment its baselines were captured on — reusing the shared distribution and ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason. The shared distribution must carry the regular bundle: the coarse bundle (`coarse_bundle=true`) folds lazy pages into the eager chunk, so their CSS loads before the global CSS and ties between equally specific rules resolve differently from production (the settings page header loses 4px; the explore page loses its fixed height).
 - `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
 
 Both are shards of the same run, so they count toward `playwright-summary`.
@@ -66,4 +66,4 @@ Use `workflow_dispatch` on the same commit for baseline comparisons:
 - `coarse_bundle=false` versus `coarse_bundle=true`
 - `protocol=http` versus `protocol=h2`
 
-The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted, so the CI-only coarse bundle remains opt-in while its chunking strategy is corrected. HTTP/2 is also opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.
+The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted, so the CI-only coarse bundle remains opt-in; it also renders some pages differently from production (see Visual and RDF lanes). HTTP/2 is also opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.

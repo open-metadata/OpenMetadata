@@ -61,7 +61,7 @@ on:
         description: Build the CI-only coarse Vite bundle
         required: true
         type: boolean
-        default: true
+        default: false
   # Playwright runs only in the merge queue. PRs still trigger the workflow
   # because `playwright-summary` is a required check: every job is skipped by
   # its `if:` (no runner starts), and GitHub counts a skipped required check
@@ -97,10 +97,11 @@ jobs:
       workflow_filename: playwright-postgresql-e2e.yml
       # Defaults inline what workflow_dispatch collects; non-dispatch events
       # fall back to the reusable's own defaults (full_suite=true, http,
-      # coarse_bundle=true).
-      full_suite: ${{ github.event_name == 'workflow_dispatch' && inputs.full_suite || true }}
+      # coarse_bundle=false). `a && b || c` falls through to c when b is
+      # false, so a dispatched `false` must not be written that way.
+      full_suite: ${{ github.event_name != 'workflow_dispatch' || inputs.full_suite }}
       protocol: ${{ github.event_name == 'workflow_dispatch' && inputs.protocol || 'http' }}
-      coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle || true }}
+      coarse_bundle: ${{ github.event_name == 'workflow_dispatch' && inputs.coarse_bundle }}
       # One retry everywhere while the first-attempt signal is collected: the
       # main-health job alerts Slack on every failure and flaky pass so each can
       # be fixed.
