@@ -19,6 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export type LineageNodeDeleteModalProps = {
@@ -37,6 +38,7 @@ const LineageNodeDeleteModal = ({
   onConfirm,
 }: LineageNodeDeleteModalProps) => {
   const { t } = useTranslation();
+  const titleId = useId();
 
   if (!isOpen) {
     return null;
@@ -53,6 +55,7 @@ const LineageNodeDeleteModal = ({
       }}>
       <Modal>
         <Dialog
+          aria-labelledby={titleId}
           data-testid="delete-node-confirmation-modal"
           dividers="scroll"
           width={400}>
@@ -63,7 +66,7 @@ const LineageNodeDeleteModal = ({
               size="lg"
               theme="light"
             />
-            <Typography size="text-md" weight="semibold">
+            <Typography id={titleId} size="text-md" weight="semibold">
               {t('label.delete')} &quot;{nodeName}&quot;
             </Typography>
           </Dialog.Header>
