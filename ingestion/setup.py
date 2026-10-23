@@ -187,6 +187,7 @@ base_requirements = {
     VERSIONS["boto3"],  # Required in base for the secrets manager
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
+    "certifi>=2026.10.19",  # Distrusts the compromised eMudhra/emSign intermediate CAs
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
