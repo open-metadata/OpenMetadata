@@ -261,7 +261,7 @@ const ActivityFeedCardNew = ({
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             <span
               className={classNames('text-sm', {
-                'tw:block tw:truncate tw:whitespace-nowrap!': !isPanelLayout,
+                'tw:block tw:truncate': !isPanelLayout,
               })}>
               {entityRef
                 ? getEntityName(entityRef)
@@ -309,8 +309,7 @@ const ActivityFeedCardNew = ({
                     // Ellipsis, not a word-wrapped one-line clamp: in a narrow
                     // card the clamp showed only the start of the first word.
                     // nowrap! beats the unlayered `.header-link` white-space.
-                    'tw:block tw:min-w-0 tw:truncate tw:whitespace-nowrap!':
-                      !isPanelLayout,
+                    'tw:block tw:min-w-0 tw:truncate': !isPanelLayout,
                     'tw:min-w-0 tw:wrap-break-word': isPanelLayout,
                   })}
                   data-testid="entity-link"
