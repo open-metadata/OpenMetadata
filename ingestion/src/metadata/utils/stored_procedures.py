@@ -97,19 +97,37 @@ def get_procedure_name_from_call(query_text: str, sensitive_match: bool = False)
         # truncate at such an unpaired `/*`, so a name like
         # `schema."weird/*x".proc` keeps resolving while a truncated tail stops
         # shadowing the statement that actually executed.
+        #
+        # The same tokenizer limitation leaves an unterminated single-quoted
+        # string -- again reachable from `gv$sql.sql_text`'s 1000-char cut --
+        # unblanked: sqlparse emits the lone `'` as `Token.Error` and tokenizes
+        # the string body as ordinary code, so prose mentioning
+        # `call <name>(` inside it survives and wins the leftmost match,
+        # fabricating lineage for a procedure that never executed. Tracking `'`
+        # as a quote-open character (outside `"..."` / `` `...` `` spans, which
+        # a delimited identifier may hold around an apostrophe) and truncating
+        # at its position when it is never closed cuts the literal tail, so a
+        # real `CALL` that ran *before* the truncated string keeps resolving.
         pos = 0
         quote = ""
+        quote_pos = -1
         while pos < len(query_text):
             char = query_text[pos]
             if quote:
                 if char == quote:
                     quote = ""
-            elif char in ('"', "`"):
+            elif char in ('"', "'", "`"):
                 quote = char
+                quote_pos = pos
             elif char == "/" and pos + 1 < len(query_text) and query_text[pos + 1] == "*":
                 query_text = query_text[:pos]
                 break
             pos += 1
+
+        # An unterminated `'` means everything after the lone quote is literal
+        # content (the statement was truncated mid-string), so cut it there.
+        if quote == "'":
+            query_text = query_text[:quote_pos]
 
     res = re.search(NAME_PATTERN, query_text, re.IGNORECASE if not sensitive_match else 0)
     if not res:
