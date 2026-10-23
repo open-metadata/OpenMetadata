@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -275,17 +276,26 @@ public class DataRetentionAppIT {
       throws Exception {
     assumeFalse(
         TestSuiteBootstrap.isK8sEnabled(), "App trigger not compatible with K8s pipeline backend");
-    WorkflowRunHistory history = new WorkflowRunHistory(ns.prefix("retentionWorkflow"));
-    Set<String> keptRuns = TestSuiteBootstrap.getJdbi().withHandle(history::seedRunsToKeep);
-    Set<String> expiredRuns = TestSuiteBootstrap.getJdbi().withHandle(history::seedExpiredRuns);
-
-    AppRunRecord run;
+    final WorkflowRunHistory history = new WorkflowRunHistory(ns.prefix("retentionWorkflow"));
+    // The rows are inserted directly, so TestNamespace cleanup cannot see them: remove every seeded
+    // run, state and live-process row, also when seeding or the app run fails part way.
     try {
-      run = triggerAppAndWaitForCompletion();
+      final Set<String> keptRuns = TestSuiteBootstrap.getJdbi().withHandle(history::seedRunsToKeep);
+      final Set<String> expiredRuns =
+          TestSuiteBootstrap.getJdbi().withHandle(history::seedExpiredRuns);
+      final AppRunRecord run = triggerAppAndWaitForCompletion();
+      assertRetentionOutcome(history, run, keptRuns, expiredRuns);
     } finally {
-      TestSuiteBootstrap.getJdbi().useHandle(history::removeLiveProcesses);
+      TestSuiteBootstrap.getJdbi().useHandle(history::removeSeededHistory);
     }
+  }
 
+  private void assertRetentionOutcome(
+      final WorkflowRunHistory history,
+      final AppRunRecord run,
+      final Set<String> keptRuns,
+      final Set<String> expiredRuns)
+      throws Exception {
     assertEquals(
         "success",
         run.getStatus().value(),
@@ -306,13 +316,13 @@ public class DataRetentionAppIT {
   }
 
   private int countRunsFromApi(String workflowName, String entityLink) throws Exception {
-    String path =
+    final String path =
         "/v1/governance/workflowInstances?workflowDefinitionName=%s&entityLink=%s&startTs=0&endTs=%d&limit=100"
             .formatted(
                 workflowName,
                 URLEncoder.encode(entityLink, StandardCharsets.UTF_8),
                 System.currentTimeMillis());
-    String json =
+    final String json =
         SdkClients.adminClient()
             .getHttpClient()
             .executeForString(HttpMethod.GET, path, null, RequestOptions.builder().build());
@@ -322,7 +332,7 @@ public class DataRetentionAppIT {
   private void assertStatesEndpoint(
       String workflowName, Set<String> keptRuns, Set<String> expiredRuns) throws Exception {
     // The first run seeded on each side: the lone entity's run, and an expired busy-entity run.
-    String keptRun = keptRuns.iterator().next();
+    final String keptRun = keptRuns.iterator().next();
     assertEquals(STATES_PER_RUN, countStatesFromApi(workflowName, keptRun));
     assertEquals(0, countStatesFromApi(workflowName, expiredRuns.iterator().next()));
     assertEquals(
@@ -332,10 +342,10 @@ public class DataRetentionAppIT {
   }
 
   private int countStatesFromApi(String workflowName, String runId) throws Exception {
-    String path =
+    final String path =
         "/v1/governance/workflowInstanceStates/%s/%s?startTs=0&endTs=%d&limit=100"
             .formatted(workflowName, runId, System.currentTimeMillis());
-    String json =
+    final String json =
         SdkClients.adminClient()
             .getHttpClient()
             .executeForString(HttpMethod.GET, path, null, RequestOptions.builder().build());
@@ -495,7 +505,7 @@ public class DataRetentionAppIT {
     }
 
     Set<String> seedRunsToKeep(Handle handle) throws SQLException {
-      long now = System.currentTimeMillis();
+      final long now = System.currentTimeMillis();
       return seed(
           handle,
           List.of(
@@ -519,9 +529,9 @@ public class DataRetentionAppIT {
     }
 
     Set<String> seedExpiredRuns(Handle handle) throws SQLException {
-      List<RunSpec> expired = new ArrayList<>();
+      final List<RunSpec> expired = new ArrayList<>();
       for (int i = 0; i < EXPIRED_RUNS_PAST_ONE_PAGE; i++) {
-        WorkflowStatus status = ENDED_STATUSES.get(i % ENDED_STATUSES.size());
+        final WorkflowStatus status = ENDED_STATUSES.get(i % ENDED_STATUSES.size());
         expired.add(new RunSpec(workflowId, busyEntity, status, expiredAt + i * 1_000L));
       }
       expired.add(new RunSpec(workflowId, null, WorkflowStatus.FINISHED, expiredAt));
@@ -572,15 +582,15 @@ public class DataRetentionAppIT {
     }
 
     private Set<String> seed(Handle handle, List<RunSpec> runs) throws SQLException {
-      boolean postgres = isPostgres(handle);
-      PreparedBatch runRows =
+      final boolean postgres = isPostgres(handle);
+      final PreparedBatch runRows =
           handle.prepareBatch(insertSql("workflow_instance_time_series", postgres));
-      PreparedBatch stateRows =
+      final PreparedBatch stateRows =
           handle.prepareBatch(insertSql("workflow_instance_state_time_series", postgres));
       // Insertion order, so callers can pick a run they know: the first one seeded.
-      Set<String> runIds = new LinkedHashSet<>();
-      for (RunSpec run : runs) {
-        String runId = UUID.randomUUID().toString();
+      final Set<String> runIds = new LinkedHashSet<>();
+      for (final RunSpec run : runs) {
+        final String runId = UUID.randomUUID().toString();
         runIds.add(runId);
         runRows
             .bind("jsonSchema", "workflowInstance")
@@ -599,7 +609,7 @@ public class DataRetentionAppIT {
 
     /** A Flowable process instance row keyed by the run id, as a live process of the run has. */
     private void addLiveProcess(Handle handle, String runId) {
-      String executionId = UUID.randomUUID().toString();
+      final String executionId = UUID.randomUUID().toString();
       handle
           .createUpdate(
               "INSERT INTO ACT_RU_EXECUTION (ID_, REV_, BUSINESS_KEY_) VALUES (:id, 1, :key)")
@@ -609,11 +619,21 @@ public class DataRetentionAppIT {
       liveExecutionIds.add(executionId);
     }
 
-    void removeLiveProcesses(Handle handle) {
-      if (!liveExecutionIds.isEmpty()) {
+    void removeSeededHistory(final Handle handle) {
+      if (!nullOrEmpty(liveExecutionIds)) {
         handle
             .createUpdate("DELETE FROM ACT_RU_EXECUTION WHERE ID_ IN (<ids>)")
             .bindList("ids", liveExecutionIds)
+            .execute();
+      }
+      for (final String table :
+          List.of("workflow_instance_state_time_series", "workflow_instance_time_series")) {
+        handle
+            .createUpdate(
+                "DELETE FROM %s WHERE workflowDefinitionId IN (:workflowId, :otherWorkflowId)"
+                    .formatted(table))
+            .bind("workflowId", workflowId)
+            .bind("otherWorkflowId", otherWorkflowId)
             .execute();
       }
     }
@@ -642,11 +662,11 @@ public class DataRetentionAppIT {
     }
 
     private static String runJson(String runId, RunSpec run) {
-      ObjectNode variables = MAPPER.createObjectNode();
+      final ObjectNode variables = MAPPER.createObjectNode();
       if (run.entityLink() != null) {
         variables.put("global_relatedEntity", run.entityLink());
       }
-      ObjectNode json =
+      final ObjectNode json =
           MAPPER
               .createObjectNode()
               .put("id", runId)
@@ -661,8 +681,8 @@ public class DataRetentionAppIT {
     }
 
     private static String stateJson(String runId, RunSpec run, int stage) {
-      long startedAt = run.timestamp() + stage;
-      ObjectNode stageNode =
+      final long startedAt = run.timestamp() + stage;
+      final ObjectNode stageNode =
           MAPPER
               .createObjectNode()
               .put("name", "stage" + stage)

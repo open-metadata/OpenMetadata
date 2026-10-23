@@ -548,6 +548,16 @@ class ListFilterTest {
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
   }
 
+  private static final String POSTGRES_ENTITY_LINK_HASH_CONDITION =
+      "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+  private static final String MYSQL_ENTITY_LINK_HASH_CONDITION = "entityLinkHash = :entityLinkHash";
+  private static final String ENTITY_LINK_CONDITION = "entityLink = :entityLink";
+  private static final String MD5_CALL = "md5(";
+  private static final String ENTITY_LINK_HASH_PARAM = "entityLinkHash";
+  private static final String WORKFLOW_INSTANCE_ID_PARAM = "workflowInstanceId";
+  private static final String WORKFLOW_INSTANCE_ID_CONDITION =
+      "workflowInstanceId = :workflowInstanceId";
+
   /**
    * The run list for an entity is only an index lookup when its condition is exactly the key of
    * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
@@ -556,37 +566,37 @@ class ListFilterTest {
    */
   @Test
   void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
-    ListFilter filter = new ListFilter(null);
+    final ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
-    filter.addQueryParam("entityLinkHash", "0cc175b9c0f1b6a831c399e269772661");
+    filter.addQueryParam(ENTITY_LINK_HASH_PARAM, "0cc175b9c0f1b6a831c399e269772661");
 
-    String postgres = filter.getCondition();
-    assertTrue(postgres.contains("md5(COALESCE(entityLink, '')) = :entityLinkHash"));
-    assertTrue(postgres.contains("entityLink = :entityLink"));
+    final String postgres = filter.getCondition();
+    assertTrue(postgres.contains(POSTGRES_ENTITY_LINK_HASH_CONDITION));
+    assertTrue(postgres.contains(ENTITY_LINK_CONDITION));
 
     try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
-      DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      final DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
       ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
       when(mysqlConfig.isMySQL()).thenReturn(true);
-      String mysql = filter.getCondition();
-      assertTrue(mysql.contains("entityLinkHash = :entityLinkHash"));
-      assertFalse(mysql.contains("md5("));
+      final String mysql = filter.getCondition();
+      assertTrue(mysql.contains(MYSQL_ENTITY_LINK_HASH_CONDITION));
+      assertFalse(mysql.contains(MD5_CALL));
     }
   }
 
   @Test
   void entityLinkHashCondition_absentWhenNotRequested() {
-    ListFilter filter = new ListFilter(null);
+    final ListFilter filter = new ListFilter(null);
     filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
-    assertFalse(filter.getCondition().contains("entityLinkHash"));
+    assertFalse(filter.getCondition().contains(ENTITY_LINK_HASH_PARAM));
   }
 
   @Test
   void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
-    ListFilter filter = new ListFilter(null);
-    assertFalse(filter.getCondition().contains("workflowInstanceId"));
+    final ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_PARAM));
 
-    filter.addQueryParam("workflowInstanceId", "11111111-1111-1111-1111-111111111111");
-    assertTrue(filter.getCondition().contains("workflowInstanceId = :workflowInstanceId"));
+    filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
   }
 }
