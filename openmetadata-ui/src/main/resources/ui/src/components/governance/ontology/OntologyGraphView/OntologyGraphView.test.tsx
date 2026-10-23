@@ -35,8 +35,16 @@ import {
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
 import {
+  Category,
+  PaletteKey,
+  RelationshipType,
+} from '../../../../generated/entity/data/relationshipType';
+import {
   createOntologyAxiom,
   createOntologyProperty,
+  createRelationshipType,
+  listRelationshipTypes,
+  patchRelationshipType,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import {
@@ -55,6 +63,7 @@ const mockPermissions = {
   ontologyConcept: { Create: true },
   ontologyProperty: { Create: true },
   ontologyAxiom: { Create: true },
+  relationshipType: { Create: true },
 };
 let mockCanEditConcept = true;
 
@@ -86,6 +95,10 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
     .mockResolvedValue({ revision: 0, assets: [] }),
   createOntologyAxiom: jest.fn(),
   createOntologyProperty: jest.fn(),
+  createRelationshipType: jest.fn(),
+  getRelationshipTypeByName: jest.fn(),
+  listRelationshipTypes: jest.fn(),
+  patchRelationshipType: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -225,14 +238,108 @@ const modelResult = {
   relations,
 };
 
+const PART_OF = 'https://open-metadata.org/ontology/partOf';
+const HAS_PART = 'https://open-metadata.org/ontology/hasPart';
+const GOVERNED_BY = 'https://open-metadata.org/ontology/governedBy';
+const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
+
+const relationshipType = (
+  name: string,
+  displayName: string,
+  rdfPredicate: string,
+  extra: Partial<RelationshipType> = {}
+): RelationshipType => ({
+  category: Category.Core,
+  characteristics: [],
+  crossGlossaryAllowed: true,
+  description: displayName,
+  displayName,
+  fullyQualifiedName: name,
+  id: `type-${name}`,
+  name,
+  paletteKey: PaletteKey.Teal,
+  rdfPredicate,
+  systemDefined: true,
+  ...extra,
+});
+const inverseRef = (name: string) => ({
+  id: `type-${name}`,
+  name,
+  type: 'relationshipType',
+});
+const registryTypes = [
+  relationshipType('partOf', 'Part Of', PART_OF, {
+    inverse: inverseRef('hasPart'),
+  }),
+  relationshipType('hasPart', 'Has Part', HAS_PART, {
+    inverse: inverseRef('partOf'),
+  }),
+  relationshipType('subClassOf', 'Subclass Of', SUBCLASS_OF, {
+    category: Category.OwlSkos,
+  }),
+  relationshipType('governedBy', 'Governed By', GOVERNED_BY, {
+    category: Category.Custom,
+    systemDefined: false,
+  }),
+];
+const hasPartProperty: OntologyProperty = {
+  ...objectProperty,
+  fullyQualifiedName: 'RetailCommerce.hasPart',
+  id: 'property-hasPart',
+  inverse: PART_OF,
+  iri: HAS_PART,
+  name: 'hasPart',
+};
+const partOfProperty: OntologyProperty = {
+  ...objectProperty,
+  fullyQualifiedName: 'RetailCommerce.partOf',
+  id: 'property-partOf',
+  inverse: HAS_PART,
+  iri: PART_OF,
+  name: 'partOf',
+};
+
+const latestGraphProps = () => mockGraphProps.mock.calls.at(-1)?.[0];
+const waitForRegistry = () =>
+  waitFor(() =>
+    expect(
+      latestGraphProps()
+        .relationTypeGroups.flatMap(
+          (group: { options: Array<{ id: string }> }) => group.options
+        )
+        .map((option: { id: string }) => option.id)
+    ).toContain(PART_OF)
+  );
+
 describe('OntologyGraphView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockPermissions.ontologyConcept.Create = true;
     mockPermissions.ontologyProperty.Create = true;
     mockPermissions.ontologyAxiom.Create = true;
+    mockPermissions.relationshipType.Create = true;
     mockCanEditConcept = true;
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
+    (listRelationshipTypes as jest.Mock).mockResolvedValue({
+      data: registryTypes,
+      paging: { total: registryTypes.length },
+    });
+    (createRelationshipType as jest.Mock).mockImplementation((request) =>
+      Promise.resolve(
+        relationshipType(
+          request.name,
+          request.displayName,
+          request.rdfPredicate,
+          {
+            category: Category.Custom,
+            inverse: request.inverse ? inverseRef(request.inverse) : undefined,
+            paletteKey: request.paletteKey,
+            systemDefined: false,
+          }
+        )
+      )
+    );
+    (patchRelationshipType as jest.Mock).mockResolvedValue({});
   });
 
   it('renders the full native model, health, search, and concept inspector', async () => {
@@ -328,15 +435,7 @@ describe('OntologyGraphView', () => {
       relations: editableRelations,
     });
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
-    (createOntologyProperty as jest.Mock).mockImplementation((request) =>
-      Promise.resolve({
-        ...request,
-        fullyQualifiedName: `RetailCommerce.${request.name}`,
-        id: `property-${request.name}`,
-        iri: `urn:retail:${request.name}`,
-        ontology: { id: ontology.id, type: 'ontology' },
-      })
-    );
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
     const onWorkingChange = jest.fn();
 
     const { rerender } = render(
@@ -349,8 +448,9 @@ describe('OntologyGraphView', () => {
       />
     );
     await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
 
-    const graphProps = mockGraphProps.mock.calls.at(-1)?.[0];
+    const graphProps = latestGraphProps();
 
     expect(graphProps).toEqual(
       expect.objectContaining({
@@ -358,23 +458,43 @@ describe('OntologyGraphView', () => {
         isEditMode: true,
       })
     );
-    expect(
-      graphProps.relationTypeGroups.flatMap(
-        (group: { options: Array<{ id: string }> }) => group.options
-      )
-    ).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: 'isA' }),
-        expect.objectContaining({ id: objectProperty.iri }),
-      ])
-    );
+    expect(graphProps.relationTypeGroups).toEqual([
+      expect.objectContaining({
+        id: 'core',
+        options: [
+          expect.objectContaining({ id: SUBCLASS_OF, label: 'Subclass Of' }),
+          expect.objectContaining({
+            id: PART_OF,
+            inverseLabel: 'Has Part',
+            label: 'Part Of',
+          }),
+          expect.objectContaining({
+            id: HAS_PART,
+            inverseLabel: 'Part Of',
+            label: 'Has Part',
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        id: 'custom',
+        options: [
+          expect.objectContaining({ id: GOVERNED_BY, label: 'Governed By' }),
+          expect.objectContaining({
+            id: objectProperty.iri,
+            label: 'served by',
+          }),
+        ],
+      }),
+    ]);
 
-    await act(() => graphProps.onCreateRelation(customer.id, party.id, 'isA'));
+    await act(() =>
+      graphProps.onCreateRelation(customer.id, party.id, SUBCLASS_OF)
+    );
     await act(() =>
       graphProps.onCreateRelation(customer.id, orphan.id, objectProperty.iri)
     );
     await act(() =>
-      graphProps.onCreateRelation(customer.id, orphan.id, 'new:served by')
+      graphProps.onCreateRelation(customer.id, orphan.id, PART_OF)
     );
 
     expect(createOntologyAxiom).toHaveBeenCalledTimes(3);
@@ -394,15 +514,32 @@ describe('OntologyGraphView', () => {
         ],
       })
     );
-    expect(createOntologyProperty).toHaveBeenCalledWith(
+    expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(1, {
+      displayName: 'Has Part',
+      inverse: undefined,
+      iri: HAS_PART,
+      kind: 'OBJECT',
+      name: 'hasPart',
+      ontology: 'RetailCommerce',
+    });
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(2, {
+      displayName: 'Part Of',
+      inverse: HAS_PART,
+      iri: PART_OF,
+      kind: 'OBJECT',
+      name: 'partOf',
+      ontology: 'RetailCommerce',
+    });
+    expect(createOntologyAxiom).toHaveBeenNthCalledWith(
+      3,
       expect.objectContaining({
-        displayName: 'served by',
-        domain: [customer.iri],
-        range: [orphan.iri],
+        name: 'CustomerPartOfOrphan',
+        expressions: [expect.objectContaining({ propertyIri: PART_OF })],
       })
     );
     expect(refetch).toHaveBeenCalledTimes(3);
-    expect(onWorkingChange).toHaveBeenCalledTimes(4);
+    expect(onWorkingChange).toHaveBeenCalledTimes(5);
 
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-property'));
@@ -426,7 +563,7 @@ describe('OntologyGraphView', () => {
       )
     );
 
-    expect(onWorkingChange).toHaveBeenCalledTimes(5);
+    expect(onWorkingChange).toHaveBeenCalledTimes(6);
 
     fireEvent.click(screen.getByTestId('ontology-concept-edit'));
 
@@ -445,131 +582,227 @@ describe('OntologyGraphView', () => {
     expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
   });
 
-  it.each([false, true])(
-    'reuses a pending relationship property and clears it after success (model refreshed: %s)',
-    async (refreshModel) => {
-      const createdProperty = {
-        ...objectProperty,
-        iri: 'urn:retail:server-minted-servedBy',
-      };
-      (
-        createOntologyProperty as jest.MockedFunction<
-          typeof createOntologyProperty
-        >
-      ).mockResolvedValue(createdProperty);
-      (createOntologyAxiom as jest.MockedFunction<typeof createOntologyAxiom>)
-        .mockRejectedValueOnce(new Error('axiom write failed'))
-        .mockResolvedValue(customerIsParty);
-      const { rerender } = render(
-        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+  it('creates a custom registry type with its inverse from the picker, then instantiates it', async () => {
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
       );
-      await screen.findByTestId('native-ontology-graph');
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(customer.id, orphan.id, 'new:served by')
-      );
+    });
 
-      expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(await screen.findByTestId('relationship-type-dialog')).toBeVisible();
+    expect(screen.getByTestId('relationship-type-name')).toHaveValue(
+      'approved by'
+    );
 
-      if (refreshModel) {
-        mockUseOntologyStudioModel.mockReturnValue({
-          ...modelResult,
-          model: {
-            ...model,
-            properties: [...model.properties, createdProperty],
-          },
-        });
-        rerender(
-          <OntologyGraphView isEditing ontology={ontology} surface="graph" />
-        );
-      }
+    fireEvent.change(screen.getByTestId('relationship-type-inverse'), {
+      target: { value: 'approves' },
+    });
+    fireEvent.change(screen.getByTestId('relationship-type-description'), {
+      target: { value: 'Who signs off.' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-submit'));
+      await creation;
+    });
 
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(
-            party.id,
-            orphan.id,
-            refreshModel ? createdProperty.iri : 'isA'
-          )
-      );
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(customer.id, orphan.id, 'new:served by')
-      );
+    expect(createRelationshipType).toHaveBeenNthCalledWith(1, {
+      category: 'CUSTOM',
+      description: 'approves',
+      displayName: 'approves',
+      name: 'approves',
+      paletteKey: 'INDIGO',
+      rdfPredicate: 'https://open-metadata.org/ontology/approves',
+    });
+    expect(createRelationshipType).toHaveBeenNthCalledWith(2, {
+      category: 'CUSTOM',
+      characteristics: undefined,
+      description: 'Who signs off.',
+      displayName: 'approved by',
+      inverse: 'approves',
+      name: 'approvedBy',
+      paletteKey: 'VIOLET',
+      rdfPredicate: 'https://open-metadata.org/ontology/approvedBy',
+    });
+    expect(patchRelationshipType).toHaveBeenCalledWith('type-approves', [
+      {
+        op: 'add',
+        path: '/inverse',
+        value: {
+          fullyQualifiedName: 'approvedBy',
+          id: 'type-approvedBy',
+          name: 'approvedBy',
+          type: 'relationshipType',
+        },
+      },
+    ]);
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        inverse: undefined,
+        iri: 'https://open-metadata.org/ontology/approves',
+        name: 'approves',
+      })
+    );
+    expect(createOntologyProperty).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        inverse: 'https://open-metadata.org/ontology/approves',
+        iri: 'https://open-metadata.org/ontology/approvedBy',
+        name: 'approvedBy',
+      })
+    );
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'CustomerApprovedByOrphan',
+        expressions: [
+          expect.objectContaining({
+            propertyIri: 'https://open-metadata.org/ontology/approvedBy',
+          }),
+        ],
+      })
+    );
 
-      expect(createOntologyProperty).toHaveBeenCalledTimes(1);
-      expect(createOntologyAxiom).toHaveBeenCalledTimes(3);
-      expect(createOntologyAxiom).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          subjectIri: customer.iri,
-          expressions: [
-            expect.objectContaining({
-              filler: expect.objectContaining({ classIri: orphan.iri }),
-              propertyIri: createdProperty.iri,
-            }),
-          ],
-        })
-      );
+    await waitFor(() => expect(listRelationshipTypes).toHaveBeenCalledTimes(2));
 
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(customer.id, orphan.id, 'new:served by')
-      );
+    expect(
+      screen.queryByTestId('relationship-type-dialog')
+    ).not.toBeInTheDocument();
+  });
 
-      expect(createOntologyProperty).toHaveBeenCalledTimes(2);
-    }
-  );
+  it('reuses a registry type whose label matches the requested new type', async () => {
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
 
-  it.each([
-    ['source', party.id, orphan.id, 'new:served by'],
-    ['target', customer.id, party.id, 'new:served by'],
-    ['label', customer.id, orphan.id, 'new:managed by'],
-  ])(
-    'creates a separate property when the pending relation %s changes',
-    async (_changedField, fromId, toId, relationType) => {
-      const nextProperty = {
-        ...objectProperty,
-        iri: 'urn:retail:next-property',
-      };
-      (
-        createOntologyProperty as jest.MockedFunction<
-          typeof createOntologyProperty
-        >
+    await act(() =>
+      latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:Governed By'
       )
-        .mockResolvedValueOnce(objectProperty)
-        .mockResolvedValue(nextProperty);
-      (createOntologyAxiom as jest.MockedFunction<typeof createOntologyAxiom>)
-        .mockRejectedValueOnce(new Error('axiom write failed'))
-        .mockResolvedValue(customerIsParty);
-      render(
-        <OntologyGraphView isEditing ontology={ontology} surface="graph" />
-      );
-      await screen.findByTestId('native-ontology-graph');
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(customer.id, orphan.id, 'new:served by')
-      );
-      await act(() =>
-        mockGraphProps.mock.calls
-          .at(-1)?.[0]
-          .onCreateRelation(fromId, toId, relationType)
-      );
+    );
 
-      expect(createOntologyProperty).toHaveBeenCalledTimes(2);
-      expect(createOntologyAxiom).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          expressions: [
-            expect.objectContaining({ propertyIri: nextProperty.iri }),
-          ],
-        })
+    expect(
+      screen.queryByTestId('relationship-type-dialog')
+    ).not.toBeInTheDocument();
+    expect(createRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyProperty).toHaveBeenCalledTimes(1);
+    expect(createOntologyProperty).toHaveBeenCalledWith({
+      displayName: 'Governed By',
+      inverse: undefined,
+      iri: GOVERNED_BY,
+      kind: 'OBJECT',
+      name: 'governedBy',
+      ontology: 'RetailCommerce',
+    });
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expressions: [expect.objectContaining({ propertyIri: GOVERNED_BY })],
+      })
+    );
+  });
+
+  it('offers no registry type creation without the relationshipType permission', async () => {
+    mockPermissions.relationshipType.Create = false;
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    expect(latestGraphProps().canCreateRelationType).toBe(false);
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('relationship-type-dialog')
+    ).not.toBeInTheDocument();
+    expect(createRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyAxiom).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing when the new type dialog is cancelled', async () => {
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    let creation: Promise<void> = Promise.resolve();
+    act(() => {
+      creation = latestGraphProps().onCreateRelation(
+        customer.id,
+        orphan.id,
+        'new:approved by'
       );
-    }
-  );
+    });
+    await screen.findByTestId('relationship-type-dialog');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('relationship-type-cancel'));
+      await creation;
+    });
+
+    expect(
+      screen.queryByTestId('relationship-type-dialog')
+    ).not.toBeInTheDocument();
+    expect(createRelationshipType).not.toHaveBeenCalled();
+    expect(createOntologyProperty).not.toHaveBeenCalled();
+    expect(createOntologyAxiom).not.toHaveBeenCalled();
+  });
+
+  it('reuses the properties written before a failed axiom once the model refreshes', async () => {
+    (createOntologyProperty as jest.Mock).mockResolvedValue({});
+    (createOntologyAxiom as jest.MockedFunction<typeof createOntologyAxiom>)
+      .mockRejectedValueOnce(new Error('axiom write failed'))
+      .mockResolvedValue(customerIsParty);
+    const refetch = jest.fn().mockResolvedValue({});
+    mockUseOntologyStudioModel.mockReturnValue({ ...modelResult, refetch });
+    const { rerender } = render(
+      <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
+    );
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+    expect(refetch).toHaveBeenCalledTimes(1);
+
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...model,
+        properties: [...model.properties, hasPartProperty, partOfProperty],
+      },
+      refetch,
+    });
+    rerender(
+      <OntologyGraphView isEditing ontology={ontology} surface="graph" />
+    );
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
+    );
+
+    expect(createOntologyProperty).toHaveBeenCalledTimes(2);
+    expect(createOntologyAxiom).toHaveBeenCalledTimes(2);
+    expect(refetch).toHaveBeenCalledTimes(2);
+  });
 
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(

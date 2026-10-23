@@ -42,9 +42,14 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden="true" className={className} />
 );
 
-const toOption = (type: RelationshipType): RelationTypeOption => ({
+const toOption = (
+  type: RelationshipType,
+  byName: ReadonlyMap<string, RelationshipType>
+): RelationTypeOption => ({
   id: type.name,
-  inverseLabel: type.inverse?.name,
+  inverseLabel: type.inverse
+    ? byName.get(type.inverse.name ?? '')?.displayName || type.inverse.name
+    : undefined,
   label: type.displayName || type.name,
   paletteKey: type.paletteKey,
 });
@@ -132,26 +137,29 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     };
   }, [groups]);
 
-  const availableGroups = useMemo<RelationTypeOptionGroup[]>(
-    () =>
-      groups ?? [
-        {
-          id: 'system-defined',
-          options: relationTypes
-            .filter((type) => type.category !== Category.Custom)
-            .map(toOption),
-          title: t('label.core-owl-skos'),
-        },
-        {
-          id: 'custom',
-          options: relationTypes
-            .filter((type) => type.category === Category.Custom)
-            .map(toOption),
-          title: t('label.custom-admin-defined'),
-        },
-      ],
-    [groups, relationTypes, t]
-  );
+  const availableGroups = useMemo<RelationTypeOptionGroup[]>(() => {
+    if (groups) {
+      return groups;
+    }
+    const byName = new Map(relationTypes.map((type) => [type.name, type]));
+
+    return [
+      {
+        id: 'system-defined',
+        options: relationTypes
+          .filter((type) => type.category !== Category.Custom)
+          .map((type) => toOption(type, byName)),
+        title: t('label.core-owl-skos'),
+      },
+      {
+        id: 'custom',
+        options: relationTypes
+          .filter((type) => type.category === Category.Custom)
+          .map((type) => toOption(type, byName)),
+        title: t('label.custom-admin-defined'),
+      },
+    ];
+  }, [groups, relationTypes, t]);
 
   const term = search.trim();
   const visibleGroups = useMemo(() => {

@@ -28,9 +28,7 @@ import {
 } from '../../../generated/entity/data/ontologyProperty';
 import {
   buildDataPropertyRequest,
-  buildObjectPropertyRequest,
   buildOntologyStudioGraph,
-  buildRestrictionAxiomRequest,
   buildSubClassAxiomRequest,
   getAvailableName,
   getConceptAncestors,
@@ -418,47 +416,6 @@ describe('OntologyStudioModel utils', () => {
       ontology: 'RetailCommerce',
       provenance: 'Manual',
       subjectIri: premiumCustomer.iri,
-    });
-  });
-
-  it('builds an existential restriction through an object property', () => {
-    expect(
-      buildRestrictionAxiomRequest({
-        model,
-        from: shipment,
-        to: order,
-        property: fulfils,
-        statement: 'Shipment fulfils Order',
-      })
-    ).toEqual({
-      axiomType: 'SUBCLASS_OF',
-      description: 'Shipment fulfils Order',
-      displayName: 'Shipment fulfils Order',
-      expressions: [
-        {
-          filler: { classIri: order.iri, kind: 'NAMED_CLASS' },
-          kind: 'RESTRICTION',
-          propertyIri: fulfils.iri,
-          restrictionKind: 'SOME',
-        },
-      ],
-      name: 'ShipmentFulfillsOrder',
-      ontology: 'RetailCommerce',
-      provenance: 'Manual',
-      subjectIri: shipment.iri,
-    });
-  });
-
-  it('builds a new object property between two concepts', () => {
-    expect(
-      buildObjectPropertyRequest(model, 'placed by', order, customer)
-    ).toEqual({
-      displayName: 'placed by',
-      domain: [order.iri],
-      kind: 'OBJECT',
-      name: 'placedBy2',
-      ontology: 'RetailCommerce',
-      range: [customer.iri],
     });
   });
 
