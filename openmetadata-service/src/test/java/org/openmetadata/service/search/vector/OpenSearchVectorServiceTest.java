@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -136,6 +138,28 @@ class OpenSearchVectorServiceTest {
     assertTrue(bulkTargets.stream().anyMatch(body -> body.contains("\"_index\":\"" + live + "\"")));
     assertTrue(
         bulkTargets.stream()
+            .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
+  }
+
+  /** The chunk-only path (retries, sink backfill) must mirror too, or promotion drops the write. */
+  @Test
+  void chunkOnlyUpdateDuringARecreateAlsoRewritesTheStagedGeneration() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", "staged_chunk_generation");
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddingChunks(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED));
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream()
+            .filter(request -> "/_bulk".equals(request.getEndpoint()))
+            .map(OpenSearchVectorServiceTest::bodyOf)
             .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
   }
 
@@ -337,7 +361,75 @@ class OpenSearchVectorServiceTest {
       String anchorId,
       OpenSearchVectorService.MemoryKind kind) {
     return new OpenSearchVectorService.ChunkHeader(
-        fingerprint, 1, docVersion, status, anchorId, kind);
+        fingerprint,
+        1,
+        docVersion,
+        status,
+        anchorId,
+        kind,
+        VectorDocBuilder.accessStamp(refreshableMemory()));
+  }
+
+  private static Table governedTable() {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("svc.db.sch.orders")
+        .withDescription("revenue report")
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withName("finance")
+                    .withType("team")));
+  }
+
+  private static OpenSearchVectorService.ChunkHeader tableHeader(
+      String fingerprint, String accessStamp) {
+    return new OpenSearchVectorService.ChunkHeader(
+        fingerprint, 1, VectorDocBuilder.CHUNK_DOC_VERSION, null, null, null, accessStamp);
+  }
+
+  /**
+   * Certification and reviewers are not embedded text, so the fingerprint cannot see them change;
+   * the stamp is what keeps a policy keyed on them current on chunks, at no embedding cost.
+   */
+  @Test
+  void chunkRefresh_restampsWhenTheAccessStampChanges() {
+    var table = governedTable();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+    String stamp = VectorDocBuilder.accessStamp(table);
+
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.NONE,
+        OpenSearchVectorService.chunkRefresh(table, fingerprint, tableHeader(fingerprint, stamp)));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.RESTAMP,
+        OpenSearchVectorService.chunkRefresh(
+            table, fingerprint, tableHeader(fingerprint, "stale")));
+    assertEquals(
+        OpenSearchVectorService.ChunkRefresh.REEMBED,
+        OpenSearchVectorService.chunkRefresh(table, fingerprint, tableHeader("other", stamp)));
+  }
+
+  @Test
+  void chunkMappingUpgradeBody_mapsTheAccessFields() throws Exception {
+    Method method = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    method.setAccessible(true);
+    JsonNode properties =
+        new ObjectMapper().readTree((String) method.invoke(vectorService)).path("properties");
+
+    for (String reference :
+        List.of("domains", "service", "database", "databaseSchema", "reviewers")) {
+      assertEquals(
+          "keyword",
+          properties.path(reference).path("properties").path("id").path("type").asText(),
+          reference + ".id");
+    }
+    assertEquals(
+        "keyword",
+        properties.path(VectorDocBuilder.FIELD_ACCESS_STAMP).path("type").asText(),
+        "accessStamp");
   }
 
   private static final OpenSearchVectorService.MemoryKind MEMORY_KIND =
@@ -391,11 +483,14 @@ class OpenSearchVectorServiceTest {
             + jsonString(ContextMemoryIndex.memoryScopeValue(memory))
             + ",\"memoryType\":"
             + jsonString(ContextMemoryIndex.memoryTypeValue(memory))
-            + ",\"pinned\":false}}");
+            + ",\"pinned\":false,\"accessStamp\":"
+            + jsonString(VectorDocBuilder.accessStamp(memory))
+            + "}}");
 
     vectorService.updateEntityEmbeddingChunks(memory, "chunkIndex");
 
-    // One GET and nothing else: a header matching the memory's status, anchor and kind is current.
+    // One GET and nothing else: a header matching the memory's status, anchor, kind and access
+    // stamp is current.
     ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
         ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
     verify(mockGenericClient).execute(captor.capture());
@@ -409,7 +504,8 @@ class OpenSearchVectorServiceTest {
                 ContextMemoryIndex.FIELD_ANCHOR_ID,
                 ContextMemoryIndex.FIELD_MEMORY_SCOPE,
                 ContextMemoryIndex.FIELD_MEMORY_TYPE,
-                ContextMemoryIndex.FIELD_PINNED),
+                ContextMemoryIndex.FIELD_PINNED,
+                VectorDocBuilder.FIELD_ACCESS_STAMP),
         captor.getValue().getEndpoint());
   }
 
@@ -1022,11 +1118,250 @@ class OpenSearchVectorServiceTest {
     method.setAccessible(true);
     JsonNode body = new ObjectMapper().readTree((String) method.invoke(vectorService));
 
-    assertEquals(8, body.path("_meta").path("chunkDocVersion").asInt());
+    assertEquals(9, body.path("_meta").path("chunkDocVersion").asInt());
     assertEquals("keyword", body.path("properties").path("entityStatus").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryScope").path("type").asText());
     assertEquals("keyword", body.path("properties").path("memoryType").path("type").asText());
     assertEquals("boolean", body.path("properties").path("pinned").path("type").asText());
+  }
+
+  /**
+   * A propagation that rewrites child documents' access fields leaves their chunks with the old
+   * values; the matched entities' chunks lose their stamp, which withholds them from restricted
+   * callers until a restamp.
+   */
+  @Test
+  void invalidateChunkAccess_stripsTheStampFromTheMatchedEntitiesChunks() throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"},{\"_id\":\"e2\"}]}}",
+        "{\"updated\":2}",
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}",
+        "{\"_shards\":{}}",
+        "{\"succeeded\":true}");
+
+    vectorService.invalidateChunkAccess(
+        List.of("cluster_table"), "{\"term\":{\"databaseSchema.id\":\"schema-1\"}}");
+
+    List<os.org.opensearch.client.opensearch.generic.Request> requests = sentRequests(5);
+    assertTrue(requests.get(0).getEndpoint().startsWith("/cluster_table/_search"));
+    assertTrue(bodyOf(requests.get(0)).contains("schema-1"), bodyOf(requests.get(0)));
+    String update = bodyOf(requests.get(1));
+    assertTrue(
+        requests
+            .get(1)
+            .getEndpoint()
+            .startsWith("/" + vectorService.getChunkIndexName() + "/_update_by_query"),
+        requests.get(1).getEndpoint());
+    assertTrue(update.contains("\"parentId\":[\"e1\",\"e2\"]"), update);
+    assertTrue(update.contains(VectorDocBuilder.FIELD_ACCESS_STAMP), update);
+    assertEquals("DELETE", requests.get(4).getMethod());
+  }
+
+  /**
+   * A tag rename can match hundreds of thousands of entities: the batches are applied without a
+   * refresh each, and the chunk targets are refreshed once when every batch is in.
+   */
+  @Test
+  void invalidateChunkAccess_refreshesOnceAfterTheLastBatch() throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}",
+        "{\"updated\":1}",
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e2\"}]}}",
+        "{\"updated\":1}",
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}",
+        "{\"_shards\":{}}",
+        "{\"succeeded\":true}");
+
+    vectorService.invalidateChunkAccess(
+        List.of("cluster_table"), "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}");
+
+    List<String> endpoints =
+        sentRequests(7).stream()
+            .map(os.org.opensearch.client.opensearch.generic.Request::getEndpoint)
+            .toList();
+    List<String> updates = endpoints.stream().filter(e -> e.contains("_update_by_query")).toList();
+    assertEquals(2, updates.size(), endpoints.toString());
+    assertTrue(updates.stream().noneMatch(e -> e.contains("refresh=true")), updates.toString());
+    String refresh = "/" + vectorService.getChunkIndexName() + "/_refresh";
+    assertEquals(
+        1, endpoints.stream().filter(e -> e.contains("_refresh")).count(), endpoints.toString());
+    assertTrue(endpoints.get(3).contains("_update_by_query"), endpoints.toString());
+    assertTrue(
+        endpoints.get(5).startsWith(refresh), "refresh follows the last batch: " + endpoints);
+  }
+
+  /** Clearing the scroll is cleanup: its failure must not replace the failure that matters. */
+  @Test
+  void invalidateChunkAccess_surfacesTheUpdateFailureWhenClearingTheScrollFailsToo()
+      throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    Response page = mock(Response.class);
+    os.org.opensearch.client.opensearch.generic.Body pageBody =
+        mock(os.org.opensearch.client.opensearch.generic.Body.class);
+    when(page.getStatus()).thenReturn(200);
+    when(page.getBody()).thenReturn(Optional.of(pageBody));
+    when(pageBody.bodyAsBytes())
+        .thenReturn(
+            "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}"
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    when(mockGenericClient.execute(any()))
+        .thenReturn(page)
+        .thenThrow(new IOException("update failed"))
+        .thenThrow(new IOException("clear failed"));
+
+    RuntimeException failure =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                vectorService.invalidateChunkAccess(
+                    List.of("cluster_table"), "{\"term\":{\"owners.id\":\"u1\"}}"));
+
+    assertEquals("update failed", failure.getCause().getMessage());
+  }
+
+  @Test
+  void invalidateChunkAccess_neitherUpdatesNorRefreshesWhenNothingMatches() throws Exception {
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[]}}", "{\"succeeded\":true}");
+
+    vectorService.invalidateChunkAccess(
+        List.of("cluster_table"), "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}");
+
+    List<String> endpoints =
+        sentRequests(2).stream()
+            .map(os.org.opensearch.client.opensearch.generic.Request::getEndpoint)
+            .toList();
+    assertTrue(endpoints.get(0).startsWith("/cluster_table/_search"), endpoints.toString());
+    assertEquals("/_search/scroll", endpoints.get(1));
+  }
+
+  private List<os.org.opensearch.client.opensearch.generic.Request> sentRequests(int count)
+      throws Exception {
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, times(count)).execute(captor.capture());
+    return captor.getAllValues();
+  }
+
+  /** Only new text needs the provider; a restamp reuses the stored vectors. */
+  @Test
+  void onlyNewTextNeedsTheEmbeddingProvider() {
+    assertTrue(
+        OpenSearchVectorService.needsEmbedding(
+            OpenSearchVectorService.ChunkRefresh.REEMBED, false));
+    assertTrue(
+        OpenSearchVectorService.needsEmbedding(OpenSearchVectorService.ChunkRefresh.NONE, true));
+    assertFalse(
+        OpenSearchVectorService.needsEmbedding(OpenSearchVectorService.ChunkRefresh.RESTAMP, true));
+    assertFalse(
+        OpenSearchVectorService.needsEmbedding(
+            OpenSearchVectorService.ChunkRefresh.RESTAMP, false));
+    assertFalse(
+        OpenSearchVectorService.needsEmbedding(OpenSearchVectorService.ChunkRefresh.NONE, false));
+  }
+
+  /**
+   * An access change (owner, domain, reviewer, tag, certification) must reach the chunks during a
+   * provider outage too, or a search access policy keeps reading the old value for its length.
+   */
+  @Test
+  void updateEntityEmbeddings_checksForARestampWhileTheProviderIsDown() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(false);
+    setField("chunkIndexEnsured", true);
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+    Table table = governedTable();
+
+    vectorService.updateEntityEmbeddings(table, "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream()
+            .anyMatch(
+                r -> String.valueOf(r.getEndpoint()).contains("/_doc/" + table.getId() + "_0")),
+        "the chunk header must be read to decide on a restamp");
+  }
+
+  /**
+   * Owner names are embedded text, so an owner change needs a re-embed; while that waits for the
+   * provider, the old chunks must lose their stamp rather than keep answering with the old owner.
+   */
+  @Test
+  void updateEntityEmbeddings_withholdsChunksWhileAnAccessChangeWaitsForTheProvider()
+      throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(false);
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse(
+        "{\"found\":true,\"_source\":{\"fingerprint\":\"STALE\",\"accessStamp\":\"old\","
+            + "\"chunkCount\":1,\"docVersion\":9}}");
+    Table table = governedTable();
+
+    vectorService.updateEntityEmbeddings(table, "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream()
+            .anyMatch(
+                r ->
+                    r.getEndpoint().contains("_update_by_query")
+                        && bodyOf(r).contains(table.getId().toString())
+                        && bodyOf(r).contains(VectorDocBuilder.FIELD_ACCESS_STAMP)),
+        "the stale chunks' stamps must be stripped");
+  }
+
+  /** The strip only guards a skipped re-embed, so its failure must not skip the re-embed. */
+  @Test
+  void updateEntityEmbeddings_reembedsWhenTheStampStripIsIncomplete() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse(
+        "{\"found\":true,\"_source\":{\"fingerprint\":\"STALE\",\"accessStamp\":\"old\","
+            + "\"chunkCount\":1,\"docVersion\":9},\"version_conflicts\":1,\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(governedTable(), "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream().anyMatch(r -> "/_bulk".equals(r.getEndpoint())),
+        "the re-embedded chunks must still be written");
+  }
+
+  /** A partial strip (a failure or lost version conflict) must not count as done. */
+  @Test
+  void invalidateChunkAccess_failsWhenTheUpdateLeavesChunksStamped() throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}",
+        "{\"updated\":0,\"version_conflicts\":1,\"failures\":[]}",
+        "{\"succeeded\":true}");
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            vectorService.invalidateChunkAccess(
+                List.of("cluster_table"), "{\"term\":{\"owners.id\":\"u1\"}}"));
   }
 
   @Test

@@ -16,6 +16,9 @@ public interface OMQueryBuilder {
 
   OMQueryBuilder mustNot(List<OMQueryBuilder> queries);
 
+  /** Required clauses that constrain without contributing to the score. */
+  OMQueryBuilder filter(List<OMQueryBuilder> queries);
+
   OMQueryBuilder must(OMQueryBuilder query);
 
   OMQueryBuilder should(OMQueryBuilder query);

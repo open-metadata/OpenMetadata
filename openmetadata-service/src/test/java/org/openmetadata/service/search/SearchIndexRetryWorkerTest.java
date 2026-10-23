@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -52,6 +54,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
+import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class SearchIndexRetryWorkerTest {
@@ -199,6 +203,47 @@ class SearchIndexRetryWorkerTest {
 
     verify(searchClient).deleteEntity("openmetadata_topic_search_index", entityId);
     verify(searchClient).deleteEntity("topic_search_index_staged", entityId);
+  }
+
+  /**
+   * A retry re-queued by an access-field rewrite (a data product move) must leave the entity's
+   * vector chunks consistent with the document it writes, as the bulk-sink branch does, and only
+   * for vector-indexable types (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.TOPIC, Entity.USER})
+  void singleEntityRetryRefreshesChunksOfVectorIndexableTypes(String entityType) throws Exception {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    VectorIndexService vectors = mock(VectorIndexService.class);
+    IndexMapping mapping = IndexMapping.builder().indexName("entity_search_index").build();
+    SearchIndexFactory indexFactory = mock(SearchIndexFactory.class);
+    SearchIndex index = mock(SearchIndex.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
+    String entityId = UUID.randomUUID().toString();
+    when(entity.getId()).thenReturn(UUID.fromString(entityId));
+    when(entity.getEntityReference())
+        .thenReturn(new EntityReference().withId(UUID.fromString(entityId)).withType(entityType));
+    when(searchRepository.getIndexMapping(entityType)).thenReturn(mapping);
+    when(searchRepository.getWriteIndexName(mapping)).thenReturn("entity_search_index");
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getSearchIndexFactory()).thenReturn(indexFactory);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectors);
+    when(indexFactory.buildIndex(entityType, entity)).thenReturn(index);
+    when(index.buildSearchIndexDoc()).thenReturn(Map.of("id", entityId));
+    Method upsertEntities =
+        SearchIndexRetryWorker.class.getDeclaredMethod(
+            "upsertEntitiesInBulk", List.class, Map.class);
+    upsertEntities.setAccessible(true);
+
+    upsertEntities.invoke(
+        new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository),
+        List.of(entity),
+        Map.of());
+
+    verify(searchClient).createEntity(eq("entity_search_index"), eq(entityId), anyString());
+    verify(vectors, times(Entity.TOPIC.equals(entityType) ? 1 : 0))
+        .updateEntityEmbeddingChunks(entity);
   }
 
   @Test

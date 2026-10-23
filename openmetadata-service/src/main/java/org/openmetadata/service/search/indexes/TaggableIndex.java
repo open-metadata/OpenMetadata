@@ -62,12 +62,19 @@ public interface TaggableIndex extends SearchIndex {
       return;
     }
     List<TagLabel> entityTags = (List<TagLabel>) doc.getOrDefault("tags", List.of());
-    // Entity-level tags first for deterministic ordering, then child tags
+    doc.put("tags", mergedTags(entityTags, childTagSets));
+  }
+
+  /**
+   * Entity-level tags first for deterministic ordering, then child tags, each tag FQN once. Vector
+   * chunk documents merge their child tags with the same rule, so they carry the document's tags.
+   */
+  static List<TagLabel> mergedTags(List<TagLabel> entityTags, Set<List<TagLabel>> childTagSets) {
     LinkedHashMap<String, TagLabel> deduped = new LinkedHashMap<>();
     entityTags.forEach(tag -> deduped.putIfAbsent(tag.getTagFQN(), tag));
     childTagSets.stream()
         .flatMap(List::stream)
         .forEach(tag -> deduped.putIfAbsent(tag.getTagFQN(), tag));
-    doc.put("tags", new ArrayList<>(deduped.values()));
+    return new ArrayList<>(deduped.values());
   }
 }

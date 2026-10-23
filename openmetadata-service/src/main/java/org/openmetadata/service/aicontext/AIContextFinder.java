@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -128,10 +129,18 @@ public class AIContextFinder {
         try {
           // Over-fetch: collectHit dedupes chunk documents per FQN, so a long item occupying
           // several top hits would otherwise shrink the page below the requested size. The KNN
-          // k (SEARCH_K) caps the real result set regardless.
+          // k (SEARCH_K) caps the real result set regardless. Run as the caller so their search
+          // access policies filter the knowledge returned, as on every vector path.
           response =
               service.search(
-                  query, CONTEXT_FILTER, size * CHUNK_DEDUP_OVERSAMPLE, 0, SEARCH_K, 0.0);
+                  query,
+                  CONTEXT_FILTER,
+                  size * CHUNK_DEDUP_OVERSAMPLE,
+                  0,
+                  SEARCH_K,
+                  0.0,
+                  SearchUtils.searchPreferenceFor(subjectContext),
+                  subjectContext);
         } catch (Exception e) {
           LOG.warn("AIContext find: vector search failed: {}", e.getMessage());
         }

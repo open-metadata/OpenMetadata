@@ -1563,4 +1563,64 @@ class VectorSearchQueryBuilderTest {
     assertNotNull(clause, "the ES query path must enforce memory visibility too");
     assertTrue(clause.toString().contains(MemoryVisibility.ENTITY.value()));
   }
+
+  private static final String ACCESS_FILTER = "{\"term\":{\"accessProbe\":\"probe\"}}";
+
+  private static VectorSearchParameters accessParameters() {
+    return new VectorSearchParameters(
+        null, Map.of(), 10, 0, 10, 0.0, null, nonAdminSubject(), null);
+  }
+
+  private static JsonNode securityFilters(JsonNode query) {
+    JsonNode bool = query.path("knn").path("embedding").path("filter").path("bool");
+    if (bool.isMissingNode()) {
+      bool = query.path("knn").path("filter").path("bool");
+    }
+    return bool.path("filter");
+  }
+
+  /** The access filter sits beside the memory clause, in filter context, never scoring. */
+  @Test
+  void accessFilterIsTheSecondKnnFilterOnOpenSearch() throws Exception {
+    JsonNode query =
+        MAPPER.readTree(
+            VectorSearchQueryBuilder.buildQuery(
+                new float[] {0.1f},
+                accessParameters(),
+                new VectorSearchAccess(Set.of(), ACCESS_FILTER)));
+
+    JsonNode filters = securityFilters(query);
+    assertEquals(2, filters.size(), filters.toString());
+    assertEquals(memoryVisibilityClause(query), filters.get(0));
+    assertEquals(MAPPER.readTree(ACCESS_FILTER), filters.get(1));
+  }
+
+  @Test
+  void accessFilterIsTheSecondKnnFilterOnElasticsearch() throws Exception {
+    JsonNode query =
+        MAPPER.readTree(
+            VectorSearchQueryBuilder.buildNativeESQuery(
+                new float[] {0.1f},
+                accessParameters(),
+                VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER,
+                new VectorSearchAccess(Set.of(), ACCESS_FILTER)));
+
+    JsonNode filters = securityFilters(query);
+    assertEquals(2, filters.size(), filters.toString());
+    assertEquals(MAPPER.readTree(ACCESS_FILTER), filters.get(1));
+  }
+
+  @Test
+  void noAccessFilterKeepsTheQueryUnchanged() {
+    float[] vector = {0.1f};
+
+    assertEquals(
+        VectorSearchQueryBuilder.buildQuery(vector, accessParameters(), Set.of()),
+        VectorSearchQueryBuilder.buildQuery(
+            vector, accessParameters(), new VectorSearchAccess(Set.of(), null)));
+    assertEquals(
+        VectorSearchQueryBuilder.build(vector, accessParameters()),
+        VectorSearchQueryBuilder.build(
+            vector, accessParameters(), new VectorSearchAccess(Set.of(), null)));
+  }
 }

@@ -49,6 +49,11 @@ public class RBACConditionEvaluator {
    */
   private final ThreadLocal<User> evaluatingUser = new ThreadLocal<>();
 
+  /** The document kind being compiled for, held per thread for the same reason as the caller. */
+  private final ThreadLocal<SearchDocumentFields> evaluatingFields = new ThreadLocal<>();
+
+  private static final String ENTITY_TYPE_FIELD = "entityType";
+
   private static final Set<MetadataOperation> SEARCH_RELEVANT_OPS =
       Set.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_ALL, MetadataOperation.ALL);
 
@@ -68,15 +73,33 @@ public class RBACConditionEvaluator {
   }
 
   public OMQueryBuilder evaluateConditions(SubjectContext subjectContext) {
+    return compile(subjectContext, SearchDocumentFields.ENTITY_DOCUMENTS).query();
+  }
+
+  /**
+   * The search filter a caller's existing access policies compile to, for one kind of document.
+   *
+   * @param query the clause to AND into a search, as {@link #evaluateConditions} has always
+   *     returned it
+   * @param grantsEverything true when no deny rule restricts anything and the allow rules admit
+   *     every document of this kind, so the clause filters nothing
+   */
+  public record CompiledSearchFilter(OMQueryBuilder query, boolean grantsEverything) {}
+
+  /** Compiles the caller's search policies for one kind of document. */
+  public CompiledSearchFilter compile(
+      SubjectContext subjectContext, SearchDocumentFields documentFields) {
     evaluatingUser.set(subjectContext.user());
+    evaluatingFields.set(documentFields);
     try {
       return compileConditions(subjectContext);
     } finally {
       evaluatingUser.remove();
+      evaluatingFields.remove();
     }
   }
 
-  private OMQueryBuilder compileConditions(SubjectContext subjectContext) {
+  private CompiledSearchFilter compileConditions(SubjectContext subjectContext) {
     User user = subjectContext.user();
 
     List<OMQueryBuilder> allowQueries = new ArrayList<>();
@@ -145,15 +168,28 @@ public class RBACConditionEvaluator {
       finalQuery = queryBuilderFactory.matchAllQuery();
     }
 
-    return finalQuery;
+    return new CompiledSearchFilter(finalQuery, grantsEverything(allowQueries, denyQueries));
+  }
+
+  /**
+   * A deny clause that matches nothing denies nothing (an untranslated condition such as {@code
+   * TeamOnlyPolicy}'s {@code !matchTeam()} compiles to one), and one unconditional allow admits
+   * everything the other allows could.
+   */
+  private static boolean grantsEverything(
+      List<OMQueryBuilder> allowQueries, List<OMQueryBuilder> denyQueries) {
+    boolean deniesNothing = denyQueries.stream().allMatch(OMQueryBuilder::isMatchNone);
+    boolean allowsAll =
+        allowQueries.isEmpty() || allowQueries.stream().anyMatch(OMQueryBuilder::isMatchAll);
+    return deniesNothing && allowsAll;
   }
 
   private OMQueryBuilder buildRuleQuery(CompiledRule rule) {
     ConditionCollector ruleCollector = new ConditionCollector(queryBuilderFactory);
 
-    if (!rule.getResources().isEmpty() && !rule.getResources().contains("All")) {
-      OMQueryBuilder indexFilter = getIndexFilter(rule.getResources());
-      ruleCollector.addMust(indexFilter);
+    SearchDocumentFields documentFields = evaluatingFields.get();
+    if (!documentFields.leavesUnscoped(rule.getResources())) {
+      ruleCollector.addMust(resourceScope(documentFields, rule.getResources()));
     }
 
     if (rule.getCondition() != null && !rule.getCondition().trim().isEmpty()) {
@@ -388,7 +424,16 @@ public class RBACConditionEvaluator {
             .should(
                 List.of(
                     queryBuilderFactory.termsQuery("service.id", ids),
-                    queryBuilderFactory.termsQuery("id.keyword", ids))));
+                    queryBuilderFactory.termsQuery(entityIdField(), ids))));
+  }
+
+  /**
+   * The field holding an entity's id in the documents being compiled for: {@code id.keyword} on
+   * entity documents, {@code parentId} on vector chunk documents. Id-based conditions ({@code
+   * isOwner()}, {@code hasDomain()}, service matches) build their terms queries on it.
+   */
+  private String entityIdField() {
+    return evaluatingFields.get().entityIdField();
   }
 
   /**
@@ -414,7 +459,7 @@ public class RBACConditionEvaluator {
     if (!serviceIds.isEmpty()) {
       List<String> ids = List.copyOf(serviceIds);
       clauses.add(queryBuilderFactory.termsQuery("service.id", ids));
-      clauses.add(queryBuilderFactory.termsQuery("id.keyword", ids));
+      clauses.add(queryBuilderFactory.termsQuery(entityIdField(), ids));
     }
     collector.addMust(queryBuilderFactory.boolQuery().should(clauses));
   }
@@ -515,7 +560,7 @@ public class RBACConditionEvaluator {
       // A Domain entity is not itself domain-tagged, so the domains.id clauses never match a Domain
       // document. Match the user's own domains by their id so the Domain index search does not leak
       // other domains' names to a domain-restricted user.
-      domainQueries.add(queryBuilderFactory.termsQuery("id.keyword", userDomainIds));
+      domainQueries.add(queryBuilderFactory.termsQuery(entityIdField(), userDomainIds));
       // Domainless entities stay visible, but a Domain document must not slip through here.
       domainQueries.add(
           queryBuilderFactory
@@ -548,6 +593,13 @@ public class RBACConditionEvaluator {
     } else {
       collector.setMatchNothing(true);
     }
+  }
+
+  private OMQueryBuilder resourceScope(
+      SearchDocumentFields documentFields, List<String> resources) {
+    return documentFields.scopesByIndex()
+        ? getIndexFilter(resources)
+        : queryBuilderFactory.termsQuery(ENTITY_TYPE_FIELD, resources);
   }
 
   private OMQueryBuilder getIndexFilter(List<String> resources) {

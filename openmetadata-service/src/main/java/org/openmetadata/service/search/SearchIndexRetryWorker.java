@@ -40,6 +40,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -670,6 +672,13 @@ public class SearchIndexRetryWorker implements Managed {
             searchRepository.getWriteIndexName(indexMapping),
             entity.getId().toString(),
             JsonUtils.pojoToJson(doc));
+    // As the bulk-sink branch does, so a retried access-field rewrite (a data product move) also
+    // restamps the entity's vector chunks
+    // (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+    VectorIndexService vectors = searchRepository.getVectorIndexService();
+    if (vectors != null && AvailableEntityTypes.isVectorIndexable(entityType)) {
+      vectors.updateEntityEmbeddingChunks(entity);
+    }
   }
 
   private void addChildrenByRelation(

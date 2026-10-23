@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.security;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -34,6 +35,7 @@ import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator.CompiledSearchFilter;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamGraphFixture;
@@ -496,5 +498,150 @@ class OpenSearchRBACConditionEvaluatorTest {
     assertTrue(
         json.contains("\"ignore_unmapped\":true"),
         "must set ignore_unmapped so query works on indexes without this nested field");
+  }
+
+  private static CompiledRule rule(
+      CompiledRule.Effect effect, List<String> resources, String condition) {
+    CompiledRule rule = mock(CompiledRule.class);
+    when(rule.getOperations()).thenReturn(List.of(MetadataOperation.VIEW_ALL));
+    when(rule.getEffect()).thenReturn(effect);
+    when(rule.getResources()).thenReturn(resources);
+    when(rule.getCondition()).thenReturn(condition);
+    return rule;
+  }
+
+  private static SubjectContext subjectWithRules(User user, CompiledRule... rules) {
+    SubjectContext.PolicyContext policy = mock(SubjectContext.PolicyContext.class);
+    when(policy.getRules()).thenReturn(List.of(rules));
+    SubjectContext subject = mock(SubjectContext.class);
+    when(subject.user()).thenReturn(user);
+    when(subject.getPolicies(any())).thenAnswer(invocation -> List.of(policy).iterator());
+    return subject;
+  }
+
+  private static User plainUser() {
+    UUID id = UUID.randomUUID();
+    return new User().withId(id).withName("chunk_reader");
+  }
+
+  private static String json(OMQueryBuilder query) {
+    return ((OpenSearchQueryBuilder) query).build().toJsonString();
+  }
+
+  @Test
+  void chunkFieldsScopeResourcesByEntityType() {
+    SubjectContext subject =
+        subjectWithRules(plainUser(), rule(CompiledRule.Effect.DENY, List.of("table"), null));
+
+    String chunk = json(evaluator.compile(subject, SearchDocumentFields.CHUNK_DOCUMENTS).query());
+
+    DocumentContext context = JsonPath.parse(chunk);
+    assertFieldExists(context, "$..terms.entityType[?(@ == 'table')]", "chunk resource scope");
+    assertFalse(chunk.contains("_index"), chunk);
+  }
+
+  @Test
+  void chunkFieldsLeaveLowercaseAllUnscoped() {
+    SubjectContext subject =
+        subjectWithRules(plainUser(), rule(CompiledRule.Effect.ALLOW, List.of("all"), null));
+
+    CompiledSearchFilter chunk = evaluator.compile(subject, SearchDocumentFields.CHUNK_DOCUMENTS);
+    CompiledSearchFilter entity = evaluator.compile(subject, SearchDocumentFields.ENTITY_DOCUMENTS);
+
+    assertTrue(chunk.grantsEverything(), json(chunk.query()));
+    assertFalse(entity.grantsEverything(), json(entity.query()));
+    assertTrue(json(entity.query()).contains("_index"), json(entity.query()));
+  }
+
+  @Test
+  void chunkFieldsReadParentIdForEntityIds() {
+    UUID domainId = UUID.randomUUID();
+    User user =
+        plainUser()
+            .withDomains(
+                List.of(
+                    new EntityReference()
+                        .withId(domainId)
+                        .withType(Entity.DOMAIN)
+                        .withName("sales")));
+    SubjectContext subject =
+        subjectWithRules(user, rule(CompiledRule.Effect.ALLOW, List.of("All"), "hasDomain()"));
+
+    String chunk = json(evaluator.compile(subject, SearchDocumentFields.CHUNK_DOCUMENTS).query());
+    String entity = json(evaluator.compile(subject, SearchDocumentFields.ENTITY_DOCUMENTS).query());
+
+    assertFieldExists(
+        JsonPath.parse(chunk),
+        "$..terms.parentId[?(@ == '" + domainId + "')]",
+        "chunk entity id read from parentId");
+    assertFalse(chunk.contains("id.keyword"), chunk);
+    assertFieldExists(
+        JsonPath.parse(entity),
+        "$..terms['id.keyword'][?(@ == '" + domainId + "')]",
+        "entity id read from id.keyword");
+  }
+
+  @Test
+  void denyRuleNeverGrantsEverything() {
+    SubjectContext subject =
+        subjectWithRules(
+            plainUser(),
+            rule(CompiledRule.Effect.ALLOW, List.of("all"), null),
+            rule(CompiledRule.Effect.DENY, List.of("table"), null));
+
+    assertFalse(
+        evaluator.compile(subject, SearchDocumentFields.CHUNK_DOCUMENTS).grantsEverything());
+    assertFalse(
+        evaluator.compile(subject, SearchDocumentFields.ENTITY_DOCUMENTS).grantsEverything());
+  }
+
+  /**
+   * The seeded TeamOnlyPolicy denies {@code All} when {@code !matchTeam()}, a function search cannot
+   * translate. Both document kinds must read it the same way, so chunks are never narrower or wider
+   * than the entity documents normal search returns.
+   */
+  @Test
+  void teamOnlyPolicyCompilesAlikeForBothKinds() {
+    SubjectContext subject =
+        subjectWithRules(
+            plainUser(), rule(CompiledRule.Effect.DENY, List.of("All"), "!matchTeam()"));
+
+    CompiledSearchFilter chunk = evaluator.compile(subject, SearchDocumentFields.CHUNK_DOCUMENTS);
+    CompiledSearchFilter entity = evaluator.compile(subject, SearchDocumentFields.ENTITY_DOCUMENTS);
+
+    assertEquals(entity.grantsEverything(), chunk.grantsEverything());
+    assertEquals(json(entity.query()), json(chunk.query()));
+  }
+
+  @Test
+  void compileKeepsCallerIdentity() throws Exception {
+    User first = ownerUser();
+    User second = ownerUser();
+    CountDownLatch firstMidCompilation = new CountDownLatch(1);
+    CountDownLatch secondCompiled = new CountDownLatch(1);
+    SubjectContext firstSubject =
+        ownerRuleSubject(
+            first,
+            () -> {
+              firstMidCompilation.countDown();
+              assertTrue(secondCompiled.await(10, TimeUnit.SECONDS), "second caller never ran");
+            });
+    SubjectContext secondSubject = ownerRuleSubject(second, () -> {});
+
+    AtomicReference<CompiledSearchFilter> firstPolicy = new AtomicReference<>();
+    Thread firstCaller =
+        new Thread(
+            () ->
+                firstPolicy.set(
+                    evaluator.compile(firstSubject, SearchDocumentFields.CHUNK_DOCUMENTS)));
+    firstCaller.start();
+    assertTrue(firstMidCompilation.await(10, TimeUnit.SECONDS), "first caller never started");
+    evaluator.compile(secondSubject, SearchDocumentFields.CHUNK_DOCUMENTS);
+    secondCompiled.countDown();
+    firstCaller.join(TimeUnit.SECONDS.toMillis(10));
+
+    String compiled = json(firstPolicy.get().query());
+    assertTrue(compiled.contains(first.getId().toString()), compiled);
+    assertFalse(compiled.contains(second.getId().toString()), compiled);
   }
 }

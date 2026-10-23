@@ -14,10 +14,12 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -1014,6 +1016,343 @@ class SearchRepositoryBehaviorTest {
     verify(searchClient)
         .updateChildren(
             eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+  }
+
+  // A propagation rewrites child documents' access fields with no lifecycle event for the
+  // children, so it withholds their vector chunks first
+  // (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+
+  private VectorIndexService vectorsOn(SearchRepository target) throws Exception {
+    VectorIndexService vectors = mock(VectorIndexService.class);
+    setPrivateField(target, "vectorIndexService", vectors);
+    return vectors;
+  }
+
+  @Test
+  void inheritedAccessChangeWithholdsChildChunksBeforeRewritingThem() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    ChangeDescription ownerChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.TEST_CASE, testCase.getId().toString(), ownerChange, TEST_CASE_MAPPING, testCase);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of("cluster_tableColumn")),
+            argThat(match -> match.contains(testCase.getId().toString())));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void displayNameOnlyPropagationKeepsChunkStamps() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> serviceEntity =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "svc");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.DATABASE_SERVICE,
+        "service-id",
+        displayNameChange,
+        DATABASE_SERVICE_MAPPING,
+        serviceEntity);
+
+    verify(vectors, never()).invalidateChunkAccess(anyList(), anyString());
+  }
+
+  @Test
+  void glossaryTagPropagationWithholdsTaggedChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    TagLabel term = new TagLabel().withTagFQN("Glossary.Term").withName("Term");
+    ChangeDescription termAdded =
+        changeDescription(
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_TAGS)
+                    .withNewValue(JsonUtils.pojoToJson(List.of(term)))),
+            List.of(),
+            List.of());
+
+    repository.propagateGlossaryTags(Entity.GLOSSARY_TERM, "Glossary.Term", termAdded);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("Glossary.Term")));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void certificationTagUpdateWithholdsCertifiedChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    Tag tag = mock(Tag.class);
+    when(tag.getClassification())
+        .thenReturn(new EntityReference().withFullyQualifiedName("Certification"));
+    when(tag.getName()).thenReturn("Gold");
+    when(tag.getFullyQualifiedName()).thenReturn("Certification.Gold");
+
+    repository.propagateCertificationTags(
+        Entity.TAG, tag, changeDescription(List.of(), List.of(), List.of()));
+
+    verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.DATA_ASSET_SEARCH_ALIAS))),
+            argThat(match -> match.contains("certification.tagLabel.tagFQN")));
+  }
+
+  @Test
+  void tagRenameWithholdsChunksByTheOldNameBeforeRewritingIt() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    Tag tag = mock(Tag.class);
+    UUID tagId = UUID.randomUUID();
+    when(tag.getId()).thenReturn(tagId);
+    when(tag.getEntityReference())
+        .thenReturn(new EntityReference().withId(tagId).withType(Entity.TAG));
+    when(tag.getFullyQualifiedName()).thenReturn("PII.Secret");
+    ChangeDescription rename =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_NAME)
+                    .withOldValue("Sensitive")
+                    .withNewValue("Secret")),
+            List.of());
+
+    repository.propagateToRelatedEntities(Entity.TAG, rename, TABLE_MAPPING, tag);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("prefix") && match.contains("PII.Sensitive")));
+    order
+        .verify(searchClient)
+        .updateByFqnPrefix(
+            SearchClient.GLOBAL_SEARCH_ALIAS, "PII.Sensitive", "PII.Secret", "tags.tagFQN");
+  }
+
+  @Test
+  void domainDeleteWithholdsItsAssetsChunks() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    UUID domainId = UUID.randomUUID();
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, domainId, "finance");
+
+    repository.deleteOrUpdateChildren(domain, DOMAIN_MAPPING);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("domains.id") && match.contains(domainId.toString())));
+    order
+        .verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
+  /** A domain's inherited owners and domains reach its sub-domains and data products in place. */
+  @Test
+  void domainAccessChangeWithholdsSubDomainAndDataProductChunksBeforeRewritingThem()
+      throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    when(domain.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    ChangeDescription ownerChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.DOMAIN, "domain-id", ownerChange, DOMAIN_MAPPING, domain);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of("cluster_domain_search_index")),
+            argThat(match -> match.contains("parent.id") && match.contains("domain-id")));
+    order
+        .verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_domain_search_index")), any(Pair.class), any(Pair.class));
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of("cluster_data_product_search_index")),
+            argThat(match -> match.contains("domains.id") && match.contains("domain-id")));
+    order
+        .verify(searchClient)
+        .updateChildren(
+            eq(List.of("cluster_data_product_search_index")), any(Pair.class), any(Pair.class));
+  }
+
+  @Test
+  void domainDisplayNameChangeKeepsChildChunkStamps() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Domain")
+                    .withNewValue("New Domain")),
+            List.of());
+
+    repository.propagateInheritedFieldsToChildren(
+        Entity.DOMAIN, "domain-id", displayNameChange, DOMAIN_MAPPING, domain);
+
+    verify(vectors, never()).invalidateChunkAccess(anyList(), anyString());
+  }
+
+  /** Moving a data product re-homes its assets in bulk, with no update event per asset. */
+  @Test
+  void dataProductDomainMoveWithholdsItsAssetsChunksBeforeRewritingThem() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    UUID asset = UUID.randomUUID();
+    List<EntityReference> newDomains =
+        List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN));
+
+    repository.updateAssetDomainsByIds(List.of(asset), List.of("Old"), newDomains);
+
+    InOrder order = inOrder(vectors, searchClient);
+    order
+        .verify(vectors)
+        .invalidateChunkAccess(
+            eq(List.of(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS))),
+            argThat(match -> match.contains("\"ids\"") && match.contains(asset.toString())));
+    order.verify(searchClient).updateAssetDomainsByIds(List.of(asset), List.of("Old"), newDomains);
+  }
+
+  /**
+   * A failed invalidation fails the propagation like a failed child rewrite does, so the search
+   * retry queue re-runs both; chunks never keep a valid stamp beside rewritten entity documents.
+   */
+  @Test
+  void failedChunkInvalidationFailsThePropagationBeforeTheRewrite() throws Exception {
+    VectorIndexService vectors = vectorsOn(repository);
+    doThrow(new IllegalStateException("chunk index unavailable"))
+        .when(vectors)
+        .invalidateChunkAccess(anyList(), anyString());
+    EntityInterface<?> testCase = mockEntity(Entity.TEST_CASE, UUID.randomUUID(), "test_case");
+    when(testCase.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    ChangeDescription ownerChange =
+        changeDescription(
+            List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of());
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.propagateInheritedFieldsToChildren(
+                Entity.TEST_CASE,
+                testCase.getId().toString(),
+                ownerChange,
+                TEST_CASE_MAPPING,
+                testCase));
+
+    verify(searchClient, never())
+        .updateChildren(eq(List.of("cluster_tableColumn")), any(Pair.class), any(Pair.class));
+  }
+
+  private VectorIndexService failingVectorsOn(SearchRepository target) throws Exception {
+    VectorIndexService vectors = vectorsOn(target);
+    doThrow(new IllegalStateException("chunk index unavailable"))
+        .when(vectors)
+        .invalidateChunkAccess(anyList(), anyString());
+    return vectors;
+  }
+
+  /** The inherited-domain rewrite is deferred without a locator: its own catch must retry it. */
+  @Test
+  void failedWithholdOnInheritedDomainsEnqueuesTheParentsForRetry() throws Exception {
+    failingVectorsOn(repository);
+    UUID asset = UUID.randomUUID();
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.propagateInheritedDomainsToChildren(
+          List.of(new EntityReference().withId(asset).withType(Entity.TABLE)),
+          List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN)));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(asset.toString()), isNull(), eq(Entity.TABLE), any()));
+    }
+  }
+
+  /**
+   * A deleted domain is gone from the database, so no retry can re-run its cleanup: the rewrite
+   * that strips it from its assets runs even when withholding their chunks failed.
+   */
+  @Test
+  void domainDeleteRewritesItsAssetsWhenWithholdingTheirChunksFails() throws Exception {
+    failingVectorsOn(repository);
+    EntityInterface<?> domain = mockEntity(Entity.DOMAIN, UUID.randomUUID(), "finance");
+
+    repository.deleteOrUpdateChildren(domain, DOMAIN_MAPPING);
+
+    verify(searchClient)
+        .updateChildren(eq(SearchClient.GLOBAL_SEARCH_ALIAS), any(Pair.class), any(Pair.class));
+  }
+
+  /** A bulk update's propagation failure is retried with propagation, as a single update's is. */
+  @Test
+  void failedWithholdInBulkPropagationEnqueuesTheEntityForRetry() throws Exception {
+    failingVectorsOn(repository);
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface<?> service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    when(service.getOwners())
+        .thenReturn(List.of(new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER)));
+    when(service.getChangeDescription())
+        .thenReturn(
+            changeDescription(
+                List.of(new FieldChange().withName(Entity.FIELD_OWNERS)), List.of(), List.of()));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(service),
+                  any(ChangeDescription.class),
+                  eq("propagateEntitiesAfterBulkFlush"),
+                  any(IllegalStateException.class)));
+    }
   }
 
   @Test

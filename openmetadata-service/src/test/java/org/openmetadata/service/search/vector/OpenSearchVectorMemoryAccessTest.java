@@ -42,7 +42,7 @@ class OpenSearchVectorMemoryAccessTest {
             embeddings,
             parameters -> {
               resolutions.incrementAndGet();
-              return Set.of(anchorId);
+              return new VectorSearchAccess(Set.of(anchorId), ACCESS_FILTER);
             });
     SubjectContext subject =
         new SubjectContext(new User().withId(UUID.randomUUID()).withName("reader"), null);
@@ -80,8 +80,11 @@ class OpenSearchVectorMemoryAccessTest {
             .path("filter")
             .toString();
     assertTrue(visibility.contains("\"anchorId\":[\"" + anchorId + "\"]"), visibility);
+    assertTrue(visibility.contains("accessProbe"), "access filter on every page: " + visibility);
     assertEquals(offset, body.path("from").asInt());
   }
+
+  private static final String ACCESS_FILTER = "{\"term\":{\"accessProbe\":\"probe\"}}";
 
   private static OpenSearchClient respondingClient(List<String> requests) throws Exception {
     OpenSearchClient client = mock(OpenSearchClient.class);

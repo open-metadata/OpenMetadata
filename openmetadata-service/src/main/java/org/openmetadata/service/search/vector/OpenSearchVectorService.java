@@ -58,19 +58,19 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private final OpenSearchClient client;
   @Getter private final EmbeddingClient embeddingClient;
-  private final Function<VectorSearchParameters, Set<String>> readableAnchors;
+  private final Function<VectorSearchParameters, VectorSearchAccess> requestAccess;
 
   public OpenSearchVectorService(OpenSearchClient client, EmbeddingClient embeddingClient) {
-    this(client, embeddingClient, VectorSearchMemoryAccess::readableAnchorIds);
+    this(client, embeddingClient, VectorSearchAccess::forOpenSearch);
   }
 
   OpenSearchVectorService(
       OpenSearchClient client,
       EmbeddingClient embeddingClient,
-      Function<VectorSearchParameters, Set<String>> readableAnchors) {
+      Function<VectorSearchParameters, VectorSearchAccess> requestAccess) {
     this.client = client;
     this.embeddingClient = embeddingClient;
-    this.readableAnchors = readableAnchors;
+    this.requestAccess = requestAccess;
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
@@ -326,10 +326,6 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   @Override
   public void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
-    if (!embeddingClient.isAvailable()) {
-      LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
-      return;
-    }
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
@@ -339,7 +335,14 @@ public class OpenSearchVectorService implements VectorIndexService {
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
-      if (entityDocStale || refresh != ChunkRefresh.NONE) {
+      withholdChunksBeforeAccessReembed(entity, header, refresh);
+      // A restamp (an access or filter value changed) reuses the stored vectors, so it proceeds
+      // during a provider outage; only new text waits for the provider.
+      boolean waitsForProvider =
+          needsEmbedding(refresh, entityDocStale) && !embeddingClient.isAvailable();
+      if (waitsForProvider) {
+        LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
+      } else if (entityDocStale || refresh != ChunkRefresh.NONE) {
         List<Map<String, Object>> chunkDocs =
             refresh == ChunkRefresh.RESTAMP
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
@@ -421,6 +424,141 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
+  private static final String ACCESS_SCROLL_KEEP_ALIVE = "1m";
+  private static final int ACCESS_INVALIDATION_PAGE = 1000;
+  private static final String TOLERATE_MISSING_INDICES =
+      "ignore_unavailable=true&allow_no_indices=true";
+
+  /**
+   * Pages through the matched entity ids with a scroll and, page by page, removes the access stamp
+   * from those entities' chunks. A chunk without a stamp is withheld from restricted callers and
+   * restamped on the entity's next update or reindex.
+   */
+  @Override
+  public void invalidateChunkAccess(List<String> entityIndices, String matchQueryJson) {
+    JsonNode page = firstMatchPage(entityIndices, matchQueryJson);
+    String scrollId = page.path("_scroll_id").asText(null);
+    try {
+      List<String> ids = hitIds(page);
+      if (!ids.isEmpty()) {
+        List<String> targets = liveAndStagedChunkTargets();
+        while (!ids.isEmpty()) {
+          withholdChunksOfParents(targets, ids);
+          page = nextScrollPage(scrollId);
+          scrollId = page.path("_scroll_id").asText(scrollId);
+          ids = hitIds(page);
+        }
+        refresh(targets);
+      }
+    } finally {
+      clearScroll(scrollId);
+    }
+  }
+
+  private JsonNode firstMatchPage(List<String> entityIndices, String matchQueryJson) {
+    ObjectNode search = MAPPER.createObjectNode().put("size", ACCESS_INVALIDATION_PAGE);
+    search.put("_source", false).set("query", readJson(matchQueryJson));
+    return requireComplete(
+        readJson(
+            executeGenericRequest(
+                "POST",
+                "/"
+                    + String.join(",", entityIndices)
+                    + "/_search?scroll="
+                    + ACCESS_SCROLL_KEEP_ALIVE
+                    + "&"
+                    + TOLERATE_MISSING_INDICES,
+                search.toString())),
+        "chunk access scroll");
+  }
+
+  /** One batch of parents, unrefreshed: the caller refreshes once after the last batch. */
+  private void withholdChunksOfParents(List<String> targets, List<String> parentIds) {
+    ObjectNode update = MAPPER.createObjectNode();
+    update.putObject("query").putObject("terms").set("parentId", MAPPER.valueToTree(parentIds));
+    update
+        .putObject("script")
+        .put("source", "ctx._source.remove('" + VectorDocBuilder.FIELD_ACCESS_STAMP + "')")
+        .put("lang", "painless");
+    for (String target : targets) {
+      requireComplete(
+          readJson(
+              executeGenericRequest(
+                  "POST",
+                  "/" + target + "/_update_by_query?conflicts=proceed&" + TOLERATE_MISSING_INDICES,
+                  update.toString())),
+          "chunk access update on " + target);
+    }
+  }
+
+  /**
+   * A scroll page with failed shards, or an update that failed or lost a version conflict on some
+   * chunks, leaves stamps in place: it fails the invalidation, whose caller's retry re-runs it.
+   */
+  private static JsonNode requireComplete(JsonNode response, String operation) {
+    boolean incomplete =
+        response.path("_shards").path("failed").asInt(0) > 0
+            || !response.path("failures").isEmpty()
+            || response.path("version_conflicts").asLong(0) > 0;
+    if (incomplete) {
+      throw new IllegalStateException(operation + " was incomplete: " + response);
+    }
+    return response;
+  }
+
+  private void refresh(List<String> targets) {
+    executeGenericRequest(
+        "POST", "/" + String.join(",", targets) + "/_refresh?" + TOLERATE_MISSING_INDICES, "{}");
+  }
+
+  /** The live chunk index and, while a recreate is in flight, its staged generation. */
+  private List<String> liveAndStagedChunkTargets() {
+    List<String> targets = new ArrayList<>(List.of(getChunkIndexName()));
+    String staged = resolveChunkSinkTarget();
+    if (staged != null && !targets.contains(staged)) {
+      targets.add(staged);
+    }
+    return targets;
+  }
+
+  private JsonNode nextScrollPage(String scrollId) {
+    ObjectNode body =
+        MAPPER
+            .createObjectNode()
+            .put("scroll", ACCESS_SCROLL_KEEP_ALIVE)
+            .put("scroll_id", scrollId);
+    return requireComplete(
+        readJson(executeGenericRequest("POST", "/_search/scroll", body.toString())),
+        "chunk access scroll");
+  }
+
+  /** Cleanup only: a failure is logged, so it never replaces the failure the caller acts on. */
+  private void clearScroll(String scrollId) {
+    if (scrollId != null) {
+      ObjectNode body = MAPPER.createObjectNode();
+      body.putArray("scroll_id").add(scrollId);
+      try {
+        executeGenericRequest("DELETE", "/_search/scroll", body.toString());
+      } catch (RuntimeException e) {
+        LOG.warn("Failed to clear chunk-access scroll {}: {}", scrollId, e.getMessage());
+      }
+    }
+  }
+
+  private static List<String> hitIds(JsonNode page) {
+    List<String> ids = new ArrayList<>();
+    page.path("hits").path("hits").forEach(hit -> ids.add(hit.path("_id").asText()));
+    return ids;
+  }
+
+  private static JsonNode readJson(String json) {
+    try {
+      return MAPPER.readTree(json);
+    } catch (IOException e) {
+      throw new IllegalStateException("Unreadable OpenSearch response: " + e.getMessage(), e);
+    }
+  }
+
   private void deleteChunksFrom(String indexName, String parentId) {
     try {
       ChunkHeader header = getChunkHeader(indexName, parentId);
@@ -444,6 +582,10 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * As above, resolving context memory visibility for {@code subjectContext}. Needed even though the
    * parent is known: a parent may be a restricted memory, which yields no passages without it.
+   *
+   * <p>No search access clause applies: the caller must have authorized the parent itself, as
+   * {@code GetEntityTool} and {@code AIContextBuilder} do through REST before asking for its
+   * passages (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
    */
   public List<String> searchChunksByParent(
       String parentId, String query, int k, SubjectContext subjectContext) {
@@ -1105,7 +1247,12 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set(
         ContextMemoryIndex.FIELD_PINNED, MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
-    properties.set("domains", objectKeyword("name"));
+    // The ids are what search access policies match on: domains.id (hasDomain), service.id
+    // (matchAnyService*), reviewers.id (isReviewer).
+    properties.set("domains", objectKeyword("name", "id"));
+    properties.set("reviewers", objectKeyword("id"));
+    properties.set(
+        VectorDocBuilder.FIELD_ACCESS_STAMP, MAPPER.createObjectNode().put("type", "keyword"));
     properties.set("tier", objectKeyword("tagFQN"));
     properties.set("certification", certificationMapping());
     // owners is a `nested` type: NLQ owner filters run a nested query over owners.name, and the
@@ -1140,15 +1287,12 @@ public class OpenSearchVectorService implements VectorIndexService {
                     .set("keyword", MAPPER.createObjectNode().put("type", "keyword")));
   }
 
-  private ObjectNode objectKeyword(String field) {
-    return (ObjectNode)
-        MAPPER
-            .createObjectNode()
-            .set(
-                "properties",
-                MAPPER
-                    .createObjectNode()
-                    .set(field, MAPPER.createObjectNode().put("type", "keyword")));
+  private ObjectNode objectKeyword(String... fields) {
+    ObjectNode properties = MAPPER.createObjectNode();
+    for (String field : fields) {
+      properties.set(field, MAPPER.createObjectNode().put("type", "keyword"));
+    }
+    return (ObjectNode) MAPPER.createObjectNode().set("properties", properties);
   }
 
   private ObjectNode nestedOwnersMapping() {
@@ -1160,10 +1304,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private ObjectNode nameDisplayNameObject() {
-    var props = MAPPER.createObjectNode();
-    props.set("name", MAPPER.createObjectNode().put("type", "keyword"));
-    props.set("displayName", MAPPER.createObjectNode().put("type", "keyword"));
-    return (ObjectNode) MAPPER.createObjectNode().set("properties", props);
+    return objectKeyword("name", "displayName", "id");
   }
 
   private ObjectNode certificationMapping() {
@@ -1194,6 +1335,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
       ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+      withholdChunksBeforeAccessReembed(entity, header, refresh);
       if (refresh == ChunkRefresh.NONE) {
         LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
       } else {
@@ -1202,6 +1344,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient);
         replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+        mirrorToStagedGeneration(parentId, chunkDocs);
       }
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
@@ -1305,7 +1448,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       int docVersion,
       String status,
       String anchorId,
-      MemoryKind memoryKind) {}
+      MemoryKind memoryKind,
+      String accessStamp) {}
 
   /** The memory kind a chunk was stamped with; filters read it, the fingerprint does not see it. */
   record MemoryKind(String scope, String type, boolean pinned) {
@@ -1337,10 +1481,41 @@ public class OpenSearchVectorService implements VectorIndexService {
     ChunkRefresh refresh = ChunkRefresh.NONE;
     if (header == null || !fingerprint.equals(header.fingerprint())) {
       refresh = ChunkRefresh.REEMBED;
-    } else if (docVersionStale(header) || memoryFilterChanged(entity, header)) {
+    } else if (docVersionStale(header)
+        || memoryFilterChanged(entity, header)
+        || accessFieldsChanged(entity, header)) {
       refresh = ChunkRefresh.RESTAMP;
     }
     return refresh;
+  }
+
+  /** Only new text needs the provider; a restamp reuses the stored vectors. */
+  static boolean needsEmbedding(ChunkRefresh refresh, boolean entityDocStale) {
+    return refresh == ChunkRefresh.REEMBED || (refresh == ChunkRefresh.NONE && entityDocStale);
+  }
+
+  // Reviewers and certification are not embedded text either, yet search access policies read
+  // them on every chunk.
+  private static boolean accessFieldsChanged(EntityInterface<?> entity, ChunkHeader header) {
+    return !VectorDocBuilder.accessStamp(entity).equals(header.accessStamp());
+  }
+
+  /**
+   * Access fields such as owner names are part of the embedded text, so an access change can need
+   * a re-embed, which waits for the provider. Its current chunks lose their stamp first: if the
+   * re-embed is skipped or fails they are withheld from restricted callers instead of answering
+   * with the old access values. A failed strip only loses that guard, so the re-embed still runs.
+   */
+  private void withholdChunksBeforeAccessReembed(
+      EntityInterface<?> entity, ChunkHeader header, ChunkRefresh refresh) {
+    if (refresh == ChunkRefresh.REEMBED && header != null && accessFieldsChanged(entity, header)) {
+      try {
+        withholdChunksOfParents(liveAndStagedChunkTargets(), List.of(entity.getId().toString()));
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Failed to withhold chunks of {} before re-embed: {}", entity.getId(), e.getMessage());
+      }
+    }
   }
 
   // Status and anchor gate memory visibility, and the kind narrows a filtered recall; none of them
@@ -1400,7 +1575,8 @@ public class OpenSearchVectorService implements VectorIndexService {
                           ContextMemoryIndex.FIELD_ANCHOR_ID,
                           ContextMemoryIndex.FIELD_MEMORY_SCOPE,
                           ContextMemoryIndex.FIELD_MEMORY_TYPE,
-                          ContextMemoryIndex.FIELD_PINNED))
+                          ContextMemoryIndex.FIELD_PINNED,
+                          VectorDocBuilder.FIELD_ACCESS_STAMP))
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -1427,7 +1603,8 @@ public class OpenSearchVectorService implements VectorIndexService {
                     source.path("docVersion").asInt(0),
                     source.path(ContextMemoryIndex.FIELD_STATUS).asText(null),
                     source.path(ContextMemoryIndex.FIELD_ANCHOR_ID).asText(null),
-                    MemoryKind.read(source));
+                    MemoryKind.read(source),
+                    source.path(VectorDocBuilder.FIELD_ACCESS_STAMP).asText(null));
           }
         }
       }
@@ -1613,13 +1790,11 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
 
       String aliasName = getIndexAlias();
-      Set<String> readableAnchorIds = readableAnchors.apply(parameters);
+      VectorSearchAccess access = requestAccess.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector,
-                parameters.withPagination(overFetchSize, rawOffset),
-                readableAnchorIds);
+                queryVector, parameters.withPagination(overFetchSize, rawOffset), access);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());
