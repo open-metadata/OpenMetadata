@@ -199,6 +199,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return Set.copyOf(replaced);
   }
 
+  /**
+   * Locking the rows before the relationship sweep makes the delete, direct or through a domain
+   * cascade, wait for a writer that has share-locked a data product to link an asset (see {@code
+   * EntityRepository#lockDataProducts}), so the sweep removes the writer's edge instead of running
+   * before it commits and leaving it behind.
+   */
+  @Override
+  protected void lockRowsForDelete(List<DataProduct> dataProducts) {
+    List<String> ids =
+        dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+    EntityDAO.queryInChunks(ids, chunk -> dao.lockIdsForUpdate(dao.getTableName(), chunk));
+  }
+
   @Override
   protected void clearEntitySpecificRelationshipsForMany(List<DataProduct> entities) {
     if (entities.isEmpty()) return;
