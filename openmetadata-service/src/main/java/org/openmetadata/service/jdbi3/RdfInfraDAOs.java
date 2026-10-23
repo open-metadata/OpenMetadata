@@ -114,6 +114,16 @@ public interface RdfInfraDAOs {
       long expiresAt) {}
 
   interface OntologyEntityDAO extends EntityDAO<Ontology> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND JSON_LENGTH(json, '$.installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND jsonb_typeof(json -> 'installedPacks') = 'array' AND jsonb_array_length(json -> 'installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listJsonWithInstalledPacks(@Bind("limit") int limit);
+
     @Override
     default String getTableName() {
       return "ontology_entity";

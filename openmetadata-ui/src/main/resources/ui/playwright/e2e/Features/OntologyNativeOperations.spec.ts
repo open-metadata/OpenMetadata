@@ -403,8 +403,8 @@ test.describe(
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page.getByTestId(`ontology-pack-${pack.id}`)
-          ).toContainText('Installed');
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
+          ).toContainText(installed.displayName ?? installed.name);
           expect(draftWrites).toBe(1);
         } finally {
           await page.unroute('**/api/v1/ontologyChangeSets');

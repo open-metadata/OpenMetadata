@@ -37,6 +37,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.OntologyChangeSetValidator;
+import org.openmetadata.service.ontology.OntologyPackCatalog;
+import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.resources.ontology.OntologyChangeSetResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -101,6 +103,9 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
       entity.setUpdatedAt(System.currentTimeMillis());
     }
     OntologyChangeSetValidator.normalizeAndValidate(entity);
+    if (!update) {
+      OntologyPackInstallations.requireCurrent(OntologyPackCatalog.bundled(), entity);
+    }
     // Discarding must always succeed: a draft whose glossary was deleted, or whose planned
     // glossary has since been created elsewhere, would otherwise be impossible to clean up.
     if (entity.getState() != OntologyChangeSetState.DISCARDED) {
@@ -363,7 +368,8 @@ public class OntologyChangeSetRepository extends EntityRepository<OntologyChange
           || !Objects.equals(
               original.getOntology() == null ? null : original.getOntology().getId(),
               updated.getOntology() == null ? null : updated.getOntology().getId())
-          || !Objects.equals(original.getBaseWorkingRevision(), updated.getBaseWorkingRevision())) {
+          || !Objects.equals(original.getBaseWorkingRevision(), updated.getBaseWorkingRevision())
+          || !Objects.equals(original.getSourcePack(), updated.getSourcePack())) {
         throw new BadRequestException("Ontology change set scope is immutable");
       }
       if (updated.getState() == OntologyChangeSetState.APPLIED

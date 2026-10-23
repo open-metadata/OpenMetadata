@@ -26,6 +26,15 @@ import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.utils.JsonUtils;
 
 public final class OntologyPackCatalog {
+  private static final class Bundled {
+    private static final OntologyPackCatalog INSTANCE =
+        new OntologyPackCatalog(OntologyPackCatalog.class.getClassLoader());
+  }
+
+  public static OntologyPackCatalog bundled() {
+    return Bundled.INSTANCE;
+  }
+
   private static final List<String> MANIFEST_PATHS =
       List.of(
           "json/data/ontology/packs/epcis.json",

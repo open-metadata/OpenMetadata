@@ -79,7 +79,7 @@ const OntologyPackCard = ({
     action = (
       <Button
         aria-label={`${t('label.view')} ${pack.name}`}
-        className="tw:after:absolute tw:after:inset-0 tw:focus-visible:after:outline-2 tw:focus-visible:after:outline-focus-ring"
+        className="tw:static! tw:after:absolute tw:after:inset-0 tw:after:pointer-events-auto! tw:focus-visible:after:outline-2 tw:focus-visible:after:outline-focus-ring"
         color="link-color"
         data-testid={`ontology-pack-details-${pack.id}`}
         iconTrailing={ArrowRight}

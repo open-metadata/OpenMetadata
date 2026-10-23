@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -22,6 +23,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.OntologyPackList;
+import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -104,6 +106,10 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
     final var ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
     final var plan = preview(ontology, "fibo", Set.of("business-entities"));
+    assertEquals("fibo", plan.getSourcePack().getPackId());
+    assertEquals(
+        List.of("foundations", "business-entities"),
+        new ArrayList<>(plan.getSourcePack().getModuleIds()));
     assertEquals(14, plan.getOperations().size());
     assertEquals(
         8,
@@ -137,6 +143,46 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(14, applied.getApplicationResult().getOperationsApplied());
     assertEquals(0, preview(ontology, "fibo", Set.of("business-entities")).getOperations().size());
+  }
+
+  @Test
+  void sampleFollowsTheSelectedModulesWithoutATarget() {
+    final var client = SdkClients.adminClient();
+    final var both =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/ontologyPacks/fibo/sample?moduleIds=foundations,business-entities",
+                null,
+                OntologyPackSample.class);
+    assertEquals(8, both.getConceptCount());
+    assertEquals(6, both.getRelationCount());
+    assertTrue(both.getConcepts().size() <= 60);
+    assertTrue(both.getConcepts().stream().allMatch(concept -> concept.getLabel() != null));
+    final var foundations =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/ontologyPacks/fibo/sample?moduleIds=foundations",
+                null,
+                OntologyPackSample.class);
+    assertEquals(4, foundations.getConceptCount());
+    assertEquals(3, foundations.getRelationCount());
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .getHttpClient()
+                        .execute(
+                            HttpMethod.GET,
+                            "/v1/ontologyPacks/fibo/sample?moduleIds=missing",
+                            null,
+                            OntologyPackSample.class))
+            .getStatusCode());
   }
 
   @Test

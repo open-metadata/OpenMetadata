@@ -74,6 +74,7 @@ import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
+import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
@@ -261,12 +262,13 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final var selected =
         packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
     return previewImport(
-        uriInfo,
-        securityContext,
-        id,
-        new PreviewNativeOntologyImport()
-            .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
-            .withData(selected.body()));
+            uriInfo,
+            securityContext,
+            id,
+            new PreviewNativeOntologyImport()
+                .withFormat(PreviewNativeOntologyImport.Format.fromValue(selected.format()))
+                .withData(selected.body()))
+        .withSourcePack(OntologyPackInstallations.sourcePack(selected));
   }
 
   @POST
