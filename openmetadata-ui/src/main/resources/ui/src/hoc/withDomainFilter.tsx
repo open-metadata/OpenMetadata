@@ -21,7 +21,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { isTourMockActive } from '../rest/product-tour/productTourMock';
+import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
@@ -93,9 +93,9 @@ export const withDomainFilter = (
   }
 
   // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected; a domain filter would also stop its requests matching
-  // their fixtures.
-  if (isTourMockActive()) {
+  // they have selected. Off while the tour is recorded too, so the recorded
+  // requests are the ones the tour sends.
+  if (isProductTourRunning()) {
     return config;
   }
 

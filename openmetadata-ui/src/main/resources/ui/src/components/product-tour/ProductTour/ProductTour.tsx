@@ -50,6 +50,7 @@ import {
   TARGET_POLL_INTERVAL_MS,
   TOUR_HELPER_MARKER_CLASS_NAME,
   TOUR_IN_VIEW_THRESHOLD,
+  TOUR_FALLBACK_ATTRIBUTE,
   TOUR_MASK_COLOR,
   TOUR_PAGE_QUIET_MS,
   TOUR_PENDING_ATTRIBUTE,
@@ -267,7 +268,10 @@ const ProductTour = () => {
       return;
     }
 
-    return releaseTourPageLock;
+    return () => {
+      releaseTourPageLock();
+      document.documentElement.removeAttribute(TOUR_FALLBACK_ATTRIBUTE);
+    };
   }, [isTutorialShown]);
 
   const tourSteps = useMemo(
@@ -288,10 +292,12 @@ const ProductTour = () => {
               tourPageStep.selector,
               pageSelector
             );
-            tourStep.position =
-              tourStep.selector === tourPageStep.selector
-                ? tourPageStep.position
-                : undefined;
+            const isFallback = tourStep.selector !== tourPageStep.selector;
+            tourStep.position = isFallback ? undefined : tourPageStep.position;
+            document.documentElement.toggleAttribute(
+              TOUR_FALLBACK_ATTRIBUTE,
+              isFallback
+            );
             scrollTargetIntoView(tourStep.selector);
             focusTourNextButton();
           },

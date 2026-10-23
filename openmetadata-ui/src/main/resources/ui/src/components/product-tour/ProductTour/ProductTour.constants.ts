@@ -67,3 +67,7 @@ export const TARGET_POLL_INTERVAL_MS = 16;
 
 // The cross-fade from one step to the next; the browser's default is 250 ms.
 export const TOUR_TRANSITION_FADE_MS = 160;
+
+// Set on <html> while the step on screen points at the page because its own
+// target is missing; the tour spec fails on it, so a lost marker shows.
+export const TOUR_FALLBACK_ATTRIBUTE = 'data-product-tour-fallback';

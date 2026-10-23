@@ -78,7 +78,7 @@ describe('product tour mock interceptor', () => {
   it('sends a request without a fixture to the server', async () => {
     activateTourMock(async () => FIXTURES);
 
-    const response = await client.get('/users/loggedInUser');
+    const response = await client.get('/tables');
 
     expect(response.data).toBe('from server');
   });

@@ -202,6 +202,15 @@ describe('ProductTour', () => {
 
     expect(getTourTarget).toHaveBeenCalledWith('#home:not([inert] *)', '#page');
     expect(step).toMatchObject({ selector: '#page', position: undefined });
+    expect(
+      document.documentElement.hasAttribute('data-product-tour-fallback')
+    ).toBe(true);
+
+    step.beforeStep();
+
+    expect(
+      document.documentElement.hasAttribute('data-product-tour-fallback')
+    ).toBe(false);
   });
 
   it('moves to a step on another page inside a view transition', async () => {

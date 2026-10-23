@@ -32,8 +32,11 @@ const readStep = (page: Page) =>
     .innerText({ timeout: 1_000 })
     .catch(() => '');
 
+// A step whose target is missing still shows, pointing at the page; the tour
+// marks <html> when it does, so a page that lost its marker fails here.
 const expectStep = async (page: Page, text: string) => {
   await expect(popover(page)).toContainText(text, { timeout: STEP_TIMEOUT });
+  await expect(page.locator('html[data-product-tour-fallback]')).toHaveCount(0);
 };
 
 // react-tour waits before showing the next step and ignores clicks meanwhile,

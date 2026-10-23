@@ -245,3 +245,13 @@ export const useProductTourStore = create<ProductTourStore>()(
     }
   )
 );
+
+/**
+ * Whether a tour is on screen, also while the fixture recorder runs it with
+ * the mock off.
+ */
+export const isProductTourRunning = () => {
+  const { isActive, isEndModalOpen } = useProductTourStore.getState();
+
+  return isActive || isEndModalOpen;
+};

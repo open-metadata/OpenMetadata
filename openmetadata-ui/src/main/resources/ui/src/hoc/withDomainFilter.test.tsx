@@ -17,10 +17,7 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
-import {
-  activateTourMock,
-  deactivateTourMock,
-} from '../rest/product-tour/productTourMock';
+import { useProductTourStore } from '../hooks/product-tour/useProductTourStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
 
@@ -58,13 +55,13 @@ describe('withDomainFilter', () => {
         '/explore'
       );
       mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
-      activateTourMock(async () => []);
+      useProductTourStore.setState({ isActive: true });
 
       const config = createMockConfig('get', '/search/query', {
         index: SearchIndex.TABLE,
       });
       const result = withDomainFilter(config);
-      deactivateTourMock();
+      useProductTourStore.setState({ isActive: false });
 
       expect(result).toBe(config);
       expect(result.params).toEqual({ index: SearchIndex.TABLE });
