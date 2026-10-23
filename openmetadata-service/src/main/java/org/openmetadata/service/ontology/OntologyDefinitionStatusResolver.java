@@ -24,14 +24,12 @@ import org.openmetadata.service.jdbi3.OntologyReleaseDAO.MemberVersion;
  * payload, because capture projected exactly that stored revision.
  */
 public final class OntologyDefinitionStatusResolver {
-  /** How one working definition relates to one release. */
   public enum Match {
     ABSENT,
     SAME,
     DIFFERENT
   }
 
-  /** The matches against the three releases that decide a status. */
   public record Slots(Match active, Match latestApproved, Match inReview) {}
 
   private record Key(UUID releaseId, UUID memberId) {}

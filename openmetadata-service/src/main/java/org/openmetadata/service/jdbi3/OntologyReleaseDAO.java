@@ -27,7 +27,6 @@ import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
-  /** A sealed release header that plays a role for its ontology, with the ontology's active id. */
   record RoleCandidate(String ontologyId, String activeReleaseId, String json) {}
 
   record MemberVersion(

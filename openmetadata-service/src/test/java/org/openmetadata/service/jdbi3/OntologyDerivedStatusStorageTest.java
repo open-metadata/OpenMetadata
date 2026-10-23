@@ -14,11 +14,14 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyDefinitionStatus;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyPublicationStage;
 import org.openmetadata.schema.type.OntologyPublicationStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -139,6 +142,53 @@ class OntologyDerivedStatusStorageTest {
                   assertEquals(
                       OntologyPublicationStage.DRAFT, publication(fixture).getLatest().getStage()),
               () -> assertEquals(first.getId(), publication(fixture).getActive().getReleaseId()));
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void publicationStatusCountsPropertyAndOntologyEditsAfterActivation(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final OntologyPropertyRepository properties = new OntologyPropertyRepository();
+          final OntologyProperty property =
+              properties.create(
+                  null,
+                  new OntologyProperty()
+                      .withId(UUID.randomUUID())
+                      .withName("hasOwner")
+                      .withOntology(fixture.ontology.getEntityReference())
+                      .withKind(OntologyPropertyKind.OBJECT)
+                      .withVersion(0.1)
+                      .withUpdatedAt(1L)
+                      .withUpdatedBy("admin"));
+          final OntologyRelease first = fixture.capture(ignored -> {});
+          setStatus(fixture, first, EntityStatus.APPROVED);
+          activate(fixture, first);
+          assertEquals(0, publication(fixture).getUnpublishedChanges());
+
+          final OntologyProperty original =
+              properties.get(null, property.getId(), properties.getFields(""));
+          properties.update(
+              null,
+              original,
+              JsonUtils.deepCopy(original, OntologyProperty.class).withDescription("owner"),
+              "admin");
+          final Ontology ontology =
+              fixture.ontologies.get(
+                  null, fixture.ontology.getId(), fixture.ontologies.getFields(""));
+          fixture.ontologies.update(
+              null,
+              ontology,
+              JsonUtils.deepCopy(ontology, Ontology.class).withDescription("edited"),
+              "admin");
+          properties.delete("admin", property.getId(), false, false);
+          assertAll(
+              () -> assertEquals(2, publication(fixture).getUnpublishedChanges()),
+              () -> assertEquals(2, workingDiffRows(fixture)));
         });
   }
 
