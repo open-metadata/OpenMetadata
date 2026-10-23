@@ -64,14 +64,6 @@ type ParentFieldObject = {
 };
 
 jest.mock(
-  '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn().mockReturnValue({
-      showModal: jest.fn(),
-    }),
-  })
-);
-jest.mock(
   '../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
   () => ({
     ManageButtonItemLabel: jest
@@ -91,6 +83,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const navigate = jest.fn();
+
+const mockShowModal = jest.fn();
 
 describe('TableUtils', () => {
   it('getTierTags should return the correct usage percentile', () => {
@@ -570,7 +564,8 @@ describe('TableUtils', () => {
         'tableFqn',
         permission,
         false,
-        navigate
+        navigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(1);
@@ -587,7 +582,8 @@ describe('TableUtils', () => {
         'tableFqn',
         permission,
         false,
-        navigate
+        navigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(1);
@@ -604,7 +600,8 @@ describe('TableUtils', () => {
         'tableFqn',
         permission,
         false,
-        navigate
+        navigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(2);
@@ -621,7 +618,8 @@ describe('TableUtils', () => {
         'tableFqn',
         permission,
         false,
-        navigate
+        navigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(0);
@@ -637,7 +635,8 @@ describe('TableUtils', () => {
         'tableFqn',
         permission,
         true,
-        navigate
+        navigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(0);

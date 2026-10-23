@@ -16,6 +16,7 @@ import {
   Dialog,
   Divider,
   FormItemLabel,
+  Grid,
   HintText,
   Modal,
   ModalOverlay,
@@ -52,7 +53,6 @@ import icDuration from '../../../../assets/svg/ic_duration.svg';
 import icReasonAccess from '../../../../assets/svg/ic_reason-access.svg';
 import icTicket from '../../../../assets/svg/ic_ticket.svg';
 import { ReactComponent as AddColored } from '../../../../assets/svg/plus-colored.svg';
-import { TASK_ENTITY_TYPES } from '../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
@@ -157,6 +157,10 @@ import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPane
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
+import {
+  getTaskTypeMessageKey,
+  isRevisionRequest,
+} from '../MetadataCompletionTask/MetadataCompletionTask.utils';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
@@ -625,7 +629,7 @@ export const TaskTabNew = ({
   }, [taskColumnLabel, t]);
 
   const taskDisplayMessage = useMemo(() => {
-    const taskTypeLabel = t(TASK_ENTITY_TYPES[task.type] ?? 'label.task');
+    const taskTypeLabel = t(getTaskTypeMessageKey(task) ?? 'label.task');
     const entityName = entityFQN
       ? getNameFromFQN(entityFQN)
       : task.about?.name ?? '';
@@ -634,7 +638,7 @@ export const TaskTabNew = ({
       : entityName;
 
     return [taskTypeLabel, taskScope].filter(Boolean).join(' ').trim();
-  }, [entityFQN, task.about, task.type, taskColumnLabel, t]);
+  }, [entityFQN, task, taskColumnLabel, t]);
   const shouldRenderTaskPayload = useMemo(() => {
     return hasTaskFormFields(taskFormSchema?.formSchema);
   }, [taskFormSchema?.formSchema]);
@@ -659,7 +663,7 @@ export const TaskTabNew = ({
             <UserPopOverCard userName={task.createdBy?.name ?? ''}>
               <ProfilePicture name={task.createdBy?.name ?? ''} width="24" />
             </UserPopOverCard>
-            <Typography>{task.createdBy?.name}</Typography>
+            <Typography>{getEntityName(task.createdBy)}</Typography>
           </Link>
         ),
       },
@@ -710,7 +714,7 @@ export const TaskTabNew = ({
             <Typography className="p-0 task-id text-sm task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="p-xss task-details">
-              {t(TASK_ENTITY_TYPES[task.type])}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -730,7 +734,7 @@ export const TaskTabNew = ({
       entityType,
       handleTaskLinkClick,
       isEntityDetailsAvailable,
-      task.type,
+      task,
       taskColumnName,
       taskDisplayId,
       t,
@@ -1569,18 +1573,22 @@ export const TaskTabNew = ({
             'flex-column': isEditAssignee,
           }
         )}>
-        <div className="d-flex gap-2" data-testid="task-assignees">
-          <Box className="m-l-0" rowGap={4} wrap="wrap">
-            <Box
-              align="center"
-              className="text-grey-muted tw:w-1/3 tw:pr-2"
-              gap={2}>
-              <UserIcon height={16} />
-              <Typography className="incident-manager-details-label">
-                {t('label.created-by')}
+        <div className="d-flex gap-2 tw:w-full" data-testid="task-assignees">
+          <Grid className="tw:w-full tw:items-center" colGap="2" rowGap="4">
+            <Grid.Item span={8}>
+              <Box align="center" className="text-grey-muted" gap={2}>
+                <UserIcon height={16} />
+                <Typography className="incident-manager-details-label">
+                  {t('label.created-by')}
+                </Typography>
+              </Box>
+            </Grid.Item>
+            <Grid.Item span={1}>
+              <Typography color="secondary" size="text-sm">
+                :
               </Typography>
-            </Box>
-            <div className="tw:w-2/3 tw:pr-2 tw:pl-0.5">
+            </Grid.Item>
+            <Grid.Item span={15}>
               <Link
                 className="no-underline flex items-center gap-2"
                 to={getUserPath(task.createdBy?.name ?? '')}>
@@ -1593,21 +1601,28 @@ export const TaskTabNew = ({
                   </div>
                 </UserPopOverCard>
 
-                <Typography>{task.createdBy?.name}</Typography>
+                <Typography>{getEntityName(task.createdBy)}</Typography>
               </Link>
-            </div>
+            </Grid.Item>
 
             {isEditAssignee ? (
-              renderAssigneeEditor()
+              <Grid.Item span={24}>{renderAssigneeEditor()}</Grid.Item>
             ) : (
               <>
-                <Box className="text-grey-muted tw:w-1/3 tw:pr-2" gap={2}>
-                  <AssigneesIcon height={16} />
-                  <Typography className="incident-manager-details-label @grey-8">
-                    {t('label.assignee-plural')}
+                <Grid.Item span={8}>
+                  <Box align="center" className="text-grey-muted" gap={2}>
+                    <AssigneesIcon height={16} />
+                    <Typography className="incident-manager-details-label @grey-8">
+                      {t('label.assignee-plural')}
+                    </Typography>
+                  </Box>
+                </Grid.Item>
+                <Grid.Item span={1}>
+                  <Typography color="secondary" size="text-sm">
+                    :
                   </Typography>
-                </Box>
-                <Box className="tw:w-2/3 tw:pr-2 tw:pl-0.5" gap={2}>
+                </Grid.Item>
+                <Grid.Item className="tw:flex tw:gap-2" span={15}>
                   {task?.assignees?.length === 1 ? (
                     <div className="d-flex items-center gap-2">
                       <UserPopOverCard userName={task?.assignees[0].name ?? ''}>
@@ -1632,10 +1647,10 @@ export const TaskTabNew = ({
                       showLabel={false}
                     />
                   )}
-                </Box>
+                </Grid.Item>
               </>
             )}
-          </Box>
+          </Grid>
         </div>
       </div>
     );
@@ -1909,7 +1924,8 @@ export const TaskTabNew = ({
   };
 
   const renderActionRequiredSection = () => {
-    if (!isTaskActionable || rest.isOpenInDrawer) {
+    // A Revise and resubmit task is completed by editing the asset; it has no action of its own.
+    if (!isTaskActionable || rest.isOpenInDrawer || isRevisionRequest(task)) {
       return null;
     }
 

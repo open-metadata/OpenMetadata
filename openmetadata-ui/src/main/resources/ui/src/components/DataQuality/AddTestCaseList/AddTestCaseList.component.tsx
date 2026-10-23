@@ -913,7 +913,7 @@ export const AddTestCaseList = ({
 
   const actions = showButton ? (
     <>
-      <Button boxed color="link-color" data-testid="cancel" onPress={onCancel}>
+      <Button color="secondary" data-testid="cancel" onPress={onCancel}>
         {cancelText ?? t('label.cancel')}
       </Button>
       <Button

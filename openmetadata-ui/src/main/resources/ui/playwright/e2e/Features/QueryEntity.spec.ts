@@ -20,9 +20,15 @@ import {
   descriptionBox,
   fillDescriptionBox,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getRecordsControl } from '../../utils/pagination';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { createQueryByTableName, queryFilters } from '../../utils/query';
+
+const QUERY_SEARCH_INDEX = 'query_search_index';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -50,10 +56,16 @@ test.beforeAll(async ({ browser }) => {
   for (const entity of entityData) {
     await entity.create(apiContext);
   }
-  await createQueryByTableName({
+  const table2Query = await createQueryByTableName({
     apiContext,
     tableResponseData: table2.entityResponseData,
   });
+  // The Queries tab searches once when it opens and never re-queries.
+  await waitForSearchIndexed(
+    apiContext,
+    table2Query.fullyQualifiedName,
+    QUERY_SEARCH_INDEX
+  );
 
   // set owner name for queryData
   queryData.owner = user1.getUserDisplayName();
@@ -368,15 +380,12 @@ test('Verify query duration', async ({ page }) => {
     '/api/v1/search/query?q=*&index=query*'
   );
   await page.click(`[data-testid="table_queries"]`);
-  await queryResponse;
-  await page.getByTestId('query-run-duration').waitFor({
-    state: 'visible',
-  });
-  const durationText = await page.textContent(
-    '[data-testid="query-run-duration"]'
-  );
+  const response = await queryResponse;
 
-  expect(durationText).toContain('6.199 sec');
+  expect(response.status()).toBe(200);
+  await expect(page.getByTestId('query-run-duration')).toContainText(
+    '6.199 sec'
+  );
 });
 
 test('Verify Query Pagination', async ({ page, browser }) => {
@@ -384,12 +393,23 @@ test('Verify Query Pagination', async ({ page, browser }) => {
 
   const { apiContext, afterAction } = await createNewPage(browser);
 
-  Array.from({ length: 26 }).forEach(async (_, index) => {
-    await table1.createQuery(
-      apiContext,
-      `select * from table ${table1.entity.name} ${index}`
-    );
-  });
+  const queries = await Promise.all(
+    Array.from({ length: 26 }, (_, index) =>
+      table1.createQuery(
+        apiContext,
+        `select * from table ${table1.entity.name} ${index}`
+      )
+    )
+  );
+  await Promise.all(
+    queries.map((query) =>
+      waitForSearchIndexed(
+        apiContext,
+        query.fullyQualifiedName,
+        QUERY_SEARCH_INDEX
+      )
+    )
+  );
 
   await redirectToHomePage(page);
   await table1.visitEntityPage(page);
@@ -423,28 +443,40 @@ test('Verify Query Pagination', async ({ page, browser }) => {
 
   await expect(page.getByTestId('previous')).toBeDisabled();
 
-  const pageSizeDropdown = page.getByTestId('rows-per-page-dropdown');
+  const records = getRecordsControl(page.getByTestId('queries-container'));
+  const pageSizeOptions = page.locator(
+    '[data-testid^="rows-per-page-option-"]'
+  );
 
-  await expect(pageSizeDropdown).toContainText('15');
+  await expect(records).toHaveText('15');
 
-  // Change page size to 25
-  await pageSizeDropdown.click();
   const pageSizeResponse = page.waitForResponse(
     '/api/v1/search/query?q=*&index=query&from=0&size=25&deleted=false&query_filter=**'
   );
-  await page.getByTestId('rows-per-page-option-25').click();
-  await pageSizeResponse;
+  // The size list is a non-modal react-aria popover that closes when the
+  // pagination row scrolls, so a one-shot open can show nothing. Reopen until
+  // the list shows, and assert it on every attempt so a wrong list cannot be
+  // skipped by a retry that finds the menu already open.
+  await expect(async () => {
+    if ((await records.getAttribute('aria-expanded')) !== 'true') {
+      await scrollIntoViewAndSettle(records);
+      await records.click({ timeout: 5_000 });
+    }
+    await expect(pageSizeOptions).toHaveText(['15', '25', '50'], {
+      timeout: 2_000,
+    });
+  }).toPass({ timeout: 15_000 });
+  await selectOptionWithRetry(
+    records,
+    page.getByTestId('rows-per-page-option-25')
+  );
+  const pageSizeResult = await pageSizeResponse;
+
+  expect(pageSizeResult.status()).toBe(200);
 
   await waitForAllLoadersToDisappear(page);
 
-  await expect(pageSizeDropdown).toContainText('25');
-
-  // The page size list offers exactly 15, 25 and 50.
-  await pageSizeDropdown.click();
-
-  await expect(
-    page.locator('[data-testid^="rows-per-page-option-"]')
-  ).toHaveText(['15', '25', '50']);
+  await expect(records).toHaveText('25');
 
   await afterAction();
 });

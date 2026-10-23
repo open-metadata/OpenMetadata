@@ -924,15 +924,14 @@ const LineageMapEmptyPlaceholder = ({
                   entity: t(getLensRootLabelKey(scene.lens)),
                 }),
                 color: 'secondary',
-                'data-testid': 'lineage-map-back-to-root',
                 iconLeading: Home02,
                 onPress: () => onBack(rootBreadcrumb),
               },
             ]
           : undefined
       }
-      description={t('message.no-lineage-data-available')}
       icon={<PlatformLineage />}
+      title={t('message.no-lineage-data-available')}
     />
   );
 };

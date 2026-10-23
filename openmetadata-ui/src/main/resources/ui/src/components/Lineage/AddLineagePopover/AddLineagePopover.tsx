@@ -425,7 +425,9 @@ const AddLineagePopover = ({
               </Typography>
               <CloseButton size="sm" onClick={close} />
             </Box>
-            <Typography className="tw:mt-1 tw:text-tertiary" size="text-sm">
+            <Typography
+              className="tw:mt-1 tw:block tw:text-tertiary"
+              size="text-sm">
               {t(
                 isUpstream
                   ? 'message.add-upstream-lineage-description'

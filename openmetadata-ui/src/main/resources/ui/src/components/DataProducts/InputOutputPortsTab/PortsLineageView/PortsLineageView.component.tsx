@@ -30,7 +30,6 @@ import ReactFlow, {
   useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/ic-no-records.svg';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
@@ -220,18 +219,10 @@ const PortsLineageView = ({
       <div className="ports-lineage-view-empty tw:h-50 tw:flex tw:items-center tw:justify-center tw:bg-secondary tw:rounded-lg tw:border tw:border-subtle">
         <div className="tw:relative tw:h-full tw:w-full tw:rounded-xl tw:bg-surface">
           <NoDataPlaceholder
-            data-testid="no-data-placeholder"
-            description={
-              assetCount === 0
-                ? t('message.no-assets-for-ports-lineage')
-                : t('message.no-ports-to-display-lineage')
-            }
-            icon={
-              <AddPlaceHolderIcon
-                className="tw:w-16 tw:h-16"
-                data-testid="no-ports-placeholder"
-              />
-            }
+            data-testid="no-ports-placeholder"
+            {...(assetCount === 0
+              ? { description: t('message.no-assets-for-ports-lineage') }
+              : { title: t('message.no-ports-to-display-lineage') })}
           />
         </div>
       </div>
