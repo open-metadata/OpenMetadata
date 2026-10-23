@@ -1129,7 +1129,6 @@ function applyAdditiveUpdate(
   });
 }
 
-
 // Nodes that size to their label can be wider than NODE_WIDTH (up to
 // MODEL_NODE_MAX_LABEL_WIDTH), so row and ring spacing uses the widest one.
 const getMaxNodeWidth = (nodes: NodeData[]): number =>
