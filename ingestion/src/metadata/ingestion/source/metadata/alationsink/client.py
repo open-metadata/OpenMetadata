@@ -25,7 +25,7 @@ from metadata.generated.schema.security.credentials.apiAccessTokenAuth import (
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
-from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.ometa.client import APIError, ClientConfig, LimitsException, RestTransportError
 from metadata.ingestion.source.metadata.alationsink.constants import (
     JOB_POLL_INITIAL_INTERVAL_SECONDS,
     JOB_POLL_MAX_INTERVAL_SECONDS,
@@ -242,9 +242,18 @@ class AlationSinkClient:
         """
         deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
         interval = JOB_POLL_INITIAL_INTERVAL_SECONDS
+        last_error = None
         # The deadline is checked before every poll, and no sleep runs past it
         while time.monotonic() < deadline:
-            job = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id}) or {}
+            try:
+                job = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id}) or {}
+            except Exception as exc:
+                # Polls do not retry, so a transient failure is retried by the next poll; the job
+                # itself may still succeed. Anything else would fail every poll, so stop now
+                if not _is_transient(exc):
+                    return [f"Polling Alation job [{job_id}] failed: {exc}"]
+                logger.warning("Polling Alation job [%s] failed, polling again: %s", job_id, exc)
+                last_error, job = exc, {}
             status = job.get("status")
             if status == "failed":
                 return [f"Alation job [{job_id}] failed: {job.get('msg') or job.get('result')}"]
@@ -252,7 +261,17 @@ class AlationSinkClient:
                 return [f"Alation job [{job_id}]: {error}" for error in _job_object_errors(job.get("result"))]
             self._sleep(max(min(interval, deadline - time.monotonic()), 0))
             interval = min(interval * 2, JOB_POLL_MAX_INTERVAL_SECONDS)
-        return [f"Alation job [{job_id}] did not finish within {JOB_TIMEOUT_SECONDS}s"]
+        suffix = f" (last poll error: {last_error})" if last_error else ""
+        return [f"Alation job [{job_id}] did not finish within {JOB_TIMEOUT_SECONDS}s{suffix}"]
+
+
+def _is_transient(exc: Exception) -> bool:
+    """A poll failure the next poll can get past: transport, rate limit or a server-side error"""
+    if isinstance(exc, (RestTransportError, LimitsException)):
+        return True
+    response = getattr(exc, "response", None)
+    status_code = exc.status_code if isinstance(exc, APIError) else getattr(response, "status_code", None)
+    return status_code is not None and status_code >= 500
 
 
 def _job_object_errors(result: Any) -> list:

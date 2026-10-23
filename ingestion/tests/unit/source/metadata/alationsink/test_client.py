@@ -12,9 +12,12 @@
 
 from unittest.mock import MagicMock, patch
 
+import requests
+
 from metadata.generated.schema.entity.services.connections.metadata.alationSinkConnection import (
     AlationSinkConnection,
 )
+from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import JOB_POLL_REQUEST_TIMEOUT_SECONDS
 from metadata.ingestion.source.metadata.alationsink.models import (
@@ -96,6 +99,50 @@ def test_no_poll_starts_after_the_deadline():
     assert client.jobs_client.get.call_count == 1
     # the sleep is cut to the time left rather than the full interval
     assert client._sleep.call_args.args[0] < 0.5
+
+
+def _http_error(status_code: int) -> requests.HTTPError:
+    response = requests.Response()
+    response.status_code = status_code
+    return requests.HTTPError(response=response)
+
+
+def test_transient_poll_failures_keep_polling():
+    client = _client(
+        RestTransportError("GET", "/bulk_metadata/job/", TimeoutError("read timed out")),
+        _http_error(503),
+        {"status": "successful", "result": []},
+    )
+
+    assert client.write_entities(39, _columns(3)) == []
+    assert client.jobs_client.get.call_count == 3
+
+
+def test_permanent_poll_failure_stops_polling():
+    client = _client(
+        APIError({"code": "404000", "detail": "Job does not exist"}, _http_error(404)),
+        {"status": "successful", "result": []},
+    )
+
+    errors = client.write_entities(39, _columns(3))
+
+    assert errors == ["Polling Alation job [7] failed: Job does not exist"]
+    assert client.jobs_client.get.call_count == 1
+
+
+def test_timeout_reports_the_last_poll_error():
+    client = _client(_http_error(503), _http_error(502))
+    clock = iter([0, 0, 1, 1, 1, 11])
+
+    with (
+        patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
+        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+    ):
+        errors = client.write_entities(39, _columns(3))
+
+    assert len(errors) == 1
+    assert errors[0].startswith("Alation job [7] did not finish within 10s (last poll error:")
+    assert client.jobs_client.get.call_count == 2
 
 
 def test_job_polls_are_bounded():

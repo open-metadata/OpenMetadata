@@ -22,7 +22,9 @@ POST at 1000 and waits for each job; Alation's docs state differing per-endpoint
   still running after `JOB_TIMEOUT_SECONDS` = 600 is a failure, not a success. The deadline is
   checked before every poll and no sleep runs past it; each poll has a 30 s read timeout
   (`JOB_POLL_REQUEST_TIMEOUT_SECONDS`) and no retries, so a wait overruns the deadline by at most
-  one poll.
+  one poll. A transient poll failure (transport, 429, 5xx) is retried by the next poll, since the
+  job may still succeed; any other poll failure fails the batch at once rather than repeating
+  until the deadline.
 - A `failed` job, and every per-object error of a `successful` one, is logged in full; the run
   status records at most the first `MAX_REPORTED_ERRORS` = 5 of them per parent, plus a count of
   the rest, so one bad table does not flood the run report.
