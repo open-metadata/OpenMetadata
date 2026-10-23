@@ -1482,7 +1482,18 @@ public class DataContractRepository extends EntityRepository<DataContract> {
                     "DQ validation pipeline ended with status %s; recorded results may not reflect "
                         + "the current run",
                     pipelineState.value()));
+      } else {
+        // Recorded failures explain the status via qualityValidation; clear any stale
+        // pipeline-level
+        // message from a prior run so compileResult's Failed status is not paired with a misleading
+        // Aborted message.
+        result.withResult(null);
       }
+    } else {
+      // Pipeline succeeded — clear any stale pipeline-level message left by a prior failed run.
+      // The same DataContractResult is reused when a pipeline is retried without a fresh
+      // validateContract call, so the message would otherwise persist into a Success result.
+      result.withResult(null);
     }
     compileResult(result, fallbackStatus);
     // Update the last result in the data contract
