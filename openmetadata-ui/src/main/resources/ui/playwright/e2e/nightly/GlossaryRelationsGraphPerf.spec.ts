@@ -10,14 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '../../../support/fixtures/base';
-import { Glossary } from '../../../support/glossary/Glossary';
-import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { expect, test } from '../../support/fixtures/base';
+import { Glossary } from '../../support/glossary/Glossary';
+import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
-} from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+} from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // Regression coverage for the Sentry N+1 on the Relations Graph tab.
 // Before: opening the tab on a term with cross-glossary relatedTerms fanned
