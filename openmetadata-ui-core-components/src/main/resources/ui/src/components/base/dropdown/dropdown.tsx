@@ -72,7 +72,9 @@ const DropdownItem = ({
       {...props}
       className={(state) =>
         cx(
-          'tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden',
+          // `no-underline!`: an item with `href` renders an <a>, and host apps
+          // ship an unlayered `a:hover`/`a:focus` underline that beats layered utilities.
+          'tw:group tw:block tw:cursor-pointer tw:px-1.5 tw:py-px tw:outline-hidden tw:no-underline!',
           state.isDisabled && 'tw:cursor-not-allowed',
           typeof props.className === 'function'
             ? props.className(state)
