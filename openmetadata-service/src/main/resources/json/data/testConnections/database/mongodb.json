@@ -19,8 +19,8 @@
       },
       {
         "name": "GetCollections",
-        "description": "List all the collection available within a randomly chosen database available to the user.",
-        "errorMessage": "Failed to fetch collection, please validate if the user has `listCollection` privilege on available databases",
+        "description": "List the collections of at least one database the user can access, skipping the system databases (admin, config, local) when others are available.",
+        "errorMessage": "Failed to fetch collection, please validate if the user has the `listCollections` privilege on at least one database",
         "mandatory": true
       }
     ]

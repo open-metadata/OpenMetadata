@@ -17,6 +17,7 @@ from functools import partial
 
 from pydantic import BaseModel
 from pymongo import MongoClient
+from pymongo.errors import OperationFailure
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -32,6 +33,41 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
+
+# Server-internal databases. Locked-down users usually cannot list their collections,
+# so they are only tried when nothing else is visible.
+SYSTEM_DATABASES = frozenset({"admin", "config", "local"})
+
+
+class DatabaseHolder(BaseModel):
+    databases: list[str] = []
+
+
+def _get_databases(client: MongoClient, holder: DatabaseHolder, database_name: str | None = None) -> None:
+    # If database name is provided, use it directly instead of listing all databases
+    if database_name:
+        holder.databases = [database_name]
+    else:
+        names = client.list_database_names()
+        holder.databases = [name for name in names if name not in SYSTEM_DATABASES] or names
+
+
+def _get_collections(client: MongoClient, holder: DatabaseHolder) -> None:
+    """Pass if the user can list collections in any one database.
+
+    A user scoped to a few databases is not authorized on the rest, and the
+    ingestion filters skip those anyway, so one denied database must not fail the step.
+    """
+    # None falls back to the default database of the connection URL
+    *others, last = holder.databases or [None]
+    for name in others:
+        try:
+            client.get_database(name).list_collection_names()
+        except OperationFailure:
+            continue
+        else:
+            return
+    client.get_database(last).list_collection_names()
 
 
 class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
@@ -62,28 +98,12 @@ class MongoDBConnection(BaseConnection[MongoDBConnectionConfig, MongoClient]):
         client = self.client
         service_connection = self.service_connection
 
-        class SchemaHolder(BaseModel):
-            database: str | None = None
-
-        holder = SchemaHolder()
-
-        def test_get_databases(client_: MongoClient, holder_: SchemaHolder, database_name: str | None = None):
-            # If database name is provided, use it directly instead of listing all databases
-            if database_name:
-                holder_.database = database_name
-            else:
-                for database in client_.list_database_names():
-                    holder_.database = database
-                    break
-
-        def test_get_collections(client_: MongoClient, holder_: SchemaHolder):
-            database = client_.get_database(holder_.database)
-            database.list_collection_names()
+        holder = DatabaseHolder()
 
         test_fn = {
             "CheckAccess": client.server_info,
-            "GetDatabases": partial(test_get_databases, client, holder, service_connection.databaseSchema),
-            "GetCollections": partial(test_get_collections, client, holder),
+            "GetDatabases": partial(_get_databases, client, holder, service_connection.databaseSchema),
+            "GetCollections": partial(_get_collections, client, holder),
         }
 
         return test_connection_steps(
