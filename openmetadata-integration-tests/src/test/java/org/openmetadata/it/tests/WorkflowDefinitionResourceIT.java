@@ -12518,6 +12518,8 @@ public class WorkflowDefinitionResourceIT {
         "Task should resolve only after the approval threshold is met");
     assertEquals(2, resolvedTask.getReviewVotes().size());
     assertEquals(
+        intermediateTask.getReviewVotes().getFirst(), resolvedTask.getReviewVotes().getFirst());
+    assertEquals(
         List.of("First vote", "Final vote"),
         resolvedTask.getReviewVotes().stream().map(vote -> vote.getComment()).toList());
     assertEquals(candidate2.getId(), resolvedTask.getReviewVotes().getLast().getVoter().getId());

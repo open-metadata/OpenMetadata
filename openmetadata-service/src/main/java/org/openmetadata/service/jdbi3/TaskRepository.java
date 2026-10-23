@@ -1367,8 +1367,8 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * {@code reviewVotes}, when given, replaces the task's counted votes in the same write as the
-   * decision, so the deciding vote and the decision commit together.
+   * {@code reviewVotes}, when given, merges with the task's counted votes in the same write as the
+   * decision, so earlier stages' votes survive and the deciding vote commits with the decision.
    */
   public Task resolveTask(
       Task task,
@@ -1389,7 +1389,7 @@ public class TaskRepository extends EntityRepository<Task> {
     updated.setStatus(mapResolutionToStatus(resolution.getType()));
     updated.setResolution(resolution);
     if (reviewVotes != null) {
-      updated.setReviewVotes(reviewVotes);
+      updated.setReviewVotes(TaskReviewVotes.merge(original.getReviewVotes(), reviewVotes));
     } else if ((original.getWorkflowInstanceId() != null || !nullOrEmpty(original.getReviewVotes()))
         && TaskReviewVotes.isDecision(resolution.getType())) {
       updated.setReviewVotes(
