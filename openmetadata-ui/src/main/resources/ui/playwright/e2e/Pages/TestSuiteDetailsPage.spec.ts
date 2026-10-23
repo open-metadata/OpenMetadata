@@ -414,6 +414,19 @@ test.describe('Bulk remove test cases from a bundle suite', () => {
     });
 
     await test.step('Select two test cases', async () => {
+      // Measured against the search box, which sits in the same header row as
+      // the selection bar, so page scrolling does not affect the offset.
+      const searchBox = page.getByTestId('test-suite-test-case-search');
+      const rowOffsetFromSearch = async () => {
+        const [row, search] = await Promise.all([
+          testCaseRow(keptName).boundingBox(),
+          searchBox.boundingBox(),
+        ]);
+
+        return (row?.y ?? 0) - (search?.y ?? 0);
+      };
+      const offsetBeforeSelection = await rowOffsetFromSearch();
+
       for (const name of removedNames) {
         await testCaseRow(name).locator('label[slot="selection"]').click();
       }
@@ -422,17 +435,24 @@ test.describe('Bulk remove test cases from a bundle suite', () => {
       await expect(
         page.getByTestId('add-selected-to-bundle-suite')
       ).not.toBeVisible();
+      // The bar joins the header row instead of inserting a row above the
+      // table, so selecting must not push the rows down.
+      expect(await rowOffsetFromSearch()).toBe(offsetBeforeSelection);
     });
 
     await test.step('Remove them from the suite', async () => {
       await page.getByTestId('bulk-remove-test-cases').click();
+
+      const confirmButton = page.getByRole('dialog').getByTestId('save-button');
+
+      await expect(confirmButton).toHaveClass(/tw:bg-error-solid/);
 
       const removeResponse = page.waitForResponse(
         (response) =>
           response.url().includes('/logicalTestCases/bulk/remove') &&
           response.request().method() === 'POST'
       );
-      await page.getByRole('dialog').getByTestId('save-button').click();
+      await confirmButton.click();
 
       expect((await removeResponse).status()).toBe(200);
       await toastNotification(
