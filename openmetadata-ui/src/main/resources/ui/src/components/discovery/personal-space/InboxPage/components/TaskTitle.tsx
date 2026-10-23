@@ -13,6 +13,7 @@
 import { Box } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React, { ReactNode } from 'react';
+import { useFirstLineEnd } from '../../../../../hooks/useFirstLineEnd';
 import ClampedText from './ClampedText';
 import { TaskTitleSize, TASK_TITLE_LINE_CLASS } from './TaskTitle.constants';
 import TaskTitleEntityBadge from './TaskTitleEntityBadge';
@@ -30,30 +31,40 @@ export interface TaskTitleProps {
 
 /**
  * A task's title, clamped to two lines within three quarters of the row, with
- * its asset-type badge beside it on the first line: a wrapped title never
- * pushes the badge down or under it.
+ * its asset-type badge right after the last word of the first line. A wrapped
+ * title's box spans its full width, so the badge is placed where the first
+ * line measures to end, not after the box: it never drops to a later line,
+ * and it never floats off at the box's edge.
  */
 const TaskTitle: React.FC<TaskTitleProps> = ({
   text,
   entityType,
   size,
   children,
-}) => (
-  <Box align="start" className="tw:min-w-0" gap={2}>
-    <ClampedText className="tw:max-w-3/4" text={text}>
-      {children}
-    </ClampedText>
-    {entityType && (
-      // One title line tall, so the badge centres on the first line.
-      <span
-        className={classNames(
-          'tw:flex tw:h-lh tw:shrink-0 tw:items-center',
-          TASK_TITLE_LINE_CLASS[size]
-        )}>
-        <TaskTitleEntityBadge entityType={entityType} />
-      </span>
-    )}
-  </Box>
-);
+}) => {
+  const { ref, end } = useFirstLineEnd<HTMLDivElement>(text);
+
+  return (
+    <Box className="tw:relative tw:min-w-0" direction="col">
+      <div className="tw:max-w-3/4" ref={ref}>
+        <ClampedText text={text}>{children}</ClampedText>
+      </div>
+      {entityType && (
+        // One title line tall, so the badge centres on the first line. Until
+        // the line is measured it waits at the title's edge.
+        <span
+          className={classNames(
+            'tw:absolute tw:top-0 tw:flex tw:h-lh tw:items-center tw:pl-2',
+            TASK_TITLE_LINE_CLASS[size],
+            end === undefined && 'tw:left-3/4'
+          )}
+          data-testid="task-title-badge-slot"
+          style={end === undefined ? undefined : { left: end }}>
+          <TaskTitleEntityBadge entityType={entityType} />
+        </span>
+      )}
+    </Box>
+  );
+};
 
 export default TaskTitle;

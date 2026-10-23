@@ -13,10 +13,21 @@
 import { render, screen } from '@testing-library/react';
 import TaskTitle from './TaskTitle';
 
+let mockFirstLineEnd: number | undefined;
+
+// Layout is the hook's job; here the line has ended where the test says.
+jest.mock('../../../../../hooks/useFirstLineEnd', () => ({
+  useFirstLineEnd: () => ({ ref: { current: null }, end: mockFirstLineEnd }),
+}));
+
 describe('TaskTitle', () => {
-  // The badge sits beside the clamped title, not inside it, so a wrapped
-  // title never carries it onto a later line.
-  it('sets the asset-type badge beside the title, on a line of its size', () => {
+  beforeEach(() => {
+    mockFirstLineEnd = 180;
+  });
+
+  // The badge sits outside the clamped title, after its first line's last
+  // word, so a wrapped title never carries it onto a later line.
+  it('sets the badge where the first line ends, on a line of its size', () => {
     render(
       <TaskTitle entityType="testCase" size="text-md" text="Approve orders">
         <span>Approve orders</span>
@@ -24,12 +35,28 @@ describe('TaskTitle', () => {
     );
 
     const title = screen.getByTestId('clamped-text');
-    const badge = screen.getByTestId('task-title-entity-type');
+    const slot = screen.getByTestId('task-title-badge-slot');
 
-    expect(title).toHaveClass('tw:max-w-3/4');
-    expect(title).not.toContainElement(badge);
-    expect(badge).toHaveTextContent('Test Case');
-    expect(badge.parentElement).toHaveClass('tw:h-lh', 'tw:text-md');
+    expect(title.parentElement).toHaveClass('tw:max-w-3/4');
+    expect(title).not.toContainElement(slot);
+    expect(slot).toHaveStyle({ left: '180px' });
+    expect(slot).toHaveClass('tw:h-lh', 'tw:text-md');
+    expect(screen.getByTestId('task-title-entity-type')).toHaveTextContent(
+      'Test Case'
+    );
+  });
+
+  it('keeps the badge at the title edge until the line is measured', () => {
+    mockFirstLineEnd = undefined;
+    render(
+      <TaskTitle entityType="table" size="text-sm" text="Approve orders">
+        <span>Approve orders</span>
+      </TaskTitle>
+    );
+
+    expect(screen.getByTestId('task-title-badge-slot')).toHaveClass(
+      'tw:left-3/4'
+    );
   });
 
   it('shows the title alone when it names no asset', () => {
