@@ -45,6 +45,8 @@ interface IncidentStats {
 
 interface QueryStats {
   count: number;
+  // The owned-table cap was reached, so `count` is a lower bound.
+  isPartial?: boolean;
   mostViewed: string;
   // FQN of the most-viewed table so the subtitle can link to its details page.
   mostViewedFqn?: string;
@@ -239,6 +241,7 @@ export const useUserAssetStats = (user: User | undefined) => {
 
       return {
         count,
+        isPartial: ownedTableIds.length >= OWNED_TABLES_LIMIT,
         mostViewed: topHit?.displayName ?? topHit?.name ?? '-',
         mostViewedFqn: topHit?.fullyQualifiedName,
       };

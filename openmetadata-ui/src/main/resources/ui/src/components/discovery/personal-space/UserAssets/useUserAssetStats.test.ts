@@ -16,7 +16,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import { INCIDENT_MAX_PAGES } from './UserAssets.constants';
+import { INCIDENT_MAX_PAGES, OWNED_TABLES_LIMIT } from './UserAssets.constants';
 import { useUserAssetStats } from './useUserAssetStats';
 
 jest.mock('../../../../rest/searchAPI', () => ({
@@ -205,6 +205,7 @@ describe('useUserAssetStats', () => {
 
     expect(result.current.queryStats).toEqual({
       count: 42,
+      isPartial: false,
       mostViewed: 'orders',
       mostViewedFqn: 'svc.db.s.orders',
     });
@@ -231,12 +232,26 @@ describe('useUserAssetStats', () => {
     );
   });
 
+  it('marks the query count partial once the owned-table cap is reached', async () => {
+    respond({
+      ownedTables: Array.from({ length: OWNED_TABLES_LIMIT }, (_, index) => ({
+        id: `tbl-${index}`,
+        name: `table_${index}`,
+        fullyQualifiedName: `svc.db.s.table_${index}`,
+      })),
+    });
+    const result = await renderStats();
+
+    expect(result.current.queryStats.isPartial).toBe(true);
+  });
+
   it('skips the query count when the user owns no tables', async () => {
     respond({ ownedTables: [] });
     const result = await renderStats();
 
     expect(result.current.queryStats).toEqual({
       count: 0,
+      isPartial: false,
       mostViewed: '-',
       mostViewedFqn: undefined,
     });

@@ -154,7 +154,11 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
                 )
               : undefined
           }
-          value={valueOrPlaceholder(failed.queries, queryStats.count)}
+          value={
+            queryStats.isPartial && !failed.queries
+              ? `${queryStats.count}+`
+              : valueOrPlaceholder(failed.queries, queryStats.count)
+          }
         />
       </Grid.Item>
     </Grid>

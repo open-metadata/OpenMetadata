@@ -64,6 +64,15 @@ describe('UserAssetStats', () => {
     );
   });
 
+  it('shows a capped query count as a lower bound', () => {
+    mockStats.mockReturnValue(stats({ isPartial: true }));
+    renderStats();
+
+    expect(screen.getByTestId('stat-card-queries-value')).toHaveTextContent(
+      '17+'
+    );
+  });
+
   it('links health and incidents to their pages and queries to the top table', () => {
     mockStats.mockReturnValue(stats({ mostViewedFqn: 'svc.db.s.orders' }));
     renderStats();

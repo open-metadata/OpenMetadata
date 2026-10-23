@@ -23,8 +23,9 @@ export const INCIDENT_MAX_PAGES = 50;
 // Queries relate to data via `queryUsedIn.id` (the tables they touch), not via
 // ownership, so the query count is scoped to the user's owned tables. Their ids
 // go in the search GET URL, so only the 100 most-used ones are counted: at 1000
-// the URL passed the server's limit (HTTP 414) on a well-populated catalog.
-// ponytail: undercounts owners of >100 tables; a POST count endpoint lifts it.
+// the URL passed the server's limit (HTTP 414) on a well-populated catalog. At
+// the cap the Queries tile shows the count as a lower bound (`N+`).
+// ponytail: a lower bound for owners of >100 tables; a POST count endpoint lifts it.
 export const OWNED_TABLES_LIMIT = 100;
 export const SKELETON_KEYS = [1, 2, 3];
 // Once the trail has collapsed to first + last, each crumb ellipsizes past this.
