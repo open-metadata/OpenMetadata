@@ -409,8 +409,11 @@ describe('AlertsClassBase', () => {
       expect(result.input).toEqual({ actions: [], filters: [] });
     });
 
-    it("carries a legacy alert's seeded rules in the update patch's input, not deleting them", () => {
+    it("strips a legacy alert's seeded rules from the update patch's input so the backend keeps them", () => {
       // A legacy WrittenByHand alert: rules live only in filteringRules, no input.
+      // The form seeds input from the legacy shape for display, but the seeded rules
+      // carry argument names without values the backend can recompile. getAlertUpdateData
+      // must strip them so the backend's WrittenByHand policy preserves filteringRules.
       const legacy: EventSubscription = {
         ...mockInitialData,
         input: undefined,
@@ -449,24 +452,92 @@ describe('AlertsClassBase', () => {
 
       const result = alertsClass.getAlertUpdateData(formData, legacy);
 
-      // The PATCH's `input` carries the seeded legacy rule AND the user's new rule,
-      // so the backend's FromSelections recompile preserves them instead of the
-      // silent wipe that happened when `input` was empty (the original bug).
-      expect(result.input?.filters).toHaveLength(2);
-      expect(result.input?.filters?.[0]).toEqual(
-        expect.objectContaining({ name: 'domainList' })
-      );
-      expect(result.input?.filters?.[1]).toEqual(
-        expect.objectContaining({ name: 'pipelineStateList' })
-      );
-      expect(result.input?.actions?.[0]).toEqual(
-        expect.objectContaining({ name: 'testResultTrigger' })
-      );
-      // The legacy filteringRules still ride along in the PATCH body.
+      // The legacy rules (domainList, testResultTrigger) are stripped from input —
+      // their argument values live in the SpEL condition the form cannot represent,
+      // so submitting them would make the backend recompile or reject them. The
+      // user-added rule (pipelineStateList) is kept.
+      expect(result.input?.filters).toEqual([
+        { effect: Effect.Include, name: 'pipelineStateList' },
+      ]);
+      expect(result.input?.actions).toEqual([]);
+      // The legacy filteringRules ride along unchanged in the PATCH body so the
+      // backend's WrittenByHand policy keeps them when input is empty of legacy rules.
       expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
       expect(result.filteringRules?.actions).toBe(
         legacy.filteringRules?.actions
       );
+    });
+
+    it('preserves input for a modern alert (non-legacy) on update', () => {
+      // A modern alert carries its own input; getAlertUpdateData should pass it
+      // through unchanged — no stripping of rules the user selected.
+      const modern: EventSubscription = {
+        ...mockInitialData,
+        input: {
+          actions: [],
+          filters: [
+            {
+              arguments: [{ input: ['value1'], name: 'domainList' }],
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+
+      const result = alertsClass.getAlertUpdateData(
+        { ...mockModifiedData, input: modern.input },
+        modern
+      );
+
+      expect(result.input).toEqual({
+        actions: [],
+        filters: [
+          {
+            arguments: [{ input: ['value1'], name: 'domainList' }],
+            effect: Effect.Include,
+            name: 'domainList',
+          },
+        ],
+      });
+    });
+
+    it('omits input for a legacy alert when the user changes only the name', () => {
+      // A legacy alert the user renames without touching its rules: the form seeds
+      // input from filteringRules for display, but getAlertUpdateData must not
+      // submit those seeded rules — the backend keeps the original filteringRules.
+      const legacy: EventSubscription = {
+        ...mockInitialData,
+        name: 'openMetadata_alert_old123',
+        input: undefined,
+        filteringRules: {
+          resources: ['table'],
+          rules: [
+            {
+              arguments: ['domainList'],
+              condition: 'matchAnyDomain(true)',
+              effect: Effect.Include,
+              name: 'domainList',
+            },
+          ],
+        },
+      } as EventSubscription;
+
+      const seeded = alertsClass.getModifiedAlertDataForForm(legacy);
+      const formData: ModifiedCreateEventSubscription = {
+        ...(seeded as unknown as ModifiedCreateEventSubscription),
+        displayName: 'Renamed Alert',
+        name: 'renamed-alert',
+        resources: ['table'],
+        input: seeded.input,
+      };
+
+      const result = alertsClass.getAlertUpdateData(formData, legacy);
+
+      // No user-added rules, so input is omitted entirely — the backend sees no
+      // selections and keeps the legacy filteringRules via WrittenByHand.
+      expect(result.input).toBeUndefined();
+      expect(result.filteringRules?.rules).toBe(legacy.filteringRules?.rules);
     });
   });
 

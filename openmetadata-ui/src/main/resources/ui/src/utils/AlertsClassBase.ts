@@ -112,12 +112,16 @@ const rulesToArgumentsInput = (rules?: EventFilterRule[]): ArgumentsInput[] =>
   }));
 
 /**
- * Returns the `input` the AI alert form should display and submit. A modern alert already carries
+ * Returns the `input` the AI alert form should display. A modern alert already carries
  * its selections in `input`. A legacy alert whose rules live only in `filteringRules.rules`/`actions`
  * with no `input` — the backend's `WrittenByHand` classification, still evaluated at runtime — is
- * seeded from that legacy shape so the form shows its saved rules and submits them intentionally,
- * instead of hiding them and silently deleting them on save. This mirrors the existing
- * `filteringRules.resources` fallback the Sources section already relies on.
+ * seeded from that legacy shape so the form shows its saved rules instead of hiding them.
+ * This mirrors the existing `filteringRules.resources` fallback the Sources section already relies on.
+ *
+ * The seeded arguments carry names but no `input` values (their values live in the SpEL `condition`,
+ * which the selection-based form cannot represent). `getAlertUpdateData` strips those incomplete
+ * rules from the submitted `input` so the backend keeps the original `filteringRules` via its
+ * `WrittenByHand` policy, instead of recompiling from selections it cannot rebuild.
  */
 const getAlertInputForForm = (
   alert: Pick<EventSubscription, 'input' | 'filteringRules'>
@@ -136,6 +140,79 @@ const getAlertInputForForm = (
     filters: rulesToArgumentsInput(rules),
     actions: rulesToArgumentsInput(actions),
   };
+};
+
+/**
+ * Removes rules the form cannot rebuild — legacy rules seeded from `filteringRules` whose argument
+ * values live only in the SpEL `condition` — from the submitted `input`. The form copies argument
+ * names but not values, so submitting them would make the backend's `FromSelections` policy
+ * recompile them with empty values or reject the request. Rules the user filled in (arguments with
+ * non-undefined `input`) or rules not present in the legacy `filteringRules` (user-added) are kept;
+ * when nothing remains the backend falls back to `WrittenByHand` and preserves the original
+ * `filteringRules`.
+ */
+const stripLegacyRulesFromInput = (
+  rules: ArgumentsInput[] | undefined,
+  legacyNames: Set<string>
+): ArgumentsInput[] | undefined => {
+  if (!rules?.length) {
+    return rules;
+  }
+
+  const filled = rules.filter(
+    (rule) =>
+      // Keep rules the user added (not seeded from filteringRules).
+      !legacyNames.has(rule.name ?? '') ||
+      // Keep rules the user filled in (at least one argument has a non-undefined input).
+      rule.arguments?.some((argument) => argument.input !== undefined) === true
+  );
+
+  return filled.length ? filled : undefined;
+};
+
+/**
+ * Returns the `input` to include in the PATCH body. A legacy alert (no `input` of its own) has
+ * its rules seeded from `filteringRules` for display only — those seeded rules are stripped so
+ * the backend keeps the original `filteringRules` via its `WrittenByHand` policy. Only rules the
+ * user added or filled in survive. A modern alert carries its own `input`, so the form edits it
+ * directly and it is passed through unchanged.
+ */
+const getSubmittedInput = (
+  input: AlertFilteringInput | undefined,
+  initialData: EventSubscription
+): { actions: ArgumentsInput[]; filters: ArgumentsInput[] } | undefined => {
+  const isLegacyAlert = initialData.input == null;
+  const legacyNames = isLegacyAlert
+    ? new Set(
+        [
+          ...(initialData.filteringRules?.rules ?? []),
+          ...(initialData.filteringRules?.actions ?? []),
+        ].map((rule) => rule.name)
+      )
+    : new Set<string>();
+
+  const submittedFilters = stripLegacyRulesFromInput(
+    input?.filters,
+    legacyNames
+  );
+  const submittedActions = stripLegacyRulesFromInput(
+    input?.actions,
+    legacyNames
+  );
+
+  // For a legacy alert, only send `input` when the user added rules the form can
+  // rebuild (otherwise the backend keeps the original filteringRules). For a modern
+  // alert, always send `input` — the form edits it directly.
+  const hasUserAddedRules = Boolean(
+    submittedFilters?.length || submittedActions?.length
+  );
+
+  return hasUserAddedRules || !isLegacyAlert
+    ? {
+        actions: submittedActions ?? [],
+        filters: submittedFilters ?? [],
+      }
+    : undefined;
 };
 
 class AlertsClassBase {
@@ -245,16 +322,14 @@ class AlertsClassBase {
     const { alertName, alertDisplayName, destinations } =
       this.getCommonAlertFieldsData(data, initialData);
     const { description, input, owners, resources } = data;
+    const submittedInput = getSubmittedInput(input, initialData);
 
     return {
       ...initialData,
       description,
       displayName: alertDisplayName,
       name: alertName,
-      input: {
-        actions: input?.actions ?? [],
-        filters: input?.filters ?? [],
-      },
+      ...(submittedInput ? { input: submittedInput } : {}),
       owners,
       filteringRules: {
         ...initialData.filteringRules,
