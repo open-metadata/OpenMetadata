@@ -70,7 +70,17 @@ public class DataInsightsApp extends AbstractNativeApplication {
   @Getter private Long timestamp;
   @Getter private int batchSize;
 
-  public record Backfill(String startDate, String endDate) {}
+  public record Backfill(String startDate, String endDate) {
+    public Backfill {
+      if (startDate == null || startDate.isBlank() || endDate == null || endDate.isBlank()) {
+        throw new IllegalArgumentException("Backfill requires both startDate and endDate");
+      }
+      if (TimestampUtils.getTimestampFromDateString(startDate)
+          > TimestampUtils.getTimestampFromDateString(endDate)) {
+        throw new IllegalArgumentException("Backfill startDate must not be after endDate");
+      }
+    }
+  }
 
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
