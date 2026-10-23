@@ -20,6 +20,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { EntityVersionButtonProps } from './EntityVersionTimeline.interface';
 
@@ -101,7 +102,7 @@ export const VersionButton = forwardRef<
               userName={updatedBy}>
               <Link
                 className="thread-author m-r-xss"
-                to={getUserPath(updatedBy)}>
+                to={getSettingsLink(getUserPath(updatedBy))}>
                 {getEntityName(user)}
               </Link>
             </UserPopOverCard>

@@ -86,10 +86,6 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import type {
-  CustomPropertyProps,
-  ExtentionEntitiesKeys,
-} from '../../../../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import Loader from '../../../../../common/Loader/Loader';
@@ -129,19 +125,11 @@ import { useMembersTeamHeader } from './useMembersTeamHeader';
 
 const CUSTOM_PROPERTIES = 'custom-properties' as const;
 
-// Lazy-loaded for the same reason TeamDetailsV1 does it: the custom-property
-// table pulls in the RJSF form stack, which no other team tab needs.
-const CustomPropertyTable = withSuspenseFallback(
-  lazy(() =>
-    import(
-      '../../../../../common/CustomPropertyTable/CustomPropertyTable'
-    ).then((module) => ({ default: module.CustomPropertyTable }))
-  )
-  // withSuspenseFallback erases the component's generic; restore it the same
-  // way TeamDetailsV1 does so `entityDetails` narrows to Team.
-) as <T extends ExtentionEntitiesKeys>(
-  props: CustomPropertyProps<T>
-) => JSX.Element;
+// Lazy-loaded: the per-type value editors pull in the SQL and rich-text
+// editors, which no other team tab needs.
+const CustomPropertiesList = withSuspenseFallback(
+  lazy(() => import('../../customProperties/CustomPropertiesList'))
+);
 
 // The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
 // drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
@@ -599,13 +587,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     [team, t]
   );
 
-  // CustomPropertyTable hands back the whole team with `extension` replaced;
-  // handlePatchTeam diffs it, so no separate extension-only path is needed.
+  // handlePatchTeam diffs the whole team, so an extension-only save is just a
+  // team with `extension` replaced.
   const handleTeamExtensionUpdate = useCallback(
-    async (updatedTeam: Team): Promise<void> => {
-      await handlePatchTeam(updatedTeam);
-    },
-    [handlePatchTeam]
+    async (extension: Record<string, unknown> | undefined) =>
+      team ? handlePatchTeam({ ...team, extension }) : false,
+    [team, handlePatchTeam]
   );
 
   const handleDescriptionSave = useCallback(async () => {
@@ -1206,12 +1193,12 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
     if (activeTab === CUSTOM_PROPERTIES) {
       return (
-        <CustomPropertyTable<EntityType.TEAM>
-          entityDetails={team}
+        <CustomPropertiesList
+          canEdit={Boolean(canEditCustomFields) && !team.deleted}
+          canView={Boolean(canViewCustomFields)}
           entityType={EntityType.TEAM}
-          hasEditAccess={Boolean(canEditCustomFields) && !team.deleted}
-          hasPermission={Boolean(canViewCustomFields)}
-          onEntityUpdate={handleTeamExtensionUpdate}
+          extension={team.extension as Record<string, unknown> | undefined}
+          onUpdate={handleTeamExtensionUpdate}
         />
       );
     }
