@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -315,5 +317,20 @@ class NativeOntologyCsvCodecTest {
     } catch (java.io.IOException exception) {
       throw new IllegalStateException(exception);
     }
+  }
+
+  @Test
+  void documentedHeaderAndExampleMatchTheCodec() throws Exception {
+    final Path doc = Path.of("..", "docs", "native-ontology-csv.md");
+    final List<String> lines = Files.readAllLines(doc, StandardCharsets.UTF_8);
+
+    final List<String> headerLines =
+        lines.stream().filter(NativeOntologyCsvCodec::isHeader).collect(Collectors.toList());
+    assertEquals(
+        List.of(NativeOntologyCsvCodec.HEADER, NativeOntologyCsvCodec.HEADER), headerLines);
+
+    final int example = lines.lastIndexOf(NativeOntologyCsvCodec.HEADER);
+    final String csv = String.join("\r\n", lines.subList(example, lines.size() - 1)) + "\r\n";
+    assertEquals(2, NativeOntologyCsvCodec.read(csv).concepts().size());
   }
 }
