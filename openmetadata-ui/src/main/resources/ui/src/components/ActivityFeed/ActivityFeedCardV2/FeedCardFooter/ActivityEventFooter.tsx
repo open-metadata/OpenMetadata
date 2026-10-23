@@ -12,12 +12,12 @@
  */
 
 import { Box, Button } from '@openmetadata/ui-core-components';
+import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback } from 'react';
 import { PressEvent } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { ReactionType } from '../../../../generated/type/reaction';
@@ -71,12 +71,7 @@ function ActivityEventFooter({
               color="tertiary"
               data-testid="comment-button"
               iconLeading={
-                <ThreadIcon
-                  data-icon
-                  data-testid="comment-icon"
-                  height={16}
-                  width={16}
-                />
+                <Comment data-icon data-testid="comment-icon" size={16} />
               }
               size="xs"
               onPress={handleCommentPress}

@@ -17,12 +17,14 @@ import {
   Popover,
   PopoverTrigger,
 } from '@openmetadata/ui-core-components';
-import { FaceSmile } from '@openmetadata/ui-core-components/icons';
+import {
+  FaceSmile,
+  Reactions as AddReactionIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { groupBy } from 'lodash';
 import { FC, MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AddReactionIcon } from '../../../assets/svg/ic-add-emoji.svg';
 import {
   REACTION_LIST,
   REACTION_TYPE_LIST,
@@ -148,7 +150,7 @@ const Reactions: FC<ReactionsProps> = ({
               isPill(variant) ? (
                 <FaceSmile data-icon size={16} />
               ) : (
-                <AddReactionIcon data-icon height={16} width={16} />
+                <AddReactionIcon data-icon size={16} />
               )
             }
             size="xs"

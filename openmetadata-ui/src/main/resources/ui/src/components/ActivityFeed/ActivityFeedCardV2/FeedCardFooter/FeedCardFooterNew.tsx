@@ -12,12 +12,12 @@
  */
 
 import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { PressEvent } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -130,12 +130,7 @@ function FeedCardFooterNew({
                 color="tertiary"
                 data-testid="reply-button"
                 iconLeading={
-                  <ThreadIcon
-                    data-icon
-                    data-testid="reply-count"
-                    height={16}
-                    width={16}
-                  />
+                  <Comment data-icon data-testid="reply-count" size={16} />
                 }
                 size="xs"
                 onPress={handleRepliesPress}
