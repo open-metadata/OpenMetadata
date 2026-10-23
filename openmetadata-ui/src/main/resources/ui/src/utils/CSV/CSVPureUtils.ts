@@ -511,3 +511,23 @@ export const getCustomPropertyEntityType = (entityType: EntityType) => {
       return entityType;
   }
 };
+
+/**
+ * Writes edits made to the rows a grid renders back into the full data
+ * source, so rows a filter (e.g. a search) hides are kept. Rows map by
+ * position: the grid only replaces rows, it never reorders them.
+ */
+export function mergeGridRows<T>(
+  dataSource: T[],
+  gridRows: T[],
+  updatedGridRows: T[]
+): T[] {
+  if (gridRows === dataSource) {
+    return updatedGridRows;
+  }
+  const updatedByRow = new Map(
+    gridRows.map((row, index) => [row, updatedGridRows[index]])
+  );
+
+  return dataSource.map((row) => updatedByRow.get(row) ?? row);
+}

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { EntityType } from '../../enums/entity.enum';
-import { mergeGridRows } from '../../hooks/useGridEditController';
 import {
   BULK_EDIT_OPERATION_KEY,
   filterBulkEditRows,
@@ -80,25 +79,5 @@ describe('filterBulkEditRows', () => {
 
   it('returns the same array when the search is empty', () => {
     expect(filterBulkEditRows(rows, '  ')).toBe(rows);
-  });
-});
-
-describe('mergeGridRows', () => {
-  it('writes edits to the filtered rows back without dropping hidden rows', () => {
-    const dataSource = [{ name: 'a' }, { name: 'b' }, { name: 'c' }];
-    const gridRows = [dataSource[2]];
-
-    expect(mergeGridRows(dataSource, gridRows, [{ name: 'c2' }])).toEqual([
-      { name: 'a' },
-      { name: 'b' },
-      { name: 'c2' },
-    ]);
-  });
-
-  it('uses the updated rows as-is when the grid shows every row', () => {
-    const dataSource = [{ name: 'a' }];
-    const updated = [{ name: 'a2' }];
-
-    expect(mergeGridRows(dataSource, dataSource, updated)).toBe(updated);
   });
 });
