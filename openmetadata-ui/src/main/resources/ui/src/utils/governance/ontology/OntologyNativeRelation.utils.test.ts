@@ -111,8 +111,8 @@ const model: OntologyStudioModel = {
 };
 
 const inverseRef = (name: string) => ({
+  fullyQualifiedName: name,
   id: `type-${name}`,
-  name,
   type: 'relationshipType',
 });
 
@@ -384,6 +384,40 @@ describe('OntologyNativeRelation.utils', () => {
       },
       complete[0],
     ]);
+  });
+
+  it('links a reused pair the ontology left unlinked and re-points a stale inverse', () => {
+    const plan = (partOfInverse?: string) =>
+      planNativeRelation({
+        from: account,
+        model: {
+          ...model,
+          properties: [
+            { ...partOfProperty, inverse: partOfInverse },
+            { ...hasPartProperty, inverse: undefined },
+          ],
+        },
+        to: customer,
+        type: native(partOf),
+      }).map((step) =>
+        step.kind === 'link' ? { id: step.id, patch: step.patch } : step.kind
+      );
+
+    expect(plan(undefined)).toEqual([
+      {
+        id: partOfProperty.id,
+        patch: [{ op: 'add', path: '/inverse', value: HAS_PART }],
+      },
+      'axiom',
+    ]);
+    expect(plan(serves.iri)).toEqual([
+      {
+        id: partOfProperty.id,
+        patch: [{ op: 'replace', path: '/inverse', value: HAS_PART }],
+      },
+      'axiom',
+    ]);
+    expect(plan(HAS_PART)).toEqual(['axiom']);
   });
 
   it('plans one self-inverse property for a symmetric type', () => {

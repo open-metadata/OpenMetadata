@@ -44,6 +44,7 @@ import {
   createOntologyProperty,
   createRelationshipType,
   listRelationshipTypes,
+  patchOntologyProperty,
   patchRelationshipType,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
@@ -98,6 +99,7 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   createRelationshipType: jest.fn(),
   getRelationshipTypeByName: jest.fn(),
   listRelationshipTypes: jest.fn(),
+  patchOntologyProperty: jest.fn(),
   patchRelationshipType: jest.fn(),
 }));
 
@@ -263,8 +265,8 @@ const relationshipType = (
   ...extra,
 });
 const inverseRef = (name: string) => ({
+  fullyQualifiedName: name,
   id: `type-${name}`,
-  name,
   type: 'relationshipType',
 });
 const registryTypes = [
@@ -580,6 +582,43 @@ describe('OntologyGraphView', () => {
     );
 
     expect(await screen.findByTestId('ontology-concept-editor')).toBeVisible();
+  });
+
+  it('links a reused pair the ontology left unlinked before writing the restriction', async () => {
+    const refetch = jest.fn().mockResolvedValue({});
+    mockUseOntologyStudioModel.mockReturnValue({
+      ...modelResult,
+      model: {
+        ...model,
+        properties: [
+          objectProperty,
+          { ...partOfProperty, inverse: undefined },
+          { ...hasPartProperty, inverse: undefined },
+        ],
+      },
+      refetch,
+    });
+    (patchOntologyProperty as jest.Mock).mockResolvedValue(partOfProperty);
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    render(<OntologyGraphView isEditing ontology={ontology} surface="graph" />);
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, PART_OF)
+    );
+
+    expect(createOntologyProperty).not.toHaveBeenCalled();
+    expect(patchOntologyProperty).toHaveBeenCalledWith('property-partOf', [
+      { op: 'add', path: '/inverse', value: HAS_PART },
+    ]);
+    expect(createOntologyAxiom).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'CustomerPartOfOrphan',
+        expressions: [expect.objectContaining({ propertyIri: PART_OF })],
+      })
+    );
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('creates a custom registry type with its inverse from the picker, then instantiates it', async () => {

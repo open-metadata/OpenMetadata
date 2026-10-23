@@ -108,6 +108,7 @@ export interface NativeRelationType extends NativeRelationPartner {
 
 export type NativeRelationStep =
   | { readonly kind: 'property'; readonly request: CreateOntologyProperty }
+  | { readonly kind: 'link'; readonly id: string; readonly patch: Operation[] }
   | { readonly kind: 'axiom'; readonly request: CreateOntologyAxiom };
 
 export interface RelationshipTypeDraft {
@@ -139,14 +140,23 @@ const kindOf = (predicate: string): NativeRelationKind => {
     : 'objectProperty';
 };
 
+/** The registry stores an inverse as `{ id, fullyQualifiedName }`; the server never fills its `name`. */
+const isReferenced = (
+  candidate: RelationshipType,
+  reference: NonNullable<RelationshipType['inverse']>
+): boolean =>
+  reference.id
+    ? candidate.id === reference.id
+    : candidate.fullyQualifiedName === reference.fullyQualifiedName;
+
 /** A registry type as the native picker offers it, its inverse resolved against the registry. */
 export const toNativeRelationType = (
   type: RelationshipType,
   types: readonly RelationshipType[]
 ): NativeRelationType => {
-  const inverse = types.find(
-    (candidate) => candidate.name === type.inverse?.name
-  );
+  const reference = type.inverse;
+  const inverse =
+    reference && types.find((candidate) => isReferenced(candidate, reference));
 
   return {
     ...partnerOf(type),
@@ -261,20 +271,40 @@ export const buildNativeRelationGroups = (
     title: titles[group],
   }));
 
+/** The other half of a reciprocal pair; a self-inverse type has none. */
+const otherSideOf = (type: NativeRelationType) =>
+  type.inverse && type.inverse.id !== type.id ? type.inverse : undefined;
+
+/** Points a live property the ontology already holds at the inverse its type declares. */
+const linkStep = (
+  primary: OntologyProperty,
+  inverse: string
+): NativeRelationStep => ({
+  id: primary.id,
+  kind: 'link',
+  patch: [
+    {
+      op: primary.inverse ? 'replace' : 'add',
+      path: '/inverse',
+      value: inverse,
+    },
+  ],
+});
+
 /** The properties the ontology still lacks for the type, the inverse-less side first so the second can name it. */
 const planProperties = (
   model: OntologyStudioModel,
   type: NativeRelationType
-): CreateOntologyProperty[] => {
+): NativeRelationStep[] => {
   const declared = (iri: string) =>
-    model.properties.some(
+    model.properties.find(
       (property) => property.iri === iri && isLiveObjectProperty(property)
     );
   const taken = new Set(model.properties.map((property) => property.name));
   const declare = (
     partner: NativeRelationPartner,
     inverse?: string
-  ): CreateOntologyProperty => {
+  ): NativeRelationStep => {
     const name = getAvailableName(
       toCamelCase(partner.name) || 'relatesTo',
       taken
@@ -282,25 +312,32 @@ const planProperties = (
     taken.add(name);
 
     return {
-      displayName: partner.label,
-      inverse,
-      iri: partner.id,
-      kind: CreatePropertyKind.Object,
-      name,
-      ontology: model.ontology.fullyQualifiedName,
+      kind: 'property',
+      request: {
+        displayName: partner.label,
+        inverse,
+        iri: partner.id,
+        kind: CreatePropertyKind.Object,
+        name,
+        ontology: model.ontology.fullyQualifiedName,
+      },
     };
   };
-  const partner =
-    type.inverse && type.inverse.id !== type.id ? type.inverse : undefined;
-  const requests: CreateOntologyProperty[] = [];
-  if (partner && !declared(partner.id)) {
-    requests.push(declare(partner, declared(type.id) ? type.id : undefined));
+  const partner = otherSideOf(type);
+  const partnerPending = partner && !declared(partner.id);
+  const primary = declared(type.id);
+  const wanted = type.inverse?.id;
+  const steps: NativeRelationStep[] = [];
+  if (partnerPending) {
+    steps.push(declare(partner, primary ? type.id : undefined));
   }
-  if (!declared(type.id)) {
-    requests.push(declare(type, type.inverse?.id));
+  if (!primary) {
+    steps.push(declare(type, wanted));
+  } else if (wanted && !partnerPending && primary.inverse !== wanted) {
+    steps.push(linkStep(primary, wanted));
   }
 
-  return requests;
+  return steps;
 };
 
 interface NativeRelationInput {
@@ -340,9 +377,7 @@ export const planNativeRelation = ({
   const statement = `${from.name} ${type.label} ${to.name}`;
 
   return [
-    ...planProperties(model, type).map(
-      (request): NativeRelationStep => ({ kind: 'property', request })
-    ),
+    ...planProperties(model, type),
     {
       kind: 'axiom',
       request: {

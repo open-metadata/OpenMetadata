@@ -50,6 +50,7 @@ import {
   createRelationshipType,
   getRelationshipTypeByName,
   listRelationshipTypes,
+  patchOntologyProperty,
   patchRelationshipType,
 } from '../../../../rest/ontologyAPI';
 import {
@@ -110,10 +111,16 @@ const missingRelationType = (id: string): never => {
   throw new Error(`Unknown relation type ${id}`);
 };
 
-const writeStep = (step: NativeRelationStep) =>
-  step.kind === 'property'
-    ? createOntologyProperty(step.request)
-    : createOntologyAxiom(step.request);
+const writeStep = (step: NativeRelationStep) => {
+  switch (step.kind) {
+    case 'property':
+      return createOntologyProperty(step.request);
+    case 'link':
+      return patchOntologyProperty(step.id, step.patch);
+    case 'axiom':
+      return createOntologyAxiom(step.request);
+  }
+};
 
 /** A name the registry already holds, from a stale list or a parallel admin, resolves to that type. */
 const ensureRelationshipType = async (

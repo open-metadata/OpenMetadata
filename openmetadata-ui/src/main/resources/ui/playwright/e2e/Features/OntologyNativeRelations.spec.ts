@@ -176,6 +176,40 @@ test.describe(
           });
         });
 
+        await test.step('A second Part Of reuses the pair', async () => {
+          const { inspector } = await openRelationPicker(page, customer.id);
+          await clickIgnoringToasts(
+            page.getByTestId(`relation-type-${PART_OF}`)
+          );
+          const axiom = await okJson<OntologyAxiom>(
+            await submitRelation(page, inspector, 'Account'),
+            'Create the second Part Of relation'
+          );
+          expect(axiom.subjectIri).toBe(customer.iri);
+          expect(await listProperties()).toHaveLength(2);
+        });
+
+        await test.step('Subclass Of writes the hierarchy axiom and no property', async () => {
+          const { inspector } = await openRelationPicker(page, account.id);
+          await clickIgnoringToasts(
+            page.getByTestId(`relation-type-${SUBCLASS_OF}`)
+          );
+          const axiom = await okJson<OntologyAxiom>(
+            await submitRelation(page, inspector, 'Customer'),
+            'Create the Subclass Of relation'
+          );
+          expect(axiom.axiomType).toBe('SUBCLASS_OF');
+          expect(axiom.subjectIri).toBe(account.iri);
+          expect(axiom.expressions).toEqual([
+            expect.objectContaining({ classIri: customer.iri }),
+          ]);
+          const properties = await listProperties();
+          expect(properties).toHaveLength(2);
+          expect(
+            properties.some((property) => property.iri === SUBCLASS_OF)
+          ).toBe(false);
+        });
+
         await test.step('Create an admin type with its inverse from the picker', async () => {
           const label = `governed by ${suffix}`;
           const inverseLabel = `governs ${suffix}`;
@@ -233,8 +267,8 @@ test.describe(
             inverse as RelationshipType
           );
           expect(primary?.category).toBe('CUSTOM');
-          expect(primary?.inverse?.name).toBe(inverse?.name);
-          expect(inverse?.inverse?.name).toBe(primary?.name);
+          expect(primary?.inverse?.id).toBe(inverse?.id);
+          expect(inverse?.inverse?.id).toBe(primary?.id);
           expect(axiom.expressions).toEqual([
             expect.objectContaining({ propertyIri: primary?.rdfPredicate }),
           ]);
