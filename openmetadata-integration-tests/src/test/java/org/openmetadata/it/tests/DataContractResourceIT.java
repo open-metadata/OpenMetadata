@@ -7724,6 +7724,154 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertFalse(Boolean.TRUE.equals(newSuite.getDeleted()));
   }
 
+  /**
+   * Regression guard for the false-positive introduced by PR #23948: a DQ ingestion pipeline that
+   * ends {@link PipelineStatusType#FAILED} before recording any test-case result used to finalize
+   * the data contract as {@link ContractExecutionStatus#Success}, because the pipeline-state
+   * handler treated SUCCESS/FAILED/PARTIAL_SUCCESS identically and {@code
+   * updateContractDQResults} compiled with a Success fallback regardless of the pipeline state.
+   *
+   * <p>Fix: {@code TestSuiteRepository.onTestSuiteExecutionComplete} now forwards the {@link
+   * PipelineStatusType} to {@code DataContractRepository.updateContractDQResults}, which uses
+   * {@link ContractExecutionStatus#Aborted} as the fallback for non-SUCCESS pipelines.
+   *
+   * <p>To reach the buggy window — a completion with <em>no</em> results recorded for the run — the
+   * test references a test case, then soft-deletes it before simulating the completion. The soft
+   * delete drops the case from {@code testSuite.getTests()} (NON_DELETED) but its stale row stays
+   * in {@code testCaseResultSummary} (no deleted filter), so {@code validateDQ} filters everything
+   * out and produces a blank {@link QualityValidation} — exactly the empty/stale state pre-fix
+   * compiled as Success.
+   */
+  @Test
+  void testDataContractDQFailedPipelineWithoutResultsIsAbortedNotSuccess(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertNonSuccessPipelineWithNoRecordedResultsIsAborted(ns, client, PipelineStatusType.FAILED);
+  }
+
+  /** Same scenario as {@link #testDataContractDQFailedPipelineWithoutResultsIsAbortedNotSuccess}
+   * for a {@link PipelineStatusType#PARTIAL_SUCCESS} pipeline completion. */
+  @Test
+  void testDataContractDQPartialSuccessPipelineWithoutResultsIsAbortedNotSuccess(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertNonSuccessPipelineWithNoRecordedResultsIsAborted(
+        ns, client, PipelineStatusType.PARTIAL_SUCCESS);
+  }
+
+  /**
+   * No-regression guard: a {@link PipelineStatusType#SUCCESS} completion with a blank validation
+   * (all referenced tests soft-deleted) must keep finalizing as {@link
+   * ContractExecutionStatus#Success}. The fix only demotes non-SUCCESS pipelines to Aborted;
+   * SUCCESS is the precondition for trusting the quality summary as evidence of the run.
+   */
+  @Test
+  void testDataContractDQSuccessfulPipelineWithBlankValidationStaysSuccess(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract contract = createContractWithSoftDeletedTestCaseForDQCompletion(ns, client);
+    IngestionPipeline pipeline = pipelineOfContract(client, contract);
+    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
+
+    Awaitility.await("contract result is Success for a blank-validated SUCCESS pipeline")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              DataContractResult result =
+                  SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
+              assertNotNull(result, "Contract must have a latest result after DQ completion");
+              assertEquals(
+                  ContractExecutionStatus.Success,
+                  result.getContractExecutionStatus(),
+                  "A SUCCESS DQ pipeline must not be demoted to a non-Success status by the "
+                      + "non-SUCCESS fallback fix");
+            });
+  }
+
+  private void assertNonSuccessPipelineWithNoRecordedResultsIsAborted(
+      TestNamespace ns, OpenMetadataClient client, PipelineStatusType pipelineState)
+      throws Exception {
+    DataContract contract = createContractWithSoftDeletedTestCaseForDQCompletion(ns, client);
+    IngestionPipeline pipeline = pipelineOfContract(client, contract);
+
+    // Simulate the pipeline ending non-SUCCESS before recording any results for this run. The
+    // test case was soft-deleted above, so validateDQ produces a blank QualityValidation — the
+    // exact state pre-fix finalized as Success.
+    putPipelineStatus(client, pipeline, pipelineState);
+
+    Awaitility.await(
+            "contract result is Aborted after a " + pipelineState + " pipeline with no results")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              DataContractResult result =
+                  SdkClients.adminClient().dataContracts().getLatestResult(contract.getId());
+              assertNotNull(result, "Contract must have a latest result after DQ completion");
+              assertNotEquals(
+                  ContractExecutionStatus.Success,
+                  result.getContractExecutionStatus(),
+                  "A " + pipelineState + " DQ pipeline must NOT finalize the contract as Success");
+              assertEquals(
+                  ContractExecutionStatus.Aborted,
+                  result.getContractExecutionStatus(),
+                  "A "
+                      + pipelineState
+                      + " DQ pipeline that recorded no results must abort the contract, not "
+                      + "report a false positive");
+              assertNotNull(
+                  result.getResult(), "An Aborted run must carry an explanatory result message");
+            });
+  }
+
+  private DataContract createContractWithSoftDeletedTestCaseForDQCompletion(
+      TestNamespace ns, OpenMetadataClient client) {
+    Table table = createTestTable(ns);
+    TestCase tc =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("dq_pipeline_state_tc"))
+            .forTable(table)
+            .testDefinition("tableRowCountToBeBetween")
+            .parameter("minValue", "0")
+            .parameter("maxValue", "100")
+            .create();
+
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("dq_pipeline_state"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(tc.getEntityReference()))
+            .withDescription(
+                "Guard: a non-SUCCESS DQ pipeline with no recorded results must abort the contract");
+    DataContract contract = createEntity(request);
+    assertNotNull(
+        contract.getTestSuite(), "Contract with qualityExpectations must have a testSuite");
+
+    // Create a Running/initial DataContractResult. Deploy is best-effort; an Airflow outage must
+    // not prevent the latest result from existing (updateContractDQResults calls getLatestResult
+    // which throws otherwise).
+    try {
+      client.dataContracts().validate(contract.getId());
+    } catch (Exception e) {
+      // deployAndTriggerDQValidation may fail without Airflow; the latest result still exists
+    }
+
+    // Soft-delete the referenced test case so testSuite.getTests() excludes it but the (absent)
+    // result summary stays blank — reaching the empty/stale state the bug finalizes as Success.
+    client.testCases().delete(tc.getId().toString());
+    return contract;
+  }
+
+  private IngestionPipeline pipelineOfContract(OpenMetadataClient client, DataContract contract) {
+    TestSuite testSuite =
+        client.testSuites().get(contract.getTestSuite().getId().toString(), "pipelines");
+    assertNotNull(testSuite.getPipelines(), "Contract test suite must have a pipeline");
+    assertFalse(testSuite.getPipelines().isEmpty(), "Contract test suite must have a pipeline");
+    return client.ingestionPipelines().get(testSuite.getPipelines().get(0).getId().toString());
+  }
+
   private void putPipelineStatus(
       OpenMetadataClient client, IngestionPipeline pipeline, PipelineStatusType statusType) {
     PipelineStatus status =
