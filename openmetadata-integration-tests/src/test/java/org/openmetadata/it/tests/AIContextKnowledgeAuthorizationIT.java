@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -49,6 +50,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
@@ -58,9 +60,12 @@ import org.openmetadata.sdk.network.RequestOptions;
  * articles and metrics of another domain attached to it, while the items of their own domain still
  * come back.
  */
+@Slf4j
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class AIContextKnowledgeAuthorizationIT {
+
+  private record CleanupStep(String description, Runnable action) {}
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String ATTACHED_KNOWLEDGE = "/v1/ai/context/attachedKnowledge";
@@ -69,7 +74,7 @@ public class AIContextKnowledgeAuthorizationIT {
   void attachedKnowledge_omitsItemsFromDomainsTheCallerCannotView(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
-    Deque<Runnable> cleanup = new ArrayDeque<>();
+    Deque<CleanupStep> cleanup = new ArrayDeque<>();
     try {
       String p = ns.shortPrefix();
       Domain own = createDomain(admin, p + "_own", cleanup);
@@ -117,7 +122,7 @@ public class AIContextKnowledgeAuthorizationIT {
   }
 
   private OpenMetadataClient createDomainOnlyUser(
-      OpenMetadataClient admin, String name, Domain domain, Deque<Runnable> cleanup) {
+      OpenMetadataClient admin, String name, Domain domain, Deque<CleanupStep> cleanup) {
     Role domainOnlyRole = admin.roles().getByName("DomainOnlyAccessRole");
     String email = name + "@test.openmetadata.org";
     User user =
@@ -129,12 +134,12 @@ public class AIContextKnowledgeAuthorizationIT {
                     .withEmail(email)
                     .withRoles(List.of(domainOnlyRole.getId()))
                     .withDomains(List.of(domain.getFullyQualifiedName())));
-    cleanup.push(() -> admin.users().delete(user.getId()));
+    cleanup.push(new CleanupStep("user " + name, () -> admin.users().delete(user.getId())));
     return SdkClients.createClient(email, email, new String[] {});
   }
 
   private String createArticle(
-      OpenMetadataClient admin, String name, Table table, Domain domain, Deque<Runnable> cleanup)
+      OpenMetadataClient admin, String name, Table table, Domain domain, Deque<CleanupStep> cleanup)
       throws Exception {
     Map<String, Object> create =
         Map.of(
@@ -161,24 +166,21 @@ public class AIContextKnowledgeAuthorizationIT {
                     RequestOptions.builder().build()));
     String id = page.get("id").asText();
     cleanup.push(
-        () -> {
-          try {
-            admin
-                .getHttpClient()
-                .executeForString(
-                    HttpMethod.DELETE,
-                    "/v1/contextCenter/pages/" + id + "?hardDelete=true",
-                    null,
-                    RequestOptions.builder().build());
-          } catch (Exception ignored) {
-            // Best-effort teardown.
-          }
-        });
+        new CleanupStep(
+            "article " + name,
+            () ->
+                admin
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.DELETE,
+                        "/v1/contextCenter/pages/" + id + "?hardDelete=true",
+                        null,
+                        RequestOptions.builder().build())));
     return page.get("fullyQualifiedName").asText();
   }
 
   private Metric createMetric(
-      OpenMetadataClient admin, String name, Table table, Domain domain, Deque<Runnable> cleanup)
+      OpenMetadataClient admin, String name, Table table, Domain domain, Deque<CleanupStep> cleanup)
       throws Exception {
     Metric metric =
         admin
@@ -188,7 +190,8 @@ public class AIContextKnowledgeAuthorizationIT {
                     .withName(name)
                     .withDescription("Metric for domain " + domain.getName())
                     .withDomains(List.of(domain.getFullyQualifiedName())));
-    cleanup.push(() -> admin.metrics().delete(metric.getId().toString()));
+    cleanup.push(
+        new CleanupStep("metric " + name, () -> admin.metrics().delete(metric.getId().toString())));
     BulkAssets assets =
         new BulkAssets()
             .withAssets(List.of(new EntityReference().withId(table.getId()).withType("table")));
@@ -202,7 +205,7 @@ public class AIContextKnowledgeAuthorizationIT {
     return metric;
   }
 
-  private Domain createDomain(OpenMetadataClient admin, String name, Deque<Runnable> cleanup) {
+  private Domain createDomain(OpenMetadataClient admin, String name, Deque<CleanupStep> cleanup) {
     Domain domain =
         admin
             .domains()
@@ -211,18 +214,22 @@ public class AIContextKnowledgeAuthorizationIT {
                     .withName(name)
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("AI context authorization test domain"));
-    cleanup.push(() -> admin.domains().delete(domain.getId().toString()));
+    cleanup.push(
+        new CleanupStep("domain " + name, () -> admin.domains().delete(domain.getId().toString())));
     return domain;
   }
 
-  private DatabaseSchema createSchema(TestNamespace ns, Deque<Runnable> cleanup) {
+  private DatabaseSchema createSchema(TestNamespace ns, Deque<CleanupStep> cleanup) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     cleanup.push(
-        () ->
-            SdkClients.adminClient()
-                .databaseServices()
-                .delete(
-                    service.getId().toString(), Map.of("recursive", "true", "hardDelete", "true")));
+        new CleanupStep(
+            "database service " + service.getName(),
+            () ->
+                SdkClients.adminClient()
+                    .databaseServices()
+                    .delete(
+                        service.getId().toString(),
+                        Map.of("recursive", "true", "hardDelete", "true"))));
     return DatabaseSchemaTestFactory.createSimple(ns, service);
   }
 
@@ -238,12 +245,13 @@ public class AIContextKnowledgeAuthorizationIT {
                 .withDomains(List.of(domain.getFullyQualifiedName())));
   }
 
-  private void drain(Deque<Runnable> cleanup) {
+  private void drain(Deque<CleanupStep> cleanup) {
     while (!cleanup.isEmpty()) {
+      CleanupStep step = cleanup.pop();
       try {
-        cleanup.pop().run();
-      } catch (Exception ignored) {
-        // Best-effort teardown; concurrent namespaces keep tests isolated regardless.
+        step.action().run();
+      } catch (OpenMetadataException e) {
+        log.warn("Cleanup of {} failed: {}", step.description(), e.getMessage());
       }
     }
   }

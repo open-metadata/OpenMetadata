@@ -15,11 +15,11 @@ package org.openmetadata.service.aicontext;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
@@ -33,6 +33,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
 /** Knowledge-layer authorization shared by the find-context REST endpoint and MCP tool. */
 @Slf4j
 public final class AIContextFinderAccess {
+  private static final int MAX_KNOWLEDGE_DECISIONS = 1000;
   public static final List<String> KNOWLEDGE_TYPES =
       List.of(Entity.GLOSSARY_TERM, Entity.METRIC, Entity.PAGE);
 
@@ -58,9 +59,10 @@ public final class AIContextFinderAccess {
    */
   public static Predicate<KnowledgeItem> knowledgeViewer(
       Authorizer authorizer, SecurityContext securityContext) {
-    Map<String, Boolean> decisions = new HashMap<>();
+    Cache<String, Boolean> decisions =
+        Caffeine.newBuilder().maximumSize(MAX_KNOWLEDGE_DECISIONS).build();
     return item ->
-        decisions.computeIfAbsent(
+        decisions.get(
             item.getType().value() + ":" + item.getFullyQualifiedName(),
             key ->
                 AIContextBuilder.canViewKnowledge(
