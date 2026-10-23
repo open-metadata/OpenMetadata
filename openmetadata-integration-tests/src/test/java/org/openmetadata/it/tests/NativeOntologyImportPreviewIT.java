@@ -53,6 +53,19 @@ import org.openmetadata.service.Entity;
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
   @Test
+  void detectionUsesContentBeforeAMisleadingFileName() {
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFileName("ontology.ttl")
+            .withData(
+                "<?xml version=\"1.0\"?>\n<rdf:RDF xmlns:rdf=\"http://www.w3.org/1999/02/22-rdf-syntax-ns#\"/>\n");
+
+    assertEquals(
+        NativeOntologyImportFormat.RDFXML,
+        SdkClients.adminClient().ontologies().detectImportFormat(request).getDetectedFormat());
+  }
+
+  @Test
   void previewCreatesNoDefinitionsAndAppliesOnlyAfterDraftLease(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
