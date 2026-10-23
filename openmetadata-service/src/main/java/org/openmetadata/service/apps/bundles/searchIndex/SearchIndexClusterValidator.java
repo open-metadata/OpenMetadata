@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.SearchClient;
@@ -172,55 +171,5 @@ public class SearchIndexClusterValidator {
 
   private ClusterCapacity getConservativeEstimate() {
     return new ClusterCapacity(0, DEFAULT_MAX_SHARDS_PER_NODE, 0.0, DEFAULT_MAX_SHARDS_PER_NODE);
-  }
-
-  public void validateCapacityForRecreate(SearchRepository searchRepository, Set<String> entities)
-      throws InsufficientClusterCapacityException {
-    ClusterCapacity capacity = getClusterCapacity(searchRepository);
-
-    int requestedShards = entities.size() * estimatedShardsPerIndex;
-
-    LOG.info(
-        "Pre-flight cluster check: {}/{} shards ({:.1f}% used), requesting {} shards for {} entities",
-        capacity.currentShards(),
-        capacity.maxShards(),
-        capacity.usagePercent() * 100,
-        requestedShards,
-        entities.size());
-
-    if (capacity.isAboveThreshold(shardUsageThreshold)) {
-      LOG.warn(
-          "Cluster shard usage ({:.1f}%) exceeds threshold ({:.1f}%). "
-              + "Consider cleaning up orphaned indices.",
-          capacity.usagePercent() * 100, shardUsageThreshold * 100);
-      throw new InsufficientClusterCapacityException(
-          capacity.currentShards(), capacity.maxShards(), capacity.usagePercent());
-    }
-
-    if (!capacity.hasCapacityFor(requestedShards)) {
-      LOG.error(
-          "Insufficient cluster capacity: need {} shards but only {} available",
-          requestedShards,
-          capacity.availableShards());
-      throw new InsufficientClusterCapacityException(
-          capacity.currentShards(), capacity.maxShards(), requestedShards, capacity.usagePercent());
-    }
-
-    LOG.info(
-        "Pre-flight check passed: sufficient capacity for {} new indices ({} shards)",
-        entities.size(),
-        requestedShards);
-  }
-
-  public boolean hasCapacityFor(SearchRepository searchRepository, int newIndicesCount) {
-    try {
-      ClusterCapacity capacity = getClusterCapacity(searchRepository);
-      int requestedShards = newIndicesCount * estimatedShardsPerIndex;
-      return capacity.hasCapacityFor(requestedShards)
-          && !capacity.isAboveThreshold(shardUsageThreshold);
-    } catch (Exception e) {
-      LOG.warn("Failed to check cluster capacity: {}", e.getMessage());
-      return true;
-    }
   }
 }
