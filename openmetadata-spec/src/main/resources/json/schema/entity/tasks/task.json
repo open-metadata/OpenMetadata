@@ -505,7 +505,7 @@
       "$ref": "../../type/ontologyReviewTarget.json"
     },
     "reviewVotes": {
-      "description": "Counted votes on a multi-reviewer approval task, one per voter, including the deciding vote. Server-managed.",
+      "description": "Counted votes on an ontology release review task, one per voter, including the deciding vote. Server-managed.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/taskReviewVote"

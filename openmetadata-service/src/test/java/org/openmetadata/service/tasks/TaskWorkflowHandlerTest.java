@@ -123,8 +123,6 @@ class TaskWorkflowHandlerTest {
       when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
       when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
       when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
-      when(workflowHandler.approvalTaskContext(taskId))
-          .thenReturn(new WorkflowHandler.ApprovalTaskContext("process", "TaskReview", List.of()));
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
@@ -201,8 +199,6 @@ class TaskWorkflowHandlerTest {
       when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
       when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
       when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
-      when(workflowHandler.approvalTaskContext(taskId))
-          .thenReturn(new WorkflowHandler.ApprovalTaskContext("process", "TaskReview", List.of()));
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
       when(taskRepository.getFields(anyString())).thenReturn(fields);

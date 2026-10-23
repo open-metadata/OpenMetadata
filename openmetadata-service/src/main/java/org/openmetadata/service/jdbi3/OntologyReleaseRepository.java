@@ -249,6 +249,11 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
             .filter(reader -> reader.matches(view))
             .map(OntologyReleaseReviewReader::review)
             .toList();
+    return page(rows, offset, limit);
+  }
+
+  static ResultList<OntologyReleaseReview> page(
+      final List<OntologyReleaseReview> rows, final int offset, final int limit) {
     final int from = Math.min(offset, rows.size());
     final int to = Math.min(offset + limit, rows.size());
     return new ResultList<>(
@@ -258,7 +263,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
         rows.size());
   }
 
-  private static int offset(final String after) {
+  static int offset(final String after) {
     try {
       return after == null ? 0 : Integer.parseInt(RestUtil.decodeCursor(after));
     } catch (IllegalArgumentException invalid) {

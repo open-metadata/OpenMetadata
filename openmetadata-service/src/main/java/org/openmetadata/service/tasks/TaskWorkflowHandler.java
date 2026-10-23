@@ -405,7 +405,9 @@ public class TaskWorkflowHandler {
         : workflowHandler.isAwaitingAdditionalVotes(taskId)) {
       LOG.info("[TaskWorkflowHandler] Task '{}' still open, waiting for more approvals", taskId);
       persistEditedWorkflowPayload(task, resolvedPayload, newValue, user);
-      recordCountedVote(taskId, user, resolutionType, comment);
+      if (ontologyReview) {
+        recordCountedVote(taskId, user, resolutionType, comment);
+      }
       return refreshTask(taskId);
     }
 
@@ -1379,9 +1381,7 @@ public class TaskWorkflowHandler {
   }
 
   /**
-   * Update task to reflect that a user has voted (for multi-approval tasks).
-   */
-  /**
+   * Only an ontology review records its votes, because only its decision reconciles the final list.
    * WAITING_FOR_VOTES also covers a repeat or malformed vote the workflow dropped, so a vote is
    * recorded only when the workflow lists its voter. The record is written after the workflow's
    * own commit; a crash between the two is healed when the decision reconciles the workflow's
