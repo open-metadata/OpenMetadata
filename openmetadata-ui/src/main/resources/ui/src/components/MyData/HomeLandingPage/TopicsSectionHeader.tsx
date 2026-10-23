@@ -11,14 +11,18 @@
  *  limitations under the License.
  */
 import { Button, Tabs, Typography } from '@openmetadata/ui-core-components';
-import {
-  ChevronSelectorVertical,
-  Columns01,
-  Rows03,
-  Settings01,
-} from '@openmetadata/ui-core-components/icons';
+import { Settings01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getSegmentedTabClasses,
+  SEGMENTED_TAB_LIST_CLASSES,
+} from './TopicsSectionHeader.constants';
+import {
+  CollapseAllIcon,
+  GridViewIcon,
+  ListViewIcon,
+} from './TopicsSectionHeaderIcons';
 
 export type TopicsViewMode = 'grid' | 'list';
 
@@ -64,38 +68,47 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
       </div>
 
       <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5">
+        {/* The design draws this control's icon smaller and its label darker
+          and bolder than a secondary button's own, so both come in styled. */}
         <Button
           color="secondary"
           data-testid="toggle-all-widgets"
-          iconLeading={ChevronSelectorVertical}
+          iconLeading={
+            <CollapseAllIcon className="tw:size-3.5 tw:text-fg-primary" />
+          }
           isDisabled={isToggleAllDisabled}
           size="md"
           onPress={onToggleAll}>
-          {t(
-            isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
-          )}
+          <span className="tw:ml-1 tw:font-semibold tw:text-primary">
+            {t(
+              isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
+            )}
+          </span>
         </Button>
 
-        {/* The segmented control the design specifies; the view has no panel
-          of its own, so the tabs only carry the selection. */}
+        {/* The view has no panel of its own, so the tabs only carry the
+          selection. */}
         <Tabs
           selectedKey={viewMode}
           onSelectionChange={(key) => onViewModeChange(key as TopicsViewMode)}>
           <Tabs.List
             aria-label={t('label.view')}
+            className={SEGMENTED_TAB_LIST_CLASSES}
             size="sm"
             type="button-border">
             <Tabs.Item
               aria-label={t('label.list')}
+              className={getSegmentedTabClasses}
               data-testid="topics-list-view"
               id="list">
-              <Rows03 aria-hidden className="tw:size-4" />
+              <ListViewIcon className="tw:size-4" />
             </Tabs.Item>
             <Tabs.Item
               aria-label={t('label.grid')}
+              className={getSegmentedTabClasses}
               data-testid="topics-grid-view"
               id="grid">
-              <Columns01 aria-hidden className="tw:size-4" />
+              <GridViewIcon className="tw:size-4" />
             </Tabs.Item>
           </Tabs.List>
         </Tabs>

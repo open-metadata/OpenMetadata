@@ -42,6 +42,7 @@ describe('TopicsSectionHeader', () => {
     renderHeader();
 
     expect(screen.getByRole('tablist')).toHaveAccessibleName('label.view');
+    expect(screen.getByRole('tablist')).toHaveClass('tw:bg-tertiary');
     expect(screen.getByTestId('topics-grid-view')).toHaveAttribute(
       'aria-selected',
       'true'
@@ -59,6 +60,15 @@ describe('TopicsSectionHeader', () => {
     fireEvent.click(screen.getByTestId('topics-list-view'));
 
     expect(onViewModeChange).toHaveBeenCalledWith('list');
+  });
+
+  it('labels the collapse control in bold primary text, as the design does', () => {
+    renderHeader();
+
+    expect(screen.getByText('label.collapse-all')).toHaveClass(
+      'tw:font-semibold',
+      'tw:text-primary'
+    );
   });
 
   it('collapses or expands every card from one button', () => {
