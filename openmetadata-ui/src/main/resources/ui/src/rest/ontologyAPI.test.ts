@@ -292,14 +292,14 @@ describe('ontologyAPI', () => {
     mockedApiClient.get.mockResolvedValue(jobs);
 
     const submitResult = await submitOntologyBulkOperation(request);
-    const jobsResult = await listOntologyBulkJobs(25);
+    const jobsResult = await listOntologyBulkJobs('glossary-id', 25);
 
     expect(mockedApiClient.post).toHaveBeenCalledWith(
       '/ontology/bulk',
       request
     );
     expect(mockedApiClient.get).toHaveBeenCalledWith('/ontology/bulk/jobs', {
-      params: { limit: 25 },
+      params: { glossaryId: 'glossary-id', limit: 25 },
     });
     expect(submitResult).toEqual(submission.data);
     expect(jobsResult).toEqual(jobs.data);

@@ -94,4 +94,31 @@ class OntologyBulkServiceTest {
             options.capture());
     assertEquals("35", options.getValue().getQueryParams().get("limit"));
   }
+
+  @Test
+  void carriesGlossaryIdAsAQueryParameterWhenProvided() {
+    final HttpClient httpClient = mock(HttpClient.class);
+    final OntologyBulkService service = new OntologyBulkService(httpClient);
+    final OntologyBulkJobList jobs = new OntologyBulkJobList();
+    final ArgumentCaptor<RequestOptions> options = ArgumentCaptor.forClass(RequestOptions.class);
+    when(httpClient.execute(
+            eq(HttpMethod.GET),
+            eq("/v1/ontology/bulk/jobs"),
+            isNull(),
+            eq(OntologyBulkJobList.class),
+            org.mockito.ArgumentMatchers.any(RequestOptions.class)))
+        .thenReturn(jobs);
+
+    assertSame(jobs, service.listJobs("glossary-uuid", 50));
+
+    verify(httpClient)
+        .execute(
+            eq(HttpMethod.GET),
+            eq("/v1/ontology/bulk/jobs"),
+            isNull(),
+            eq(OntologyBulkJobList.class),
+            options.capture());
+    assertEquals("glossary-uuid", options.getValue().getQueryParams().get("glossaryId"));
+    assertEquals("50", options.getValue().getQueryParams().get("limit"));
+  }
 }

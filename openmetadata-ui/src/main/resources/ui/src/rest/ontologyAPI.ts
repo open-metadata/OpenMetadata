@@ -867,10 +867,10 @@ export const submitOntologyBulkOperation = async (
   return response.data;
 };
 
-export const listOntologyBulkJobs = async (limit = 20) => {
+export const listOntologyBulkJobs = async (glossaryId: string, limit = 100) => {
   const response = await APIClient.get<OntologyBulkJobList>(
     `${ONTOLOGY_BULK_PATH}/jobs`,
-    { params: { limit } }
+    { params: { glossaryId, limit } }
   );
 
   return response.data;

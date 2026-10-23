@@ -18,6 +18,10 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import {
+  OntologyBulkJob,
+  Status,
+} from '../../generated/api/data/ontologyBulkJob';
 import { Operation } from '../../generated/api/data/ontologyBulkRequest';
 import { OntologyBulkResultArtifact } from '../../generated/api/data/ontologyBulkResultArtifact';
 import { ExecutionMode } from '../../generated/api/data/ontologyBulkSubmission';
@@ -163,5 +167,50 @@ describe('OntologyBulkAuthoring', () => {
       '1'
     );
     expect(screen.getAllByText('label.valid')).not.toHaveLength(0);
+  });
+
+  it('submits a background job and refreshes the jobs list', async () => {
+    const backgroundJob: OntologyBulkJob = {
+      createdAt: 1,
+      createdBy: 'admin',
+      dryRun: true,
+      glossary: { id: GLOSSARY.id, type: 'glossary' },
+      id: 42,
+      operation: Operation.CSVUpsert,
+      progress: 0,
+      status: Status.Queued,
+      total: 501,
+      updatedAt: 1,
+    };
+    mockSubmit.mockResolvedValue({
+      executionMode: ExecutionMode.Background,
+      job: backgroundJob,
+    });
+    mockListJobs.mockResolvedValue({ jobs: [backgroundJob] });
+    render(
+      <OntologyBulkAuthoring glossary={GLOSSARY} relationshipTypes={[]} />
+    );
+
+    const csvInput = within(
+      await screen.findByTestId('ontology-bulk-csv')
+    ).getByRole('textbox');
+    fireEvent.change(csvInput, {
+      target: {
+        value:
+          'action,termId,name,displayName,description,parentId,iri\n' +
+          'CREATE,91cdf0f6-9d67-4a74-ac63-af3df533e896,Customer,Customer,Customer concept,,',
+      },
+    });
+    fireEvent.click(screen.getByTestId('ontology-bulk-submit'));
+
+    // The hook should receive the background job's id so polling starts.
+    await waitFor(() =>
+      expect(mockListJobs).toHaveBeenCalledWith(GLOSSARY.id, 100)
+    );
+
+    // The queued job should appear in the background-jobs panel.
+    expect(await screen.findByTestId('ontology-bulk-job-42')).toHaveTextContent(
+      'label.queued'
+    );
   });
 });

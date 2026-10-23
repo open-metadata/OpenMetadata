@@ -37,6 +37,7 @@ const mockCancel = cancelOntologyBulkJob as jest.MockedFunction<
 >;
 
 const GLOSSARY_ID = 'glossary-1';
+const LIST_LIMIT = 100;
 
 const makeJob = (
   overrides: Partial<OntologyBulkJob> = {}
@@ -71,17 +72,14 @@ describe('useOntologyBulkJobs', () => {
     jest.useRealTimers();
   });
 
-  it('filters returned jobs to those matching the passed glossaryId', async () => {
-    mockListResolves([
-      makeJob({ id: 1, glossary: { id: GLOSSARY_ID, type: 'glossary' } }),
-      makeJob({ id: 2, glossary: { id: 'other-glossary', type: 'glossary' } }),
-      makeJob({ id: 3, glossary: { id: GLOSSARY_ID, type: 'glossary' } }),
-    ]);
+  it('passes the glossaryId to the API and uses the server-filtered response without further client-side filtering', async () => {
+    mockListResolves([makeJob({ id: 1 }), makeJob({ id: 3 })]);
 
     const { result } = renderHook(() => useOntologyBulkJobs(GLOSSARY_ID));
 
     await waitFor(() => expect(result.current.jobs).toHaveLength(2));
 
+    expect(mockList).toHaveBeenCalledWith(GLOSSARY_ID, LIST_LIMIT);
     expect(result.current.jobs.map((job) => job.id)).toEqual([1, 3]);
     expect(result.current.hasLoadError).toBe(false);
   });
@@ -139,6 +137,102 @@ describe('useOntologyBulkJobs', () => {
     });
 
     expect(mockList).toHaveBeenCalledTimes(callsAfterSettling);
+  });
+
+  it('starts polling when noteBackgroundSubmission is called even before an active job appears in the list', async () => {
+    // Simulate a race: the list endpoint returns empty on the first refresh.
+    mockListResolves([]);
+
+    const { result } = renderHook(() => useOntologyBulkJobs(GLOSSARY_ID));
+
+    await waitFor(() => expect(result.current.jobs).toEqual([]));
+
+    expect(mockList).toHaveBeenCalledTimes(1);
+
+    // The parent calls noteBackgroundSubmission after a background submission.
+    act(() => {
+      result.current.noteBackgroundSubmission(42);
+    });
+
+    // Polling should now be active even though no job is in the truncated list.
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+
+    // On the next poll the job finally appears as queued.
+    mockListResolves([makeJob({ id: 42, status: Status.Queued })]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() => expect(result.current.jobs[0].id).toBe(42));
+  });
+
+  it('stops polling after the pending submission safety valve expires', async () => {
+    mockListResolves([]);
+
+    const { result } = renderHook(() => useOntologyBulkJobs(GLOSSARY_ID));
+
+    await waitFor(() => expect(result.current.jobs).toEqual([]));
+
+    act(() => {
+      result.current.noteBackgroundSubmission();
+    });
+
+    // Polling runs while the safety valve is active.
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    await waitFor(() => expect(mockList).toHaveBeenCalledTimes(2));
+
+    // Advance far past the 60s safety valve so it fires and clears the flag.
+    await act(async () => {
+      jest.advanceTimersByTime(70_000);
+    });
+
+    // Capture the call count after the safety valve has fired.
+    const callsAfterExpiry = mockList.mock.calls.length;
+
+    // No more polls should happen once the flag is cleared and no jobs are active.
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS * 3);
+    });
+
+    expect(mockList.mock.calls.length).toBe(callsAfterExpiry);
+  });
+
+  it('clears the pending submission flag when the glossary changes', async () => {
+    mockListResolves([makeJob({ id: 1, status: Status.Running })]);
+
+    const { result, rerender } = renderHook(
+      ({ id }) => useOntologyBulkJobs(id),
+      { initialProps: { id: GLOSSARY_ID } }
+    );
+
+    await waitFor(() => expect(result.current.jobs).toHaveLength(1));
+
+    act(() => {
+      result.current.noteBackgroundSubmission(99);
+    });
+
+    // Switching glossaries clears the pending flag and fetches the new glossary.
+    mockListResolves([]);
+    rerender({ id: 'other-glossary' });
+
+    await waitFor(() => expect(result.current.jobs).toEqual([]));
+
+    const callsAfterSwitch = mockList.mock.calls.length;
+
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS * 3);
+    });
+
+    // No active job and no pending flag for the new glossary → no polling.
+    expect(mockList.mock.calls.length).toBe(callsAfterSwitch);
   });
 
   it('cancels a job, then refreshes and always clears isCancelling', async () => {
