@@ -201,4 +201,19 @@ describe('useProductTourStore', () => {
 
     expect(isTourMockActive()).toBe(false);
   });
+
+  it('serves the fixtures again after a reload mid-tour', async () => {
+    getState().start('default');
+    getState().goToStep(3);
+    const persisted = sessionStorage.getItem(STORAGE_KEY);
+    getState().exit();
+    sessionStorage.setItem(STORAGE_KEY, persisted ?? '');
+
+    expect(isTourMockActive()).toBe(false);
+
+    await useProductTourStore.persist.rehydrate();
+
+    expect(getState()).toMatchObject({ isActive: true, stepIndex: 3 });
+    expect(isTourMockActive()).toBe(true);
+  });
 });

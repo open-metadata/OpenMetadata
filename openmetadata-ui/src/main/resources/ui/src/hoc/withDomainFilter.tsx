@@ -21,6 +21,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { isTourMockActive } from '../rest/product-tour/productTourMock';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
@@ -88,6 +89,13 @@ export const withDomainFilter = (
   if (config.headers?.[SKIP_DOMAIN_FILTER_HEADER]) {
     delete config.headers[SKIP_DOMAIN_FILTER_HEADER];
 
+    return config;
+  }
+
+  // A product tour shows every user the same recorded pages, whatever domain
+  // they have selected; a domain filter would also stop its requests matching
+  // their fixtures.
+  if (isTourMockActive()) {
     return config;
   }
 

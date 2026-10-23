@@ -20,6 +20,7 @@ import { ProductTourFixture } from '../../interface/product-tour/productTour.int
 import {
   buildTourFixtureIndex,
   findTourFixture,
+  isTourPassThroughPath,
   TourFixtureIndex,
   toTourRequest,
 } from '../../utils/product-tour/productTourMock.utils';
@@ -30,6 +31,13 @@ type LoadFixtures = () => Promise<ProductTourFixture[]>;
 let activeLoader: LoadFixtures | undefined;
 let fixtureIndex: Promise<TourFixtureIndex> | undefined;
 let requestsInFlight = 0;
+
+// Fixtures that fail to load (a stale tab after a redeploy) leave every
+// request to the server rather than failing them all.
+const loadIndex = (loadFixtures: LoadFixtures) =>
+  loadFixtures()
+    .then(buildTourFixtureIndex)
+    .catch(() => buildTourFixtureIndex([]));
 let lastRequestSettledAt = 0;
 
 const WRITE_METHODS = new Set<string>(TOUR_WRITE_METHODS);
@@ -57,7 +65,7 @@ export const activateTourMock = (loadFixtures: LoadFixtures) => {
   if (activeLoader !== loadFixtures) {
     activeLoader = loadFixtures;
     // Loaded now, so the first page's requests do not wait on it.
-    fixtureIndex = loadFixtures().then(buildTourFixtureIndex);
+    fixtureIndex = loadIndex(loadFixtures);
   }
 };
 
@@ -96,15 +104,21 @@ export const attachTourMockInterceptor = (client: AxiosInstance) => {
       return config;
     }
     requestsInFlight += 1;
-    fixtureIndex ??= loadFixtures().then(buildTourFixtureIndex);
     const method = (config.method ?? 'get').toLowerCase();
+    // The URL axios is about to send, params serialised as it will send
+    // them, after the other request interceptors have run.
     const request = toTourRequest(
       method,
-      config.url ?? '',
+      client.getUri(config),
       new URL(getApiBaseUrl(), window.location.origin).pathname,
-      config.params,
       config.data
     );
+    // Who is signed in, their permissions, auth and app setup: never a
+    // fixture, even if one was recorded by mistake.
+    if (isTourPassThroughPath(request.path)) {
+      return config;
+    }
+    fixtureIndex ??= loadIndex(loadFixtures);
     const fixture = findTourFixture(await fixtureIndex, request);
 
     if (fixture) {

@@ -79,12 +79,13 @@ const expectTourClosed = async (page: Page) => {
  * Collects the page-data requests that reach the server on the tour's pages:
  * every one should have been served from a fixture instead. Watching starts
  * when the tour leaves /tour for its first step, so the page it was started
- * from, which refetches as it unmounts, is not counted.
+ * from, which refetches as it unmounts, is not counted; or at once, for a
+ * tour already on its pages.
  */
-const watchServerRequests = (page: Page) => {
+const watchServerRequests = (page: Page, { fromNow = false } = {}) => {
   const reached: string[] = [];
   let hasOpenedTour = false;
-  let isOnTourPages = false;
+  let isOnTourPages = fromNow;
   page.on('framenavigated', (frame) => {
     if (frame !== page.mainFrame()) {
       return;
@@ -201,7 +202,7 @@ test.describe('Product tour — Classic', () => {
     await goToStep(page, 3);
     await expectStep(page, 'Services');
 
-    const reachedServer = watchServerRequests(page);
+    const reachedServer = watchServerRequests(page, { fromNow: true });
     await page.reload();
 
     await expect(page).toHaveURL(/\/settings\/services\/databases/);

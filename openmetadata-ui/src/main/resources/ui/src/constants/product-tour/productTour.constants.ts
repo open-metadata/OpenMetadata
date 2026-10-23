@@ -37,6 +37,9 @@ export const TOUR_VOLATILE_QUERY_PARAMS = [
 // to the server: who is signed in, what they may do, how the app is set up.
 // Everything a tour page shows comes from its fixtures instead.
 export const TOUR_PASS_THROUGH_PATHS = [
+  /^\/auth\//,
+  /^\/saml\//,
+  /^\/users\/(login|logout|refresh)\b/,
   /^\/users\/loggedInUser/,
   /^\/users\/name\/[^/]+\/?$/,
   /^\/permissions/,
@@ -47,6 +50,10 @@ export const TOUR_PASS_THROUGH_PATHS = [
   /^\/limits/,
   /^\/analytics\/web/,
 ] as const;
+
+// Epoch-millisecond timestamps, which a request can also carry inside a query
+// value or its body (a dashboard's time window inside a search filter).
+export const TOUR_VOLATILE_TIMESTAMP_PATTERN = /\b1\d{12}\b/g;
 
 // Updates and deletes; the tour drops them and the recorder never records them.
 // POST also reads (searches, aggregations, report batches), so it is not one.

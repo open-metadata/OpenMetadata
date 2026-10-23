@@ -14,6 +14,7 @@ import {
   buildTourFixtureIndex,
   findTourFixture,
   getTourRequestKey,
+  isTourPassThroughPath,
   toTourRequest,
 } from './productTourMock.utils';
 
@@ -26,20 +27,25 @@ const SEARCH = {
 
 describe('productTourMock utils', () => {
   describe('toTourRequest', () => {
-    it('reads the path under the API base and merges the URL query with params', () => {
+    it('reads the path under the API base and the query as sent', () => {
       expect(
-        toTourRequest('GET', '/api/v1/search/query?q=*', '/api/v1', {
-          index: 'table',
-          size: 10,
-          fields: ['a', 'b'],
-          empty: undefined,
-        })
+        toTourRequest(
+          'GET',
+          '/api/v1/search/query?q=*&index=table&size=10&fields=a&fields=b',
+          '/api/v1'
+        )
       ).toEqual({
         method: 'get',
         path: '/search/query',
         query: { q: '*', index: 'table', size: '10', fields: 'a,b' },
         body: undefined,
       });
+    });
+
+    it('reads a repeated key and a comma-joined one the same way', () => {
+      expect(
+        toTourRequest('get', '/api/v1/x?f=a&f=b', '/api/v1').query
+      ).toEqual(toTourRequest('get', '/api/v1/x?f=a,b', '/api/v1').query);
     });
 
     it('keeps a path given relative to the API base', () => {
@@ -50,7 +56,7 @@ describe('productTourMock utils', () => {
 
     it('keeps the body of a read sent as a POST', () => {
       expect(
-        toTourRequest('post', '/search/query', '/api/v1', {}, { size: 1 }).body
+        toTourRequest('post', '/search/query', '/api/v1', { size: 1 }).body
       ).toBe('{"size":1}');
     });
   });
@@ -71,6 +77,38 @@ describe('productTourMock utils', () => {
         })
       );
     });
+  });
+
+  it('matches a body whose time window has moved on', () => {
+    const body = (startTs: number) =>
+      JSON.stringify({ q: `{"range":{"timestamp":{"gte":${startTs}}}}` });
+
+    expect(
+      getTourRequestKey({
+        method: 'post',
+        path: '/dataQuality/testSuites/dataQualityReport/batch',
+        query: {},
+        body: body(1792000000000),
+      })
+    ).toBe(
+      getTourRequestKey({
+        method: 'post',
+        path: '/dataQuality/testSuites/dataQualityReport/batch',
+        query: {},
+        body: body(1792600000000),
+      })
+    );
+  });
+
+  it('leaves auth, the signed-in user and permissions to the server', () => {
+    [
+      '/auth/refresh',
+      '/users/login',
+      '/users/loggedInUser',
+      '/permissions',
+    ].forEach((path) => expect(isTourPassThroughPath(path)).toBe(true));
+
+    expect(isTourPassThroughPath('/search/query')).toBe(false);
   });
 
   describe('findTourFixture', () => {

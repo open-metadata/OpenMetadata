@@ -16,6 +16,9 @@
 // src/constants/product-tour/productTour.constants.ts, which specs may not
 // import; keep the two in step.
 export const PRODUCT_TOUR_PASS_THROUGH_PATHS = [
+  /^\/auth\//,
+  /^\/saml\//,
+  /^\/users\/(login|logout|refresh)\b/,
   /^\/users\/loggedInUser/,
   /^\/users\/name\/[^/]+\/?$/,
   /^\/permissions/,

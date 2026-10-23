@@ -35,6 +35,7 @@ import { useProductTourStore } from '../../../hooks/product-tour/useProductTourS
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { isTourPageQuiet } from '../../../rest/product-tour/productTourMock';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
+import { getPathNameFromWindowLocation } from '../../../utils/LocationUtils';
 import productTourClassBase from '../../../utils/ProductTourClassBase';
 import productTourPagesClassBase from '../../AppRouter/ProductTourPagesClassBase';
 import {
@@ -199,7 +200,7 @@ const ProductTour = () => {
     const handlePopState = () => {
       const index = isBeforeTour()
         ? -1
-        : getTourStepIndexForPath(steps, window.location.pathname);
+        : getTourStepIndexForPath(steps, getPathNameFromWindowLocation());
       if (index === -1) {
         exit();
         leaveTour();

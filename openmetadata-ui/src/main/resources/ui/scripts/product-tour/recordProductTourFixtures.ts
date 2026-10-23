@@ -29,12 +29,12 @@ import { expect, Page, Request, test } from '@playwright/test';
 import { writeFileSync } from 'node:fs';
 import {
   PRODUCT_TOUR_RECORD_KEY,
-  TOUR_PASS_THROUGH_PATHS,
   TOUR_WRITE_METHODS,
 } from '../../src/constants/product-tour/productTour.constants';
 import type { ProductTourFixture } from '../../src/interface/product-tour/productTour.interface';
 import {
   getTourRequestKey,
+  isTourPassThroughPath,
   normalizeTourQuery,
   toTourRequest,
 } from '../../src/utils/product-tour/productTourMock.utils';
@@ -68,7 +68,7 @@ const isRecordable = (request: Request) => {
   }
   const path = pathname.slice(API_BASE_PATH.length);
 
-  return !TOUR_PASS_THROUGH_PATHS.some((pattern) => pattern.test(path));
+  return !isTourPassThroughPath(path);
 };
 
 test('record the product tour fixtures', async ({ page }) => {
@@ -85,7 +85,6 @@ test('record the product tour fixtures', async ({ page }) => {
       request.method(),
       request.url(),
       API_BASE_PATH,
-      {},
       request.postData() ?? undefined
     );
     const key = getTourRequestKey(tourRequest);

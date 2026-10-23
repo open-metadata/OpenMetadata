@@ -17,6 +17,10 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import { useDomainStore } from '../hooks/useDomainStore';
+import {
+  activateTourMock,
+  deactivateTourMock,
+} from '../rest/product-tour/productTourMock';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
 
@@ -49,6 +53,23 @@ describe('withDomainFilter', () => {
     } as InternalAxiosRequestConfig);
 
   describe('should not intercept requests', () => {
+    it('should leave every request unfiltered while a product tour runs', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/explore'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
+      activateTourMock(async () => []);
+
+      const config = createMockConfig('get', '/search/query', {
+        index: SearchIndex.TABLE,
+      });
+      const result = withDomainFilter(config);
+      deactivateTourMock();
+
+      expect(result).toBe(config);
+      expect(result.params).toEqual({ index: SearchIndex.TABLE });
+    });
+
     it('should return config unchanged when path starts with /domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockImplementationOnce(
         () => '/domain/test'

@@ -94,7 +94,7 @@ jest.mock('@deuex-solutions/react-tour', () => ({
   },
 }));
 
-const mockPreloadPages = jest.fn(async () => undefined);
+const mockPreloadPages = jest.fn(async (_mode: string) => undefined);
 jest.mock('../../AppRouter/ProductTourPagesClassBase', () => ({
   preloadPages: (mode: string) => mockPreloadPages(mode),
 }));

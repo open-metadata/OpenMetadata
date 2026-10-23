@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import axios, { AxiosAdapter } from 'axios';
+import { ProductTourFixture } from '../../interface/product-tour/productTour.interface';
 import {
   activateTourMock,
   attachTourMockInterceptor,
@@ -140,5 +141,44 @@ describe('product tour mock interceptor', () => {
 
     expect(isTourPageQuiet(0)).toBe(true);
     expect(isTourPageQuiet(60_000)).toBe(false);
+  });
+
+  it('matches a live request to the one recorded from the browser', async () => {
+    // Recorded from the wire: a repeated key, as `indexes: null` sends arrays.
+    const recorded: ProductTourFixture[] = [
+      {
+        method: 'get',
+        path: '/search/query',
+        query: { index: 'dataAsset', exclude: 'columns,queries' },
+        data: 'explore results',
+      },
+      { method: 'get', path: '/search/query', query: {}, data: 'other' },
+    ];
+    activateTourMock(async () => recorded);
+
+    const response = await client.get('/search/query', {
+      params: { index: 'dataAsset', exclude: ['columns', 'queries'] },
+      paramsSerializer: { indexes: null },
+    });
+
+    expect(response.data).toBe('explore results');
+  });
+
+  it('never serves auth from a fixture, even one recorded by mistake', async () => {
+    activateTourMock(async () => [
+      { method: 'post', path: '/auth/refresh', data: 'recorded token' },
+    ]);
+
+    const response = await client.post('/auth/refresh', {});
+
+    expect(response.data).toBe('from server');
+  });
+
+  it('leaves requests to the server when the fixtures fail to load', async () => {
+    activateTourMock(() => Promise.reject(new Error('chunk 404')));
+
+    const response = await client.get('/glossaries');
+
+    expect(response.data).toBe('from server');
   });
 });
