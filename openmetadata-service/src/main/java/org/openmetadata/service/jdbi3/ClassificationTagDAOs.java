@@ -388,8 +388,8 @@ public interface ClassificationTagDAOs {
                 + "  WHEN tu.source = 0 THEN ta.json "
                 + "END as json "
                 + "FROM tag_usage tu "
-                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
-                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
                 + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -400,8 +400,8 @@ public interface ClassificationTagDAOs {
                 + "  WHEN tu.source = 0 THEN ta.json "
                 + "END as json "
                 + "FROM tag_usage tu "
-                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
-                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
                 + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
@@ -418,8 +418,8 @@ public interface ClassificationTagDAOs {
             + "  WHEN tu.source = 0 THEN ta.json "
             + "END as json "
             + "FROM tag_usage tu "
-            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
-            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
+            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
+            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
             + "WHERE tu.targetFQNHash IN (<targetFQNHashes>)")
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByTargetHashes(
