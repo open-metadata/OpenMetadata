@@ -52,9 +52,6 @@ on:
 permissions:
   actions: read
   contents: read
-  # Read-only: lets the fork-PR "safe to test" check list issue labels via
-  # the issues API (label reads require the issues scope, not pull-requests).
-  issues: read
   pull-requests: read
 
 concurrency:
@@ -209,6 +206,9 @@ jobs:
 
       - name: Verify safe-to-test label (fork PRs)
         if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        # Reads labels via GET /repos/{repo}/issues/{n}/labels; for pull
+        # requests that endpoint accepts either the Issues or the Pull
+        # requests repo permission (read) — covered by pull-requests: read.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
