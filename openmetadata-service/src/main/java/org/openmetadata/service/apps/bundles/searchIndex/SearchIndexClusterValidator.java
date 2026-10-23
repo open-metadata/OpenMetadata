@@ -27,21 +27,9 @@ import org.openmetadata.service.search.opensearch.OpenSearchClient;
 @Slf4j
 public class SearchIndexClusterValidator {
 
-  private static final double DEFAULT_SHARD_USAGE_THRESHOLD = 0.85;
-  private static final int DEFAULT_SHARDS_PER_INDEX = 5;
   private static final int DEFAULT_MAX_SHARDS_PER_NODE = 1000;
 
-  private final double shardUsageThreshold;
-  private final int estimatedShardsPerIndex;
-
-  public SearchIndexClusterValidator() {
-    this(DEFAULT_SHARD_USAGE_THRESHOLD, DEFAULT_SHARDS_PER_INDEX);
-  }
-
-  public SearchIndexClusterValidator(double shardUsageThreshold, int estimatedShardsPerIndex) {
-    this.shardUsageThreshold = shardUsageThreshold;
-    this.estimatedShardsPerIndex = estimatedShardsPerIndex;
-  }
+  public SearchIndexClusterValidator() {}
 
   public record ClusterCapacity(
       int currentShards, int maxShards, double usagePercent, int availableShards) {
