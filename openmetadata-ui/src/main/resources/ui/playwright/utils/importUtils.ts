@@ -52,6 +52,7 @@ import { waitForResponseWithStatus } from './waitHelpers';
 const IMPORT_GRID_LOAD_MASK_SELECTOR =
   '.om-rdg .inovua-react-toolkit-load-mask__background-layer';
 const EDITOR_OPEN_TIMEOUT = 1500;
+const MAX_BULK_EDIT_COLUMN_STEPS = 20;
 const IMPORT_STATUS_TIMEOUT = 90000;
 
 type CsvExportResponse = {
@@ -1313,6 +1314,56 @@ export const fillColumnDetails = async (
   await page.locator(RDG_ACTIVE_CELL_SELECTOR).click();
 
   await fillGlossaryTermDetails(page, row.glossary);
+};
+
+/**
+ * A bulk edit grid cell by row name and CSV column key (e.g. `column.tags`).
+ * Matched by column class, not header position: react-data-grid only renders
+ * the columns in view, so a header can be missing from the DOM.
+ */
+export const getBulkEditGridCell = async (
+  page: Page,
+  rowName: string,
+  columnKey: string
+) => {
+  const rowIndex = await page
+    .getByRole('row')
+    .filter({ hasText: rowName })
+    .getAttribute('aria-rowindex');
+
+  return page.locator(
+    `.rdg-row[aria-rowindex="${rowIndex}"] .${getGridColumnClass(columnKey)}`
+  );
+};
+
+/**
+ * Selects a row's Column Tags cell without opening its tag picker (a click
+ * would, and the picker would take keyboard copy/paste). Starts on the name
+ * cell, where a click only selects, and moves right; the grid scrolls the
+ * selected cell into view.
+ */
+export const selectBulkEditTagsCell = async (page: Page, rowName: string) => {
+  const nameCell = await getBulkEditGridCell(page, rowName, 'column.name*');
+  const tagsCell = await getBulkEditGridCell(page, rowName, 'column.tags');
+  const tagsClass = getGridColumnClass('column.tags');
+  await nameCell.click();
+
+  for (let step = 0; step < MAX_BULK_EDIT_COLUMN_STEPS; step++) {
+    const isTagsCellActive = await page
+      .locator(RDG_ACTIVE_CELL_SELECTOR)
+      .evaluate(
+        (cell, className) => cell.classList.contains(className),
+        tagsClass
+      );
+    if (isTagsCellActive) {
+      break;
+    }
+    await moveToNextColumnWithVerification(page);
+  }
+
+  await expect(tagsCell).toHaveAttribute('aria-selected', 'true');
+
+  return tagsCell;
 };
 
 export const pressKeyXTimes = async (
