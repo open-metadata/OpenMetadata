@@ -749,8 +749,9 @@ public interface ClassificationTagDAOs {
               r.getString("targetFQNHash"));
           return Pair.of(r.getString("targetFQNHash"), label);
         }
-        Boolean entityDeleted = (Boolean) r.getObject("entityDeleted");
-        if (entityDeleted != null && entityDeleted) {
+        // MySQL stores BOOLEAN columns as TINYINT(1), so getObject returns Integer, not Boolean.
+        // Use getInt which works for both MySQL (TINYINT(1)) and Postgres (BOOLEAN).
+        if (r.getInt("entityDeleted") != 0) {
           // The tag or glossary term is soft-deleted. Return the label unenriched (without the
           // orphan warning) so normal deletes do not produce spurious broken-reference warnings.
           return Pair.of(r.getString("targetFQNHash"), label);
