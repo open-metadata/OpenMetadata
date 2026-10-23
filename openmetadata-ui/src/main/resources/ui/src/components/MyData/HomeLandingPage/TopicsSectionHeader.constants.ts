@@ -20,6 +20,7 @@ import classNames from 'classnames';
  * `bg-raised` keeps the chosen view lighter than the track in dark mode too,
  * where `bg-tertiary` is gray-800.
  */
+// ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site
 export const SEGMENTED_GROUP_CLASSES =
   'tw:gap-1 tw:space-x-0 tw:rounded-[10px] tw:bg-tertiary tw:p-1 tw:shadow-none';
 

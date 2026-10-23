@@ -74,6 +74,7 @@ const TONES: Record<
 // Undoes the segmented-control look ButtonGroup is built for — joined edges,
 // a shared shadow, square inner corners — so each option reads as a free
 // standing chip. Only the selected chip keeps a border.
+// ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site
 const GROUP_CLASSES =
   'tw:flex tw:w-auto tw:max-w-full tw:flex-wrap tw:items-center tw:gap-x-1 tw:gap-y-2 tw:space-x-0 tw:shadow-none';
 const CHIP_CLASSES =

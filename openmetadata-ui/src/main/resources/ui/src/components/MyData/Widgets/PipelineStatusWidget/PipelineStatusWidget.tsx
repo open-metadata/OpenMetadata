@@ -33,8 +33,8 @@ import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
 import { getExplorePath } from '../../../../utils/RouterUtils';
 import { useAddServiceAction } from '../../../integration/ConnectionsPage/useAddServiceAction';
 import TopicCard from '../Common/TopicWidget/TopicCard';
-import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,

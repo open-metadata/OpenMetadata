@@ -16,6 +16,7 @@ type IconProps = SVGProps<SVGSVGElement>;
 
 // The design's glyphs, drawn on its 24 grid at its 2px stroke. Core's icons are
 // normalised to a lighter 1.3 stroke, which reads too thin at these sizes.
+// ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site
 const DesignIcon: FC<IconProps> = ({ children, ...props }) => (
   <svg
     aria-hidden
