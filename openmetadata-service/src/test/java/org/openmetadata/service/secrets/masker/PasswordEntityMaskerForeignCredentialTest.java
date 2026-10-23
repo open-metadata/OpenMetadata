@@ -43,10 +43,13 @@ class PasswordEntityMaskerForeignCredentialTest {
   private static final String EXTERNAL_REFERENCE = "secret:/external/vault/database/password";
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     Fernet.getInstance().setFernetKey(FERNET_KEY);
-    // The same configuration DBSecretsManagerTest builds, so whichever singleton the JVM already
-    // holds resolves the fixtures below the same way.
+    // DBSecretsManager caches a JVM-wide singleton with the first caller's configuration, and
+    // other classes in the unit lane bootstrap it with no prefix - so build this class's own
+    // instance instead of trusting whichever configuration the lane happened to initialize it
+    // with.
+    resetDbSecretsManagerSingleton();
     SecretsManager secretsManager =
         DBSecretsManager.getInstance(
             SecretsManagerProvider.DB,
@@ -57,9 +60,16 @@ class PasswordEntityMaskerForeignCredentialTest {
   }
 
   @AfterEach
-  void tearDown() {
+  void tearDown() throws Exception {
     SecretsManagerFactory.setSecretsManager(null);
+    resetDbSecretsManagerSingleton();
     Fernet.getInstance().setFernetKey((String) null);
+  }
+
+  private static void resetDbSecretsManagerSingleton() throws Exception {
+    Field instance = DBSecretsManager.class.getDeclaredField("instance");
+    instance.setAccessible(true);
+    instance.set(null, null);
   }
 
   @Test
