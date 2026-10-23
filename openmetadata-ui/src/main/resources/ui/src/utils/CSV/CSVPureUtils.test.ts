@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 import type { Column } from 'react-data-grid';
-import {
-  getCsvGridRowHeight,
-  getFailedImportRowIds,
-  mergeGridRows,
-} from './CSVPureUtils';
+import { getCsvGridRowHeight, getFailedImportRowIds } from './CSVPureUtils';
 
 type GridColumn = Column<Record<string, string>>;
 
@@ -134,25 +130,5 @@ describe('getFailedImportRowIds', () => {
 
   it('returns no ids without a result', () => {
     expect(getFailedImportRowIds({ submittedCsv }).size).toBe(0);
-  });
-});
-
-describe('mergeGridRows', () => {
-  it('writes edits to the filtered rows back without dropping hidden rows', () => {
-    const dataSource = [{ name: 'a' }, { name: 'b' }, { name: 'c' }];
-    const gridRows = [dataSource[2]];
-
-    expect(mergeGridRows(dataSource, gridRows, [{ name: 'c2' }])).toEqual([
-      { name: 'a' },
-      { name: 'b' },
-      { name: 'c2' },
-    ]);
-  });
-
-  it('uses the updated rows as-is when the grid shows every row', () => {
-    const dataSource = [{ name: 'a' }];
-    const updated = [{ name: 'a2' }];
-
-    expect(mergeGridRows(dataSource, dataSource, updated)).toBe(updated);
   });
 });

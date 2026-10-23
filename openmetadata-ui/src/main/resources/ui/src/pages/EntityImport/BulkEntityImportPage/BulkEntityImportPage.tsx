@@ -477,6 +477,11 @@ const BulkEntityImportPage = () => {
     [filterColumns, shouldRenderBulkEditView]
   );
 
+  const handleClipboardError = useCallback(
+    () => showErrorToast(t('message.clipboard-not-available')),
+    [t]
+  );
+
   const {
     handleCopy,
     handlePaste: actualHandlePaste,
@@ -489,6 +494,7 @@ const BulkEntityImportPage = () => {
     setDataSource,
     columns: gridEditColumns,
     rows: bulkEditGridRows,
+    onClipboardError: handleClipboardError,
   });
 
   const bulkEditChangeSummary = useMemo(() => {

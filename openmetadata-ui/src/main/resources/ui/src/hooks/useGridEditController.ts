@@ -14,9 +14,7 @@
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Column } from 'react-data-grid';
-import { mergeGridRows } from '../utils/CSV/CSVPureUtils';
-import { t } from '../utils/i18next/LocalUtil';
-import { showErrorToast } from '../utils/ToastUtils';
+import { mergeGridRows } from '../utils/CSV/GridRowsUtils';
 
 const ARIA_ROWINDEX_ATTR = 'aria-rowindex';
 const ARIA_COLINDEX_ATTR = 'aria-colindex';
@@ -105,7 +103,8 @@ function useClipboardHandlers(
   dataSource: Record<string, string>[],
   setDataSource: SetRows,
   columns: Column<Record<string, string>>[],
-  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
+  pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void,
+  onClipboardError?: () => void
 ) {
   // The cells of the last grid copy, pasted as-is. Other text is split into
   // rows and tab-separated columns (what spreadsheets copy) — except into a
@@ -137,9 +136,7 @@ function useClipboardHandlers(
       // CRLF still matches and pastes back cell for cell.
       copiedCells.current = { text: text.replaceAll('\r\n', '\n'), cells };
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard
-          .writeText(text)
-          .catch(() => showErrorToast(t('message.clipboard-not-available')));
+        navigator.clipboard.writeText(text).catch(() => onClipboardError?.());
 
         return undefined;
       } else {
@@ -166,7 +163,13 @@ function useClipboardHandlers(
     }
 
     return undefined;
-  }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
+  }, [
+    selectedRange,
+    dataSource,
+    columns,
+    getFinalSelectedRange,
+    onClipboardError,
+  ]);
 
   const handlePaste = useCallback(() => {
     const range = getFinalSelectedRange();
@@ -218,7 +221,7 @@ function useClipboardHandlers(
         },
         () => {
           // Clipboard read was denied; the keystroke was already consumed.
-          showErrorToast(t('message.clipboard-not-available'));
+          onClipboardError?.();
 
           return dataSource;
         }
@@ -233,6 +236,7 @@ function useClipboardHandlers(
     pushToUndoStack,
     columns,
     getFinalSelectedRange,
+    onClipboardError,
   ]);
 
   return { handleCopy, handlePaste };
@@ -654,6 +658,7 @@ export function useGridEditController({
   columns,
   rows,
   rowIdKey = 'id',
+  onClipboardError,
 }: {
   dataSource: Record<string, string>[];
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
@@ -661,6 +666,12 @@ export function useGridEditController({
   /** Rows the grid renders, when it shows a filtered subset of dataSource. */
   rows?: Record<string, string>[];
   rowIdKey?: string | null;
+  /**
+   * Called when the clipboard cannot be read or written. Passed in, not
+   * imported here, so this hook stays free of app modules (toast, i18n):
+   * playwright/browser-tests/gridEditors.spec.ts bundles it on its own.
+   */
+  onClipboardError?: () => void;
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
@@ -700,7 +711,8 @@ export function useGridEditController({
     gridRows,
     setGridRows,
     columns,
-    pushFullUndo
+    pushFullUndo,
+    onClipboardError
   );
 
   const isShiftArrow = useRef(false);
