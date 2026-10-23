@@ -53,10 +53,10 @@ import {
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForArticleSearchResponse,
+  waitForArticleSettled,
   waitForDraftPersisted,
   waitForDraftSyncedIntoEditor,
   waitForRecentlyViewed,
-  waitForArticleSettled,
 } from '../../utils/ContextCenterUtil';
 import {
   addMultiOwner,
