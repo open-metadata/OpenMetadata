@@ -53,11 +53,15 @@ export const hashtagSuggestion = () => ({
 
   render: () => {
     let component: ReactRenderer | undefined;
+    // Suggestion awaits async items, so a newer query's onUpdate can arrive before onStart.
+    let pendingProps: SuggestionProps | undefined;
     let popup: Instance<Props>[] = [];
     let hasPopup = !isEmpty(popup);
 
     return {
-      onStart: (props: SuggestionProps) => {
+      onStart: (startProps: SuggestionProps) => {
+        const props = pendingProps ?? startProps;
+        pendingProps = undefined;
         // Check if editor is in preview mode
         if (props.editor.isEditable === false) {
           return;
@@ -85,7 +89,12 @@ export const hashtagSuggestion = () => ({
       },
 
       onUpdate(props: SuggestionProps) {
-        component?.updateProps(props);
+        if (!component) {
+          pendingProps = props;
+
+          return;
+        }
+        component.updateProps(props);
 
         if (!props.clientRect) {
           return;
