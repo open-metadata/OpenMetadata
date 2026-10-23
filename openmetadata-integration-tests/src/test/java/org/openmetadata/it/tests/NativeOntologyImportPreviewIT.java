@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.OntologyChangeSetTestSupport;
+import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -21,7 +22,10 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportCounts;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
@@ -29,6 +33,7 @@ import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
@@ -38,7 +43,10 @@ import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
@@ -61,11 +69,17 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
                 .withReleaseId(active.getId())
                 .withExpectedActivationRevision(0L));
     final var before = client.ontologies().state(ontology.getId());
+    final List<UUID> conceptsBefore = conceptIds(ontology);
     final String baseIri = "https://example.org/model/" + ns.shortPrefix() + "/";
 
-    final CreateOntologyChangeSet preview =
+    final NativeOntologyImportPreview dryRun =
         client.ontologies().previewImport(ontology.getId(), graphTurtle(baseIri));
 
+    assertEquals(NativeOntologyImportFormat.TURTLE, dryRun.getSummary().getDetectedFormat());
+    assertEquals("Source model", dryRun.getSummary().getOntologyLabel());
+    assertEquals(counts(2, 0, 1, 0, 1, 0, 0, 0), dryRun.getSummary().getCounts());
+    assertEquals(conceptsBefore, conceptIds(ontology));
+    final CreateOntologyChangeSet preview = dryRun.getChangeSet();
     assertEquals(ontology.getFullyQualifiedName(), preview.getOntology());
     assertEquals(before.getWorkingRevision(), preview.getBaseWorkingRevision());
     assertEquals(4, preview.getOperations().size());
@@ -152,13 +166,83 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
     assertEquals(active.getId(), client.ontologies().state(ontology.getId()).getActiveReleaseId());
     assertEquals(
         4, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
+    final var afterApply = client.ontologies().state(ontology.getId());
+    final List<UUID> conceptsAfterApply = conceptIds(ontology);
+
+    final NativeOntologyImportPreview repeat =
+        client.ontologies().previewImport(ontology.getId(), graphTurtle(baseIri));
+
+    assertEquals(counts(0, 0, 0, 0, 0, 0, 3, 1), repeat.getSummary().getCounts());
+    assertEquals(0, repeat.getChangeSet().getOperations().size());
     assertEquals(
-        0,
-        client
-            .ontologies()
-            .previewImport(ontology.getId(), graphTurtle(baseIri))
-            .getOperations()
-            .size());
+        afterApply.getWorkingRevision(),
+        client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(conceptsAfterApply, conceptIds(ontology));
+  }
+
+  @Test
+  void repeatedDefinitionsAreSkippedAndOnlyNewOnesPlanned(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final String baseIri = "https://example.org/model/" + ns.shortPrefix() + "/";
+    for (final String name : List.of("Alpha", "Beta", "Gamma")) {
+      declareClass(ontology, name, URI.create(baseIri + name));
+    }
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+    final List<UUID> conceptsBefore = conceptIds(ontology);
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFormat(NativeOntologyImportFormat.TURTLE)
+            .withData(
+                """
+                @prefix ex: <%s> .
+                @prefix owl: <http://www.w3.org/2002/07/owl#> .
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+                ex:Alpha a owl:Class ; rdfs:label "Alpha" .
+                ex:Beta a owl:Class ; rdfs:label "Beta" .
+                ex:Gamma a owl:Class ; rdfs:label "Gamma" .
+                ex:Delta a owl:Class ; rdfs:label "Delta" .
+                """
+                    .formatted(baseIri));
+
+    final NativeOntologyImportPreview preview =
+        client.ontologies().previewImport(ontology.getId(), request);
+
+    assertEquals(counts(1, 0, 0, 0, 0, 0, 3, 0), preview.getSummary().getCounts());
+    assertEquals(1, preview.getChangeSet().getOperations().size());
+    assertEquals(
+        baseIri + "Delta",
+        preview.getChangeSet().getOperations().getFirst().getConcept().getIri().toString());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(conceptsBefore, conceptIds(ontology));
+  }
+
+  @Test
+  void targetFreePreviewCountsTheFileAndRequiresCreateOnOntologies(TestNamespace ns) {
+    final var client = SdkClients.adminClient();
+    final String baseIri = "https://example.org/model/" + ns.shortPrefix() + "/";
+
+    final NativeOntologyImportSummary summary =
+        client.ontologies().previewImport(graphTurtle(baseIri));
+
+    assertEquals(NativeOntologyImportFormat.TURTLE, summary.getDetectedFormat());
+    assertEquals("Source model", summary.getOntologyLabel());
+    assertEquals(counts(2, 0, 1, 0, 1, 0, 0, 0), summary.getCounts());
+    try (var fixtures = new RdfAccessFixtures("import" + ns.shortPrefix())) {
+      final var role = fixtures.denyRole(MetadataOperation.CREATE, Entity.ONTOLOGY);
+      final OpenMetadataClient denied =
+          new OpenMetadataClient(
+              OpenMetadataConfig.builder()
+                  .serverUrl(SdkClients.baseUrl())
+                  .accessToken(fixtures.userToken("importer", List.of(role.getId())))
+                  .build());
+      assertEquals(
+          403,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> denied.ontologies().previewImport(graphTurtle(baseIri)))
+              .getStatusCode());
+    }
   }
 
   @Test
@@ -197,7 +281,9 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
                   skos:exactMatch <https://external.example/Customer> .
                 """
                     .formatted(conceptIri));
-    final var preview = client.ontologies().previewImport(ontology.getId(), request);
+    final var dryRun = client.ontologies().previewImport(ontology.getId(), request);
+    assertEquals(counts(0, 1, 0, 0, 0, 0, 0, 0), dryRun.getSummary().getCounts());
+    final var preview = dryRun.getChangeSet();
     assertEquals(1, preview.getOperations().size());
     assertEquals(saved.getId(), preview.getOperations().getFirst().getTargetId());
     assertEquals(mappings, client.ontologyConcepts().get(saved.getId()).getConceptMappings());
@@ -213,8 +299,9 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
     final var updated = client.ontologyConcepts().get(saved.getId());
     assertEquals("Updated customer", updated.getDisplayName());
     assertEquals(mappings, updated.getConceptMappings());
-    assertEquals(
-        0, client.ontologies().previewImport(ontology.getId(), request).getOperations().size());
+    final var repeat = client.ontologies().previewImport(ontology.getId(), request);
+    assertEquals(counts(0, 0, 0, 0, 0, 0, 1, 0), repeat.getSummary().getCounts());
+    assertEquals(0, repeat.getChangeSet().getOperations().size());
   }
 
   @Test
@@ -282,7 +369,7 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
     final String importedIri = "https://example.org/model/" + ns.shortPrefix() + "/First";
     final CreateOntologyChangeSet preview =
-        client.ontologies().previewImport(ontology.getId(), turtle(importedIri));
+        client.ontologies().previewImport(ontology.getId(), turtle(importedIri)).getChangeSet();
     final UUID importedId = preview.getOperations().getFirst().getConcept().getId();
     final OntologyConcept conflicting =
         new OntologyConcept()
@@ -352,11 +439,42 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
             @prefix ex: <%s> .
             @prefix owl: <http://www.w3.org/2002/07/owl#> .
             @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-            <https://external.example/source> a owl:Ontology .
+            <https://external.example/source> a owl:Ontology ; rdfs:label "Source model" .
             ex:Customer a owl:Class ; rdfs:label "Customer" ; rdfs:subClassOf ex:Party .
             ex:Party a owl:Class ; rdfs:label "Party" .
             ex:knows a owl:ObjectProperty ; rdfs:label "knows" ; rdfs:domain ex:Customer ; rdfs:range ex:Party .
             """
                 .formatted(baseIri));
+  }
+
+  static NativeOntologyImportCounts counts(
+      int newConcepts,
+      int updatedConcepts,
+      int newProperties,
+      int updatedProperties,
+      int newRelations,
+      int newMappings,
+      int skippedDefinitions,
+      int skippedRelations) {
+    return new NativeOntologyImportCounts()
+        .withNewConcepts(newConcepts)
+        .withUpdatedConcepts(updatedConcepts)
+        .withNewProperties(newProperties)
+        .withUpdatedProperties(updatedProperties)
+        .withNewRelations(newRelations)
+        .withNewMappings(newMappings)
+        .withSkippedDefinitions(skippedDefinitions)
+        .withSkippedRelations(skippedRelations);
+  }
+
+  static List<UUID> conceptIds(Ontology ontology) {
+    return SdkClients.adminClient()
+        .ontologyConcepts()
+        .list(new ListParams().addFilter("ontology", ontology.getFullyQualifiedName()))
+        .getData()
+        .stream()
+        .map(OntologyConcept::getId)
+        .sorted()
+        .toList();
   }
 }

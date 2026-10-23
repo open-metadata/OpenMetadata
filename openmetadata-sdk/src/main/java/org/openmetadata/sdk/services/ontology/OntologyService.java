@@ -4,7 +4,9 @@ import java.util.UUID;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
-import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -46,13 +48,27 @@ public final class OntologyService extends EntityServiceBase<Ontology> {
         options.build());
   }
 
-  public CreateOntologyChangeSet previewImport(
+  public NativeOntologyImportPreview previewImport(
       final UUID id, final PreviewNativeOntologyImport request) {
     return httpClient.execute(
         HttpMethod.POST,
         basePath + "/" + id + "/imports/preview",
         request,
-        CreateOntologyChangeSet.class);
+        NativeOntologyImportPreview.class);
+  }
+
+  public NativeOntologyImportSummary previewImport(final PreviewNativeOntologyImport request) {
+    return httpClient.execute(
+        HttpMethod.POST, basePath + "/imports/preview", request, NativeOntologyImportSummary.class);
+  }
+
+  public NativeOntologyImportDetection detectImportFormat(
+      final PreviewNativeOntologyImport request) {
+    return httpClient.execute(
+        HttpMethod.POST,
+        basePath + "/imports/detect",
+        request,
+        NativeOntologyImportDetection.class);
   }
 
   public OntologyRelease capture(final UUID id, final CaptureOntologyRelease request) {

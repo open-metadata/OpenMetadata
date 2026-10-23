@@ -50,7 +50,10 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -73,6 +76,7 @@ import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
@@ -81,7 +85,6 @@ import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -262,40 +265,69 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final var selected =
         packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
     return previewImport(
-        uriInfo,
-        securityContext,
-        id,
-        new PreviewNativeOntologyImport()
-            .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
-            .withData(selected.body()));
+            uriInfo,
+            securityContext,
+            id,
+            new PreviewNativeOntologyImport()
+                .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
+                .withData(selected.body()))
+        .getChangeSet();
   }
 
   @POST
   @Path("/{id}/imports/preview")
   @Operation(
       operationId = "previewNativeOntologyImport",
-      summary = "Preview local RDF as native ontology draft operations")
-  public CreateOntologyChangeSet previewImport(
+      summary = "Preview a local RDF or native CSV file as native ontology draft operations",
+      description =
+          "Dry run against this ontology's working revision: the detected format, per-kind counts of what the file would add, update, or repeat, and the change-set request that applies it. Nothing is persisted.")
+  public NativeOntologyImportPreview previewImport(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @NotNull @Valid final PreviewNativeOntologyImport request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
     final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
-    final var model =
-        importer.parse(
-            request.getData(), RdfSerializationFormat.parse(request.getFormat().value()));
-    try {
-      return releaseCapture
-          .snapshot()
-          .read(
-              id,
-              definitions ->
-                  OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
-              working -> importer.reconcile(model, working));
-    } finally {
-      model.close();
-    }
+    final NativeOntologyRdfImporter.Source source = importer.read(request);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            definitions ->
+                OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+            working -> importer.preview(source, working));
+  }
+
+  @POST
+  @Path("/imports/preview")
+  @Operation(
+      operationId = "previewNativeOntologyImportWithoutTarget",
+      summary = "Count what a local RDF or native CSV file would import into a new ontology",
+      description =
+          "Parses the file against an empty target and returns the detected format, the source ontology's label, and per-kind counts. Nothing is persisted and no ontology is created.")
+  public NativeOntologyImportSummary previewImportWithoutTarget(
+      @Context final SecurityContext securityContext,
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.CREATE),
+        getResourceContext());
+    final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+    return importer.summarize(importer.read(request));
+  }
+
+  @POST
+  @Path("/imports/detect")
+  @Operation(
+      operationId = "detectNativeOntologyImportFormat",
+      summary = "Name the format of a local ontology file",
+      description =
+          "Reads at most the first 65536 characters of the file and returns the format the preview would parse it with, from the content first and the file name second. Nothing is persisted.")
+  public NativeOntologyImportDetection detectImportFormat(
+      @Context final SecurityContext securityContext,
+      @NotNull @Valid final PreviewNativeOntologyImport request) {
+    return new NativeOntologyImportDetection()
+        .withDetectedFormat(OntologyFormatDetector.resolve(request).orElse(null));
   }
 
   @GET
