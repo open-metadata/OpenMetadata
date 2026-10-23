@@ -107,17 +107,17 @@ TAG_PROBE_COMMAND = "SELECT * FROM information_schema.{catalog_tags,schema_tags,
 UNITY_CATALOG_ERRORS = ErrorPack(
     when(Matchers.exception(Unauthenticated)).diagnose(
         "Authentication failed",
-        fix="The workspace rejected the credentials. Verify the personal access token, OAuth "
-        "client secret, or Azure AD credentials are valid and not expired.",
+        fix="The workspace rejected the credentials. Check whichever you are using - personal access token, OAuth client "
+        "secret, or Azure AD credentials - is correct and has not expired.",
     ),
     when(Matchers.contains("invalid access token")).diagnose(
         "Authentication failed",
-        fix="The workspace rejected the access token. Verify it is valid, not expired, and "
-        "belongs to a user with access to this workspace.",
+        fix="The workspace rejected the access token. Check it was copied whole, has not expired, and belongs to a user "
+        "who can reach this workspace.",
     ),
     when(Matchers.contains("token is expired")).diagnose(
         "Access token expired",
-        fix="The access token has expired. Generate a new token and update the connection.",
+        fix="The access token has expired. Generate a new one in Databricks and paste it into the connection.",
     ),
     when(
         Matchers.any_of(
@@ -127,49 +127,48 @@ UNITY_CATALOG_ERRORS = ErrorPack(
         )
     ).diagnose(
         "Insufficient privileges",
-        fix="Grant the connection's principal the privileges the failing step needs: USE CATALOG "
-        "on the catalog, USE SCHEMA on the schema, and SELECT on its tables.",
+        fix="The account this connection uses is not allowed to read what this step needs. Grant it USE CATALOG on the "
+        "catalog, USE SCHEMA on the schema, and SELECT on the tables inside.",
     ),
     when(Matchers.exception(ResourceDoesNotExist, NotFound)).diagnose(
         "Object not found",
-        fix="The configured catalog or schema does not exist, or is not visible to the "
-        "connection's principal. Verify the names and the USE CATALOG / USE SCHEMA grants.",
+        fix="Unity Catalog could not find the catalog or schema. Check the names in Catalog and Database Schema - an "
+        "object the account has not been granted USE CATALOG or USE SCHEMA on is reported as missing too.",
     ),
     when(Matchers.contains("no_such_catalog")).diagnose(
         "Catalog not found",
-        fix="The configured catalog does not exist or is not visible. Verify the catalog name and "
-        "that the principal has USE CATALOG on it.",
+        fix="Unity Catalog has no catalog with the name in Catalog, or the account cannot see it. Check the name, and "
+        "that the account has USE CATALOG on it.",
     ),
     when(Matchers.contains("no_such_schema")).diagnose(
         "Schema not found",
-        fix="The configured schema does not exist or is not visible. Verify the schema name and "
-        "that the principal has USE SCHEMA on it.",
+        fix="Unity Catalog has no schema with the name in Database Schema, or the account cannot see it. Check the name, "
+        "and that the account has USE SCHEMA on it.",
     ),
     when(Matchers.contains("table_or_view_not_found")).diagnose(
         "Table or view not found",
-        fix="The referenced table or view does not exist or is not visible. Verify the object "
-        "exists and the principal has SELECT on it.",
+        fix="The table or view this step read does not exist, or the account cannot see it. Check it exists and that the "
+        "account has SELECT on it.",
     ),
     when(Matchers.contains("malformed_request")).diagnose(
         "Invalid HTTP path",
-        fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
-        "Details in Databricks - it must look like /sql/1.0/warehouses/<warehouseId>.",
+        fix="Databricks did not recognise the value in Http Path. Copy it from the Connection Details tab of the SQL "
+        "warehouse in Databricks - it looks like /sql/1.0/warehouses/<id>.",
     ),
     when(Matchers.contains("no valid connection settings")).diagnose(
         "SQL warehouse not configured",
-        fix="The GetQueries and GetTags steps open a SQL connection, which needs an HTTP Path. Set "
-        "it to a running SQL warehouse (/sql/1.0/warehouses/<warehouseId>). Metadata ingestion "
-        "works without it, but query-log lineage and tag extraction do not.",
+        fix="These steps open a SQL connection, and that needs Http Path pointing at a running SQL warehouse. Metadata "
+        "ingestion works without it, but query-log lineage and tag extraction will not.",
     ),
     when(Matchers.contains("failed to connect to the database")).diagnose(
         "SQL warehouse not reachable",
-        fix="Could not open a SQL connection over the configured HTTP Path. Verify the SQL "
-        "warehouse is running and the principal can use it, and that the HTTP Path is correct.",
+        fix="Could not open a SQL connection over the path in Http Path. Check the SQL warehouse is running, that the "
+        "path is right, and that the account is allowed to use that warehouse.",
     ),
     when(Matchers.contains("does not exist")).diagnose(
         "Object not found",
-        fix="Verify the configured catalog, schema, and HTTP path exist and the connection's "
-        "principal is authorized to use them.",
+        fix="Unity Catalog could not find something this connection names. Check Catalog, Database Schema and Http Path, "
+        "and that the account is allowed to use them.",
     ),
 ).including(NETWORK_ERRORS)
 
