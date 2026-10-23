@@ -386,10 +386,14 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
-                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
-                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
                 + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -398,10 +402,14 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
-                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
-                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
+                + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+                + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
                 + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
@@ -416,10 +424,14 @@ public interface ClassificationTagDAOs {
             + "CASE "
             + "  WHEN tu.source = 1 THEN gterm.json "
             + "  WHEN tu.source = 0 THEN ta.json "
-            + "END as json "
+            + "END as json, "
+            + "CASE "
+            + "  WHEN tu.source = 1 THEN gterm.deleted "
+            + "  WHEN tu.source = 0 THEN ta.deleted "
+            + "END as entityDeleted "
             + "FROM tag_usage tu "
-            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash AND gterm.deleted = FALSE "
-            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash AND ta.deleted = FALSE "
+            + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
+            + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
             + "WHERE tu.targetFQNHash IN (<targetFQNHashes>)")
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByTargetHashes(
@@ -735,6 +747,12 @@ public interface ClassificationTagDAOs {
               source,
               label.getTagFQN(),
               r.getString("targetFQNHash"));
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
+        Boolean entityDeleted = (Boolean) r.getObject("entityDeleted");
+        if (entityDeleted != null && entityDeleted) {
+          // The tag or glossary term is soft-deleted. Return the label unenriched (without the
+          // orphan warning) so normal deletes do not produce spurious broken-reference warnings.
           return Pair.of(r.getString("targetFQNHash"), label);
         }
         if (source == TagLabel.TagSource.CLASSIFICATION) {
