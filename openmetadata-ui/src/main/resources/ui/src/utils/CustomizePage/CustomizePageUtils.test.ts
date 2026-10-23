@@ -225,7 +225,17 @@ describe('CustomizePageUtils', () => {
       const result = getDefaultTabs(PageType.Glossary);
 
       expect(result).toBeDefined();
-      expect(result).toHaveLength(3); // Terms, Relations Graph, Activity Feed tabs
+      expect(result).toHaveLength(4); // Terms, Review, Relations Graph, Activity Feed tabs
+    });
+
+    it('lists Review right after Terms in glossary default tabs, so a persona can move or hide it', () => {
+      const result = getDefaultTabs(PageType.Glossary);
+
+      expect(result.map((tab) => tab.id).slice(0, 2)).toEqual([
+        EntityTabs.TERMS,
+        EntityTabs.REVIEW,
+      ]);
+      expect(result[1].editable).toBe(false);
     });
 
     it('should include RELATIONS_GRAPH in glossary default tabs', () => {

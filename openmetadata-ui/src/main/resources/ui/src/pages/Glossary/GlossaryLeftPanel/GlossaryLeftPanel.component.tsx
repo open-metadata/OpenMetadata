@@ -11,13 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  NavList,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button, NavList, Typography } from '@openmetadata/ui-core-components';
 import {
   Glossary as GlossaryIcon,
   Plus,
@@ -26,11 +20,9 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DomainFilterChip } from '../../../components/common/DomainFilterChip/DomainFilterChip.component';
 import GlossaryV1Skeleton from '../../../components/common/Skeleton/GlossaryV1/GlossaryV1LeftPanelSkeleton.component';
-import ProposalSourceMark from '../../../components/governance/glossary/GlossaryReview/ProposalSourceMark';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { useGlossaryPendingCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useFqn } from '../../../hooks/useFqn';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import Fqn from '../../../utils/Fqn';
@@ -60,32 +52,14 @@ const GlossaryLeftPanel = ({
     return glossaries[0]?.fullyQualifiedName;
   }, [glossaryFqn, glossaries]);
 
-  const pendingCounts = useGlossaryPendingCounts(glossaries.length > 0);
-  const hasPendingTerms = Object.keys(pendingCounts?.all ?? {}).length > 0;
-
   const navItems = useMemo(
     () =>
-      glossaries.map((glossary) => {
-        const pending = pendingCounts?.all[glossary.id] ?? 0;
-        const fromAi = pendingCounts?.ai[glossary.id] ?? 0;
-
-        return {
-          label: getEntityName(glossary),
-          href: getGlossaryPath(glossary.fullyQualifiedName),
-          icon: GlossaryIcon,
-          badge:
-            pending > 0 ? (
-              <Badge
-                color={fromAi > 0 ? 'purple' : 'warning'}
-                data-testid={`pending-terms-${glossary.name}`}
-                size="sm"
-                type="pill-color">
-                {pending}
-              </Badge>
-            ) : undefined,
-        };
-      }),
-    [glossaries, pendingCounts]
+      glossaries.map((glossary) => ({
+        label: getEntityName(glossary),
+        href: getGlossaryPath(glossary.fullyQualifiedName),
+        icon: GlossaryIcon,
+      })),
+    [glossaries]
   );
 
   useEffect(() => {
@@ -145,23 +119,6 @@ const GlossaryLeftPanel = ({
               size="sm"
             />
           </nav>
-
-          {hasPendingTerms && (
-            <div
-              className="tw:mx-3 tw:rounded-lg tw:bg-secondary tw:p-3 tw:text-xs tw:text-tertiary"
-              data-testid="proposal-legend">
-              <Box direction="col" gap={2}>
-                <Box align="center" gap={2}>
-                  <ProposalSourceMark source="ai" />
-                  {t('label.proposed-by-ai-agent')}
-                </Box>
-                <Box align="center" gap={2}>
-                  <ProposalSourceMark source="person" />
-                  {t('label.proposed-by-a-person')}
-                </Box>
-              </Box>
-            </div>
-          )}
         </div>
       </GlossaryV1Skeleton>
     </div>

@@ -19,18 +19,11 @@ import { User } from '../../generated/entity/teams/user';
 import { EntityReference } from '../../generated/type/entityReference';
 import { Task } from '../../rest/tasksAPI';
 import {
-  canDecideAiGeneratedDraft,
   getGlossaryEntityLink,
   isAiGeneratedDraft,
   permissionForApproveOrReject,
 } from '../GlossaryPureUtils';
-import {
-  GlossaryProposal,
-  ProposalCounts,
-  ProposalFilter,
-  ProposalSlice,
-  ProposalSource,
-} from './GlossaryReview.types';
+import { GlossaryProposal, ProposalSource } from './GlossaryReview.types';
 
 export const PENDING_REVIEW_STATUSES = [
   EntityStatus.Draft,
@@ -91,48 +84,6 @@ export const toProposals = (
   });
 };
 
-/**
- * The slices of each source's pending terms that make one page of the queue. AI agents'
- * proposals come before people's, so a page of all proposals can end one and start the other.
- */
-export const getPageSlices = (
-  filter: ProposalFilter,
-  page: number,
-  counts: ProposalCounts,
-  size: number
-): ProposalSlice[] => {
-  const start = (page - 1) * size;
-  const end = start + size;
-  if (filter !== 'all') {
-    return start < counts[filter]
-      ? [{ source: filter, offset: start, limit: size }]
-      : [];
-  }
-  const slices: ProposalSlice[] = [];
-  if (start < counts.ai) {
-    slices.push({
-      source: 'ai',
-      offset: start,
-      limit: Math.min(end, counts.ai) - start,
-    });
-  }
-  if (end > counts.ai && start < counts.all) {
-    slices.push({
-      source: 'person',
-      offset: Math.max(0, start - counts.ai),
-      limit: end - Math.max(start, counts.ai),
-    });
-  }
-
-  return slices;
-};
-
-export const getTotalPages = (
-  counts: ProposalCounts,
-  filter: ProposalFilter,
-  size: number
-) => Math.max(1, Math.ceil(counts[filter] / size));
-
 /** A loaded row of the terms table: a term, whose children are rows too. */
 type TermRow = Pick<GlossaryTerm, 'id' | 'entityStatus' | 'provider'> & {
   children?: unknown[];
@@ -144,16 +95,6 @@ export const collectAiDraftIds = (rows: TermRow[]): string[] =>
     ...(getProposalSource(row) === 'ai' ? [row.id] : []),
     ...collectAiDraftIds((row.children ?? []) as TermRow[]),
   ]);
-
-/** Filtering by who proposed only helps when both AI agents and people have proposals. */
-export const hasProposalsFromBothSources = (counts: ProposalCounts) =>
-  counts.ai > 0 && counts.person > 0;
-
-/** The filter that applies: every proposal, once only one source has any left. */
-export const getActiveFilter = (
-  counts: ProposalCounts,
-  filter: ProposalFilter
-): ProposalFilter => (hasProposalsFromBothSources(counts) ? filter : 'all');
 
 /** The agent's confidence as a whole percentage, when it recorded one. */
 export const getConfidencePercent = (derivation?: MemoryDerivation) => {
@@ -172,18 +113,14 @@ export const getProposalAuthor = (proposal: GlossaryProposal) =>
   getRequestAuthor(proposal.approvalTask, proposal.term.updatedBy);
 
 /**
- * Whether the user decides this proposal. A term the approval workflow holds is decided through
- * its approval request; an AI draft directly, by its reviewers or by anyone who can edit it.
+ * Whether the user decides this proposal: every proposal, an AI agent's included, is decided
+ * through its approval request, so no one decides one before the approval workflow opens it.
  */
 export const canDecideProposal = (
   proposal: GlossaryProposal,
-  user: User | undefined,
-  canEditTerm: boolean
+  user: User | undefined
 ) => {
-  if (!proposal.approvalTask) {
-    return canDecideAiGeneratedDraft(proposal.term, user, canEditTerm);
-  }
-  if (!user) {
+  if (!proposal.approvalTask || !user) {
     return false;
   }
   const entityLink = getGlossaryEntityLink(
@@ -197,9 +134,9 @@ export const canDecideProposal = (
   ).permission;
 };
 
-/** The people a proposal waits on, named to everyone who cannot decide it. */
-export const getDeciders = (proposal: GlossaryProposal): EntityReference[] => {
-  const assignees = proposal.approvalTask?.assignees ?? [];
-
-  return assignees.length > 0 ? assignees : proposal.term.reviewers ?? [];
-};
+/**
+ * The people a proposal waits on, named to everyone who cannot decide it: its approval request's
+ * assignees, and no one before the request opens, since a reviewer cannot decide it either.
+ */
+export const getDeciders = (proposal: GlossaryProposal): EntityReference[] =>
+  proposal.approvalTask?.assignees ?? [];
