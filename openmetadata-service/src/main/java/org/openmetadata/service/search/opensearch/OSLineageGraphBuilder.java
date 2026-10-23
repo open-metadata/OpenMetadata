@@ -1390,6 +1390,8 @@ public class OSLineageGraphBuilder
             new ArrayList<>(allEntitiesUpToDepth.values()),
             entityData -> entityData.depth,
             entityData -> entityData.fqn);
+    allEntitiesUpToDepthList.removeIf(
+        entityData -> entityData.depth == 0 && entityData.fqn.equals(request.getFqn()));
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 

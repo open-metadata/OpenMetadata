@@ -808,8 +808,8 @@ class ESLineageGraphBuilderTest {
       when(hitC.source()).thenReturn(jsonC);
 
       stubEsClientSearch();
-      // The walk and the page load both see all three: only sorting and slicing keep c off the
-      // page.
+      // The walk and the page load both see all three; sorting orders them a, b, c
+      // and from=1 skips the first non-root entity (a), so the page holds b and c.
       when(hitsMetadata.hits()).thenReturn(List.of(hitC, hitA, hitB));
 
       esUtilsMock
@@ -850,9 +850,208 @@ class ESLineageGraphBuilderTest {
       SearchLineageResult result = builder.searchLineageByEntityCount(request);
 
       assertTrue(result.getNodes().containsKey(ROOT_FQN));
-      assertTrue(result.getNodes().containsKey("service.database.schema.a_table"));
+      assertFalse(result.getNodes().containsKey("service.database.schema.a_table"));
       assertTrue(result.getNodes().containsKey("service.database.schema.b_table"));
-      assertFalse(result.getNodes().containsKey("service.database.schema.c_table"));
+      assertTrue(result.getNodes().containsKey("service.database.schema.c_table"));
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void searchLineageByEntityCount_noFilter_pageBoundary_returnsSizeNonRootRowsOnPage1()
+      throws IOException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<EsUtils> esUtilsMock = mockStatic(EsUtils.class);
+        MockedStatic<LineageUtil> lineageUtilMock =
+            mockStatic(LineageUtil.class, Mockito.CALLS_REAL_METHODS)) {
+
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubEsUtilsGetSearchRequest(esUtilsMock);
+
+      String e1 = "service.database.schema.e1_table";
+      String e2 = "service.database.schema.e2_table";
+      String e3 = "service.database.schema.e3_table";
+      String e4 = "service.database.schema.e4_table";
+
+      esUtilsMock
+          .when(
+              () ->
+                  EsUtils.searchEntityByKey(
+                      any(ElasticsearchClient.class),
+                      any(),
+                      anyString(),
+                      anyString(),
+                      any(),
+                      anyList()))
+          .thenReturn(entityDoc(ROOT_FQN, List.of()));
+
+      Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      List<Hit<JsonData>> walkHits =
+          List.of(
+              hitFor(docs, entityDoc(e3, List.of(lineageEdge(ROOT_FQN, e3)))),
+              hitFor(docs, entityDoc(e1, List.of(lineageEdge(ROOT_FQN, e1)))),
+              hitFor(docs, entityDoc(e4, List.of(lineageEdge(ROOT_FQN, e4)))),
+              hitFor(docs, entityDoc(e2, List.of(lineageEdge(ROOT_FQN, e2)))));
+      esUtilsMock
+          .when(() -> EsUtils.jsonDataToMap(any(JsonData.class)))
+          .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
+      stubEsClientSearch();
+      when(hitsMetadata.hits()).thenReturn(walkHits, walkHits);
+      lineageUtilMock
+          .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
+          .then(invocation -> null);
+
+      SearchLineageResult result =
+          new ESLineageGraphBuilder(esClient)
+              .searchLineageByEntityCount(
+                  new EntityCountLineageRequest()
+                      .withFqn(ROOT_FQN)
+                      .withDirection(LineageDirection.DOWNSTREAM)
+                      .withMaxDepth(1)
+                      .withNodeDepth(1)
+                      .withIncludeDeleted(false)
+                      .withFrom(0)
+                      .withSize(2)
+                      .withIncludeSourceFields(Set.of())
+                      .withIsConnectedVia(false));
+
+      assertTrue(result.getNodes().containsKey(ROOT_FQN));
+      assertTrue(result.getNodes().containsKey(e1));
+      assertTrue(result.getNodes().containsKey(e2));
+      assertFalse(result.getNodes().containsKey(e3));
+      assertFalse(result.getNodes().containsKey(e4));
+      assertEquals(3, result.getNodes().size());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void searchLineageByEntityCount_noFilter_pageBoundary_lastEntityReachableAtExactMultiple()
+      throws IOException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<EsUtils> esUtilsMock = mockStatic(EsUtils.class);
+        MockedStatic<LineageUtil> lineageUtilMock =
+            mockStatic(LineageUtil.class, Mockito.CALLS_REAL_METHODS)) {
+
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubEsUtilsGetSearchRequest(esUtilsMock);
+
+      String e1 = "service.database.schema.e1_table";
+      String e2 = "service.database.schema.e2_table";
+      String e3 = "service.database.schema.e3_table";
+      String e4 = "service.database.schema.e4_table";
+
+      esUtilsMock
+          .when(
+              () ->
+                  EsUtils.searchEntityByKey(
+                      any(ElasticsearchClient.class),
+                      any(),
+                      anyString(),
+                      anyString(),
+                      any(),
+                      anyList()))
+          .thenReturn(entityDoc(ROOT_FQN, List.of()));
+
+      Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      List<Hit<JsonData>> walkHits =
+          List.of(
+              hitFor(docs, entityDoc(e1, List.of(lineageEdge(ROOT_FQN, e1)))),
+              hitFor(docs, entityDoc(e2, List.of(lineageEdge(ROOT_FQN, e2)))),
+              hitFor(docs, entityDoc(e3, List.of(lineageEdge(ROOT_FQN, e3)))),
+              hitFor(docs, entityDoc(e4, List.of(lineageEdge(ROOT_FQN, e4)))));
+      esUtilsMock
+          .when(() -> EsUtils.jsonDataToMap(any(JsonData.class)))
+          .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
+      stubEsClientSearch();
+      when(hitsMetadata.hits()).thenReturn(walkHits, walkHits);
+      lineageUtilMock
+          .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
+          .then(invocation -> null);
+
+      SearchLineageResult result =
+          new ESLineageGraphBuilder(esClient)
+              .searchLineageByEntityCount(
+                  new EntityCountLineageRequest()
+                      .withFqn(ROOT_FQN)
+                      .withDirection(LineageDirection.DOWNSTREAM)
+                      .withMaxDepth(1)
+                      .withNodeDepth(1)
+                      .withIncludeDeleted(false)
+                      .withFrom(2)
+                      .withSize(2)
+                      .withIncludeSourceFields(Set.of())
+                      .withIsConnectedVia(false));
+
+      assertTrue(result.getNodes().containsKey(ROOT_FQN));
+      assertFalse(result.getNodes().containsKey(e1));
+      assertFalse(result.getNodes().containsKey(e2));
+      assertTrue(result.getNodes().containsKey(e3));
+      assertTrue(result.getNodes().containsKey(e4));
+      assertEquals(3, result.getNodes().size());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @Test
+  void searchLineageByEntityCount_noFilter_pageBoundary_upstreamReturnsSizeNonRootRowsOnPage1()
+      throws IOException {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<EsUtils> esUtilsMock = mockStatic(EsUtils.class);
+        MockedStatic<LineageUtil> lineageUtilMock =
+            mockStatic(LineageUtil.class, Mockito.CALLS_REAL_METHODS)) {
+
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      stubEsUtilsGetSearchRequest(esUtilsMock);
+
+      String up1 = "service.database.schema.up1_table";
+      String up2 = "service.database.schema.up2_table";
+
+      esUtilsMock
+          .when(
+              () ->
+                  EsUtils.searchEntityByKey(
+                      any(ElasticsearchClient.class),
+                      any(),
+                      anyString(),
+                      anyString(),
+                      any(),
+                      anyList()))
+          .thenReturn(entityDoc(ROOT_FQN, List.of()));
+
+      Map<JsonData, Map<String, Object>> docs = new HashMap<>();
+      Map<String, Object> rootWalkDoc =
+          entityDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN)));
+      List<Hit<JsonData>> rootHits = List.of(hitFor(docs, rootWalkDoc));
+      List<Hit<JsonData>> upstreamHits =
+          List.of(hitFor(docs, entityDoc(up1, List.of())), hitFor(docs, entityDoc(up2, List.of())));
+      esUtilsMock
+          .when(() -> EsUtils.jsonDataToMap(any(JsonData.class)))
+          .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
+      stubEsClientSearch();
+      when(hitsMetadata.hits()).thenReturn(rootHits, upstreamHits, upstreamHits);
+      lineageUtilMock
+          .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
+          .then(invocation -> null);
+
+      SearchLineageResult result =
+          new ESLineageGraphBuilder(esClient)
+              .searchLineageByEntityCount(
+                  new EntityCountLineageRequest()
+                      .withFqn(ROOT_FQN)
+                      .withDirection(LineageDirection.UPSTREAM)
+                      .withMaxDepth(1)
+                      .withNodeDepth(1)
+                      .withIncludeDeleted(false)
+                      .withFrom(0)
+                      .withSize(2)
+                      .withIncludeSourceFields(Set.of())
+                      .withIsConnectedVia(false));
+
+      assertTrue(result.getNodes().containsKey(ROOT_FQN));
+      assertTrue(result.getNodes().containsKey(up1));
+      assertTrue(result.getNodes().containsKey(up2));
+      assertEquals(3, result.getNodes().size());
     }
   }
 
@@ -892,11 +1091,11 @@ class ESLineageGraphBuilderTest {
               hitFor(docs, entityDoc(fqnC, List.of(lineageEdge(ROOT_FQN, fqnC)))),
               hitFor(docs, entityDoc(fqnA, List.of(lineageEdge(ROOT_FQN, fqnA)))),
               hitFor(docs, entityDoc(fqnB, List.of(lineageEdge(ROOT_FQN, fqnB)))));
-      Map<String, Object> wholeA = entityDoc(fqnA, List.of(lineageEdge(ROOT_FQN, fqnA)));
-      wholeA.put("columns", List.of(Map.of("name", "id")));
       Map<String, Object> wholeB = entityDoc(fqnB, List.of(lineageEdge(ROOT_FQN, fqnB)));
       wholeB.put("columns", List.of(Map.of("name", "id")));
-      List<Hit<JsonData>> pageHits = List.of(hitFor(docs, wholeA), hitFor(docs, wholeB));
+      Map<String, Object> wholeC = entityDoc(fqnC, List.of(lineageEdge(ROOT_FQN, fqnC)));
+      wholeC.put("columns", List.of(Map.of("name", "id")));
+      List<Hit<JsonData>> pageHits = List.of(hitFor(docs, wholeB), hitFor(docs, wholeC));
       esUtilsMock
           .when(() -> EsUtils.jsonDataToMap(any(JsonData.class)))
           .thenAnswer(invocation -> docs.getOrDefault(invocation.getArgument(0), Map.of()));
@@ -942,7 +1141,7 @@ class ESLineageGraphBuilderTest {
                   Map.of(
                       FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
                       Set.of(
-                          FullyQualifiedName.buildHash(fqnA), FullyQualifiedName.buildHash(fqnB))));
+                          FullyQualifiedName.buildHash(fqnB), FullyQualifiedName.buildHash(fqnC))));
       assertTrue(pageCall >= 0, "one request loads exactly the page's two documents");
       assertEquals(List.of(), includes.getAllValues().get(pageCall), "with the caller's fields");
       assertEquals(
@@ -950,9 +1149,9 @@ class ESLineageGraphBuilderTest {
           includes.getAllValues().get(0),
           "the walk reads only what finds the next level");
       assertTrue(
-          ((Map<String, Object>) result.getNodes().get(fqnA).getEntity()).containsKey("columns"),
+          ((Map<String, Object>) result.getNodes().get(fqnB).getEntity()).containsKey("columns"),
           "a page node is the whole document, not the walk's");
-      assertFalse(result.getNodes().containsKey(fqnC));
+      assertFalse(result.getNodes().containsKey(fqnA));
     }
   }
 
