@@ -15,11 +15,11 @@ The single-database path yields the user-configured database name verbatim into
 (server-stored casing). On the default case-insensitive collation, a user can
 configure e.g. ``database: northwind`` against a server-stored ``Northwind`` and
 the connection succeeds — but Python dict lookups are case-sensitive, so before
-the fix every database/schema/stored-procedure description from extended
-properties was silently dropped. This test recreates that scenario end-to-end
-against a real SQL Server: it installs a database under one casing, ingests it
-configured under a different casing, and asserts all three description types
-attach.
+the fix the database description (and, because the database key mismatched,
+the schema and stored-procedure descriptions too) was silently dropped. This
+test recreates that scenario end-to-end against a real SQL Server: it installs a
+database under one casing, ingests it configured under a different casing, and
+asserts all three description types attach.
 """
 
 from unittest.mock import patch
