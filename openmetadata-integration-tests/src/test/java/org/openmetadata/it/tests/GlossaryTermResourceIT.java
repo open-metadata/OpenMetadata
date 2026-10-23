@@ -24,6 +24,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -61,6 +63,9 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateItemResult.Reason;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
@@ -76,7 +81,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.fluent.GlossaryTerms;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -380,6 +387,254 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         Exception.class,
         () -> createEntity(request2),
         "Creating duplicate term in same glossary should fail");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void createMany_skipsExistingAndRepeatedNames(boolean softDeleted, TestNamespace ns) {
+    final Glossary glossary =
+        GlossaryTestFactory.createWithName(ns, "bulk_existing_" + softDeleted);
+    final CreateGlossaryTerm existingRequest =
+        new CreateGlossaryTerm()
+            .withName("existing")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Existing description");
+    final GlossaryTerm existing = createEntity(existingRequest);
+    if (softDeleted) {
+      deleteEntity(existing.getId().toString());
+    }
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("First occurrence");
+    final CreateGlossaryTerm repeated =
+        new CreateGlossaryTerm()
+            .withName(fresh.getName())
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Must not replace the first occurrence");
+    existingRequest.setDescription("Must not overwrite the existing term");
+
+    final List<GlossaryTerm> created = createManyTerms(List.of(fresh, existingRequest, repeated));
+
+    assertEquals(List.of(fresh.getName()), created.stream().map(GlossaryTerm::getName).toList());
+    assertEquals(
+        fresh.getDescription(), getEntity(created.getFirst().getId().toString()).getDescription());
+    final GlossaryTerm stored =
+        SdkClients.adminClient().glossaryTerms().get(existing.getId().toString(), "", "all");
+    assertEquals(existing.getDescription(), stored.getDescription());
+    assertEquals(softDeleted, stored.getDeleted());
+    assertTrue(createManyTerms(List.of(existingRequest)).isEmpty());
+  }
+
+  @Test
+  void createMany_sameNameInDifferentGlossariesCreatesBoth(TestNamespace ns) {
+    final Glossary first = GlossaryTestFactory.createWithName(ns, "first");
+    final Glossary second = GlossaryTestFactory.createWithName(ns, "second");
+    final List<GlossaryTerm> created =
+        createManyTerms(
+            List.of(
+                new CreateGlossaryTerm()
+                    .withName("shared")
+                    .withGlossary(first.getFullyQualifiedName())
+                    .withDescription("First"),
+                new CreateGlossaryTerm()
+                    .withName("shared")
+                    .withGlossary(second.getFullyQualifiedName())
+                    .withDescription("Second")));
+
+    assertEquals(2, created.size());
+    assertNotEquals(
+        created.getFirst().getFullyQualifiedName(), created.getLast().getFullyQualifiedName());
+  }
+
+  @Test
+  void createMany_sameNameUnderDifferentParentReportsValidationFailure(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createWithName(ns, "different_parent");
+    final CreateGlossaryTerm parentRequest =
+        new CreateGlossaryTerm()
+            .withName("parent")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Parent term");
+    final GlossaryTerm parent = createEntity(parentRequest);
+    final CreateGlossaryTerm existingRequest =
+        new CreateGlossaryTerm()
+            .withName("shared")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Existing root term");
+    createEntity(existingRequest);
+    existingRequest.setParent(parent.getFullyQualifiedName());
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Fresh term");
+
+    final BulkCreateResult result =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .createMany(List.of(fresh, existingRequest), BulkCreateConflictPolicy.SKIP);
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().getLast().getReason());
+    assertFalse(result.getResults().getLast().getMessage().isBlank());
+    assertNull(result.getResults().getLast().getId());
+    assertEquals(
+        fresh.getName(), getEntity(result.getResults().getFirst().getId().toString()).getName());
+  }
+
+  private List<GlossaryTerm> createManyTerms(List<CreateGlossaryTerm> requests) {
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.POST, "/v1/glossaryTerms/createMany", requests);
+    return JsonUtils.readObjects(response, GlossaryTerm.class);
+  }
+
+  @Test
+  void createMany_firstValidOccurrenceWinsAfterMappingFailure(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Valid");
+    final CreateGlossaryTerm invalid =
+        new CreateGlossaryTerm()
+            .withName(fresh.getName())
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withRelatedTerms(List.of(ns.prefix("missing_term")))
+            .withDescription("Invalid reference");
+
+    final BulkCreateResult result = GlossaryTerms.createMany(List.of(invalid, fresh)).execute();
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(1, result.getFailedCount());
+    assertEquals(0, result.getResults().getFirst().getIndex());
+    assertEquals(Reason.VALIDATION_ERROR, result.getResults().getFirst().getReason());
+    assertTrue(result.getResults().getFirst().getMessage().contains("not found"));
+    assertNull(result.getResults().getFirst().getId());
+    assertEquals(
+        fresh.getName(), getEntity(result.getResults().getLast().getId().toString()).getName());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void createMany_failPolicyPreservesExistingTerms(boolean softDeleted, TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createWithName(ns, "fail_policy_" + softDeleted);
+    final CreateGlossaryTerm existingRequest =
+        new CreateGlossaryTerm()
+            .withName("existing")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Original");
+    final GlossaryTerm existing = createEntity(existingRequest);
+    if (softDeleted) {
+      deleteEntity(existing.getId().toString());
+    }
+    existingRequest.setDescription("Must not overwrite");
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("New");
+    final BulkCreateResult result =
+        GlossaryTerms.createMany(List.of(existingRequest, fresh, fresh))
+            .onConflict(BulkCreateConflictPolicy.FAIL)
+            .execute();
+
+    assertEquals(1, result.getCreatedCount());
+    assertEquals(0, result.getSkippedCount());
+    assertEquals(2, result.getFailedCount());
+    assertNull(result.getResults().getFirst().getId());
+    assertEquals(Reason.ALREADY_EXISTS, result.getResults().getFirst().getReason());
+    assertEquals(Reason.DUPLICATE_IN_REQUEST, result.getResults().getLast().getReason());
+    final GlossaryTerm stored =
+        SdkClients.adminClient().glossaryTerms().get(existing.getId().toString(), "", "all");
+    assertEquals(softDeleted, stored.getDeleted());
+    assertEquals(existing.getDescription(), stored.getDescription());
+  }
+
+  @Test
+  void createMany_withoutPolicyRejectsInvalidTermsBeforeWriting(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final CreateGlossaryTerm fresh =
+        new CreateGlossaryTerm()
+            .withName("fresh")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Valid");
+    final CreateGlossaryTerm invalid =
+        new CreateGlossaryTerm()
+            .withName("invalid")
+            .withGlossary(ns.prefix("missing_glossary"))
+            .withDescription("Invalid");
+    final OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> createManyTerms(List.of(fresh, invalid)));
+    assertEquals(404, error.getStatusCode());
+    assertEquals(
+        List.of(fresh.getName()),
+        createManyTerms(List.of(fresh)).stream().map(GlossaryTerm::getName).toList());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"skip", "fail"})
+  void createMany_conflictsDoNotExposeUnreadableEntityIds(String policy, TestNamespace ns)
+      throws Exception {
+    final Glossary glossary = GlossaryTestFactory.createWithName(ns, "no_read_" + policy);
+    final CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName("existing")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Original");
+    final GlossaryTerm existing = createEntity(request);
+    final String token =
+        deniedGlossaryOperationToken(ns, "noRead_" + policy, MetadataOperation.VIEW_BASIC);
+    final HttpClient client = HttpClient.newHttpClient();
+    final String path = SdkClients.getServerUrl() + "/v1/glossaryTerms";
+    final HttpResponse<String> read =
+        client.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(path + "/" + existing.getId()))
+                .header("Authorization", "Bearer " + token)
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(403, read.statusCode(), read.body());
+    final HttpResponse<String> response =
+        client.send(
+            HttpRequest.newBuilder()
+                .uri(URI.create(path + "/createMany?onConflict=" + policy))
+                .header("Authorization", "Bearer " + token)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(request))))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+    final BulkCreateResult result = JsonUtils.readValue(response.body(), BulkCreateResult.class);
+    assertEquals(Reason.ALREADY_EXISTS, result.getResults().getFirst().getReason());
+    assertNull(result.getResults().getFirst().getId());
+    assertFalse(response.body().contains(existing.getId().toString()));
+  }
+
+  @Test
+  void createMany_deniedCallerCannotCreateOrReadConflictIds(TestNamespace ns) throws Exception {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName("existing")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Original");
+    final GlossaryTerm existing = createEntity(request);
+    final String token = deniedGlossaryOperationToken(ns, "bulkCreate", MetadataOperation.CREATE);
+    final HttpRequest httpRequest =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/glossaryTerms/createMany"))
+            .header("Authorization", "Bearer " + token)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(request))))
+            .build();
+    final HttpResponse<String> response =
+        HttpClient.newHttpClient().send(httpRequest, HttpResponse.BodyHandlers.ofString());
+    assertEquals(403, response.statusCode(), response.body());
+    assertFalse(response.body().contains(existing.getId().toString()));
   }
 
   @Test
@@ -3880,10 +4135,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
       TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_pbf");
-    // Pass-first ordering: the lone passing asset is iterated first, so the
-    // apply-while-no-failures gate writes the term's tag to it before any
-    // failure closes the gate. The status must still surface PARTIAL_SUCCESS
-    // (the bug previously reported FAILURE, hiding the real write).
+    // Each asset is saved on its own, so the lone passing asset gets the term
+    // whatever its position. The status must surface PARTIAL_SUCCESS (the bug
+    // previously reported FAILURE, hiding the real write).
     List<EntityReference> assets = new ArrayList<>();
     assets.add(setup.passTable.getEntityReference());
     assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
@@ -3905,33 +4159,6 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
           tableHasTag(client, t.getId(), setup.term.getFullyQualifiedName()),
           "failing assets must not be tagged");
     }
-  }
-
-  @Test
-  void test_bulkAddGlossaryToAssets_nonDryRun_failBeforePass_appliesNoTagsAndReportsPartialSuccess(
-      TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_fbp");
-    // Fail-first ordering: failures are iterated first, so the apply gate is
-    // already closed when the lone passing asset is reached — no tags are
-    // written. The status is a *validation* summary, so it must still be
-    // PARTIAL_SUCCESS (one validation pass), not FAILURE.
-    List<EntityReference> assets = new ArrayList<>();
-    assets.addAll(setup.failTables.stream().map(Table::getEntityReference).toList());
-    assets.add(setup.passTable.getEntityReference());
-
-    AddGlossaryToAssetsRequest add =
-        new AddGlossaryToAssetsRequest().withDryRun(false).withAssets(assets);
-    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/assets/add";
-    BulkOperationResult result =
-        client.getHttpClient().execute(HttpMethod.PUT, path, add, BulkOperationResult.class);
-
-    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
-    assertEquals(1, result.getNumberOfRowsPassed());
-    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
-    assertFalse(
-        tableHasTag(client, setup.passTable.getId(), setup.term.getFullyQualifiedName()),
-        "fail-before-pass must not apply any tag (gate already closed)");
   }
 
   private static final class MutualExclusiveGlossarySetup {
@@ -4071,10 +4298,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   // each target asset. Before the fix they called the repository with no
   // authorizer, so any authenticated caller could apply/strip a glossary
   // term on arbitrary assets (GHSA-jmw6-578h-gw4r).
+  //
+  // Each asset is authorized as its own PATCH: an asset the caller may not
+  // edit is reported as a failed row and keeps its labels, while the
+  // request itself is answered.
   // ===================================================================
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkRemoveGlossaryFromAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_rm_deny");
     Table table = createTableTaggedWithTerm(ns, term, "authz_rm_deny");
@@ -4082,17 +4313,14 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "remove", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must remain on the asset when removal is rejected");
   }
 
   @Test
-  void test_bulkAddGlossaryToAssets_deniedUser_isForbidden(TestNamespace ns) throws Exception {
+  void test_bulkAddGlossaryToAssets_deniedUser_isRefused(TestNamespace ns) throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_add_deny");
     Table table = createBareTable(ns, "authz_add_deny");
@@ -4100,10 +4328,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
 
     HttpResponse<String> response = putAssets(term.getId(), "add", assetsBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not apply the glossary term: " + response.body());
+    assertRefusedAsset(response);
     assertFalse(
         tableHasTag(admin, table.getId(), term.getFullyQualifiedName()),
         "Glossary term must not be applied to the asset when the add is rejected");
@@ -4155,7 +4380,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
-  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isForbidden(TestNamespace ns)
+  void test_bulkRemoveGlossaryFromAssets_columnAsset_deniedUser_isRefused(TestNamespace ns)
       throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = createGlossaryTermForBulk(ns, "authz_col_deny");
@@ -4165,10 +4390,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     HttpResponse<String> response =
         putAssets(term.getId(), "remove", columnAssetBody(table), token);
 
-    assertEquals(
-        403,
-        response.statusCode(),
-        "A user denied EDIT_GLOSSARY_TERMS must not remove a column's term: " + response.body());
+    assertRefusedAsset(response);
     assertTrue(
         columnHasTag(admin, table.getId(), "id", term.getFullyQualifiedName()),
         "Glossary term must remain on the column when the caller is denied");
@@ -4259,24 +4481,48 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         "No asset must fail for an authorized caller: " + response.body());
   }
 
+  /** The only asset of the request is reported as refused: a failed row naming the operation. */
+  private void assertRefusedAsset(HttpResponse<String> response) {
+    assertEquals(200, response.statusCode(), response.body());
+    BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
+    assertEquals(ApiStatus.FAILURE, result.getStatus(), response.body());
+    assertEquals(0, result.getNumberOfRowsPassed(), response.body());
+    assertEquals(1, result.getFailedRequest().size(), response.body());
+    assertTrue(
+        result.getFailedRequest().getFirst().getMessage().contains("EditGlossaryTerms"),
+        response.body());
+  }
+
   /**
    * A token for a user explicitly denied EDIT_GLOSSARY_TERMS. Every user inherits the DataConsumer
    * role (which allows glossary-term edits on all assets) from the Organization team, so a genuinely
    * restricted caller needs an explicit DENY rule — deny wins over the inherited allow.
    */
   private String deniedGlossaryEditToken(TestNamespace ns, String suffix) {
+    return deniedGlossaryOperationToken(ns, suffix, MetadataOperation.EDIT_GLOSSARY_TERMS);
+  }
+
+  private String deniedGlossaryOperationToken(
+      TestNamespace ns, String suffix, MetadataOperation operation) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String prefix = ns.shortPrefix("gtNoEdit_" + suffix);
     Rule deny =
         new Rule()
             .withName("DenyGlossaryTermEdit")
             .withResources(List.of("All"))
-            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withOperations(List.of(operation))
             .withEffect(Rule.Effect.DENY);
+    final List<Rule> rules = new ArrayList<>(List.of(deny));
+    if (operation == MetadataOperation.VIEW_BASIC) {
+      rules.add(
+          new Rule()
+              .withName("AllowGlossaryTermCreate")
+              .withResources(List.of("glossaryTerm"))
+              .withOperations(List.of(MetadataOperation.CREATE))
+              .withEffect(Rule.Effect.ALLOW));
+    }
     Policy policy =
-        admin
-            .policies()
-            .create(new CreatePolicy().withName(prefix + "_pol").withRules(List.of(deny)));
+        admin.policies().create(new CreatePolicy().withName(prefix + "_pol").withRules(rules));
     Role role =
         admin
             .roles()

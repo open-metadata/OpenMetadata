@@ -20,6 +20,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -43,6 +44,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -60,6 +62,8 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.BulkCreateConflictPolicy;
+import org.openmetadata.schema.type.BulkCreateResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -745,25 +749,39 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   @Operation(
       operationId = "createManyTestCase",
       summary = "Create multiple test cases at once",
-      description = "Create multiple test cases at once up to a limit of 100 per request.",
+      description =
+          "Create up to 100 test cases and return an ordered outcome for every input, with created,"
+              + " skipped, and failed counts when onConflict is specified. Without onConflict, the"
+              + " legacy created-entity array and validation errors are preserved. onConflict=skip"
+              + " skips existing and repeated"
+              + " FQNs; onConflict=fail reports them as failed. Both policies create other valid"
+              + " inputs and preserve existing and soft-deleted tests. Validation failures include"
+              + " a reason and message. Unexpected server failures remain HTTP errors.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "The test",
+            description =
+                "Per-input outcomes when onConflict is specified; otherwise newly created entities",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = TestCase.class))),
+                    schema = @Schema(oneOf = {BulkCreateResult.class, TestCase[].class}))),
         @ApiResponse(responseCode = "400", description = "Bad request"),
         @ApiResponse(
             responseCode = "413",
             description = "Request entity too large (more than 100 test cases)")
       })
   public Response createMany(
-      @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid List<CreateTestCase> createTestCases) {
-    List<TestCase> testCases = new ArrayList<>();
+      @NotNull @Valid List<@NotNull CreateTestCase> createTestCases,
+      @Parameter(
+              description =
+                  "Opt into per-input outcomes; conflicts skip or fail while other inputs continue.",
+              schema = @Schema(implementation = BulkCreateConflictPolicy.class))
+          @QueryParam("onConflict")
+          String onConflict) {
+    final BulkCreateConflictPolicy conflictPolicy =
+        onConflict == null ? null : BulkCreateConflictPolicy.fromValue(onConflict);
     Set<String> entityLinks =
         createTestCases.stream().map(CreateTestCase::getEntityLink).collect(Collectors.toSet());
 
@@ -788,18 +806,21 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
 
     limits.enforceBulkSizeLimit(entityType, createTestCases.size());
 
-    createTestCases.forEach(
+    final Function<CreateTestCase, TestCase> toEntity =
         create -> {
-          TestCase test =
+          final TestCase test =
               mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
           limits.enforceLimits(
               securityContext,
               new CreateResourceContext<>(entityType, test),
               new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS));
-          testCases.add(test);
-        });
-    repository.createMany(uriInfo, testCases);
-    return Response.ok(testCases).build();
+          return test;
+        };
+    return Response.ok(
+            conflictPolicy == null
+                ? repository.createMany(null, createTestCases.stream().map(toEntity).toList())
+                : repository.createMany(createTestCases, toEntity, conflictPolicy))
+        .build();
   }
 
   @PATCH
@@ -1132,7 +1153,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
                     schema = @Schema(implementation = TestCase.class))),
         @ApiResponse(
             responseCode = "400",
-            description = "Failed rows can only be added to a failed test case.")
+            description =
+                "Failed rows can only be added to a test case whose latest result has failed rows.")
       })
   public TestCase addFailedRowsData(
       @Context UriInfo uriInfo,
@@ -1148,9 +1170,9 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     TestCase testCase = repository.find(id, Include.NON_DELETED);
     repository.setFields(
         testCase, new Fields(Set.of("testCaseResult")), RelationIncludes.fromInclude(ALL));
-    if (testCase.getTestCaseResult() == null
-        || !testCase.getTestCaseResult().getTestCaseStatus().equals(TestCaseStatus.Failed)) {
-      throw new IllegalArgumentException("Failed rows can only be added to a failed test case.");
+    if (!hasFailedRows(testCase.getTestCaseResult())) {
+      throw new IllegalArgumentException(
+          "Failed rows can only be added to a test case whose latest result has failed rows.");
     }
     return addHref(uriInfo, repository.addFailedRowsSample(testCase, tableData, validate));
   }
@@ -1755,6 +1777,20 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       joinedStatuses = validStatuses.isEmpty() ? null : String.join(",", validStatuses);
     }
     return joinedStatuses;
+  }
+
+  /**
+   * A test case that passed within its failure threshold still has failed rows the user needs to
+   * inspect, so a Success result with failed rows can hold a sample too. See ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status.
+   */
+  private static boolean hasFailedRows(TestCaseResult testCaseResult) {
+    if (testCaseResult == null) {
+      return false;
+    }
+    TestCaseStatus status = testCaseResult.getTestCaseStatus();
+    Long failedRows = testCaseResult.getFailedRows();
+    return status == TestCaseStatus.Failed
+        || (status == TestCaseStatus.Success && failedRows != null && failedRows > 0);
   }
 
   /** Matching is case insensitive, the status is normalized to its canonical enum value. */

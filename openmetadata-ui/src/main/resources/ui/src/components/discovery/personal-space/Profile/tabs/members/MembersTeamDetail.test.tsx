@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import React, { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { TabSpecificField } from '../../../../../../enums/entity.enum';
+import { getTeams, getTeamsAssetCounts } from '../../../../../../rest/teamsAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 
 const renderWithRouter = (ui: ReactElement) =>
@@ -70,6 +72,7 @@ jest.mock('../../../../../../rest/teamsAPI', () => ({
   getTeamByName: (...args: unknown[]) => mockGetTeamByName(...args),
   patchTeamDetail: jest.fn().mockResolvedValue({}),
   getTeams: jest.fn().mockResolvedValue({ data: [], paging: { total: 0 } }),
+  getTeamsAssetCounts: jest.fn().mockResolvedValue({}),
   restoreTeam: jest.fn().mockResolvedValue({}),
   deleteUserFromTeam: jest.fn().mockResolvedValue({}),
   exportTeam: jest.fn().mockResolvedValue(''),
@@ -183,6 +186,26 @@ describe('MembersTeamDetail', () => {
     });
   });
 
+  it('lists sub-teams without their owned assets and reads asset counts from the counts endpoint', async () => {
+    renderWithRouter(
+      <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+    );
+
+    await waitFor(() => {
+      expect(getTeams).toHaveBeenCalledWith(
+        expect.objectContaining({ parentTeam: 'engineering' })
+      );
+    });
+
+    (getTeams as jest.Mock).mock.calls.forEach(([params]) =>
+      expect(params.fields).not.toContain(TabSpecificField.OWNS)
+    );
+
+    await waitFor(() => {
+      expect(getTeamsAssetCounts).toHaveBeenCalled();
+    });
+  });
+
   it('renders info cards when team is loaded', async () => {
     renderWithRouter(
       <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
@@ -265,5 +288,88 @@ describe('MembersTeamDetail', () => {
 
     expect(await screen.findByTestId('plugin-tab-label')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'sql-studio' })).toBeNull();
+  });
+
+  describe('opened with an activeTab hash param', () => {
+    afterEach(() => {
+      // Reset the shared settings-hash store while the hook is still mounted.
+      act(() => {
+        globalThis.location.hash = '';
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+    });
+
+    it('opens on the contributed tab the hash names', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      globalThis.location.hash =
+        '#members/teams/engineering?activeTab=sql-studio';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      expect(await screen.findByTestId('plugin-tab')).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    // A tab click records itself in the hash; otherwise following the same
+    // team link again leaves the hash unchanged and the link's tab is ignored.
+    it('applies the linked tab again after another tab was chosen', async () => {
+      mockGetContributions.mockReturnValue([
+        {
+          key: 'sql-studio',
+          label: 'SQL Studio',
+          component: () => <div data-testid="plugin-tab" />,
+        },
+      ]);
+      const link = '#members/teams/engineering?activeTab=sql-studio';
+      globalThis.location.hash = link;
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+      await screen.findByTestId('plugin-tab');
+
+      fireEvent.click(screen.getByRole('tab', { name: /label.team-plural/ }));
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'false'
+      );
+
+      // Following the same link again (or Back to it) brings the hash back.
+      act(() => {
+        globalThis.location.hash = link;
+        globalThis.dispatchEvent(new PopStateEvent('popstate'));
+      });
+
+      expect(screen.getByRole('tab', { name: 'SQL Studio' })).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    it('stays on the default tab when the hash names no such tab', async () => {
+      globalThis.location.hash = '#members/teams/engineering?activeTab=nope';
+
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      await screen.findByTestId('team-detail');
+
+      expect(
+        screen.getByRole('tab', { name: /label.team-plural/ })
+      ).toHaveAttribute('aria-selected', 'true');
+    });
   });
 });

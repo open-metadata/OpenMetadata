@@ -353,6 +353,7 @@ export enum TaskType {
     GlossaryApproval = "GlossaryApproval",
     IncidentResolution = "IncidentResolution",
     MemoryConflictReview = "MemoryConflictReview",
+    MetadataCompletion = "MetadataCompletion",
     OwnershipUpdate = "OwnershipUpdate",
     PipelineReview = "PipelineReview",
     RecognizerFeedbackApproval = "RecognizerFeedbackApproval",

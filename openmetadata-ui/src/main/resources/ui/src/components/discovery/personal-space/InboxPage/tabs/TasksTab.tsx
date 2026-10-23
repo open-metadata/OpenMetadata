@@ -11,18 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
   Inbox01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
 import React, {
@@ -34,14 +30,24 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
+import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
   listTasks,
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
-import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../inbox.constants';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import {
+  INBOX_OPEN_TASK_COUNT_QUERY_KEY,
+  TASK_LIST_QUERY_KEY,
+  TASK_STATUS_COUNTS_QUERY_KEY,
+} from '../../inbox.constants';
 import InboxTaskListItem from '../components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../components/InboxTaskListSkeleton';
 import InboxTaskListToolbar, {
@@ -56,6 +62,8 @@ import {
   filterTasksByStatus,
   filterTasksByTypes,
   groupTasksByType,
+  hasNothingToShow,
+  isWholeTabLoadFailed,
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
@@ -66,6 +74,7 @@ import {
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
+import { useLinkedTaskId } from '../useLinkedTaskId';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
@@ -75,14 +84,7 @@ const SEARCH_DEBOUNCE_MS = 300;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
-
-// React Query cache key for the All/Open/Closed badge totals. Shared so a task
-// mutation can invalidate them (see handleResolved / handleTaskUpdated).
-export const TASK_STATUS_COUNTS_QUERY_KEY = 'inbox-task-status-counts';
 const TASK_COUNTS_STALE_TIME = 30_000;
-// React Query cache key prefix for the task lists, one entry per scope, status
-// and search, so switching back to a list reads it from the cache.
-const TASK_LIST_QUERY_KEY = 'inbox-task-list';
 
 type TaskStatusFilter = 'all' | 'open' | 'closed';
 
@@ -92,14 +94,17 @@ const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
   { id: 'closed', labelKey: 'label.closed' },
 ];
 
-// Pulls the three per-status totals out of the useQueries results array.
+// Pulls the three per-status totals out of the useQueries results array. A
+// failed count shows no badge rather than a misleading 0.
 const getStatusCounts = (
-  countQueries: { data?: number }[]
-): Record<TaskStatusFilter, number> => ({
-  all: countQueries[0].data ?? 0,
-  open: countQueries[1].data ?? 0,
-  closed: countQueries[2].data ?? 0,
-});
+  countQueries: { data?: number; isError: boolean }[]
+): Record<TaskStatusFilter, number | undefined> => {
+  const [all, open, closed] = countQueries.map(({ data, isError }) =>
+    isError ? undefined : data ?? 0
+  );
+
+  return { all, open, closed };
+};
 
 // The Status options each tab can hold: Open splits into whose move it is,
 // Closed into the outcome. "Open" itself is the tab, so it is never an option.
@@ -121,22 +126,9 @@ const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
   closed: TaskStatusGroup.Closed,
 };
 
-// Nothing more is coming: matching rows may still sit in pages being scanned.
-const isListSettled = ({
-  isLoading,
-  isLoadingMore,
-  hasMore,
-  canLoadMore,
-  tasks,
-}: {
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  hasMore: boolean;
-  canLoadMore: (loaded: Task[]) => boolean;
-  tasks: Task[];
-}) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
-
 interface TasksEmptyStateProps {
+  // The list failed to load; shown in place of any empty state.
+  error?: unknown;
   status: TaskStatusFilter;
   isNarrowed: boolean;
   // Set when a narrowed scan stopped at its cap with pages still unread, so
@@ -144,19 +136,40 @@ interface TasksEmptyStateProps {
   scannedCount?: number;
   onClearFilters: () => void;
   onLoadMore: () => void;
+  onRetry: () => void;
 }
 
 // A dedicated empty state per status: All = generic "nothing to do", Open =
 // "no open tasks", Closed = archival. A search or filter that matches nothing
 // says so instead, with a way back to the whole queue.
 const TasksEmptyState = ({
+  error,
   status,
   isNarrowed,
   scannedCount,
   onClearFilters,
   onLoadMore,
+  onRetry,
 }: TasksEmptyStateProps) => {
   const { t } = useTranslation();
+
+  if (error) {
+    return (error as AxiosError)?.response?.status ===
+      ClientErrors.FORBIDDEN ? (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.task-plural'),
+        })}
+      />
+    ) : (
+      <SomethingWentWrongPlaceholder
+        description={t('server.entity-fetch-error', {
+          entity: t('label.task-plural'),
+        })}
+        onReload={onRetry}
+      />
+    );
+  }
   const isScanCapped = scannedCount !== undefined;
   const clearAction = {
     key: 'clear-filters',
@@ -165,7 +178,7 @@ const TasksEmptyState = ({
   };
 
   const noMatch = (
-    <EmptyPlaceholder
+    <NoFilteredResultsPlaceholder
       actions={
         isScanCapped
           ? [
@@ -186,40 +199,34 @@ const TasksEmptyState = ({
           ? t('message.no-match-in-first-tasks', { count: scannedCount })
           : t('message.no-results-for-filters-description')
       }
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
+      icon={<FilterFunnel01 className="tw:size-7" />}
       title={t('message.no-match-found')}
-      variant="blank"
     />
   );
 
   const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
     all: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-empty"
         description={t('message.tasks-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-tasks-right-now')}
-        variant="blank"
       />
     ),
     open: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-open-empty"
         description={t('message.tasks-open-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-open-tasks-yet')}
-        variant="blank"
       />
     ),
     closed: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-closed-empty"
         description={t('message.tasks-closed-empty-description')}
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        icon={<Inbox01 className="tw:size-7" />}
         title={t('label.no-closed-tasks-yet')}
-        variant="blank"
       />
     ),
   };
@@ -241,6 +248,9 @@ interface TasksTabBodyProps {
   toolbar: ReactNode;
   // Shown in place of the detail when no task matches.
   emptyState?: ReactNode;
+  // A failed load with nothing listed leaves nothing to filter, so the
+  // placeholder takes the whole tab.
+  isLoadFailed?: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
@@ -260,6 +270,7 @@ interface TasksTabBodyProps {
 const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   toolbar,
   emptyState,
+  isLoadFailed = false,
   isLoading,
   isLoadingMore,
   tasks,
@@ -337,8 +348,18 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
   });
 
+  if (isLoadFailed) {
+    return (
+      <Box className="tw:relative tw:min-h-0 tw:w-full tw:flex-1">
+        {emptyState}
+      </Box>
+    );
+  }
+
+  // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
+  // long unbreakable title would widen the list and push the detail off-screen.
   return (
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[2fr_3fr]">
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
       <Box
         className="tw:min-h-0 tw:border-r tw:border-secondary"
         direction="col">
@@ -386,7 +407,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [selectedTaskId, setSelectedTaskId] = useState<string>();
+  // A link from outside the inbox opens on its task. The task may sit past the
+  // loaded page, so the selection keeps it rather than falling back to the
+  // top row; the detail panel fetches it by id.
+  const linkedTaskId = useLinkedTaskId();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
+    linkedTaskId
+  );
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -520,6 +547,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     isLoadingMore,
     hasMore,
     total,
+    error,
+    refetch,
     scrollRef,
     sentinelRef,
     setItems,
@@ -587,18 +616,23 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // selected one drops out of the list (e.g. after resolution or filtering).
   useEffect(() => {
     setSelectedTaskId((prev) =>
-      prev && visibleTasks.some((task) => task.id === prev) ? prev : firstTaskId
+      prev &&
+      (prev === linkedTaskId || visibleTasks.some((task) => task.id === prev))
+        ? prev
+        : firstTaskId
     );
-  }, [visibleTasks, firstTaskId]);
+  }, [visibleTasks, firstTaskId, linkedTaskId]);
 
   // The Triage tab badge and the sidebar inbox bubble read one open-task query,
   // so a mutation here would otherwise sit behind its stale window — and the
   // sidebar never unmounts, so it would not refetch until a navigation or a tab
-  // refocus.
-  const syncInboxCountBadge = useCallback(() => {
+  // refocus. The home page's My Tasks card caches the same open tasks, so a
+  // return home within its TTL would still offer actions on a resolved one.
+  const syncOpenTaskReaders = useCallback(() => {
     queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
+    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -622,7 +656,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       // The transition may shift the task across buckets, so re-sync the counts.
       invalidateTaskLists();
       refreshStatusCounts();
-      syncInboxCountBadge();
+      syncOpenTaskReaders();
     },
     [
       status,
@@ -630,7 +664,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
       setTotal,
       invalidateTaskLists,
       refreshStatusCounts,
-      syncInboxCountBadge,
+      syncOpenTaskReaders,
     ]
   );
 
@@ -640,8 +674,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const handleTaskUpdated = useCallback(() => {
     invalidateTaskLists(true);
     refreshStatusCounts();
-    syncInboxCountBadge();
-  }, [invalidateTaskLists, refreshStatusCounts, syncInboxCountBadge]);
+    syncOpenTaskReaders();
+  }, [invalidateTaskLists, refreshStatusCounts, syncOpenTaskReaders]);
 
   // A comment change doesn't affect the task's bucket or visibility, so patch the
   // row in place instead of refetching the list.
@@ -672,9 +706,30 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // A search or filter that matches nothing must not read as an empty queue.
   const isNarrowed = Boolean(searchQuery) || isClientNarrowed;
-  const showEmptyState =
-    visibleTasks.length === 0 &&
-    isListSettled({ isLoading, isLoadingMore, hasMore, canLoadMore, tasks });
+  const showEmptyState = hasNothingToShow(error, visibleTasks, {
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    canLoadMore,
+    tasks,
+  });
+
+  const handleRetry = useCallback(() => {
+    refetch();
+    refreshStatusCounts();
+  }, [refetch, refreshStatusCounts]);
+
+  const emptyState = showEmptyState ? (
+    <TasksEmptyState
+      error={error}
+      isNarrowed={isNarrowed}
+      scannedCount={hasMore ? tasks.length : undefined}
+      status={status}
+      onClearFilters={handleClearFilters}
+      onLoadMore={handleScanFurther}
+      onRetry={handleRetry}
+    />
+  ) : undefined;
 
   return (
     <Box
@@ -685,21 +740,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
       data-testid="inbox-tasks-tab"
       direction="col">
       <TasksTabBody
-        emptyState={
-          showEmptyState ? (
-            <TasksEmptyState
-              isNarrowed={isNarrowed}
-              scannedCount={hasMore ? tasks.length : undefined}
-              status={status}
-              onClearFilters={handleClearFilters}
-              onLoadMore={handleScanFurther}
-            />
-          ) : undefined
-        }
+        emptyState={emptyState}
         groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
         handleTaskUpdated={handleTaskUpdated}
+        isLoadFailed={isWholeTabLoadFailed(error, tasks, isNarrowed)}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
         scrollRef={scrollRef}

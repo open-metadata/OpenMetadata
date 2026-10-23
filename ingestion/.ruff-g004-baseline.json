@@ -814,7 +814,6 @@
       "0e4b67846d6ac21cf22779e353a9e73ebc238ee498280288713aff6233ef2c37": 1,
       "0ef37f6a373e1f3046ed8a57b9a4f97ac7d50bf34118652f1146972cab352aad": 1,
       "111208f15725b7c11da73fa79b79ac700f226ca75a6be084970979f0bab892e7": 1,
-      "117a855d14d12d4d1df17a2544401c9083e205857d6c9a68ed406253d91517c1": 1,
       "2125d7c0c4ef351acee029c9b05a234ebe2648391ddda2d983c833d13ebb306a": 1,
       "2261d340e66f83f00204f2446fd9e65f832b9bfd24e1367c870e84eca42f32ef": 1,
       "252f9e4b0bbb4de43419136bb26e4a89951fa8c986a52e5d8499c0babb4884a5": 1,
@@ -1034,9 +1033,6 @@
       "d27504e6976da850f3db07937978cd7e2ddfaa9296455493d8c8d756ada02522": 1,
       "ff7a916bde08e5440eb178cf565f113352444c8f45e789347215e2160dc935e7": 1
     },
-    "ingestion/src/metadata/ingestion/source/database/athena/query_parser.py": {
-      "2104fab91c5d9c47d447c2f5656e456582eb23ef1cfb07861b9619bbcc68581a": 1
-    },
     "ingestion/src/metadata/ingestion/source/database/athena/utils.py": {
       "228fdd22d97c9d9ef36c3b2662bf575548c3e8cbd79d4899a64df235428c7f2e": 1
     },
@@ -1233,7 +1229,6 @@
       "509510494d861eab102c21c8f319deadf96c54e73b5d7a9e9d8b41f43078d1ea": 1,
       "54e37403771530e66051be63eb8f919da7e101a83c0da218ab0aa51d41cd7cf4": 1,
       "565e26d595b00c067cf0aa3e2a7060d9e1e48fa833a50baf6ddcc2104a58f720": 1,
-      "595fe3120e3ac1fa69bdaf7deaf0ab65f667db957d0ff2a5a8aef8daa76d11f3": 1,
       "5b2e4a976df77908b1ff290b7b10219c75eabd22159caf1012e849b20b79491a": 1,
       "5c8824a7452a84f372317387b654d0eea0d4c4dc88899240166116a0dd45a29f": 1,
       "5edc2ff6be0e1bf0c0541d201410b5739e3debc01560dafde65f5d1fdc41b028": 1,
@@ -1334,14 +1329,6 @@
       "fb990aac4e9fa07e0460c6e4ce1c8f394da71fc504fb7391661f8f43c5df978e": 1,
       "fbde94f68430954d787c9d4b82c9b84e6f4e38c0de4d239beb2e8827d978d249": 1
     },
-    "ingestion/src/metadata/ingestion/source/database/deltalake/clients/pyspark.py": {
-      "5fe199ad8789ed621a64d2ca65ee4ee8c6cfbf65c0929c3dae3eafb7fcd9b642": 1,
-      "8df9996712b230b4ec453a8b4a4e751c925ed0ec755bdf90e010ddbfb0436afc": 1,
-      "8e681634f906433b29d8ebf74abc6a7c4b3d8c1ab2c0286c72bf6c3ad7cb4f9a": 1
-    },
-    "ingestion/src/metadata/ingestion/source/database/deltalake/metadata.py": {
-      "02495aeed04567a4ddad690f2f6bf30d6aa69b41ac6a860605964acd3de18a1c": 1
-    },
     "ingestion/src/metadata/ingestion/source/database/domodatabase/metadata.py": {
       "297cc807e5b41caa170559b937d5d58c17fe8ad06bc46efba29fadf95a93f041": 1,
       "5bc5d21791a12bfd8c916e4d860de94afa2fcb2b1f24d8b271906e290c4caa90": 1,
@@ -1426,7 +1413,6 @@
     "ingestion/src/metadata/ingestion/source/database/mssql/metadata.py": {
       "0cdae4e9136eac8b7950955b9c0a6dadcb63e50765f22720c7b7582f0b10ad07": 1,
       "38ecf83f97228f760468d7df742c1ea26597528b79b6da2588a926e7b446ef11": 1,
-      "c16d7d50332fc01123413a15a62aa01e60abb0861ed58798cf12a2c65b8d914e": 1,
       "ec4b878de4bb65df9cad645911f66d9bd983b30377325636e9b063a9cbef1005": 1
     },
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {
@@ -1727,8 +1713,7 @@
       "683f89aa1e6703dc52e817531c2818a137c9376dab8a52645b3f065645ae68dd": 1,
       "b0ebc506498da2d0797af0e90ad728f33d4083d32e7f26e7fb0540c1cdd9f788": 1,
       "bed630225bcb4cf113aa14695fb2524c732319263cea1dab8c74f0a4d5598793": 1,
-      "c3b6a24529cd1100e0d919536ebb9d6462dac03b8bedf80a1d8c496fffd92aa1": 1,
-      "ca36dc1829d1d78ed1df20b7f4c1f706c5f4f7b579afce4db05b519dde52b4f5": 1
+      "c3b6a24529cd1100e0d919536ebb9d6462dac03b8bedf80a1d8c496fffd92aa1": 1
     },
     "ingestion/src/metadata/ingestion/source/database/unitycatalog/metadata.py": {
       "37586b2eebe730d39b6942bf176c883ee4f68caa88a1fdcf6491883e5f637581": 1,
@@ -2216,9 +2201,6 @@
       "2bbb82cd34c56b0b162548247a11b1380fae73e3345a1e41928f5953d52b06ab": 1,
       "d7a1625b01033e89fd8c34ab360f93a224ff0071e2c98642c9c7853aa7735d2d": 1
     },
-    "ingestion/src/metadata/ingestion/source/pipeline/fivetran/fivetran_log.py": {
-      "ccf27fdad76cdba74422b632fbbce10a82f58d5bf3d7270280cbd92b8d2e755c": 1
-    },
     "ingestion/src/metadata/ingestion/source/pipeline/fivetran/metadata.py": {
       "04f7a8d262860b63066205be12bb98d31964c949d78b79e4e1a0f250e14c18f4": 1,
       "1ed1b8ea06a9ea4dc40caa5dad4c350f66286b4ac4b0c5a2673ee4af7ddd1987": 1,
@@ -2228,7 +2210,6 @@
       "804d13f3eab308d4a17a324f3a9e1f0e71eb8113c7f444fc73b90394e5417d31": 1,
       "831cd78792d75c96670fb25db599f4d0e3313cdc2017a14d1b34cc75239d13b9": 1,
       "8ba27a66387a9affe93bc40d54625d76e93cd7d8cdeda762d1e6c7d9b9580946": 1,
-      "a1eddf4f2e480c1a363e70f467e2c9cffcada46f4d58ee71f469b5620fcb5f5d": 1,
       "a3e8269b7fb42e1ee7a6057ecdc37e20159bafbc6043a1dff0640fcab8400c47": 1,
       "ac1c66e09c0cc8ce5a8e404fb5f16101038666162da7106626e2bd29d0c2d3de": 1,
       "af996df44457e42e5cda6aefe96810127f3a273fffbda9ec2eba4b45414def34": 1,
@@ -2271,7 +2252,6 @@
       "c5682f3e3680b60b54d9ea84a474924405ea07abf71e7e509cce20cf430cfa42": 1,
       "d263808bd953d17bd7b0a3a4d91d8007244cf11a950e588ab3b14f84cc2fcc5e": 1,
       "d5135fc34f17795b1d387b51bbf19c9adb595db4b272407991855260e98d50d0": 1,
-      "ec8ea16e3151f15212c09270265c3a54790e02b60eaa444ddf682853ac77e53a": 1,
       "f6538d26591a524568bfeab748c1e5ba71d72453fa8435f8526f64a08d855f7c": 1,
       "f67bc0d24331351a42cac4ca988c03b388ee94d925852cc0f4ba93f9b77ad8ab": 1
     },

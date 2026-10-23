@@ -65,10 +65,13 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // Input migration (standalone controls, settings forms) removes five more.
     // Targeting the core TreeSelect popovers and team picker by test id in the
     // UserDetails and team-editor specs removes more, pinning
-    // customize-navigation switches to their tree rows removes four more, and
-    // the Data Marketplace announcements carousel spec dropped its `.first()`
-    // item lookup.
-    'om-playwright/no-positional-locator': 552,
+    // customize-navigation switches to their tree rows removes four more, the
+    // Data Marketplace announcements carousel spec dropped its `.first()` item
+    // lookup, picking the bulk-import entity type by its option role removes
+    // one more, editor-scoped bulk tag selection removes another
+    // positional fallback, and scoping the Topic nested copy-link button to its
+    // row removes two more.
+    'om-playwright/no-positional-locator': 539,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

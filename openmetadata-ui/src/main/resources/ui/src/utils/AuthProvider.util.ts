@@ -415,6 +415,18 @@ export const isLoginConfigurationApplicable = (
   provider === AuthProvider.LDAP ||
   provider === AuthProvider.Openmetadata;
 
+/**
+ * Whether the server, rather than the browser, completes sign-in. The server then applies the
+ * identity provider's display name and picture to the user itself, and the name it hands the
+ * browser is the OpenMetadata username, not a display name.
+ * ADR:2026-10-17-the-server-applies-the-sso-profile-on-server-driven-logins
+ */
+export const isServerDrivenLogin = (
+  clientType?: ClientType,
+  provider?: AuthProvider
+): boolean =>
+  clientType === ClientType.Confidential || provider === AuthProvider.Saml;
+
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
 };
@@ -576,10 +588,12 @@ const REQUIRED_FIELDS_BY_PROVIDER: Record<string, string[]> = {
   // returned shape. The runtime-blocking check is that a provider is set.
   [AuthProvider.Basic]: ['provider'],
   [AuthProvider.LDAP]: ['provider'],
-  // IdP flows all need the four top-level fields to boot their client SDK:
-  // authority (issuer/discovery root), clientId (OAuth client), callbackUrl
-  // (redirect target), providerName (visible sign-in button text). Nested
-  // configuration blocks are server-side and not exposed to the SPA.
+  // IdP flows all need three top-level fields to boot their client SDK:
+  // authority (issuer/discovery root), clientId (OAuth client) and callbackUrl
+  // (redirect target). Nested configuration blocks are server-side and not
+  // exposed to the SPA. Only Custom OIDC's sign-in button shows providerName;
+  // the others render a fixed label. openmetadata.yaml leaves providerName
+  // empty for them, and the server requires it for Custom OIDC only.
   [AuthProvider.CustomOidc]: [
     'provider',
     'providerName',
@@ -587,34 +601,10 @@ const REQUIRED_FIELDS_BY_PROVIDER: Record<string, string[]> = {
     'callbackUrl',
     'authority',
   ],
-  [AuthProvider.Google]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Auth0]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Azure]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Okta]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
+  [AuthProvider.Google]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Auth0]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Azure]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Okta]: ['provider', 'clientId', 'callbackUrl', 'authority'],
   // SAML's `getAuthConfig` branch above intentionally omits `providerName`
   // from the returned client shape (SAML renders a fixed "Sign in with SAML
   // SSO" label), so requiring it here would always trip ConfigErrorPage.

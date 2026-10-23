@@ -14,12 +14,13 @@
 package org.openmetadata.service.rdf;
 
 import java.util.Set;
+import org.openmetadata.service.Entity;
 
 /**
- * Entity types that are never represented in the RDF knowledge graph — neither as nodes nor as the
- * endpoint of any relationship edge. The same policy gates both the bulk reindex ({@code
+ * Entity types excluded from generic metadata projection and its relationship edges. Native
+ * ontologies use their active-release graphs instead. The same policy gates both bulk reindex ({@code
  * RdfIndexApp} / {@code RdfBatchProcessor}) and the live per-write sync ({@link RdfUpdater}), so an
- * excluded type stays out of RDF "at all" rather than reappearing between weekly rebuilds.
+ * excluded working definition cannot reappear between rebuilds.
  *
  * <p>{@code aiChart} is a Collate AI-generated chart entity that is not part of the metadata
  * knowledge graph; its rows additionally fail to deserialize during the RDF read pass, so each one
@@ -29,7 +30,15 @@ import java.util.Set;
 public final class RdfExcludedEntities {
   private static final String AI_CHART = "aiChart";
 
-  public static final Set<String> EXCLUDED_ENTITY_TYPES = Set.of(AI_CHART);
+  // Native ontology meaning is published only through the active release's dedicated graph.
+  public static final Set<String> EXCLUDED_ENTITY_TYPES =
+      Set.of(
+          AI_CHART,
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM,
+          Entity.ONTOLOGY_RELEASE);
 
   private RdfExcludedEntities() {}
 

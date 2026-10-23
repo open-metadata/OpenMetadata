@@ -36,12 +36,6 @@ import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 
-// Embedded panels are narrower, so they fit fewer charts per row.
-const GRID_COLUMNS = {
-  default: { 4: 'tw:grid-cols-4', 5: 'tw:grid-cols-5' },
-  embedded: { 4: 'tw:grid-cols-2', 5: 'tw:grid-cols-3' },
-} as const;
-
 const renderViewMoreExpandIcon = (
   t: ReturnType<typeof useTranslation>['t']
 ) => (
@@ -64,28 +58,23 @@ function PlatformInsightsWidget({
   }>();
   const { t } = useTranslation();
 
-  const { filteredCharts, filteredChartsData, containerClassName } =
-    useMemo(() => {
-      const filteredCharts = PLATFORM_INSIGHTS_CHARTS.filter((chart) =>
-        chart === SystemChartType.HealthyDataAssets
-          ? serviceCategory === ServiceCategory.DATABASE_SERVICES
-          : true
-      );
+  const { filteredCharts, filteredChartsData } = useMemo(() => {
+    const filteredCharts = PLATFORM_INSIGHTS_CHARTS.filter((chart) =>
+      chart === SystemChartType.HealthyDataAssets
+        ? serviceCategory === ServiceCategory.DATABASE_SERVICES
+        : true
+    );
 
-      return {
-        filteredCharts,
-        filteredChartsData: chartsData.filter((chart) =>
-          filteredCharts.includes(chart.chartType)
-        ),
-        containerClassName:
-          filteredCharts.length === 4 ? 'four-chart-container' : '',
-      };
-    }, [serviceCategory, chartsData]);
+    return {
+      filteredCharts,
+      filteredChartsData: chartsData.filter((chart) =>
+        filteredCharts.includes(chart.chartType)
+      ),
+    };
+  }, [serviceCategory, chartsData]);
 
-  const gridColumns =
-    GRID_COLUMNS[variant][filteredCharts.length === 4 ? 4 : 5];
   const cardClass = classNames(
-    'widget-info-card other-charts-card tw:p-3',
+    'widget-info-card other-charts-card',
     variant === 'default' && 'tw:bg-secondary'
   );
 
@@ -103,32 +92,38 @@ function PlatformInsightsWidget({
   // Keep the export selector on the chart region used by the download action.
   const content = (
     <div className="export-platform-insights-chart">
-      <div
-        className={classNames(
-          'other-charts-container tw:grid tw:gap-4',
-          containerClassName,
-          gridColumns
-        )}>
+      {/* Columns follow the container width, not a fixed count: five cards
+          squeezed into a half-width panel wrapped their titles unevenly. */}
+      <div className="other-charts-container tw:grid tw:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))] tw:gap-4">
         {isLoading
           ? filteredCharts.map((chartType) => (
               <Card className={cardClass} key={chartType}>
-                <SkeletonParagraph rows={2} />
+                <Card.Content>
+                  <SkeletonParagraph rows={2} />
+                </Card.Content>
               </Card>
             ))
           : filteredChartsData.map((chart) => (
               <Card className={cardClass} key={chart.chartType}>
-                <Typography size="text-sm" weight="semibold">
-                  {getTitleByChartType(chart.chartType)}
-                </Typography>
-                <Box align="start" className="tw:mt-2" justify="between">
+                <Card.Content>
                   <Typography
-                    className="current-percentage"
-                    size="text-xl"
+                    ellipsis={{ tooltip: true }}
+                    size="text-sm"
                     weight="semibold">
-                    {getReadableCountString(chart.currentPercentage)}%
+                    {getTitleByChartType(chart.chartType)}
                   </Typography>
-                  {!isUndefined(chart.percentageChange) && (
-                    <Box align="end" direction="col" gap={1}>
+                  <Box
+                    align="center"
+                    className="tw:mt-2"
+                    gap={2}
+                    justify="between">
+                    <Typography
+                      className="current-percentage"
+                      size="text-xl"
+                      weight="semibold">
+                      {getReadableCountString(chart.currentPercentage)}%
+                    </Typography>
+                    {!isUndefined(chart.percentageChange) && (
                       <Badge
                         className="percent-change-tag tw:gap-1"
                         color={chart.isIncreased ? 'success' : 'error'}
@@ -145,19 +140,23 @@ function PlatformInsightsWidget({
                         )}
                         {getReadableCountString(chart.percentageChange)}%
                       </Badge>
-                      <Typography
-                        className="tw:whitespace-nowrap"
-                        color="secondary"
-                        size="text-xs">
-                        {chart.numberOfDays === 1
-                          ? t('label.in-the-last-day')
-                          : t('label.in-last-number-of-days', {
-                              numberOfDays: chart.numberOfDays,
-                            })}
-                      </Typography>
-                    </Box>
+                    )}
+                  </Box>
+                  {!isUndefined(chart.percentageChange) && (
+                    <Typography
+                      ellipsis
+                      as="p"
+                      className="tw:mt-1"
+                      color="secondary"
+                      size="text-xs">
+                      {chart.numberOfDays === 1
+                        ? t('label.in-the-last-day')
+                        : t('label.in-last-number-of-days', {
+                            numberOfDays: chart.numberOfDays,
+                          })}
+                    </Typography>
                   )}
-                </Box>
+                </Card.Content>
               </Card>
             ))}
       </div>
@@ -168,8 +167,8 @@ function PlatformInsightsWidget({
   // instead of disabling an interactive collapse header through CSS.
   if (variant === 'embedded') {
     return (
-      <Box className="platform-insights-card tw:bg-surface" direction="col">
-        <Box className="tw:py-3 tw:pr-4">{header}</Box>
+      <Box className="platform-insights-card" direction="col" gap={4}>
+        {header}
         {content}
       </Box>
     );

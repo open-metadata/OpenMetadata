@@ -78,7 +78,7 @@ export interface DataAssetPickerRowProps {
 
 export interface UseAsyncDataAssetOptionsParams {
   isOpen: boolean;
-  searchIndex: SearchIndex;
+  searchIndex: SearchIndex | SearchIndex[];
   queryFilter?: Record<string, unknown>;
   debounceTimeout: number;
 }

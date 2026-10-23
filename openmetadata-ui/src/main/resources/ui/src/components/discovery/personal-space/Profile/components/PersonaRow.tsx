@@ -13,7 +13,7 @@
 
 import { Autocomplete } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { debounce, uniqBy } from 'lodash';
+import { debounce, isEmpty, uniqBy, xor } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -29,7 +29,6 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ChipView from './ChipView';
 import InlineEditCard from './InlineEditCard';
-import RemovableChip from './RemovableChip';
 
 const personaToRef = (persona: Persona): EntityReference => ({
   id: persona.id,
@@ -53,17 +52,23 @@ const mergeFetchedPersonas =
 interface PersonaRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
+  canEdit?: boolean;
+  // Overrides the first-person description used on your own profile.
+  description?: string;
 }
 
 const PersonaRow: React.FC<PersonaRowProps> = ({
   userData,
   updateUserDetails,
+  canEdit: canEditProp,
+  description,
 }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
   // Persona assignment is admin-managed (like teams/roles); users pick their
   // own default persona in DefaultPersonaRow, not the assignment here.
-  const canEdit = Boolean(isAdminUser) && !userData.deleted;
+  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
   const initialPersonaIds = useMemo(
     () => (userData.personas ?? []).map((p) => p.id),
@@ -171,7 +176,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.persona-assigned-description')}
+      description={description ?? t('message.persona-assigned-description')}
+      isSaveDisabled={isEmpty(xor(draftPersonaIds, initialPersonaIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (
         <Autocomplete
@@ -183,14 +189,6 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
           placeholder={t('label.select-entity', {
             entity: t('label.persona-plural'),
           })}
-          renderTag={(item, onRemove) => (
-            <RemovableChip
-              key={item.id}
-              label={item.label ?? ''}
-              testId={`persona-remove-${item.label ?? ''}`}
-              onRemove={onRemove}
-            />
-          )}
           selectedItems={selectedItems}
           onItemCleared={handleItemCleared}
           onItemInserted={handleItemInserted}

@@ -13,12 +13,13 @@
 
 import {
   Box,
-  EmptyPlaceholder,
   Grid,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
 import { AxiosError } from 'axios';
@@ -100,6 +101,8 @@ interface ServiceMainTabContentProps {
    * service page) passes false, and the table then stands as its own rounded card.
    */
   wrapInCard?: boolean;
+  /** Skips the right panel for a host that renders its own (the AI-mode data assets tab). */
+  hideRightPanel?: boolean;
   setIsServiceLoading: Dispatch<SetStateAction<boolean>>;
   onDataProductUpdate: (dataProducts: DataProduct[]) => Promise<void>;
 }
@@ -119,6 +122,7 @@ function ServiceMainTabContent({
   pagingInfo,
   isVersionPage = false,
   wrapInCard = true,
+  hideRightPanel = false,
   onDataProductUpdate,
   setFilters,
   setIsServiceLoading,
@@ -477,25 +481,19 @@ function ServiceMainTabContent({
                         emptyText: (
                           <div className="tw:relative tw:min-h-42">
                             {searchValue ? (
-                              <EmptyPlaceholder
+                              <NoSearchResultsPlaceholder
                                 description={t(
                                   'message.check-spelling-or-try-shorter-term'
                                 )}
-                                icon={
-                                  <NoSearch className="tw:text-secondary" />
-                                }
+                                icon={<NoSearch />}
                                 title={t('label.no-matching-result-plural')}
-                                variant="blank"
                               />
                             ) : (
-                              <EmptyPlaceholder
-                                icon={
-                                  <Assets className="tw:text-utility-gray-600" />
-                                }
+                              <NoDataPlaceholder
+                                icon={<Assets />}
                                 title={t('message.no-entity-data-available', {
                                   entity: getCountLabel(serviceCategory),
                                 })}
-                                variant="blank"
                               />
                             )}
                           </div>
@@ -514,6 +512,7 @@ function ServiceMainTabContent({
             ),
             ...COMMON_RESIZABLE_PANEL_CONFIG.LEFT_PANEL,
           }}
+          hideSecondPanel={hideRightPanel}
           secondPanel={{
             children: (
               <GenericProvider

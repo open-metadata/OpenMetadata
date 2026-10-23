@@ -11,25 +11,27 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import {
   FilterFunnel01,
   Hourglass01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { countBy, groupBy } from 'lodash';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { usePersonalSpaceStore } from '../../../../../hooks/usePersonalSpaceStore';
 import { formatDate } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import ActivityFeedItem from '../components/ActivityFeedItem';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
@@ -112,6 +114,53 @@ const GROUPING: Record<
   },
 };
 
+// A failed feed says so; an empty one says whether the filters emptied it.
+const ActivityEmptyState = ({
+  error,
+  isFiltered,
+  onRetry,
+}: {
+  error: unknown;
+  isFiltered: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (error) {
+    return (error as AxiosError)?.response?.status ===
+      ClientErrors.FORBIDDEN ? (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.activity'),
+        })}
+      />
+    ) : (
+      <SomethingWentWrongPlaceholder
+        description={t('server.entity-fetch-error', {
+          entity: t('label.activity'),
+        })}
+        onReload={onRetry}
+      />
+    );
+  }
+
+  return isFiltered ? (
+    <NoFilteredResultsPlaceholder
+      data-testid="inbox-activity-no-results"
+      description={t('message.activity-feed-no-results-description')}
+      icon={<FilterFunnel01 className="tw:size-7" />}
+      title={t('label.no-activity-in-period')}
+    />
+  ) : (
+    <NoDataPlaceholder
+      data-testid="inbox-activity-empty"
+      description={t('message.activity-feed-empty-description')}
+      icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
+      title={t('label.activity-feed-starts-here')}
+    />
+  );
+};
+
 export interface ActivityTabProps {
   dateRange?: InboxDateRange;
   onDatePresetChange?: (key: string) => void;
@@ -139,7 +188,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   }, [markInboxActivitySeen]);
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isLoading } = useInboxActivity(filter, dateRange);
+  const { items, isLoading, error, refetch } = useInboxActivity(
+    filter,
+    dateRange
+  );
   const counts = useInboxActivityCounts(dateRange);
   // The Mentions feed (already read for its count) marks the cards that name
   // the viewer, whichever tab they appear under.
@@ -195,32 +247,17 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       ? ACTIVITY_CLOCK_FORMAT
       : ACTIVITY_DATE_FORMAT;
 
-  const emptyPlaceholder =
-    isFiltered || typeKeys.length ? (
-      <EmptyPlaceholder
-        data-testid="inbox-activity-no-results"
-        description={t('message.activity-feed-no-results-description')}
-        icon={
-          <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-        }
-        title={t('label.no-activity-in-period')}
-        variant="blank"
-      />
-    ) : (
-      <EmptyPlaceholder
-        data-testid="inbox-activity-empty"
-        description={t('message.activity-feed-empty-description')}
-        icon={<Hourglass01 className="tw:size-7 tw:text-utility-brand-600" />}
-        title={t('label.activity-feed-starts-here')}
-        variant="blank"
-      />
-    );
-
   let activityContent: React.ReactNode;
   if (isLoading) {
     activityContent = <ActivitySkeleton />;
-  } else if (filteredItems.length === 0) {
-    activityContent = emptyPlaceholder;
+  } else if (error || filteredItems.length === 0) {
+    activityContent = (
+      <ActivityEmptyState
+        error={error}
+        isFiltered={isFiltered || typeKeys.length > 0}
+        onRetry={refetch}
+      />
+    );
   } else {
     activityContent = (
       <Box direction="col" gap={4}>

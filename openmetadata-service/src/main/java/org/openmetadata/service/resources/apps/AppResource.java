@@ -1344,7 +1344,8 @@ public class AppResource extends EntityResource<App, AppRepository> {
             content = @Content(mediaType = "application/json")),
         @ApiResponse(
             responseCode = "404",
-            description = "Application for instance {id} is not found")
+            description = "Application for instance {id} is not found"),
+        @ApiResponse(responseCode = "409", description = "The application is already running")
       })
   public Response triggerApplicationRun(
       @Context UriInfo uriInfo,

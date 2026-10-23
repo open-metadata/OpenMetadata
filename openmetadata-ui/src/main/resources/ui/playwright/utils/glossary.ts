@@ -41,6 +41,7 @@ import {
   getApiContext,
   INVALID_NAMES,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
   uuid,
 } from './common';
@@ -207,10 +208,10 @@ export const selectActiveGlossary = async (
   const sidebar = page.getByTestId('glossary-left-panel');
   await sidebar.getByRole('link').first().waitFor();
 
-  const menuItem = sidebar.getByRole('link', {
-    name: glossaryLabel,
-    exact: true,
-  });
+  // A glossary with terms awaiting review shows their count inside its link, so match the label.
+  const menuItem = sidebar
+    .getByRole('link')
+    .filter({ has: page.getByText(glossaryLabel, { exact: true }) });
   await menuItem.waitFor({ state: 'visible' });
 
   const isSelected = (await menuItem.getAttribute('aria-current')) === 'page';
@@ -660,14 +661,15 @@ export const validateGlossaryTerm = async (
   } else {
     await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
-    await expect(page.locator(statusSelector)).toBeVisible();
-
-    // If status is Draft, then check for either Draft or In Review
-    if (status === 'Draft') {
-      await expect(page.locator(statusSelector)).toContainText(
-        /Draft|In Review/
-      );
+    if (status === 'Draft' || status === 'In Review') {
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-status-badge')
+      ).toContainText('Proposed by');
+      await expect(
+        page.locator(termSelector).getByTestId('proposal-source-person')
+      ).toBeVisible();
     } else {
+      await expect(page.locator(statusSelector)).toBeVisible();
       await expect(page.locator(statusSelector)).toContainText(status);
     }
   }
@@ -770,7 +772,15 @@ export const addAssetToGlossaryTerm = async (
     ).toContainText(visibleName);
   }
 
+  // Wait for the add so callers' teardown cannot delete the term mid-request.
+  const addAssetsResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/assets/add') &&
+      response.request().method() === 'PUT'
+  );
   await page.click('[data-testid="save-btn"]');
+
+  expect((await addAssetsResponse).status()).toBe(200);
 };
 
 const testFilterWithSpecificOption = async (
@@ -1187,6 +1197,52 @@ export const addRelatedTerms = async (
   }
 };
 
+export const getRelationRows = (page: Page) =>
+  page.locator('[data-testid^="relation-row-"]');
+
+export const getOnlyRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  await expect(rows).toHaveCount(1);
+
+  return rows;
+};
+
+// Row ids are Date.now() values, so the added row is the one with a new id.
+export const addRelationRow = async (page: Page) => {
+  const rows = getRelationRows(page);
+  const readIds = () =>
+    rows.evaluateAll((nodes) =>
+      nodes.map((node) => node.getAttribute('data-testid') ?? '')
+    );
+  const before = await readIds();
+
+  await page.getByTestId('add-row-button').click();
+  await expect(rows).toHaveCount(before.length + 1);
+
+  const added = (await readIds()).find((id) => !before.includes(id)) ?? '';
+
+  return page.getByTestId(added);
+};
+
+// Re-pick until the trigger shows the label: the non-modal popover closes on scroll or misclicks a neighbour.
+export const selectRelationType = async (
+  page: Page,
+  row: Locator,
+  relationTypeLabel: string
+) => {
+  const relationTypeTrigger = row.locator('button[aria-haspopup="listbox"]');
+
+  await expect(async () => {
+    await selectOptionWithRetry(
+      relationTypeTrigger,
+      page.getByRole('option', { exact: true, name: relationTypeLabel })
+    );
+    await expect(relationTypeTrigger).toHaveText(relationTypeLabel, {
+      timeout: 2000,
+    });
+  }).toPass({ timeout: 30000 });
+};
+
 export const addRelatedTermsByRelationType = async (
   page: Page,
   rows: Array<{ relationTypeLabel: string; terms: GlossaryTerm[] }>
@@ -1195,25 +1251,10 @@ export const addRelatedTermsByRelationType = async (
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-
-    if (i > 0) {
-      await page.getByTestId('add-row-button').click();
-    }
-
-    // Row ids are non-deterministic (Date.now() in handleStartAdding/handleAddRow),
-    // so identify rows by position — first when i=0, otherwise last.
     const rowLocator =
-      i === 0
-        ? page.locator('[data-testid^="relation-row-"]').first()
-        : page.locator('[data-testid^="relation-row-"]').last();
+      i === 0 ? await getOnlyRelationRow(page) : await addRelationRow(page);
 
-    await rowLocator.getByRole('button').first().click();
-    const option = page.getByRole('option', {
-      exact: true,
-      name: row.relationTypeLabel,
-    });
-    await expect(option).toBeVisible();
-    await option.click();
+    await selectRelationType(page, rowLocator, row.relationTypeLabel);
 
     const trigger = rowLocator.locator('[data-testid^="term-picker-"]');
 
@@ -2137,3 +2178,15 @@ export const includeGlossaryInApprovalWorkflow = (
   apiContext: APIRequestContext,
   glossary: Glossary
 ) => updateApprovalWorkflowExclusion(apiContext, glossary, false);
+
+// The glossary page also fires its own /glossaryTerms/search proposal-count
+// queries (no q), so match the user's search by its query text.
+export const waitForTermSearch = (page: Page, query: string) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname.endsWith('/api/v1/glossaryTerms/search') &&
+      url.searchParams.get('q') === query
+    );
+  });

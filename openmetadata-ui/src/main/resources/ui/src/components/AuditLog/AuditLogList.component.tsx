@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  EmptyPlaceholder,
-  Skeleton,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { compact, startCase } from 'lodash';
 import {
@@ -46,7 +41,10 @@ import {
   getTeamsWithFqnPath,
   getUserPath,
 } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { isValidJSONString } from '../../utils/StringUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import {
   AuditLogListItemProps,
@@ -160,7 +158,7 @@ const extractEntityInfo = (value: unknown): EntityInfo[] => {
 const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
   tags: getTagPath,
   dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-  teams: getTeamsWithFqnPath,
+  teams: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
   domain: getDomainPath,
   owner: getUserPath,
   reviewers: getUserPath,
@@ -766,28 +764,27 @@ const AuditLogList: FC<AuditLogListProps> = ({
 
     if (hasActiveSearch) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.check-spelling-or-try-different-term')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-matching-results')}
         />
       );
     } else if (hasActiveFilters) {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoSearchResultsPlaceholder
           actions={clearAction}
           description={t('message.no-results-for-filters-description')}
-          icon={<NoSearch className="tw:text-quaternary" />}
+          icon={<NoSearch />}
           title={t('label.no-result-for-these-filter-plural')}
         />
       );
     } else {
       emptyContent = (
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-audit-logs-description')}
           title={t('label.no-audit-logs-yet')}
-          variant="blank"
         />
       );
     }

@@ -147,6 +147,10 @@
          own schedule; it is not a reason to leave a server on 5.6, which is
          still exposed to the CVE above. -->
     <jena.version>6.2.0</jena.version>
+    <!-- CVE-2026-102554 (unbounded allocation), fixed in 33.7.2-jre. Managed here, not only in
+         openmetadata-service, because common/spec/sdk/java-client otherwise resolve 33.4.8-jre
+         via dropwizard-jersey and 33.3.1-android via google-auth-library. -->
+    <guava.version>33.7.2-jre</guava.version>
 
     <sonar.projectKey>open-metadata_OpenMetadata</sonar.projectKey>
     <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -161,9 +165,8 @@
     <dropwizard-micrometer.version>3.0.0</dropwizard-micrometer.version>
     <micrometer.version>1.16.7</micrometer.version>
     <json-schema-validator.version>2.0.1</json-schema-validator.version>
-    <java-jwt.version>4.4.0</java-jwt.version>
+    <java-jwt.version>4.6.2</java-jwt.version>
     <jwks-rsa.version>0.22.1</jwks-rsa.version>
-    <jjwt.version>0.9.1</jjwt.version>
     <rerunner-jupiter.version>2.1.6</rerunner-jupiter.version>
     <!-- CVE-2026-84939: relative path traversal via ClassTemplateLoader / WebappTemplateLoader
          during localized template lookup, fixed in 2.3.35. -->
@@ -173,7 +176,7 @@
     <simplejavamail.version>8.12.6</simplejavamail.version>
     <dropwizardkafka.version>1.8.0</dropwizardkafka.version>
     <maven-release-plugin.version>3.0.1</maven-release-plugin.version>
-    <unboundsdk.version>6.0.11</unboundsdk.version>
+    <unboundsdk.version>7.0.5</unboundsdk.version>
     <dropwizard-web.version>3.0.1</dropwizard-web.version>
     <snakeyaml.version>2.3</snakeyaml.version>
     <woodstox.version>5.4.0</woodstox.version>
@@ -191,9 +194,9 @@
     <logback-classic.version>1.5.38</logback-classic.version>
     <jsonpath.version>2.9.0</jsonpath.version>
     <everit.version>1.14.4</everit.version>
-    <json-patch.version>1.13</json-patch.version>
-    <!-- 12.1.12 clears CVE-2026-19203 (jetty-http) and CVE-2026-19204 (jetty-websocket-core-common). -->
-    <jetty.version>12.1.12</jetty.version>
+    <!-- 12.1.14 clears CVE-2026-19863 (jetty-security) and CVE-2026-76184, CVE-2026-77711,
+         CVE-2026-19864 (jetty-client), all fixed in 12.1.13. -->
+    <jetty.version>12.1.14</jetty.version>
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>1.1.1</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
@@ -218,6 +221,11 @@
            transitively from dropwizard-core and stay unmanaged on its older line (e.g.
            jetty-security, CVE-2026-10050 digest authentication bypass). Imported before
            anything that pulls dropwizard so the patched line wins. -->
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-bom</artifactId>
@@ -763,11 +771,6 @@
         </exclusions>
       </dependency>
     <dependency>
-      <groupId>com.github.java-json-tools</groupId>
-      <artifactId>json-patch</artifactId>
-      <version>${json-patch.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.github.jknack</groupId>
       <artifactId>handlebars</artifactId>
       <version>${handlebars.version}</version>
@@ -1275,6 +1278,13 @@
                 <requireMavenVersion>
                   <version>3.6.0</version>
                 </requireMavenVersion>
+                <bannedDependencies>
+                  <message>java-json-tools is abandoned and jackson-coreutils 2.0 has unfixed CVEs. Diff with org.openmetadata.schema.utils.JsonDiff and apply with JsonUtils.applyPatch (ADR:2026-10-15-json-patches-are-computed-in-house-and-applied-with-parsson).</message>
+                  <excludes>
+                    <exclude>com.github.java-json-tools</exclude>
+                    <exclude>com.github.fge</exclude>
+                  </excludes>
+                </bannedDependencies>
               </rules>
             </configuration>
           </execution>

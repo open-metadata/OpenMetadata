@@ -401,6 +401,12 @@ export const addInternalDestinationProfile = async ({
       .getByRole('listbox', { name: /destination/i })
       .getByRole('option', { name: category, exact: true })
   );
+  // The category popover opens over the type select below it; until it has
+  // unmounted it intercepts the type click and can take focus from the type
+  // popover, closing it before the option is picked.
+  await expect(
+    page.getByRole('listbox', { name: /destination/i })
+  ).toBeHidden();
 
   await selectDropdownOption({
     page,
@@ -542,6 +548,14 @@ export const navigateToAlertsList = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('alerts-list-container')).toBeVisible();
 };
 
+export const closeSourcePicker = async (page: Page) => {
+  await page
+    .getByTestId('ai-profile-page')
+    .getByText('Stay current with timely alerts using webhooks.')
+    .click();
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
+
 export const inputAlertInformation = async ({
   page,
   name,
@@ -561,20 +575,23 @@ export const inputAlertInformation = async ({
   await expect(descriptionTextArea).toBeVisible();
   await descriptionTextArea.fill(ALERT_DESCRIPTION);
 
-  const sourceSelect = page.getByTestId('source-select');
-  await expect(sourceSelect).toBeVisible();
-  await sourceSelect.click();
-  await page.getByRole('option', { name: new RegExp(sourceName, 'i') }).click();
+  // The source picker takes several sources; this alert gets one. It is closed by clicking the
+  // header: Escape would also close the profile panel, and Tab would add the highlighted source.
+  await chooseSelectOption(
+    page.getByTestId('source-select'),
+    page.getByRole('listbox').getByTestId(`${sourceName}-option`)
+  );
+  await closeSourcePicker(page);
 };
 
 export const saveNewAlertAndVerify = async (
   page: Page
 ): Promise<AlertDetails> => {
+  // Only the create itself: the form also posts to /capabilities and /testDestination.
   const createResponse = page.waitForResponse(
     (response) =>
       response.request().method() === 'POST' &&
-      response.url().includes('/api/v1/events/subscriptions') &&
-      !response.url().includes('testDestination')
+      new URL(response.url()).pathname === '/api/v1/events/subscriptions'
   );
 
   await page.getByTestId('save-btn').click();

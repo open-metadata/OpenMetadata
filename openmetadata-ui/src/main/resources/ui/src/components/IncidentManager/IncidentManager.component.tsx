@@ -27,7 +27,6 @@ import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../constants/char.constants';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { EntityReference } from '../../generated/entity/type';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
@@ -40,9 +39,9 @@ import { getNameFromFQN } from '../../utils/FqnUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import DateRangeFilter from '../common/DateRangeFilter/DateRangeFilter';
+import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlaceholder';
 import { UserTeamSelectableList } from '../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import DqDateRangeFilter from '../observability/DataQuality/Dashboard/DqDateRangeFilter';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
 import { useIncidentManagerListPage } from './useIncidentManagerListPage';
@@ -152,13 +151,14 @@ const IncidentManager = ({
 
   if (!hasViewAccess) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.test-case'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.test-case'),
+          })}
+        />
+      </div>
     );
   }
 
@@ -325,7 +325,7 @@ const IncidentManager = ({
                 weight="medium">
                 {t('label.date-range')}
               </Typography>
-              <DqDateRangeFilter
+              <DateRangeFilter
                 fullWidth
                 endTs={filters.endTs}
                 startTs={filters.startTs}

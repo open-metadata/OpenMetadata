@@ -118,6 +118,20 @@ jest.mock('./MembersCreateUserForm', () => () => (
 jest.mock('./MembersOnlineUsersPanel', () => () => (
   <div data-testid="online-users" />
 ));
+jest.mock(
+  './MembersUserEdit',
+  () => (props: { name: string; onResolveName: (name: string) => void }) => {
+    const React = require('react');
+    const { onResolveName } = props;
+    React.useEffect(() => {
+      const id = setTimeout(() => onResolveName('Jane Doe'), 0);
+
+      return () => clearTimeout(id);
+    }, [onResolveName]);
+
+    return <div data-name={props.name} data-testid="user-edit" />;
+  }
+);
 
 import MembersPanel from './MembersPanel';
 
@@ -165,6 +179,44 @@ describe('MembersPanel', () => {
     await waitFor(() =>
       expect(onHeaderChange).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Engineering Team' })
+      )
+    );
+  });
+});
+
+describe('MembersPanel user edit view', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+  });
+
+  it('deep-links #members/user/<name> to the edit view with a Users crumb and the display name', async () => {
+    globalThis.location.hash = `#members/user/${encodeURIComponent(
+      'jane@acme.io'
+    )}`;
+    const onHeaderChange = jest.fn();
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <MembersPanel onHeaderChange={onHeaderChange} />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('user-edit')).toHaveAttribute(
+      'data-name',
+      'jane@acme.io'
+    );
+
+    await waitFor(() =>
+      expect(onHeaderChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          title: 'Jane Doe',
+          breadcrumbs: expect.arrayContaining([
+            expect.objectContaining({ id: 'users' }),
+            expect.objectContaining({ id: 'current', label: 'Jane Doe' }),
+          ]),
+        })
       )
     );
   });

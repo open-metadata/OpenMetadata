@@ -56,7 +56,7 @@ class DataContractIndexMappingTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"en", "jp", "ru", "zh"})
+  @ValueSource(strings = {"en", "jp", "ko", "ru", "zh"})
   void contractFieldsAreMapped(String language) throws IOException {
     JsonNode props = properties(language);
     assertEquals("keyword", props.at("/entity/properties/type/type").asText());
@@ -70,7 +70,7 @@ class DataContractIndexMappingTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"en", "jp", "ru", "zh"})
+  @ValueSource(strings = {"en", "jp", "ko", "ru", "zh"})
   void entityFqnKeywordHasNoIgnoreAbove(String language) throws IOException {
     JsonNode keyword =
         properties(language).at("/entity/properties/fullyQualifiedName/fields/keyword");
@@ -80,7 +80,7 @@ class DataContractIndexMappingTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"en", "jp", "ru", "zh"})
+  @ValueSource(strings = {"en", "jp", "ko", "ru", "zh"})
   void referenceFqnKeywordsAreLowercaseNormalized(String language) throws IOException {
     // Aggregation autocomplete lowercases the typed prefix; an un-normalized keyword never matches
     // mixed-case FQNs once the user types.
@@ -95,7 +95,7 @@ class DataContractIndexMappingTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"en", "jp", "ru", "zh"})
+  @ValueSource(strings = {"en", "jp", "ko", "ru", "zh"})
   void freeFormBlocksAndTagsAreNotMapped(String language) throws IOException {
     JsonNode props = properties(language);
     for (String field : FREE_FORM_FIELDS) {

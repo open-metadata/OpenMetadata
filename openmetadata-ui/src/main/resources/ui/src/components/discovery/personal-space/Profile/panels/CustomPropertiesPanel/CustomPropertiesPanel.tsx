@@ -115,7 +115,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 
   const handleSelectEntityType = useCallback(
     (entityType: Type) => {
-      setHash('custom-properties', entityType.fullyQualifiedName ?? undefined);
+      setHash(HASH_TAB, viewToSubPath({ type: 'detail', entityType }));
     },
     [setHash]
   );

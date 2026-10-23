@@ -59,11 +59,6 @@ jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
 jest.mock('../../utils/DataInsightPureUtils', () => ({
   ...jest.requireActual('../../utils/DataInsightPureUtils'),
   getKpiTargetValueByMetricType: jest.fn().mockReturnValue(10),
-  getDisabledDates: jest.fn().mockReturnValue(true),
-}));
-
-jest.mock('../../constants/DataInsight.constants', () => ({
-  KPI_DATE_PICKER_FORMAT: 'YYY-MM-DD',
 }));
 
 const mockProps = {

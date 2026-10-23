@@ -14,7 +14,6 @@
 import {
   Box,
   ButtonUtility,
-  EmptyPlaceholder,
   Skeleton,
   Table,
   Toggle,
@@ -33,6 +32,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NextPrevious from '../../common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import { TestDefinitionTableProps } from './TestDefinitionTable.interface';
@@ -297,7 +297,7 @@ const TestDefinitionTable = ({
                 loadingSkeletons
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     actions={
                       hasActiveFilters && onClearFilters
                         ? [
@@ -317,7 +317,7 @@ const TestDefinitionTable = ({
                     )}
                     icon={
                       hasActiveFilters ? (
-                        <FilterOffIcon className="tw:text-fg-quaternary" />
+                        <FilterOffIcon />
                       ) : (
                         <FileShield02 className="tw:text-fg-brand-primary" />
                       )
@@ -327,7 +327,6 @@ const TestDefinitionTable = ({
                         ? 'message.no-results-for-filters'
                         : 'message.no-test-definitions-yet'
                     )}
-                    variant="blank"
                   />
                 </Box>
               )

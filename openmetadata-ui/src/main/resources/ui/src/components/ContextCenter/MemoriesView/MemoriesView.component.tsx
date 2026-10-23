@@ -16,7 +16,6 @@ import {
   ButtonUtility,
   Dot,
   Dropdown,
-  EmptyPlaceholder,
   Skeleton,
   Tooltip,
   TooltipTrigger,
@@ -40,10 +39,12 @@ import {
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
@@ -378,6 +379,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
+  const authorDisplayName = useApplicationStore(
+    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
+  );
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -442,7 +446,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
           gap={1}>
           <MemoryRowHeader
             updatedAt={memory.updatedAt}
-            updatedBy={memory.updatedBy}
+            updatedBy={authorDisplayName || memory.updatedBy}
           />
 
           <Box align="center" gap={2} wrap="wrap">
@@ -513,7 +517,7 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   if (data.length === 0 && (isSearching || isFiltered)) {
     return (
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             !isSearching && onClearFilters
               ? [
@@ -531,19 +535,12 @@ const MemoriesView: FC<MemoriesViewProps> = ({
               ? t('message.check-spelling-or-try-different-term')
               : t('message.no-results-for-filters-description')
           }
-          icon={
-            isSearching ? (
-              <NoSearchResultIcon className="tw:text-quaternary" />
-            ) : (
-              <NoFilterResultsIcon className="tw:text-quaternary" />
-            )
-          }
+          icon={isSearching ? <NoSearchResultIcon /> : <NoFilterResultsIcon />}
           title={
             isSearching
               ? t('label.no-matching-results')
               : t('label.no-results-for-filters')
           }
-          variant="blank"
         />
       </div>
     );

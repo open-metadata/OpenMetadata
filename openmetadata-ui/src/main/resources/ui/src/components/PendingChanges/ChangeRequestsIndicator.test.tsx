@@ -262,7 +262,7 @@ describe('ChangeRequestsIndicator', () => {
     });
   });
 
-  it('lets an owner decide when the glossary has no reviewers', async () => {
+  it('gives an owner who is not assigned the review no decision', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({ requestedBy: 'bob', taskId: 'task-1' }),
     ]);
@@ -274,7 +274,9 @@ describe('ChangeRequestsIndicator', () => {
 
     await openModal();
 
-    expect(screen.getByTestId('accept-cr-1|2|description')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('accept-cr-1|2|description')
+    ).not.toBeInTheDocument();
   });
 
   it('leaves the decision to the reviewers of a glossary that has them', async () => {

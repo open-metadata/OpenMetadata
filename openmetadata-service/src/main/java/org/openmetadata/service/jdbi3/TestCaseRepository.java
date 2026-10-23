@@ -901,6 +901,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateDimensionColumns(test, table);
     setDataQualityDimension(test, testDefinition);
 
+    if (!update) {
+      TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
+    }
+
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
     var testSuite = getOrCreateTestSuite(test, table);
@@ -2001,6 +2005,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
+    private void validateChangedConformance() {
+      TestCaseDefinitionConformance.validateUpdate(
+          original,
+          updated,
+          () -> Entity.getEntity(updated.getTestDefinition(), "", ALL),
+          () -> Entity.getEntity(EntityLink.parse(updated.getEntityLink()), "columns", ALL));
+    }
+
     @Override
     protected boolean consolidateChanges(TestCase original, TestCase updated, Operation operation) {
       return false;
@@ -2009,6 +2021,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      validateChangedConformance();
       compareAndUpdate(
           "entity",
           () -> {
