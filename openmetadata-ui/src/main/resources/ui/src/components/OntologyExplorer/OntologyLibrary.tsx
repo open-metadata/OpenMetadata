@@ -34,10 +34,10 @@ import { useTranslation } from 'react-i18next';
 import { InstallOntologyPack } from '../../generated/api/data/installOntologyPack';
 import { OntologyPackInstallResult } from '../../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
+import type { OntologyPackInstallationRecord } from '../../generated/type/ontologyPackInstallationRecord';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import OntologyNativeLibraryDetail, {
-  NativeLibraryCompletion,
   OntologyNativeLibraryDetailProps,
 } from '../governance/ontology/OntologyNativeLibraryDetail/OntologyNativeLibraryDetail';
 import {
@@ -53,7 +53,7 @@ type OntologyLibraryProps = { onClose?: () => void } & (
   | {
       native: Omit<
         OntologyNativeLibraryDetailProps,
-        'pack' | 'onBack' | 'completion' | 'onCompleted' | 'onBusyChange'
+        'pack' | 'onBack' | 'installedIn' | 'onCompleted' | 'onBusyChange'
       >;
       canInstall?: never;
       onOpenGlossary?: never;
@@ -75,6 +75,9 @@ const OntologyLibrary = ({
 }: OntologyLibraryProps) => {
   const { t } = useTranslation();
   const [packs, setPacks] = useState<OntologyPackManifest[]>([]);
+  const [installations, setInstallations] = useState<
+    OntologyPackInstallationRecord[]
+  >([]);
   const [selectedPack, setSelectedPack] = useState<OntologyPackManifest>();
   const [selectedModuleIds, setSelectedModuleIds] = useState<string[]>([]);
   const [targetGlossaryName, setTargetGlossaryName] = useState('');
@@ -86,26 +89,31 @@ const OntologyLibrary = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasLoadError, setHasLoadError] = useState(false);
   const [isNativeBusy, setIsNativeBusy] = useState(false);
-  const [nativeCompletions, setNativeCompletions] = useState<
-    Record<string, NativeLibraryCompletion>
-  >({});
+  const isNative = Boolean(native);
+  const loadPacks = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      setHasLoadError(false);
 
-  const loadPacks = useCallback(async () => {
-    setIsLoading(true);
-    setHasLoadError(false);
-
-    try {
-      const catalogue = await listOntologyPacks();
-      setPacks(catalogue.packs);
-    } catch (error) {
-      setHasLoadError(true);
-      showErrorToast(
-        error instanceof Error ? error.message : t('server.unexpected-error')
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [t]);
+      try {
+        const catalogue = await listOntologyPacks();
+        setPacks(catalogue.packs);
+        setInstallations(isNative ? catalogue.installations ?? [] : []);
+      } catch (error) {
+        setHasLoadError(true);
+        showErrorToast(
+          error instanceof Error ? error.message : t('server.unexpected-error')
+        );
+      } finally {
+        if (showLoading) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [isNative, t]
+  );
 
   useEffect(() => {
     void loadPacks();
@@ -196,9 +204,10 @@ const OntologyLibrary = ({
   const sentenceCaseLibraryTitle = `${libraryTitle.charAt(0)}${libraryTitle
     .slice(1)
     .toLocaleLowerCase()}`;
-  const installedCount = packs.filter(
-    (pack) => nativeCompletions[pack.id]
-  ).length;
+  const installedPackIds = [
+    ...new Set(installations.map((record) => record.installation.packId)),
+  ];
+  const installedCount = installedPackIds.length;
 
   let libraryBody: JSX.Element;
   if (isLoading) {
@@ -231,16 +240,17 @@ const OntologyLibrary = ({
     libraryBody = (
       <OntologyNativeLibraryDetail
         {...native}
-        completion={nativeCompletions[selectedPack.id]}
+        installedIn={installations.filter(
+          (record) => record.installation.packId === selectedPack.id
+        )}
         key={selectedPack.id}
         pack={selectedPack}
         onBack={handleBack}
         onBusyChange={setIsNativeBusy}
         onCompleted={(completion) => {
-          setNativeCompletions((current) => ({
-            ...current,
-            [selectedPack.id]: completion,
-          }));
+          if (completion.outcome === 'applied') {
+            void loadPacks(false);
+          }
           setIsNativeBusy(false);
           setSelectedPack(undefined);
           showSuccessToast(
@@ -274,7 +284,7 @@ const OntologyLibrary = ({
   } else {
     libraryBody = (
       <OntologyLibraryCatalogue
-        installedPackIds={Object.keys(nativeCompletions)}
+        installedPackIds={installedPackIds}
         packs={packs}
         onSelect={handleSelectPack}
       />

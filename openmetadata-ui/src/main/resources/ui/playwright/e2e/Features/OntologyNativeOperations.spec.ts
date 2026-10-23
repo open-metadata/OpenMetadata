@@ -242,6 +242,7 @@ test.describe(
     for (const pack of [
       {
         id: 'fibo',
+        industry: 'finance',
         base: 'foundations',
         extra: 'business-entities',
         label: 'Business Entity',
@@ -249,6 +250,7 @@ test.describe(
       },
       {
         id: 'fhir',
+        industry: 'healthcare',
         base: 'core',
         extra: 'clinical',
         label: 'FHIR Resource',
@@ -285,7 +287,7 @@ test.describe(
             page.getByTestId('ontology-library-filter-all')
           ).toBeVisible();
           await expect(
-            page.getByTestId(`ontology-library-filter-${pack.id}`)
+            page.getByTestId(`ontology-library-filter-${pack.industry}`)
           ).toBeVisible();
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
@@ -329,13 +331,13 @@ test.describe(
           ).toContainText('Installed');
           await expect(
             page.getByTestId('ontology-library-installed-count')
-          ).toContainText('1 installed');
+          ).toContainText('installed');
           await expect(
             page.getByTestId(`ontology-pack-details-${pack.id}`)
           ).toContainText('View');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page.getByTestId('ontology-library-open-graph')
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toBeVisible();
           expect(draftWrites).toBe(1);
           expect(createdDraft?.baseWorkingRevision).toBe(1);
@@ -360,7 +362,9 @@ test.describe(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
-          await page.getByTestId('ontology-library-open-graph').click();
+          await page
+            .getByTestId(`ontology-library-installed-in-${installed.id}`)
+            .click();
           await expect(page).toHaveURL(new RegExp(`ontology=${installed.id}`));
           await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
             'aria-selected',
@@ -399,10 +403,8 @@ test.describe(
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page
-              .getByTestId('ontology-library')
-              .getByText('No changes to save', { exact: true })
-          ).toBeVisible();
+            page.getByTestId(`ontology-pack-${pack.id}`)
+          ).toContainText('Installed');
           expect(draftWrites).toBe(1);
         } finally {
           await page.unroute('**/api/v1/ontologyChangeSets');

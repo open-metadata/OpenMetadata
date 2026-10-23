@@ -55,6 +55,7 @@ import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontolo
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackList } from '../generated/api/data/ontologyPackList';
 import { OntologyPackManifest } from '../generated/api/data/ontologyPackManifest';
+import type { OntologyPackSample } from '../generated/api/data/ontologyPackSample';
 import { OntologyProfileReport } from '../generated/api/data/ontologyProfileReport';
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
@@ -780,6 +781,18 @@ export const materializeInferenceRules = async (
 
 export const listOntologyPacks = async () => {
   const response = await APIClient.get<OntologyPackList>(ONTOLOGY_PACKS_PATH);
+
+  return response.data;
+};
+
+export const getOntologyPackSample = async (
+  packId: string,
+  moduleIds: string[]
+): Promise<OntologyPackSample> => {
+  const response = await APIClient.get<OntologyPackSample>(
+    `${ONTOLOGY_PACKS_PATH}/${encodeURIComponent(packId)}/sample`,
+    { params: { moduleIds: moduleIds.join(',') } }
+  );
 
   return response.data;
 };

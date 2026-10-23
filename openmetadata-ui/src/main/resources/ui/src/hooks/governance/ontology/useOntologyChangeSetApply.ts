@@ -38,7 +38,8 @@ const validateDraft = (
   const matchesIdentity =
     draft.name === plan.name &&
     draft.ontology?.fullyQualifiedName === plan.ontology &&
-    draft.baseWorkingRevision === plan.baseWorkingRevision;
+    draft.baseWorkingRevision === plan.baseWorkingRevision &&
+    isEqual(draft.sourcePack, plan.sourcePack);
   const matchesOperations =
     isEqual(draft.operations, plan.operations) &&
     draft.undoCursor === (plan.undoCursor ?? plan.operations?.length ?? 0);
