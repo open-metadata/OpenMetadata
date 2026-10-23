@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -54,17 +55,18 @@ class AIContextFinderTest {
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     OpenSearchVectorService vectors = mock(OpenSearchVectorService.class);
-    Entity.setSearchRepository(searchRepository);
+    // Thread-local stubs, never the global Entity.setSearchRepository: classes that run
+    // concurrently swap that global, and the finder would then read their repository.
     try (MockedStatic<OpenSearchVectorService> instance =
-        mockStatic(OpenSearchVectorService.class)) {
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       instance.when(OpenSearchVectorService::getInstance).thenReturn(vectors);
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
       new AIContextFinder(subject).find("revenue", 5);
 
       verify(vectors)
           .search(eq("revenue"), any(), anyInt(), eq(0), anyInt(), eq(0.0), any(), eq(subject));
-    } finally {
-      Entity.setSearchRepository(null);
     }
   }
 
