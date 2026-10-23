@@ -19,7 +19,7 @@ import {
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Role as RoleIcon } from '@openmetadata/ui-core-components/icons';
+import { ActivityOwnerChanged as RoleIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';

@@ -18,7 +18,10 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Persona, Role } from '@openmetadata/ui-core-components/icons';
+import {
+  ActivityOwnerChanged,
+  Role as PersonaIcon,
+} from '@openmetadata/ui-core-components/icons';
 
 import { isEmpty, orderBy } from 'lodash';
 import {
@@ -317,7 +320,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'personas',
-            icon: Persona,
+            icon: PersonaIcon,
             title: t('label.switch-persona'),
             listItems: sortedPersonas,
             sizeLimit: showAllPersona ? sortedPersonas.length : 2,
@@ -336,7 +339,7 @@ export const UserProfileIcon = () => {
           <Dropdown.Separator />
           {renderListSection({
             id: 'roles',
-            icon: Role,
+            icon: ActivityOwnerChanged,
             title: t('label.role-plural'),
             listItems: roles ?? [],
             labelRenderer: getEntityName,

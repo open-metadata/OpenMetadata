@@ -12,7 +12,7 @@
  */
 
 import { Divider, Typography } from '@openmetadata/ui-core-components';
-import { Persona } from '@openmetadata/ui-core-components/icons';
+import { Role as PersonaIcon } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -83,7 +83,7 @@ const UserProfilePersonas = ({
       <>
         <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
           <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center tw:cursor-pointer">
-            <Persona size={14} />
+            <PersonaIcon size={14} />
           </div>
           <div className="d-flex justify-between w-full">
             <Typography
@@ -134,7 +134,7 @@ const UserProfilePersonas = ({
       data-testid="persona-details-card">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
         <div className="tw:m-0.5 tw:flex tw:size-4 tw:items-center tw:justify-center tw:cursor-pointer">
-          <Persona size={14} />
+          <PersonaIcon size={14} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography
