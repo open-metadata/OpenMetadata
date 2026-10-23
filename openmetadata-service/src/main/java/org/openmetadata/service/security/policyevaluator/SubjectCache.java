@@ -107,6 +107,17 @@ public class SubjectCache {
   private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
   private static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
 
+  // Bumped whenever the compiled policy caches are dropped wholesale, which is what a policy-rule
+  // or
+  // role-policy change does. Downstream caches keyed only by user/role/team ids — the search RBAC
+  // query cache — add this so a rule edit that leaves those ids unchanged still invalidates them.
+  private static final java.util.concurrent.atomic.AtomicLong POLICY_GENERATION =
+      new java.util.concurrent.atomic.AtomicLong();
+
+  public static long policyGeneration() {
+    return POLICY_GENERATION.get();
+  }
+
   private static final RevocableLoadingCache<UserPoliciesContext> USER_POLICIES_CACHE =
       new RevocableLoadingCache<>(
           DEFAULT_MAX_ENTRIES,
@@ -264,6 +275,7 @@ public class SubjectCache {
 
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
+    POLICY_GENERATION.incrementAndGet();
     // The policy caches are derived from the team graph, so they have to be dropped together. The
     // graph goes first: a load that starts once the caches are swapped must not read it stale and
     // publish the result into the new cache.

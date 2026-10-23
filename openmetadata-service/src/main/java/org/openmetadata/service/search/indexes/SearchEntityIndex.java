@@ -21,6 +21,16 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     return doc;
   }
 
+  @Override
+  public java.util.Set<String> getRequiredReindexFields() {
+    // SearchIndexRepository.bulkPopulateEntityFieldTags only hydrates field-level tags when fields
+    // contains "fields"; without it a reindex drops the search index's field tags from _source.
+    java.util.Set<String> fields =
+        new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    fields.add("fields");
+    return java.util.Collections.unmodifiableSet(fields);
+  }
+
   public static Map<String, Float> getFields() {
     Map<String, Float> fields = SearchIndex.getDefaultFields();
     fields.put("fields.name", 7.0f);
