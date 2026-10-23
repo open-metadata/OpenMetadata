@@ -1344,6 +1344,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient);
         replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+        mirrorToStagedGeneration(parentId, chunkDocs);
       }
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
@@ -1503,12 +1504,17 @@ public class OpenSearchVectorService implements VectorIndexService {
    * Access fields such as owner names are part of the embedded text, so an access change can need
    * a re-embed, which waits for the provider. Its current chunks lose their stamp first: if the
    * re-embed is skipped or fails they are withheld from restricted callers instead of answering
-   * with the old access values.
+   * with the old access values. A failed strip only loses that guard, so the re-embed still runs.
    */
   private void withholdChunksBeforeAccessReembed(
       EntityInterface<?> entity, ChunkHeader header, ChunkRefresh refresh) {
     if (refresh == ChunkRefresh.REEMBED && header != null && accessFieldsChanged(entity, header)) {
-      withholdChunksOfParents(liveAndStagedChunkTargets(), List.of(entity.getId().toString()));
+      try {
+        withholdChunksOfParents(liveAndStagedChunkTargets(), List.of(entity.getId().toString()));
+      } catch (RuntimeException e) {
+        LOG.warn(
+            "Failed to withhold chunks of {} before re-embed: {}", entity.getId(), e.getMessage());
+      }
     }
   }
 

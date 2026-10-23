@@ -64,7 +64,8 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   same way memory status and anchor are, also while the embedding provider is unavailable. None of
   these values may enter the embedding fingerprint. Owner names are embedded text, though, so an
   access change can also need a re-embed: then the entity's chunks lose their stamp before the
-  re-embed, so a skipped or failed one leaves them withheld, not answering with the old values.
+  re-embed, so a skipped or failed one leaves them withheld, not answering with the old values. A
+  failed stamp removal is logged and the re-embed still runs, since it writes fresh stamps anyway.
 - A propagation that rewrites entity documents' access fields in place (inherited owners,
   domains, tags, reviewers or certification, a domain's included, which reach its sub-domains and
   data products; inherited domains; a data product's assets moving with it to another domain;

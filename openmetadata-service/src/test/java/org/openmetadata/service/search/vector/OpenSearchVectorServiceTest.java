@@ -141,6 +141,28 @@ class OpenSearchVectorServiceTest {
             .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
   }
 
+  /** The chunk-only path (retries, sink backfill) must mirror too, or promotion drops the write. */
+  @Test
+  void chunkOnlyUpdateDuringARecreateAlsoRewritesTheStagedGeneration() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", "staged_chunk_generation");
+    mockOpenSearchResponse("{\"found\":false,\"hits\":{\"hits\":[]},\"errors\":false}");
+
+    vectorService.updateEntityEmbeddingChunks(
+        refreshableMemory().withEntityStatus(ContextMemoryStatus.REJECTED));
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream()
+            .filter(request -> "/_bulk".equals(request.getEndpoint()))
+            .map(OpenSearchVectorServiceTest::bodyOf)
+            .anyMatch(body -> body.contains("\"_index\":\"staged_chunk_generation\"")));
+  }
+
   /**
    * On a participant JVM (stagedChunkIndex is null — only the coordinator sets it), the run-scoped
    * staged chunk index latched from ReindexContext into participantStagedTarget is what the
@@ -1299,6 +1321,29 @@ class OpenSearchVectorServiceTest {
                         && bodyOf(r).contains(table.getId().toString())
                         && bodyOf(r).contains(VectorDocBuilder.FIELD_ACCESS_STAMP)),
         "the stale chunks' stamps must be stripped");
+  }
+
+  /** The strip only guards a skipped re-embed, so its failure must not skip the re-embed. */
+  @Test
+  void updateEntityEmbeddings_reembedsWhenTheStampStripIsIncomplete() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse(
+        "{\"found\":true,\"_source\":{\"fingerprint\":\"STALE\",\"accessStamp\":\"old\","
+            + "\"chunkCount\":1,\"docVersion\":9},\"version_conflicts\":1,\"errors\":false}");
+
+    vectorService.updateEntityEmbeddings(governedTable(), "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream().anyMatch(r -> "/_bulk".equals(r.getEndpoint())),
+        "the re-embedded chunks must still be written");
   }
 
   /** A partial strip (a failure or lost version conflict) must not count as done. */
