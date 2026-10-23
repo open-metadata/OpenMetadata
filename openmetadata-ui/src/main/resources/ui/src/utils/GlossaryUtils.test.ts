@@ -37,7 +37,7 @@ import {
   referenceURLValidator,
   validateReferenceURL,
 } from './GlossaryPureUtils';
-import { withReviewTab } from './GlossaryUtils';
+import { getReviewTab } from './GlossaryUtils';
 
 describe('Glossary Utils', () => {
   it('getQueryFilterToExcludeTerm returns the correct query filter', () => {
@@ -558,57 +558,37 @@ describe('AI-generated glossary drafts', () => {
   });
 });
 
-describe('withReviewTab', () => {
-  const tab = (key: string) => ({ key, label: key });
-
-  it('puts the Review tab right after the given tab, whatever order a persona chose', () => {
-    const tabs = withReviewTab(
-      [
-        tab(EntityTabs.ACTIVITY_FEED),
-        tab(EntityTabs.TERMS),
-        tab(EntityTabs.RELATIONS_GRAPH),
-      ],
-      { afterKey: EntityTabs.TERMS, entityFqn: 'Banking Core' }
-    );
-
-    expect(tabs.map(({ key }) => key)).toEqual([
-      EntityTabs.ACTIVITY_FEED,
-      EntityTabs.TERMS,
-      EntityTabs.REVIEW,
-      EntityTabs.RELATIONS_GRAPH,
-    ]);
-  });
-
-  it('leads with the Review tab when a persona hid the tab it follows', () => {
-    const tabs = withReviewTab([tab(EntityTabs.ACTIVITY_FEED)], {
-      afterKey: EntityTabs.TERMS,
-      entityFqn: 'Banking Core',
-    });
-
-    expect(tabs.map(({ key }) => key)).toEqual([
-      EntityTabs.REVIEW,
-      EntityTabs.ACTIVITY_FEED,
-    ]);
-  });
-
+describe('getReviewTab', () => {
   it('lists the tasks about the glossary in the Review tab, counting the open ones', () => {
     const onTasksChange = jest.fn();
-    const [reviewTab] = withReviewTab([], {
-      afterKey: EntityTabs.TERMS,
+    const reviewTab = getReviewTab({
       entityFqn: 'Banking Core',
       openTaskCount: 6,
       onTasksChange,
-    }) as {
+    }) as unknown as {
       label: ReactElement<{ children: ReactElement }>;
       children: ReactElement<{ children: ReactElement }>;
-    }[];
+    };
 
     expect(reviewTab.label.props).toEqual(
-      expect.objectContaining({ count: 6, id: EntityTabs.REVIEW })
+      expect.objectContaining({
+        count: 6,
+        id: EntityTabs.REVIEW,
+        name: 'label.review',
+      })
     );
     expect(reviewTab.children.props.children.props).toEqual({
       aboutEntity: 'Banking Core',
       onCountChange: onTasksChange,
     });
+  });
+
+  it('names the Review tab as a persona renamed it', () => {
+    const reviewTab = getReviewTab({
+      entityFqn: 'Banking Core',
+      name: 'Approvals',
+    }) as unknown as { label: ReactElement<{ name: string }> };
+
+    expect(reviewTab.label.props.name).toBe('Approvals');
   });
 });

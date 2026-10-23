@@ -110,3 +110,9 @@ its approval request decides it, from the Review tab or the term's page. It also
 edit-and-approve consequence: a reviewer's edit still approves it, but where a glossary has no
 reviewers the request goes to its owners, else the admins, and an edit sends the change to them
 rather than approving it.
+
+v8, 2026-10-23: the Review tab is a system tab of the glossary page, listed after Terms in the
+Customize UI beside Activity Feeds & Tasks, so a persona can rename, move or hide it like any other
+tab. This replaces v6's rule that it is added after a persona's tab customization: a persona that
+saved its glossary tabs before this change does not show the tab until its layout adds it back
+from the hidden tabs, the same as any tab added to a page later.

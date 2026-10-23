@@ -35,7 +35,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import { withReviewTab } from '../../../utils/GlossaryUtils';
+import { getReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -153,6 +153,13 @@ const GlossaryDetails = ({
       },
       ...(!isVersionView
         ? [
+            getReviewTab({
+              activeTab,
+              entityFqn: glossary.fullyQualifiedName ?? '',
+              name: tabLabelMap[EntityTabs.REVIEW],
+              openTaskCount: feedCount.openTaskCount,
+              onTasksChange: fetchTaskCounts,
+            }),
             {
               label: (
                 <TabsLabel
@@ -204,21 +211,11 @@ const GlossaryDetails = ({
         : []),
     ];
 
-    const customizedTabs = getDetailsTabWithNewLabel(
+    return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
       EntityTabs.TERMS
     );
-
-    return isVersionView
-      ? customizedTabs
-      : withReviewTab(customizedTabs, {
-          activeTab,
-          afterKey: EntityTabs.TERMS,
-          entityFqn: glossary.fullyQualifiedName ?? '',
-          openTaskCount: feedCount.openTaskCount,
-          onTasksChange: fetchTaskCounts,
-        });
   }, [
     customizedPage?.tabs,
     glossary.fullyQualifiedName,

@@ -60,45 +60,36 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
 };
 
 /**
- * Adds the Review tab after `afterKey`: the Inbox's task list, scoped to the tasks about this
- * glossary and its terms, where reviewers decide proposed terms. It is added after a persona's tab
- * customization so every persona reaches it; a persona that hid `afterKey` gets it first. Its badge
- * counts the open tasks; `onTasksChange` runs when a decision changes the list, to recount them.
+ * The glossary's Review tab: the Inbox's task list, scoped to the tasks about this glossary and its
+ * terms, where reviewers decide proposed terms. A system tab like Activity Feed, so a persona can
+ * rename, move or hide it. Its badge counts the open tasks; `onTasksChange` runs when a decision
+ * changes the list, to recount them.
  */
-export const withReviewTab = <T extends DetailsTabItem>(
-  tabs: T[],
-  {
-    activeTab,
-    afterKey,
-    entityFqn,
-    openTaskCount,
-    onTasksChange,
-  }: {
-    activeTab?: string;
-    afterKey: EntityTabs;
-    entityFqn: string;
-    openTaskCount?: number;
-    onTasksChange?: () => void;
-  }
-): T[] => {
-  const reviewTab = {
-    key: EntityTabs.REVIEW,
-    label: (
-      <TabsLabel
-        count={openTaskCount}
-        id={EntityTabs.REVIEW}
-        isActive={activeTab === EntityTabs.REVIEW}
-        name={t('label.review')}
-      />
-    ),
-    children: (
-      <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface">
-        <TasksTab aboutEntity={entityFqn} onCountChange={onTasksChange} />
-      </div>
-    ),
-  } as T;
-
-  const index = tabs.findIndex(({ key }) => key === afterKey) + 1;
-
-  return [...tabs.slice(0, index), reviewTab, ...tabs.slice(index)];
-};
+export const getReviewTab = ({
+  activeTab,
+  entityFqn,
+  name,
+  openTaskCount,
+  onTasksChange,
+}: {
+  activeTab?: string;
+  entityFqn: string;
+  name?: string;
+  openTaskCount?: number;
+  onTasksChange?: () => void;
+}): DetailsTabItem => ({
+  key: EntityTabs.REVIEW,
+  label: (
+    <TabsLabel
+      count={openTaskCount}
+      id={EntityTabs.REVIEW}
+      isActive={activeTab === EntityTabs.REVIEW}
+      name={name ?? t('label.review')}
+    />
+  ),
+  children: (
+    <div className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface">
+      <TasksTab aboutEntity={entityFqn} onCountChange={onTasksChange} />
+    </div>
+  ),
+});
