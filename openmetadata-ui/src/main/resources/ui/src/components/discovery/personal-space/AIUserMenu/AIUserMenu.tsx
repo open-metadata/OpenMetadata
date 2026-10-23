@@ -487,9 +487,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             className={ROW_CLASS}
             data-testid="ai-user-menu-my-data"
             id="my-data"
-            textValue={t('label.my-data')}
+            textValue={t('label.my-data-and-following')}
             onAction={() => openPanel('my-data')}>
-            <MenuRow icon={Assets} label={t('label.my-data')} />
+            <MenuRow icon={Assets} label={t('label.my-data-and-following')} />
           </Dropdown.Item>
 
           <SubmenuTrigger>

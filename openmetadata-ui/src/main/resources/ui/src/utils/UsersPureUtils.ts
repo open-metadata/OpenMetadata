@@ -24,6 +24,10 @@ export const isMaskedEmail = (email: string) => {
   return email === MASKED_EMAIL;
 };
 
+/** The email to show, or undefined when it is missing or PII-masked. */
+export const getVisibleEmail = (email?: string): string | undefined =>
+  email && !isMaskedEmail(email) ? email : undefined;
+
 export const getUserCreationErrorMessage = ({
   error,
   entity,
@@ -97,3 +101,9 @@ export const getUserOnlineStatus = (userData: User, includeTooltip = false) => {
 
   return null;
 };
+
+/** "Alice" from "Alice Johnson" — used where copy addresses another user. */
+export const getUserFirstName = (user: {
+  name: string;
+  displayName?: string;
+}): string => (user.displayName?.trim() || user.name).split(/\s+/)[0];

@@ -20,6 +20,7 @@ import ProfilePicture from '../../../../../components/common/ProfilePicture/Prof
 import { Task } from '../../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTaskTypeBadge } from '../taskDetail.utils';
+import { TaskStatusBadge } from '../taskResolution.utils';
 import { getTaskTitleParts } from '../taskTitle.utils';
 import TaskTitle from './TaskTitle';
 import TaskTypeIcon from './TaskTypeIcon';
@@ -27,6 +28,8 @@ import TaskTypeIcon from './TaskTypeIcon';
 export interface InboxTaskListItemProps {
   task: Task;
   isActive?: boolean;
+  // Shown at the row's end where no detail pane beside the list carries it.
+  statusBadge?: TaskStatusBadge;
   onClick: (task: Task) => void;
 }
 
@@ -34,11 +37,47 @@ export interface InboxTaskListItemProps {
 // the full "TASK-00357".
 const TASK_ID_PREFIX = 'TASK-';
 
+/** The row's far end: the comment count, when there is one, and the status. */
+const TaskCardTrailing: React.FC<{
+  commentCount: number;
+  statusBadge?: TaskStatusBadge;
+}> = ({ commentCount, statusBadge }) => (
+  <Box align="center" className="tw:ml-auto tw:shrink-0 tw:gap-2">
+    {commentCount > 0 && (
+      <Box
+        align="center"
+        className="tw:gap-1"
+        data-testid="inbox-task-comment-count">
+        <MessageDotsCircle
+          className="tw:text-quaternary"
+          height={14}
+          width={14}
+        />
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {commentCount}
+        </Typography>
+      </Box>
+    )}
+    {statusBadge && (
+      <Badge
+        color={statusBadge.tone}
+        data-testid="inbox-task-status"
+        size="sm"
+        type="pill-color">
+        {statusBadge.label}
+      </Badge>
+    )}
+  </Box>
+);
+
 /**
  * The card's second line: task id, who raised it and the asset it concerns,
  * with the comment count, when there is one, at the far end.
  */
-const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
+const TaskCardMeta: React.FC<{
+  task: Task;
+  statusBadge?: TaskStatusBadge;
+}> = ({ task, statusBadge }) => {
   const requester = task.createdBy;
   const requesterName = requester?.displayName ?? requester?.name;
   const assetName = task.about ? getEntityName(task.about) : '';
@@ -47,7 +86,10 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
 
   return (
     <Box align="center" className="tw:flex-wrap tw:gap-x-2 tw:gap-y-1">
-      <Typography className="tw:text-tertiary" size="text-xs" weight="medium">
+      <Typography
+        className="tw:font-mono tw:text-tertiary"
+        size="text-xs"
+        weight="medium">
         {`#${shortId}`}
       </Typography>
       {requesterName && (
@@ -68,21 +110,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
           <span className="tw:truncate">{assetName}</span>
         </Badge>
       )}
-      {commentCount > 0 && (
-        <Box
-          align="center"
-          className="tw:ml-auto tw:shrink-0 tw:gap-1"
-          data-testid="inbox-task-comment-count">
-          <MessageDotsCircle
-            className="tw:text-quaternary"
-            height={14}
-            width={14}
-          />
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {commentCount}
-          </Typography>
-        </Box>
-      )}
+      <TaskCardTrailing commentCount={commentCount} statusBadge={statusBadge} />
     </Box>
   );
 };
@@ -94,6 +122,7 @@ const TaskCardMeta: React.FC<{ task: Task }> = ({ task }) => {
 const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
   task,
   isActive,
+  statusBadge,
   onClick,
 }) => {
   const { t } = useTranslation();
@@ -136,7 +165,7 @@ const InboxTaskListItem: React.FC<InboxTaskListItemProps> = ({
             </Typography>
           </TaskTitle>
         )}
-        <TaskCardMeta task={task} />
+        <TaskCardMeta statusBadge={statusBadge} task={task} />
       </Box>
     </Box>
   );
