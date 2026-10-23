@@ -1188,6 +1188,29 @@
       ]
     },
     {
+      "_comment": "ConfirmationModal, its props and unit test. The generated map sends ConfirmationModal.tsx to the first three specs (through its testIds); TestSuiteDetailsPage.spec.ts is added because it asserts the destructive confirm on bulk remove.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The AI-mode bundle test suite page and its test case search. TestSuiteDetailsPage.spec.ts runs the suite search in Classic and AI mode; the generated map reaches only the shared classic components it renders.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestSuiteDetail/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"]
+    },
+    {
       "_comment": "The AI-mode test case Run now / Retry controls. Only the AI-mode detail page and the run execution error banner render them, so the generated map does not reach them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/RunTestCaseButton/**"
