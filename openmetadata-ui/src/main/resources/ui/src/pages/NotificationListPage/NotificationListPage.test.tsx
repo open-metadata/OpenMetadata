@@ -93,6 +93,7 @@ const MOCK_DATA = [
 ];
 const mockNavigate = jest.fn();
 const mockLocationPathname = '/mock-path';
+let mockLocationSearch = '';
 
 jest.mock('react-router-dom', () => ({
   Link: jest
@@ -105,6 +106,7 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
   useLocation: jest.fn().mockImplementation(() => ({
     pathname: mockLocationPathname,
+    search: mockLocationSearch,
   })),
 }));
 
@@ -230,6 +232,64 @@ describe('Notification Alerts Page Tests', () => {
     expect(await screen.findByText(/label.add-entity/)).toBeInTheDocument();
   });
 
+  it('shows an error + retry state, not the onboarding, when the alerts list fails to load', async () => {
+    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 500 } })
+    );
+
+    await act(async () => {
+      render(<NotificationListPage />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.observability-alert-empty-heading')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(await screen.findByTestId('alert-name')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.something-went-wrong')
+    ).not.toBeInTheDocument();
+  });
+
+  it('reloads the page that failed, not the first page', async () => {
+    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ response: { status: 500 } })
+    );
+
+    mockLocationSearch =
+      '?cursorType=after&cursorValue=page-2-cursor&currentPage=2';
+
+    await act(async () => {
+      render(<NotificationListPage />, { wrapper: MemoryRouter });
+    });
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+
+    (getAllAlerts as jest.Mock).mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+    });
+
+    expect(getAllAlerts).toHaveBeenCalledTimes(1);
+    expect(getAllAlerts).toHaveBeenCalledWith(
+      expect.objectContaining({ after: 'page-2-cursor' })
+    );
+
+    mockLocationSearch = '';
+  });
+
   it('Table should render alerts data', async () => {
     await act(async () => {
       render(<NotificationListPage />, {
@@ -255,7 +315,9 @@ describe('Notification Alerts Page Tests', () => {
       });
     });
 
-    expect(descriptionTableObject).toHaveBeenCalledWith();
+    expect(descriptionTableObject).toHaveBeenCalledWith({
+      render: expect.any(Function),
+    });
   });
 
   it('should call LimitWrapper with resource as eventsubscription', async () => {

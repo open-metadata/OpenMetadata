@@ -185,7 +185,7 @@ const Users = ({
         </div>
 
         {previewAsset && (
-          <div className="user-page-layout-right-panel tw:flex-[0_0_400px]">
+          <div className="user-page-layout-right-panel tw:min-w-0 tw:flex-[0_0_400px]">
             <EntitySummaryPanel
               entityDetails={previewAsset}
               handleClosePanel={() => setPreviewAsset(undefined)}
