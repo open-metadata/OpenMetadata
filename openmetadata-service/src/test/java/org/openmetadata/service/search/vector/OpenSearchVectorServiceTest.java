@@ -1269,6 +1269,56 @@ class OpenSearchVectorServiceTest {
         "the chunk header must be read to decide on a restamp");
   }
 
+  /**
+   * Owner names are embedded text, so an owner change needs a re-embed; while that waits for the
+   * provider, the old chunks must lose their stamp rather than keep answering with the old owner.
+   */
+  @Test
+  void updateEntityEmbeddings_withholdsChunksWhileAnAccessChangeWaitsForTheProvider()
+      throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(false);
+    setField("chunkIndexEnsured", true);
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponse(
+        "{\"found\":true,\"_source\":{\"fingerprint\":\"STALE\",\"accessStamp\":\"old\","
+            + "\"chunkCount\":1,\"docVersion\":9}}");
+    Table table = governedTable();
+
+    vectorService.updateEntityEmbeddings(table, "entityIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    assertTrue(
+        captor.getAllValues().stream()
+            .anyMatch(
+                r ->
+                    r.getEndpoint().contains("_update_by_query")
+                        && bodyOf(r).contains(table.getId().toString())
+                        && bodyOf(r).contains(VectorDocBuilder.FIELD_ACCESS_STAMP)),
+        "the stale chunks' stamps must be stripped");
+  }
+
+  /** A partial strip (a failure or lost version conflict) must not count as done. */
+  @Test
+  void invalidateChunkAccess_failsWhenTheUpdateLeavesChunksStamped() throws Exception {
+    setField("stagedChunkIndex", null);
+    setField("cachedSinkTarget", null);
+    setField("cachedSinkTargetAt", System.currentTimeMillis());
+    mockOpenSearchResponses(
+        "{\"_scroll_id\":\"s1\",\"hits\":{\"hits\":[{\"_id\":\"e1\"}]}}",
+        "{\"updated\":0,\"version_conflicts\":1,\"failures\":[]}",
+        "{\"succeeded\":true}");
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            vectorService.invalidateChunkAccess(
+                List.of("cluster_table"), "{\"term\":{\"owners.id\":\"u1\"}}"));
+  }
+
   @Test
   void updateEntityEmbeddingChunks_preservesExistingChunksWhenProviderUnavailable()
       throws IOException {

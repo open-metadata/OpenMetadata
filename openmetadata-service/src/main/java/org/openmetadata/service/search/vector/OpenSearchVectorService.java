@@ -335,6 +335,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+      withholdChunksBeforeAccessReembed(entity, header, refresh);
       // A restamp (an access or filter value changed) reuses the stored vectors, so it proceeds
       // during a provider outage; only new text waits for the provider.
       boolean waitsForProvider =
@@ -457,16 +458,18 @@ public class OpenSearchVectorService implements VectorIndexService {
   private JsonNode firstMatchPage(List<String> entityIndices, String matchQueryJson) {
     ObjectNode search = MAPPER.createObjectNode().put("size", ACCESS_INVALIDATION_PAGE);
     search.put("_source", false).set("query", readJson(matchQueryJson));
-    return readJson(
-        executeGenericRequest(
-            "POST",
-            "/"
-                + String.join(",", entityIndices)
-                + "/_search?scroll="
-                + ACCESS_SCROLL_KEEP_ALIVE
-                + "&"
-                + TOLERATE_MISSING_INDICES,
-            search.toString()));
+    return requireComplete(
+        readJson(
+            executeGenericRequest(
+                "POST",
+                "/"
+                    + String.join(",", entityIndices)
+                    + "/_search?scroll="
+                    + ACCESS_SCROLL_KEEP_ALIVE
+                    + "&"
+                    + TOLERATE_MISSING_INDICES,
+                search.toString())),
+        "chunk access scroll");
   }
 
   /** One batch of parents, unrefreshed: the caller refreshes once after the last batch. */
@@ -478,11 +481,29 @@ public class OpenSearchVectorService implements VectorIndexService {
         .put("source", "ctx._source.remove('" + VectorDocBuilder.FIELD_ACCESS_STAMP + "')")
         .put("lang", "painless");
     for (String target : targets) {
-      executeGenericRequest(
-          "POST",
-          "/" + target + "/_update_by_query?conflicts=proceed&" + TOLERATE_MISSING_INDICES,
-          update.toString());
+      requireComplete(
+          readJson(
+              executeGenericRequest(
+                  "POST",
+                  "/" + target + "/_update_by_query?conflicts=proceed&" + TOLERATE_MISSING_INDICES,
+                  update.toString())),
+          "chunk access update on " + target);
     }
+  }
+
+  /**
+   * A scroll page with failed shards, or an update that failed or lost a version conflict on some
+   * chunks, leaves stamps in place: it fails the invalidation, whose caller's retry re-runs it.
+   */
+  private static JsonNode requireComplete(JsonNode response, String operation) {
+    boolean incomplete =
+        response.path("_shards").path("failed").asInt(0) > 0
+            || !response.path("failures").isEmpty()
+            || response.path("version_conflicts").asLong(0) > 0;
+    if (incomplete) {
+      throw new IllegalStateException(operation + " was incomplete: " + response);
+    }
+    return response;
   }
 
   private void refresh(List<String> targets) {
@@ -506,7 +527,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             .createObjectNode()
             .put("scroll", ACCESS_SCROLL_KEEP_ALIVE)
             .put("scroll_id", scrollId);
-    return readJson(executeGenericRequest("POST", "/_search/scroll", body.toString()));
+    return requireComplete(
+        readJson(executeGenericRequest("POST", "/_search/scroll", body.toString())),
+        "chunk access scroll");
   }
 
   /** Cleanup only: a failure is logged, so it never replaces the failure the caller acts on. */
@@ -1312,6 +1335,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
       ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+      withholdChunksBeforeAccessReembed(entity, header, refresh);
       if (refresh == ChunkRefresh.NONE) {
         LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
       } else {
@@ -1473,6 +1497,19 @@ public class OpenSearchVectorService implements VectorIndexService {
   // them on every chunk.
   private static boolean accessFieldsChanged(EntityInterface<?> entity, ChunkHeader header) {
     return !VectorDocBuilder.accessStamp(entity).equals(header.accessStamp());
+  }
+
+  /**
+   * Access fields such as owner names are part of the embedded text, so an access change can need
+   * a re-embed, which waits for the provider. Its current chunks lose their stamp first: if the
+   * re-embed is skipped or fails they are withheld from restricted callers instead of answering
+   * with the old access values.
+   */
+  private void withholdChunksBeforeAccessReembed(
+      EntityInterface<?> entity, ChunkHeader header, ChunkRefresh refresh) {
+    if (refresh == ChunkRefresh.REEMBED && header != null && accessFieldsChanged(entity, header)) {
+      withholdChunksOfParents(liveAndStagedChunkTargets(), List.of(entity.getId().toString()));
+    }
   }
 
   // Status and anchor gate memory visibility, and the kind narrows a filtered recall; none of them

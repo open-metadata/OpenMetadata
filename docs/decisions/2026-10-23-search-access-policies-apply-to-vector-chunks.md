@@ -62,15 +62,20 @@ whose entity indices carry no `knn_vector` they are the only semantic results.
   safety net, not a source of short pages.
 - A chunk whose stored `accessStamp` differs from its entity's is restamped (no re-embedding), the
   same way memory status and anchor are, also while the embedding provider is unavailable. None of
-  these values may enter the embedding fingerprint.
+  these values may enter the embedding fingerprint. Owner names are embedded text, though, so an
+  access change can also need a re-embed: then the entity's chunks lose their stamp before the
+  re-embed, so a skipped or failed one leaves them withheld, not answering with the old values.
 - A propagation that rewrites entity documents' access fields in place (inherited owners,
   domains, tags, reviewers or certification, a domain's included, which reach its sub-domains and
   data products; inherited domains; a data product's assets moving with it to another domain;
   glossary tag propagation; a certification tag or tag rename; a domain, tag or glossary term
   delete) first removes `accessStamp` from the matched entities' chunks
   (`VectorIndexService.invalidateChunkAccess`), since no lifecycle event reaches those entities.
-  The removal runs before the rewrite, so a match on a replaced value still finds them. A failed
-  removal fails the propagation before the rewrite, as a failed child rewrite does, and the
+  The removal runs before the rewrite, so a match on a replaced value still finds them. It scrolls
+  the matched entity ids in pages of 1000 with a 1m keep-alive, removes the stamp with one terms
+  update-by-query per page and chunk target, and refreshes once after the last page. A page with
+  failed shards, or an update with failures or version conflicts, counts as a failed removal. A
+  failed removal fails the propagation before the rewrite, as a failed child rewrite does, and the
   path's search retry re-runs both: an entity update (single or bulk) is re-queued with its
   propagation, a data product move re-queues its assets, and an inherited-domain move re-queues
   its parents. A delete's child cleanup has no retry, since the entity is gone: there the failure

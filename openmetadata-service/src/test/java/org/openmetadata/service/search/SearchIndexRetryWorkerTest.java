@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -39,8 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestSuite;
@@ -207,29 +207,30 @@ class SearchIndexRetryWorkerTest {
 
   /**
    * A retry re-queued by an access-field rewrite (a data product move) must leave the entity's
-   * vector chunks consistent with the document it writes, as the bulk-sink branch does
-   * (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
+   * vector chunks consistent with the document it writes, as the bulk-sink branch does, and only
+   * for vector-indexable types (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
    */
-  @Test
-  void singleEntityRetryRefreshesTheEntitysVectorChunks() throws Exception {
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.TOPIC, Entity.USER})
+  void singleEntityRetryRefreshesChunksOfVectorIndexableTypes(String entityType) throws Exception {
     SearchRepository searchRepository = mock(SearchRepository.class);
     SearchClient searchClient = mock(SearchClient.class);
     VectorIndexService vectors = mock(VectorIndexService.class);
-    IndexMapping topicMapping = IndexMapping.builder().indexName("topic_search_index").build();
+    IndexMapping mapping = IndexMapping.builder().indexName("entity_search_index").build();
     SearchIndexFactory indexFactory = mock(SearchIndexFactory.class);
-    SearchIndex topicIndex = mock(SearchIndex.class);
-    EntityInterface<?> topic = mock(EntityInterface.class);
-    String topicId = UUID.randomUUID().toString();
-    when(topic.getId()).thenReturn(UUID.fromString(topicId));
-    when(topic.getEntityReference())
-        .thenReturn(new EntityReference().withId(UUID.fromString(topicId)).withType(Entity.TOPIC));
-    when(searchRepository.getIndexMapping(Entity.TOPIC)).thenReturn(topicMapping);
-    when(searchRepository.getWriteIndexName(topicMapping)).thenReturn("topic_search_index");
+    SearchIndex index = mock(SearchIndex.class);
+    EntityInterface<?> entity = mock(EntityInterface.class);
+    String entityId = UUID.randomUUID().toString();
+    when(entity.getId()).thenReturn(UUID.fromString(entityId));
+    when(entity.getEntityReference())
+        .thenReturn(new EntityReference().withId(UUID.fromString(entityId)).withType(entityType));
+    when(searchRepository.getIndexMapping(entityType)).thenReturn(mapping);
+    when(searchRepository.getWriteIndexName(mapping)).thenReturn("entity_search_index");
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchRepository.getSearchIndexFactory()).thenReturn(indexFactory);
     when(searchRepository.getVectorIndexService()).thenReturn(vectors);
-    when(indexFactory.buildIndex(Entity.TOPIC, topic)).thenReturn(topicIndex);
-    when(topicIndex.buildSearchIndexDoc()).thenReturn(Map.of("id", topicId));
+    when(indexFactory.buildIndex(entityType, entity)).thenReturn(index);
+    when(index.buildSearchIndexDoc()).thenReturn(Map.of("id", entityId));
     Method upsertEntities =
         SearchIndexRetryWorker.class.getDeclaredMethod(
             "upsertEntitiesInBulk", List.class, Map.class);
@@ -237,12 +238,12 @@ class SearchIndexRetryWorkerTest {
 
     upsertEntities.invoke(
         new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository),
-        List.of(topic),
+        List.of(entity),
         Map.of());
 
-    InOrder order = inOrder(searchClient, vectors);
-    order.verify(searchClient).createEntity(eq("topic_search_index"), eq(topicId), anyString());
-    order.verify(vectors).updateEntityEmbeddingChunks(topic);
+    verify(searchClient).createEntity(eq("entity_search_index"), eq(entityId), anyString());
+    verify(vectors, times(Entity.TOPIC.equals(entityType) ? 1 : 0))
+        .updateEntityEmbeddingChunks(entity);
   }
 
   @Test

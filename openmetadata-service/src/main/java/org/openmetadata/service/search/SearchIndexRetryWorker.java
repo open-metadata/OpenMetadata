@@ -41,6 +41,7 @@ import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -675,7 +676,7 @@ public class SearchIndexRetryWorker implements Managed {
     // restamps the entity's vector chunks
     // (ADR:2026-10-23-search-access-policies-apply-to-vector-chunks).
     VectorIndexService vectors = searchRepository.getVectorIndexService();
-    if (vectors != null) {
+    if (vectors != null && AvailableEntityTypes.isVectorIndexable(entityType)) {
       vectors.updateEntityEmbeddingChunks(entity);
     }
   }
