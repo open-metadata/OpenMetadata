@@ -16,6 +16,7 @@ import React, { PropsWithChildren, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
 import { useSettingsHash } from '../../../hooks/useSettingsHash';
+import { useSettingsLinkInterceptor } from '../../../hooks/useSettingsLinkInterceptor';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
 import { useAppModeBanners, useAppModeOverlays } from './appModeExtensions';
@@ -53,6 +54,7 @@ export const AppShell = ({ children }: PropsWithChildren) => {
   const { pathname, search, hash } = useLocation();
   const analytics = useAnalytics();
   const { state: settingsHash } = useSettingsHash();
+  useSettingsLinkInterceptor();
   // Hidden, not unmounted: the routed page keeps its state for when the
   // persona fullscreen view closes and the personal-space modal reopens on it.
   const isPersonaFullscreen = isFullscreenPersonaHash(

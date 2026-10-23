@@ -154,6 +154,11 @@ export function parseCustomPropertiesHash(
   return { entityFqn, action: 'detail' };
 }
 
+/** Sub-path of an entity type's custom-property list, from its fqn alone. */
+// Names travel URL-encoded in the hash; parseCustomPropertiesHash decodes them.
+export const entityTypeDetailSubPath = (entityTypeFqn: string): string =>
+  encodeURIComponent(entityTypeFqn);
+
 export function viewToSubPath(
   view: CustomPropertiesSubView
 ): string | undefined {
@@ -162,7 +167,7 @@ export function viewToSubPath(
       return undefined;
     case 'detail':
       return view.entityType.fullyQualifiedName
-        ? encodeURIComponent(view.entityType.fullyQualifiedName)
+        ? entityTypeDetailSubPath(view.entityType.fullyQualifiedName)
         : undefined;
     case 'add':
       return `${encodeURIComponent(

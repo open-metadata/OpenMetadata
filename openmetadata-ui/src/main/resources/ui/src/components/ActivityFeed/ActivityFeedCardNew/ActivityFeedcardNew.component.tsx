@@ -50,6 +50,7 @@ import {
 } from '../../../utils/FeedUtilsPure';
 import { getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import EntityPopOverCard from '../../common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
@@ -509,7 +510,7 @@ const ActivityFeedCardNew = ({
                       'reply-card-user-name': isPost,
                     })}
                     userName={createdBy}>
-                    <Link to={getUserPath(createdBy)}>
+                    <Link to={getSettingsLink(getUserPath(createdBy))}>
                       {getEntityName(user)}
                     </Link>
                   </UserPopOverCard>
@@ -676,7 +677,7 @@ const ActivityFeedCardNew = ({
                           'reply-card-user-name': isPost,
                         })}
                         userName={createdBy}>
-                        <Link to={getUserPath(createdBy)}>
+                        <Link to={getSettingsLink(getUserPath(createdBy))}>
                           {getEntityName(user)}
                         </Link>
                       </UserPopOverCard>
