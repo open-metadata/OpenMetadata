@@ -26,13 +26,15 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
-import { PageLoader } from '../../components/common/Loader/Loader';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import ProfilerSettings from '../../components/Database/Profiler/ProfilerSettings/ProfilerSettings';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
+import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
@@ -44,7 +46,6 @@ import {
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import {
   EntityTabs,
   EntityType,
@@ -116,6 +117,7 @@ const DatabaseSchemaPage: FunctionComponent = () => {
     type: EntityType.DATABASE_SCHEMA,
   });
   const navigate = useNavigate();
+  const { showModal } = useEntityExportModalProvider();
 
   const [feedCount, setFeedCount] = useState<FeedCounts>(
     FEED_COUNT_INITIAL_DATA
@@ -278,12 +280,14 @@ const DatabaseSchemaPage: FunctionComponent = () => {
         decodedDatabaseSchemaFQN,
         databaseSchemaPermission,
         databaseSchema ?? ({} as DatabaseSchema),
-        navigate
+        navigate,
+        showModal
       ),
     [
       databaseSchemaPermission,
       decodedDatabaseSchemaFQN,
       databaseSchema?.deleted,
+      showModal,
     ]
   );
 
@@ -790,41 +794,48 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   }, [isFollowing, unFollowSchema, followSchema]);
 
   if (isPermissionsLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (isError) {
     return (
-      <ErrorPlaceHolder>
-        {getEntityMissingError(
-          EntityType.DATABASE_SCHEMA,
-          decodedDatabaseSchemaFQN
-        )}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError(
+            EntityType.DATABASE_SCHEMA,
+            decodedDatabaseSchemaFQN
+          )}
+        />
+      </div>
     );
   }
 
   if (!viewDatabaseSchemaPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.database-schema'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.database-schema'),
+          })}
+        />
+      </div>
     );
   }
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(databaseSchema)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(databaseSchema)}>
       {isSchemaMissing ? (
-        <ErrorPlaceHolder className="m-0">
-          {getEntityMissingError(
-            EntityType.DATABASE_SCHEMA,
-            decodedDatabaseSchemaFQN
-          )}
-        </ErrorPlaceHolder>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            title={getEntityMissingError(
+              EntityType.DATABASE_SCHEMA,
+              decodedDatabaseSchemaFQN
+            )}
+          />
+        </div>
       ) : (
         <Box direction="col" gap={3}>
           <div>

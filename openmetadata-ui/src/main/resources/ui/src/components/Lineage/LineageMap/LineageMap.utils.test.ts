@@ -29,7 +29,9 @@ import {
   getConnectedLineagePathHighlight,
   getDeleteKeyAction,
   getDrillBand,
+  getDrilledRootBreadcrumb,
   getLensRootLabelKey,
+  getLineageMapEmptyState,
   getParentSceneRequest,
   getRailDrillFallbackNode,
   getRailStop,
@@ -125,6 +127,43 @@ describe('scene URL navigation', () => {
       band: LineageBand.Asset,
     });
     expect(getSceneOriginFocus(scene, {})).toEqual(focus);
+  });
+
+  it('offers the root breadcrumb as the way back only once drilled in', () => {
+    const root: LineageSceneBreadcrumb = {
+      id: 'root',
+      label: 'root',
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+    const service: LineageSceneBreadcrumb = {
+      id: 'svc',
+      label: 'svc',
+      fullyQualifiedName: 'svc',
+      entityType: EntityType.DATABASE_SERVICE,
+      band: LineageBand.Layer,
+      levelKind: LineageLevelKind.Service,
+    };
+
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root, service],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    // An empty drilled scene carries only the root crumb.
+    expect(
+      getDrilledRootBreadcrumb({
+        breadcrumb: [root],
+        band: LineageBand.Asset,
+        focusFqn: 'svc',
+      })
+    ).toBe(root);
+    expect(
+      getDrilledRootBreadcrumb({ breadcrumb: [root], band: LineageBand.Layer })
+    ).toBeUndefined();
+    expect(getDrilledRootBreadcrumb(undefined)).toBeUndefined();
   });
 
   it('removes the previous focus when navigating to a root breadcrumb', () => {
@@ -1027,5 +1066,52 @@ describe('scene landing viewport', () => {
         padding
       )
     ).toBeUndefined();
+  });
+});
+
+describe('getLineageMapEmptyState', () => {
+  const emptyScene = {
+    lens: LineageLens.Service,
+    band: LineageBand.Asset,
+    nodes: [],
+    edges: [],
+  } as unknown as LineageScene;
+
+  it('shows the skeleton while the first scene loads', () => {
+    expect(getLineageMapEmptyState({ loading: true, hasError: false })).toBe(
+      'loading'
+    );
+    expect(getLineageMapEmptyState({ loading: true, hasError: true })).toBe(
+      'loading'
+    );
+  });
+
+  it('shows the error state when the first scene failed', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: true })).toBe(
+      'error'
+    );
+  });
+
+  it('shows the empty state for a scene with no nodes, even on a failed refetch', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: false,
+        hasError: true,
+      })
+    ).toBe('empty');
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: true,
+        hasError: false,
+      })
+    ).toBe('empty');
+  });
+
+  it('falls back to the empty state with no scene, load or error', () => {
+    expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
+      'empty'
+    );
   });
 });

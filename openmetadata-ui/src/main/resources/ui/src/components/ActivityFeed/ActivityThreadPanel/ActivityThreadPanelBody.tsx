@@ -17,6 +17,7 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -32,7 +33,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { observerOptions } from '../../../constants/Mydata.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
@@ -45,6 +45,7 @@ import { TaskStatusGroup } from '../../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
@@ -59,10 +60,6 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-const ErrorPlaceHolder = withSuspenseFallback(
-  lazy(() => import('../../common/ErrorWithPlaceholder/ErrorPlaceHolder'))
-);
-
 const FeedPanelHeader = withSuspenseFallback(
   lazy(() => import('../ActivityFeedPanel/FeedPanelHeader'))
 );
@@ -71,8 +68,8 @@ const TaskFeedCardFromTask = withSuspenseFallback(
   lazy(() => import('../TaskFeedCard/TaskFeedCardFromTask.component'))
 );
 
-const ActivityFeedEditor = withSuspenseFallback(
-  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+const CommentComposer = withSuspenseFallback(
+  lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
 
 const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
@@ -264,13 +261,17 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderTaskList = () =>
     tasks.length === 0 && !loading ? (
-      <ErrorPlaceHolder className="mt-24" type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-        <Typography as="p">
-          {isTaskClosed
-            ? t('message.no-closed-task')
-            : t('message.no-open-task')}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          icon={<MessageChatSquare />}
+          title={
+            isTaskClosed
+              ? t('message.no-closed-task')
+              : t('message.no-open-task')
+          }
+        />
+      </div>
     ) : (
       <div className={classNames(className, 'd-flex flex-col gap-3')}>
         {tasks.map((task) => (
@@ -314,10 +315,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
             gap={2}
             itemClassName="layout-space-item">
             <Typography as="p">{t('message.new-conversation')}</Typography>
-            <ActivityFeedEditor
+            <CommentComposer
               // Shown on demand (new conversation, or an empty panel just
-              // opened), so it takes focus as it did before FeedEditor stopped
-              // focusing itself on mount.
+              // opened), so it takes focus.
               focused
               placeHolder={t('message.enter-a-field', {
                 field: t('label.message-lowercase'),
@@ -355,6 +355,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
+            hideCloseIcon
             entityLink={selectedConversation?.about ?? threadLink}
             noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}

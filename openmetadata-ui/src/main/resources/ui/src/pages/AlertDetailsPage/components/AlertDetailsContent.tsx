@@ -13,18 +13,19 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   Card,
   Owner,
   Skeleton,
   Tabs,
-  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit05,
+  Edit01,
   RefreshCw01,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -73,6 +74,35 @@ function AlertDetailsContent({
   );
   // Keeps the recent events filter and page when switching tabs.
   const visitedTabs = useVisitedTabs(activeTab);
+  const owners = alertDetails?.owners;
+  const hasOwners = !isEmpty(owners);
+
+  const renderOwners = () => {
+    if (!hasOwners && !editOwnersPermission) {
+      return null;
+    }
+
+    return (
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:shrink-0"
+        data-testid="alert-owners"
+        gap={2}>
+        <Typography as="span" color="secondary" size="text-sm" weight="medium">
+          {t('label.owner-plural')}
+        </Typography>
+        {hasOwners && <Owner owners={owners} />}
+        {editOwnersPermission && (
+          <UserTeamSelectableList
+            hasPermission
+            multiple={{ user: true, team: false }}
+            owner={owners}
+            onUpdate={onOwnerUpdate}
+          />
+        )}
+      </Box>
+    );
+  };
 
   const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -115,19 +145,7 @@ function AlertDetailsContent({
                       {ownerLoading ? (
                         <Skeleton height={40} variant="rounded" width={80} />
                       ) : (
-                        <Owner
-                          hasPermission={editOwnersPermission}
-                          isCompactView={false}
-                          owners={alertDetails?.owners ?? []}
-                          selectorContent={
-                            <UserTeamSelectableList
-                              hasPermission={Boolean(editOwnersPermission)}
-                              multiple={{ user: true, team: false }}
-                              owner={alertDetails?.owners}
-                              onUpdate={onOwnerUpdate}
-                            />
-                          }
-                        />
+                        renderOwners()
                       )}
                       {extraInfo}
                     </div>
@@ -135,66 +153,43 @@ function AlertDetailsContent({
                 </Box>
               </div>
               <div>
-                <Box
-                  inline
-                  align="center"
-                  className="layout-space layout-space-horizontal"
-                  gap={2}
-                  itemClassName="layout-space-item">
-                  <Tooltip
-                    arrow
-                    title={t('label.sync-alert-offset', {
+                <Box inline align="center" gap={1}>
+                  <ButtonUtility
+                    color="tertiary"
+                    data-testid="sync-button"
+                    icon={RefreshCw01}
+                    isDisabled={isSyncing}
+                    size="lg"
+                    tooltip={t('label.sync-alert-offset', {
                       entity: t('label.alert'),
-                    })}>
-                    <Button
-                      aria-label={t('label.sync-alert-offset', {
-                        entity: t('label.alert'),
-                      })}
-                      color="secondary"
-                      data-testid="sync-button"
-                      iconLeading={RefreshCw01}
-                      isLoading={isSyncing}
-                      size="md"
-                      onPress={handleAlertSync}
-                    />
-                  </Tooltip>
+                    })}
+                    onClick={handleAlertSync}
+                  />
                   {editPermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.edit-entity', {
+                      <ButtonUtility
+                        color="tertiary"
+                        data-testid="edit-button"
+                        icon={Edit01}
+                        size="lg"
+                        tooltip={t('label.edit-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <Button
-                          aria-label={t('label.edit-entity', {
-                            entity: t('label.alert'),
-                          })}
-                          color="secondary"
-                          data-testid="edit-button"
-                          iconLeading={Edit05}
-                          size="md"
-                          onPress={handleAlertEdit}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={handleAlertEdit}
+                      />
                     )}
                   {deletePermission &&
                     alertDetails?.provider !== ProviderType.System && (
-                      <Tooltip
-                        arrow
-                        title={t('label.delete-entity', {
+                      <ButtonUtility
+                        color="tertiary"
+                        data-testid="delete-button"
+                        icon={Trash01}
+                        size="lg"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.alert'),
-                        })}>
-                        <Button
-                          aria-label={t('label.delete-entity', {
-                            entity: t('label.alert'),
-                          })}
-                          color="secondary"
-                          data-testid="delete-button"
-                          iconLeading={Trash01}
-                          size="md"
-                          onPress={() => setShowDeleteModal(true)}
-                        />
-                      </Tooltip>
+                        })}
+                        onClick={() => setShowDeleteModal(true)}
+                      />
                     )}
                 </Box>
               </div>

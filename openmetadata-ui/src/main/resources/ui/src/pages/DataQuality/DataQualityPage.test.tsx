@@ -19,6 +19,7 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import DataQualityClassBase from './DataQualityClassBase';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
 import DataQualityProvider from './DataQualityProvider';
@@ -33,24 +34,43 @@ const mockProps = {
   pageTitle: 'data-quality',
 };
 
+const dataQualityPageAt = (initialPath: string) => (
+  <MemoryRouter initialEntries={[initialPath]}>
+    <Routes>
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab/:subTab"
+      />
+      <Route
+        element={<DataQualityPage {...mockProps} />}
+        path="/data-quality/:tab"
+      />
+    </Routes>
+  </MemoryRouter>
+);
+
 const renderDataQualityPage = (initialPath: string) =>
-  render(
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab/:subTab"
-        />
-        <Route
-          element={<DataQualityPage {...mockProps} />}
-          path="/data-quality/:tab"
-        />
-      </Routes>
-    </MemoryRouter>
-  );
+  render(dataQualityPageAt(initialPath));
 
 // Mock navigation function
 const mockNavigate = jest.fn();
+const mockShowModal = jest.fn();
+const HOOK_ERROR =
+  /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/;
+
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
 
 jest.mock('./DataQualityProvider', () => ({
   __esModule: true,
@@ -76,9 +96,6 @@ jest.mock('./DataQualityClassBase', () => {
           key: 'tables',
           label: 'Tables',
           icon: jest.fn(),
-          iconProps: {
-            className: 'side-panel-icons',
-          },
         },
       ]),
       getDataQualityTab: jest.fn().mockReturnValue([
@@ -381,6 +398,32 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('data-quality-add-button-menu')
       ).toBeInTheDocument();
       expect(screen.getByText('label.add')).toBeInTheDocument();
+    });
+
+    it('should read the export modal hook outside the export button memo and hand its showModal to the builder', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      const exportData = { name: 'data-quality', onExport: jest.fn() };
+
+      const { rerender } = renderDataQualityPage(
+        DATA_QUALITY_TEST_PATHS.dashboard
+      );
+      await screen.findByTestId('tabs');
+      rerender(dataQualityPageAt(DATA_QUALITY_TEST_PATHS.dashboard));
+
+      const [activeTab, showModal] = (
+        DataQualityClassBase.getExportDataQualityDashboardButton as jest.Mock
+      ).mock.calls.at(-1);
+      showModal(exportData);
+
+      expect(activeTab).toBe(DataQualityPageTabs.DASHBOARD);
+      expect(mockShowModal).toHaveBeenCalledWith(exportData);
+      expect(
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          HOOK_ERROR.test(String(message))
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

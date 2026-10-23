@@ -163,7 +163,7 @@ final class EntityPatchBatch<T extends EntityInterface<?>> {
 
   private Optional<String> prepare(T original, JsonPatch patch) {
     repository
-        .previewPatch(original, patch, requester.actor().userName())
+        .previewPatch(original, patch, requester.actor())
         .ifPresentOrElse(
             staged -> held.put(original.getId(), ApprovalGate.pendingMessage(null)),
             () -> changed.add(original.getId()));

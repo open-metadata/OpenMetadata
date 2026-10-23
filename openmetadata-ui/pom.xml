@@ -162,7 +162,8 @@
               <goal>install-node-and-yarn</goal>
             </goals>
             <configuration>
-              <nodeVersion>v22.22.2</nodeVersion>
+              <!-- Must match openmetadata-ui/src/main/resources/ui/.nvmrc (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin). -->
+              <nodeVersion>v22.23.4</nodeVersion>
               <yarnVersion>v1.22.18</yarnVersion>
               <skip>${skip.ui.build}</skip>
             </configuration>

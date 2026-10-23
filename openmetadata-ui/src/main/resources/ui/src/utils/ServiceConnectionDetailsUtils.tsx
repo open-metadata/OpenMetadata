@@ -29,7 +29,7 @@ import {
   startCase,
 } from 'lodash';
 import { ReactNode } from 'react';
-import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { FILTER_PATTERN_BY_SERVICE_TYPE } from '../constants/ServiceConnection.constants';
 import { DEF_UI_SCHEMA, JWT_CONFIG } from '../constants/Services.constant';
 import { EntityType } from '../enums/entity.enum';
@@ -247,7 +247,11 @@ export const getKeyValues = ({
       });
     });
   } catch {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 };
 

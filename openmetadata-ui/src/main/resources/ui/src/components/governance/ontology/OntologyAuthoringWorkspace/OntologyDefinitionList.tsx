@@ -37,6 +37,7 @@ interface OntologyDefinitionListProps<T> {
     params: ListParams & { ontology?: string },
     signal?: AbortSignal
   ) => Promise<PagingResponse<T[]>>;
+  onWorkingChange?: () => void;
   children: (
     definition: T | undefined,
     canEdit: boolean,
@@ -66,6 +67,7 @@ const OntologyDefinitionList = <
   definitionType,
   load,
   children,
+  onWorkingChange,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
@@ -135,6 +137,7 @@ const OntologyDefinitionList = <
             setIsDeleting(false);
             setSelected(undefined);
             void page.refetch();
+            onWorkingChange?.();
           }}
           entityId={definition.id}
           entityName={getEntityName(definition)}
@@ -169,6 +172,7 @@ const OntologyDefinitionList = <
           (saved) => {
             setSelected(saved);
             void page.refetch();
+            onWorkingChange?.();
           }
         )}
         {renderDelete()}

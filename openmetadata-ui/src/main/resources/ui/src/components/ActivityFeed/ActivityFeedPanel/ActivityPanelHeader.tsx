@@ -40,8 +40,12 @@ const ActivityPanelHeader: FC<ActivityPanelHeaderProps> = ({
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(activity.about ?? '') as EntityType;
-  const entityFQN = getEntityFQN(activity.about ?? '');
+  // Prefer the entity reference: `about` can carry a field the EntityLink
+  // grammar does not list (e.g. `entityStatus`), and parsing it logs an error.
+  const entityType = (activity.entity?.type ??
+    getEntityType(activity.about ?? '')) as EntityType;
+  const entityFQN =
+    activity.entity?.fullyQualifiedName ?? getEntityFQN(activity.about ?? '');
 
   const headerText = getActivityEventHeaderText(
     activity.eventType,

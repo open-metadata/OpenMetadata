@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Button,
-  EmptyPlaceholder,
-  TableCard,
-  Tabs,
-} from '@openmetadata/ui-core-components';
+import { Button, TableCard, Tabs } from '@openmetadata/ui-core-components';
 import { Plus as Expand } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,6 +34,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import CustomPropertiesListTable from '../../../../../Settings/CustomProperty/CustomPropertiesListTable';
 import { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
@@ -150,7 +146,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
 
   return (
     <>
-      <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none">
+      <TableCard.Root className="tw:rounded-xl tw:shadow-none">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as string)}>
@@ -172,7 +168,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
               data-testid="custom-property-table"
               emptyText={
                 <div className="tw:min-h-[250px] tw:relative">
-                  <EmptyPlaceholder
+                  <NoDataPlaceholder
                     actions={
                       canCreate
                         ? [
@@ -192,7 +188,6 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                     title={t('label.no-entity-found', {
                       entity: t('label.custom-property-plural'),
                     })}
-                    variant="blank"
                   />
                 </div>
               }

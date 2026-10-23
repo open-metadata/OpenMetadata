@@ -101,6 +101,22 @@ describe('TabsLabel component', () => {
     expect(badge('first')).toHaveClass('tw:bg-utility-gray-50');
   });
 
+  it('Proposed items show as a worded purple badge after the tab count', () => {
+    render(<TabsLabel count={8} id="terms" name="Terms" proposedCount={2} />);
+
+    const badge = screen.getByTestId('proposed-count').firstElementChild;
+
+    expect(screen.getByTestId('count')).toHaveTextContent('8');
+    expect(badge).toHaveTextContent('label.count-proposed');
+    expect(badge).toHaveClass('tw:bg-utility-purple-50');
+  });
+
+  it('Nothing waiting for review shows no proposed count', () => {
+    render(<TabsLabel {...mockProps} count={3} proposedCount={0} />);
+
+    expect(screen.queryByTestId('proposed-count')).not.toBeInTheDocument();
+  });
+
   it('Count badge stays neutral inside a non-card tab list', () => {
     render(
       <Tabs defaultSelectedKey="first">

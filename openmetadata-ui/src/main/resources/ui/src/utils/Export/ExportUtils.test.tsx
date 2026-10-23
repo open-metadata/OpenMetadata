@@ -16,6 +16,7 @@ import { ExportTypes } from '../../constants/Export.constants';
 import { showErrorToast } from '../ToastUtils';
 import {
   downloadBlob,
+  downloadCsv,
   downloadFile,
   exportPNGImageFromElement,
   shouldIncludeInExport,
@@ -106,6 +107,36 @@ describe('ExportUtils', () => {
       expect(MockBlob).toHaveBeenCalledWith(['content'], {
         type: 'text/csv;charset=utf-8;',
       });
+    });
+  });
+
+  describe('downloadCsv', () => {
+    const BOM = '\uFEFF';
+    let MockBlob: jest.Mock;
+    let originalBlob: typeof Blob;
+
+    beforeEach(() => {
+      originalBlob = global.Blob;
+      MockBlob = jest.fn().mockReturnValue({});
+      global.Blob = MockBlob as unknown as typeof Blob;
+      global.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+      global.URL.revokeObjectURL = jest.fn();
+      jest.spyOn(document.body, 'appendChild').mockImplementation(jest.fn());
+      jest.spyOn(document.body, 'removeChild').mockImplementation(jest.fn());
+    });
+
+    afterEach(() => {
+      global.Blob = originalBlob;
+      jest.restoreAllMocks();
+    });
+
+    it('starts the file with a UTF-8 BOM so Excel keeps non-Latin text readable', () => {
+      downloadCsv('name,description\n订单,Заказы', 'export.csv');
+
+      expect(MockBlob).toHaveBeenCalledWith(
+        [`${BOM}name,description\n订单,Заказы`],
+        { type: 'text/csv;charset=utf-8' }
+      );
     });
   });
 

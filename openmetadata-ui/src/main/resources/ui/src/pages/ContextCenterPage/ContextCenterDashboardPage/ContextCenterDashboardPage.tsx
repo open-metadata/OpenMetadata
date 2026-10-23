@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   Dropdown,
-  EmptyPlaceholder,
   PageLayout,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -37,6 +36,7 @@ import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -64,6 +64,7 @@ import { Folder } from '../../../generated/entity/data/folder';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   CreateKnowledgePage,
   KnowledgePage,
@@ -95,6 +96,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { currentUser } = useApplicationStore();
@@ -423,7 +425,9 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-dashboard-page">
       <DocumentTitle title={t('label.context-center')} />
       <PageLayout
@@ -486,7 +490,7 @@ const ContextCenterDashboardPage: FC = () => {
           data-testid="dashboard-detail-card">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={
                   hasCreatePermission
                     ? [
@@ -539,7 +543,6 @@ const ContextCenterDashboardPage: FC = () => {
                   },
                 ]}
                 title={t('label.give-your-ai-something-to-know')}
-                variant="features"
               />
             </div>
           ) : (

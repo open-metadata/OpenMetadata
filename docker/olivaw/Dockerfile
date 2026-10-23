@@ -10,13 +10,31 @@
 # and check the result is an `image.index`, not an `image.manifest`.
 FROM eclipse-temurin:21-jdk-jammy@sha256:dbfd085220ae632a0830166e443747d1ee89e9038d92e3b48c3e5e9d8292b9a7
 
+# CVE-2026-91403 (ADR:2026-10-23-image-jdks-distrust-compromised-cas-by-deleting-roots):
+# eMudhra's compromised intermediates chain to three emSign roots
+# (ECC G3, ECC C3, C1). This base is pinned by digest, so it keeps them until the digest moves
+# to Temurin 21.0.13 or later; drop them here by SHA-256 and fail the build if any is still
+# trusted.
+# Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
+# re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
+RUN set -eu; \
+    roots='86A1ECBA089C4A8D3BBE2734C612BA341D813E043CF9E8A862CD5C57A36BBE6B BC4D809B15189D78DB3E1D8CF4F9726A795DA1643CA5F1358E1DDB0EDC0D7EB3 125609AA301DA0A249B97A8239CB6A34216F44DCAC9F3954B14292F2E8C8608F'; \
+    certs=$(keytool -list -v -cacerts -storepass changeit); \
+    printf '%s\n' "$certs" \
+      | awk -v roots="$roots" 'BEGIN { split(roots, r, " "); for (i in r) want[r[i]] = 1 } /^Alias name:/ { alias = substr($0, 13) } /SHA256:/ { gsub(":", "", $2); if ($2 in want) print alias }' \
+      | while IFS= read -r alias; do keytool -delete -cacerts -storepass changeit -alias "$alias"; done; \
+    certs=$(keytool -list -v -cacerts -storepass changeit); \
+    if printf '%s\n' "$certs" | tr -d ':' | grep -qE "$(echo $roots | tr ' ' '|')"; then \
+      echo "CVE-2026-91403: an emSign root is still trusted" >&2; exit 1; \
+    fi
+
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 ARG MAVEN_VERSION=3.9.9
 ARG MAVEN_SHA512=a555254d6b53d267965a3404ecb14e53c3827c09c3b94b5678835887ab404556bfaf78dcfe03ba76fa2508649dca8531c74bca4d5846513522404d48e8c4ac8b
-ARG NODE_VERSION=22.17.0
-ARG NODE_SHA256_X64=325c0f1261e0c61bcae369a1274028e9cfb7ab7949c05512c5b1e630f7e80e12
-ARG NODE_SHA256_ARM64=140aee84be6774f5fb3f404be72adbe8420b523f824de82daeb5ab218dab7b18
+ARG NODE_VERSION=22.23.4
+ARG NODE_SHA256_X64=1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce
+ARG NODE_SHA256_ARM64=6287aa46b6c375d816e63ae66d024fbbfd70404825aabdfdf898a970871d2f4b
 ARG YARN_VERSION=1.22.22
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -66,8 +84,9 @@ RUN curl -fsSL --retry 3 --retry-all-errors \
     && ln -sf "${MAVEN_HOME}/bin/mvn" /usr/local/bin/mvn \
     && mvn --version
 
-# Node 22.17.0 + yarn 1.22.22 — the versions `.devcontainer/dev/devcontainer.json` pins, and what the
-# UI's `package.json` requires (`node >=22.0.0`, `yarn ^1.22.0`).
+# Node 22.23.4 + yarn 1.22.22 — Node must match `openmetadata-ui/src/main/resources/ui/.nvmrc` (the
+# UI's `engines` floor rejects anything older); pinned here because the tarball is checksum-verified
+# (ADR:2026-10-22-ui-nvmrc-is-the-one-node-pin).
 #
 # Arch-resolved rather than hardcoded to x64: a local install on Apple Silicon builds and runs arm64,
 # and the wrong tarball fails at exec with a misleading "not found".

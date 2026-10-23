@@ -456,3 +456,46 @@ export const DarkOverlay: Story = {
     );
   },
 };
+
+export const Fullscreen: Story = {
+  name: 'Fullscreen library',
+  render: () => {
+    const [isOpen, setIsOpen] = useState(true);
+    const [dark, setDark] = useState(false);
+    useEffect(() => {
+      document.body.classList.toggle('dark-mode', dark);
+
+      return () => document.body.classList.remove('dark-mode');
+    }, [dark]);
+
+    return (
+      <DialogTrigger isOpen={isOpen} onOpenChange={setIsOpen}>
+        <Button onPress={() => setIsOpen(true)}>Open library</Button>
+        <ModalOverlay presentation="fullscreen">
+          <Modal>
+            <Dialog
+              showCloseButton
+              dividers="scroll"
+              title="Ontology library"
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <div className="tw:mx-auto tw:w-full tw:max-w-5xl">
+                  <Button
+                    color="secondary"
+                    onPress={() => setDark((value) => !value)}>
+                    {dark ? 'Light theme' : 'Dark theme'}
+                  </Button>
+                  <p className="tw:mt-4 tw:text-primary">
+                    A full-page workflow keeps its header visible while the
+                    content scrolls.
+                  </p>
+                  <div className="tw:h-[120vh]" />
+                </div>
+              </Dialog.Content>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      </DialogTrigger>
+    );
+  },
+};

@@ -70,7 +70,7 @@ const ErrorFallback: React.FC<FallbackProps> = ({
       justify="center">
       <Box
         align="center"
-        className="tw:w-full tw:max-w-full tw:rounded-3xl tw:md:w-fit tw:md:min-w-159 tw:bg-surface tw:px-9 tw:py-17.5 tw:text-center"
+        className="tw:w-full tw:max-w-full tw:text-center tw:md:w-fit"
         direction="col"
         gap={9}>
         <img
@@ -80,9 +80,14 @@ const ErrorFallback: React.FC<FallbackProps> = ({
         />
         <Box align="center" direction="col" gap={10}>
           <Box align="center" direction="col" gap={4}>
-            <h1 className="tw:m-0 tw:text-display-sm tw:font-bold tw:text-primary tw:lg:whitespace-nowrap">
+            {/* not-prose: .prose h1 rules would override the size and weight. */}
+            <Typography
+              as="h1"
+              className="not-prose tw:m-0 tw:text-primary tw:lg:whitespace-nowrap"
+              size="display-xs"
+              weight="bold">
               {`${t('message.look-like-upgraded-om')} ✨`}
-            </h1>
+            </Typography>
             <Typography
               as="p"
               className="tw:max-w-109 tw:text-tertiary"

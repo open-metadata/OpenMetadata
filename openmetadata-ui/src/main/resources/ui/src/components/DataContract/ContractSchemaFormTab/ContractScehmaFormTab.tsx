@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Badge, Typography } from '@openmetadata/ui-core-components';
-import { isEmpty, pick, uniqBy } from 'lodash';
+import { isEmpty, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -29,7 +29,6 @@ import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Column, Table } from '../../../generated/entity/data/table';
 import { Field, Topic } from '../../../generated/entity/data/topic';
-import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
@@ -43,13 +42,17 @@ import Fqn from '../../../utils/Fqn';
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../../utils/TagsPureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import TableV2 from '../../common/Table/TableV2';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
-import TableTags from '../../Database/TableTags/TableTags.component';
+import TagsViewer from '../../Tag/TagsViewer/TagsViewer';
 import { ContractFormStep } from '../ContractFormStep/ContractFormStep';
 
 export const ContractSchemaFormTab: React.FC<{
@@ -430,54 +433,17 @@ export const ContractSchemaFormTab: React.FC<{
         title: t('label.tag-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.TAGS,
-        render: (tags: TagLabel[], record: Column, index: number) => (
-          <TableTags<Column>
-            isReadOnly
-            entityFqn={tableFqn}
-            entityType={EntityType.TABLE}
-            handleTagSelection={() => Promise.resolve()}
-            hasTagEditAccess={false}
-            index={index}
-            record={record}
-            tags={tags}
-            type={TagSource.Classification}
-          />
+        render: (tags: TagLabel[]) => (
+          <TagsViewer sizeCap={1} tags={getClassificationTags(tags)} />
         ),
       },
       {
         title: t('label.glossary-term-plural'),
         dataIndex: TABLE_COLUMNS_KEYS.TAGS,
         key: TABLE_COLUMNS_KEYS.GLOSSARY,
-        render: (tags: TagLabel[], record: Column, index: number) => {
-          // To remove Source from the tag so that we can have consistent tag icon
-          const newTags = tags.map((tag) => {
-            return {
-              tagFQN: tag.tagFQN,
-              ...pick(
-                tag,
-                'description',
-                'displayName',
-                'labelType',
-                'name',
-                'style'
-              ),
-            } as TagLabel;
-          });
-
-          return (
-            <TableTags<Column>
-              isReadOnly
-              entityFqn={tableFqn}
-              entityType={EntityType.TABLE}
-              handleTagSelection={() => Promise.resolve()}
-              hasTagEditAccess={false}
-              index={index}
-              record={record}
-              tags={newTags}
-              type={TagSource.Glossary}
-            />
-          );
-        },
+        render: (tags: TagLabel[]) => (
+          <TagsViewer sizeCap={1} tags={getGlossaryTags(tags)} />
+        ),
       },
       ...(entityType === EntityType.TABLE
         ? [
@@ -490,7 +456,7 @@ export const ContractSchemaFormTab: React.FC<{
           ]
         : []),
     ],
-    [entityType, tableFqn]
+    [entityType]
   );
 
   const handleExpandedRowsChange = useCallback((keys: readonly Key[]) => {

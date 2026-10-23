@@ -35,6 +35,8 @@ jest.mock('../../utils/useRequiredParams', () => ({
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: jest.requireActual('@openmetadata/ui-core-components').Box,
+  EmptyPlaceholder: jest.requireActual('@openmetadata/ui-core-components')
+    .EmptyPlaceholder,
   Tabs: jest.requireActual('@openmetadata/ui-core-components').Tabs,
   Button: jest
     .fn()
@@ -59,10 +61,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       </button>
     )),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
 
 jest.mock(
   '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',

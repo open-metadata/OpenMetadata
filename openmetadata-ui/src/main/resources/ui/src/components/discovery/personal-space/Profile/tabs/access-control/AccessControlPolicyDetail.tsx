@@ -15,7 +15,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  EmptyPlaceholder,
   Input,
   Table,
   TableCard,
@@ -67,6 +66,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -326,7 +326,7 @@ const RoleOrTeamTable: FC<RoleOrTeamTableProps> = ({
             align="center"
             className="tw:min-h-32 tw:relative"
             justify="center">
-            <EmptyPlaceholder title={emptyTitle} />
+            <NoDataPlaceholder title={emptyTitle} />
           </Box>
         )}>
         {(item) => (
@@ -865,9 +865,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
         onStartEdit={() => setIsEditingDesc(true)}
       />
 
-      <TableCard.Root
-        className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
-        size="compact">
+      <TableCard.Root className="tw:rounded-xl tw:shadow-none" size="compact">
         <Tabs
           selectedKey={activeTab}
           onSelectionChange={(k) => setActiveTab(k as PolicyTab)}>

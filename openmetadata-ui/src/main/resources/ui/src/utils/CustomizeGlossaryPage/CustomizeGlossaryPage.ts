@@ -39,6 +39,7 @@ class CustomizeGlossaryPageClassBase {
       TERMS_TABLE: 7.5,
       EMPTY_WIDGET_PLACEHOLDER: 3,
       WORKFLOW_HISTORY: 2,
+      PENDING_REVIEW: 4,
     };
   }
 
@@ -56,6 +57,7 @@ class CustomizeGlossaryPageClassBase {
       OWNER: this.defaultHeights.OWNER,
       REVIEWER: this.defaultHeights.REVIEWER,
       WORKFLOW_HISTORY: this.defaultHeights.WORKFLOW_HISTORY,
+      PENDING_REVIEW: this.defaultHeights.PENDING_REVIEW,
     };
 
     return heightByWidget[widgetName] ?? this.defaultWidgetHeight;
@@ -94,18 +96,26 @@ class CustomizeGlossaryPageClassBase {
           static: true,
         },
         {
+          h: this.defaultHeights.PENDING_REVIEW,
+          i: GlossaryTermDetailPageWidgetKeys.PENDING_REVIEW,
+          w: 2,
+          x: 6,
+          y: 0,
+          static: false,
+        },
+        {
           h: this.defaultHeights.DOMAIN,
           i: DetailPageWidgetKeys.DOMAIN,
           w: 2,
           x: 6,
-          y: 0,
+          y: 1,
         },
         {
           h: this.defaultHeights.OWNER,
           i: DetailPageWidgetKeys.OWNERS,
           w: 2,
           x: 6,
-          y: 1,
+          y: 2,
           static: false,
         },
 
@@ -114,7 +124,7 @@ class CustomizeGlossaryPageClassBase {
           i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
           w: 2,
           x: 6,
-          y: 2,
+          y: 3,
           static: false,
         },
         {
@@ -122,7 +132,7 @@ class CustomizeGlossaryPageClassBase {
           i: DetailPageWidgetKeys.TAGS,
           w: 2,
           x: 6,
-          y: 3,
+          y: 4,
           static: false,
         },
       ];
