@@ -353,6 +353,7 @@ const IncidentManagerDetailPage = ({
                 <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
               </Box>
               <TestCaseHeaderTitle
+                deleted={testCase.deleted}
                 displayName={displayName}
                 hasCopied={hasCopied}
                 testCaseName={testCase.name}
