@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -31,6 +32,7 @@ import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
@@ -49,6 +51,7 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
   private static final URI PART_OF = URI.create("https://open-metadata.org/ontology/partOf");
   private static final URI HAS_PART = URI.create("https://open-metadata.org/ontology/hasPart");
   private static final URI CONTAINED_IN = URI.create("https://example.org/model/containedIn");
+  private static final URI ADJACENT_TO = URI.create("https://example.org/model/adjacentTo");
   private static final URI CUSTOMER = URI.create("https://example.org/model/Customer");
   private static final URI ACCOUNT = URI.create("https://example.org/model/Account");
   private static final String PREFIXES =
@@ -152,6 +155,77 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void restoringAPropertyWhosePartnerIsGoneDropsTheLink(TestNamespace ns) {
+    Ontology ontology = createOntology(ns, "inverseModel");
+    OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+    OntologyProperty hasPart = service.create(objectProperty(ontology, "hasPart", HAS_PART));
+    OntologyProperty partOf =
+        service.create(objectProperty(ontology, "partOf", PART_OF).withInverse(HAS_PART));
+
+    service.delete(hasPart.getId().toString());
+    service.delete(partOf.getId().toString(), Map.of("hardDelete", "true"));
+
+    assertNull(service.restore(hasPart.getId()).getInverse());
+  }
+
+  @Test
+  void claimingAnOccupiedPartnerMovesIt(TestNamespace ns) {
+    Ontology ontology = createOntology(ns, "inverseModel");
+    OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+    OntologyProperty hasPart = service.create(objectProperty(ontology, "hasPart", HAS_PART));
+    OntologyProperty partOf =
+        service.create(objectProperty(ontology, "partOf", PART_OF).withInverse(HAS_PART));
+
+    OntologyProperty containedIn =
+        service.create(objectProperty(ontology, "containedIn", CONTAINED_IN).withInverse(HAS_PART));
+
+    assertEquals(HAS_PART, containedIn.getInverse());
+    assertEquals(CONTAINED_IN, service.get(hasPart.getId().toString()).getInverse());
+    assertNull(service.get(partOf.getId().toString()).getInverse());
+  }
+
+  @Test
+  void aSymmetricPropertyIsItsOwnInverse(TestNamespace ns) {
+    Ontology ontology = createOntology(ns, "inverseModel");
+    OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+
+    OntologyProperty adjacentTo =
+        service.create(
+            objectProperty(ontology, "adjacentTo", ADJACENT_TO).withInverse(ADJACENT_TO));
+
+    assertEquals(ADJACENT_TO, adjacentTo.getInverse());
+    assertEquals(ADJACENT_TO, service.get(adjacentTo.getId().toString()).getInverse());
+  }
+
+  @Test
+  void aRejectedLinkLeavesBothSidesUntouched(TestNamespace ns) {
+    Ontology ontology = createOntology(ns, "inverseModel");
+    OntologyPropertyService service = SdkClients.adminClient().ontologyProperties();
+    OntologyProperty hasPart =
+        service.create(
+            objectProperty(ontology, "hasPart", HAS_PART)
+                .withCharacteristics(Set.of(RelationshipCharacteristic.FUNCTIONAL)));
+    OntologyProperty partOf =
+        service.create(
+            objectProperty(ontology, "partOf", PART_OF)
+                .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE)));
+    long revision =
+        SdkClients.adminClient().ontologies().state(ontology.getId()).getWorkingRevision();
+
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> service.patch(partOf.getId(), inversePatch(HAS_PART)));
+
+    assertEquals(400, rejected.getStatusCode());
+    assertNull(service.get(partOf.getId().toString()).getInverse());
+    assertNull(service.get(hasPart.getId().toString()).getInverse());
+    assertEquals(
+        revision,
+        SdkClients.adminClient().ontologies().state(ontology.getId()).getWorkingRevision());
+  }
+
+  @Test
   void oneDirectionalImportIsNormalizedOnApplyAndReusedByIri(TestNamespace ns) {
     Ontology ontology = createOntology(ns, "importedInverses");
     OpenMetadataClient client = SdkClients.adminClient();
@@ -175,6 +249,13 @@ public class IndependentOntologyInverseIT extends BaseOntologyApprovalIT {
             .getOperations()
             .isEmpty(),
         "a second import matches both properties by their exact IRIs");
+    assertTrue(
+        client
+            .ontologies()
+            .previewImport(ontology.getId(), turtle(ONE_DIRECTION))
+            .getOperations()
+            .isEmpty(),
+        "the one-directional file still describes the linked pair");
     OpenMetadataException duplicate =
         assertThrows(
             OpenMetadataException.class,

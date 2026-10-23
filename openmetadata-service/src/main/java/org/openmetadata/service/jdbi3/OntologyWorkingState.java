@@ -4,11 +4,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -21,6 +23,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 /** Serializes a module's SQL writes with release capture on the caller's retained transaction. */
 final class OntologyWorkingState {
   private static final ThreadLocal<Changes> CHANGES = new ThreadLocal<>();
+  private static final int SETTLE_PASSES = 8;
   private final CollectionDAO dao;
   private final OntologyStateDAO states;
   private final OntologyReferenceIndex references;
@@ -37,11 +40,12 @@ final class OntologyWorkingState {
       final EntityDAO<T> entities, final List<T> definitions, final Supplier<R> work) {
     final boolean outermost = CHANGES.get() == null;
     if (outermost) {
-      CHANGES.set(new Changes(new HashMap<>(), new HashSet<>()));
+      CHANGES.set(new Changes(new HashMap<>(), new HashSet<>(), new LinkedHashMap<>()));
     }
     try {
       final R result = mutateLocked(entities, definitions, work);
       if (outermost) {
+        settle();
         CHANGES.get().definitions().entrySet().stream()
             .sorted(Map.Entry.comparingByKey())
             .forEach(entry -> model.requireValid(entry.getKey(), entry.getValue()));
@@ -53,6 +57,39 @@ final class OntologyWorkingState {
     } finally {
       if (outermost) {
         CHANGES.remove();
+      }
+    }
+  }
+
+  /**
+   * Registers work for the end of the outermost mutation in progress: it runs after every nested
+   * write and before validation, sees each ontology's changes so far, may write through the
+   * repositories, and runs again until a pass adds no change. A key registers once per mutation.
+   */
+  void beforeValidation(
+      final String key, final BiConsumer<UUID, List<OntologyWorkingModel.Change>> finalizer) {
+    final Changes changes = CHANGES.get();
+    if (changes == null) {
+      throw new IllegalStateException("No ontology mutation is in progress");
+    }
+    changes.finalizers().putIfAbsent(key, finalizer);
+  }
+
+  private void settle() {
+    final Changes changes = CHANGES.get();
+    for (int pass = 0; !changes.finalizers().isEmpty(); pass++) {
+      if (pass == SETTLE_PASSES) {
+        throw new IllegalStateException(
+            "Ontology writes did not settle within " + SETTLE_PASSES + " passes");
+      }
+      final int before = changes.count();
+      for (final var finalizer : List.copyOf(changes.finalizers().values())) {
+        for (final UUID ontologyId : changes.definitions().keySet().stream().sorted().toList()) {
+          finalizer.accept(ontologyId, List.copyOf(changes.definitions().get(ontologyId)));
+        }
+      }
+      if (changes.count() == before) {
+        return;
       }
     }
   }
@@ -139,7 +176,13 @@ final class OntologyWorkingState {
   }
 
   private record Changes(
-      Map<UUID, List<OntologyWorkingModel.Change>> definitions, Set<UUID> graphs) {}
+      Map<UUID, List<OntologyWorkingModel.Change>> definitions,
+      Set<UUID> graphs,
+      Map<String, BiConsumer<UUID, List<OntologyWorkingModel.Change>>> finalizers) {
+    int count() {
+      return definitions.values().stream().mapToInt(List::size).sum();
+    }
+  }
 
   private record Baseline(UUID ontologyId, UUID entityId, String json) {}
 }
