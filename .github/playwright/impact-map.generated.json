@@ -7736,6 +7736,17 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageExportButton/LineageExportButton.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/LineageNodeDeleteModal/LineageNodeDeleteModal.tsx"
       ],
       "specs": [
@@ -8398,6 +8409,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/PageHeader/PageHeader.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/PageLayoutV1/PageLayoutV1.tsx"
       ],
       "specs": [
@@ -8467,6 +8486,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Search/SearchRelevance.spec.ts"
       ]
@@ -10370,6 +10390,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/atoms/navigation/usePageHeader.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {
@@ -13642,14 +13670,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/PlatformLineage.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/ImpactAnalysis.spec.ts",
-        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
-        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
-        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
-        "playwright/e2e/Pages/Users.spec.ts"
+        "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts"
       ]
     },
     {

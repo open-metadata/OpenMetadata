@@ -46,7 +46,7 @@ and getting to the interaction's starting state is untimed.
 | `interaction-drill-schema` | database → click a schema → ASSET | yes |
 | `interaction-drill-table-to-fields` | schema → click a table → FIELD | yes |
 | `interaction-breadcrumb-pop-to-layer` | breadcrumb back to the root scene | **no** — see below |
-| `interaction-semantic-zoom-in` | zoom past the drill-in threshold | yes |
+| `interaction-semantic-zoom-in` | wheel over the benchmark's service past the drill-in threshold | yes |
 | `interaction-semantic-zoom-out` | zoom past the pop threshold → parent scene | **no** — see below |
 | `interaction-band-switch-prefetched` | band switch on an unchanged focus | **usually not** — see below |
 | `interaction-fit-to-screen` | re-frame the graph | **never** |
@@ -84,22 +84,24 @@ they are worth stating plainly:
 - **Every timed drill starts from a settled map.** The untimed setup waits out the map's
   post-render work (the 300ms prefetch of adjacent bands and the semantic-zoom cooldown), so the
   timed drill does not share the browser and the server with it.
-- **Semantic zoom clicks until the band changes.** The map switches level by screen fill —
+- **Semantic zoom steps until the band changes.** The map switches level by screen fill —
   zoom out once the whole graph fills under a third of the viewport, zoom in once a card fills
   most of it, with the zoom min/max as a fallback — not a fixed zoom level; the benchmark
-  clicks until the band changes (at most 40 times).
-- **Zoom-in is not a band toggle.** Crossing the zoom-in threshold makes the map pick the expandable
-  node nearest the viewport centre and *drill into it*, so focus changes as well as band. Zoom-out
-  pops to the parent scene via the breadcrumb.
+  steps until the band changes (at most 40 times).
+- **Zoom-in is not a band toggle.** Crossing the zoom-in threshold makes the map *drill into* a
+  node, so focus changes as well as band. It drills only into a node the user is plainly zooming
+  into: the one under the pointer for a wheel or pinch, otherwise the selected node or the only
+  drillable node in view. Zoom-out pops to the parent scene via the breadcrumb.
 - **The zoom gesture has a 1.2s dead window.** Semantic zoom is suppressed for
   `PROGRAMMATIC_ZOOM_SUPPRESSION_MS` after every scene load and every navigation, and the
   zoom-crossing baseline is rebased when it closes. The benchmark waits that out in untimed setup —
   it is the map's own cooldown, not its latency. (This is also why the TS suite's
   `performZoomOut(page, 10)` never changes band: all ten clicks land inside the window.)
 
-Zoom is driven through the `zoom-in`/`zoom-out` controls rather than a wheel gesture. That is not a
-shortcut: `handleMove` ignores the event source, so React Flow's programmatic zoom reaches the same
-semantic-zoom path a wheel does.
+Zoom-in is a wheel gesture over the benchmark graph's own service, picked the way the first drill
+picks it. The `zoom-in` control carries no pointer, so on a root scene with several services in view
+it zooms without ever drilling. Zoom-out uses the `zoom-out` control: popping to the parent scene
+needs no target.
 
 ### Cold vs warm is not a detail
 
@@ -135,6 +137,13 @@ nightly repository's commit). Metrics land in
 `openmetadata-integration-tests/target/benchmark/lineage-scene-scale-<tables>.json` and are
 collected as the `scale-metrics-*` artifact, which the `latency-report` job reads (see
 [Trends and the regression gate](#trends-and-the-regression-gate)).
+
+Seeding the default cohort takes longer than the cluster's login token lives (about an hour). So
+the class takes its server handle before it seeds. In external mode that starts
+`ExternalTokenRefresher`, which logs in again with `OM_EXTERNAL_USERNAME` and
+`OM_EXTERNAL_PASSWORD` (the nightly's `acquire-admin-token.sh` exports both), and every call goes
+through `server.sdk()`, which follows each refresh. A client captured before the run would keep
+the first token and get `401 Expired token!` partway through the seed.
 
 ```bash
 mvn verify -P scale-it -pl :openmetadata-integration-tests -Dskip.embedded.bootstrap=true \
@@ -287,6 +296,7 @@ published-field rename rather than silently comparing fields that no longer mean
 | Harness | landed |
 | Nightly wiring + trend page | landed with the nightly PR; trends live on `openmetadata-nightly@benchmark-history` |
 | Regression gate | relative (median of 7 nights, ±25%), active once a scenario has 5 nights |
+| Nightly runs | the first two (2026-10-18, 2026-10-19) failed while seeding: the admin token expired an hour in, before any edge was written. The token refresher now starts before seeding. `LineageMapPage` follows the map markup that #34551 changed (breadcrumbs, fit to screen, the canvas test id), and zooms in with the wheel over its own service, because the zoom buttons never drill while several services are in view |
 | Budgets | **placeholders** — `rootSceneP95Ms=10000`, `focusedSceneP95Ms=20000`, `legacyP95Ms=60000`, `otherApiP95Ms=60000`, `firstRenderP95Ms=60000`, `interactionP95Ms=60000` |
 | Published p95 | **none yet** |
 

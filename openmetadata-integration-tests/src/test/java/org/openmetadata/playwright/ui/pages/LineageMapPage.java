@@ -6,6 +6,7 @@ import com.microsoft.playwright.TimeoutError;
 import com.microsoft.playwright.assertions.LocatorAssertions;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
+import com.microsoft.playwright.options.BoundingBox;
 import com.microsoft.playwright.options.Cookie;
 import com.microsoft.playwright.options.WaitForSelectorState;
 import java.net.URI;
@@ -32,7 +33,6 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   private static final String PLATFORM_LINEAGE_PATH = "/lineage";
   private static final String TESTID_CANVAS = "lineage-map-canvas";
   private static final String TESTID_LOADER = "loader";
-  private static final String TESTID_ZOOM_IN = "zoom-in";
   private static final String TESTID_ZOOM_OUT = "zoom-out";
   private static final String TESTID_FIT_SCREEN = "fit-screen";
   private static final String TESTID_BREADCRUMBS = "lineage-map-breadcrumbs";
@@ -40,7 +40,6 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   private static final String NODE_TESTID_PREFIX = "lineage-node-";
   private static final String NODE_SELECTOR = "[data-testid^='lineage-node-']";
   private static final String ACTIVE_RAIL_DOT = ".lineage-map-rail-dot.active";
-  private static final String FIT_TO_SCREEN_ITEM = "Fit to screen";
   // The map renders this button only on expandable nodes, which makes it the drillability probe.
   private static final String DRILL_BUTTON_LABEL = "Zoom In";
   // Rendered only on a scene's origin/focus node — see awaitFocusedSceneSettled.
@@ -54,11 +53,14 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   private static final double RENDER_TIMEOUT_MS = 120_000;
 
   /**
-   * React Flow's zoom button steps by 1.2x, and the map drills in at a zoom of 1.9. From a post-fit
-   * zoom of 1.0 that is four steps; a root scene of a few hundred services fits nearer 0.05, which
-   * is about twenty. Forty bounds the loop without ever being the reason it stops.
+   * React Flow's zoom-out button steps by 1.2x, and {@link #WHEEL_ZOOM_STEP_PX} of wheel by about
+   * 1.15x. A root scene of a few hundred services fits near a zoom of 0.05, and the maximum is 2.5:
+   * about thirty wheel steps at most. Forty bounds the loop without ever being the reason it stops.
    */
   private static final int MAX_SEMANTIC_ZOOM_STEPS = 40;
+
+  /** React Flow zooms by 2^(0.002 × deltaY) per wheel event, so 100px is about a 15% step. */
+  private static final double WHEEL_ZOOM_STEP_PX = 100;
 
   /**
    * The map suppresses semantic zoom for 1200ms after every scene load and every navigation, and
@@ -73,6 +75,11 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   private static final String NAVIGATION_DURATION_SCRIPT =
       "() => { const [nav] = performance.getEntriesByType('navigation');"
           + " return nav ? Math.round(nav.duration) : -1; }";
+
+  /** Resolves once the browser has painted twice, so a viewport change is on screen. */
+  private static final String TWO_FRAMES_SCRIPT =
+      "() => new Promise(resolve =>"
+          + " requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))";
 
   private LineageMapPage(final Page page, final UiSession session) {
     super(page, session);
@@ -157,32 +164,42 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
   }
 
   /**
-   * Zooms past the map's drill-in threshold. This does not simply deepen the band: the map picks
-   * the expandable node nearest the viewport centre and drills into that, so the focus changes too.
+   * Wheels in over {@code nodeFqn} until the map drills into it, once a card fills most of the
+   * viewport (or the zoom reaches its maximum). The map drills only into a node the user is plainly
+   * zooming into: the one under the pointer for a wheel or pinch, otherwise the selected node or
+   * the only drillable node in view. So the zoom buttons, which carry no pointer, zoom without
+   * drilling while several drillable nodes are on screen; a wheel over the node always has a
+   * target. The drill changes the focus as well as the band.
    */
-  public LineageMapPage semanticZoomIn(final String expectedBand) {
-    return semanticZoom(TESTID_ZOOM_IN, expectedBand);
-  }
-
-  /** Zooms out past the pop threshold, which navigates to the parent scene. */
-  public LineageMapPage semanticZoomOut(final String expectedBand) {
-    return semanticZoom(TESTID_ZOOM_OUT, expectedBand);
-  }
-
-  /**
-   * Clicks the zoom control until the map crosses its semantic-zoom threshold. The threshold is
-   * screen fill — zoom out once the whole graph fills under a third of the viewport, zoom in once
-   * a card fills most of it, with the zoom min/max as a fallback — not a fixed zoom level. A
-   * click or two past the crossing is harmless: the map suppresses semantic zoom right after
-   * every scene load.
-   */
-  private LineageMapPage semanticZoom(final String zoomTestId, final String expectedBand) {
+  public LineageMapPage semanticZoomInto(final String nodeFqn, final String expectedBand) {
     requireBandChange(expectedBand);
-    final Locator zoom = byTestId(zoomTestId);
+    final BoundingBox box = byTestId(NODE_TESTID_PREFIX + nodeFqn).boundingBox();
+    if (box == null) {
+      throw new IllegalStateException(
+          nodeFqn + " is not rendered, so there is nothing to zoom into");
+    }
+    page.mouse().move(box.x + box.width / 2, box.y + box.height / 2);
     for (int step = 0;
         step < MAX_SEMANTIC_ZOOM_STEPS && !expectedBand.equals(currentBand());
         step++) {
-      zoom.click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
+      page.mouse().wheel(0, -WHEEL_ZOOM_STEP_PX);
+    }
+    awaitSceneSettled(expectedBand);
+    return this;
+  }
+
+  /**
+   * Clicks zoom-out until the map pops to the parent scene, once the whole graph fills under a
+   * third of the viewport (or the zoom reaches its minimum). A click or two past the crossing is
+   * harmless: the map suppresses semantic zoom right after every scene load.
+   */
+  public LineageMapPage semanticZoomOut(final String expectedBand) {
+    requireBandChange(expectedBand);
+    final Locator zoomOut = byTestId(TESTID_ZOOM_OUT);
+    for (int step = 0;
+        step < MAX_SEMANTIC_ZOOM_STEPS && !expectedBand.equals(currentBand());
+        step++) {
+      zoomOut.click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
     }
     awaitSceneSettled(expectedBand);
     return this;
@@ -198,38 +215,34 @@ public final class LineageMapPage extends PageObject implements AutoCloseable {
     return this;
   }
 
-  /** Pops to an ancestor scene via the breadcrumb trail. */
-  public LineageMapPage popBreadcrumb(final int index, final String expectedBand) {
+  /**
+   * Pops to the lens root through the first crumb of the breadcrumb trail. The trail renders no
+   * per-crumb test id, and it collapses middle crumbs into an overflow menu at narrow widths, but
+   * the first crumb always stays and is a link whenever the scene is below the root.
+   */
+  public LineageMapPage popToRootBreadcrumb(final String expectedBand) {
     requireBandChange(expectedBand);
-    byTestId(TESTID_BREADCRUMBS)
-        .waitFor(
-            new Locator.WaitForOptions()
-                .setState(WaitForSelectorState.VISIBLE)
-                .setTimeout(RENDER_TIMEOUT_MS));
-    // The testid sits on a Typography inside the clickable row, and middle crumbs collapse into an
-    // overflow menu at narrow widths, so click the enclosing element rather than the label itself.
-    byTestId("lineage-map-breadcrumb-" + index)
-        .locator("xpath=ancestor-or-self::*[self::li or self::button or self::a][1]")
+    final Locator trail = byTestId(TESTID_BREADCRUMBS);
+    trail.waitFor(
+        new Locator.WaitForOptions()
+            .setState(WaitForSelectorState.VISIBLE)
+            .setTimeout(RENDER_TIMEOUT_MS));
+    trail
+        .locator("li")
+        .first()
+        .getByRole(AriaRole.LINK)
         .click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
     awaitSceneSettled(expectedBand);
     return this;
   }
 
   /**
-   * Re-frames the graph. Client-only — no scene fetch — so this isolates the ELK layout and
-   * viewport cost from the server's.
+   * Re-frames the graph. Client-only — no scene fetch — so this isolates the viewport cost from the
+   * server's. The button sets the viewport at once; the wait covers the frames that paint it.
    */
   public LineageMapPage fitToScreen() {
-    final Locator item =
-        page.getByRole(AriaRole.MENUITEM, new Page.GetByRoleOptions().setName(FIT_TO_SCREEN_ITEM));
     byTestId(TESTID_FIT_SCREEN).click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
-    item.click(new Locator.ClickOptions().setTimeout(RENDER_TIMEOUT_MS));
-    // The dropdown's exit animation leaves a second dialog in the DOM; not waiting for it out
-    // produces strict-mode violations on the next interaction.
-    item.waitFor(
-        new Locator.WaitForOptions()
-            .setState(WaitForSelectorState.DETACHED)
-            .setTimeout(RENDER_TIMEOUT_MS));
+    page.evaluate(TWO_FRAMES_SCRIPT);
     return this;
   }
 

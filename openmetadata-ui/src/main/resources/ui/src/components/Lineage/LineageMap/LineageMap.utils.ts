@@ -305,6 +305,17 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+export const getLensLabelKey = (lens: LineageLens) => {
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service';
+  }
+};
+
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {

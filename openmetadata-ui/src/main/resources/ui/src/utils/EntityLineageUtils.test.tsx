@@ -34,8 +34,10 @@ import {
 } from './EntityLineageEdgeUtils';
 import {
   centerNodePosition,
+  getExportViewportForNodes,
   getNodesBoundsReactFlow,
   getViewportForBoundsReactFlow,
+  getViewportForLineageExport,
 } from './EntityLineageLayoutUtils';
 import {
   getConnectedNodesEdges,
@@ -1372,6 +1374,57 @@ describe('Test EntityLineageUtils utility', () => {
         y: -60,
         zoom: 2.2857142857142856,
       });
+    });
+  });
+
+  const exportNodes = [
+    { id: 'a', position: { x: 0, y: 0 }, width: 400, height: 100 },
+    { id: 'b', position: { x: 5600, y: 9000 }, width: 400, height: 100 },
+    { id: 'c', position: { x: 2800, y: 4500 }, width: 400, height: 100 },
+  ] as Node[];
+
+  describe('getViewportForLineageExport', () => {
+    it('fits the nodes to the size of the element it measures', () => {
+      const element = document.createElement('div');
+      element.id = 'lineage-export-target';
+      Object.defineProperties(element, {
+        scrollWidth: { value: 6000 },
+        scrollHeight: { value: 9100 },
+      });
+      document.body.appendChild(element);
+
+      expect(
+        getViewportForLineageExport(exportNodes, '#lineage-export-target')
+      ).toEqual(getExportViewportForNodes(exportNodes, 6000, 9100));
+
+      element.remove();
+    });
+  });
+
+  describe('getExportViewportForNodes', () => {
+    it('fits every node inside the image it is given', () => {
+      const imageWidth = 6000;
+      const imageHeight = 9100;
+
+      const { x, y, zoom } = getExportViewportForNodes(
+        exportNodes,
+        imageWidth,
+        imageHeight
+      );
+
+      exportNodes.forEach(({ position, width, height }) => {
+        const left = x + position.x * zoom;
+        const top = y + position.y * zoom;
+
+        expect(left).toBeGreaterThanOrEqual(0);
+        expect(top).toBeGreaterThanOrEqual(0);
+        expect(left + (width ?? 0) * zoom).toBeLessThanOrEqual(imageWidth);
+        expect(top + (height ?? 0) * zoom).toBeLessThanOrEqual(imageHeight);
+      });
+
+      // The image is about the size of the graph, so the graph fills it
+      // rather than sitting shrunk in a corner.
+      expect(zoom).toBeGreaterThan(0.8);
     });
   });
 });
