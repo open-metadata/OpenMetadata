@@ -5374,6 +5374,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
+    // The search update rewrites only the votes when the entity carries this change. Without it,
+    // the document would be rebuilt from this bare read, blanking owners, domains and tags, and the
+    // last stored change would be replayed to the children.
+    originalEntity.setIncrementalChangeDescription(change);
+    originalEntity.setChangeDescription(change);
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -8594,12 +8599,29 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       invalidateMany(changedEntities);
     }
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+  }
+
+  /**
+   * The search handler indexes the dispatched entities as they are, and a bulk updater loads only
+   * what a PUT touches. Without the rest of what their documents carry (followers, votes, the owners
+   * and domains a descendant inherits), the rewrite would blank those fields.
+   */
+  private void hydrateForSearchIndex(List<T> entities) {
+    if (!supportsSearch || searchRepository == null) {
+      return;
+    }
+    setFieldsInBulk(
+        getOnlySupportedFields(
+            String.join(
+                ",", searchRepository.getSearchIndexFactory().getReindexFieldsFor(entityType))),
+        entities);
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -15315,7 +15337,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         continue;
       }
       try {
-        deleteInternal(deletedBy, stale.id, recursive, hardDelete);
+        // The full delete, not deleteInternal: its post-delete steps take the entity out of search.
+        delete(deletedBy, stale.id, recursive, hardDelete);
         deletedHashes.add(fqnHash);
         successRequests.add(staleSuccess(stale.fqn));
       } catch (Exception e) {

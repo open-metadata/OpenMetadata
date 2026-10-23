@@ -4403,9 +4403,17 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.domains = params.domains;");
       }
       if (fieldChange.getName().equalsIgnoreCase("votes")) {
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put(fieldChange.getName(), doc.get("votes"));
+        // The same shape the index builder writes, with the total that ranks by votes.
+        int upVotes = 0;
+        int downVotes = 0;
+        if (entity.getVotes() != null) {
+          upVotes = Objects.requireNonNullElse(entity.getVotes().getUpVotes(), 0);
+          downVotes = Objects.requireNonNullElse(entity.getVotes().getDownVotes(), 0);
+        }
+        fieldAddParams.put("votes", Map.of("upVotes", upVotes, "downVotes", downVotes));
+        fieldAddParams.put("totalVotes", Math.max(upVotes - downVotes, 0));
         scriptTxt.append("ctx._source.votes = params.votes;");
+        scriptTxt.append("ctx._source.totalVotes = params.totalVotes;");
       }
       if (fieldChange.getName().equalsIgnoreCase("pipelineStatus")) {
         scriptTxt.append(
