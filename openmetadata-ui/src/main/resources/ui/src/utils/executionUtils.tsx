@@ -163,7 +163,8 @@ export const buildCompleteTree = (
   }[],
   icon: React.ReactNode | null,
   key: string,
-  parentKey: string
+  parentKey: string,
+  visited: Set<string> = new Set()
 ) => {
   let node: TreeNode;
 
@@ -185,7 +186,9 @@ export const buildCompleteTree = (
   }
   const entry = data.find((item) => item.name === key);
 
-  if (entry) {
+  if (entry && !visited.has(key)) {
+    visited.add(key);
+
     const childrenKeys = entry.downstreamTasks ?? [];
 
     for (const childKey of childrenKeys) {
@@ -194,7 +197,8 @@ export const buildCompleteTree = (
         viewElements,
         icon,
         childKey,
-        parentKey + '-' + entry.name
+        parentKey + '-' + entry.name,
+        visited
       );
       node.children?.push(childNode);
     }
@@ -289,7 +293,10 @@ export const getTreeData = (
     }
   }
 
-  roots.forEach((taskName) => {
+  const effectiveRoots =
+    roots.length > 0 ? roots : tasks.map((task) => task.name);
+
+  effectiveRoots.forEach((taskName) => {
     treeDataList.push(
       buildCompleteTree(tasks, viewElements, null, taskName, 'root')
     );
