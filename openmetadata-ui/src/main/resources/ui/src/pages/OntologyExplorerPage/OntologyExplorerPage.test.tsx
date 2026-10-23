@@ -135,7 +135,6 @@ const mockUseOntologyStudioScopes = jest.fn(() => ({
   isError: false,
   isLoading: false,
   isOntologyError: false,
-  ...({} as { isOntologyFetching?: boolean }),
   isOntologyLoading: false,
   refetchOntologies: jest.fn(),
   ontologies: [] as Ontology[],
@@ -354,13 +353,6 @@ describe('OntologyExplorerPage', () => {
     <output data-testid="location">{useLocation().search}</output>
   );
 
-  const bareStudio = () => (
-    <MemoryRouter initialEntries={['/']}>
-      <OntologyExplorerPage />
-      <Location />
-    </MemoryRouter>
-  );
-
   const renderNativeStudio = (search: string) => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
@@ -424,121 +416,8 @@ describe('OntologyExplorerPage', () => {
     );
   };
 
-  it('opens glossary vocabulary when a bare link finds no native ontologies', async () => {
-    mockUseRealRouter = true;
-    renderWithQueryClient(
-      <MemoryRouter initialEntries={['/']}>
-        <OntologyExplorerPage />
-        <Location />
-      </MemoryRouter>
-    );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent(
-        'scope=glossary%3Aall'
-      )
-    );
-
-    expect(
-      screen.queryByTestId('all-ontologies-empty')
-    ).not.toBeInTheDocument();
-  });
-
-  it('waits for the native ontology list before falling back to glossaries', async () => {
-    const loadingScopes = {
-      glossaries: [],
-      isError: false,
-      isLoading: true,
-      isOntologyError: false,
-      isOntologyLoading: true,
-      ontologies: [],
-      refetch: jest.fn(),
-      refetchOntologies: jest.fn(),
-    };
-    mockUseRealRouter = true;
-    mockUseOntologyStudioScopes.mockReturnValue(loadingScopes);
-    const view = renderWithQueryClient(bareStudio());
-
-    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
-
-    mockUseOntologyStudioScopes.mockReturnValue({
-      ...loadingScopes,
-      isLoading: false,
-      isOntologyLoading: false,
-    });
-    view.rerender(bareStudio());
-
-    await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent(
-        'scope=glossary%3Aall'
-      )
-    );
-  });
-
-  it('does not fall back while a cached empty list is refreshing', async () => {
-    const refreshingScopes = {
-      glossaries: [],
-      isError: false,
-      isLoading: false,
-      isOntologyError: false,
-      isOntologyFetching: true,
-      isOntologyLoading: false,
-      ontologies: [],
-      refetch: jest.fn(),
-      refetchOntologies: jest.fn(),
-    };
-    mockUseRealRouter = true;
-    mockUseOntologyStudioScopes.mockReturnValue(refreshingScopes);
-    const view = renderWithQueryClient(bareStudio());
-
-    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
-
-    mockUseOntologyStudioScopes.mockReturnValue({
-      ...refreshingScopes,
-      isOntologyFetching: false,
-      ontologies: [nativeOntology],
-    });
-    view.rerender(bareStudio());
-
-    await waitFor(() =>
-      expect(
-        screen.queryByTestId('all-ontologies-empty')
-      ).not.toBeInTheDocument()
-    );
-
-    expect(screen.getByTestId('location')).toBeEmptyDOMElement();
-  });
-
-  it('keeps an explicitly chosen empty All ontologies view and links back to glossaries', async () => {
-    mockUseRealRouter = true;
-    renderWithQueryClient(
-      <MemoryRouter initialEntries={['/?scope=glossary:all']}>
-        <OntologyExplorerPage />
-        <Location />
-      </MemoryRouter>
-    );
-
-    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
-    fireEvent.click(await screen.findByTestId('ontology-scope-all-ontologies'));
-
-    expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();
-    expect(screen.getByTestId('location')).toHaveTextContent(
-      'scope=ontology%3Aall'
-    );
-
-    fireEvent.click(
-      screen.getByRole('button', { name: 'label.view-all-entity' })
-    );
-
-    await waitFor(() =>
-      expect(screen.getByTestId('location')).toHaveTextContent(
-        'scope=glossary%3Aall'
-      )
-    );
-  });
-
   it('shows the empty native catalog without glossary controls', async () => {
-    mockSearchParams = new URLSearchParams('scope=ontology:all');
+    mockSearchParams = new URLSearchParams();
     render(<OntologyExplorerPage />);
 
     expect(await screen.findByTestId('all-ontologies-empty')).toBeVisible();

@@ -89,33 +89,3 @@ export const getStudioScope = (
 
   return params.has('draft') ? ALL_GLOSSARIES_SCOPE : ALL_ONTOLOGIES_SCOPE;
 };
-
-/** What the Studio knows about the native ontology list when it decides a scope. */
-export interface NativeOntologyListState {
-  readonly isCreatingOntology: boolean;
-  readonly isOntologyError: boolean;
-  /** A list request is in flight, including a background refresh of a cached list. */
-  readonly isOntologyFetching: boolean;
-  readonly isOntologyLoading: boolean;
-  readonly ontologyCount: number;
-}
-
-const isBareAllOntologiesLink = (params: URLSearchParams): boolean =>
-  !params.has('scope') && getStudioScope(params).kind === 'allOntologies';
-
-const isListSettled = (list: NativeOntologyListState): boolean =>
-  !list.isOntologyLoading && !list.isOntologyFetching && !list.isOntologyError;
-
-// A cached empty list must not decide while a fresh request may still return ontologies.
-const isSettledEmptyList = (list: NativeOntologyListState): boolean =>
-  !list.isCreatingOntology && isListSettled(list) && list.ontologyCount === 0;
-
-/**
- * Whether a bare Studio link should open glossary vocabulary instead: only once the
- * native list has loaded empty, never for an explicit scope, a failed list or while
- * creating (ADR:2026-10-19-ontology-studio-opens-native-models-by-default).
- */
-export const shouldFallBackToGlossaryScope = (
-  params: URLSearchParams,
-  list: NativeOntologyListState
-): boolean => isBareAllOntologiesLink(params) && isSettledEmptyList(list);

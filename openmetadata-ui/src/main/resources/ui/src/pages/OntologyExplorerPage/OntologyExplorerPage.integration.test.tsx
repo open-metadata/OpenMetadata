@@ -484,7 +484,7 @@ describe('Ontology Studio mode-switch integration', () => {
     mockGetOntology.mockResolvedValue(ontology);
     render(
       <QueryClientProvider client={queryClient}>
-        <MemoryRouter initialEntries={['/?scope=ontology:all']}>
+        <MemoryRouter>
           <OntologyExplorerPage />
         </MemoryRouter>
       </QueryClientProvider>

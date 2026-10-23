@@ -567,26 +567,6 @@ describe('OntologyExplorer Studio data controls', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('links the empty glossary graph to the explicit All ontologies scope', () => {
-    const emptyGraph = { edges: [], nodes: [] };
-    mockUseOntologyExplorer.mockReturnValue(
-      createExplorerState({
-        combinedGraphData: emptyGraph,
-        filteredGraphData: emptyGraph,
-        graphDataToShow: emptyGraph,
-        loadedTermCount: 0,
-        totalTermCount: 0,
-      })
-    );
-
-    render(<OntologyExplorer scope="global" />);
-
-    expect(screen.getByTestId('ontology-view-all')).toHaveAttribute(
-      'href',
-      '/governance/ontology?scope=ontology:all'
-    );
-  });
-
   it('shows the search empty state when the query has no graph matches', () => {
     const state = createExplorerState({
       filters: {

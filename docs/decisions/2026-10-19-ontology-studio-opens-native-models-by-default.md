@@ -1,7 +1,7 @@
 # Ontology Studio opens native models by default
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial); v2 2026-10-21 (bare route falls back to glossaries when no native ontology exists)
+- **Revisions:** v1 2026-10-19 (initial)
 - **Deciders:** Studio implementation review
 - **Guard:** `OntologyExplorerPage.test.tsx`, `useOntologyStudioModel.test.tsx`, reviewer
 - **Related:** ADR:2026-10-16-native-ontologies-share-studio-and-memory-review, ADR:2026-10-17-glossaries-do-not-own-ontology-models
@@ -20,10 +20,7 @@ Review & publish from the aggregate view requires selecting one ontology. It nev
 multiple ontologies or reuses another ontology's edit permission.
 
 Glossary compatibility remains explicit through `?scope=glossary:all` or
-`?scope=glossary:<id>`. The one exception (v2): when the bare route finds no native ontology, it
-replaces the URL with `?scope=glossary:all`, because an instance with glossaries but no native
-ontologies otherwise opened an empty Studio. Choosing All ontologies from the scope menu writes
-`?scope=ontology:all`, which never falls back and shows the empty native catalog. A `?draft=<id>` link without an ontology retains glossary review.
+`?scope=glossary:<id>`. A `?draft=<id>` link without an ontology retains glossary review.
 Failed native links expose recovery instead of silently switching to glossary data.
 
 Aggregate loading is limited to 20 ontologies and 2,000 combined concepts, properties and axioms.

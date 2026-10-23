@@ -85,15 +85,11 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { getOntology, getOntologyWorkingDiff } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  ALL_GLOSSARIES_SCOPE,
-  ALL_GLOSSARIES_SCOPE_KEY,
   ALL_ONTOLOGIES_SCOPE,
-  ALL_ONTOLOGIES_SCOPE_KEY,
   getScopeKey,
   getStudioScope,
   isOntologyScope,
   OntologyStudioScope,
-  shouldFallBackToGlossaryScope,
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
@@ -743,31 +739,6 @@ const OntologyExplorerPage: React.FC = () => {
     aggregateEnabled(isAllOntologies, isCreatingOntology, studioScopes)
   );
 
-  const shouldFallBackToGlossaries = shouldFallBackToGlossaryScope(
-    searchParams,
-    {
-      isCreatingOntology,
-      isOntologyError: studioScopes.isOntologyError,
-      isOntologyFetching: studioScopes.isOntologyFetching,
-      isOntologyLoading: studioScopes.isOntologyLoading,
-      ontologyCount: studioScopes.ontologies.length,
-    }
-  );
-
-  useEffect(() => {
-    if (shouldFallBackToGlossaries) {
-      setSearchParams(
-        (current) => {
-          const next = new URLSearchParams(current);
-          next.set('scope', ALL_GLOSSARIES_SCOPE_KEY);
-
-          return next;
-        },
-        { replace: true }
-      );
-    }
-  }, [setSearchParams, shouldFallBackToGlossaries]);
-
   const selectOntology = (
     ontology?: Ontology,
     conceptId?: string,
@@ -1095,7 +1066,7 @@ const OntologyExplorerPage: React.FC = () => {
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
         next.delete('ontology');
-        next.set('scope', ALL_ONTOLOGIES_SCOPE_KEY);
+        next.delete('scope');
         next.delete(DRAFT_SEARCH_PARAM);
         next.delete('concept');
 
@@ -1161,7 +1132,7 @@ const OntologyExplorerPage: React.FC = () => {
         onCreateOntology={
           canCreateOntology
             ? () => {
-                selectOntology();
+                selectOntology(undefined);
                 setIsCreatingOntology(true);
               }
             : undefined
@@ -1577,11 +1548,7 @@ const OntologyExplorerPage: React.FC = () => {
   }
 
   function renderAllOntologies() {
-    if (
-      studioScopes.isOntologyLoading ||
-      allModels.isLoading ||
-      shouldFallBackToGlossaries
-    ) {
+    if (studioScopes.isOntologyLoading || allModels.isLoading) {
       return <Typography role="status">{t('label.loading')}</Typography>;
     }
     if (studioScopes.isOntologyError || allModels.isError) {
@@ -1594,16 +1561,8 @@ const OntologyExplorerPage: React.FC = () => {
           className="tw:relative tw:h-full tw:min-h-70"
           data-testid="all-ontologies-empty">
           <EmptyPlaceholder
-            actions={[
-              {
-                color: 'secondary',
-                key: 'glossaries',
-                label: t('label.view-all-entity', {
-                  entity: t('label.glossary-plural'),
-                }),
-                onPress: () => handleScopeChange(ALL_GLOSSARIES_SCOPE),
-              },
-              ...(canCreateOntology
+            actions={
+              canCreateOntology
                 ? [
                     {
                       key: 'new-ontology',
@@ -1614,8 +1573,8 @@ const OntologyExplorerPage: React.FC = () => {
                       onPress: () => setIsCreatingOntology(true),
                     },
                   ]
-                : []),
-            ]}
+                : undefined
+            }
             icon={<Share07 className="tw:text-fg-brand-primary" />}
             title={t('label.no-entity', { entity: t('label.ontology-plural') })}
           />

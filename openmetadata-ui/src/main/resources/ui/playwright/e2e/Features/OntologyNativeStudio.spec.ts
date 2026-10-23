@@ -588,45 +588,5 @@ test.describe(
         }
       }
     });
-
-    test('opens glossaries from a bare link when no native ontology exists', async ({
-      isolatedUserPage: page,
-    }) => {
-      // Other workers create native ontologies, so serve an empty catalog to this page only.
-      await page.route(/^[^?#]*\/api\/v1\/ontologies(?:\?|$)/, (route) =>
-        route.fulfill({ json: { data: [], paging: { total: 0 } } })
-      );
-      const scopeTrigger = page.getByTestId('ontology-scope-menu-trigger');
-
-      await test.step('A bare Studio link falls back to glossary vocabulary', async () => {
-        await page.goto('/governance/ontology');
-
-        await expect(scopeTrigger).toHaveAttribute(
-          'data-scope-key',
-          'glossary:all'
-        );
-        await expect(page).toHaveURL(/scope=glossary%3Aall/);
-      });
-
-      await test.step('An explicit All ontologies link keeps the empty native catalog', async () => {
-        await page.goto('/governance/ontology?scope=ontology:all');
-        const emptyCatalog = page.getByTestId('all-ontologies-empty');
-
-        await expect(emptyCatalog).toBeVisible();
-        await expect(scopeTrigger).toHaveAttribute(
-          'data-scope-key',
-          'ontology:all'
-        );
-
-        await emptyCatalog
-          .getByRole('button', { name: 'View All Glossaries' })
-          .click();
-
-        await expect(scopeTrigger).toHaveAttribute(
-          'data-scope-key',
-          'glossary:all'
-        );
-      });
-    });
   }
 );

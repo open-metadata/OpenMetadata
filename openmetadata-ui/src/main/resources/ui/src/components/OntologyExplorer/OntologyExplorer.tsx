@@ -51,7 +51,6 @@ import {
   removeTermRelationById,
   updateTermRelationById,
 } from '../../rest/glossaryAPI';
-import { ALL_ONTOLOGIES_SCOPE_KEY } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import ontologyExplorerClassBase from '../../utils/OntologyExplorerClassBase';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import FeaturesPlaceholder from '../common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -177,7 +176,7 @@ function OntologyOnboardingEmptyState() {
           <Button
             color="primary"
             data-testid="ontology-view-all"
-            href={`${ROUTES.ONTOLOGY_EXPLORER}?scope=${ALL_ONTOLOGIES_SCOPE_KEY}`}>
+            href={ROUTES.ONTOLOGY_EXPLORER}>
             {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
           </Button>
         }

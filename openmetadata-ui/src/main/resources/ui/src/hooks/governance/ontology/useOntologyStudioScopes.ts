@@ -91,8 +91,6 @@ export const useOntologyStudioScopes = ({
     ),
     isOntologyError: ontologies.isError,
     isOntologyLoading: enabled && ontologies.isPending,
-    // Also true while cached ontologies refresh in the background, when isPending is not.
-    isOntologyFetching: enabled && ontologies.isFetching,
     refetchOntologies: ontologies.refetch,
     isError: ontologies.isError || glossaries.isError,
     isLoading:
