@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -37,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -137,6 +139,31 @@ class ActivityStreamRepositoryTest {
         deliveredTypes);
   }
 
+  @Test
+  void createFieldEventsFromChangeEventRecordsStatusChanges() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("In Review")
+                                .withNewValue("Approved"))));
+
+    ActivityEvent event =
+        repository.createFieldEventsFromChangeEvent(changeEvent, tableEntity()).getFirst();
+
+    assertEquals(ActivityEventType.ENTITY_UPDATED, event.getEventType());
+    assertEquals("entityStatus", event.getFieldName());
+    assertEquals("Approved", event.getNewValue());
+    assertTrue(event.getSummary().endsWith("changed to Approved"), event.getSummary());
+  }
+
   private static ChangeEvent changeEventWith(String userName) {
     return new ChangeEvent()
         .withId(UUID.randomUUID())
@@ -145,6 +172,41 @@ class ActivityStreamRepositoryTest {
         .withEntityId(UUID.randomUUID())
         .withTimestamp(System.currentTimeMillis())
         .withUserName(userName);
+  }
+
+  @Test
+  void contractActivityTakesItsAssetDomainsSoDomainScopedFeedsKeepIt() {
+    ActivityStreamRepository repository =
+        new ActivityStreamRepository(mock(CollectionDAO.ActivityStreamDAO.class));
+    EntityReference domain =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.DOMAIN).withName("sales");
+    Table asset =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withFullyQualifiedName("svc.db.schema.table")
+            .withDomains(List.of(domain));
+    EntityReference assetRef = new EntityReference().withId(asset.getId()).withType(Entity.TABLE);
+    DataContract contract =
+        new DataContract()
+            .withId(UUID.randomUUID())
+            .withName("contract")
+            .withFullyQualifiedName("svc.db.schema.table.dataContract_contract")
+            .withEntity(assetRef);
+    ChangeEvent changeEvent =
+        changeEventWith(null)
+            .withEventType(EventType.ENTITY_CREATED)
+            .withEntityType("dataContract");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntity(assetRef, Entity.FIELD_DOMAINS, Include.ALL))
+          .thenReturn(asset);
+
+      ActivityEvent event =
+          repository.createFieldEventsFromChangeEvent(changeEvent, contract).getFirst();
+
+      assertEquals(List.of(domain), event.getDomains());
+    }
   }
 
   private static EntityInterface tableEntity() {

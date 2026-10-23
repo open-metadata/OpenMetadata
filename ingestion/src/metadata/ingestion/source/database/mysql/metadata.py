@@ -14,7 +14,7 @@ import traceback
 from typing import Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
-from sqlalchemy.dialects.mysql.base import ischema_names
+from sqlalchemy.dialects.mysql.base import MySQLDialect, ischema_names
 from sqlalchemy.dialects.mysql.reflection import MySQLTableDefinitionParser
 from sqlalchemy.engine.reflection import Inspector
 
@@ -46,7 +46,7 @@ from metadata.ingestion.source.database.mysql.models import (
     MysqlRoutine,
 )
 from metadata.ingestion.source.database.mysql.queries import MYSQL_GET_ROUTINES
-from metadata.ingestion.source.database.mysql.utils import col_type_map, parse_column
+from metadata.ingestion.source.database.mysql.utils import col_type_map, describe_or_read_view_columns, parse_column
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_ddls, get_table_ddl
@@ -58,6 +58,9 @@ ischema_names.update(col_type_map)
 
 MySQLTableDefinitionParser._parse_column = (  # pylint: disable=protected-access
     parse_column
+)
+MySQLDialect._describe_table = (  # pylint: disable=protected-access
+    describe_or_read_view_columns
 )
 
 Inspector.get_all_table_ddls = get_all_table_ddls

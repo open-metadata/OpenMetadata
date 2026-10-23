@@ -21,9 +21,11 @@ import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -206,6 +208,35 @@ public class ActivityResourceIT {
         getEntityActivity(SdkClients.adminClient(), "table", table.getId(), 5, 30);
     assertNotNull(events);
     assertTrue(events.getData().size() <= 5, "Should respect limit parameter");
+  }
+
+  @Test
+  void test_getEntityActivity_includesItsDataContractActivity(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns);
+    DataContract contract =
+        SdkClients.adminClient()
+            .dataContracts()
+            .create(
+                new CreateDataContract()
+                    .withName(ns.prefix("contract"))
+                    .withEntity(table.getEntityReference()));
+    ActivityEvent contractEvent =
+        insertActivityEvent(
+            SdkClients.adminClient(),
+            new ActivityEvent()
+                .withId(UUID.randomUUID())
+                .withEventType(ActivityEventType.ENTITY_UPDATED)
+                .withEntity(contract.getEntityReference())
+                .withActor(getAdminUser().getEntityReference())
+                .withTimestamp(System.currentTimeMillis())
+                .withSummary("Updated data contract"));
+
+    ActivityEventList events =
+        getEntityActivity(SdkClients.adminClient(), "table", table.getId(), 50, 30);
+
+    assertTrue(
+        events.getData().stream().anyMatch(e -> contractEvent.getId().equals(e.getId())),
+        "A table's activity must include its data contract's activity");
   }
 
   // ==================== User Activity Tests ====================

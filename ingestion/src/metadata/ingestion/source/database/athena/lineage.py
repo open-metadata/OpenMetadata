@@ -15,10 +15,7 @@ Athena lineage module
 from typing import Iterable, Optional  # noqa: UP035
 
 from metadata.generated.schema.type.tableQuery import TableQuery
-from metadata.ingestion.source.database.athena.query_parser import (
-    QUERY_SUCCESS_STATUS,
-    AthenaQueryParserSource,
-)
+from metadata.ingestion.source.database.athena.query_parser import AthenaQueryParserSource
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.utils.logger import ingestion_logger
 
@@ -34,15 +31,13 @@ class AthenaLineageSource(AthenaQueryParserSource, LineageSource):
         """
         Method to yield TableQueries
         """
-        for query_list in self.get_queries() or []:
-            for query in query_list.QueryExecutions:
-                if (
-                    query.Status.SubmissionDateTime.date() >= self.start.date()
-                    and self.is_not_dbt_or_om_query(query.Query)
-                    and query.Status.State.upper() == QUERY_SUCCESS_STATUS
-                ):
-                    yield TableQuery(
-                        dialect=self.dialect.value,
-                        query=query.Query,
-                        serviceName=self.config.serviceName,
-                    )
+        query_count = 0
+        for query_list in self.get_queries():
+            query_count += len(query_list)
+            for query in query_list:
+                yield TableQuery(
+                    dialect=self.dialect.value,
+                    query=query.Query,
+                    serviceName=self.config.serviceName,
+                )
+        self.warn_if_query_log_truncated(query_count, "lineage")

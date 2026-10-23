@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -2123,5 +2124,29 @@ public class SearchResourceIT {
         httpGetSearch("/v1/search/query?q=*&index=table_search_index&query_filter=" + validFilter);
 
     assertEquals(200, response.statusCode(), response.body());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/v1/search/query?q=*&index=nope_search_index",
+        "/v1/search/query?q=*&index=table_search_index,nope_search_index",
+        "/v1/search/get/nope_search_index/doc/00000000-0000-0000-0000-000000000000"
+      })
+  void testUnknownIndexIsRejectedAsBadRequest(String path) throws Exception {
+    HttpResponse<String> response = httpGetSearch(path);
+
+    assertEquals(400, response.statusCode(), path + " returned " + response.body());
+    assertTrue(
+        response.body().contains("Unknown search index [nope_search_index]"),
+        path + " returned " + response.body());
+  }
+
+  @Test
+  void testMissingDocumentInAKnownIndexIsNotFound() throws Exception {
+    HttpResponse<String> response =
+        httpGetSearch("/v1/search/get/table_search_index/doc/" + UUID.randomUUID());
+
+    assertEquals(404, response.statusCode(), response.body());
   }
 }

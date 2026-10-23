@@ -344,6 +344,13 @@ const SectionCard = ({
   );
 };
 
+// A key/value map field is labelled by its own title when the schema gives one,
+// so several maps in one form stay distinguishable
+const getMapFieldTitle = (
+  schema: ObjectFieldTemplateProps['schema'],
+  fallback: string
+): string => schema.title ?? fallback;
+
 const getCompactAdvancedSection = (
   isRootLevel: boolean,
   uiSchema: ObjectFieldTemplateProps['uiSchema']
@@ -395,11 +402,11 @@ export const IngestionObjectFieldTemplate: FunctionComponent<
             className="tw:font-semibold tw:text-secondary"
             size="text-xs"
             weight="semibold">
-            {t('label.additional-property-plural')}
+            {getMapFieldTitle(schema, t('label.additional-property-plural'))}
           </Typography>
           <Button
             aria-label={t('label.add-entity', { entity: t('label.property') })}
-            className="tw:inline-flex tw:size-7 tw:items-center tw:justify-center tw:rounded-[6px] tw:p-0 tw:leading-none"
+            className="tw:inline-flex tw:size-9 tw:items-center tw:justify-center tw:rounded-lg tw:p-0 tw:leading-none"
             color="primary"
             size="sm"
             type="button"

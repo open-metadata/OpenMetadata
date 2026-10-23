@@ -45,7 +45,8 @@ export interface StorageServiceAutoClassificationPipeline {
      */
     enableAutoClassification?: boolean;
     /**
-     * Number of sample rows to ingest when 'Generate Sample Data' is enabled
+     * Number of sample rows to ingest when 'Generate Sample Data' is enabled. Values above 1000
+     * are capped at 1000.
      */
     sampleDataCount?: number;
     /**

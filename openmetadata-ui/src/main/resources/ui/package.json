@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=22.0.0",
+    "node": ">=22.23.4",
     "yarn": "^1.22.0"
   },
   "repository": {
@@ -113,7 +113,7 @@
     "cronstrue": "^2.53.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",
-    "dompurify": "^3.4.13",
+    "dompurify": "^3.4.17",
     "elkjs": "^0.9.3",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
@@ -131,7 +131,7 @@
     "luxon": "^3.2.1",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
-    "qs": "6.15.2",
+    "qs": "6.16.1",
     "quill-mention": "^6.0.1",
     "quilljs-markdown": "^1.2.0",
     "rapidoc": "^9.3.8",
@@ -267,7 +267,7 @@
     "tslib": "^2.4.1",
     "typescript": "^5.0.0",
     "typescript-eslint": "^8.20.0",
-    "vite": "7.3.5",
+    "vite": "7.3.7",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-node-polyfills": "^0.24.0",
     "vite-plugin-style-import": "^2.0.0",
@@ -301,18 +301,21 @@
     "form-data": "4.0.6",
     "tar-fs": "2.1.4",
     "brace-expansion": "1.1.20",
-    "fast-uri": "3.1.8",
+    "fast-uri": "3.1.9",
     "linkify-it": "5.0.2",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "markdown-it": ">=14.2.0",
+    "markdown-it": "14.3.3",
     "moment": "2.31.0",
     "nanoid": "3.3.17",
     "uuid": "^14.0.0",
     "esbuild": "^0.28.1",
     "js-yaml": "^5.4.1",
     "postcss": "8.5.23",
+    "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
-    "undici": "^6.28.0"
+    "undici": "^6.28.0",
+    "qs": "6.16.1",
+    "follow-redirects": "1.16.1"
   }
 }

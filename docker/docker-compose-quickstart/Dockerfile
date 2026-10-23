@@ -35,9 +35,28 @@ LABEL org.open-metadata.build-date=$BUILD_DATE
 LABEL org.open-metadata.commit-id=$COMMIT_ID
 
 EXPOSE 8585 8586
+# '!ssl_client' removes busybox wget's HTTPS helper (CVE-2025-60876) and keeps it out: it
+# auto-installs with busybox + libssl3, so a plain `apk del` leaves it in place.
 RUN adduser -D openmetadata && apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk21-jre
+    apk add --update --no-cache bash openjdk21-jre '!ssl_client'
+
+# CVE-2026-91403: eMudhra's compromised intermediates chain to three emSign roots
+# (ECC G3, ECC C3, C1). Alpine's current ca-certificates (20261020) already leaves them out of
+# the Java trust store it generates; deleting them by SHA-256 here as well keeps a stale cached
+# apk layer from shipping them, and the check fails the build if any is still trusted.
+# Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
+# re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
+RUN set -eu; \
+    export PATH="/usr/lib/jvm/default-jvm/bin:$PATH"; roots='86A1ECBA089C4A8D3BBE2734C612BA341D813E043CF9E8A862CD5C57A36BBE6B BC4D809B15189D78DB3E1D8CF4F9726A795DA1643CA5F1358E1DDB0EDC0D7EB3 125609AA301DA0A249B97A8239CB6A34216F44DCAC9F3954B14292F2E8C8608F'; \
+    certs=$(keytool -list -v -cacerts -storepass changeit); \
+    printf '%s\n' "$certs" \
+      | awk -v roots="$roots" 'BEGIN { split(roots, r, " "); for (i in r) want[r[i]] = 1 } /^Alias name:/ { alias = substr($0, 13) } /SHA256:/ { gsub(":", "", $2); if ($2 in want) print alias }' \
+      | while IFS= read -r alias; do keytool -delete -cacerts -storepass changeit -alias "$alias"; done; \
+    certs=$(keytool -list -v -cacerts -storepass changeit); \
+    if printf '%s\n' "$certs" | tr -d ':' | grep -qE "$(echo $roots | tr ' ' '|')"; then \
+      echo "CVE-2026-91403: an emSign root is still trusted" >&2; exit 1; \
+    fi
 
 COPY --chown=openmetadata:openmetadata --from=build /opt/openmetadata /opt/openmetadata
 COPY --chmod=755 docker/openmetadata-start.sh ./

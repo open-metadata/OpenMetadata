@@ -498,6 +498,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         """
         return False, None  # By default the table will be a Regular Table
 
+    def should_preserve_table_type_when_partitioned(self, table_type: TableType) -> bool:
+        return table_type in (TableType.View, TableType.MaterializedView)
+
     def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
         """
         We don't have a generic source implementation for handling tags.
@@ -625,12 +628,10 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             is_partitioned, partition_details = self.get_table_partition_details(
                 table_name=table_name, schema_name=schema_name, inspector=self.inspector
             )
-            if is_partitioned and table_type not in (
-                TableType.View,
-                TableType.MaterializedView,
-            ):
-                table_request.tableType = TableType.Partitioned.value
             if is_partitioned:
+                if not self.should_preserve_table_type_when_partitioned(table_type):
+                    # Preserve the existing string value; direct assignment does not run Pydantic enum coercion.
+                    table_request.tableType = TableType.Partitioned.value  # pyright: ignore[reportAttributeAccessIssue]
                 table_request.tablePartition = partition_details
 
             yield Either(right=table_request)

@@ -41,7 +41,6 @@ import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 
-import io.jsonwebtoken.lang.Collections;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
@@ -49,6 +48,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -630,7 +630,7 @@ public class FeedRepository {
             .withId(UUID.randomUUID())
             .withMessage(message)
             .withFrom(user)
-            .withReactions(java.util.Collections.emptyList())
+            .withReactions(Collections.emptyList())
             .withPostTs(System.currentTimeMillis());
     addPostToThread(thread.getId(), post, user);
   }
@@ -1454,7 +1454,7 @@ public class FeedRepository {
   }
 
   private void populateUserReactions(List<Reaction> reactions) {
-    if (!Collections.isEmpty(reactions)) {
+    if (!nullOrEmpty(reactions)) {
       reactions.forEach(
           reaction ->
               reaction.setUser(
@@ -1488,10 +1488,8 @@ public class FeedRepository {
   private boolean fieldsChanged(Post original, Post updated) {
     // Patch supports message, and reactions for now
     return !original.getMessage().equals(updated.getMessage())
-        || (Collections.isEmpty(original.getReactions())
-            && !Collections.isEmpty(updated.getReactions()))
-        || (!Collections.isEmpty(original.getReactions())
-            && Collections.isEmpty(updated.getReactions()))
+        || (nullOrEmpty(original.getReactions()) && !nullOrEmpty(updated.getReactions()))
+        || (!nullOrEmpty(original.getReactions()) && nullOrEmpty(updated.getReactions()))
         || original.getReactions().size() != updated.getReactions().size()
         || !new HashSet<>(original.getReactions()).containsAll(updated.getReactions());
   }
@@ -1500,10 +1498,8 @@ public class FeedRepository {
     // Patch supports isResolved, message, task assignees, reactions, announcements and AI for now
     return !original.getResolved().equals(updated.getResolved())
         || !original.getMessage().equals(updated.getMessage())
-        || (Collections.isEmpty(original.getReactions())
-            && !Collections.isEmpty(updated.getReactions()))
-        || (!Collections.isEmpty(original.getReactions())
-            && Collections.isEmpty(updated.getReactions()))
+        || (nullOrEmpty(original.getReactions()) && !nullOrEmpty(updated.getReactions()))
+        || (!nullOrEmpty(original.getReactions()) && nullOrEmpty(updated.getReactions()))
         || (original.getReactions() != null
             && updated.getReactions() != null
             && (original.getReactions().size() != updated.getReactions().size()

@@ -71,7 +71,7 @@
       "title": "Auto Classification Inference Confidence Level"
     },
     "sampleDataCount": {
-      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled",
+      "description": "Number of sample rows to ingest when 'Generate Sample Data' is enabled. Values above 1000 are capped at 1000.",
       "type": "integer",
       "default": 50,
       "minimum": 1,

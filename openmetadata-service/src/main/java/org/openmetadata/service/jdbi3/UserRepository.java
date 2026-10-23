@@ -68,7 +68,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -1393,7 +1393,12 @@ public class UserRepository extends EntityRepository<User> {
     revokeLiveSessions(entity);
     // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
     userPreferencesRepository.delete(entity.getId());
-    deleteSuggestionTasksForUser(entity);
+    if (hardDelete) {
+      // A soft delete can be restored, so the user's tasks must survive it. A permanent delete
+      // removes only the suggestions they created; their other tasks stay.
+      // ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
+      deleteSuggestionTasksForUser(entity);
+    }
 
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1443,7 +1448,7 @@ public class UserRepository extends EntityRepository<User> {
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
     String creatorId = entity.getId().toString();
-    String category = TaskCategory.MetadataUpdate.value();
+    String type = TaskEntityType.Suggestion.value();
     // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
     // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
     // and its cache-invalidate hook — without explicit eviction the next GET on a
@@ -1452,9 +1457,8 @@ public class UserRepository extends EntityRepository<User> {
     // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
-        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
-    retry.executeRunnable(
-        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndType(creatorId, type);
+    retry.executeRunnable(() -> daoCollection.taskDAO().deleteByCreatorAndType(creatorId, type));
     if (!tasksToInvalidate.isEmpty()) {
       invalidateTaskCacheForIds(tasksToInvalidate);
     }

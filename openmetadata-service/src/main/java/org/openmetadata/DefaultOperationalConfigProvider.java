@@ -17,6 +17,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.security.OpsConfig;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.operations.OperationalConfiguration;
+import org.openmetadata.service.exception.SystemSettingsException;
+import org.openmetadata.service.util.OpenMetadataBaseUrlValidator;
 
 @Getter
 @Setter
@@ -53,8 +55,27 @@ public class DefaultOperationalConfigProvider {
   private void parseOperationsConfig(String filePath) {
     // parse limits config file
     OperationalConfiguration configuration = readOperationsConfig(filePath);
+    applyConfiguration(configuration);
+  }
+
+  void applyConfiguration(OperationalConfiguration configuration) {
     this.emailSettings = configuration.getEmail();
-    this.serverUrl = configuration.getServerUrl();
+    this.serverUrl = validatedServerUrl(configuration.getServerUrl());
+  }
+
+  private static OpenMetadataBaseUrlConfiguration validatedServerUrl(
+      OpenMetadataBaseUrlConfiguration serverUrl) {
+    String openMetadataUrl = serverUrl == null ? null : serverUrl.getOpenMetadataUrl();
+    if (openMetadataUrl == null || openMetadataUrl.isBlank()) {
+      return getDefaultServerUrl();
+    }
+    try {
+      OpenMetadataBaseUrlValidator.validateUrl(openMetadataUrl);
+    } catch (SystemSettingsException ex) {
+      throw new IllegalStateException(
+          "Operations configuration has an invalid 'openMetadataUrl': " + ex.getMessage(), ex);
+    }
+    return serverUrl;
   }
 
   @SneakyThrows

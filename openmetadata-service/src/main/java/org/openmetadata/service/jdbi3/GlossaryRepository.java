@@ -422,8 +422,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         EntityReference termRef =
             getEntityReference(printer, csvRecord, fieldNumber, GLOSSARY_TERM, termFqn);
         if (termRef != null) {
+          // By name, not id (a dry-run id isn't in the DB): stored term, else an earlier row's
+          GlossaryTerm storedTerm =
+              Entity.findByNameOrNull(GLOSSARY_TERM, termFqn, Include.NON_DELETED);
           GlossaryTerm resolvedTerm =
-              Entity.getEntity(GLOSSARY_TERM, termRef.getId(), "", Include.NON_DELETED);
+              storedTerm != null
+                  ? storedTerm
+                  : (GlossaryTerm) getEntityByName(GLOSSARY_TERM, termFqn);
           if (resolvedTerm.getEntityStatus() != null
               && resolvedTerm.getEntityStatus() != EntityStatus.APPROVED) {
             importFailure(

@@ -418,6 +418,7 @@ public class SearchRepository {
 
   @Getter private Map<String, IndexMapping> entityIndexMap;
   private Map<String, IndexMapping> aliasIndexMap;
+  private Set<String> knownIndexNames = Set.of();
 
   /**
    * Staged index names being populated by an in-flight reindex, keyed by the canonical index name
@@ -548,6 +549,7 @@ public class SearchRepository {
     IndexMappingLoader mappingLoader = IndexMappingLoader.getInstance();
     entityIndexMap = mappingLoader.getIndexMapping();
     aliasIndexMap = buildAliasIndexMap(entityIndexMap);
+    knownIndexNames = SearchIndexUtils.knownIndexNames(entityIndexMap);
   }
 
   private static Map<String, IndexMapping> buildAliasIndexMap(
@@ -1003,6 +1005,11 @@ public class SearchRepository {
   /** @see SearchIndexUtils#getIndexOrAliasName(String, Map, Map, String) */
   public String getIndexOrAliasName(String name) {
     return SearchIndexUtils.getIndexOrAliasName(name, entityIndexMap, aliasIndexMap, clusterAlias);
+  }
+
+  /** @see SearchIndexUtils#unknownIndexNames(String, Set, String) */
+  public List<String> unknownIndexNames(String resolvedIndex) {
+    return SearchIndexUtils.unknownIndexNames(resolvedIndex, knownIndexNames, clusterAlias);
   }
 
   /** @see SearchIndexUtils#getEntityTypesForIndex(String, Map, Map, String) */
