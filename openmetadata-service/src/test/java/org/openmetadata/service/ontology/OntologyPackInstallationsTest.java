@@ -15,18 +15,22 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
 import org.openmetadata.schema.type.OntologyPackSource;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 
 class OntologyPackInstallationsTest {
   private final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
@@ -85,6 +89,74 @@ class OntologyPackInstallationsTest {
     assertEquals(
         List.of("core", "clinical"),
         first.getModules().stream().map(OntologyPackModuleInstallation::getModuleId).toList());
+  }
+
+  @Test
+  void stampsTheVerifiedDependencyExpandedSelection() {
+    final var selected =
+        new OntologyPackContentLoader(getClass().getClassLoader())
+            .loadSelected(catalog, "fhir", List.of("clinical"));
+
+    final OntologyPackSource source = OntologyPackInstallations.sourcePack(selected);
+
+    assertEquals("fhir", source.getPackId());
+    assertEquals(selected.manifest().getVersion(), source.getVersion());
+    assertEquals(List.of("core", "clinical"), new ArrayList<>(source.getModuleIds()));
+  }
+
+  @Test
+  void listsInstalledOntologiesInPackAndNameOrder() {
+    final Ontology zed =
+        new Ontology()
+            .withId(UUID.randomUUID())
+            .withName("Zed")
+            .withFullyQualifiedName("Zed")
+            .withInstalledPacks(List.of(installation("fhir", "core")));
+    final Ontology alpha =
+        new Ontology()
+            .withId(UUID.randomUUID())
+            .withName("Alpha")
+            .withFullyQualifiedName("Alpha")
+            .withInstalledPacks(
+                List.of(installation("fhir", "core"), installation("fibo", "foundations")));
+    final Ontology empty = new Ontology().withId(UUID.randomUUID()).withName("Empty");
+
+    final var records = OntologyPackInstallations.records(List.of(zed, empty, alpha));
+
+    assertEquals(
+        List.of("fhir:Alpha", "fhir:Zed", "fibo:Alpha"),
+        records.stream()
+            .map(
+                record ->
+                    record.getInstallation().getPackId()
+                        + ":"
+                        + record.getOntology().getFullyQualifiedName())
+            .toList());
+  }
+
+  @Test
+  void replacesAnotherPackVersionAndRejectsStaleSourceAtApply() {
+    final OntologyPackInstallation first = installation("fhir", "core");
+    final OntologyPackInstallation newer = installation("fhir", "core").withVersion("2");
+    final OntologyPackInstallation unrelated = installation("fibo", "foundations");
+
+    assertEquals(
+        List.of(newer, unrelated),
+        OntologyPackInstallations.record(
+            List.of(first, unrelated), newer, List.of("core", "clinical", "workflow")));
+    assertEquals(List.of(newer), OntologyPackInstallations.record(null, newer, List.of("core")));
+
+    final OntologyChangeSet unstamped = new OntologyChangeSet();
+    OntologyPackInstallations.requireCurrent(catalog, unstamped);
+    assertNull(OntologyPackInstallations.prepare(catalog, unstamped, "steward", 123L));
+
+    final OntologyChangeSet stale = changeSet("fhir", List.of("core"));
+    stale.getSourcePack().setVersion("old-version");
+    assertThrows(
+        BadRequestException.class, () -> OntologyPackInstallations.requireCurrent(catalog, stale));
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> OntologyPackInstallations.prepare(catalog, stale, "steward", 123L));
   }
 
   private OntologyChangeSet changeSet(final String packId, final List<String> moduleIds) {
