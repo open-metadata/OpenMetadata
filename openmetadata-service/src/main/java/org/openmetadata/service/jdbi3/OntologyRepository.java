@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.function.Predicate;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.Include;
@@ -124,7 +124,7 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   }
 
   public List<Ontology> listWithInstalledPacks(
-      final int pageSize, final Predicate<Ontology> include) {
+      final int pageSize, final Function<List<Ontology>, List<Ontology>> filterPage) {
     if (pageSize <= 0) {
       throw new IllegalArgumentException("pageSize must be positive");
     }
@@ -136,12 +136,8 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
           daoCollection.ontologyEntityDAO().listJsonWithInstalledPacks(pageSize, afterId).stream()
               .map(json -> JsonUtils.readValue(json, Ontology.class))
               .toList();
-      for (final Ontology ontology : page) {
-        if (include.test(ontology)) {
-          included.add(ontology);
-        }
-      }
       if (!page.isEmpty()) {
+        included.addAll(filterPage.apply(page));
         afterId = page.getLast().getId().toString();
       }
     } while (page.size() == pageSize);

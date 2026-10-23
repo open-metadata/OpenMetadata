@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest
 - **Related:** Ontology Studio publication and release contracts
@@ -43,3 +43,7 @@ The library preview stamps `sourcePack` on the change-set request it returns: th
 The ontology keeps one entry per pack ID. A later install of the same version adds its modules to the entry. An install of another version replaces it. Clients cannot write `installedPacks`: create starts it empty, PUT keeps the stored value, and a PATCH that changes it returns 400. `sourcePack` is provenance that the client carries from the preview. The record states what an editor of that ontology installed. It does not prove that the ontology's definitions still match the pack.
 
 `GET /v1/ontologyPacks` lists, for each pack, the non-deleted ontologies with an entry that the caller may view under the same check as `GET /v1/ontologies/{id}`. One catalog read considers at most 1,000 such ontologies, which keeps it an interactive request. `GET /v1/ontologyPacks/{packId}/sample` returns at most 60 concepts, starting from the top of the hierarchy, and the relations among them, from the selected verified modules and with no target ontology. Packs carry an `industry` for the catalog filter and the `layer` at which the client creates a new target. `NativeOntologyPackInstallStateIT` and `NativeOntologyLibraryPreviewIT` guard this behavior.
+
+## Amendment
+
+The catalogue's total 1,000-ontology cap in v4 is replaced by keyset pages of at most 1,000 raw installed ontologies. Each page batch-loads the fields used by authorization, and the scan advances by its final raw ID even when the caller cannot view any row on that page. The response contains every visible installation; a hidden or later row cannot make a pack appear uninstalled. Response size and scan time grow with installations. If that cost becomes too large for an interactive request, the API and client need explicit pagination rather than a silent total cap.

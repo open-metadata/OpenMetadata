@@ -50,9 +50,9 @@ import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPackInstaller;
 import org.openmetadata.service.ontology.OntologyPackSampler;
 import org.openmetadata.service.resources.Collection;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -106,20 +106,18 @@ public final class OntologyPackResource {
   private List<Ontology> viewable(final SecurityContext securityContext) {
     final OntologyRepository repository =
         (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY);
-    return repository.listWithInstalledPacks(
-        INSTALLATIONS_PAGE_SIZE, ontology -> canView(securityContext, ontology));
-  }
-
-  private boolean canView(final SecurityContext securityContext, final Ontology ontology) {
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.ONTOLOGY, MetadataOperation.VIEW_BASIC),
-          new ResourceContext<>(Entity.ONTOLOGY, ontology.getId(), ontology.getName()));
-      return true;
-    } catch (AuthorizationException exception) {
-      return false;
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return repository.listWithInstalledPacks(INSTALLATIONS_PAGE_SIZE, page -> page);
     }
+    final ViewPermissionFilter permissions = new ViewPermissionFilter(authorizer);
+    return repository.listWithInstalledPacks(
+        INSTALLATIONS_PAGE_SIZE,
+        page -> {
+          final var visibleIds =
+              permissions.viewableIds(
+                  securityContext, page.stream().map(Ontology::getEntityReference).toList());
+          return page.stream().filter(ontology -> visibleIds.contains(ontology.getId())).toList();
+        });
   }
 
   @GET

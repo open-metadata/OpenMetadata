@@ -323,7 +323,11 @@ class OntologyEntityDAOTest {
                 ids.subList(2, 4),
                 repository
                     .listWithInstalledPacks(
-                        2, ontology -> !ids.subList(0, 2).contains(ontology.getId()))
+                        2,
+                        page ->
+                            page.stream()
+                                .filter(ontology -> !ids.subList(0, 2).contains(ontology.getId()))
+                                .toList())
                     .stream()
                     .map(Ontology::getId)
                     .toList());
