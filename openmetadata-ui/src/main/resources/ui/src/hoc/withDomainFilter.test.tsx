@@ -16,8 +16,8 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
-import { useDomainStore } from '../hooks/useDomainStore';
 import { useProductTourStore } from '../hooks/product-tour/useProductTourStore';
+import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
 

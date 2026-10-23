@@ -16,12 +16,12 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
+import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
-import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {

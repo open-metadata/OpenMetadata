@@ -24,7 +24,8 @@ jest.mock('../../utils/ProductTourClassBase', () => ({
 }));
 
 // writeAppMode switches the mode and records it in the tab's session tuple
-// and the cross-tab hint, as the real one does.
+// and, unless the write is for this tab only, the cross-tab hint, as the real
+// one does.
 jest.mock('../useAppMode', () => ({
   useAppModeStore: {
     getState: () => ({
@@ -34,20 +35,29 @@ jest.mock('../useAppMode', () => ({
       },
     }),
   },
-  writeAppMode: (mode: string) => {
+  writeAppMode: (
+    mode: string,
+    _personaAppMode?: string | null,
+    options?: { tabOnly?: boolean }
+  ) => {
     appModeStore.currentMode = mode;
     sessionStorage.setItem(
       'omAppMode',
       JSON.stringify({ mode, source: 'manual' })
     );
-    localStorage.setItem(
-      'omAppModeHint',
-      JSON.stringify({ mode, ts: Date.now() })
-    );
+    if (!options?.tabOnly) {
+      localStorage.setItem(
+        'omAppModeHint',
+        JSON.stringify({ mode, ts: Date.now() })
+      );
+    }
   },
 }));
 
 const getState = () => useProductTourStore.getState();
+// What the tab's heartbeat does to the hint while it is in the tour's mode.
+const refreshHintWith = (mode: string) =>
+  localStorage.setItem(HINT_KEY, JSON.stringify({ mode, ts: Date.now() }));
 const tourIn = (mode: string) => ({
   mode,
   steps: [],
@@ -92,11 +102,23 @@ describe('useProductTourStore', () => {
       expect(appModeStore.currentMode).toBe('default');
     });
 
-    it('removes the session tuple and hint it wrote when there were none', () => {
+    it('switches this tab only, so new tabs keep opening in the user mode', () => {
+      const previousHint = JSON.stringify({ mode: 'default', ts: 1 });
+      localStorage.setItem(HINT_KEY, previousHint);
+
       getState().start('default');
 
       expect(sessionStorage.getItem(SESSION_KEY)).toContain('"ai"');
-      expect(localStorage.getItem(HINT_KEY)).toContain('"ai"');
+      expect(localStorage.getItem(HINT_KEY)).toBe(previousHint);
+
+      getState().exit();
+    });
+
+    it('removes the session tuple and hint the tour left when there were none', () => {
+      getState().start('default');
+      refreshHintWith('ai');
+
+      expect(sessionStorage.getItem(SESSION_KEY)).toContain('"ai"');
 
       getState().exit();
 
@@ -122,6 +144,7 @@ describe('useProductTourStore', () => {
 
     it('puts back only the hint when the tab closes mid-tour', () => {
       getState().start('default');
+      refreshHintWith('ai');
       getState().restoreModeHint();
 
       expect(localStorage.getItem(HINT_KEY)).toBeNull();

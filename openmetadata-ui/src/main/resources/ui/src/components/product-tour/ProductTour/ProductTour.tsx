@@ -36,21 +36,21 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { isTourPageQuiet } from '../../../rest/product-tour/productTourMock';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import { getPathNameFromWindowLocation } from '../../../utils/LocationUtils';
-import productTourClassBase from '../../../utils/ProductTourClassBase';
-import productTourPagesClassBase from '../../AppRouter/ProductTourPagesClassBase';
 import {
   getTourStepIndexForPath,
   onVisiblePage,
 } from '../../../utils/product-tour/productTour.utils';
+import productTourClassBase from '../../../utils/ProductTourClassBase';
+import productTourPagesClassBase from '../../AppRouter/ProductTourPagesClassBase';
 import ProductTourPathRecorder from '../ProductTourPathRecorder/ProductTourPathRecorder';
 import ProductTourStepContent from '../ProductTourStepContent/ProductTourStepContent';
 import {
   KEYBOARD_NAVIGATION_ESCAPE_ONLY,
-  TOUR_HELPER_CLASS_NAME,
   TARGET_POLL_INTERVAL_MS,
+  TOUR_FALLBACK_ATTRIBUTE,
+  TOUR_HELPER_CLASS_NAME,
   TOUR_HELPER_MARKER_CLASS_NAME,
   TOUR_IN_VIEW_THRESHOLD,
-  TOUR_FALLBACK_ATTRIBUTE,
   TOUR_MASK_COLOR,
   TOUR_PAGE_QUIET_MS,
   TOUR_PENDING_ATTRIBUTE,

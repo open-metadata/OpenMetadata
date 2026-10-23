@@ -110,9 +110,11 @@ const activateMockFor = (tourMode?: string) => {
  * fixtures.
  *
  * A tour in another app mode writes that mode into this tab's mode session,
- * so a reload stays in it; the user's remembered preference is never written.
- * Exit puts the session tuple and the cross-tab hint back exactly as they
- * were, or the user's next reload, and their new tabs, would open in it.
+ * so a reload stays in it; the user's remembered preference and the cross-tab
+ * hint new tabs read are never written. Exit puts the session tuple and the
+ * hint back exactly as they were, or the user's next reload, and their new
+ * tabs, would open in it: the hint, in case this tab's heartbeat refreshed it
+ * with the tour's mode.
  * ADR:2026-10-23-the-product-tour-serves-its-pages-from-recorded-fixtures
  */
 export const useProductTourStore = create<ProductTourStore>()(
@@ -163,7 +165,7 @@ export const useProductTourStore = create<ProductTourStore>()(
         });
         activateMockFor(tour.mode);
         if (isOtherMode) {
-          writeAppMode(tour.mode);
+          writeAppMode(tour.mode, undefined, { tabOnly: true });
         }
       },
       goToStep: (stepIndex) => set({ stepIndex }),

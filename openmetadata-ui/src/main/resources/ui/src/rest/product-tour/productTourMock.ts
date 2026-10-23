@@ -21,8 +21,8 @@ import {
   buildTourFixtureIndex,
   findTourFixture,
   isTourPassThroughPath,
-  TourFixtureIndex,
   toTourRequest,
+  TourFixtureIndex,
 } from '../../utils/product-tour/productTourMock.utils';
 import { getApiBaseUrl } from '../apiBaseUrl';
 

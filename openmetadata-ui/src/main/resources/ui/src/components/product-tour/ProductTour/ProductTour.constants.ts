@@ -32,8 +32,9 @@ export const TOUR_HELPER_CLASS_NAME = [
 ].join(' ');
 
 // The tour's mask, in the backdrop colour modals use, so it follows the theme.
-// react-tour writes it into CSS, where a custom property resolves.
-export const TOUR_MASK_COLOR = 'var(--color-bg-overlay)';
+// react-tour writes it into CSS, where a custom property resolves. The bridge
+// var, not the raw --color-bg-overlay, which is unset outside dark mode.
+export const TOUR_MASK_COLOR = 'var(--tw-background-color-overlay)';
 
 // react-tour's keys to disable, leaving Escape to close the tour. On the last
 // step the right arrow would close the tour instead of finishing it.
