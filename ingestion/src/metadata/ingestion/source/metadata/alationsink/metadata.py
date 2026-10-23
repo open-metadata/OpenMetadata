@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.connections.metadata.alationSinkConnection import (
     AlationSinkConnection,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -262,6 +263,18 @@ class AlationsinkSource(Source):
             logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")
         return None
 
+    def _report_write_failure(self, entity_kind: str, parent: str):
+        """
+        Record a rejected Alation write on the status, so the run does not report success
+        while the entities are missing from Alation
+        """
+        self.status.failed(
+            StackTraceError(
+                name=parent,
+                error=f"Failed to write {entity_kind} for {parent} to Alation, see the logs for Alation's response",
+            )
+        )
+
     def ingest_columns(self, alation_datasource_id: int, schema_name: str, om_table: Table):
         """
         Method to ingest the columns
@@ -280,7 +293,9 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_column_request)
             if create_requests.root:
                 # Make the API call to write the columns to Alation
-                self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
+                alation_columns = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
+                if not alation_columns:
+                    self._report_write_failure("columns", f"table [{model_str(om_table.name)}]")
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")
@@ -314,7 +329,9 @@ class AlationsinkSource(Source):
             if create_requests.root:
                 # Make the API call to write the tables to Alation
                 alation_tables = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
-                if alation_tables:
+                if not alation_tables:
+                    self._report_write_failure("tables", f"schema [{model_str(om_schema.name)}]")
+                else:
                     for om_table in om_tables:
                         if filter_by_table(
                             self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
@@ -355,7 +372,9 @@ class AlationsinkSource(Source):
             if create_requests.root:
                 # Make the API call to write the schemas to Alation
                 alation_schemas = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
-                if alation_schemas:
+                if not alation_schemas:
+                    self._report_write_failure("schemas", f"database [{model_str(om_database.name)}]")
+                else:
                     for om_schema in om_schemas or []:
                         self.ingest_tables(alation_datasource_id, om_schema)
         except Exception as exc:
@@ -393,8 +412,14 @@ class AlationsinkSource(Source):
                     continue
                 # write the datasource entity to alation
                 alation_datasource = self.alation_sink_client.write_entity(self.create_datasource_request(om_database))
-                if alation_datasource:
+                if not alation_datasource:
+                    self._report_write_failure("the datasource", f"database [{model_str(om_database.name)}]")
+                else:
                     self.ingest_schemas(alation_datasource.id, om_database)
+
+        # Every write above goes straight to Alation and failures land on the status, so there is
+        # nothing to yield, but `Source.run` iterates the result: `_iter` must still be a generator
+        yield from ()
 
     def close(self):
         if self._connection is not None:
