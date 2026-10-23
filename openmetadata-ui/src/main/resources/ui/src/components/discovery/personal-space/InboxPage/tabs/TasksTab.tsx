@@ -393,9 +393,21 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
     </Box>
   );
 
+  // A kept selection (e.g. a deep-linked task held past the loaded page) owns
+  // the detail pane, so the empty placeholder only shows when no task is
+  // selected — never suppress an explicit selection.
+  let detailPane: ReactNode;
+  if (isLoading) {
+    detailPane = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    detailPane = detailContent;
+  } else {
+    detailPane = emptyState;
+  }
+
   return (
     <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-      {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
+      {detailPane}
     </Box>
   );
 };
