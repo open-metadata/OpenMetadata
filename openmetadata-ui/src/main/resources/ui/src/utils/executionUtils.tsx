@@ -166,7 +166,6 @@ const MAX_TREE_NODES = 10000;
 type ViewElement = { key: string; value: React.ReactNode };
 type Budget = { remaining: number };
 
-// Create a tree node with the given key, title, and optional icon.
 const createNode = (
   nodeKey: string,
   title: React.ReactNode,
