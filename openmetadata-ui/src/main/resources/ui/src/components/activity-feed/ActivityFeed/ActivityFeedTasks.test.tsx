@@ -89,6 +89,7 @@ jest.mock(
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Divider: () => <hr />,
   FilterSelect: () => <div data-testid="type-filter" />,
   Input: ({
     inputDataTestId,

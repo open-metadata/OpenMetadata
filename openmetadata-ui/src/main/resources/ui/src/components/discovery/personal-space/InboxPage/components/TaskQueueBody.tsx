@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -233,10 +233,8 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
   return (
     // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
     // long unbreakable title would widen the list and push the detail off-screen.
-    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <Box
-        className="tw:min-h-0 tw:border-r tw:border-secondary"
-        direction="col">
+    <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_auto_minmax(0,3fr)]">
+      <Box className="tw:min-h-0" direction="col">
         {/* Lifts off the rows with a light shadow once they scroll under it. */}
         <div
           className={classNames(
@@ -266,6 +264,8 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
           )}
         </div>
       </Box>
+
+      <Divider orientation="vertical" />
 
       <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
         {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}

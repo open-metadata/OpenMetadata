@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, Card, Tabs } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,16 +26,11 @@ import {
 import ActivityTab from '../../discovery/personal-space/InboxPage/tabs/ActivityTab';
 import { INBOX_ACTIVITY_QUERY_KEY } from '../../discovery/personal-space/InboxPage/useInboxActivity';
 import type { TaskStatusFilter } from '../../discovery/personal-space/InboxPage/useTaskQueue';
+import { getEntityTabBar } from './ActivityFeed.utils';
 import ActivityFeedTasks from './ActivityFeedTasks';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
 
 export type ActivityFeedView = 'activity' | 'tasks';
-
-// On an entity page, the page's tab bar: the Tabs' list, before the panel the
-// feed renders in. It pins above the feed while the page scrolls.
-const getEntityTabBar = (feed: HTMLElement) =>
-  (feed.closest('[role="tabpanel"]')?.parentElement
-    ?.firstElementChild as HTMLElement | null) ?? null;
 
 export interface ActivityFeedProps {
   /**
@@ -147,30 +142,33 @@ const ActivityFeed: React.FC<ActivityFeedProps> = ({
   );
 
   return (
-    <Box
-      // Its panes scroll inside it; nothing spills out to grow the page.
-      className="tw:flex tw:min-h-0 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:px-3"
+    // The card clips its panes, which scroll inside it; nothing spills out to
+    // grow the page.
+    <Card
+      className="tw:flex tw:min-h-0 tw:flex-col"
       data-testid="activity-feed"
-      direction="col"
-      ref={rootRef}>
-      {view === 'activity' ? (
-        <ActivityTab
-          dateRange={dateRange}
-          isFiltered={dateRange.key !== DEFAULT_INBOX_DATE_PRESET}
-          leading={viewSwitch}
-          scope={activityScope}
-          onDatePresetChange={handleDatePresetChange}
-        />
-      ) : (
-        <ActivityFeedTasks
-          leading={viewSwitch}
-          scope={taskScope}
-          status={taskStatus}
-          onStatusChange={handleTaskStatusChange}
-          onTaskChange={handleTaskChange}
-        />
-      )}
-    </Box>
+      ref={rootRef}
+      variant="muted">
+      <Box className="tw:min-h-0 tw:flex-1 tw:px-3" direction="col">
+        {view === 'activity' ? (
+          <ActivityTab
+            dateRange={dateRange}
+            isFiltered={dateRange.key !== DEFAULT_INBOX_DATE_PRESET}
+            leading={viewSwitch}
+            scope={activityScope}
+            onDatePresetChange={handleDatePresetChange}
+          />
+        ) : (
+          <ActivityFeedTasks
+            leading={viewSwitch}
+            scope={taskScope}
+            status={taskStatus}
+            onStatusChange={handleTaskStatusChange}
+            onTaskChange={handleTaskChange}
+          />
+        )}
+      </Box>
+    </Card>
   );
 };
 

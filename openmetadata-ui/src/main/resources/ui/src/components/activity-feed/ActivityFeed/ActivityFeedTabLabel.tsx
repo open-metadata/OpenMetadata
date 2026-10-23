@@ -15,6 +15,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../common/TabsLabel/TabsLabel.interface';
+import { getActivityFeedTabCount } from './ActivityFeed.utils';
 import { useActivityDatePresetParam } from './useActivityDatePresetParam';
 import { useActivityFeedCounts } from './useActivityFeedCounts';
 import { useEntityFeedLink } from './useEntityFeedLink';
@@ -25,11 +26,6 @@ export type ActivityFeedTabLabelProps = TabsLabelProps & {
   entityType: EntityType;
   fqn?: string;
 };
-
-// A capped Activity fetch holds only the newest events, so its total is a
-// lower bound: shown as `219+`, as the feed's own badge marks it.
-const getTabCount = (total: number, isCapped: boolean) =>
-  isCapped ? `${total}+` : total;
 
 const ActivityFeedCountLabel: React.FC<
   TabsLabelProps & { entityLink: string }
@@ -48,7 +44,7 @@ const ActivityFeedCountLabel: React.FC<
       // Hidden until the activity arrives; the task counts land alongside it.
       count={
         activityCount &&
-        getTabCount(
+        getActivityFeedTabCount(
           activityCount.total + taskCounts[taskStatus],
           activityCount.isCapped
         )

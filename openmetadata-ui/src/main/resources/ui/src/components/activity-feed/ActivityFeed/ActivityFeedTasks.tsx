@@ -12,6 +12,7 @@
  */
 import {
   Box,
+  Divider,
   FilterSelect,
   Input,
   SearchInputIcon,
@@ -23,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { TASK_GROUPING_LABEL_KEY } from '../../discovery/personal-space/inbox.constants';
 import ActivityToolbarMenu from '../../discovery/personal-space/InboxPage/components/ActivityToolbarMenu';
 import {
   InboxTaskGrouping,
@@ -37,11 +39,6 @@ import {
   TaskStatusFilter,
   useTaskQueue,
 } from '../../discovery/personal-space/InboxPage/useTaskQueue';
-
-const GROUPING_LABEL_KEY: Record<InboxTaskGrouping, string> = {
-  type: 'label.type',
-  none: 'label.none',
-};
 
 export interface ActivityFeedTasksProps {
   scope: TaskListScope;
@@ -85,10 +82,12 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
   );
   const groupingOptions = useMemo(
     () =>
-      (Object.keys(GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map((value) => ({
-        value,
-        label: t(GROUPING_LABEL_KEY[value]),
-      })),
+      (Object.keys(TASK_GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map(
+        (value) => ({
+          value,
+          label: t(TASK_GROUPING_LABEL_KEY[value]),
+        })
+      ),
     [t]
   );
 
@@ -96,7 +95,7 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
     <Box className="tw:flex tw:h-full tw:min-h-0 tw:flex-col" direction="col">
       <Box
         align="center"
-        className="tw:shrink-0 tw:flex-wrap tw:justify-between tw:border-b tw:border-secondary tw:py-3"
+        className="tw:shrink-0 tw:flex-wrap tw:justify-between tw:py-3"
         data-testid="activity-feed-tasks-toolbar"
         gap={2}>
         {leading}
@@ -135,13 +134,14 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
             title={t('label.group-by')}
             triggerIcon={LayersTwo01}
             triggerLabel={t('label.group-with-value', {
-              value: t(GROUPING_LABEL_KEY[queue.grouping]),
+              value: t(TASK_GROUPING_LABEL_KEY[queue.grouping]),
             })}
             value={queue.grouping}
             onChange={(value) => queue.setGrouping(value as InboxTaskGrouping)}
           />
         </Box>
       </Box>
+      <Divider />
       <TaskQueueBody
         emptyState={
           queue.showEmptyState ? (

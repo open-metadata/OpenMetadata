@@ -3755,6 +3755,7 @@
     "value-boost": "Boost del Valore",
     "value-count": "Conteggio Valori",
     "value-plural": "Valori",
+    "value-with-count": "{{value}} · {{count}}",
     "variant": "Variante",
     "variant-plural": "Varianti",
     "vector-avg": "Media vettoriale",

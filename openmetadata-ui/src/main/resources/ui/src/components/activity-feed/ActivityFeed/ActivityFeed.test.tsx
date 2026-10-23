@@ -10,14 +10,45 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React, { ReactNode } from 'react';
-import ActivityFeed from './ActivityFeed';
+import { TaskStatusGroup } from '../../../rest/tasksAPI';
+import ActivityFeed, { ActivityFeedProps } from './ActivityFeed';
 
 const TABLE_LINK = '<#E::table::svc.db.schema.customers>';
-const mockTaskCounts = { all: 4, open: 3, closed: 1 };
+// The task totals the server reports per status, as `paging.total`.
+const mockTaskTotals: Record<string, number> = { all: 4, open: 3, closed: 1 };
+const mockGetActivityByEntityLink = jest.fn();
+const mockGetUserActivity = jest.fn();
+const mockListTasks = jest.fn();
+
+// The HTTP boundary: the feed's own query hooks and cache run for real.
+jest.mock('rest/activityAPI', () => ({
+  getActivityByEntityLink: (...args: unknown[]) =>
+    mockGetActivityByEntityLink(...args),
+  getUserActivity: (...args: unknown[]) => mockGetUserActivity(...args),
+}));
+
+jest.mock('rest/conversationsAPI', () => ({
+  listConversations: () => Promise.resolve({ data: [] }),
+}));
+
+jest.mock('rest/userAPI', () => ({
+  getUserByName: () => Promise.resolve({ id: 'user-1' }),
+}));
+
+jest.mock('rest/tasksAPI', () => ({
+  ...jest.requireActual('rest/tasksAPI'),
+  listTasks: (...args: unknown[]) => mockListTasks(...args),
+}));
+
+jest.mock('hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { id: 'viewer-1' } }),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const { forwardRef } = jest.requireActual('react');
   const Tabs = ({
     children,
     onSelectionChange,
@@ -44,18 +75,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
       {children}
     </span>
   );
+  const Container = forwardRef(
+    (
+      { children, ...props }: { children?: ReactNode },
+      ref: React.Ref<HTMLDivElement>
+    ) => (
+      <div ref={ref} {...props}>
+        {children}
+      </div>
+    )
+  );
 
-  return {
-    Box: jest
-      .requireActual('react')
-      .forwardRef(
-        (
-          { children }: { children?: ReactNode },
-          ref: React.Ref<HTMLDivElement>
-        ) => <div ref={ref}>{children}</div>
-      ),
-    Tabs,
-  };
+  return { Box: Container, Card: Container, Tabs };
 });
 
 // The two views have their own suites; here they report what they were given.
@@ -80,12 +111,6 @@ jest.mock('../../discovery/personal-space/InboxPage/tabs/ActivityTab', () => ({
       <button onClick={() => onDatePresetChange('last7days')}>pick-7</button>
     </div>
   ),
-}));
-
-const mockInvalidateQueries = jest.fn();
-
-jest.mock('@tanstack/react-query', () => ({
-  useQueryClient: () => ({ invalidateQueries: mockInvalidateQueries }),
 }));
 
 jest.mock('./ActivityFeedTasks', () => ({
@@ -114,46 +139,75 @@ jest.mock('./ActivityFeedTasks', () => ({
   ),
 }));
 
-jest.mock('../../discovery/personal-space/InboxPage/useInboxActivity', () => ({
-  INBOX_ACTIVITY_QUERY_KEY: 'inbox-activity',
-  useInboxActivity: () => ({
-    items: [],
-    total: 5,
-    isCapped: false,
-    isLoading: false,
-  }),
-}));
-
-jest.mock('../../discovery/personal-space/InboxPage/useTaskQueue', () => ({
-  useTaskStatusCounts: () => mockTaskCounts,
-}));
-
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-describe('ActivityFeed', () => {
-  beforeEach(() => {
-    mockTaskCounts.open = 3;
+// Distinct entities, so no two pair up as one field change.
+const getEvents = (count: number) => ({
+  data: Array.from({ length: count }, (_, index) => ({
+    id: `event-${index}`,
+    timestamp: Date.now() - 60_000,
+    entity: { id: `entity-${index}` },
+  })),
+});
+
+const renderFeed = (props: Partial<ActivityFeedProps> = {}) => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
   });
 
-  it("opens on the entity's activity, with both counts on the switch", () => {
-    render(<ActivityFeed entityLink={TABLE_LINK} />);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ActivityFeed entityLink={TABLE_LINK} {...props} />
+    </QueryClientProvider>
+  );
+};
+
+describe('ActivityFeed', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockTaskTotals.open = 3;
+    mockGetActivityByEntityLink.mockResolvedValue(getEvents(5));
+    mockGetUserActivity.mockResolvedValue(getEvents(2));
+    mockListTasks.mockImplementation(
+      ({ statusGroup }: { statusGroup?: TaskStatusGroup }) =>
+        Promise.resolve({
+          data: [],
+          paging: { total: mockTaskTotals[statusGroup ?? 'all'] },
+        })
+    );
+  });
+
+  it("opens on the entity's activity, with both counts on the switch", async () => {
+    renderFeed();
 
     expect(
       JSON.parse(
         screen.getByTestId('activity-view').getAttribute('data-scope') ?? ''
       )
     ).toEqual({ type: 'entity', entityLink: TABLE_LINK });
-    expect(screen.getByTestId('view-activity')).toHaveAttribute(
-      'data-badge',
-      '5'
+
+    await waitFor(() =>
+      expect(screen.getByTestId('view-activity')).toHaveAttribute(
+        'data-badge',
+        '5'
+      )
     );
-    expect(screen.getByTestId('view-tasks')).toHaveAttribute('data-badge', '3');
+    await waitFor(() =>
+      expect(screen.getByTestId('view-tasks')).toHaveAttribute(
+        'data-badge',
+        '3'
+      )
+    );
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ aboutEntity: 'svc.db.schema.customers' })
+    );
   });
 
   it('switches to the tasks about the entity', () => {
-    render(<ActivityFeed entityLink={TABLE_LINK} />);
+    renderFeed();
 
     fireEvent.click(screen.getByText('pick-tasks'));
 
@@ -165,21 +219,31 @@ describe('ActivityFeed', () => {
     expect(screen.queryByTestId('activity-view')).not.toBeInTheDocument();
   });
 
-  it('reads a user link as what the user did and their tasks', () => {
-    render(
-      <ActivityFeed defaultView="tasks" entityLink="<#E::user::harsh.vador>" />
-    );
+  it('reads a user link as what the user did and their tasks', async () => {
+    renderFeed({ defaultView: 'tasks', entityLink: '<#E::user::harsh.vador>' });
 
     expect(
       JSON.parse(
         screen.getByTestId('tasks-view').getAttribute('data-scope') ?? ''
       )
     ).toEqual({ type: 'assignee', assignee: 'harsh.vador' });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('view-activity')).toHaveAttribute(
+        'data-badge',
+        '2'
+      )
+    );
+
+    expect(mockGetUserActivity).toHaveBeenCalledWith(
+      'user-1',
+      expect.anything()
+    );
   });
 
   // The badge counts the Status chosen in the Tasks view, kept across views.
-  it('counts the chosen Status on the Tasks badge', () => {
-    render(<ActivityFeed defaultView="tasks" entityLink={TABLE_LINK} />);
+  it('counts the chosen Status on the Tasks badge', async () => {
+    renderFeed({ defaultView: 'tasks' });
 
     expect(screen.getByTestId('tasks-view')).toHaveAttribute(
       'data-status',
@@ -188,7 +252,13 @@ describe('ActivityFeed', () => {
 
     fireEvent.click(screen.getByText('pick-closed'));
 
-    expect(screen.getByTestId('view-tasks')).toHaveAttribute('data-badge', '1');
+    await waitFor(() =>
+      expect(screen.getByTestId('view-tasks')).toHaveAttribute(
+        'data-badge',
+        '1'
+      )
+    );
+
     expect(screen.getByTestId('tasks-view')).toHaveAttribute(
       'data-status',
       'closed'
@@ -196,9 +266,16 @@ describe('ActivityFeed', () => {
   });
 
   // No open task is nothing to count, not a "0".
-  it('drops the Tasks badge when nothing is open', () => {
-    mockTaskCounts.open = 0;
-    render(<ActivityFeed entityLink={TABLE_LINK} />);
+  it('drops the Tasks badge when nothing is open', async () => {
+    mockTaskTotals.open = 0;
+    renderFeed();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('view-activity')).toHaveAttribute(
+        'data-badge',
+        '5'
+      )
+    );
 
     expect(screen.getByTestId('view-tasks')).not.toHaveAttribute('data-badge');
   });
@@ -206,13 +283,7 @@ describe('ActivityFeed', () => {
   // A host that puts the view in its route controls it.
   it('follows a controlled view and reports a switch', () => {
     const onViewChange = jest.fn();
-    render(
-      <ActivityFeed
-        entityLink={TABLE_LINK}
-        view="activity"
-        onViewChange={onViewChange}
-      />
-    );
+    renderFeed({ view: 'activity', onViewChange });
 
     fireEvent.click(screen.getByText('pick-tasks'));
 
@@ -222,13 +293,10 @@ describe('ActivityFeed', () => {
   // A host that keeps the window in its URL controls it.
   it('follows a controlled date window and reports a change', () => {
     const onDatePresetChange = jest.fn();
-    render(
-      <ActivityFeed
-        dateRange={{ startTs: 7, endTs: 8, key: 'yesterday' }}
-        entityLink={TABLE_LINK}
-        onDatePresetChange={onDatePresetChange}
-      />
-    );
+    renderFeed({
+      dateRange: { startTs: 7, endTs: 8, key: 'yesterday' },
+      onDatePresetChange,
+    });
 
     expect(screen.getByTestId('activity-view')).toHaveAttribute(
       'data-date',
@@ -240,22 +308,30 @@ describe('ActivityFeed', () => {
     expect(onDatePresetChange).toHaveBeenCalledWith('last7days');
   });
 
-  // An approved description is a change: the Activity lists must re-read it.
-  it('re-reads the Activity after a task action, then tells the host', () => {
+  // An approved description is a change: the Activity must show it without
+  // waiting for its cache to go stale.
+  it('shows the activity a task action wrote, then tells the host', async () => {
     const onTaskChange = jest.fn();
-    render(
-      <ActivityFeed
-        defaultView="tasks"
-        entityLink={TABLE_LINK}
-        onTaskChange={onTaskChange}
-      />
+    renderFeed({ defaultView: 'tasks', onTaskChange });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('view-activity')).toHaveAttribute(
+        'data-badge',
+        '5'
+      )
     );
 
+    // Approving the task wrote one more event about the entity.
+    mockGetActivityByEntityLink.mockResolvedValue(getEvents(6));
     fireEvent.click(screen.getByText('task-changed'));
 
-    expect(mockInvalidateQueries).toHaveBeenCalledWith({
-      queryKey: ['inbox-activity'],
-    });
+    await waitFor(() =>
+      expect(screen.getByTestId('view-activity')).toHaveAttribute(
+        'data-badge',
+        '6'
+      )
+    );
+
     expect(onTaskChange).toHaveBeenCalled();
   });
 });

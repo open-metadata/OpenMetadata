@@ -22,6 +22,7 @@ import { countBy } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Task } from '../../../../../generated/entity/tasks/task';
+import { TASK_GROUPING_LABEL_KEY } from '../../inbox.constants';
 import { getTaskTypeKey } from '../taskDetail.utils';
 import {
   TaskStatusBucket,
@@ -98,10 +99,10 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
 
   // The trigger reads "Group: Type"; the menu rows show the bare option.
   const groupingOptions = useMemo(
-    () => [
-      { value: 'type', label: t('label.type') },
-      { value: 'none', label: t('label.none') },
-    ],
+    () =>
+      (Object.keys(TASK_GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map(
+        (value) => ({ value, label: t(TASK_GROUPING_LABEL_KEY[value]) })
+      ),
     [t]
   );
 

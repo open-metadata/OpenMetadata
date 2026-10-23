@@ -245,6 +245,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Badge: ({ children }: { children?: ReactNode }) => (
       <span data-testid="count-badge">{children}</span>
     ),
+    Divider: () => <hr />,
     Skeleton: () => <div data-testid="skeleton" />,
     Typography: ({ children }: { children?: ReactNode }) => (
       <span>{children}</span>
