@@ -61,6 +61,8 @@ import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ont
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
 import type { OntologyWorkingDiff } from '../generated/api/data/ontologyWorkingDiff';
+import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
+import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import type { PreviewNativeOntologyImport } from '../generated/api/data/previewNativeOntologyImport';
 import { PreviewNativeOntologyPack } from '../generated/api/data/previewNativeOntologyPack';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
@@ -336,12 +338,43 @@ export const getOntologyWorkingDiff = async (
   return response.data;
 };
 
+/**
+ * The generated preview type carries its own copy of the change-set enums, which
+ * do not unify with the ones the apply flow takes; the wire shape is the same.
+ */
+export interface NativeOntologyImportPreview {
+  summary: NativeOntologyImportSummary;
+  changeSet: CreateOntologyChangeSet;
+}
+
 export const previewNativeOntologyImport = async (
   ontologyId: string,
   request: PreviewNativeOntologyImport
 ) => {
-  const response = await APIClient.post<CreateOntologyChangeSet>(
+  const response = await APIClient.post<NativeOntologyImportPreview>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const previewNativeOntologyImportWithoutTarget = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `${ONTOLOGIES_PATH}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const detectNativeOntologyImportFormat = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportDetection>(
+    `${ONTOLOGIES_PATH}/imports/detect`,
     request
   );
 

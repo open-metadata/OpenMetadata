@@ -14,11 +14,13 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import {
   CreateOntologyChangeSet,
   OperationState,
   OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
+import { Format } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   OntologyChangeSet,
@@ -38,6 +40,7 @@ import {
   getOntologyChangeSet,
   getOntologyRelease,
   getOntologyState,
+  detectNativeOntologyImportFormat,
   previewNativeOntologyImport,
   releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
@@ -50,11 +53,38 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
   createOntologyChangeSet: jest.fn(),
   getOntologyChangeSet: jest.fn(),
+  createOntology: jest.fn(),
+  detectNativeOntologyImportFormat: jest.fn(),
+  getOntologyByName: jest.fn(),
+  listOntologyChangeSets: jest.fn(),
   previewNativeOntologyImport: jest.fn(),
+  previewNativeOntologyImportWithoutTarget: jest.fn(),
   releaseOntologyEditLock: jest.fn(),
   exportOntologyRelease: jest.fn(),
   getOntologyRelease: jest.fn(),
   getOntologyState: jest.fn(),
+}));
+
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: () => ({
+      canEditAll: true,
+      isLoading: false,
+      error: null,
+    }),
+  })
+);
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: true }),
+}));
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: (
+    selector: (state: { currentUser: { id: string } }) => unknown
+  ) => selector({ currentUser: { id: 'author' } }),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -129,7 +159,9 @@ describe('OntologyReleaseExportModal', () => {
   it('previews and exports the active immutable release in the selected format', async () => {
     const onClose = jest.fn();
     renderWithQueryClient(
-      <OntologyReleaseExportModal ontology={ontology} onClose={onClose} />
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={onClose} />
+      </MemoryRouter>
     );
 
     expect(await screen.findByText(/Release 1/)).toBeVisible();
@@ -167,7 +199,9 @@ describe('OntologyReleaseExportModal', () => {
       advanceTimers: jest.advanceTimersByTime,
     });
     renderWithQueryClient(
-      <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
     );
     await screen.findByTestId('ontology-release-export-preview');
     await user.click(screen.getByRole('radio', { name: /label.turtle/ }));
@@ -184,7 +218,10 @@ describe('OntologyReleaseExportModal', () => {
     expect(
       screen.getByRole('tabpanel', { name: 'label.import' })
     ).toBeVisible();
-    expect(screen.getByTestId('ontology-native-import-file')).toBeDisabled();
+    expect(screen.getByTestId('ontology-native-import-file')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
     expect(
       screen.queryByTestId('ontology-run-release-export')
@@ -201,11 +238,13 @@ describe('OntologyReleaseExportModal', () => {
   it('resets the native import panel on a tab change and closes from the header', async () => {
     const onClose = jest.fn();
     renderWithQueryClient(
-      <OntologyReleaseExportModal
-        canImport
-        ontology={ontology}
-        onClose={onClose}
-      />
+      <MemoryRouter>
+        <OntologyReleaseExportModal
+          canImport
+          ontology={ontology}
+          onClose={onClose}
+        />
+      </MemoryRouter>
     );
     await screen.findByTestId('ontology-release-export-preview');
     fireEvent.click(screen.getByRole('tab', { name: 'label.import' }));
@@ -217,13 +256,17 @@ describe('OntologyReleaseExportModal', () => {
     Object.defineProperty(file, 'size', { value: 11 * 1024 * 1024 });
     fireEvent.change(input, { target: { files: [file] } });
 
-    expect(await screen.findByText('too-large.ttl')).toBeVisible();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: 'label.export' }));
     fireEvent.click(screen.getByRole('tab', { name: 'label.import' }));
 
-    expect(screen.queryByText('too-large.ttl')).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-native-import-file')
+    ).not.toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getByRole('button', { name: 'label.close' }));
 
@@ -239,7 +282,9 @@ describe('OntologyReleaseExportModal', () => {
     });
 
     renderWithQueryClient(
-      <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
     );
 
     expect(
@@ -254,7 +299,9 @@ describe('OntologyReleaseExportModal', () => {
     mockGetOntologyState.mockRejectedValueOnce(new Error('temporarily down'));
 
     renderWithQueryClient(
-      <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      <MemoryRouter>
+        <OntologyReleaseExportModal ontology={ontology} onClose={jest.fn()} />
+      </MemoryRouter>
     );
 
     expect(
@@ -282,6 +329,19 @@ const importPlan = {
     },
   ],
 } satisfies CreateOntologyChangeSet;
+const importSummary = {
+  detectedFormat: Format.Ntriples,
+  counts: {
+    newConcepts: 1,
+    updatedConcepts: 0,
+    newProperties: 0,
+    updatedProperties: 0,
+    newRelations: 0,
+    newMappings: 0,
+    skippedDefinitions: 0,
+    skippedRelations: 0,
+  },
+};
 const importDraft: OntologyChangeSet = {
   ...importPlan,
   id: 'draft-id',
@@ -349,7 +409,15 @@ describe('OntologyReleaseExportModal import lifetime', () => {
       previewNativeOntologyImport as jest.MockedFunction<
         typeof previewNativeOntologyImport
       >
-    ).mockResolvedValue(importPlan);
+    ).mockResolvedValue({
+      summary: importSummary,
+      changeSet: importPlan,
+    });
+    (
+      detectNativeOntologyImportFormat as jest.MockedFunction<
+        typeof detectNativeOntologyImportFormat
+      >
+    ).mockResolvedValue({ detectedFormat: 'ntriples' } as never);
     (
       getOntologyChangeSet as jest.MockedFunction<typeof getOntologyChangeSet>
     ).mockResolvedValue(importDraft);
@@ -395,7 +463,9 @@ describe('OntologyReleaseExportModal import lifetime', () => {
         })
       );
       renderWithQueryClient(
-        <ImportModalOwner onApplied={onApplied} onClose={onClose} />
+        <MemoryRouter>
+          <ImportModalOwner onApplied={onApplied} onClose={onClose} />
+        </MemoryRouter>
       );
       await screen.findByTestId('ontology-release-export-preview');
       await user.click(screen.getByRole('tab', { name: 'label.import' }));
@@ -408,7 +478,10 @@ describe('OntologyReleaseExportModal import lifetime', () => {
         value: jest.fn().mockResolvedValue('<urn:Customer> a <urn:Class> .'),
       });
       fireEvent.change(input, { target: { files: [file] } });
-      await screen.findByTestId('ontology-native-import-preview');
+      await user.click(
+        await screen.findByTestId('ontology-native-import-parse')
+      );
+      await screen.findByTestId('ontology-native-import-result');
       await user.click(screen.getByTestId('ontology-native-import-apply'));
       await waitFor(() =>
         expect(createOntologyChangeSet).toHaveBeenCalledTimes(1)
@@ -444,7 +517,9 @@ describe('OntologyReleaseExportModal import lifetime', () => {
       mockCreateChangeSet.mockResolvedValue(importDraft);
       mockApplyChangeSet.mockRejectedValueOnce(new Error('network'));
       renderWithQueryClient(
-        <ImportModalOwner onApplied={onApplied} onClose={onClose} />
+        <MemoryRouter>
+          <ImportModalOwner onApplied={onApplied} onClose={onClose} />
+        </MemoryRouter>
       );
       await screen.findByTestId('ontology-release-export-preview');
       await user.click(screen.getByRole('tab', { name: 'label.import' }));
@@ -457,7 +532,10 @@ describe('OntologyReleaseExportModal import lifetime', () => {
         value: jest.fn().mockResolvedValue('<urn:Customer> a <urn:Class> .'),
       });
       fireEvent.change(input, { target: { files: [file] } });
-      await screen.findByTestId('ontology-native-import-preview');
+      await user.click(
+        await screen.findByTestId('ontology-native-import-parse')
+      );
+      await screen.findByTestId('ontology-native-import-result');
       await user.click(screen.getByTestId('ontology-native-import-apply'));
       await screen.findByRole('alert');
 
@@ -491,7 +569,9 @@ describe('OntologyReleaseExportModal import lifetime', () => {
       const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const onClose = jest.fn();
       renderWithQueryClient(
-        <ImportModalOwner onApplied={jest.fn()} onClose={onClose} />
+        <MemoryRouter>
+          <ImportModalOwner onApplied={jest.fn()} onClose={onClose} />
+        </MemoryRouter>
       );
       await screen.findByTestId('ontology-release-export-preview');
 
