@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Button } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -65,15 +65,12 @@ function ActivityEventFooter({
       <Box className="footer-container tw:w-full" direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={2}>
-            <Button
+            <ButtonUtility
               aria-label={t('label.comment')}
-              className="tw:size-6 tw:rounded-md! tw:p-1!"
               color="tertiary"
               data-testid="comment-button"
-              iconLeading={
-                <Comment data-icon data-testid="comment-icon" size={16} />
-              }
-              size="xs"
+              icon={Comment}
+              size="sm"
               onPress={handleCommentPress}
             />
             <Reactions

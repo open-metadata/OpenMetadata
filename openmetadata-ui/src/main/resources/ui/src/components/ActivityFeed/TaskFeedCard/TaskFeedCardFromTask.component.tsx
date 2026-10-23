@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Owner,
   Tooltip,
@@ -361,13 +362,12 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
-          <Button
+          <ButtonUtility
             aria-label={t('label.reply')}
-            className="tw:size-6 tw:rounded-md! tw:p-1!"
             color="tertiary"
             data-testid="task-reply-button"
-            iconLeading={<Comment data-icon size={16} />}
-            size="xs"
+            icon={Comment}
+            size="sm"
             onPress={showReplies}
           />
           {commentsCount > 0 ? (

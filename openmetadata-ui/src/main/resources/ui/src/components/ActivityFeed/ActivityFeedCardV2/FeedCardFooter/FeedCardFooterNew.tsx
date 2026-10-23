@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import {
+  AvatarStack,
+  Box,
+  ButtonUtility,
+} from '@openmetadata/ui-core-components';
 import { Comment } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { noop } from 'lodash';
@@ -103,20 +107,19 @@ function FeedCardFooterNew({
             {postLength > 0 && !isReply && (
               <AvatarStack
                 avatarSize={AVATAR_SIZE}
-                // The avatar fills its slot while the icons sit in padded buttons, so it
-                // takes extra space to match the icons' visible gap.
-                className="tw:mr-[5px]"
                 items={repliedUsers.map((user) => (
-                  <Button
-                    noTextPadding
-                    className="tw:size-6 tw:rounded-full! tw:p-0.5! tw:align-top"
+                  <ButtonUtility
+                    className="tw:align-top"
                     color="tertiary"
+                    icon={
+                      <UserPopOverCard userName={user}>
+                        <ProfilePicture name={user} width="18" />
+                      </UserPopOverCard>
+                    }
                     key={user}
-                    onPress={handleRepliesPress}>
-                    <UserPopOverCard userName={user}>
-                      <ProfilePicture name={user} width="20" />
-                    </UserPopOverCard>
-                  </Button>
+                    size="sm"
+                    onPress={handleRepliesPress}
+                  />
                 ))}
                 maxCount={MAX_VISIBLE_AVATARS}
                 onOverflowClick={isForFeedTab ? showReplies : undefined}
@@ -124,15 +127,12 @@ function FeedCardFooterNew({
             )}
 
             {!isReply && (
-              <Button
+              <ButtonUtility
                 aria-label={t('label.reply')}
-                className="tw:size-6 tw:rounded-md! tw:p-1!"
                 color="tertiary"
                 data-testid="reply-button"
-                iconLeading={
-                  <Comment data-icon data-testid="reply-count" size={16} />
-                }
-                size="xs"
+                icon={Comment}
+                size="sm"
                 onPress={handleRepliesPress}
               />
             )}
