@@ -13,6 +13,7 @@ Client to interact with Alation apis
 """
 
 import json
+import time
 import traceback
 from typing import Any
 
@@ -26,8 +27,12 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.metadata.alationsink.constants import (
+    JOB_POLL_INITIAL_INTERVAL_SECONDS,
+    JOB_POLL_MAX_INTERVAL_SECONDS,
+    JOB_TIMEOUT_SECONDS,
     ROUTES,
     TOTAL_RECORDS,
+    WRITE_BATCH_SIZE,
 )
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import utils_logger
@@ -111,16 +116,21 @@ class AlationSinkClient:
         self.config = config
         self._auth_provider = AlationSinkAuthenticationProvider.create(config)
         get_verify_ssl = get_verify_ssl_fn(config.verifySSL)
-        client_config: ClientConfig = ClientConfig(
-            base_url=clean_uri(config.hostPort),
+        self.client = TrackedREST(self._client_config("integration", get_verify_ssl), source_name="alation")
+        # The job status API lives outside the integration APIs
+        self.jobs_client = TrackedREST(self._client_config("api/v1", get_verify_ssl), source_name="alation")
+        self.pagination_limit = self.config.paginationLimit
+        self._sleep = time.sleep
+
+    def _client_config(self, api_version: str, get_verify_ssl) -> ClientConfig:
+        return ClientConfig(
+            base_url=clean_uri(self.config.hostPort),
             auth_header="TOKEN",
-            api_version="integration",
+            api_version=api_version,
             auth_token=self._auth_provider.get_access_token,
             auth_token_mode="",
-            verify=get_verify_ssl(config.sslConfig),
+            verify=get_verify_ssl(self.config.sslConfig),
         )
-        self.client = TrackedREST(client_config, source_name="alation")
-        self.pagination_limit = self.config.paginationLimit
 
     def paginate_entity(
         self,
@@ -184,25 +194,61 @@ class AlationSinkClient:
             logger.error(f"Failed to write entity: {exc}")
         return None
 
-    def write_entities(self, ds_id: int, create_requests: Any) -> Any | None:
+    def write_entities(self, ds_id: int, create_requests: Any) -> list[str]:
         """
-        Method to write the entities to Alation
+        Method to write the entities to Alation, in batches, waiting for each batch's job to finish.
+        Returns Alation's errors, empty when every entity was written
         """
+        route = ROUTES.get(type(create_requests))
+        url = f"/v2{route}/"
+        if ds_id:
+            url = f"{url}?ds_id={ds_id}"
+        entities = create_requests.root or []
+        errors = []
+        for start in range(0, len(entities), WRITE_BATCH_SIZE):
+            batch = type(create_requests)(root=entities[start : start + WRITE_BATCH_SIZE])
+            errors.extend(self._write_batch(url, route, batch))
+        return errors
+
+    def _write_batch(self, url: str, route: str, batch: Any) -> list[str]:
+        entity_names = [create_request.key for create_request in batch.root]
         try:
-            entity_names = [create_request.key for create_request in create_requests.root or []]
-            url = f"/v2{ROUTES.get(type(create_requests))}/"
-            if ds_id:
-                url = f"{url}?ds_id={str(ds_id)}"  # noqa: RUF010
-            req = self.client.post(
-                url,
-                json=create_requests.model_dump(exclude_none=True)["root"],
-            )
-            if req:
-                logger.info(
-                    f"Successfully wrote entities for [{ROUTES.get(type(create_requests))}]: {str(entity_names)}"  # noqa: RUF010
-                )
-            return req  # noqa: TRY300
+            response = self.client.post(url, json=batch.model_dump(exclude_none=True)["root"])
+            if not response:
+                errors = ["Alation returned an empty response"]
+            else:
+                # A response without a job id was handled synchronously
+                job_id = response.get("job_id") if isinstance(response, dict) else None
+                errors = self._wait_for_job(job_id) if job_id else []
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to write entities: {exc}")
-        return None
+            errors = [str(exc)]
+        if errors:
+            logger.error(f"Failed to write entities for [{route}] {entity_names}: {errors}")
+        else:
+            logger.info(f"Successfully wrote entities for [{route}]: {entity_names}")
+        return errors
+
+    def _wait_for_job(self, job_id: int) -> list[str]:
+        """
+        Poll an Alation job until it finishes. A job can succeed and still reject some of the
+        objects it was given, which it lists under each result's `errors`
+        """
+        deadline = time.monotonic() + JOB_TIMEOUT_SECONDS
+        interval = JOB_POLL_INITIAL_INTERVAL_SECONDS
+        while True:
+            job = self.jobs_client.get("/bulk_metadata/job/", data={"id": job_id}) or {}
+            status = job.get("status")
+            if status == "failed":
+                return [f"Alation job [{job_id}] failed: {job.get('msg') or job.get('result')}"]
+            if status == "successful":
+                return [f"Alation job [{job_id}]: {error}" for error in _job_object_errors(job.get("result"))]
+            if time.monotonic() >= deadline:
+                return [f"Alation job [{job_id}] did not finish within {JOB_TIMEOUT_SECONDS}s"]
+            self._sleep(interval)
+            interval = min(interval * 2, JOB_POLL_MAX_INTERVAL_SECONDS)
+
+
+def _job_object_errors(result: Any) -> list:
+    results = result if isinstance(result, list) else [result]
+    return [error for item in results if isinstance(item, dict) for error in item.get("errors") or []]

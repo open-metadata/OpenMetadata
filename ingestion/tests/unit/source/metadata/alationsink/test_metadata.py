@@ -73,7 +73,7 @@ def _source(rejected_table: str | None = None) -> AlationsinkSource:
         is_rejected = isinstance(create_requests, CreateColumnRequestList) and any(
             request.key.endswith(f".{rejected_table}.col") for request in create_requests.root
         )
-        return None if is_rejected else {"job_id": 1}
+        return ["Alation job [1]: column rejected"] if is_rejected else []
 
     source.alation_sink_client = MagicMock()
     source.alation_sink_client.write_entities.side_effect = write_entities
@@ -95,4 +95,5 @@ def test_rejected_column_write_is_recorded_as_failure():
     list(source.run())
 
     assert [failure.name for failure in source.status.failures] == ["table [wide]"]
+    assert "column rejected" in source.status.failures[0].error
     assert source.alation_sink_client.write_entities.call_count == 4

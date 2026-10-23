@@ -67,6 +67,8 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
+MAX_REPORTED_ERRORS = 5
+
 DEFAULT_URL = "http://localhost:8080"
 
 
@@ -263,15 +265,17 @@ class AlationsinkSource(Source):
             logger.error(f"Failed to create column request for {model_str(om_column.name)}: {exc}")
         return None
 
-    def _report_write_failure(self, entity_kind: str, parent: str):
+    def _report_write_failure(self, entity_kind: str, parent: str, errors: list[str]):
         """
         Record a rejected Alation write on the status, so the run does not report success
         while the entities are missing from Alation
         """
+        shown = "; ".join(str(error) for error in errors[:MAX_REPORTED_ERRORS])
+        more = f" (and {len(errors) - MAX_REPORTED_ERRORS} more)" if len(errors) > MAX_REPORTED_ERRORS else ""
         self.status.failed(
             StackTraceError(
                 name=parent,
-                error=f"Failed to write {entity_kind} for {parent} to Alation, see the logs for Alation's response",
+                error=f"Failed to write {entity_kind} for {parent} to Alation: {shown}{more}",
             )
         )
 
@@ -293,9 +297,9 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_column_request)
             if create_requests.root:
                 # Make the API call to write the columns to Alation
-                alation_columns = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
-                if not alation_columns:
-                    self._report_write_failure("columns", f"table [{model_str(om_table.name)}]")
+                errors = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
+                if errors:
+                    self._report_write_failure("columns", f"table [{model_str(om_table.name)}]", errors)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to ingest columns for table [{model_str(om_table.name)}]: {exc}")
@@ -328,22 +332,23 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_table_request)
             if create_requests.root:
                 # Make the API call to write the tables to Alation
-                alation_tables = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
-                if not alation_tables:
-                    self._report_write_failure("tables", f"schema [{model_str(om_schema.name)}]")
-                else:
-                    for om_table in om_tables:
-                        if filter_by_table(
-                            self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
-                            model_str(om_table.name),
-                        ):
-                            self.status.filter(model_str(om_table.name), "Table Filtered Out")
-                            continue
-                        self.ingest_columns(
-                            alation_datasource_id=alation_datasource_id,
-                            schema_name=model_str(om_schema.name),
-                            om_table=om_table,
-                        )
+                errors = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
+                if errors:
+                    self._report_write_failure("tables", f"schema [{model_str(om_schema.name)}]", errors)
+                # Tables go out in batches, so a failure may cover only some of them: still write
+                # the columns, and any table Alation did not create fails its own column write
+                for om_table in om_tables:
+                    if filter_by_table(
+                        self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue]
+                        model_str(om_table.name),
+                    ):
+                        self.status.filter(model_str(om_table.name), "Table Filtered Out")
+                        continue
+                    self.ingest_columns(
+                        alation_datasource_id=alation_datasource_id,
+                        schema_name=model_str(om_schema.name),
+                        om_table=om_table,
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to ingest tables for schema [{model_str(om_schema.name)}]: {exc}")
@@ -371,12 +376,11 @@ class AlationsinkSource(Source):
                     create_requests.root.append(create_schema_request)
             if create_requests.root:
                 # Make the API call to write the schemas to Alation
-                alation_schemas = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
-                if not alation_schemas:
-                    self._report_write_failure("schemas", f"database [{model_str(om_database.name)}]")
-                else:
-                    for om_schema in om_schemas or []:
-                        self.ingest_tables(alation_datasource_id, om_schema)
+                errors = self.alation_sink_client.write_entities(alation_datasource_id, create_requests)
+                if errors:
+                    self._report_write_failure("schemas", f"database [{model_str(om_database.name)}]", errors)
+                for om_schema in om_schemas or []:
+                    self.ingest_tables(alation_datasource_id, om_schema)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to ingest schemas for database [{model_str(om_database.name)}]: {exc}")
@@ -412,10 +416,15 @@ class AlationsinkSource(Source):
                     continue
                 # write the datasource entity to alation
                 alation_datasource = self.alation_sink_client.write_entity(self.create_datasource_request(om_database))
+                # Creating a datasource is synchronous: Alation answers with the datasource itself
                 if not alation_datasource:
-                    self._report_write_failure("the datasource", f"database [{model_str(om_database.name)}]")
+                    self._report_write_failure(
+                        "the datasource",
+                        f"database [{model_str(om_database.name)}]",
+                        ["see the logs for Alation's response"],
+                    )
                 else:
-                    self.ingest_schemas(alation_datasource.id, om_database)
+                    self.ingest_schemas(alation_datasource["id"], om_database)
 
         # Every write above goes straight to Alation and failures land on the status, so there is
         # nothing to yield, but `Source.run` iterates the result: `_iter` must still be a generator
