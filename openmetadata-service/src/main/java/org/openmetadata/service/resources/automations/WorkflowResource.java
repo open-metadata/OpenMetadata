@@ -699,6 +699,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow unmask(Workflow workflow) {
+    // Over HTTP the request body arrives as raw JSON, so it must be typed before the branch below
+    // can read a TEST_CONNECTION request's service reference and build the comparison base from
+    // the stored service's connection.
+    workflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {

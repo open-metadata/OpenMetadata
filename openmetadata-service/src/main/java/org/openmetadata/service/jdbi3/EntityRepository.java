@@ -3449,12 +3449,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Create an entity the caller already ran {@link #prepareInternal(Object, boolean)} on — the PUT
-   * create-or-update path, whose resource boundary prepares with {@code update == true} before
-   * deciding whether the request creates. The create pipeline still runs its own prepare pass, but
-   * with {@code alreadyPrepared == true}: {@link #prepare(Object, boolean, boolean)} then treats the
-   * second pass as a re-storage of what the first pass stored, instead of re-validating it against
-   * a strict credential policy.
+   * Create an entity a previous {@link #prepareInternal(Object, boolean)} pass in the same request
+   * already handled — the PUT create-or-update path, whose resource boundary prepares with {@code
+   * update == true} before deciding whether the request creates. The create pipeline still runs its
+   * own prepare pass, but with {@code reStore == true}: {@link #prepare(Object, boolean, boolean)}
+   * then treats the second pass as a re-storage of what the first pass stored, instead of
+   * re-validating it against a strict credential policy.
    */
   public final T createPrepared(
       UriInfo uriInfo, T entity, String updatedBy, String impersonatedBy) {
@@ -3470,8 +3470,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return createInternal(entity, updatedBy, impersonatedBy, false);
   }
 
-  private T createInternal(
-      T entity, String updatedBy, String impersonatedBy, boolean alreadyPrepared) {
+  private T createInternal(T entity, String updatedBy, String impersonatedBy, boolean reStore) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -3483,7 +3482,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     try (var ignored = phase("createPrepareInternal")) {
-      prepareInternal(entity, false, alreadyPrepared);
+      prepareInternal(entity, false, reStore);
     }
 
     // Set updatedBy and impersonatedBy after prepare but before storing
@@ -3500,9 +3499,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     prepareInternal(entity, update, false);
   }
 
-  public final void prepareInternal(T entity, boolean update, boolean alreadyPrepared) {
+  public final void prepareInternal(T entity, boolean update, boolean reStore) {
     validateTags(entity);
-    prepare(entity, update, alreadyPrepared);
+    prepare(entity, update, reStore);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
     if (!update) {
@@ -3515,14 +3514,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Prepare an entity a previous {@link #prepareInternal(Object, boolean, boolean)} pass in the same
-   * request already handled. The default delegates to {@link #prepare(Object, boolean)}: most
-   * repositories have no reason to distinguish the passes. A repository whose prepare encrypts
-   * password fields must override this, because re-running a strict credential policy on the first
-   * pass's own encrypted output cannot tell that output from a foreign credential — see
-   * ServiceEntityRepository.
+   * Prepare an entity whose encoded values an earlier step in this request already accepted — a
+   * previous {@link #prepareInternal(Object, boolean, boolean)} pass in the same request (the PUT
+   * create-or-update path), or the masker's provenance check on the PATCH pipeline. The default
+   * delegates to {@link #prepare(Object, boolean)}: most repositories have no reason to distinguish
+   * the passes. A repository whose prepare encrypts password fields must override this, because
+   * re-running a strict credential policy on an already-encoded value cannot tell that value from
+   * a foreign credential — see ServiceEntityRepository.
    */
-  protected void prepare(T entity, boolean update, boolean alreadyPrepared) {
+  protected void prepare(T entity, boolean update, boolean reStore) {
     prepare(entity, update);
   }
 
@@ -5155,8 +5155,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
 
+    // The masker pass above already proved every encoded value the patch carries is one the
+    // entity holds, so this prepare stores what it accepted instead of re-validating it against a
+    // strict credential policy - which would otherwise reject the entity's own stored references
+    // on an edit that never touched them, such as a rename.
     try (var ignored = phase("patchPrepareInternal")) {
-      prepareInternal(updated, true);
+      prepareInternal(updated, true, true);
     }
     try (var ignored = phase("patchRuleEvaluation")) {
       RuleEngine.getInstance().evaluateUpdate(original, updated);

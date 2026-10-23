@@ -124,12 +124,17 @@ public class PasswordEntityMasker extends EntityMasker {
       Object originalConnectionConfig,
       String connectionType,
       ServiceType serviceType) {
-    if (originalConnectionConfig != null && connectionConfig != null) {
+    if (connectionConfig != null) {
       try {
         Object toUnmaskConfig =
             SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+        // A null original - a patch that adds a connection where none was stored - still walks:
+        // with nothing to compare against, an encoded value cannot be the entity's own (see
+        // unmaskAgainstOriginal).
         Object originalConvertedConfig =
-            SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType);
+            originalConnectionConfig != null
+                ? SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType)
+                : null;
         unmaskAgainstOriginal(toUnmaskConfig, originalConvertedConfig);
         return toUnmaskConfig;
       } catch (SecretsManagerException e) {

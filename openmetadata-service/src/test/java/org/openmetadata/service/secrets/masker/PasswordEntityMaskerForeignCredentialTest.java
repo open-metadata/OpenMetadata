@@ -151,6 +151,37 @@ class PasswordEntityMaskerForeignCredentialTest {
     assertEquals(400, rejected.getResponse().getStatus());
   }
 
+  /**
+   * A connection added where none was stored has nothing to compare against, so it must be walked
+   * like any other: an encoded value cannot be the entity's own, while a plain value passes.
+   */
+  @Test
+  void unmaskRejectsAnEncodedValueWhenNoConnectionWasStored() {
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                EntityMaskerFactory.createEntityMasker()
+                    .unmaskServiceConnectionConfig(
+                        connection(encrypted(VICTIM_PASSWORD)),
+                        null,
+                        "Mysql",
+                        ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+  }
+
+  @Test
+  void unmaskAcceptsAPlainValueWhenNoConnectionWasStored() {
+    Object restored =
+        EntityMaskerFactory.createEntityMasker()
+            .unmaskServiceConnectionConfig(
+                connection("a-plain-password"), null, "Mysql", ServiceType.DATABASE);
+
+    assertEquals("a-plain-password", password((MysqlConnection) restored));
+  }
+
   private Object unmask(Object updated, Object original) {
     return EntityMaskerFactory.createEntityMasker()
         .unmaskServiceConnectionConfig(updated, original, "Mysql", ServiceType.DATABASE);

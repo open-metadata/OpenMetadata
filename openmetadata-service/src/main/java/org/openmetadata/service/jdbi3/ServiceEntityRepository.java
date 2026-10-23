@@ -188,16 +188,18 @@ public abstract class ServiceEntityRepository<
 
   /**
    * The connection is encrypted here rather than in storeEntity because prepare runs on every
-   * persistence path, including the version-checked update that bypasses storeEntity. The PUT
-   * create-or-update path runs prepare twice: once at the resource boundary with the user's
-   * submission, and once more in the create pipeline on what the first pass encrypted. A strict
-   * credential policy cannot tell the first pass's own encrypted output from a foreign credential,
-   * so the re-prepare stores it as the server's copy (CredentialPolicy.INTERNAL_RE_STORAGE)
-   * instead of validating it again.
+   * persistence path, including the version-checked update that bypasses storeEntity. Two paths
+   * reach this with {@code reStore == true}: the PUT create-or-update path, which prepares once at
+   * the resource boundary with the user's submission and once more in the create pipeline on what
+   * the first pass encrypted; and the PATCH pipeline, whose masker pass has already validated the
+   * patched values against the stored copy. A strict credential policy cannot tell an encoded
+   * value the server itself holds from a foreign credential, so both re-prepare passes store the
+   * value as the server's copy (CredentialPolicy.INTERNAL_RE_STORAGE) instead of validating it
+   * again.
    */
   @Override
-  protected void prepare(T service, boolean update, boolean alreadyPrepared) {
-    if (!alreadyPrepared) {
+  protected void prepare(T service, boolean update, boolean reStore) {
+    if (!reStore) {
       prepare(service, update);
       return;
     }
@@ -218,12 +220,17 @@ public abstract class ServiceEntityRepository<
 
   @Override
   protected T restorePatchSecrets(T original, T updated) {
-    if (original.getConnection() != null && updated.getConnection() != null) {
+    if (updated.getConnection() != null) {
+      // A patch that adds a connection where none was stored is walked with nothing to compare
+      // against, so an encoded value it carries is rejected rather than handed to the re-storage
+      // pass below unvalidated.
+      Object originalConfig =
+          original.getConnection() != null ? original.getConnection().getConfig() : null;
       Object restoredConfig =
           EntityMaskerFactory.getEntityMasker()
               .unmaskServiceConnectionConfig(
                   updated.getConnection().getConfig(),
-                  original.getConnection().getConfig(),
+                  originalConfig,
                   updated.getServiceType().value(),
                   serviceType);
       updated.getConnection().setConfig(restoredConfig);

@@ -1,13 +1,15 @@
 # An encoded credential is only accepted on a user path when the entity already holds it, or it points outside the managed namespace
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-22 (initial)
+- **Revisions:** v1 2026-10-22 (initial); v2 2026-10-23 (the PATCH pipeline's prepare pass is a
+  re-storage after the masker pass, and an HTTP request body is typed before its provenance is
+  checked)
 - **Deciders:** reviewers of the foreign-credential-rejection PR
 - **Guard:** `DBSecretsManagerTest#testEncryptRejectsAForeignFernetToken`,
   `ExternalSecretsManagerTest#testEncryptRejectsAReferenceToAnotherEntitysSecret`,
   `PasswordEntityMaskerForeignCredentialTest` (all fail if the guards are removed);
   `SecretsManagerCredentialValidationIT` and `SecretsManagerNullSecretIT` (end-to-end over the
-  service API)
+  service API — the latter also pins the rename PATCH and the TEST_CONNECTION echo over HTTP)
 - **Related:** `SecretsManager#requireOwnCredential`, `PasswordEntityMasker#requireOwnStoredValue`
 
 ## Context
@@ -39,8 +41,11 @@ Two layers validate, and a third classifies the callers:
 2. **Unmask (`PasswordEntityMasker#requireOwnStoredValue`)** — every user update is validated
    against the original's stored value before it reaches the internal re-storage cell: an encoded
    field survives only byte-equal to the value the field already holds, as stored or as resolved.
-   The unmask walk covers what the encrypt walk encrypts (`DO_NOT_UNMASK_CLASSES` mirrors the
-   encrypter's skip set), so a bot's JWT token — visible through the mask — is validated too.
+   A submission with nothing stored to compare against — a connection a patch adds where none was
+   stored — is still walked, and an encoded value is rejected there: with no owner on record it
+   cannot be the entity's own. The unmask walk covers what the encrypt walk encrypts
+   (`DO_NOT_UNMASK_CLASSES` mirrors the encrypter's skip set), so a bot's JWT token — visible
+   through the mask — is validated too.
 3. **Callers pick the policy** — `storeEntity(update=true)` and the `SecretsManagerUpdateService`
    migrations pass internal re-storage (the update cells are safe only because the masker
    validated first); creates and bulk creates stay strict.
@@ -48,10 +53,23 @@ Two layers validate, and a third classifies the callers:
    create-or-update path prepares the entity twice: once at the resource boundary on the user's
    submission, and once more in the create pipeline on what the first pass encrypted. The second
    pass cannot be strict — it would reject the first pass's own encrypted output as a foreign
-   credential — so `EntityRepository#createPrepared` marks it (`prepare(entity, update,
-   alreadyPrepared)`) and the service connection is re-stored under internal re-storage. A
-   repository whose `prepare` encrypts must thread the flag; the default delegates to the
-   2-argument `prepare` unchanged.
+   credential — so `EntityRepository#createPrepared` marks it (`prepare(entity, update, reStore)`)
+   and the service connection is re-stored under internal re-storage. A repository whose `prepare`
+   encrypts must thread the flag; the default delegates to the 2-argument `prepare` unchanged.
+   The PATCH pipeline's prepare pass carries the same mark (`preparePatched` →
+   `prepareInternal(updated, true, true)`): the masker pass ahead of it (`restorePatchSecrets`)
+   has already validated every encoded value against the stored copy, so the pass after it stores
+   what the masker accepted. Without the mark, an edit that never touches the connection — a
+   rename — would re-validate the stored reference against the *renamed* service's accepted bases
+   and reject the entity's own stored credential. The mark must not reach the resource boundary:
+   `EntityResource#createOrUpdate` prepares with `update == true` before deciding whether the
+   request creates, so keying the softening off the `update` flag would exempt the PUT create leg.
+5. **A raw HTTP request body is typed before its provenance can be checked** — a TEST_CONNECTION
+   workflow submitted over HTTP reaches `WorkflowResource#unmask` with its request as raw JSON,
+   not a `TestServiceConnectionRequest`. The resource converts it first; otherwise the
+   stored-service lookup cannot see the request's service reference, the comparison base comes
+   back null, and the echo of the tested service's own reference is rejected as a credential with
+   no owner.
 
 The comparison is lower-cased: `buildSecretId` lower-cases every id it builds, and Azure Key Vault
 resolves names case-insensitively, so a case variant of a stored reference must not slip out of the
