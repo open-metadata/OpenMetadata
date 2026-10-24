@@ -32,10 +32,10 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  # See ../development/docker-compose-fuseki.yml — renamed from `fuseki-data`
-  # because the new Dockerfile uses a different on-disk layout and reusing
-  # the old volume name silently mounts stale state.
-  fuseki-tdb2-data:
+  # TDB2 datasets, configuration and shiro.ini of the published image live under /fuseki. Not the
+  # older `fuseki-tdb2-data` volume: it holds the retired in-repo image's /fuseki-data layout, and
+  # mounting it here would start an empty store. docs/rdf-production-setup.md has the migration.
+  fuseki-store:
 
 services:
   mysql:
@@ -87,31 +87,35 @@ services:
         reservations:
           memory: 2G
 
-  # Apache Jena Fuseki for RDF/Knowledge Graph storage. Built from the
-  # in-repo Dockerfile (Fuseki 6.2.0) — see ../development/docker-compose-fuseki.yml
-  # for why we don't use the unmaintained stain/jena-fuseki image.
+  # Apache Jena Fuseki for RDF/Knowledge Graph storage.
   fuseki:
     container_name: openmetadata_fuseki
-    build:
-      context: ../rdf-store
-      dockerfile: Dockerfile
-    image: openmetadata-fuseki:6.2.0
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-c75b095
     restart: always
     environment:
-      # Local-dev defaults — production deployments MUST override via the
-      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars before
-      # bringing this stack up. The entrypoint envsubsts these into shiro.ini.
-      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=-Xmx4g -Xms2g
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
     ports:
       - "3030:3030"
     volumes:
-      - fuseki-tdb2-data:/fuseki-data
+      - fuseki-store:/fuseki
     networks:
       - app_net
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3030/$/ping"]
+      test: ["CMD", "/healthcheck.sh"]
       interval: 15s
       timeout: 10s
       retries: 10

@@ -12,16 +12,15 @@ volumes:
       o: bind
       device: ./docker-volume/elasticsearch-data
 
-  # Fuseki data volume. Renamed from `fuseki-data` (and host path changed
-  # from `./docker-volume/fuseki-data` to `./docker-volume/fuseki-tdb2-data`)
-  # to match docker-compose-rdf.yml — see ../development/docker-compose-fuseki.yml
-  # for the migration rationale (new on-disk layout vs the old stain image).
-  fuseki-tdb2-data:
+  # Fuseki volume (/fuseki in the published image). A new host path, because
+  # ./docker-volume/fuseki-tdb2-data holds the retired in-repo image's layout and
+  # would start an empty store here; see docs/rdf-production-setup.md.
+  fuseki-store:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: ./docker-volume/fuseki-tdb2-data
+      device: ./docker-volume/fuseki-store
 
 services:
   # Additional Elasticsearch optimizations

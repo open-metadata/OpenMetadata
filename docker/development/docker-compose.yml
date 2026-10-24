@@ -15,7 +15,10 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  fuseki-data:
+  # TDB2 datasets, configuration and shiro.ini of the published image live under /fuseki. Not the
+  # older `fuseki-tdb2-data` volume: it holds the retired in-repo image's /fuseki-data layout, and
+  # mounting it here would start an empty store. docs/rdf-production-setup.md has the migration.
+  fuseki-store:
 services:
   mysql:
     build:
@@ -626,14 +629,24 @@ services:
   # round-trip, semantic search). Start with `--profile rdf` and set RDF_ENABLED=true.
   # The glossary RDF import works without this; it only adds the transparent triplestore.
   fuseki:
-    build:
-      context: ../rdf-store
+    # The published OpenMetadata Fuseki image (built in open-metadata/jena), pinned to its
+    # immutable <version>-<commit> tag. See docs/rdf-fuseki-image-release.md.
+    image: openmetadata/fuseki:6.2.0-c75b095
     container_name: openmetadata-fuseki
     environment:
-      # The admin user carries the writer role; the server connects as
-      # RDF_REMOTE_USERNAME=admin, so keep this password in sync with
-      # RDF_REMOTE_PASSWORD. Dataset (/openmetadata) is baked into the image.
-      - FUSEKI_ADMIN_PASSWORD=${RDF_REMOTE_PASSWORD:-admin}
+      # The image's environment contract, set as OpenMetadata needs it: the serving dataset and
+      # its two blue/green rebuild targets, the union default graph (OpenMetadata writes every
+      # entity into a named graph), server-side deadlines below the 60 s client deadline, and the
+      # bounded Graph Store extension. docs/rdf-production-setup.md explains each one.
+      - ADMIN_PASSWORD=${RDF_REMOTE_PASSWORD:-admin}
+      - FUSEKI_DATASETS=openmetadata,openmetadata_a,openmetadata_b
+      - FUSEKI_UNION_DEFAULT_GRAPH=true
+      - FUSEKI_QUERY_TIMEOUT_MS=50000
+      - FUSEKI_UPDATE_TIMEOUT_MS=50000
+      - OPENMETADATA_EXTENSION_ENABLED=true
+      # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
+      # image applies that cap itself (open-metadata/jena#6).
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-1500m} -Xmx${FUSEKI_HEAP:-1500m} -XX:MaxDirectMemorySize=256m
     networks:
       - local_app_net
     expose:
@@ -641,7 +654,7 @@ services:
     ports:
       - "3030:3030"
     volumes:
-      - fuseki-data:/fuseki-data
+      - fuseki-store:/fuseki
     profiles:
       - rdf
 

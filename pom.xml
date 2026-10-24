@@ -32,7 +32,6 @@
     <module>openmetadata-spec</module>
     <module>openmetadata-sdk</module>
     <module>common</module>
-    <module>docker/rdf-store</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
     <module>openmetadata-k8s-operator</module>
