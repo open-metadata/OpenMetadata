@@ -19,6 +19,13 @@ on:
       - main
   pull_request:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
+  # ci.yml runs this workflow as one of its stages; see docs/ci.md.
+  workflow_call:
+    inputs:
+      concurrency_group_suffix:
+        description: Appended to the concurrency group, so a caller's run never cancels this workflow's own run for the same PR
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -26,7 +33,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}
+  group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}${{ inputs.concurrency_group_suffix }}
   cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:

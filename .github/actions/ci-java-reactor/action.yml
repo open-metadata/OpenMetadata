@@ -1,0 +1,108 @@
+name: CI Java reactor
+description: >-
+  Build the Maven reactor the integration tests need once per run and share it, or
+  restore it in a job that only runs tests. `mode: build` installs the reactor
+  (`-pl :openmetadata-integration-tests -am`, tests skipped) and uploads the
+  project's own artifacts as one bundle; `mode: restore` downloads that bundle,
+  checks it belongs to the checked-out commit, and unpacks it into ~/.m2.
+inputs:
+  mode:
+    description: build | restore
+    required: true
+  artifact-name:
+    description: Name of the bundle artifact in this run.
+    required: false
+    default: java-reactor
+  retention-days:
+    description: Kept long enough for re-runs and for entries that use this run as their parent.
+    required: false
+    default: '3'
+runs:
+  using: composite
+  steps:
+    - name: Build and bundle the reactor
+      if: ${{ inputs.mode == 'build' }}
+      shell: bash
+      env:
+        SOURCE_SHA: ${{ github.sha }}
+      run: |
+        project_version="$(mvn --quiet --non-recursive help:evaluate \
+          -Dexpression=project.version -DforceStdout -Dstyle.color=never)"
+        if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+          echo "Invalid Maven project version: $project_version"
+          exit 1
+        fi
+        project_repository="$HOME/.m2/repository/org/open-metadata"
+        # A restored ~/.m2 cache can hold this version from another commit; it must
+        # not leak into the bundle.
+        if [[ -d "$project_repository" ]]; then
+          find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+            -name "$project_version" -prune -exec rm -rf -- {} +
+        fi
+        mvn -B -DskipTests -DskipITs -Dspring-boot.repackage.skip=true --no-snapshot-updates \
+          clean install -pl :openmetadata-integration-tests -am
+
+        staging="$RUNNER_TEMP/java-reactor-repository"
+        bundle="$RUNNER_TEMP/java-reactor"
+        mkdir -p "$staging/org/open-metadata" "$bundle"
+        count=0
+        while IFS= read -r -d '' version_directory; do
+          artifact_id="$(basename "$(dirname "$version_directory")")"
+          mkdir -p "$staging/org/open-metadata/$artifact_id"
+          cp -a "$version_directory" "$staging/org/open-metadata/$artifact_id/"
+          count=$((count + 1))
+        done < <(find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+          -name "$project_version" -print0)
+        if (( count == 0 )); then
+          echo "The Maven build did not install any reactor artifacts."
+          exit 1
+        fi
+        find "$staging" -type f -name '*-boot.jar' -delete
+        tar -C "$staging" -czf "$bundle/reactor-repository.tar.gz" org
+        (cd "$bundle" && sha256sum reactor-repository.tar.gz > reactor-repository.sha256)
+        printf '%s\n' "$project_version" > "$bundle/project-version.txt"
+        printf '%s\n' "$SOURCE_SHA" > "$bundle/source-sha.txt"
+        du -h "$bundle/reactor-repository.tar.gz" | tee -a "$GITHUB_STEP_SUMMARY"
+
+    - name: Upload the reactor bundle
+      if: ${{ inputs.mode == 'build' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        overwrite: true
+        path: ${{ runner.temp }}/java-reactor
+        if-no-files-found: error
+        retention-days: ${{ inputs.retention-days }}
+        compression-level: 0
+
+    - name: Download the reactor bundle
+      if: ${{ inputs.mode == 'restore' }}
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/java-reactor
+
+    - name: Restore the reactor into ~/.m2
+      if: ${{ inputs.mode == 'restore' }}
+      shell: bash
+      run: |
+        bundle="$RUNNER_TEMP/java-reactor"
+        (cd "$bundle" && sha256sum --check reactor-repository.sha256)
+        project_version="$(<"$bundle/project-version.txt")"
+        source_sha="$(<"$bundle/source-sha.txt")"
+        if [[ ! "$project_version" =~ ^[A-Za-z0-9][A-Za-z0-9._+-]*$ ]]; then
+          echo "Invalid Maven project version: $project_version"
+          exit 1
+        fi
+        if [[ "$(git rev-parse HEAD)" != "$source_sha" ]]; then
+          echo "The build artifact does not match the checked-out commit."
+          exit 1
+        fi
+        project_repository="$HOME/.m2/repository/org/open-metadata"
+        if [[ -d "$project_repository" ]]; then
+          find "$project_repository" -mindepth 2 -maxdepth 2 -type d \
+            -name "$project_version" -prune -exec rm -rf -- {} +
+        fi
+        mkdir -p "$HOME/.m2/repository"
+        tar -C "$HOME/.m2/repository" -xzf "$bundle/reactor-repository.tar.gz"
+        test -s "$project_repository/openmetadata-service/$project_version/openmetadata-service-$project_version.jar"

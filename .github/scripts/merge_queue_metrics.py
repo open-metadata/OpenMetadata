@@ -716,7 +716,9 @@ def playwright_window_reports(
                 "latestConclusion": run["conclusion"],
                 "attempts": run.get("run_attempt", 1),
                 "report": None,
-                "reportExpected": run.get("status") == "completed" or None,
+                # Unreadable evidence says nothing about whether a report was due: the
+                # daily report counts the run as unavailable, not as a missing report.
+                "reportExpected": None,
             }, str(exc)
 
     with ThreadPoolExecutor(max_workers=6) as pool:

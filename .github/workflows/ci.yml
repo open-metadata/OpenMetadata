@@ -1,0 +1,680 @@
+name: CI
+# One run per PR head and per merge-queue entry, built once. During the shadow
+# period it runs beside the existing workflows and is required by nothing;
+# merge-gate.yml turns each finished run into the `merge-gate (shadow)` status.
+# See docs/ci.md for the stages and the cutover.
+#
+#   S0 plan → S1 static checks ∥ builds → S2 suites (PR: unit; queue: + IT,
+#   Playwright, Python integration) → S3 verify (queue, failures only) → S4 ci-summary
+#
+# A static-check failure stops the run before any suite starts: nobody can merge
+# until it is fixed, so testing the rest is wasted runner time.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A new push supersedes the PR's previous run. Queue runs never cancel each
+  # other; runs on dead queue refs are cancelled centrally (ADR 2026-10-13).
+  group: ci-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  UI_DIR: openmetadata-ui/src/main/resources/ui
+
+jobs:
+  # ------------------------------------------------------------------ S0
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # paths-filter lists a PR's files through the API on pull_request events.
+      pull-requests: read
+    outputs:
+      run: ${{ steps.sample.outputs.run }}
+      tier: ${{ steps.sample.outputs.tier }}
+      draft: ${{ steps.sample.outputs.draft }}
+      # A manual run has nothing to diff against, so it tests everything.
+      java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
+      backend: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.backend }}
+      ui: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.ui }}
+      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
+      e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
+      ci: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.ci }}
+    steps:
+      - name: Checkout
+        if: ${{ github.event_name == 'merge_group' }}
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      # Queue entries are diffed against their parent entry, which is exactly
+      # what each entry adds; the full suites run whenever their area changed.
+      - name: Detect changed areas
+        id: filter
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            java:
+              - 'openmetadata-service/**'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'openmetadata-mcp/**'
+              - 'openmetadata-integration-tests/**'
+              - 'common/**'
+              - 'pom.xml'
+              - '**/pom.xml'
+              - 'bootstrap/**'
+            backend:
+              - 'openmetadata-service/**'
+              - 'openmetadata-integration-tests/**'
+              - 'openmetadata-spec/pom.xml'
+              - 'openmetadata-spec/src/**'
+              - 'openmetadata-sdk/**'
+              - 'openmetadata-shaded-deps/**'
+              - 'openmetadata-k8s-operator/**'
+              - 'openmetadata-mcp/**'
+              - 'common/**'
+              - 'pom.xml'
+              - 'Makefile'
+              - 'bootstrap/**'
+              - 'docker/rdf-store/**'
+              - '.github/workflows/ci.yml'
+              - '.github/actions/ci-*/**'
+            ui:
+              - 'openmetadata-ui/src/main/resources/ui/**'
+              - 'openmetadata-ui-core-components/**'
+            python:
+              - 'ingestion/**'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+              - '.github/workflows/py-tests-shared.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+            e2e:
+              - 'openmetadata-ui/**'
+              - 'openmetadata-ui-core-components/**'
+              - 'openmetadata-service/**'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-dist/**'
+              - 'ingestion/**'
+              - 'bootstrap/**'
+              - 'docker/**'
+              - 'common/**'
+              - 'pom.xml'
+              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/scripts/*playwright*'
+            ci:
+              - '.github/**'
+
+      # Shadow runs are sampled per PR so the shared runner pool is not doubled
+      # outright. Both shares start at 0, so merging this workflow tests nothing
+      # until vars.CI_SHADOW_PR_PERCENT / CI_SHADOW_MQ_PERCENT turn the shadow on.
+      - name: Decide tier and shadow sampling
+        id: sample
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          QUEUE_REF: ${{ github.event.merge_group.head_ref }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          PR_PERCENT: ${{ vars.CI_SHADOW_PR_PERCENT || '0' }}
+          MQ_PERCENT: ${{ vars.CI_SHADOW_MQ_PERCENT || '0' }}
+          GATE_MODE: ${{ vars.MERGE_GATE_MODE || 'shadow' }}
+        run: |
+          python3 - <<'PY'
+          import os, re, zlib
+          event = os.environ["EVENT"]
+          tier = "mq" if event in ("merge_group", "workflow_dispatch") else "pr"
+          number = os.environ.get("PR_NUMBER") or ""
+          if not number:
+              match = re.search(r"pr-(\d+)-", os.environ.get("QUEUE_REF") or "")
+              number = match.group(1) if match else ""
+          percent = int(os.environ["MQ_PERCENT" if tier == "mq" else "PR_PERCENT"])
+          # Keyed on the PR number, so one PR is either always or never sampled.
+          bucket = zlib.crc32(number.encode()) % 100 if number else 0
+          # Once the gate decides merges, every run must be tested.
+          run = event == "workflow_dispatch" or os.environ["GATE_MODE"] != "shadow" or bucket < percent
+          draft = os.environ.get("DRAFT") == "true"
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"tier={tier}\nrun={'true' if run else 'false'}\ndraft={'true' if draft else 'false'}\n")
+          print(f"tier={tier} run={run} draft={draft} bucket={bucket} percent={percent}")
+          PY
+
+      # The merge gate reads this step's conclusion: a run outside the sample skipped
+      # every suite, so it gets no verdict rather than a pass.
+      - name: Not sampled
+        if: ${{ steps.sample.outputs.run != 'true' }}
+        run: echo "Outside the shadow sample (vars.CI_SHADOW_PR_PERCENT / CI_SHADOW_MQ_PERCENT); every suite is skipped."
+
+  # ------------------------------------------------------------------ S1: static checks
+  static-java:
+    name: static / java
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' && needs.plan.outputs.java == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Java format (spotless)
+        run: |
+          mvn -B -ntp spotless:apply
+          if ! git diff --quiet; then
+            git diff --stat
+            echo "::error title=Java format::Run 'mvn spotless:apply' and commit the result."
+            exit 1
+          fi
+
+  static-python:
+    name: static / python
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' && needs.plan.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
+      - name: Python format (ruff)
+        run: |
+          uv venv env --python 3.10
+          uv pip install --python env/bin/python "ruff~=0.15.12"
+          source env/bin/activate
+          if ! make py_format_check; then
+            echo "::error title=Python format::Run 'make py_format' and commit the result."
+            exit 1
+          fi
+
+  # The UI checkstyle workflow itself, so the gate and the old required check can never
+  # disagree: lint, licence headers, i18n, app docs, core components, the Tailwind
+  # audit, the bundle budget and the deprecation guard. Its own path filter decides.
+  static-ui:
+    name: static / ui
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
+    uses: ./.github/workflows/ui-checkstyle.yml
+    # A called workflow cannot start if a job asks for more than its caller grants:
+    # its summary job declares pull-requests: write for the PR comment it posts only on
+    # pull_request_target. The jobs that run PR code pin themselves to contents: read.
+    permissions:
+      contents: read
+      pull-requests: write
+    with:
+      concurrency_group_suffix: -ci
+
+  static-json:
+    name: static / json-yaml
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - name: Validate JSON and YAML
+        run: |
+          python3 -m venv env && source env/bin/activate
+          pip install --quiet pyyaml
+          ./scripts/validate_json_yaml.sh
+
+  static-ci:
+    name: static / ci-scripts
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' && needs.plan.outputs.ci == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Merge-gate, verification and CI-automation tests
+        run: |
+          pip install --quiet pytest pyyaml anthropic
+          python -m pytest -q -p no:cacheprovider \
+            .github/scripts/tests/test_merge_gate_*.py \
+            .github/scripts/tests/test_verify_failures.py \
+            .github/scripts/tests/test_conflict_resolvers.py \
+            .github/scripts/tests/test_queue_conflicts.py \
+            .github/scripts/tests/test_publish_*.py \
+            .github/scripts/tests/test_ci_*.py
+      - name: actionlint
+        run: |
+          pip install --quiet actionlint-py
+          actionlint .github/workflows/ci.yml .github/workflows/merge-gate.yml \
+            .github/workflows/ci-conflict-resolve.yml .github/workflows/ci-ai-fix.yml \
+            .github/workflows/ci-ai-explain.yml .github/workflows/nightly.yml
+
+  # A PR run whose static checks failed cancels itself, so the builds already
+  # running stop too. Forks get a read-only token; for them the `needs:` below
+  # still keeps every suite from starting. Queue runs never self-cancel (ADR
+  # 2026-10-13): their suites are skipped through `needs:` alone.
+  fail-fast:
+    name: fail-fast
+    needs: [static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ failure() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel this run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: gh run cancel "$RUN_ID" --repo "$REPO"
+
+  # ------------------------------------------------------------------ S1: builds
+  build-java:
+    name: build / java
+    needs: plan
+    if: ${{ needs.plan.outputs.run == 'true' && needs.plan.outputs.tier == 'mq' && needs.plan.outputs.backend == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - uses: ./.github/actions/ci-java-reactor
+        with:
+          mode: build
+
+  # ------------------------------------------------------------------ S2: unit suites
+  # Service unit tests, k8s-operator unit tests and the server-image smoke test, each
+  # behind the workflow's own path filter.
+  unit-java:
+    name: unit / java
+    needs: [plan, static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.plan.outputs.run == 'true' && needs.plan.outputs.draft != 'true' }}
+    uses: ./.github/workflows/openmetadata-service-unit-tests.yml
+    # It publishes its JUnit report as a check run.
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+    with:
+      concurrency_group_suffix: -ci
+
+  # Unsharded, Jest is the UI long pole: p50 19.4 min, p90 22.3 min (n=24, Oct 2026).
+  # Nothing gates on coverage (jest.config.js has no threshold), so the shards run
+  # without it; coverage is reported from main.
+  unit-ui:
+    name: unit / jest (${{ matrix.shard }}/3)
+    needs: [plan, static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.plan.outputs.run == 'true' && needs.plan.outputs.draft != 'true' && needs.plan.outputs.ui == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      - name: Install Antlr4 CLI
+        run: sudo make install_antlr_cli
+      - name: Restore yarn package cache
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.cache/yarn
+          key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles(format('{0}/yarn.lock', env.UI_DIR)) }}
+          restore-keys: |
+            yarn-pkg-cache-${{ runner.os }}-
+      - name: Install UI packages
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 100000 && break
+            [[ "$attempt" -eq 3 ]] && { echo "yarn install failed after 3 attempts" >&2; exit 1; }
+            sleep $((attempt * 15))
+          done
+      - name: Jest
+        working-directory: ${{ env.UI_DIR }}
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: yarn test --ci --shard="$SHARD/3"
+
+  python:
+    name: python
+    needs: [plan, static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.plan.outputs.run == 'true' && needs.plan.outputs.draft != 'true' && needs.plan.outputs.python == 'true' }}
+    uses: ./.github/workflows/py-tests-shared.yml
+    secrets: inherit
+    # Its paths filter lists a PR's files through the API.
+    permissions:
+      contents: read
+      pull-requests: read
+    with:
+      compose-args: "-m no-ui -s true -i false"
+      artifact-prefix: py
+      test-profile: python-integration
+      run-unit-tests: true
+      run-coverage: false
+      # 3.11 and 3.12 run nightly; the queue tests the version CI ships on.
+      python-versions: '["3.10"]'
+      verify_failures: ${{ needs.plan.outputs.tier == 'mq' }}
+      concurrency_group_suffix: -ci
+
+  # ------------------------------------------------------------------ S2: queue suites
+  it:
+    name: it / ${{ matrix.engine }} / ${{ matrix.lane }}
+    needs: [plan, build-java, static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.build-java.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        # The Redis cache profile runs nightly; see nightly.yml.
+        engine: [mysql-elasticsearch, postgres-opensearch]
+        lane: [parallel, global-state, multi-node, retry-queue, rdf]
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false
+          swap-storage: true
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - uses: ./.github/actions/ci-system-deps
+      - uses: ./.github/actions/ci-java-reactor
+        with:
+          mode: restore
+      - name: Run integration tests
+        id: tests
+        env:
+          IT_ENGINE: ${{ matrix.engine }}
+          IT_LANE: ${{ matrix.lane }}
+        run: |
+          diagnostics="openmetadata-integration-tests/target/ci-diagnostics"
+          mkdir -p "$diagnostics"
+          set +e
+          timeout --signal=TERM --kill-after=60s 65m \
+            mvn --no-snapshot-updates verify -pl :openmetadata-integration-tests -P"${IT_ENGINE}" \
+              -DintegrationTests.lane="${IT_LANE}" \
+              -DintegrationTests.parallelStrategy=fixed \
+              -DintegrationTests.parallelism=4 \
+              -DintegrationTests.maxPoolSize=16 \
+            2>&1 | tee "$diagnostics/maven.log"
+          pipeline_status=("${PIPESTATUS[@]}")
+          exit_code="${pipeline_status[0]}"
+          set -e
+          log_bytes="$(stat --format=%s "$diagnostics/maven.log")"
+          if (( log_bytes > 20971520 )); then
+            tail -c 20971520 "$diagnostics/maven.log" > "$diagnostics/maven.log.tail"
+            mv "$diagnostics/maven.log.tail" "$diagnostics/maven.log"
+          fi
+          echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          exit "$exit_code"
+      - name: Classify outcome
+        if: ${{ always() && steps.tests.outcome != 'skipped' }}
+        env:
+          TEST_STEP_OUTCOME: ${{ steps.tests.outcome }}
+          TEST_EXIT_CODE: ${{ steps.tests.outputs.exit_code }}
+          TEST_PROFILE: ${{ matrix.engine }}
+          TEST_LANE: ${{ matrix.lane }}
+        run: |
+          python3 .github/scripts/classify_test_outcome.py \
+            --step-outcome "$TEST_STEP_OUTCOME" \
+            --exit-code "$TEST_EXIT_CODE" \
+            --report-glob 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/ci-diagnostics/**/*' \
+            --diagnostic-glob 'openmetadata-integration-tests/target/failsafe-reports/*.txt' \
+            --output openmetadata-integration-tests/target/ci-diagnostics/outcome.json
+      # The merge gate reads `evidence-<job slug>-a<attempt>`: the outcome and the
+      # failsafe reports of failing classes, small enough to read inside the gate.
+      - name: Upload evidence
+        if: ${{ always() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: evidence-it-${{ matrix.engine }}-${{ matrix.lane }}-a${{ github.run_attempt }}
+          path: |
+            openmetadata-integration-tests/target/ci-diagnostics/outcome.json
+            openmetadata-integration-tests/target/failsafe-reports/*.txt
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload diagnostics
+        if: ${{ failure() && steps.tests.outcome != 'skipped' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: diagnostics-it-${{ matrix.engine }}-${{ matrix.lane }}-a${{ github.run_attempt }}
+          path: openmetadata-integration-tests/target/ci-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+
+  playwright:
+    name: playwright
+    needs: [plan, static-java, static-python, static-ui, static-json, static-ci]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.plan.outputs.run == 'true' && needs.plan.outputs.tier == 'mq' && needs.plan.outputs.e2e == 'true' }}
+    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    secrets: inherit
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+      checks: read
+    with:
+      database: postgresql
+      profile: postgresql-ci
+      workflow_filename: playwright-postgresql-e2e.yml
+      full_suite: true
+      retries: 1
+      # Distinct from playwright-postgresql-e2e.yml's group, so the shadow run and
+      # the live run of the same queue entry never cancel each other.
+      concurrency_group_suffix: -ci
+      verify_failures: true
+
+  # ------------------------------------------------------------------ S3: verify
+  # Java IT failures are verified here against both the entry and its parent
+  # commit. Playwright and Python re-run their failures inside the failed shard,
+  # where the environment is still up (the reusables' `verify_failures` input).
+  verify-java:
+    name: verify / java-it
+    needs: [plan, it]
+    # Only a queue entry has a parent commit to compare with, and a verdict to inform.
+    if: ${{ !cancelled() && needs.it.result == 'failure' && github.event_name == 'merge_group' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PARENT_SHA: ${{ github.event.merge_group.base_sha }}
+    steps:
+      # Outside the checkout, and a plain path: upload-artifact rejects any path with
+      # `..` in it, which would leave the gate without verify.json.
+      - name: Work directory
+        run: echo "WORK=$RUNNER_TEMP/verify" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+      - uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - uses: ./.github/actions/ci-system-deps
+      - uses: ./.github/actions/ci-java-reactor
+        with:
+          mode: restore
+      # Every attempt's: a re-run leaves the lanes it did not re-run with an earlier
+      # attempt's evidence, and `select` keeps each lane's newest.
+      - name: Download the lanes' evidence
+        uses: actions/download-artifact@v7
+        with:
+          pattern: evidence-it-*
+          path: ${{ env.WORK }}/evidence
+      - name: Select failing tests
+        id: select
+        run: |
+          python3 .github/scripts/verify_failures.py select --suite java-it \
+            --evidence-dir "$WORK/evidence" --out "$WORK/targets.json"
+          echo "count=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["targets"]))' "$WORK/targets.json")" >> "$GITHUB_OUTPUT"
+      - name: Re-run on the entry
+        if: ${{ steps.select.outputs.count != '0' }}
+        run: |
+          python3 .github/scripts/verify_failures.py run --targets "$WORK/targets.json" \
+            --side entry --work "$WORK/entry" --out "$WORK/entry.json"
+      # Every entry built on the same parent asks the same question; the merge gate's
+      # ledger keeps the answers, so a control already run is not rebuilt or re-run.
+      - name: Answer parent controls from the ledger
+        id: ledger
+        if: ${{ steps.select.outputs.count != '0' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          out=$(python3 .github/scripts/verify_failures.py ledger --targets "$WORK/targets.json" \
+            --only-reproduced "$WORK/entry.json" --parent-sha "$PARENT_SHA" --out "$WORK/parent-ledger.json")
+          echo "$out"
+          echo "remaining=$(echo "$out" | awk -F= '/^remaining=/ {print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Build the parent commit
+        id: parent
+        if: ${{ steps.ledger.outputs.remaining != '' && steps.ledger.outputs.remaining != '0' }}
+        run: |
+          git worktree add "$WORK/parent" "$PARENT_SHA"
+          (cd "$WORK/parent" && mvn -B -DskipTests -DskipITs -Dspring-boot.repackage.skip=true \
+            --no-snapshot-updates install -pl :openmetadata-integration-tests -am)
+      - name: Re-run on the parent commit
+        if: ${{ steps.parent.outcome == 'success' }}
+        run: |
+          python3 .github/scripts/verify_failures.py run --targets "$WORK/targets.json" \
+            --side parent --only-reproduced "$WORK/entry.json" --skip "$WORK/parent-ledger.json" \
+            --checkout "$WORK/parent" --work "$WORK/parent-runs" --out "$WORK/parent.json"
+      # Exits non-zero only when some test could not be verified (environment,
+      # missing reports): the gate re-runs this job instead of blaming the entry.
+      - name: Write verify.json
+        if: ${{ always() && steps.select.outputs.count != '' }}
+        run: |
+          mkdir -p "$WORK/out"
+          [ -f "$WORK/entry.json" ] || echo '{}' > "$WORK/entry.json"
+          parents=()
+          for f in "$WORK/parent-ledger.json" "$WORK/parent.json"; do
+            [ -f "$f" ] && parents+=("$f")
+          done
+          python3 .github/scripts/verify_failures.py document --targets "$WORK/targets.json" \
+            --entry "$WORK/entry.json" --parent "${parents[@]}" \
+            --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+            --parent-sha "$PARENT_SHA" --out "$WORK/out/verify.json"
+      - name: Upload verify.json
+        if: ${{ always() && steps.select.outputs.count != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-java-it-a${{ github.run_attempt }}
+          path: ${{ env.WORK }}/out/verify.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload verify logs
+        if: ${{ always() && steps.select.outputs.count != '0' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: verify-logs-java-it-a${{ github.run_attempt }}
+          path: |
+            ${{ env.WORK }}/entry/*.log
+            ${{ env.WORK }}/parent-runs/*.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ------------------------------------------------------------------ S4
+  # On PRs this is the strict result the gate mirrors. In the queue the gate
+  # decides from the run's evidence instead; this job only records what ran.
+  ci-summary:
+    name: ci-summary
+    needs: [plan, static-java, static-python, static-ui, static-json, static-ci, build-java, unit-java, unit-ui, python, it, playwright, verify-java]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Summarise the run
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/summary"
+          echo "$NEEDS" > "$RUNNER_TEMP/summary/ci-summary.json"
+          python3 - "$RUNNER_TEMP/summary/ci-summary.json" <<'PY'
+          import json, sys
+          needs = json.load(open(sys.argv[1]))
+          bad = {name: job["result"] for name, job in needs.items() if job["result"] in ("failure", "cancelled")}
+          for name, job in sorted(needs.items()):
+              print(f"{name}: {job['result']}")
+          sys.exit(1 if bad else 0)
+          PY
+      - name: Upload ci-summary.json
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-summary-a${{ github.run_attempt }}
+          path: ${{ runner.temp }}/summary/ci-summary.json
+          retention-days: 7

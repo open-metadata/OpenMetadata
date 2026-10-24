@@ -84,6 +84,20 @@ on:
         required: false
         type: number
         default: 1
+      concurrency_group_suffix:
+        description: >-
+          Appended to the run's concurrency group. ci.yml's shadow run passes one so
+          it and the live caller's run of the same queue entry never cancel each other.
+        required: false
+        type: string
+        default: ""
+      verify_failures:
+        description: >-
+          After a shard's tests fail, re-run only the failed tests in that shard's
+          still-running environment and upload the result for the merge gate.
+        required: false
+        type: boolean
+        default: false
       send_slack_notification:
         description: Post a Slack summary once the run finishes.
         required: false
@@ -164,7 +178,7 @@ concurrency:
   # pull_request_target runs for the same PR don't cancel each other, and so
   # a postgres run and a mysql run for the same ref don't fight — the caller
   # workflows drive different events/schedules and share this reusable.
-  group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}${{ inputs.concurrency_group_suffix }}
   cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
 
 jobs:
@@ -1736,6 +1750,16 @@ jobs:
           if [[ -f "$PW_SERVER_CAPTURE_PID_FILE" ]]; then
             kill -USR1 "$(cat "$PW_SERVER_CAPTURE_PID_FILE")" || true
           fi
+          # Merge-gate evidence only: re-run just this shard's failed tests while its
+          # environment is still up. It never changes the step's exit code.
+          if [[ "$test_exit" != "0" && "$PW_VERIFY_FAILURES" == "true" && -f playwright/output/results.json ]]; then
+            timeout --signal=TERM --kill-after=30s 20m \
+              python3 "$GITHUB_WORKSPACE/.github/scripts/verify_failures.py" pw-shard \
+                --results playwright/output/results.json \
+                --work "$RUNNER_TEMP/pw-verify" \
+                --run-id "$GITHUB_RUN_ID" --run-attempt "$GITHUB_RUN_ATTEMPT" \
+                --out "$RUNNER_TEMP/pw-verify/out/verify.json" || true
+          fi
           exit "$test_exit"
 
         env:
@@ -1743,6 +1767,7 @@ jobs:
           PW_SHARD_PLAN: ${{ steps.fast-inputs.outputs.plan }}
           PW_WORKERS: ${{ matrix.workers }}
           PLAYWRIGHT_RETRIES: ${{ inputs.retries }}
+          PW_VERIFY_FAILURES: ${{ inputs.verify_failures }}
           PLAYWRIGHT_IS_OSS: true
           PLAYWRIGHT_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
           PLAYWRIGHT_SNOWFLAKE_PASSWORD: ${{ secrets.TEST_SNOWFLAKE_PASSWORD }}
@@ -1792,6 +1817,16 @@ jobs:
           # Recommended: pass the GitHub token lets this action correctly
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload failure verification
+        if: ${{ failure() && inputs.verify_failures && steps.run-tests.outcome == 'failure' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v6
+        with:
+          name: verify-playwright-${{ matrix.shardId }}-a${{ github.run_attempt }}
+          path: ${{ runner.temp }}/pw-verify/out/verify.json
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Verify shard coverage
         id: verify-shard-coverage
