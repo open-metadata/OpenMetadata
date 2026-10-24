@@ -338,25 +338,23 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {showRestoreModal && (
-        <div role="presentation" onClick={(e) => e.stopPropagation()}>
-          <SimpleModal
-            data-testid="restore-user-modal"
-            isDismissable={false}
-            isOkLoading={isRestoring}
-            isOpen={showRestoreModal}
-            okText={t('label.restore')}
-            title={t('label.restore-entity', {
-              entity: EntityType.USER,
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isRestoring}
+          isOpen={showRestoreModal}
+          okText={t('label.restore')}
+          title={t('label.restore-entity', {
+            entity: EntityType.USER,
+          })}
+          onCancel={() => setShowRestoreModal(false)}
+          onOk={handleRestore}>
+          <Typography data-testid="restore-modal-body">
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(userData),
             })}
-            onCancel={() => setShowRestoreModal(false)}
-            onOk={handleRestore}>
-            <Typography data-testid="restore-modal-body">
-              {t('message.are-you-want-to-restore', {
-                entity: getEntityName(userData),
-              })}
-            </Typography>
-          </SimpleModal>
-        </div>
+          </Typography>
+        </SimpleModal>
       )}
     </div>
   );
