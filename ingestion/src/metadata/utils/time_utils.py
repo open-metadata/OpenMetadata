@@ -149,15 +149,45 @@ def get_end_of_day_timestamp_mill(
 
 
 def convert_timestamp(timestamp: str) -> int | float:
-    """convert timestamp to int
+    """Convert a timestamp string to a Unix timestamp (seconds, as int or float).
+
+    Handles three input formats:
+    - Second-precision Unix timestamp strings (len < 13), e.g. "1638316800"
+    - Millisecond-precision Unix timestamp strings (len >= 13), e.g. "1638316800000"
+    - ISO / human-readable datetime strings, e.g. "2024-06-30 00:00:00" or
+      "2024-06-30T00:00:00". Timezone-naive values are treated as UTC.
+
     Args:
-        timestamp (str):
-    Retunrs:
-        int
+        timestamp (str): String representation of a timestamp.
+
+    Returns:
+        int | float: Unix timestamp in seconds.
     """
     if len(timestamp) < 13:  # check for ms timestamp
-        return int(timestamp)
-    return float(timestamp) / 1000
+        try:
+            return int(timestamp)
+        except ValueError:
+            pass
+    else:
+        try:
+            return float(timestamp) / 1000
+        except ValueError:
+            pass
+
+    # Normalise a trailing "Z" so fromisoformat works on Python 3.10
+    # (support was only added in 3.11).
+    normalized = timestamp[:-1] + "+00:00" if timestamp.endswith("Z") else timestamp
+    try:
+        dt = datetime.fromisoformat(normalized)
+    except ValueError as exc:
+        raise ValueError(
+            f"could not convert string to float: {timestamp!r}"
+        ) from exc
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=dt_timezone.utc)
+
+    return dt.timestamp()
 
 
 def utc_from_timestamp(ts: int | float) -> datetime:

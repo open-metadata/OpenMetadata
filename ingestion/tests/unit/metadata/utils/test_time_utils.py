@@ -48,7 +48,27 @@ from datetime import datetime, timedelta, timezone  # noqa: E402
 
 import pytest  # noqa: E402
 
-from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+from metadata.utils.time_utils import convert_timestamp, datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "timestamp_str, expected",
+    [
+        ("1638316800", 1638316800),
+        ("1638316800000", 1638316800.0),
+        ("2024-06-30 00:00:00", 1719705600.0),
+        ("2024-06-30T00:00:00", 1719705600.0),
+        ("2024-06-30T00:00:00+00:00", 1719705600.0),
+        ("2024-06-30T00:00:00Z", 1719705600.0),
+    ],
+)
+def test_convert_timestamp(timestamp_str, expected):
+    assert convert_timestamp(timestamp_str) == expected
+
+
+def test_convert_timestamp_invalid_raises():
+    with pytest.raises(ValueError):
+        convert_timestamp("not-a-timestamp")
 
 
 @pytest.mark.parametrize(
