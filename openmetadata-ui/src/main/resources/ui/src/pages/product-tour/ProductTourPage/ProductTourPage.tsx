@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useAppMode } from '../../../hooks/useAppMode';
 
@@ -18,9 +20,11 @@ import { useAppMode } from '../../../hooks/useAppMode';
  * /tour, reached from Help > Tour and the Welcome screen. It only starts the
  * tour for the app mode the user is in; `ProductTour`, mounted above both
  * shells, then covers the page and replaces /tour with the first step. It
- * renders nothing, so no loader shows before the tour's mask does.
+ * renders nothing but the tab title, so no loader shows before the tour's
+ * mask does.
  */
 const ProductTourPage = () => {
+  const { t } = useTranslation();
   const currentMode = useAppMode();
   const start = useProductTourStore((state) => state.start);
 
@@ -30,7 +34,7 @@ const ProductTourPage = () => {
     start(currentMode);
   }, [start, currentMode]);
 
-  return null;
+  return <DocumentTitle title={t('label.tour')} />;
 };
 
 export default ProductTourPage;

@@ -14,6 +14,7 @@ import { render } from '@testing-library/react';
 import ProductTourPage from './ProductTourPage';
 
 const mockStart = jest.fn();
+const mockDocumentTitle = jest.fn();
 
 jest.mock('../../../hooks/product-tour/useProductTourStore', () => ({
   useProductTourStore: (selector: (state: { start: jest.Mock }) => unknown) =>
@@ -24,11 +25,25 @@ jest.mock('../../../hooks/useAppMode', () => ({
   useAppMode: () => 'default',
 }));
 
+jest.mock('../../../components/common/DocumentTitle/DocumentTitle', () =>
+  jest.fn().mockImplementation((props: { title: string }) => {
+    mockDocumentTitle(props);
+
+    return null;
+  })
+);
+
 describe('ProductTourPage', () => {
   it('starts the tour for the mode the user is in, showing nothing itself', () => {
     const { container } = render(<ProductTourPage />);
 
     expect(mockStart).toHaveBeenCalledWith('default');
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it('titles the tab while the tour takes over /tour', () => {
+    render(<ProductTourPage />);
+
+    expect(mockDocumentTitle).toHaveBeenCalledWith({ title: 'label.tour' });
   });
 });
