@@ -457,8 +457,12 @@ class DistributedSearchIndexExecutorTest {
 
     EntityCompletionTracker tracker = executor.getEntityTracker();
     assertNotNull(tracker);
-    assertEquals(2, tracker.getStatus("table").totalPartitions());
-    assertEquals(1, tracker.getStatus("dashboard").totalPartitions());
+    Field totalsField = EntityCompletionTracker.class.getDeclaredField("totalPartitions");
+    totalsField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    Map<String, AtomicInteger> totals = (Map<String, AtomicInteger>) totalsField.get(tracker);
+    assertEquals(2, totals.get("table").get());
+    assertEquals(1, totals.get("dashboard").get());
     assertSame(recreateHandler, getField("indexPromotionHandler"));
   }
 
