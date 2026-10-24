@@ -13,6 +13,7 @@
 import { Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { migratedTo } from '../../constant/migration';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -36,6 +37,10 @@ import { redirectToHomePage } from '../../utils/common';
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const user = new UserClass();
+
+const MIGRATED = migratedTo.browser(
+  'src/test/browser/entity-matrix/EntityDataSteward.browser.test.tsx'
+);
 
 const entities = [
   ApiEndpointClass,
@@ -109,7 +114,7 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
       await entity.visitEntityPage(page);
     });
 
-    test('User as Owner Add, Update and Remove', async ({ page }) => {
+    test('User as Owner Add, Update and Remove', MIGRATED, async ({ page }) => {
       test.slow(true);
 
       const OWNER1 = EntityDataClass.user1.getUserDisplayName();
@@ -118,25 +123,25 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
       await entity.owner(page, [OWNER1, OWNER3], [OWNER2]);
     });
 
-    test('Team as Owner Add, Update and Remove', async ({ page }) => {
+    test('Team as Owner Add, Update and Remove', MIGRATED, async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.responseData.displayName;
       const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
     });
 
-    test('Tier Add, Update and Remove', async ({ page }) => {
+    test('Tier Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tier(page, 'Tier1', COMMON_TIER_TAG[1].name);
     });
 
-    test('Update description', async ({ page }) => {
+    test('Update description', MIGRATED, async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
-    test('Tag Add, Update and Remove', async ({ page }) => {
+    test('Tag Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
-    test('Glossary Term Add, Update and Remove', async ({ page }) => {
+    test('Glossary Term Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
@@ -146,68 +151,76 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Tag Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Tag Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.tagChildren({
-          page,
-          tag1: 'PersonalData.Personal',
-          tag2: 'PII.None',
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector,
-          entityEndpoint: entity.endpoint,
-        });
-      });
+          await entity.tagChildren({
+            page,
+            tag1: 'PersonalData.Personal',
+            tag2: 'PII.None',
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector,
+            entityEndpoint: entity.endpoint,
+          });
+        }
+      );
     }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Glossary Term Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        await entity.glossaryTermChildren({
-          page,
-          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
-          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector,
-          entityEndpoint: entity.endpoint,
-        });
-      });
-
-      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
-        test('DisplayName Add, Update and Remove for child entities', async ({
-          page,
-        }) => {
+      test(
+        'Glossary Term Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
           await page.getByTestId(entity.childrenTabId ?? '').click();
 
-          await entity.displayNameChildren({
+          await entity.glossaryTermChildren({
             page,
-            columnName: entity.childrenSelectorId ?? '',
+            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+            rowId: entity.childrenSelectorId ?? '',
             rowSelector,
+            entityEndpoint: entity.endpoint,
           });
-        });
+        }
+      );
+
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
+        test(
+          'DisplayName Add, Update and Remove for child entities',
+          MIGRATED,
+          async ({ page }) => {
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+
+            await entity.displayNameChildren({
+              page,
+              columnName: entity.childrenSelectorId ?? '',
+              rowSelector,
+            });
+          }
+        );
       }
 
-      test('Description Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Description Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.descriptionUpdateChildren(
-          page,
-          entity.childrenSelectorId ?? '',
-          rowSelector,
-          entity.endpoint
-        );
-      });
+          await entity.descriptionUpdateChildren(
+            page,
+            entity.childrenSelectorId ?? '',
+            rowSelector,
+            entity.endpoint
+          );
+        }
+      );
     }
 
-    test(`UpVote & DownVote entity`, async ({ page }) => {
+    test(`UpVote & DownVote entity`, MIGRATED, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
     });
@@ -220,7 +233,7 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
       await entity.followUnfollowEntity(page, entityName);
     });
 
-    test(`Update displayName`, async ({ page }) => {
+    test(`Update displayName`, MIGRATED, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
