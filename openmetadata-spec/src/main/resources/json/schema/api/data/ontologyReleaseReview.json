@@ -1,0 +1,133 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseReview.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseReview",
+  "description": "The state of one ontology release review as seen by the calling user: the frozen approval rule, each assignee entry with its vote, the latest decision, and whether the caller's vote would decide the review.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseReview",
+  "definitions": {
+    "assigneeStatus": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.OntologyReviewAssigneeStatus",
+      "enum": [
+        "Pending",
+        "Approved",
+        "Rejected"
+      ],
+      "javaEnums": [
+        {
+          "name": "Pending"
+        },
+        {
+          "name": "Approved"
+        },
+        {
+          "name": "Rejected"
+        }
+      ]
+    },
+    "assignee": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReviewAssignee",
+      "description": "One assignee entry of the review task. A reviewer team is one entry, covered by any member's vote.",
+      "properties": {
+        "assignee": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "status": {
+          "$ref": "#/definitions/assigneeStatus"
+        },
+        "vote": {
+          "description": "The counted vote that covers this entry, when one exists.",
+          "$ref": "../../entity/tasks/task.json#/definitions/taskReviewVote"
+        }
+      },
+      "required": [
+        "assignee",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.OntologyReviewDecision",
+      "description": "The vote that decided the review.",
+      "properties": {
+        "decision": {
+          "$ref": "../../entity/tasks/task.json#/definitions/reviewVoteDecision"
+        },
+        "user": {
+          "$ref": "../../type/entityReference.json"
+        },
+        "reason": {
+          "description": "The deciding reviewer's comment, verbatim.",
+          "type": "string"
+        },
+        "timestamp": {
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": [
+        "decision",
+        "user",
+        "timestamp"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "release": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "ontology": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "task": {
+      "description": "The approval task that decides this review.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "taskId": {
+      "description": "Human readable task identifier, such as TASK-00042.",
+      "type": "string"
+    },
+    "requester": {
+      "description": "User who requested the review.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "approvalRule": {
+      "$ref": "../../type/ontologyApprovalRule.json"
+    },
+    "status": {
+      "description": "The release's workflow status.",
+      "$ref": "../../type/status.json"
+    },
+    "assignees": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/assignee"
+      }
+    },
+    "latestDecision": {
+      "$ref": "#/definitions/decision"
+    },
+    "callerCanVote": {
+      "description": "True when the caller holds a pending assignee entry on an open review and is neither the requester nor the author.",
+      "type": "boolean"
+    },
+    "callerCompletesRule": {
+      "description": "True when the caller can vote and an approval by the caller would complete the frozen rule.",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "release",
+    "ontology",
+    "task",
+    "approvalRule",
+    "status",
+    "assignees",
+    "callerCanVote",
+    "callerCompletesRule"
+  ],
+  "additionalProperties": false
+}

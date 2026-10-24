@@ -125,7 +125,12 @@ export interface Task {
      * Users or teams who should review this task.
      */
     reviewers?: EntityReference[];
-    status:     TaskStatus;
+    /**
+     * Counted votes on a workflow approval task, one per voter, including the deciding vote.
+     * Server-managed.
+     */
+    reviewVotes?: TaskReviewVote[];
+    status:       TaskStatus;
     /**
      * Tags for this task.
      */
@@ -207,6 +212,11 @@ export interface Task {
  * User who created this task.
  *
  * User who resolved the task.
+ *
+ * Assignee entry the vote covers: the voter's own entry, or the team the voter votes
+ * through.
+ *
+ * User who cast the vote.
  */
 export interface EntityReference {
     /**
@@ -496,7 +506,12 @@ export enum SyncStatus {
  * Server-captured immutable ontology release reviewed by an existing approval workflow task.
  */
 export interface OntologyReviewTarget {
-    author: string;
+    /**
+     * Approval rule frozen when the review was requested. Reviews requested before the rule
+     * existed decide on the first approval.
+     */
+    approvalRule?: OntologyApprovalRule;
+    author:        string;
     /**
      * SHA-256 of the ontology-review-v3 sealed release identity.
      */
@@ -510,6 +525,19 @@ export interface OntologyReviewTarget {
      * Owning ontology ID used to serialize release review decisions.
      */
     ontologyId: string;
+}
+
+/**
+ * Approval rule frozen when the review was requested. Reviews requested before the rule
+ * existed decide on the first approval.
+ *
+ * How many of an ontology's reviewers must approve a release review. AnyReviewer decides on
+ * the first approval. AllReviewers waits for every reviewer entry; a reviewer team counts
+ * once and any member covers it. Frozen into the review task when a review is requested.
+ */
+export enum OntologyApprovalRule {
+    AllReviewers = "AllReviewers",
+    AnyReviewer = "AnyReviewer",
 }
 
 /**
@@ -549,6 +577,39 @@ export interface TaskResolution {
      */
     resolvedBy?: EntityReference;
     type?:       ResolutionType;
+}
+
+/**
+ * One counted vote on a multi-reviewer approval task. The server records it; clients cannot
+ * set it.
+ */
+export interface TaskReviewVote {
+    /**
+     * Assignee entry the vote covers: the voter's own entry, or the team the voter votes
+     * through.
+     */
+    assignee: EntityReference;
+    /**
+     * Comment given with the vote, kept verbatim.
+     */
+    comment?: string;
+    decision: ReviewVoteDecision;
+    /**
+     * When the vote was counted.
+     */
+    timestamp: number;
+    /**
+     * User who cast the vote.
+     */
+    voter: EntityReference;
+}
+
+/**
+ * What a counted review vote decided.
+ */
+export enum ReviewVoteDecision {
+    Approved = "Approved",
+    Rejected = "Rejected",
 }
 
 /**

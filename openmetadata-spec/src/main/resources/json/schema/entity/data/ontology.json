@@ -78,6 +78,10 @@
         "$ref": "../../type/ontologyConfiguration.json#/definitions/prefix"
       },
       "default": []
+    },
+    "approvalRule": {
+      "description": "How many reviewers must approve a release review. Frozen into each review task when a review is requested.",
+      "$ref": "../../type/ontologyApprovalRule.json"
     }
   },
   "required": [
