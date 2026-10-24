@@ -1,0 +1,13 @@
+kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions
+ONTOLOGY,https://example.org/shop,Shop,Orders and customers,,,,,,,,,,,,,,,,,,,
+CONCEPT,https://example.org/Customer,Customer,Someone who buys,OWL_CLASS,https://example.org/Party,Client,EXACT_MATCH:https://schema.org/Customer,,,,,,,,,,,,,,,
+CONCEPT,https://example.org/Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,
+CONCEPT,https://example.org/Segment,Segment,A group of customers,SKOS_CONCEPT,,,,,,,,,,,,,,,,,,
+PROPERTY,https://example.org/buys,buys,,,,,,OBJECT,https://example.org/Customer,https://example.org/Party,,,,https://example.org/boughtBy,TRANSITIVE,,https://example.org/sells,,,,,
+PROPERTY,https://example.org/code,code,,,,,,DATA,,http://www.w3.org/2001/XMLSchema#string,,id,true,,,,,,,,,
+PROPERTY,https://example.org/grandparentOf,,,,,,,OBJECT,,,,,,,,https://example.org/parentOf;https://example.org/parentOf,,,,,,
+PROPERTY,https://example.org/size,,,,,,,DATA,,,"""""""small"""""";""""""4""""^^<http://www.w3.org/2001/XMLSchema#integer>"";""""""a;b\""""c""""""",,,,,,,,,,,
+AXIOM,https://example.org/acme,,,,,,,,,,,,,,,,,CLASS_ASSERTION,,,,"[{""kind"":""NAMED_CLASS"",""classIri"":""https://example.org/Customer""}]"
+AXIOM,https://example.org/acme,,,,,,,,,,,,,,,,,DATA_PROPERTY_ASSERTION,https://example.org/code,,"""A-1""",
+AXIOM,https://example.org/acme,,,,,,,,,,,,,,,,,OBJECT_PROPERTY_ASSERTION,https://example.org/buys,https://example.org/widget,,
+AXIOM,https://example.org/Customer,,,,,,,,,,,,,,,,,SUBCLASS_OF,,,,"[{""kind"":""RESTRICTION"",""propertyIri"":""https://example.org/buys"",""restrictionKind"":""SOME"",""filler"":{""kind"":""NAMED_CLASS"",""classIri"":""https://example.org/Party""}}]"

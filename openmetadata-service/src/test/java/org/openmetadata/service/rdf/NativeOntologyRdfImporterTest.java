@@ -1,6 +1,7 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -18,15 +19,20 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.ConceptMapping.ConceptMappingType;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
@@ -481,6 +487,261 @@ class NativeOntologyRdfImporterTest {
     } finally {
       model.close();
     }
+  }
+
+  @Test
+  void previewCountsEveryParsedDefinitionOnceByKindAndOutcome() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(1, counts.getNewConcepts());
+    assertEquals(1, counts.getUpdatedConcepts());
+    assertEquals(1, counts.getNewProperties());
+    assertEquals(1, counts.getUpdatedProperties());
+    assertEquals(1, counts.getNewRelations());
+    assertEquals(3, counts.getNewMappings());
+    assertEquals(2, counts.getSkippedDefinitions());
+    assertEquals(1, counts.getSkippedRelations());
+    assertEquals(NativeOntologyImportFormat.TURTLE, preview.getSummary().getDetectedFormat());
+    assertEquals(5, preview.getChangeSet().getOperations().size());
+    assertEquals(root.getFullyQualifiedName(), preview.getChangeSet().getOntology());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void summarizeAndPreviewAgreeOnAnEmptyTarget() {
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+
+    final var summary = importer.summarize(source);
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(summary, preview.getSummary());
+    final var counts = summary.getCounts();
+    assertEquals(3, counts.getNewConcepts());
+    assertEquals(0, counts.getUpdatedConcepts());
+    assertEquals(3, counts.getNewProperties());
+    assertEquals(0, counts.getUpdatedProperties());
+    assertEquals(2, counts.getNewRelations());
+    assertEquals(4, counts.getNewMappings());
+    assertEquals(0, counts.getSkippedDefinitions());
+    assertEquals(0, counts.getSkippedRelations());
+    assertEquals(8, preview.getChangeSet().getOperations().size());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void reimportingTheSameFileSkipsEverything() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(BASE_TURTLE));
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(0, counts.getNewConcepts() + counts.getUpdatedConcepts());
+    assertEquals(0, counts.getNewProperties() + counts.getUpdatedProperties());
+    assertEquals(0, counts.getNewRelations());
+    assertEquals(0, counts.getNewMappings());
+    assertEquals(4, counts.getSkippedDefinitions());
+    assertEquals(1, counts.getSkippedRelations());
+    assertEquals(0, preview.getChangeSet().getOperations().size());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void ontologyLabelComesFromASingleHeaderOnly() {
+    final String prefixes =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        <https://example.org/C> a owl:Class .
+        """;
+    final String oneHeader =
+        prefixes + "<https://example.org/o> a owl:Ontology ; rdfs:label \"Finance\" .\n";
+    final String twoHeaders =
+        oneHeader + "<https://example.org/o2> a owl:Ontology ; rdfs:label \"Risk\" .\n";
+
+    assertEquals(
+        "Finance", importer.summarize(importer.read(turtleRequest(oneHeader))).getOntologyLabel());
+    assertNull(importer.summarize(importer.read(turtleRequest(twoHeaders))).getOntologyLabel());
+    assertNull(importer.summarize(importer.read(turtleRequest(prefixes))).getOntologyLabel());
+  }
+
+  @Test
+  void previewLeavesTheParsedDocumentUnchanged() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+    final String before = JsonUtils.pojoToJson(source.document());
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    assertEquals(before, JsonUtils.pojoToJson(source.document()));
+    assertNull(source.document().concepts().getFirst().getId());
+    assertNull(source.document().axioms().getFirst().getName());
+    assertEquals(5, preview.getChangeSet().getOperations().size());
+    importer.preview(source, emptySnapshot(root));
+    assertEquals(before, JsonUtils.pojoToJson(source.document()));
+  }
+
+  @Test
+  void changeSetNamesTheSourceFamily() {
+    final var root = root();
+    final var document = importer.read(turtleRequest(BASE_TURTLE)).document();
+    final var csv = new NativeOntologyRdfImporter.Source(NativeOntologyImportFormat.CSV, document);
+
+    final var preview = importer.preview(csv, emptySnapshot(root));
+
+    assertEquals(NativeOntologyImportFormat.CSV, preview.getSummary().getDetectedFormat());
+    assertEquals("Native CSV import", preview.getChangeSet().getDisplayName());
+    assertEquals("Native CSV import preview", preview.getChangeSet().getDescription());
+    final var axiom = axiomOperations(preview.getChangeSet()).getFirst().getAxiom();
+    assertEquals("Imported from native CSV", axiom.getDescription());
+    assertEquals("Imported subclass of", axiom.getDisplayName());
+    final var rdf =
+        importer.preview(importer.read(turtleRequest(BASE_TURTLE)), emptySnapshot(root));
+    assertEquals("Native RDF import", rdf.getChangeSet().getDisplayName());
+    assertEquals(
+        "Imported from native RDF",
+        axiomOperations(rdf.getChangeSet()).getFirst().getAxiom().getDescription());
+  }
+
+  @Test
+  void bothPreviewsRefuseMoreThanOneThousandChangedDefinitions() {
+    final var atLimit = importer.read(turtleRequest(classes(1000)));
+    final var pastLimit = importer.read(turtleRequest(classes(1001)));
+
+    assertEquals(1000, importer.summarize(atLimit).getCounts().getNewConcepts());
+    assertEquals(
+        1000,
+        importer.preview(atLimit, emptySnapshot(root())).getSummary().getCounts().getNewConcepts());
+    final String message = "A native import accepts at most 1000 changed definitions";
+    assertEquals(
+        message,
+        assertThrows(BadRequestException.class, () -> importer.summarize(pastLimit)).getMessage());
+    assertEquals(
+        message,
+        assertThrows(
+                BadRequestException.class, () -> importer.preview(pastLimit, emptySnapshot(root())))
+            .getMessage());
+  }
+
+  @Test
+  void aRequestWithoutARecognizableFormatNamesTheFiveFormats() {
+    final var request = new PreviewNativeOntologyImport().withData("not an ontology");
+
+    assertEquals(
+        "Specify format as one of turtle, rdfxml, ntriples, jsonld, or csv",
+        assertThrows(BadRequestException.class, () -> importer.read(request)).getMessage());
+  }
+
+  private static final String COUNT_PREFIXES =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+      @prefix ex: <https://example.org/counts/> .
+      """;
+  private static final String BASE_TURTLE =
+      COUNT_PREFIXES
+          + """
+          ex:A a owl:Class ; rdfs:label "A" .
+          ex:B a owl:Class ; rdfs:label "B" ; skos:exactMatch <https://external.example/B1> .
+          ex:p a owl:ObjectProperty ; rdfs:label "p" ; rdfs:domain ex:A ; rdfs:range ex:B .
+          ex:q a owl:DatatypeProperty ; rdfs:label "q" ; rdfs:comment "Before" .
+          ex:A rdfs:subClassOf ex:B .
+          """;
+  private static final String NEXT_TURTLE =
+      COUNT_PREFIXES
+          + """
+          ex:A a owl:Class ; rdfs:label "A" .
+          ex:B a owl:Class ; rdfs:label "B renamed" ;
+            skos:exactMatch <https://external.example/B1> ;
+            skos:closeMatch <https://external.example/B2> .
+          ex:C a owl:Class ; rdfs:label "C" ;
+            skos:exactMatch <https://external.example/C1> ;
+            skos:relatedMatch <https://external.example/C2> .
+          ex:p a owl:ObjectProperty ; rdfs:label "p" ; rdfs:domain ex:A ; rdfs:range ex:B .
+          ex:q a owl:DatatypeProperty ; rdfs:label "q" ; rdfs:comment "After" .
+          ex:r a owl:ObjectProperty ; rdfs:label "r" .
+          ex:A rdfs:subClassOf ex:B .
+          ex:C rdfs:subClassOf ex:A .
+          """;
+
+  private static String classes(int count) {
+    final StringBuilder turtle = new StringBuilder();
+    for (int index = 0; index < count; index++) {
+      turtle
+          .append("<https://example.org/big/C")
+          .append(index)
+          .append("> a <http://www.w3.org/2002/07/owl#Class> .\n");
+    }
+    return turtle.toString();
+  }
+
+  private static PreviewNativeOntologyImport turtleRequest(String turtle) {
+    return new PreviewNativeOntologyImport()
+        .withFormat(NativeOntologyImportFormat.TURTLE)
+        .withData(turtle);
+  }
+
+  private static OntologyWorkingSnapshot.Snapshot emptySnapshot(Ontology root) {
+    return new OntologyWorkingSnapshot.Snapshot(
+        state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+  }
+
+  /** The snapshot a target holds after the planned import of {@code turtle} has been applied. */
+  private OntologyWorkingSnapshot.Snapshot imported(Ontology root, String turtle) {
+    final var plan = importer.preview(importer.read(turtleRequest(turtle)), emptySnapshot(root));
+    final var entries = new ArrayList<OntologyWorkingSnapshot.Entry>();
+    entries.add(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root));
+    for (final OntologyChangeOperation operation : plan.getChangeSet().getOperations()) {
+      entries.add(
+          switch (operation.getOperationType()) {
+            case UPSERT_CONCEPT -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.CONCEPT, operation.getConcept());
+            case UPSERT_PROPERTY -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.PROPERTY, operation.getProperty());
+            case UPSERT_AXIOM -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.AXIOM, operation.getAxiom());
+            default -> throw new IllegalStateException(
+                "Import plans only upsert: " + operation.getOperationType());
+          });
+    }
+    return new OntologyWorkingSnapshot.Snapshot(state(root), entries);
+  }
+
+  private static List<OntologyChangeOperation> axiomOperations(CreateOntologyChangeSet plan) {
+    return plan.getOperations().stream()
+        .filter(
+            operation -> operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM)
+        .toList();
+  }
+
+  private static void assertCountInvariants(
+      NativeOntologyDocument document, NativeOntologyImportPreview preview) {
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(
+        document.concepts().size() + document.properties().size(),
+        counts.getNewConcepts()
+            + counts.getUpdatedConcepts()
+            + counts.getNewProperties()
+            + counts.getUpdatedProperties()
+            + counts.getSkippedDefinitions(),
+        "concepts + properties = new + updated + skipped definitions");
+    assertEquals(
+        document.axioms().size(),
+        counts.getNewRelations() + counts.getSkippedRelations(),
+        "axioms = new + skipped relations");
+    assertEquals(
+        preview.getChangeSet().getOperations().size(),
+        counts.getNewConcepts()
+            + counts.getUpdatedConcepts()
+            + counts.getNewProperties()
+            + counts.getUpdatedProperties()
+            + counts.getNewRelations(),
+        "operations = new + updated definitions + new relations");
   }
 
   private static ConceptMapping richMapping(ConceptMappingType type, String source) {

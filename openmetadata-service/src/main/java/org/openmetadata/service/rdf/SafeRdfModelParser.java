@@ -17,9 +17,9 @@ import org.openmetadata.service.exception.BadRequestException;
 
 /** A bounded parser for native preview; it never loads external documents or named graphs. */
 public final class SafeRdfModelParser {
-  private static final int MAX_INPUT_BYTES = 10 * 1024 * 1024;
-  private static final int MAX_TRIPLES = 100_000;
-  private static final long PARSE_NANOS = Duration.ofSeconds(30).toNanos();
+  public static final int MAX_INPUT_BYTES = 10 * 1024 * 1024;
+  public static final int MAX_TRIPLES = 100_000;
+  public static final long PARSE_NANOS = Duration.ofSeconds(30).toNanos();
 
   public Model parse(final String data, final RdfSerializationFormat format) {
     if (data == null
