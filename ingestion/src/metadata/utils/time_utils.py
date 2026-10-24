@@ -167,26 +167,27 @@ def convert_timestamp(timestamp: str) -> int | float:
         try:
             return int(timestamp)
         except ValueError:
-            pass  # fall through to datetime parsing below
+            pass
     else:
         try:
             return float(timestamp) / 1000
         except ValueError:
-            pass  # fall through to datetime parsing below
+            pass
 
-    # Attempt to parse as a human-readable / ISO datetime string.
+    # Normalise a trailing "Z" so fromisoformat works on Python 3.10
+    # (support was only added in 3.11).
+    normalized = timestamp[:-1] + "+00:00" if timestamp.endswith("Z") else timestamp
     try:
-        dt = datetime.fromisoformat(timestamp)
+        dt = datetime.fromisoformat(normalized)
     except ValueError as exc:
         raise ValueError(
             f"could not convert string to float: {timestamp!r}"
         ) from exc
 
-    # Treat timezone-naive datetimes as UTC for a consistent epoch value.
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=dt_timezone.utc)
 
-    return datetime_to_timestamp(dt)
+    return dt.timestamp()
 
 
 def utc_from_timestamp(ts: int | float) -> datetime:

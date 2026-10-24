@@ -54,22 +54,16 @@ from metadata.utils.time_utils import convert_timestamp, datetime_to_timestamp, 
 @pytest.mark.parametrize(
     "timestamp_str, expected",
     [
-        # Numeric second-precision Unix timestamp (existing behaviour)
         ("1638316800", 1638316800),
-        # Numeric millisecond-precision Unix timestamp (existing behaviour)
         ("1638316800000", 1638316800.0),
-        # Human-readable space-separated datetime — the case from the bug report.
-        # Treated as UTC, so should equal the equivalent epoch second.
-        ("2024-06-30 00:00:00", 1719705600),
-        # ISO 8601 T-separated datetime — same point in time.
-        ("2024-06-30T00:00:00", 1719705600),
-        # ISO 8601 with explicit UTC offset.
-        ("2024-06-30T00:00:00+00:00", 1719705600),
+        ("2024-06-30 00:00:00", 1719705600.0),
+        ("2024-06-30T00:00:00", 1719705600.0),
+        ("2024-06-30T00:00:00+00:00", 1719705600.0),
+        ("2024-06-30T00:00:00Z", 1719705600.0),
     ],
 )
 def test_convert_timestamp(timestamp_str, expected):
-    result = convert_timestamp(timestamp_str)
-    assert result == pytest.approx(expected)
+    assert convert_timestamp(timestamp_str) == expected
 
 
 def test_convert_timestamp_invalid_raises():
