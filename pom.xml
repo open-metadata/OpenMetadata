@@ -1023,63 +1023,46 @@
     <profile>
       <id>release</id>
       <build>
+        <pluginManagement>
+          <plugins>
+            <!-- Maven Central requires sources and Javadoc jars but accepts placeholders; real ones
+                 would exceed its release-size limit
+                 (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module).
+                 In pluginManagement so only jar-packaged modules get them, not pom-only parents. -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-jar-plugin</artifactId>
+              <version>${maven-jar-plugin.version}</version>
+              <executions>
+                <execution>
+                  <id>placeholder-sources</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <classifier>sources</classifier>
+                    <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                    <forceCreation>true</forceCreation>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>placeholder-javadoc</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <classifier>javadoc</classifier>
+                    <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                    <forceCreation>true</forceCreation>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
         <plugins>
-          <!-- Maven Central requires sources and Javadoc jars but accepts placeholders; real ones
-               would exceed its release-size limit
-               (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>${maven-source-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <phase>none</phase>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>${maven-javadoc-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <phase>none</phase>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-jar-plugin</artifactId>
-            <version>${maven-jar-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>placeholder-sources</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                  <classifier>sources</classifier>
-                  <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
-                  <forceCreation>true</forceCreation>
-                </configuration>
-              </execution>
-              <execution>
-                <id>placeholder-javadoc</id>
-                <phase>package</phase>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-                <configuration>
-                  <classifier>javadoc</classifier>
-                  <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
-                  <forceCreation>true</forceCreation>
-                </configuration>
-              </execution>
-            </executions>
-          </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
