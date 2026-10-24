@@ -1305,6 +1305,104 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    * fails with appropriate error message.
    */
   @Test
+  void test_importCsv_cannotEditTermInAnotherGlossary(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("glossaryCsvOwner");
+    org.openmetadata.schema.entity.teams.User owner =
+        admin
+            .users()
+            .create(
+                new org.openmetadata.schema.api.teams.CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org"));
+    Glossary ownedGlossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("ownedGlossary"))
+                    .withDescription("Owned glossary")
+                    .withOwners(List.of(owner.getEntityReference())));
+    Glossary otherGlossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("otherGlossary"))
+                    .withDescription("Other glossary"));
+    GlossaryTerm parent =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("parent"))
+                    .withGlossary(otherGlossary.getFullyQualifiedName())
+                    .withDescription("Parent term"));
+    GlossaryTerm term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("term"))
+                    .withGlossary(otherGlossary.getFullyQualifiedName())
+                    .withParent(parent.getFullyQualifiedName())
+                    .withDescription("Original term description"));
+
+    String csv =
+        GLOSSARY_TERM_CSV_HEADER
+            + String.format(
+                "\"%s\",%s,%s,Rewritten by another glossary import,,,,,,,,,,,",
+                parent.getFullyQualifiedName(), term.getName(), term.getName());
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    String result = ownerClient.glossaries().importCsv(ownedGlossary.getName(), csv, false);
+
+    assertTrue(result.contains("failure"), result);
+    assertEquals(
+        "Original term description",
+        admin.glossaryTerms().get(term.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_importCsv_glossaryOwnerCreatesNestedTerms(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("glossaryNestOwner");
+    org.openmetadata.schema.entity.teams.User owner =
+        admin
+            .users()
+            .create(
+                new org.openmetadata.schema.api.teams.CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org"));
+    Glossary glossary =
+        admin
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("nestGlossary"))
+                    .withDescription("Owned glossary")
+                    .withOwners(List.of(owner.getEntityReference())));
+    String parentName = ns.prefix("parentTerm");
+    String csv =
+        GLOSSARY_TERM_CSV_HEADER
+            + String.format(",%s,%s,Parent term,,,,,,,,,,,%n", parentName, parentName)
+            + String.format(
+                "\"%s.%s\",childTerm,childTerm,Child term,,,,,,,,,,,",
+                glossary.getFullyQualifiedName(), parentName);
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+
+    for (boolean dryRun : List.of(true, false)) {
+      String result = ownerClient.glossaries().importCsv(glossary.getName(), csv, dryRun);
+      assertFalse(result.contains("failure"), result);
+    }
+    assertNotNull(
+        admin
+            .glossaryTerms()
+            .getByName(glossary.getFullyQualifiedName() + "." + parentName + ".childTerm"));
+  }
+
+  @Test
   void test_importCsv_withUnapprovedRelatedTerm_fails(TestNamespace ns)
       throws InterruptedException, com.fasterxml.jackson.core.JsonProcessingException {
     OpenMetadataClient client = SdkClients.adminClient();
