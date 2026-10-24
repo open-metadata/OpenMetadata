@@ -44,7 +44,7 @@ on:
         description: Build the CI-only coarse Vite bundle
         required: true
         type: boolean
-        default: true
+        default: false
       send_slack_notification:
         description: Post the run summary to the E2E Slack channel
         required: false

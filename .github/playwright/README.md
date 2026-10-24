@@ -36,6 +36,15 @@ The `Basic` and `chromium` projects share that common 24-runner cap and are bala
 
 The `@ingestion` project is excluded from common Chromium only when the dynamic planner is active. Its source-matched Airflow image is restored only for ingestion shards, so other workflows that invoke the regular Chromium project keep their existing behavior.
 
+## Visual and RDF lanes
+
+Two lanes run a whole project on one shard and are switched on by their own path filters in `check-changes` (always on for manual and nightly runs), not by spec impact:
+
+- `visual` runs `visual-regression` against its own MySQL environment seeded from scratch — the environment its baselines were captured on — reusing the shared distribution and ingestion image, and renders inside `mcr.microsoft.com/playwright:v1.57.0-jammy` for the same reason. The shared distribution must carry the regular bundle: the coarse bundle (`coarse_bundle=true`) folds lazy pages into the eager chunk, so their CSS loads before the global CSS and ties between equally specific rules resolve differently from production (the settings page header loses 4px; the explore page loses its fixed height).
+- `rdf` runs `Knowledge Graph` and `Ontology RDF` against its own Postgres + Fuseki environment with RDF enabled and seeded from scratch, reusing the shared distribution and ingestion image.
+
+Both are shards of the same run, so they count toward `playwright-summary`. Neither runs on `protocol=h2` (their Docker servers are plain HTTP), and `visual` does not run on `coarse_bundle=true` (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
+
 ## Entity matrix
 
 Specs that repeat the same scenarios for every entity type (Entity, Lineage, Custom Properties, Explore right panel, service pages, …) wrap the generating collection in `pickEntityMatrix` from `playwright/utils/entityMatrix.ts`. Pull request and merge-queue runs (`entity_matrix=representative` from `select_playwright_tests.py`) generate those tests for one representative entity only — Table for data assets, Database Service for services. The nightly schedule and manual dispatches run the full matrix, as do local runs. A spec changed directly in the pull request keeps its full matrix so the edit is validated against every entity before it merges. Test titles do not depend on the selected set, so stable IDs and timing history are shared between both modes.
@@ -57,4 +66,4 @@ Use `workflow_dispatch` on the same commit for baseline comparisons:
 - `coarse_bundle=false` versus `coarse_bundle=true`
 - `protocol=http` versus `protocol=h2`
 
-The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted, so the CI-only coarse bundle remains opt-in while its chunking strategy is corrected. HTTP/2 is also opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.
+The local cold-shell bundle benchmark on the same source tree reduced static requests from 144 to 22 (84.7%) and median DOM-content-loaded time from 109 ms to 57 ms (47.7%). The first hosted fixture smoke exposed a circular chunk-initialization failure before React mounted, so the CI-only coarse bundle remains opt-in; it also renders some pages differently from production (see Visual and RDF lanes). HTTP/2 is also opt-in until hosted runs establish its result. Keep a variant enabled only after three consecutive full runs meet the thresholds in `evaluate_playwright_performance.py`.

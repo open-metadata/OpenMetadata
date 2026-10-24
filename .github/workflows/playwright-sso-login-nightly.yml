@@ -115,7 +115,7 @@ jobs:
   # Detects whether the PR touches Okta-specific files so the Okta leg (a
   # ~40-min live-tenant run) can be selectively enabled on PRs that touch
   # its own code without paying the cost on every unrelated auth PR.
-  # Mirrors the `check-changes` pattern used by playwright-visual.yml et al.
+  # Mirrors the `check-changes` pattern used by playwright-e2e-reusable.yml.
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
