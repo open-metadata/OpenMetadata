@@ -19,6 +19,7 @@ import lkml
 from metadata.ingestion.source.dashboard.looker.models import (
     Includes,
     LkmlFile,
+    LookMlField,
     LookMlView,
     ViewName,
 )
@@ -69,12 +70,18 @@ class BulkLkmlParser(metaclass=Singleton):
         self.reader = reader
         self.additional_readers = additional_readers or []
 
+        # LookML refinements (`view: +name {}`), applied once every reader is parsed
+        # so that a refinement can target a base view from another repository.
+        self._pending_refinements: list[LookMlView] = []
+
         # Parse views from the primary reader
         self.__parse_all_views(self.reader)
 
         # Parse views from additional readers
         for additional_reader in self.additional_readers:
             self.__parse_all_views(additional_reader)
+
+        self.__apply_refinements()
 
     def __parse_all_views(self, reader: LocalReader):
         file_paths = reader.get_local_files(search_key=".view.lkml")
@@ -85,9 +92,49 @@ class BulkLkmlParser(metaclass=Singleton):
                 self.parsed_files[Includes(_path)] = file
                 for view in lkml_file.views:
                     view.source_file = _path
-                    self._views_cache[view.name] = view
+                    if view.name.startswith("+"):
+                        # LookML refinement — defer until all base views are loaded.
+                        self._pending_refinements.append(view)
+                    else:
+                        self._views_cache[view.name] = view
             except Exception as err:
                 logger.debug(f"Error parsing file {_path}: {err}")
+
+    @staticmethod
+    def __merge_fields(base_fields: list[LookMlField], refined_fields: list[LookMlField]) -> None:
+        """A refined field with an existing name updates that field; new names are appended."""
+        positions = {field.name: idx for idx, field in enumerate(base_fields)}
+        for refined in refined_fields:
+            idx = positions.get(refined.name)
+            if idx is None:
+                positions[refined.name] = len(base_fields)
+                base_fields.append(refined)
+            else:
+                base_fields[idx] = base_fields[idx].model_copy(update=refined.model_dump(exclude_unset=True))
+
+    def __apply_refinements(self) -> None:
+        """Merge the pending refinements into their base views, in parse order."""
+        for refinement in self._pending_refinements:
+            base_name = ViewName(refinement.name[1:])
+            base_view = self._views_cache.get(base_name)
+            if base_view is None:
+                logger.debug(
+                    "Refinement %r has no base view %r in cache — skipping.",
+                    refinement.name,
+                    base_name,
+                )
+                continue
+            if refinement.sql_table_name:
+                base_view.sql_table_name = refinement.sql_table_name
+            if refinement.derived_table:
+                base_view.derived_table = refinement.derived_table
+            self.__merge_fields(base_view.dimensions, refinement.dimensions)
+            self.__merge_fields(base_view.measures, refinement.measures)
+            self.__merge_fields(base_view.dimension_groups, refinement.dimension_groups)
+            if refinement.description:
+                base_view.description = refinement.description
+            if refinement.tags:
+                base_view.tags = (base_view.tags or []) + refinement.tags
 
     def _read_file(self, path: Includes, reader: LocalReader | None = None) -> str:
         """
