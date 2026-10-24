@@ -14,10 +14,12 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyReferenceRole;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
+import org.openmetadata.service.ontology.OntologyDefinitionStatusResolver;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -27,7 +29,12 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   public static final String COLLECTION_PATH = "/v1/ontologyConcepts/";
   private static final String SUPER_CLASSES = "superClasses";
   private static final String SUB_CLASSES = "subClasses";
-  private static final List<String> DERIVED_FIELDS = List.of(SUPER_CLASSES, SUB_CLASSES);
+  private static final String LIFECYCLE_STATUS = "lifecycleStatus";
+  private static final List<String> HIERARCHY_FIELDS = List.of(SUPER_CLASSES, SUB_CLASSES);
+  private static final List<String> DERIVED_FIELDS =
+      List.of(SUPER_CLASSES, SUB_CLASSES, LIFECYCLE_STATUS);
+
+  private final OntologyDefinitionStatusResolver statuses;
 
   public OntologyConceptRepository() {
     super(
@@ -38,6 +45,8 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         "ontology,iri,conceptType,synonyms,conceptMappings");
     fieldFetchers.put(SUPER_CLASSES, this::fetchSuperClasses);
     fieldFetchers.put(SUB_CLASSES, this::fetchSubClasses);
+    fieldFetchers.put(LIFECYCLE_STATUS, this::fetchLifecycleStatus);
+    statuses = new OntologyDefinitionStatusResolver(Entity.getCollectionDAO());
   }
 
   @Override
@@ -45,7 +54,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (entity.getConceptType() == null) {
       throw new BadRequestException("Ontology concept type is required");
     }
-    entity.withSuperClasses(null).withSubClasses(null);
+    entity.withSuperClasses(null).withSubClasses(null).withLifecycleStatus(null);
   }
 
   @Override
@@ -57,6 +66,9 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (fields.contains(SUB_CLASSES)) {
       fetchSubClasses(List.of(entity), fields);
     }
+    if (fields.contains(LIFECYCLE_STATUS)) {
+      fetchLifecycleStatus(List.of(entity), fields);
+    }
   }
 
   @Override
@@ -67,15 +79,23 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (!fields.contains(SUB_CLASSES)) {
       entity.setSubClasses(null);
     }
+    if (!fields.contains(LIFECYCLE_STATUS)) {
+      entity.setLifecycleStatus(null);
+    }
   }
 
   @Override
   protected void validatePatch(
       final OntologyConcept original, final OntologyConcept updated, final JsonPatch patch) {
     super.validatePatch(original, updated, patch);
-    if (JsonUtils.extractPatchedFields(patch).stream().anyMatch(DERIVED_FIELDS::contains)) {
+    final Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
+    if (patchedFields.stream().anyMatch(HIERARCHY_FIELDS::contains)) {
       throw new BadRequestException(
           "Concept superClasses and subClasses are derived from ontology axioms");
+    }
+    if (patchedFields.contains(LIFECYCLE_STATUS)) {
+      throw new BadRequestException(
+          "Concept lifecycleStatus is derived by the server from ontology releases");
     }
   }
 
@@ -89,6 +109,13 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
     node.remove(DERIVED_FIELDS);
     return node.toString();
+  }
+
+  private void fetchLifecycleStatus(final List<OntologyConcept> concepts, final Fields fields) {
+    if (fields.contains(LIFECYCLE_STATUS) && !concepts.isEmpty()) {
+      final var resolved = statuses.resolve(concepts, MemberKind.CONCEPT);
+      concepts.forEach(concept -> concept.setLifecycleStatus(resolved.get(concept.getId())));
+    }
   }
 
   private void fetchSuperClasses(final List<OntologyConcept> concepts, final Fields fields) {

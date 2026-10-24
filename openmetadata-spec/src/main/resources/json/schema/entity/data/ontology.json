@@ -78,6 +78,11 @@
         "$ref": "../../type/ontologyConfiguration.json#/definitions/prefix"
       },
       "default": []
+    },
+    "publicationStatus": {
+      "description": "Publication state derived by the server from ontology releases. Not stored or independently editable.",
+      "$ref": "../../type/ontologyPublicationStatus.json",
+      "readOnly": true
     }
   },
   "required": [
