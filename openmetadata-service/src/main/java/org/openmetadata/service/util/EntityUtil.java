@@ -163,6 +163,40 @@ public final class EntityUtil {
                       && constraint2.getReferredColumns() == null)
                   || (constraint1.getReferredColumns().equals(constraint2.getReferredColumns())));
 
+  /**
+   * Sort a constraint's column and referredColumn lists together as pairs keyed by the local
+   * column name, so that the FK mapping {@code columns[i] → referredColumns[i]} is preserved
+   * after normalization. When there is no column-for-column mapping ({@code referredColumns} is
+   * null or its size differs from {@code columns}), each list is sorted on its own as before.
+   */
+  public static void sortConstraintPairs(TableConstraint constraint) {
+    List<String> cols = constraint.getColumns();
+    List<String> refs = constraint.getReferredColumns();
+    if (cols == null || refs == null || refs.size() != cols.size()) {
+      if (cols != null) {
+        Collections.sort(cols);
+      }
+      if (refs != null) {
+        Collections.sort(refs);
+      }
+      return;
+    }
+    // Sort both lists together by the local column name so the FK mapping survives normalization.
+    Integer[] idx = new Integer[cols.size()];
+    for (int i = 0; i < idx.length; i++) idx[i] = i;
+    Arrays.sort(idx, Comparator.comparing(cols::get));
+    List<String> sortedCols = new ArrayList<>(idx.length);
+    List<String> sortedRefs = new ArrayList<>(idx.length);
+    for (int i : idx) {
+      sortedCols.add(cols.get(i));
+      sortedRefs.add(refs.get(i));
+    }
+    cols.clear();
+    cols.addAll(sortedCols);
+    refs.clear();
+    refs.addAll(sortedRefs);
+  }
+
   public static final BiPredicate<MlFeature, MlFeature> mlFeatureMatch = MlFeature::equals;
   public static final BiPredicate<MlHyperParameter, MlHyperParameter> mlHyperParameterMatch =
       MlHyperParameter::equals;
