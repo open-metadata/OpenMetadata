@@ -89,8 +89,6 @@
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-surefire.version>3.1.2</maven-surefire.version>
-    <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
-    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>
@@ -203,6 +201,9 @@
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
     <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
+    <!-- Nothing is published to Maven Central by default; publish-maven-package.yml publishes an
+         explicit module list (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
+    <skipPublishing>true</skipPublishing>
   </properties>
 
   <dependencyManagement>
@@ -1015,36 +1016,46 @@
     <profile>
       <id>release</id>
       <build>
+        <pluginManagement>
+          <plugins>
+            <!-- Maven Central requires sources and Javadoc jars but accepts placeholders; real ones
+                 would exceed its release-size limit
+                 (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module).
+                 In pluginManagement so only jar-packaged modules get them, not pom-only parents. -->
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-jar-plugin</artifactId>
+              <version>${maven-jar-plugin.version}</version>
+              <executions>
+                <execution>
+                  <id>placeholder-sources</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <classifier>sources</classifier>
+                    <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                    <forceCreation>true</forceCreation>
+                  </configuration>
+                </execution>
+                <execution>
+                  <id>placeholder-javadoc</id>
+                  <phase>package</phase>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                  <configuration>
+                    <classifier>javadoc</classifier>
+                    <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                    <forceCreation>true</forceCreation>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </pluginManagement>
         <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>${maven-source-plugin.version}</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>${maven-javadoc-plugin.version}</version>
-            <configuration>
-              <doclint>none</doclint>
-            </configuration>
-            <executions>
-              <execution>
-                <id>attach-javadocs</id>
-                <goals>
-                  <goal>jar</goal>
-                </goals>
-              </execution>
-            </executions>
-          </plugin>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-gpg-plugin</artifactId>
