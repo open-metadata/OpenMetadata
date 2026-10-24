@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSCustomProperties;
 import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
 import org.openmetadata.service.datacontract.odcs.ODCSSlaMapper;
 import org.slf4j.Logger;
@@ -901,7 +902,8 @@ public class ODCSConverter {
   /**
    * Normalizes ODCS input to handle flexible representations. Converts: - team from object form
    * {members: [...]} to array form [...] - roles' firstLevelApprovers and secondLevelApprovers from
-   * scalar strings to arrays
+   * scalar strings to arrays - customProperties from a key/value mapping to the ODCS list of
+   * {property, value}
    */
   public static void normalizeODCSInput(JsonNode rootNode) {
     if (rootNode == null || !rootNode.isObject()) return;
@@ -909,6 +911,7 @@ public class ODCSConverter {
 
     normalizeTeamField(root);
     normalizeApproverFields(root);
+    ODCSCustomProperties.normalizeDocument(root);
   }
 
   private static void normalizeTeamField(ObjectNode root) {

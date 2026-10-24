@@ -31,6 +31,7 @@ import static org.openmetadata.service.migration.utils.v210.MigrationUtil.alignH
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.exemptQueryFromMultiDomainRules;
 import static org.openmetadata.service.migration.utils.v210.MigrationUtil.refreshConversationNotificationTemplates;
 import static org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill.backfillMlFeatureTags;
+import static org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration.convertODCSCustomPropertiesToLists;
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
@@ -87,6 +88,9 @@ public class Migration extends MigrationProcessImpl {
     // Data contracts stored their entity reference as sent, usually without a name or FQN.
     // Runs after the FQN repair above so contracts copy the repaired FQNs. Idempotent.
     rebuildDataContractEntityReferences(collectionDAO);
+    // ODCS quality rules stored customProperties as a mapping; the model now reads the ODCS list
+    // form, so contracts and their versions are rewritten before anything loads them. Idempotent.
+    convertODCSCustomPropertiesToLists(collectionDAO);
     // entityReference / entityReferenceList values move to custom_property_reference, their only
     // home from 2.1 on, so a hard delete can remove references to the deleted entity. Restartable.
     CustomPropertyReferenceMigration.migrate(handle, collectionDAO, POSTGRES);

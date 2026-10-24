@@ -149,13 +149,21 @@ export interface OdcsAuthoritativeDefinition {
  */
 export interface OdcsCustomProperty {
     /**
+     * Description of the custom property.
+     */
+    description?: string;
+    /**
+     * Stable identifier for the custom property.
+     */
+    id?: string;
+    /**
      * Property name (camelCase).
      */
-    property?: string;
+    property: string;
     /**
      * Property value.
      */
-    value?: string;
+    value: any;
     [property: string]: any;
 }
 
@@ -230,9 +238,9 @@ export interface OdcsQualityRule {
      */
     column?: string;
     /**
-     * Additional execution properties.
+     * Additional execution properties as key/value pairs.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Rule documentation.
      */
@@ -418,9 +426,9 @@ export interface OdcsRole {
      */
     access?: Access;
     /**
-     * Additional role attributes.
+     * Additional role attributes as key/value pairs.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Permissions summary.
      */
@@ -473,9 +481,9 @@ export interface OdcsSchemaElement {
      */
     criticalDataElement?: boolean;
     /**
-     * Non-standard attributes.
+     * Non-standard attributes as key/value pairs.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Aggregation level details (for objects).
      */
@@ -675,9 +683,9 @@ export interface OdcsServer {
      */
     catalog?: string;
     /**
-     * Non-standard attributes.
+     * Non-standard attributes as key/value pairs.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Database name.
      */

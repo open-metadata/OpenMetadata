@@ -48,6 +48,7 @@ import org.openmetadata.schema.entity.datacontract.QualityValidation;
 import org.openmetadata.schema.entity.datacontract.SemanticsValidation;
 import org.openmetadata.schema.entity.datacontract.SlaValidation;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
@@ -2996,6 +2997,81 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertNotNull(updated);
     assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
     assertTrue(updated.getDescription().contains("Updated via ODCS"));
+  }
+
+  @Test
+  void testODCSQualityRuleCustomPropertiesRoundTripAsList(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    String customProperties =
+        """
+                      - property: severity
+                        value: high
+                      - property: threshold
+                        value: 5
+        """;
+
+    DataContract imported = importODCSYamlWithRuleCustomProperties(ns, table, customProperties);
+
+    assertRuleCustomProperties(imported.getOdcsQualityRules());
+    ODCSDataContract exported =
+        SdkClients.adminClient().dataContracts().exportToODCS(imported.getId());
+    assertRuleCustomProperties(findExportedProperty(exported, "email").getQuality());
+  }
+
+  @Test
+  void testODCSQualityRuleCustomPropertiesMappingIsImportedAsList(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    String customProperties =
+        """
+                      severity: high
+                      threshold: 5
+        """;
+
+    DataContract imported = importODCSYamlWithRuleCustomProperties(ns, table, customProperties);
+
+    assertRuleCustomProperties(imported.getOdcsQualityRules());
+  }
+
+  private DataContract importODCSYamlWithRuleCustomProperties(
+      TestNamespace ns, Table table, String customProperties) {
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: email
+                logicalType: string
+                quality:
+                  - name: email_not_null
+                    type: library
+                    metric: nullValues
+                    customProperties:
+        %s"""
+            .formatted(
+                UUID.randomUUID(),
+                ns.prefix("odcs_custom_props"),
+                table.getName(),
+                customProperties);
+    return SdkClients.adminClient()
+        .dataContracts()
+        .importFromODCSYaml(yaml, table.getId(), "table");
+  }
+
+  private static void assertRuleCustomProperties(List<ODCSQualityRule> rules) {
+    assertFalse(nullOrEmpty(rules), "The ODCS quality rule was not kept");
+    List<ODCSCustomProperty> customProperties = rules.getFirst().getCustomProperties();
+    assertEquals(2, customProperties.size(), () -> String.valueOf(customProperties));
+    assertEquals("severity", customProperties.get(0).getProperty());
+    assertEquals("high", customProperties.get(0).getValue());
+    assertEquals("threshold", customProperties.get(1).getProperty());
+    assertEquals(5, customProperties.get(1).getValue());
   }
 
   @Test
