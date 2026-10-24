@@ -1,5 +1,5 @@
 # Applies only to builds whose context is ingestion/ (currently the Airflow test image).
-# Dockerfile.ci builds from the repository root and uses the top-level .dockerignore.
+# Repository-root Dockerfile.ci builds use Dockerfile-specific ignore files.
 build/
 dist/
 tests/
