@@ -16,21 +16,30 @@ package org.openmetadata.it.tests;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.OntologyDataGraph;
 import org.openmetadata.schema.api.data.OntologySummary;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Topic;
+import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
 
@@ -86,6 +95,119 @@ class OntologyResourceIT {
     assertThrows(
         InvalidRequestException.class,
         () -> service.ontologySummary(glossary.getFullyQualifiedName(), 21, 0));
+  }
+
+  @Test
+  void assetGraphIncludesConnectedTermContextAndPreviewLineage(final TestNamespace namespace) {
+    final Glossary glossary = GlossaryTestFactory.createSimple(namespace);
+    final GlossaryTerm parent =
+        GlossaryTermTestFactory.createWithName(namespace, glossary, "parent");
+    final GlossaryTerm child =
+        GlossaryTermTestFactory.createChild(namespace, glossary, parent, "child");
+    final GlossaryTermService service = SdkClients.adminClient().glossaryTerms();
+    service.addRelation(parent.getId(), child.getId(), "relatedTo");
+    final GlossaryTerm related = service.get(parent.getId().toString(), "relatedTerms");
+    final var semanticId = related.getRelatedTerms().getFirst().getId();
+    assertThat(semanticId).isNotNull();
+    final String messagingService =
+        MessagingServiceTestFactory.createKafka(namespace).getFullyQualifiedName();
+    final Topic first = taggedTopic(namespace, messagingService, parent);
+    final Topic second = taggedTopic(namespace, messagingService, parent);
+    final Topic downstream = taggedTopic(namespace, messagingService, child);
+    addLineage(first, downstream);
+    addLineage(second, downstream);
+
+    Awaitility.await("glossary graph includes indexed topic tags")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              final OntologyDataGraph graph =
+                  service.ontologyData(glossary.getFullyQualifiedName(), 1, 0, 1);
+              assertThat(graph.getPaging().getTotal()).isEqualTo(2);
+              assertThat(graph.getClusters()).hasSize(2);
+              assertThat(graph.getClusters().getFirst().getAssetCount()).isEqualTo(2);
+              assertThat(graph.getClusters().get(1).getAssetCount()).isEqualTo(1);
+            });
+
+    final OntologyDataGraph firstPage =
+        service.ontologyData(glossary.getFullyQualifiedName(), 1, 0, 1);
+    assertThat(firstPage.getSeedTermIds()).containsExactly(parent.getId());
+    assertThat(firstPage.getClusters())
+        .extracting(cluster -> cluster.getTerm().getId())
+        .containsExactly(parent.getId(), child.getId());
+    assertThat(firstPage.getClusters().getFirst().getAssets()).hasSize(1);
+    assertThat(firstPage.getClusters().getFirst().getAssets().getFirst().getId())
+        .isIn(first.getId(), second.getId());
+    assertThat(firstPage.getClusters().get(1).getAssets())
+        .extracting(asset -> asset.getId())
+        .containsExactly(downstream.getId());
+    assertThat(firstPage.getEdges()).hasSize(2);
+    assertThat(firstPage.getEdges())
+        .anySatisfy(
+            edge -> {
+              assertThat(edge.getFrom()).isEqualTo(parent.getId());
+              assertThat(edge.getTo()).isEqualTo(child.getId());
+              assertThat(edge.getRelationType()).isEqualTo("parentOf");
+            });
+    assertThat(firstPage.getEdges())
+        .anySatisfy(
+            edge -> {
+              assertThat(edge.getRelationType()).isEqualTo("relatedTo");
+              assertThat(List.of(edge.getFrom(), edge.getTo()))
+                  .containsExactlyInAnyOrder(parent.getId(), child.getId());
+              assertThat(edge.getId()).isEqualTo(semanticId);
+              assertThat(edge.getRelationshipType().getName()).isEqualTo("relatedTo");
+            });
+    assertThat(firstPage.getLineageEdges())
+        .singleElement()
+        .satisfies(
+            edge -> {
+              assertThat(edge.getFromEntity())
+                  .isEqualTo(firstPage.getClusters().getFirst().getAssets().getFirst().getId());
+              assertThat(edge.getToEntity()).isEqualTo(downstream.getId());
+            });
+    assertThat(firstPage.getPaging().getLimit()).isEqualTo(1);
+    assertThat(firstPage.getPaging().getOffset()).isZero();
+    assertThat(firstPage.getPaging().getTotal()).isEqualTo(2);
+
+    final OntologyDataGraph secondPage =
+        service.ontologyData(glossary.getFullyQualifiedName(), 1, 1, 2);
+    assertThat(secondPage.getSeedTermIds()).containsExactly(child.getId());
+    assertThat(secondPage.getClusters())
+        .extracting(cluster -> cluster.getTerm().getId())
+        .containsExactly(child.getId(), parent.getId());
+    assertThat(secondPage.getClusters().get(1).getAssets())
+        .extracting(asset -> asset.getId())
+        .containsExactlyInAnyOrderElementsOf(Set.of(first.getId(), second.getId()));
+    assertThat(secondPage.getLineageEdges()).hasSize(2);
+    assertThat(secondPage.getPaging().getOffset()).isEqualTo(1);
+    assertThat(secondPage.getPaging().getTotal()).isEqualTo(2);
+  }
+
+  private static Topic taggedTopic(
+      TestNamespace namespace, String messagingService, GlossaryTerm term) {
+    final Topic topic = TopicTestFactory.createSimple(namespace, messagingService);
+    final Topic fetched = SdkClients.adminClient().topics().get(topic.getId().toString(), "tags");
+    fetched.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)
+                .withState(TagLabel.State.CONFIRMED)));
+    return SdkClients.adminClient().topics().update(topic.getId().toString(), fetched);
+  }
+
+  private static void addLineage(Topic from, Topic to) {
+    SdkClients.adminClient()
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from.getEntityReference())
+                        .withToEntity(to.getEntityReference())));
   }
 
   private static List<GlossaryTerm> createTerms(
