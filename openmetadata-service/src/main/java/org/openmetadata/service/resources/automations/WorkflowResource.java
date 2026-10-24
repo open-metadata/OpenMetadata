@@ -68,6 +68,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
@@ -698,6 +699,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   }
 
   private Workflow unmask(Workflow workflow) {
+    // Over HTTP the request body arrives as raw JSON, so it must be typed before the branch below
+    // can read a TEST_CONNECTION request's service reference and build the comparison base from
+    // the stored service's connection.
+    workflow = (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
@@ -740,22 +745,53 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     Workflow originalWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
-      originalWorkflow =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+      return storedServiceConnection(workflow);
     }
-    if (originalWorkflow.getRequest()
-        instanceof TestServiceConnectionRequest testServiceConnection) {
-      EntityRepository<? extends EntityInterface<?>> serviceRepository =
-          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
-      ServiceEntityInterface originalService =
-          (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(
-                  testServiceConnection.getServiceName(), Include.NON_DELETED);
-      if (originalService != null && originalService.getConnection() != null) {
-        testServiceConnection.setConnection(originalService.getConnection());
-        originalWorkflow.setRequest(testServiceConnection);
+    if (originalWorkflow.getRequest() instanceof TestServiceConnectionRequest testRequest) {
+      ServiceEntityInterface originalService = findStoredService(testRequest);
+      if (originalService != null) {
+        testRequest.setConnection(originalService.getConnection());
+        originalWorkflow.setRequest(testRequest);
       }
     }
     return originalWorkflow;
+  }
+
+  /**
+   * Comparison base for a TEST_CONNECTION workflow that does not exist yet: the tested service's
+   * stored connection, or nothing. A base built from the submission itself would validate it
+   * against itself and accept anything, so with no service connection to read, null makes the
+   * unmask walk the incoming request and reject an encoded credential the entity does not own
+   * (see {@link PasswordEntityMasker#unmaskWorkflow}).
+   */
+  private Workflow storedServiceConnection(Workflow workflow) {
+    if (!(workflow.getRequest() instanceof TestServiceConnectionRequest testRequest)) {
+      return null;
+    }
+    ServiceEntityInterface originalService = findStoredService(testRequest);
+    if (originalService == null) {
+      return null;
+    }
+    // A converted copy, never the submission: the copy carries the service's stored connection
+    // as the comparison base, while the submitted request keeps the values the caller sent.
+    Workflow originalWorkflow =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    ((TestServiceConnectionRequest) originalWorkflow.getRequest())
+        .setConnection(originalService.getConnection());
+    return originalWorkflow;
+  }
+
+  private ServiceEntityInterface findStoredService(TestServiceConnectionRequest testRequest) {
+    if (testRequest.getServiceName() == null || testRequest.getServiceType() == null) {
+      return null;
+    }
+    EntityRepository<? extends EntityInterface<?>> serviceRepository =
+        Entity.getServiceEntityRepository(testRequest.getServiceType());
+    ServiceEntityInterface originalService =
+        (ServiceEntityInterface)
+            serviceRepository.findByNameOrNull(testRequest.getServiceName(), Include.NON_DELETED);
+    return originalService != null && originalService.getConnection() != null
+        ? originalService
+        : null;
   }
 }

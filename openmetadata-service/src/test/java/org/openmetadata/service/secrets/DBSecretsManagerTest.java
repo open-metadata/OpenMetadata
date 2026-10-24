@@ -13,7 +13,10 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
@@ -35,6 +38,7 @@ import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -118,7 +122,7 @@ public class DBSecretsManagerTest {
 
   private void testEncryptServiceConnection() {
     MysqlConnection connection =
-        new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(DECRYPTED_VALUE));
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(
             connection, Mysql.value(), "test", ServiceType.DATABASE);
@@ -127,6 +131,50 @@ public class DBSecretsManagerTest {
         JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
             .getPassword());
     assertNotSame(connection, actualConfig);
+  }
+
+  /**
+   * A Fernet token on a user path is a credential lifted from wherever the token was read: it
+   * decrypts with the server's own key, so storing it would copy that secret to the submitter's
+   * entity. The store rejects it instead of re-encrypting it.
+   */
+  @Test
+  void testEncryptRejectsAForeignFernetToken() {
+    String foreignToken = "fernet:stolen-secret";
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(foreignToken));
+
+    SecretsManagerException rejected =
+        assertThrows(
+            SecretsManagerException.class,
+            () ->
+                secretsManager.encryptServiceConnectionConfig(
+                    connection, Mysql.value(), "test", ServiceType.DATABASE));
+
+    assertEquals(400, rejected.getResponse().getStatus());
+    assertTrue(rejected.getMessage().contains("Password"), rejected.getMessage());
+    assertFalse(rejected.getMessage().contains(foreignToken), "the token must not be echoed");
+  }
+
+  @Test
+  void testInternalReStorageAcceptsAnAlreadyEncryptedValue() {
+    // The secrets migration re-stores values the previous manager already encrypted; those are
+    // copies the server itself holds, not user submissions.
+    MysqlConnection connection =
+        new MysqlConnection().withAuthType(new basicAuth().withPassword(ENCRYPTED_VALUE));
+
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection,
+            Mysql.value(),
+            "test",
+            ServiceType.DATABASE,
+            SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE);
+
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(((MysqlConnection) actualConfig).getAuthType(), basicAuth.class)
+            .getPassword());
   }
 
   private void testDecryptServiceConnection() {

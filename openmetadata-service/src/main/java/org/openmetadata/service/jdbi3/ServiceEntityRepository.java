@@ -172,27 +172,65 @@ public abstract class ServiceEntityRepository<
 
   @Override
   public void prepare(T service, boolean update) {
-    if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+    if (service.getConnection() == null) {
+      return;
     }
+    service
+        .getConnection()
+        .setConfig(
+            SecretsManagerFactory.getSecretsManager()
+                .encryptServiceConnectionConfig(
+                    service.getConnection().getConfig(),
+                    service.getServiceType().value(),
+                    service.getName(),
+                    serviceType));
+  }
+
+  /**
+   * The connection is encrypted here rather than in storeEntity because prepare runs on every
+   * persistence path, including the version-checked update that bypasses storeEntity. Two paths
+   * reach this with {@code reStore == true}: the PUT create-or-update path, which prepares once at
+   * the resource boundary with the user's submission and once more in the create pipeline on what
+   * the first pass encrypted; and the PATCH pipeline, whose masker pass has already validated the
+   * patched values against the stored copy. A strict credential policy cannot tell an encoded
+   * value the server itself holds from a foreign credential, so both re-prepare passes store the
+   * value as the server's copy (CredentialPolicy.INTERNAL_RE_STORAGE) instead of validating it
+   * again.
+   */
+  @Override
+  protected void prepare(T service, boolean update, boolean reStore) {
+    if (!reStore) {
+      prepare(service, update);
+      return;
+    }
+    if (service.getConnection() == null) {
+      return;
+    }
+    service
+        .getConnection()
+        .setConfig(
+            SecretsManagerFactory.getSecretsManager()
+                .encryptServiceConnectionConfig(
+                    service.getConnection().getConfig(),
+                    service.getServiceType().value(),
+                    service.getName(),
+                    serviceType,
+                    SecretsManager.CredentialPolicy.INTERNAL_RE_STORAGE));
   }
 
   @Override
   protected T restorePatchSecrets(T original, T updated) {
-    if (original.getConnection() != null && updated.getConnection() != null) {
+    if (updated.getConnection() != null) {
+      // A patch that adds a connection where none was stored is walked with nothing to compare
+      // against, so an encoded value it carries is rejected rather than handed to the re-storage
+      // pass below unvalidated.
+      Object originalConfig =
+          original.getConnection() != null ? original.getConnection().getConfig() : null;
       Object restoredConfig =
           EntityMaskerFactory.getEntityMasker()
               .unmaskServiceConnectionConfig(
                   updated.getConnection().getConfig(),
-                  original.getConnection().getConfig(),
+                  originalConfig,
                   updated.getServiceType().value(),
                   serviceType);
       updated.getConnection().setConfig(restoredConfig);

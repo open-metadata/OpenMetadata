@@ -35,6 +35,7 @@ import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -64,6 +65,43 @@ public abstract class SecretsManager {
       Boolean needsStartingSeparator,
       String cleanSecretReplacer,
       Pattern secretIdPattern) {}
+
+  /**
+   * What an encrypt pass accepts when a password field arrives already encoded - a Fernet token or
+   * a {@code secret:} reference - instead of as a plain credential.
+   *
+   * <p>A value supplied by a user reaches the encrypt pass as plaintext: every legitimate
+   * round trip (a PATCH, a PUT, a masked field restored from the stored entity) passes through the
+   * entity masker first, and the masker only lets through plaintext or a value the entity already
+   * holds. An encoded value on a user path is therefore suspect: the token decrypts (the Fernet key
+   * is global) into a secret the caller never had, and a reference inside the deployment's managed
+   * namespace (see {@link #isManagedSecretReference}) is a pointer to a secret this entity does
+   * not own - unless it falls under one of the accepted bases. A reference outside the namespace
+   * points into a vault the submitter manages themselves and is accepted.
+   *
+   * @param internalReStorage the values are being re-stored from a copy the server already holds
+   *     (a restore, a provider migration, a stored copy of the entity), so encoded values are the
+   *     entity's own and are accepted
+   * @param acceptedReferenceBases secret-id bases ({@code /cluster/workflow/myworkflow}, say)
+   *     whose {@code secret:} references this pass accepts in addition to plaintext and external
+   *     references; a managed reference under any other base is rejected
+   */
+  public record CredentialPolicy(boolean internalReStorage, List<String> acceptedReferenceBases) {
+    /** User-supplied values: encoded credentials and foreign references are rejected. */
+    public static final CredentialPolicy STRICT = new CredentialPolicy(false, List.of());
+
+    /** Re-storage of values the server already holds for this entity. */
+    public static final CredentialPolicy INTERNAL_RE_STORAGE =
+        new CredentialPolicy(true, List.of());
+
+    public CredentialPolicy {
+      acceptedReferenceBases = List.copyOf(acceptedReferenceBases);
+    }
+
+    public static CredentialPolicy strictWithReferenceBases(List<String> acceptedReferenceBases) {
+      return new CredentialPolicy(false, acceptedReferenceBases);
+    }
+  }
 
   @Getter private final SecretsConfig secretsConfig;
   @Getter private final SecretsManagerProvider secretsManagerProvider;
@@ -107,11 +145,34 @@ public abstract class SecretsManager {
       String connectionType,
       String connectionName,
       ServiceType serviceType) {
+    return encryptServiceConnectionConfig(
+        connectionConfig,
+        connectionType,
+        connectionName,
+        serviceType,
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(buildSecretId(true, serviceType.value(), connectionName))));
+  }
+
+  public Object encryptServiceConnectionConfig(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      CredentialPolicy policy) {
     try {
       Object newConnectionConfig =
           SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
       return encryptPasswordFields(
-          newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName), true);
+          newConnectionConfig,
+          buildSecretId(true, serviceType.value(), connectionName),
+          true,
+          policy);
+    } catch (SecretsManagerException e) {
+      // A rejection of a foreign credential is already classified with its own status and
+      // user-facing message; re-wrapping would relabel a deliberate 400. A conversion failure
+      // is not a SecretsManagerException and keeps its translated message below.
+      throw e;
     } catch (Exception e) {
       String message =
           SecretsUtil.buildExceptionMessageConnection(e.getMessage(), connectionType, true);
@@ -148,11 +209,22 @@ public abstract class SecretsManager {
 
   public Object encryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
+    return encryptAuthenticationMechanism(
+        name,
+        authenticationMechanism,
+        CredentialPolicy.strictWithReferenceBases(List.of(buildSecretId(true, "bot", name))));
+  }
+
+  public Object encryptAuthenticationMechanism(
+      String name, AuthenticationMechanism authenticationMechanism, CredentialPolicy policy) {
     if (authenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
       try {
         return encryptPasswordFields(
-            authenticationMechanism, buildSecretId(true, "bot", name), true);
+            authenticationMechanism, buildSecretId(true, "bot", name), true, policy);
+      } catch (SecretsManagerException e) {
+        // A rejection of a foreign credential is already classified with its own status.
+        throw e;
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST,
@@ -172,6 +244,17 @@ public abstract class SecretsManager {
    * @return The auth config with password fields replaced by secret references
    */
   public Object encryptQueryRunnerConfig(Object authConfig, String serviceName, String configType) {
+    return encryptQueryRunnerConfig(
+        authConfig,
+        serviceName,
+        configType,
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(
+                buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType))));
+  }
+
+  public Object encryptQueryRunnerConfig(
+      Object authConfig, String serviceName, String configType, CredentialPolicy policy) {
     if (authConfig == null) {
       return null;
     }
@@ -180,7 +263,11 @@ public abstract class SecretsManager {
       return encryptPasswordFields(
           authConfig,
           buildSecretId(true, "DatabaseService", serviceName, "queryrunner", configType),
-          true);
+          true,
+          policy);
+    } catch (SecretsManagerException e) {
+      // A rejection of a foreign credential is already classified with its own status.
+      throw e;
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
@@ -237,12 +324,24 @@ public abstract class SecretsManager {
    * @return The config with password fields replaced by secret references
    */
   public Object encryptContextPluginConnection(Object connectionConfig, String pluginName) {
+    return encryptContextPluginConnection(
+        connectionConfig,
+        pluginName,
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(buildSecretId(true, "contextPlugin", pluginName))));
+  }
+
+  public Object encryptContextPluginConnection(
+      Object connectionConfig, String pluginName, CredentialPolicy policy) {
     if (connectionConfig == null) {
       return null;
     }
     try {
       return encryptPasswordFields(
-          connectionConfig, buildSecretId(true, "contextPlugin", pluginName), true);
+          connectionConfig, buildSecretId(true, "contextPlugin", pluginName), true, policy);
+    } catch (SecretsManagerException e) {
+      // A rejection of a foreign credential is already classified with its own status.
+      throw e;
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
@@ -318,6 +417,14 @@ public abstract class SecretsManager {
   }
 
   public void encryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
+    encryptIngestionPipeline(
+        ingestionPipeline,
+        CredentialPolicy.strictWithReferenceBases(
+            List.of(buildSecretId(true, "pipeline", ingestionPipeline.getName()))));
+  }
+
+  public void encryptIngestionPipeline(
+      IngestionPipeline ingestionPipeline, CredentialPolicy policy) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
     ingestionPipeline.setOpenMetadataServerConnection(null);
@@ -325,7 +432,13 @@ public abstract class SecretsManager {
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     try {
       encryptPasswordFields(
-          ingestionPipeline, buildSecretId(true, "pipeline", ingestionPipeline.getName()), true);
+          ingestionPipeline,
+          buildSecretId(true, "pipeline", ingestionPipeline.getName()),
+          true,
+          policy);
+    } catch (SecretsManagerException e) {
+      // A rejection of a foreign credential is already classified with its own status.
+      throw e;
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
@@ -353,6 +466,10 @@ public abstract class SecretsManager {
   }
 
   public Workflow encryptWorkflow(Workflow workflow) {
+    return encryptWorkflow(workflow, workflowCredentialPolicy(workflow));
+  }
+
+  public Workflow encryptWorkflow(Workflow workflow, CredentialPolicy policy) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
     Workflow workflowConverted =
@@ -361,7 +478,10 @@ public abstract class SecretsManager {
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
       encryptPasswordFields(
-          workflowConverted, buildSecretId(true, "workflow", workflow.getName()), true);
+          workflowConverted, buildSecretId(true, "workflow", workflow.getName()), true, policy);
+    } catch (SecretsManagerException e) {
+      // A rejection of a foreign credential is already classified with its own status.
+      throw e;
     } catch (Exception e) {
       throw new SecretsManagerException(
           Response.Status.BAD_REQUEST,
@@ -369,6 +489,25 @@ public abstract class SecretsManager {
     }
     workflowConverted.setOpenMetadataServerConnection(openMetadataConnection);
     return workflowConverted;
+  }
+
+  /**
+   * Strict policy for a user-submitted workflow: it accepts references into the workflow's own
+   * secret-id namespace (a PATCH may echo back the references a GET returned) and, for a
+   * TEST_CONNECTION request, the tested service's namespace. The masker restores a masked
+   * TEST_CONNECTION request from that service's stored connection, whose references belong to the
+   * service, not the workflow.
+   */
+  private CredentialPolicy workflowCredentialPolicy(Workflow workflow) {
+    List<String> referenceBases = new ArrayList<>();
+    referenceBases.add(buildSecretId(true, "workflow", workflow.getName()));
+    if (workflow.getRequest() instanceof TestServiceConnectionRequest testRequest
+        && testRequest.getServiceName() != null
+        && testRequest.getServiceType() != null) {
+      referenceBases.add(
+          buildSecretId(true, testRequest.getServiceType().value(), testRequest.getServiceName()));
+    }
+    return CredentialPolicy.strictWithReferenceBases(referenceBases);
   }
 
   public Workflow decryptWorkflow(Workflow workflow) {
@@ -398,7 +537,13 @@ public abstract class SecretsManager {
                   .convert(openMetadataConnection);
       try {
         encryptPasswordFields(
-            openMetadataConnectionConverted, buildSecretId(true, "serverconnection"), store);
+            openMetadataConnectionConverted,
+            buildSecretId(true, "serverconnection"),
+            store,
+            // The connection is server-built (OpenMetadataConnectionBuilder) or comes from the
+            // request; its only sensitive fields live in classes the walker skips, so no encoded
+            // value can legitimately be in flight here.
+            CredentialPolicy.STRICT);
       } catch (Exception e) {
         throw new SecretsManagerException(
             Response.Status.BAD_REQUEST, "Failed to encrypt OpenMetadataConnection instance.");
@@ -464,7 +609,8 @@ public abstract class SecretsManager {
     }
   }
 
-  private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
+  private Object encryptPasswordFields(
+      Object toEncryptObject, String secretId, boolean store, CredentialPolicy policy) {
     try {
       if (!DO_NOT_ENCRYPT_CLASSES.contains(toEncryptObject.getClass())) {
         // for each get method
@@ -480,9 +626,12 @@ public abstract class SecretsManager {
                     encryptPasswordFields(
                         obj,
                         buildSecretId(false, secretId, fieldName.toLowerCase(Locale.ROOT)),
-                        store);
+                        store,
+                        policy);
                     // check if it has annotation
                   } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
+                    // reject a credential the entity does not own before it can be decrypted
+                    requireOwnCredential(fieldName, obj, policy);
                     // store value if proceed
                     String newFieldValue =
                         storeValue(
@@ -508,14 +657,16 @@ public abstract class SecretsManager {
                                     secretId,
                                     fieldName.toLowerCase(Locale.ROOT),
                                     elementKey),
-                                store));
+                                store,
+                                policy));
                   }
                 });
       }
       return toEncryptObject;
     } catch (WebServiceException e) {
-      // Already classified with its own status and user-facing message — the reserved-value
-      // rejection in storeValue, for one. Re-wrapping would relabel a deliberate 400 as a 500.
+      // Already classified with its own status and user-facing message — a rejection of a
+      // foreign credential in requireOwnCredential, for one. Re-wrapping would relabel a
+      // deliberate 400 as a 500.
       throw e;
     } catch (Exception e) {
       String msg =
@@ -605,6 +756,66 @@ public abstract class SecretsManager {
               "Error trying to GET secret [%s] due to [%s]",
               toDecryptObject.toString(), e.getMessage()));
     }
+  }
+
+  /**
+   * Rejects a password field set to an encoded credential the entity does not own - the
+   * store-time counterpart of the delete walker's rule that a user-supplied reference "points at a
+   * secret this entity does not own, and is never deleted" (see {@link #storedSecretName}). A
+   * Fernet token submitted on a user path decrypts with the server's own key, so it copies a
+   * secret the submitter never had; a {@code secret:} reference inside this deployment's managed
+   * namespace and outside the accepted bases is a pointer to another entity's secret. Either way
+   * the value would be re-stored as this entity's credential. A reference into a vault the
+   * submitter manages themselves is left alone (see {@link #isManagedSecretReference}). The
+   * submitted value is deliberately not echoed: it may itself be a stolen token.
+   */
+  private void requireOwnCredential(String fieldName, Object value, CredentialPolicy policy) {
+    if (policy.internalReStorage()) {
+      return;
+    }
+    String fieldValue = (String) value;
+    if (!Fernet.isTokenized(fieldValue) && !Boolean.TRUE.equals(isSecret(fieldValue))) {
+      return; // a plain value the caller is entitled to store
+    }
+    if (Boolean.TRUE.equals(isSecret(fieldValue)) && isAcceptedReference(fieldValue, policy)) {
+      return;
+    }
+    throw new SecretsManagerException(
+        Response.Status.BAD_REQUEST,
+        String.format(
+            "Field [%s] cannot be set to an encrypted credential or a secret reference of "
+                + "another entity. Send the plain value instead.",
+            fieldName));
+  }
+
+  private boolean isAcceptedReference(String reference, CredentialPolicy policy) {
+    String secretName = reference.substring(SECRET_FIELD_PREFIX.length()).toLowerCase(Locale.ROOT);
+    boolean ownBase =
+        policy.acceptedReferenceBases().stream()
+            .anyMatch(base -> secretName.startsWith(base + secretsIdConfig.separator()));
+    return ownBase || !isManagedSecretName(secretName);
+  }
+
+  /**
+   * Whether a {@code secret:} reference names a secret this deployment's own secrets manager
+   * owns: its path falls under the cluster-prefixed root every stored secret id is built from
+   * (see {@link #buildSecretId(boolean, String...)}). A reference outside that root points into a
+   * vault the submitter manages themselves - the ingestion framework resolves those at runtime and
+   * the delete walker leaves them alone - so it stays acceptable on user paths. Inside the root
+   * every secret belongs to some entity, and only that entity may submit its reference. The
+   * comparison is lower-cased because {@link #buildSecretId(boolean, String...)} lower-cases
+   * every id it builds and Azure Key Vault, unlike AWS or GCP, resolves names case-insensitively,
+   * so a case variant of a stored reference must not slip out of the namespace.
+   */
+  public boolean isManagedSecretReference(String reference) {
+    return isManagedSecretName(reference.substring(SECRET_FIELD_PREFIX.length()));
+  }
+
+  private boolean isManagedSecretName(String secretName) {
+    String namespaceRoot = buildSecretId(true);
+    return secretName
+        .toLowerCase(Locale.ROOT)
+        .startsWith(namespaceRoot + secretsIdConfig.separator());
   }
 
   protected abstract String storeValue(

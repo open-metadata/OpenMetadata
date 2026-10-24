@@ -2,8 +2,12 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.ws.rs.core.MediaType;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -18,10 +22,17 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.automations.CreateWorkflow;
+import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
@@ -117,6 +128,108 @@ public class SecretsManagerNullSecretIT {
     assertNull(
         vault.getSecretValue(SecretsManager.SECRET_FIELD_PREFIX + secretId),
         "A service stored before the fix must read back no credential, not the string \"null\"");
+  }
+
+  @Test
+  void aServiceRejectsAnotherServicesSecretReference(TestNamespace ns) {
+    String ownerName = ns.prefix("snowflake_secret_owner");
+    DatabaseService owner =
+        SdkClients.adminClient().databaseServices().create(snowflakeRequest(ownerName, PASSWORD));
+    ns.trackRoot(Entity.DATABASE_SERVICE, owner);
+    String ownedReference = SecretsManager.SECRET_FIELD_PREFIX + secretId(ownerName, "password");
+
+    CreateDatabaseService borrowerRequest =
+        snowflakeRequest(ns.prefix("snowflake_secret_borrower"), ownedReference);
+    InvalidRequestException rejected =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().databaseServices().create(borrowerRequest),
+            "a service must not store a reference to another service's secret");
+    assertEquals(400, rejected.getStatusCode());
+    String message = rejected.getResponseBody();
+    assertTrue(message != null && message.contains("Password"), message);
+    assertFalse(
+        message.contains(ownedReference), "the rejection must not echo the rejected reference");
+  }
+
+  /**
+   * A patch that changes the name reaches the prepare pass with the new name - the server only
+   * reverts a service rename after that, in restorePatchAttributes. The masker pass ahead of the
+   * prepare has already proven the patched values are the stored ones, so the prepare pass must
+   * store what it accepted instead of rejecting the old-name reference against the new name's
+   * credential scope.
+   */
+  @Test
+  void aRenamePatchKeepsTheStoredCredential(TestNamespace ns) {
+    String serviceName = ns.prefix("snowflake_rename");
+    DatabaseService service =
+        SdkClients.adminClient().databaseServices().create(snowflakeRequest(serviceName, PASSWORD));
+    ns.trackRoot(Entity.DATABASE_SERVICE, service);
+
+    DatabaseService renamed = JsonUtils.convertValue(service, DatabaseService.class);
+    renamed.setName(ns.prefix("snowflake_rename_renamed"));
+    String patched =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.PATCH,
+                DATABASE_SERVICES_PATH + "/" + service.getId(),
+                JsonUtils.getJsonPatch(service, renamed).toString(),
+                RequestOptions.builder()
+                    .header("Content-Type", MediaType.APPLICATION_JSON_PATCH_JSON)
+                    .build());
+
+    DatabaseService patchedService = JsonUtils.readValue(patched, DatabaseService.class);
+    assertEquals(
+        serviceName, patchedService.getName(), "services do not take a rename from a patch");
+    assertTrue(
+        vault.getSecretsMap().containsKey(secretId(serviceName, "password")),
+        "a rename patch must leave the stored credential in place and resolvable");
+  }
+
+  /**
+   * A TEST_CONNECTION request arrives over HTTP as raw JSON; the reference it echoes is the tested
+   * service's own stored reference, so the workflow must type the request, find the stored
+   * service and validate the echo against its connection instead of rejecting the reference with
+   * nothing to compare against.
+   */
+  @Test
+  void aTestConnectionWorkflowEchoesTheStoredServiceReference(TestNamespace ns) {
+    String serviceName = ns.prefix("snowflake_workflow_reference");
+    DatabaseService service =
+        SdkClients.adminClient().databaseServices().create(snowflakeRequest(serviceName, PASSWORD));
+    ns.trackRoot(Entity.DATABASE_SERVICE, service);
+    String ownedReference = SecretsManager.SECRET_FIELD_PREFIX + secretId(serviceName, "password");
+
+    CreateWorkflow request =
+        new CreateWorkflow()
+            .withName(ns.prefix("test_connection"))
+            .withWorkflowType(WorkflowType.TEST_CONNECTION)
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withServiceType(ServiceType.DATABASE)
+                    .withServiceName(serviceName)
+                    .withConnectionType("Snowflake")
+                    .withConnection(
+                        new DatabaseConnection().withConfig(snowflakeConnection(ownedReference))));
+
+    Workflow workflow = SdkClients.adminClient().workflows().create(request);
+    assertNotNull(workflow.getId(), "echoing the tested service's own reference must pass");
+  }
+
+  private static SnowflakeConnection snowflakeConnection(String password) {
+    return new SnowflakeConnection()
+        .withAccount("test-account")
+        .withUsername("test_user")
+        .withWarehouse("test_warehouse")
+        .withPassword(password);
+  }
+
+  private static CreateDatabaseService snowflakeRequest(String serviceName, String password) {
+    return new CreateDatabaseService()
+        .withName(serviceName)
+        .withServiceType(DatabaseServiceType.Snowflake)
+        .withConnection(new DatabaseConnection().withConfig(snowflakeConnection(password)));
   }
 
   private static String secretId(String serviceName, String fieldName) {
