@@ -868,6 +868,7 @@ public class TaskWorkflowHandler {
       String fieldPath = null;
       List<TagLabel> tagsToAdd = null;
       List<TagLabel> tagsToRemove = null;
+      List<TagLabel> seen = null;
 
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
@@ -875,6 +876,7 @@ public class TaskWorkflowHandler {
         tagsToAdd =
             readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
         tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
+        seen = readTagLabels(payloadNode, action.currentTagsField(), "currentTags", null);
       }
 
       // A non-empty resolver-supplied newValue is the final desired tag set (reviewer-edited),
@@ -884,7 +886,23 @@ public class TaskWorkflowHandler {
             JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
         if (newTags != null && !newTags.isEmpty()) {
           tagsToAdd = newTags;
-          tagsToRemove = null;
+          // Remove what the task saw (its currentTags snapshot and tagsToRemove) and newValue
+          // leaves out, so the replace is real but tags added to the target after the task was
+          // created stay. Only without a snapshot fall back to the tags the target holds now.
+          List<TagLabel> baseline = seen != null ? seen : currentTags(entity, fieldPath);
+          if (baseline != null) {
+            Set<String> kept =
+                newTags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+            List<TagLabel> removed =
+                new ArrayList<>(
+                    baseline.stream().filter(t -> !kept.contains(t.getTagFQN())).toList());
+            if (tagsToRemove != null) {
+              tagsToRemove.stream()
+                  .filter(t -> !kept.contains(t.getTagFQN()))
+                  .forEach(removed::add);
+            }
+            tagsToRemove = removed;
+          }
         }
       }
 
@@ -907,6 +925,25 @@ public class TaskWorkflowHandler {
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
+    }
+  }
+
+  /** The tags the TagUpdate target holds now, or null when the target can't be located. */
+  @SuppressWarnings("unchecked")
+  private List<TagLabel> currentTags(EntityInterface<?> entity, String fieldPath) {
+    if (isEntityLevelTagPath(fieldPath)) {
+      return entity.getTags() == null ? List.of() : entity.getTags();
+    }
+    Optional<Object> target = FieldPathUtils.findField(entity, fieldPath);
+    if (target.isEmpty()) {
+      return null;
+    }
+    try {
+      List<TagLabel> tags =
+          (List<TagLabel>) target.get().getClass().getMethod("getTags").invoke(target.get());
+      return tags == null ? List.of() : tags;
+    } catch (ReflectiveOperationException e) {
+      return null;
     }
   }
 
