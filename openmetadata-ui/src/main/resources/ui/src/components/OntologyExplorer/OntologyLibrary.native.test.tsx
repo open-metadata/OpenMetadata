@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { mocked } from 'jest-mock';
 import {
@@ -20,6 +20,8 @@ import {
 } from '../../generated/api/data/createOntologyChangeSet';
 import {
   Format,
+  Industry,
+  Layer,
   OntologyPackManifest,
 } from '../../generated/api/data/ontologyPackManifest';
 import { OntologyChangeSetState } from '../../generated/entity/data/ontologyChangeSet';
@@ -61,6 +63,8 @@ const target = {
 };
 const pack: OntologyPackManifest = {
   id: 'fhir',
+  industry: Industry.Healthcare,
+  layer: Layer.L2,
   abbreviation: 'FHIR',
   name: 'FHIR Reference',
   version: '5.0.0',
@@ -99,6 +103,7 @@ const preview = {
   description: 'Import FHIR',
   ontology: 'Sales',
   baseWorkingRevision: 4,
+  sourcePack: { packId: 'fhir', version: '5.0.0', moduleIds: ['core'] },
   operations: [
     {
       id: 'operation-id',
@@ -166,13 +171,11 @@ const install = async () => {
   });
 };
 const openInstalledPack = async () => {
-  await screen.findByTestId('ontology-pack-fhir');
+  const card = await screen.findByTestId('ontology-pack-fhir');
 
   expect(screen.getByTestId('ontology-library-close')).toBeEnabled();
 
-  await openPack();
-
-  return screen.findByTestId('ontology-library-open-graph');
+  return card;
 };
 const chooseExisting = async () => {
   const user = userEvent.setup();
@@ -182,7 +185,22 @@ const chooseExisting = async () => {
 const creates = () => post.mock.calls.filter(([url]) => url === '/ontologies');
 const drafts = () =>
   post.mock.calls.filter(([url]) => url === '/ontologyChangeSets');
+const sampleResponse = () => ({
+  data: {
+    packId: pack.id,
+    version: pack.version,
+    moduleIds: ['core'],
+    conceptCount: 2,
+    relationCount: 1,
+    concepts: [],
+    relations: [],
+  },
+});
 let created = { ...target, id: 'created-id' };
+let catalogueInstallations: {
+  ontology: { id: string; name: string; displayName?: string };
+  installation: { packId: string };
+}[] = [];
 const respond = async (url: string, data: unknown) => {
   if (url.includes('/library/')) {
     return { data: preview };
@@ -191,6 +209,16 @@ const respond = async (url: string, data: unknown) => {
     return { data: draft };
   }
   if (url === '/ontologyChangeSets/draft-id/apply') {
+    catalogueInstallations = [
+      {
+        ontology: {
+          id: created.id,
+          name: created.name,
+        },
+        installation: { packId: pack.id },
+      },
+    ];
+
     return { data: { ...draft, state: OntologyChangeSetState.Applied } };
   }
   if (url === '/ontologyEditLocks/acquire') {
@@ -219,14 +247,67 @@ describe('OntologyLibrary native installation', () => {
     jest.clearAllMocks();
     permit(true);
     created = { ...target, id: 'created-id' };
+    catalogueInstallations = [];
     get.mockImplementation(async (url) => {
       if (url === '/ontologyPacks') {
-        return { data: { packs: [pack] } };
+        return {
+          data: { packs: [pack], installations: catalogueInstallations },
+        };
+      }
+
+      if (url.includes('/sample')) {
+        return sampleResponse();
+      }
+
+      if (url === '/ontologies/created-id') {
+        return { data: created };
       }
 
       return { data: url.includes('/ontologyEditLocks/') ? lock : draft };
     });
     post.mockImplementation(respond);
+  });
+
+  it('filters native packs by industry and opens the aligned detail from the card action', async () => {
+    const fibo: OntologyPackManifest = {
+      ...pack,
+      id: 'fibo',
+      abbreviation: 'FIBO',
+      name: 'FIBO Starter',
+      industry: Industry.Finance,
+      standard: 'Financial Industry Business Ontology',
+    };
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [pack, fibo], installations: [] } };
+      }
+      if (url.includes('/sample')) {
+        return { data: { ...sampleResponse().data, packId: fibo.id } };
+      }
+
+      return { data: draft };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await act(async () => undefined);
+    await screen.findByTestId('ontology-pack-fibo');
+    fireEvent.click(screen.getByTestId('ontology-library-filter-finance'));
+
+    expect(screen.getByTestId('ontology-pack-fibo')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+
+    const action = screen.getByTestId('ontology-pack-details-fibo');
+
+    expect(action).toHaveClass('tw:after:absolute');
+    expect(action).toHaveAccessibleName('label.view FIBO Starter');
+
+    fireEvent.click(action);
+
+    expect(screen.getByTestId('ontology-pack-detail')).toHaveTextContent(
+      'label.ontology-library-aligned-to'
+    );
+    expect(screen.getByTestId('ontology-pack-detail')).toHaveTextContent(
+      fibo.standard
+    );
   });
 
   it('defaults to a unique owned new ontology even when an existing owner is selected', async () => {
@@ -243,7 +324,7 @@ describe('OntologyLibrary native installation', () => {
 
     await install();
 
-    expect(await openInstalledPack()).toBeVisible();
+    expect(await openInstalledPack()).toHaveTextContent('label.installed');
 
     const request = creates()[0][1];
 
@@ -253,7 +334,7 @@ describe('OntologyLibrary native installation', () => {
         name: expect.stringMatching(/^fhir-/),
         iri: expect.stringMatching(/^urn:openmetadata:ontology:/),
         owners: [{ id: 'author', type: 'user' }],
-        layer: 'L1',
+        layer: 'L2',
       })
     );
     expect(Object(request).namespace).toBe(Object(request).iri + ':');
@@ -312,17 +393,13 @@ describe('OntologyLibrary native installation', () => {
 
     await openInstalledPack();
 
-    expect(await screen.findByText('message.no-changes-to-save')).toBeVisible();
-
-    fireEvent.click(screen.getByTestId('ontology-library-open-graph'));
-
-    expect(native.onOpenOntology).toHaveBeenCalledWith(target);
+    expect(native.onOpenOntology).not.toHaveBeenCalled();
     expect(creates()).toHaveLength(0);
     expect(drafts()).toHaveLength(0);
     expect(native.onApplied).not.toHaveBeenCalled();
   });
 
-  it('retains the installed target and graph action across Back and reopening the pack', async () => {
+  it('retains the installed target from the server across Back and reopening the pack', async () => {
     const native = nativeProps();
     renderWithQueryClient(<OntologyLibrary native={native} />);
 
@@ -341,6 +418,7 @@ describe('OntologyLibrary native installation', () => {
     );
 
     await openInstalledPack();
+    await openPack();
     fireEvent.click(screen.getByTestId('ontology-library-back'));
 
     expect(await screen.findByTestId('ontology-pack-fhir')).toHaveTextContent(
@@ -351,9 +429,14 @@ describe('OntologyLibrary native installation', () => {
     ).toBeVisible();
 
     await openPack();
-    fireEvent.click(screen.getByTestId('ontology-library-open-graph'));
+    fireEvent.click(
+      screen.getByTestId('ontology-library-installed-in-created-id')
+    );
 
-    expect(native.onOpenOntology).toHaveBeenCalledWith(created);
+    await waitFor(() =>
+      expect(native.onOpenOntology).toHaveBeenCalledWith(created)
+    );
+
     expect(creates()).toHaveLength(1);
     expect(drafts()).toHaveLength(1);
   });
@@ -432,6 +515,10 @@ describe('OntologyLibrary native installation', () => {
         return { data: { packs: [pack] } };
       }
 
+      if (url.includes('/sample')) {
+        return sampleResponse();
+      }
+
       return { data: url.startsWith('/ontologies/name/') ? created : draft };
     });
     const native = nativeProps();
@@ -456,6 +543,9 @@ describe('OntologyLibrary native installation', () => {
       return response;
     });
     get.mockImplementation(async (url) => {
+      if (url.includes('/sample')) {
+        return sampleResponse();
+      }
       if (url.startsWith('/ontologies/name/')) {
         if (lookupFails) {
           throw new Error('lookup unavailable');

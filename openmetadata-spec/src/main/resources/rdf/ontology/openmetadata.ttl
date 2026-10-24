@@ -3124,6 +3124,10 @@ om:inheritedRoles a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "inheritedRoles" .
 
+om:installedPacks a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "installedPacks" .
+
 om:inputPort a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "inputPort" .
@@ -3800,6 +3804,10 @@ om:sourceHumanMessage a rdf:Property ;
 om:sourceId a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "sourceId" .
+
+om:sourcePack a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "sourcePack" .
 
 om:sourcePythonClass a rdf:Property ;
     om:projectionStatus om:Stored ;

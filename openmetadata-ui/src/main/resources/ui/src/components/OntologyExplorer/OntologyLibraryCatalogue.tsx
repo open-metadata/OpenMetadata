@@ -30,7 +30,11 @@ import { ToggleButton, ToggleButtonGroup } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyPackManifest } from '../../generated/api/data/ontologyPackManifest';
 import { selectedModuleTotals } from './OntologyLibrary.utils';
-import { PACK_PRESENTATION } from './OntologyLibraryCatalogue.constants';
+import {
+  INDUSTRY_LABEL_KEY,
+  INDUSTRY_ORDER,
+  PACK_PRESENTATION,
+} from './OntologyLibraryCatalogue.constants';
 
 interface OntologyLibraryCatalogueProps {
   packs: OntologyPackManifest[];
@@ -74,6 +78,8 @@ const OntologyPackCard = ({
   if (pack.bundled) {
     action = (
       <Button
+        aria-label={`${t('label.view')} ${pack.name}`}
+        className="tw:static! tw:after:absolute tw:after:inset-0 tw:after:pointer-events-auto! tw:focus-visible:after:outline-2 tw:focus-visible:after:outline-focus-ring"
         color="link-color"
         data-testid={`ontology-pack-details-${pack.id}`}
         iconTrailing={ArrowRight}
@@ -99,7 +105,7 @@ const OntologyPackCard = ({
 
   return (
     <Card
-      className="tw:h-full"
+      className="tw:relative tw:h-full"
       data-testid={`ontology-pack-${pack.id}`}
       size="md"
       variant="elevated">
@@ -164,19 +170,17 @@ const OntologyLibraryCatalogue = ({
   );
   const filters = [
     { id: ALL_FILTER_ID, label: t('label.all') },
-    ...orderedPacks.map((pack) => {
-      const presentation = PACK_PRESENTATION[pack.id];
-
-      return {
-        id: pack.id,
-        label: presentation ? t(presentation.filterKey) : pack.name,
-      };
-    }),
+    ...INDUSTRY_ORDER.filter((industry) =>
+      orderedPacks.some((pack) => pack.industry === industry)
+    ).map((industry) => ({
+      id: industry,
+      label: t(INDUSTRY_LABEL_KEY[industry]),
+    })),
   ];
   const visiblePacks =
     selectedFilterId === ALL_FILTER_ID
       ? orderedPacks
-      : orderedPacks.filter((pack) => pack.id === selectedFilterId);
+      : orderedPacks.filter((pack) => pack.industry === selectedFilterId);
 
   return (
     <Box data-testid="ontology-pack-catalogue" direction="col" gap={4}>

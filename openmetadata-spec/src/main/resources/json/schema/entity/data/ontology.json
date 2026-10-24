@@ -78,6 +78,14 @@
         "$ref": "../../type/ontologyConfiguration.json#/definitions/prefix"
       },
       "default": []
+    },
+    "installedPacks": {
+      "description": "Verified library packs installed into this ontology, one entry per pack ID. The server records an entry when a change set with a source pack applies. PUT keeps the stored value, and PATCH cannot change it.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackInstallation.json"
+      },
+      "default": []
     }
   },
   "required": [

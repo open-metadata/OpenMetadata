@@ -3,6 +3,8 @@
   "bundled": true,
   "description": "A compact OpenMetadata starter subset of GS1 Web Vocabulary core classes.",
   "id": "gs1",
+  "industry": "retail",
+  "layer": "L2",
   "license": "MIT",
   "licenseUrl": "https://www.gs1.org/standards",
   "modules": [

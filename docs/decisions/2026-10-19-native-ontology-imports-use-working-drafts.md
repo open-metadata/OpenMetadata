@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest
 - **Related:** Ontology Studio publication and release contracts
@@ -33,3 +33,17 @@ Library installation defaults to a new native ontology with a unique pack-prefix
 One install action resolves the target, checks its edit permission, previews the selected modules, and applies the resulting working draft under its lease. The client freezes the target request and draft plan for retries. A lost target-create response is resolved by name and exact IRI. Every returned draft must match the frozen name, native owner, working revision, operations, and active undo cursor; an omitted preview cursor means all operations, matching server normalization. The client reads and validates the draft again under its acquired lease immediately before applying. Changed drafts cannot be applied or reported as this installation's completion. Draft lookup streams at most 100 pages of 100 records to bound recovery work. A failed, repeated, or incomplete cursor lookup cannot justify another create. Confirmed absence permits retrying the same unique identity. An unchanged already-applied draft completes without another apply. A no-op preview creates no draft.
 
 Completion returns to the catalog. Installed state retains the actual target and module selection for the mounted library session, bounded by the verified catalog. Closing during a mutation is disabled. Closing after a settled error preserves server objects, and browser reload recovery is outside this session-scoped contract. `OntologyLibrary.native.test.tsx`, `useOntologyChangeSetApply.test.tsx`, and `OntologyNativeOperations.spec.ts` guard these transitions.
+
+## Amendment
+
+Installed state is durable on the target ontology. It replaces the mounted-session installed state of the previous amendment, so a reload and every other user see the same marks. Completion returns to the catalog, which reads installed state from the server again.
+
+The library preview stamps `sourcePack` on the change-set request it returns: the pack ID, its catalog version, and the selected module IDs with their dependencies, in catalog order. Creating a change set accepts `sourcePack` only for a native scope and only when it matches the verified catalog, and the stamp cannot change afterwards. Applying a change set with `sourcePack` records an `ontologyPackInstallation` in the ontology's `installedPacks` in the same transaction as its operations. The write goes through the ontology's versioned updater, so the root version advances and a write that read the ontology before the install fails with 412 instead of dropping the record. The server stamps the module checksums, license, and source from the catalog, and the time and user from the apply. An apply whose `sourcePack` version the catalog no longer serves returns 412 before any operation runs. A failed or rolled-back apply records nothing. A no-op preview creates no draft, so it records nothing either.
+
+The ontology keeps one entry per pack ID. A later install of the same version adds its modules to the entry. An install of another version replaces it. Clients cannot write `installedPacks`: create starts it empty, PUT keeps the stored value, and a PATCH that changes it returns 400. `sourcePack` is provenance that the client carries from the preview. The record states what an editor of that ontology installed. It does not prove that the ontology's definitions still match the pack.
+
+`GET /v1/ontologyPacks` lists, for each pack, the non-deleted ontologies with an entry that the caller may view under the same check as `GET /v1/ontologies/{id}`. One catalog read considers at most 1,000 such ontologies, which keeps it an interactive request. `GET /v1/ontologyPacks/{packId}/sample` returns at most 60 concepts, starting from the top of the hierarchy, and the relations among them, from the selected verified modules and with no target ontology. Packs carry an `industry` for the catalog filter and the `layer` at which the client creates a new target. `NativeOntologyPackInstallStateIT` and `NativeOntologyLibraryPreviewIT` guard this behavior.
+
+## Amendment
+
+The catalogue's total 1,000-ontology cap in v4 is replaced by keyset pages of at most 1,000 raw installed ontologies. Each page batch-loads the fields used by authorization, and the scan advances by its final raw ID even when the caller cannot view any row on that page. The response contains every visible installation; a hidden or later row cannot make a pack appear uninstalled. Response size and scan time grow with installations. If that cost becomes too large for an interactive request, the API and client need explicit pagination rather than a silent total cap.

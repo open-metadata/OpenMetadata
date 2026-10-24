@@ -44,6 +44,11 @@ export interface OntologyChangeSet {
      * Review task created when a suggester submits the change set.
      */
     reviewTask?: EntityReference;
+    /**
+     * Library pack selection this native change set installs. Applying it records the pack in
+     * the ontology's installedPacks.
+     */
+    sourcePack?: OntologyPackSource;
     state:       OntologyChangeSetState;
     /**
      * Number of active operations at the current undo/redo position.
@@ -1205,6 +1210,21 @@ export interface TermRelation {
      * Reference to the related glossary term.
      */
     term: EntityReference;
+}
+
+/**
+ * Library pack selection this native change set installs. Applying it records the pack in
+ * the ontology's installedPacks.
+ *
+ * Verified library pack selection that a native ontology change set installs.
+ */
+export interface OntologyPackSource {
+    /**
+     * Selected modules with their dependencies, in catalogue order.
+     */
+    moduleIds: string[];
+    packId:    string;
+    version:   string;
 }
 
 export enum OntologyChangeSetState {
