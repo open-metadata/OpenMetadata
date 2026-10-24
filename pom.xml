@@ -89,8 +89,6 @@
     <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-surefire.version>3.1.2</maven-surefire.version>
-    <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
-    <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     <jakarta.version>3.0.2</jakarta.version>
     <jaxb.version>3.0.2</jaxb.version>
     <wiremock-standalone.version>2.15.0</wiremock-standalone.version>

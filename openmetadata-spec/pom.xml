@@ -16,8 +16,6 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <dropwizard.swagger.version>2.0.12-1</dropwizard.swagger.version>
-        <maven-javadoc-plugin.version>3.6.0</maven-javadoc-plugin.version>
-        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
     </properties>
 
     <dependencies>
@@ -135,11 +133,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-source-plugin</artifactId>
-                <version>${maven-source-plugin.version}</version>
             </plugin>
         </plugins>
     </build>
