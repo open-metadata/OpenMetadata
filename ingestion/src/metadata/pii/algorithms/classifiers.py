@@ -51,6 +51,13 @@ from metadata.pii.algorithms.tags import PIISensitivityTag, PIITag
 # which pattern recognisers never flag but spaCy NER might mis-classify as PERSON.
 _NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, PIITag.NRP})
 
+# DATE_TIME values are common in production data: event timestamps, audit fields,
+# order timestamps, etc.  A DATE_TIME content hit is only meaningful when the column
+# name also signals a personal date (birth_date, dob, hire_date, …).  Without a
+# column-name corroboration we suppress the content hit to avoid false positives.
+# This set lists the tags that require such corroboration.
+_REQUIRES_COLUMN_NAME_CORROBORATION: frozenset[PIITag] = frozenset({PIITag.DATE_TIME})
+
 T = TypeVar("T", bound=Hashable)
 
 
@@ -160,6 +167,15 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
 
         if column_name is not None:
             column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
+
+        # Suppress content hits for tags that require column-name corroboration when
+        # the column name does not confirm a personal meaning.  DATE_TIME is the
+        # primary example: event_timestamp / created_at scores 1.0 on content but is
+        # not PII; birth_date also scores 1.0 on content AND matches the allowlist,
+        # so its hit is kept.
+        for tag in _REQUIRES_COLUMN_NAME_CORROBORATION:
+            if tag not in column_name_matches:
+                content_results.pop(tag, None)
 
         final_results: dict[PIITag, float] = {}
 
