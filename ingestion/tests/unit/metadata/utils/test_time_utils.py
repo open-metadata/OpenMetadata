@@ -48,7 +48,33 @@ from datetime import datetime, timedelta, timezone  # noqa: E402
 
 import pytest  # noqa: E402
 
-from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+from metadata.utils.time_utils import convert_timestamp, datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+
+
+@pytest.mark.parametrize(
+    "timestamp_str, expected",
+    [
+        # Numeric second-precision Unix timestamp (existing behaviour)
+        ("1638316800", 1638316800),
+        # Numeric millisecond-precision Unix timestamp (existing behaviour)
+        ("1638316800000", 1638316800.0),
+        # Human-readable space-separated datetime — the case from the bug report.
+        # Treated as UTC, so should equal the equivalent epoch second.
+        ("2024-06-30 00:00:00", 1719705600),
+        # ISO 8601 T-separated datetime — same point in time.
+        ("2024-06-30T00:00:00", 1719705600),
+        # ISO 8601 with explicit UTC offset.
+        ("2024-06-30T00:00:00+00:00", 1719705600),
+    ],
+)
+def test_convert_timestamp(timestamp_str, expected):
+    result = convert_timestamp(timestamp_str)
+    assert result == pytest.approx(expected)
+
+
+def test_convert_timestamp_invalid_raises():
+    with pytest.raises(ValueError):
+        convert_timestamp("not-a-timestamp")
 
 
 @pytest.mark.parametrize(
