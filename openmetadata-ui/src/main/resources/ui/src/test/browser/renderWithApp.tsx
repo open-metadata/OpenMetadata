@@ -27,7 +27,6 @@ import { render } from 'vitest-browser-react';
 import AuthenticatedAppRouter from '../../components/AppRouter/AuthenticatedAppRouter';
 import ApplicationsProvider from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
-import AntDConfigProvider from '../../context/AntDConfigProvider/AntDConfigProvider';
 import PermissionProvider from '../../context/PermissionProvider/PermissionProvider';
 import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
@@ -75,22 +74,20 @@ const AppProviders = ({ children }: { children: ReactNode }) => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AntDConfigProvider>
-        <UntitledUIThemeProvider>
-          {/* Production (AppRoot) routes with transitions; Playwright turns
+      <UntitledUIThemeProvider>
+        {/* Production (AppRoot) routes with transitions; Playwright turns
               them off via isPlaywrightEnv(), which hides transition races. */}
-          <BrowserRouter useTransitions>
-            <AriaRouterBridge>
-              <RuleEnforcementProvider>
-                <DndProvider backend={HTML5Backend}>
-                  {children}
-                  <LocationProbe />
-                </DndProvider>
-              </RuleEnforcementProvider>
-            </AriaRouterBridge>
-          </BrowserRouter>
-        </UntitledUIThemeProvider>
-      </AntDConfigProvider>
+        <BrowserRouter useTransitions>
+          <AriaRouterBridge>
+            <RuleEnforcementProvider>
+              <DndProvider backend={HTML5Backend}>
+                {children}
+                <LocationProbe />
+              </DndProvider>
+            </RuleEnforcementProvider>
+          </AriaRouterBridge>
+        </BrowserRouter>
+      </UntitledUIThemeProvider>
     </QueryClientProvider>
   );
 };
