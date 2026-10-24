@@ -466,8 +466,7 @@ class DataInsightsEnricherBehaviorIT {
     Map<String, Object> entityMap = JsonUtils.getMap(table);
     EnrichmentContext context = new EnrichmentContext("table", TABLE_FIELDS, 0L, 86_400_000L);
     EnrichmentTarget target =
-        new EnrichmentTarget(
-            table, entityMap, Map.of(), 0L, 86_400_000L, context, VersionShape.LATEST_HYDRATED);
+        new EnrichmentTarget(table, entityMap, Map.of(), context, VersionShape.LATEST_HYDRATED);
 
     List<StepFailure> failures = customPipeline.run(target);
 
