@@ -305,6 +305,23 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+/**
+ * The root breadcrumb of a scene that has been drilled into, i.e. the way back
+ * to "All services" (or domains / data products). Undefined at the root itself.
+ */
+export const getDrilledRootBreadcrumb = (
+  scene?: Pick<LineageScene, 'breadcrumb' | 'band' | 'focusFqn'>
+): LineageSceneBreadcrumb | undefined => {
+  // An empty drilled scene comes back with only the root crumb, so whether it
+  // is drilled is read from its focus and band, not from the trail's length.
+  const isDrilled =
+    Boolean(scene?.focusFqn) || (scene && scene.band !== LineageBand.Layer);
+
+  return isDrilled
+    ? scene?.breadcrumb.find((breadcrumb) => !breadcrumb.fullyQualifiedName)
+    : undefined;
+};
+
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {

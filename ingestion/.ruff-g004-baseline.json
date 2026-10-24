@@ -1418,11 +1418,6 @@
     "ingestion/src/metadata/ingestion/source/database/mysql/metadata.py": {
       "928513e7aa27d5d37cff0d421a2e922fe584511d1d93de62feaae334043edf66": 1
     },
-    "ingestion/src/metadata/ingestion/source/database/oracle/utils.py": {
-      "a0b688a553eba79b874b78b582542b972ba3784daa47530774f096c4aab2c7c4": 1,
-      "ddec48d112f126917f6d09e292a05c817a6a59e766fd20f1a35ff8d10e5b82cd": 1,
-      "e115e333945dda291258a24521ea9fd9a5580354577d3a2012951b897838fa78": 1
-    },
     "ingestion/src/metadata/ingestion/source/database/postgres/lineage.py": {
       "70b0fd48c9a44a37c50e5e0908901463e649b4af9fac5a9708ad272e5aedee7c": 1,
       "8c9986aae9f496813f172363cc6c95e114269a2dd1f9625449ef3fedae6dfe75": 1,

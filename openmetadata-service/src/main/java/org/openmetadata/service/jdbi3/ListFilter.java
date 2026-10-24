@@ -538,7 +538,7 @@ public class ListFilter extends Filter<ListFilter> {
    * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
    */
   private String getEntityLinkHashCondition() {
-    String entityLinkHash = queryParams.get("entityLinkHash");
+    final String entityLinkHash = queryParams.get("entityLinkHash");
     String condition = "";
     if (entityLinkHash != null) {
       condition =
