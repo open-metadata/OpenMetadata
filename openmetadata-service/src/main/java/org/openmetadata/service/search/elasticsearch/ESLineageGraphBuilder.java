@@ -1393,6 +1393,8 @@ public class ESLineageGraphBuilder
             new ArrayList<>(allEntitiesUpToDepth.values()),
             entityData -> entityData.depth,
             entityData -> entityData.fqn);
+    allEntitiesUpToDepthList.removeIf(
+        entityData -> entityData.depth == 0 && entityData.fqn.equals(request.getFqn()));
     List<EntityData> paginatedEntities =
         paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 
@@ -1421,6 +1423,19 @@ public class ESLineageGraphBuilder
       result.getNodes().put(entityData.fqn, getNodeInformation(document, null, null, entityDepth));
 
       addLineageEdges(result, document, request, allCollectedFqns);
+    }
+
+    // The root is excluded from the page window above, but its document still
+    // holds the lineage edges connecting it to its neighbours (e.g. upstream
+    // parents → root for UPSTREAM). Process those edges so the graph stays
+    // connected on every page, not just the first. Use the full root document
+    // from result.getNodes() rather than allEntitiesUpToDepth: for UPSTREAM the
+    // depth-0 walk overwrites that entry with a slim LINEAGE_WALK_FIELDS document
+    // that lacks id/entityType, which would make addLineageEdges throw inside
+    // getRelationshipRef.
+    NodeInformation rootNode = result.getNodes().get(request.getFqn());
+    if (rootNode != null && rootNode.getEntity() != null) {
+      addLineageEdges(result, JsonUtils.getMap(rootNode.getEntity()), request, allCollectedFqns);
     }
 
     Map<Integer, Integer> depthCounts = new LinkedHashMap<>();
