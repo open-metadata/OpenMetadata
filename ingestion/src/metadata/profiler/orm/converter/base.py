@@ -45,25 +45,34 @@ SQA_RESERVED_ATTRIBUTES = ["metadata"]
 # key when that column happens to be first and raises a hard mapper error.
 _SQA_DUNDER_RE = re.compile(r"^(?:__|_sa_)")
 _OM_SAFE_PREFIX = "om_col_"
+# Matches any character that is not a valid Python identifier character.  SQLAlchemy
+# rejects dotted property names (e.g. ``nested_field.subfield``) with a hard mapper
+# error; hyphens and spaces cause similar failures.  We replace them with underscores
+# in the class-attribute key while leaving Column.name and Column.key intact.
+_NON_IDENT_RE = re.compile(r"[^A-Za-z0-9_]")
 
 
 def _safe_orm_attr(name: str, existing: set) -> str:
     """Return a class-attribute key safe for SQLAlchemy's declarative base.
 
-    Renames attributes that SQLAlchemy would silently discard:
+    Renames attributes that SQLAlchemy would silently discard or fail on:
+    - non-identifier characters (dots, hyphens, spaces, etc.) are replaced with
+      underscores so the attribute name is a valid Python identifier; ``Column.name``
+      and ``Column.key`` are unchanged, so queries still use the original name.
     - reserved names (e.g. "metadata") get a trailing underscore (existing behaviour)
     - dunder/``_sa_``-prefixed names get the ``om_col_`` prefix so they pass the
-      declarative scan filter; ``Column.name`` and ``Column.key`` are unchanged, so
-      the profiler still addresses columns by their original name.
+      declarative scan filter
 
     Collisions introduced by the renaming are resolved by appending underscores.
     """
-    if name in SQA_RESERVED_ATTRIBUTES:
-        candidate = name + "_"
-    elif _SQA_DUNDER_RE.match(name):
-        candidate = _OM_SAFE_PREFIX + name
+    sanitized = _NON_IDENT_RE.sub("_", name)
+
+    if sanitized in SQA_RESERVED_ATTRIBUTES:
+        candidate = sanitized + "_"
+    elif _SQA_DUNDER_RE.match(sanitized):
+        candidate = _OM_SAFE_PREFIX + sanitized
     else:
-        candidate = name
+        candidate = sanitized
     while candidate in existing:
         candidate += "_"
     return candidate
