@@ -13,6 +13,7 @@
 
 import React, { useCallback, useState } from 'react';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import Loader from '../../common/Loader/Loader';
 import './storylane-tour.less';
 
@@ -27,6 +28,9 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
     setIsLoading(false);
   }, []);
 
+  // A javascript: or data: URL would run in the product's origin inside the iframe.
+  const safeUrl = getSafeHttpUrl(resource.source.url);
+
   return (
     <div className="storylane-tour-wrapper">
       <div className="storylane-tour-container">
@@ -40,7 +44,7 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
           className="storylane-tour-iframe"
           frameBorder="0"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
-          src={resource.source.url}
+          src={safeUrl}
           title={resource.displayName || resource.name}
           onLoad={handleLoad}
         />

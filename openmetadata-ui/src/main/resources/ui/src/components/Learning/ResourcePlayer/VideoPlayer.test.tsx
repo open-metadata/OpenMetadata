@@ -145,13 +145,22 @@ describe('VideoPlayer', () => {
     expect(screen.getByTitle('test-video-name')).toBeInTheDocument();
   });
 
-  it('should handle invalid URL gracefully', () => {
+  it('should not frame an unparseable URL', () => {
     const resource = createMockResource('not-a-valid-url');
     render(<VideoPlayer resource={resource} />);
 
     const iframe = screen.getByTitle('Test Video');
 
-    expect(iframe.getAttribute('src')).toBe('not-a-valid-url');
+    expect(iframe.getAttribute('src')).toBeNull();
+  });
+
+  it('should not frame a javascript: URL', () => {
+    const resource = createMockResource('javascript:alert(1)');
+    render(<VideoPlayer resource={resource} />);
+
+    const iframe = screen.getByTitle('Test Video');
+
+    expect(iframe.getAttribute('src')).toBeNull();
   });
 
   it('should reject URLs with youtube.com in path but different host', () => {

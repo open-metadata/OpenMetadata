@@ -26,7 +26,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,6 +52,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -2633,6 +2639,76 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
                 .users()
                 .generateToken(regularUser.getId(), JWTTokenExpiry.Seven),
         "Admin should not be able to generate token for regular user");
+  }
+
+  /**
+   * Bot tokens are for bots: a person's own account gets personal access tokens instead, which can
+   * be revoked, and minting one here would replace the account's stored authentication mechanism.
+   */
+  @Test
+  void test_generateToken_forOwnRegularAccount_forbidden(TestNamespace ns) {
+    String userName = ns.shortPrefix("owntoken");
+    User regularUser =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withDescription("Regular user asking for a bot token for itself"));
+    OpenMetadataClient asTheUser =
+        SdkClients.createClient(regularUser.getName(), regularUser.getEmail(), new String[] {});
+
+    OpenMetadataException exception =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> asTheUser.users().generateToken(regularUser.getId(), JWTTokenExpiry.Seven));
+    assertEquals(403, exception.getStatusCode(), exception.getMessage());
+  }
+
+  /** The create payload never carries a person's password, so a PUT must not erase the stored one. */
+  @Test
+  void test_putWithoutPassword_keepsTheStoredPassword(TestNamespace ns) throws Exception {
+    String userName = ns.shortPrefix("keeppwd");
+    String password = "Keep!Passw0rd" + ns.uniqueShortId();
+    User user =
+        createEntity(
+            new CreateUser()
+                .withName(userName)
+                .withEmail(userName + "@example.com")
+                .withPassword(password)
+                .withConfirmPassword(password)
+                .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE)
+                .withIsBot(false));
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/users",
+            new CreateUser()
+                .withName(user.getName())
+                .withEmail(user.getEmail())
+                .withDisplayName("Renamed by PUT")
+                .withIsBot(false),
+            User.class);
+
+    assertEquals(200, basicLogin(user.getEmail(), password).statusCode());
+  }
+
+  private static HttpResponse<String> basicLogin(String email, String password) throws Exception {
+    LoginRequest request =
+        new LoginRequest()
+            .withEmail(email)
+            .withPassword(
+                Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8)));
+    // A fresh client per POST: the JDK only retries GET and HEAD on a connection the server closed.
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder(URI.create(SdkClients.getServerUrl() + "/v1/auth/login"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
   }
 
   // ===================================================================

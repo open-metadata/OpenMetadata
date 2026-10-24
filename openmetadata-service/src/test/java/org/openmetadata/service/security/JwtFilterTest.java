@@ -15,6 +15,7 @@ package org.openmetadata.service.security;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,6 +35,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.PathSegment;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.lang.reflect.Field;
@@ -55,6 +57,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -73,6 +76,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
@@ -149,8 +153,13 @@ class JwtFilterTest {
             .sign(algorithm);
 
     ContainerRequestContext context = createRequestContextWithJwt(jwt);
+    UserRepository users =
+        repositoryWith(new User().withName("sam").withEmail("sam@openmetadata.org"));
 
-    domainEnforcingFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      domainEnforcingFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
@@ -320,21 +329,178 @@ class JwtFilterTest {
 
   @Test
   void testFilterWithEmailClaim() {
-    String jwt =
-        JWT.create()
-            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
-            .withClaim("email", "sam@gmail.com")
-            .sign(algorithm);
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
 
-    ContainerRequestContext context = createRequestContextWithJwt(jwt);
-
-    jwtFilter.filter(context);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+      jwtFilter.filter(context);
+    }
 
     ArgumentCaptor<SecurityContext> securityContextArgument =
         ArgumentCaptor.forClass(SecurityContext.class);
     verify(context, times(1)).setSecurityContext(securityContextArgument.capture());
 
     assertEquals("sam", securityContextArgument.getValue().getUserPrincipal().getName());
+  }
+
+  /** The legacy flow names the user after the local part; another address must not reach them. */
+  @Test
+  void aProviderTokenForAnotherAddressDoesNotSignInToTheAccountOfThatName() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("sam@other.example"));
+    UserRepository users = repositoryWith(new User().withName("sam").withEmail("sam@gmail.com"));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    }
+    verify(context, never()).setSecurityContext(any());
+  }
+
+  @Test
+  void aProviderTokenNeverSignsInToABotAccount() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("ingestion-bot@openmetadata.org"));
+    UserRepository users =
+        repositoryWith(
+            new User()
+                .withName("ingestion-bot")
+                .withEmail("ingestion-bot@openmetadata.org")
+                .withIsBot(true));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(users);
+
+      assertThrows(AuthenticationException.class, () -> jwtFilter.filter(context));
+    }
+  }
+
+  @Test
+  void aProviderTokenForANameNoAccountHoldsIsAFirstLogin() {
+    ContainerRequestContext context =
+        createRequestContextWithJwt(legacyProviderJwt("new@gmail.com"));
+    UserRepository noAccounts = mock(UserRepository.class);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getUserRepository).thenReturn(noAccounts);
+      jwtFilter.filter(context);
+    }
+
+    verify(context, times(1)).setSecurityContext(any());
+  }
+
+  @Test
+  void allowedEmailDomainsApplyToLegacyProviderTokens() {
+    JwtFilter legacyWithAllowList =
+        new JwtFilter(
+            jwkProvider,
+            List.of("sub", "email"),
+            "openmetadata.org",
+            false,
+            null,
+            null,
+            List.of("openmetadata.org"));
+
+    ContainerRequestContext outsider =
+        createRequestContextWithJwt(legacyProviderJwt("sam@gmail.com"));
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(outsider));
+
+    String subjectOnly =
+        JWT.create()
+            .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+            .withClaim("sub", "sam")
+            .sign(algorithm);
+    ContainerRequestContext noEmail = createRequestContextWithJwt(subjectOnly);
+    assertThrows(AuthenticationException.class, () -> legacyWithAllowList.filter(noEmail));
+  }
+
+  @Test
+  void aPublicEntraClientIsRestrictedToTheTenantItsAuthorityNames() {
+    String tenant = "11111111-2222-3333-4444-555555555555";
+
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant)));
+    assertEquals(
+        tenant,
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.PUBLIC, "https://login.microsoftonline.com/" + tenant + "/v2.0/")));
+  }
+
+  @Test
+  void onlyAPublicEntraClientNamingATenantIdIsRestricted() {
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/common")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(ClientType.PUBLIC, "https://login.microsoftonline.com/contoso.com")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            entraSignIn(
+                ClientType.CONFIDENTIAL,
+                "https://login.microsoftonline.com/11111111-2222-3333-4444-555555555555")));
+    assertNull(
+        JwtFilter.publicClientEntraTenant(
+            new AuthenticationConfiguration()
+                .withProvider(AuthProvider.GOOGLE)
+                .withClientType(ClientType.PUBLIC)
+                .withAuthority("https://accounts.google.com")));
+  }
+
+  private static AuthenticationConfiguration entraSignIn(ClientType clientType, String authority) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.AZURE)
+        .withClientType(clientType)
+        .withAuthority(authority);
+  }
+
+  @Test
+  void excludedEndpointsAreMatchedExactlyAndIgnoreMatrixParameters() {
+    // A genuine excluded endpoint, and the same path with a matrix parameter, both match.
+    assertTrue(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login"))));
+    assertTrue(
+        JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "users", "login;jsessionid=x"))));
+    // A write to an entity whose name merely embeds an excluded endpoint is not excluded.
+    assertFalse(
+        JwtFilter.isExcludedEndpoint(
+            pathSegments(List.of("v1", "tables", "name", "v1/users/login"))));
+    assertFalse(JwtFilter.isExcludedEndpoint(pathSegments(List.of("v1", "tables", "name", "foo"))));
+  }
+
+  private static UriInfo pathSegments(List<String> segments) {
+    List<PathSegment> pathSegments =
+        segments.stream()
+            .map(
+                segment -> {
+                  PathSegment pathSegment = mock(PathSegment.class);
+                  when(pathSegment.getPath())
+                      .thenReturn(segment.contains(";") ? segment.split(";")[0] : segment);
+                  return pathSegment;
+                })
+            .collect(Collectors.toList());
+    UriInfo uriInfo = mock(UriInfo.class);
+    when(uriInfo.getPathSegments()).thenReturn(pathSegments);
+    return uriInfo;
+  }
+
+  private static String legacyProviderJwt(String email) {
+    return JWT.create()
+        .withExpiresAt(Date.from(Instant.now().plus(1, ChronoUnit.DAYS)))
+        .withClaim("email", email)
+        .sign(algorithm);
+  }
+
+  private static UserRepository repositoryWith(User account) {
+    UserRepository userRepository = mock(UserRepository.class);
+    when(userRepository.findByNameOrNull(account.getName(), Include.NON_DELETED))
+        .thenReturn(account);
+    return userRepository;
   }
 
   @Test

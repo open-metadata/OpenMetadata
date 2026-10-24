@@ -475,6 +475,9 @@ public class SearchRepository {
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
+  // The service types whose children carry a `service.id`, so a service's domain change propagates
+  // to them. A type missing here leaves its children searchable with no domain, which search RBAC
+  // then shows to everyone — so LLM and MCP services belong here with the rest.
   private static final Set<String> SERVICE_ENTITY_SET =
       Set.of(
           Entity.DATABASE_SERVICE,
@@ -486,7 +489,9 @@ public class SearchRepository {
           Entity.SEARCH_SERVICE,
           Entity.SECURITY_SERVICE,
           Entity.API_SERVICE,
-          Entity.DRIVE_SERVICE);
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE);
 
   private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
@@ -1238,8 +1243,12 @@ public class SearchRepository {
         index, managedIndexMappings(), aliasIndexMap, clusterAlias);
   }
 
+  // A query cost record carries the query's SQL, so a deny rule on the query must reach its cost
+  // records too; they are indexed separately, so search RBAC treats them as a child of the query.
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
-      Map.of(Entity.TABLE, Set.of(Entity.TABLE_COLUMN));
+      Map.of(
+          Entity.TABLE, Set.of(Entity.TABLE_COLUMN),
+          Entity.QUERY, Set.of(Entity.QUERY_COST_RECORD));
 
   public List<String> getChildIndexAliases(String entityType) {
     Set<String> rbacChildren = RBAC_CHILD_TYPES.getOrDefault(entityType, Set.of());

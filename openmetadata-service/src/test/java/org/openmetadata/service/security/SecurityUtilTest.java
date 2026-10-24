@@ -1353,4 +1353,35 @@ class SecurityUtilTest {
         List.of(SecurityUtil.DEFAULT_PRINCIPAL_DOMAIN),
         SecurityUtil.configuredEmailDomains(null, "", null, true));
   }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
+
+  @Test
+  void registrationDomainCheckRejectsADomainThatOnlyFoldsOntoAnAllowedOne() {
+    assertTrue(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@Fintech.com", Set.of("fintech.com")));
+    assertFalse(
+        SecurityUtil.isEmailRegistrationDomainAllowed("a@fıntech.com", Set.of("fintech.com")));
+  }
 }

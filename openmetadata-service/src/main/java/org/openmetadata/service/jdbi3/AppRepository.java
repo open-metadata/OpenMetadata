@@ -112,6 +112,13 @@ public class AppRepository extends EntityRepository<App> {
     Bot bot;
     try {
       botUser = userRepository.getByName(null, botName, userRepository.getFields("id"));
+      if (!Boolean.TRUE.equals(botUser.getIsBot())) {
+        throw new IllegalStateException(
+            String.format(
+                "User '%s' already exists and is not a bot, so it cannot be the bot of application"
+                    + " '%s'. Rename or delete that user first.",
+                botUser.getName(), application.getName()));
+      }
     } catch (EntityNotFoundException ex) {
       // Get Bot Role - use impersonation role if allowImpersonation is true
       String roleName = allowImpersonation ? APP_BOT_IMPERSONATION_ROLE : APP_BOT_ROLE;

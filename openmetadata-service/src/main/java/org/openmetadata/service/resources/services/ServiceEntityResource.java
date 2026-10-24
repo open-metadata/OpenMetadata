@@ -16,14 +16,24 @@ package org.openmetadata.service.resources.services;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import org.openmetadata.schema.ServiceConnectionEntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
@@ -34,8 +44,14 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsUtil;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public abstract class ServiceEntityResource<
         T extends ServiceEntityInterface,
@@ -46,11 +62,13 @@ public abstract class ServiceEntityResource<
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
   private final ServiceType serviceType;
+  private final ViewPermissionFilter viewPermissionFilter;
 
   protected ServiceEntityResource(
       String entityType, Authorizer authorizer, Limits limits, ServiceType serviceType) {
     super(entityType, authorizer, limits);
     this.serviceType = serviceType;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     serviceEntityRepository =
         (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
@@ -63,7 +81,22 @@ public abstract class ServiceEntityResource<
               retrieveServiceConnectionConfig(
                   service, authorizer.shouldMaskPasswords(securityContext)));
     }
+    filterPipelines(securityContext, service);
     return service;
+  }
+
+  /**
+   * The {@code pipelines} field is gated only by ViewBasic on the service, so it would list
+   * pipelines a deny rule hides. Keep only the ones the caller may view. Admins and bots see all.
+   */
+  private void filterPipelines(SecurityContext securityContext, T service) {
+    List<EntityReference> pipelines = service.getPipelines();
+    if (nullOrEmpty(pipelines) || readsStoredSecrets(securityContext)) {
+      return;
+    }
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, pipelines);
+    service.setPipelines(
+        pipelines.stream().filter(p -> viewable.contains(p.getId())).collect(Collectors.toList()));
   }
 
   private Object retrieveServiceConnectionConfig(T service, boolean maskPassword) {
@@ -83,6 +116,146 @@ public abstract class ServiceEntityResource<
       SecurityContext securityContext, ResultList<T> services) {
     listOrEmpty(services.getData()).forEach(service -> decryptOrNullify(securityContext, service));
     return services;
+  }
+
+  @Override
+  protected Optional<UnaryOperator<T>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(service -> decryptOrNullify(securityContext, service));
+  }
+
+  // Every write that answers with the service shows its connection the way a read does.
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (mayRetargetConnection(securityContext, patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+      requireSecretsReenteredOnRetarget(repository.find(id, Include.NON_DELETED), patch);
+    }
+    return withRedactedEntity(
+        super.patchInternal(uriInfo, securityContext, id, patch, changeSource, ifMatchHeader),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  @Override
+  public Response patchInternal(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fqn,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader) {
+    if (mayRetargetConnection(securityContext, patch)) {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(entityType, patch),
+          getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+      requireSecretsReenteredOnRetarget(repository.findByName(fqn, Include.NON_DELETED), patch);
+    }
+    return withRedactedEntity(
+        super.patchInternal(uriInfo, securityContext, fqn, patch, changeSource, ifMatchHeader),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  /**
+   * {@link #unmask(ServiceEntityInterface)} for a write by the caller of {@code securityContext}.
+   * A caller who sees the connection's secrets masked keeps them only while the connection points
+   * where it did; see {@link ConnectionSecretsGuard}.
+   */
+  protected T unmask(SecurityContext securityContext, T service) {
+    // Only a write that carries a connection can keep a stored secret, so check that first and
+    // resolve the caller's subject only then — a connectionless write needs no guard.
+    if (service.getConnection() != null && !readsStoredSecrets(securityContext)) {
+      repository.setFullyQualifiedName(service);
+      requireSecretsReenteredOnRetarget(
+          repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED),
+          service);
+    }
+    return unmask(service);
+  }
+
+  /** Admins and bots may already read or replace any connection's secrets. */
+  private static boolean readsStoredSecrets(SecurityContext securityContext) {
+    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  /** A patch with no field names replaces the whole document, connection included. */
+  private static boolean mayRetargetConnection(SecurityContext securityContext, JsonPatch patch) {
+    Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
+    return (patchedFields.contains("connection")
+            || (patchedFields.isEmpty() && !patch.toJsonArray().isEmpty()))
+        && !readsStoredSecrets(securityContext);
+  }
+
+  private void requireSecretsReenteredOnRetarget(T original, JsonPatch patch) {
+    requireSecretsReenteredOnRetarget(original, JsonUtils.applyPatch(original, patch, entityClass));
+  }
+
+  private void requireSecretsReenteredOnRetarget(T original, T updated) {
+    if (original != null && original.getConnection() != null && updated.getConnection() != null) {
+      ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+          updated.getConnection().getConfig(),
+          original.getConnection().getConfig(),
+          extractServiceType(updated),
+          serviceType);
+    }
+  }
+
+  @Override
+  public Response delete(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      UUID id,
+      boolean recursive,
+      boolean hardDelete) {
+    return withRedactedEntity(
+        super.delete(uriInfo, securityContext, id, recursive, hardDelete),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  @Override
+  public Response deleteByName(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String name,
+      boolean recursive,
+      boolean hardDelete) {
+    return withRedactedEntity(
+        super.deleteByName(uriInfo, securityContext, name, recursive, hardDelete),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  @Override
+  public Response restoreEntity(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id, boolean async) {
+    return withRedactedEntity(
+        super.restoreEntity(uriInfo, securityContext, id, async),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  @Override
+  protected Response addFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    return withRedactedEntity(
+        super.addFollowerInternal(securityContext, entityId, userId),
+        service -> decryptOrNullify(securityContext, service));
+  }
+
+  @Override
+  protected Response deleteFollowerInternal(
+      SecurityContext securityContext, UUID entityId, UUID userId) {
+    return withRedactedEntity(
+        super.deleteFollowerInternal(securityContext, entityId, userId),
+        service -> decryptOrNullify(securityContext, service));
   }
 
   protected T unmask(T service) {

@@ -360,23 +360,35 @@ public interface SearchClient
       """
           + TAG_RESEPARATION_SCRIPT;
 
+  // The selecting query is a prefix match, so it also picks up a sibling whose FQN merely starts
+  // with the same text (moving "Plan" would otherwise rewrite "Planning"). Rewrite only an FQN that
+  // equals the old parent or sits under it at a real "." boundary, so those siblings are a no-op.
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                  String currentFQN = ctx._source.fullyQualifiedName;
+                  if (currentFQN != null &&
+                      (currentFQN.equals(params.oldParentFQN) || currentFQN.startsWith(params.oldParentFQN + '.'))) {
+                  String updatedFQN = params.newParentFQN + currentFQN.substring(params.oldParentFQN.length());
                   ctx._source.fullyQualifiedName = updatedFQN;
                   ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
                   if (ctx._source.containsKey('parent')) {
                     if (ctx._source.parent.containsKey('fullyQualifiedName')) {
                       String parentFQN = ctx._source.parent.fullyQualifiedName;
-                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                      if (parentFQN != null &&
+                          (parentFQN.equals(params.oldParentFQN) || parentFQN.startsWith(params.oldParentFQN + '.'))) {
+                        ctx._source.parent.fullyQualifiedName = params.newParentFQN + parentFQN.substring(params.oldParentFQN.length());
+                      }
                     }
                   }
+                  }
                   if (ctx._source.containsKey('classification')) {
-                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
-                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-                    }
-                    if (ctx._source.classification.containsKey('name')) {
-                      ctx._source.classification.name = params.newParentFQN;
+                    String classificationFQN = ctx._source.classification.fullyQualifiedName;
+                    if (classificationFQN != null &&
+                        (classificationFQN.equals(params.oldParentFQN) || classificationFQN.startsWith(params.oldParentFQN + '.'))) {
+                      ctx._source.classification.fullyQualifiedName = params.newParentFQN + classificationFQN.substring(params.oldParentFQN.length());
+                      if (ctx._source.classification.containsKey('name')) {
+                        ctx._source.classification.name = params.newParentFQN;
+                      }
                     }
                   }
                   if (ctx._source.containsKey('tags')) {
