@@ -14,6 +14,7 @@ import { ReactRenderer, type Editor } from '@tiptap/react';
 import { isEmpty, isNil } from 'lodash';
 import { forwardRef, useImperativeHandle, useState } from 'react';
 import tippy, { Instance, Props } from 'tippy.js';
+import { getSettingsHashForHref } from '../../utils/SettingsModalLinkUtils';
 import { EditorSlotsProps, EditorSlotsRef } from './BlockEditor.interface';
 import BlockMenu from './BlockMenu/BlockMenu';
 import BubbleMenu from './BubbleMenu/BubbleMenu';
@@ -21,6 +22,16 @@ import { getDialogContainer } from './Extensions/getDialogContainer';
 import LinkModal, { LinkData } from './LinkModal/LinkModal';
 import LinkPopup from './LinkPopup/LinkPopup';
 import TableMenu from './TableMenu/TableMenu';
+
+// In the AI shell a settings-modal link (a user or team mention) is left to the
+// click that follows, which opens it over the current page.
+const openMentionLink = (target: HTMLElement) => {
+  const href = target.getAttribute('href');
+  const linkTarget = target.getAttribute('target');
+  if (href && linkTarget && !getSettingsHashForHref(href)) {
+    window.open(href, linkTarget);
+  }
+};
 
 const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
   ({ editable = true, editor, menuType }, ref) => {
@@ -108,11 +119,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
       let hasPopup = !isEmpty(popup);
 
       if (['mention', 'hashtag'].includes(dataType ?? '')) {
-        const href = target.getAttribute('href');
-        const linkTarget = target.getAttribute('target');
-        if (href && linkTarget) {
-          window.open(href, linkTarget);
-        }
+        openMentionLink(target);
 
         return;
       }

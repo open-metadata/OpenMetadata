@@ -97,6 +97,7 @@ import {
   SourceType,
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
+import LineageTableDescription from './LineageTableDescription';
 import { useLineageTableState } from './useLineageTableState';
 
 const LINEAGE_IMPACT_OPTION_ICONS: Record<
@@ -754,8 +755,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
-        ellipsis: true,
-        render: (text: string) => <span>{isEmpty(text) ? NO_DATA : text}</span>,
+        render: (text: string, record: SearchSourceAlias) =>
+          isEmpty(text) ? (
+            NO_DATA
+          ) : (
+            <LineageTableDescription
+              description={text}
+              entityPath={getEntityLinkFromType(
+                record.fullyQualifiedName ?? '',
+                record.entityType as EntityType,
+                record
+              )}
+            />
+          ),
       },
       {
         title: t('label.domain-plural'),
@@ -1023,6 +1035,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <TableV2
           className="h-full"
           columns={columns}
+          containerClassName="tw:rounded-xl"
           customPaginationProps={pagingProps}
           dataSource={dataSource}
           defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}

@@ -38,8 +38,14 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
   hideCloseIcon = false,
 }) => {
   const { t } = useTranslation();
-  const entityType = getEntityType(entityLink);
-  const entityFQN = getEntityFQN(entityLink);
+  // Prefer the entity reference over parsing `entityLink`: a thread created
+  // from an activity event links the changed field (`::entityStatus`), which
+  // the EntityLink grammar does not list, so ANTLR logs a syntax error.
+  const entityRef = feed?.entityRef;
+  const entityType = entityRef?.fullyQualifiedName
+    ? entityRef.type
+    : getEntityType(entityLink);
+  const entityFQN = entityRef?.fullyQualifiedName ?? getEntityFQN(entityLink);
   const entityField = getEntityField(entityLink);
 
   return (
@@ -61,8 +67,8 @@ const FeedPanelHeader: FC<FeedPanelHeaderProp> = ({
               data-testid="entitylink"
               to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
               <span>
-                {feed?.entityRef
-                  ? getEntityName(feed.entityRef)
+                {entityRef
+                  ? getEntityName(entityRef)
                   : entityDisplayName(entityType, entityFQN)}
               </span>
             </Link>

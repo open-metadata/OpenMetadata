@@ -412,6 +412,27 @@ describe('ActivityFeedProvider', () => {
       expect(screen.getByTestId('paging-after')).toHaveTextContent('cursor-2');
     });
 
+    // An empty list after a failure must be told apart from an empty result.
+    it('exposes a failed fetch as listError until the next request succeeds', async () => {
+      (listTasks as jest.Mock)
+        .mockRejectedValueOnce({ response: { status: 500 } })
+        .mockResolvedValueOnce({ data: [], paging: {} });
+
+      renderTaskListState();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-open'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('500');
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('fetch-closed'));
+      });
+
+      expect(screen.getByTestId('list-error')).toHaveTextContent('none');
+    });
+
     it('ignores a response that resolves after a newer request started', async () => {
       let resolveFirst!: (value: unknown) => void;
       let resolveSecond!: (value: unknown) => void;
