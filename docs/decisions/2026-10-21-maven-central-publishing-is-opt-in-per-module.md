@@ -34,6 +34,10 @@ distributions all build these modules from source; they do not resolve them from
   client, the root for everything), or the jar cannot be resolved.
 - Extra artifacts inside a published module are not controlled by the list: the Java client's
   `jar-with-dependencies` is built but not attached.
+- The `-sources.jar` and `-javadoc.jar` that Maven Central requires are placeholders holding only
+  `docs/maven-central-placeholder/README.md` (built by the root `release` profile). Central accepts
+  placeholders, and the real ones were most of the remaining release size. Source is on GitHub at
+  the version tag, and the REST API reference is each server's `/docs` page.
 - `maven.deploy.skip` does not stop this plugin and must not be relied on.
 
 ## Consequences
