@@ -23,7 +23,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.AppConfiguration;
-import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -162,9 +161,6 @@ public class OpenMetadataApplicationConfig extends Configuration {
   @JsonProperty("web")
   private OMWebConfiguration webConfiguration = new OMWebConfiguration();
 
-  @JsonProperty("dataQualityConfiguration")
-  private DataQualityConfiguration dataQualityConfiguration;
-
   @JsonProperty("limits")
   private LimitsConfiguration limitsConfiguration;
 
@@ -299,17 +295,5 @@ public class OpenMetadataApplicationConfig extends Configuration {
       return "";
     }
     return serverFactory.getJerseyRootPath().map(path -> path.replaceFirst("\\*$", "")).orElse("");
-  }
-
-  @Override
-  public String toString() {
-    return "catalogConfig{"
-        + ", dataSourceFactory="
-        + dataSourceFactory
-        + ", swaggerBundleConfig="
-        + swaggerBundleConfig
-        + ", authorizerConfiguration="
-        + authorizerConfiguration
-        + '}';
   }
 }
