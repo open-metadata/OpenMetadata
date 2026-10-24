@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from '@openmetadata/ui-core-components';
+import { Box, Button, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
@@ -184,14 +184,14 @@ const FeedCardBodyNew = ({
 
   if (isEditPost && isThreadPanel) {
     return (
-      <div className="tw:mt-3 tw:min-w-0">
+      <Box className="tw:mt-3 tw:min-w-0" direction="col">
         <CommentEditForm
           message={message}
           testId="edit-message"
           onCancel={() => onEditCancel?.()}
           onSave={async (updatedMessage) => onUpdate?.(updatedMessage)}
         />
-      </div>
+      </Box>
     );
   }
 

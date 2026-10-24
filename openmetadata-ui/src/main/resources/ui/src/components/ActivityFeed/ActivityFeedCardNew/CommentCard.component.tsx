@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, Typography } from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -205,14 +205,14 @@ const CommentCard = ({
   const feedBodyRender = useMemo(() => {
     if (isEditPost && isThreadPanel) {
       return (
-        <div ref={editorRef}>
+        <Box direction="col" ref={editorRef}>
           <CommentEditForm
             message={message}
             testId="edit-message"
             onCancel={() => setIsEditPost(false)}
             onSave={handleFormSave}
           />
-        </div>
+        </Box>
       );
     }
     if (isEditPost) {

@@ -176,10 +176,10 @@ const PANEL_HEADER_LAYOUT = {
   rowItem: `${SPACE_ITEM_CLASS_NAME} tw:last:min-w-0 tw:last:flex-1`,
   // Fills what the line has left, up to its own width, and never narrower than
   // a few characters, so it can't vanish.
-  entity: 'tw:flex tw:min-w-16 tw:max-w-max tw:grow tw:basis-0',
+  entity: 'tw:min-w-16 tw:max-w-max tw:grow tw:basis-0',
   // Never narrower than its separators, a capped column name and the field
   // label, so only the entity name gives way.
-  field: 'tw:flex tw:min-w-min',
+  field: 'tw:min-w-min',
   fieldPath: 'tw:min-w-min',
   // The author's name gives way to the time, which never wraps.
   // Not SPACE_ITEM_CLASS_NAME: its first:shrink-0 would hold the name whole.
@@ -207,7 +207,7 @@ const ThreadPanelEntityLink = ({
   showField,
 }: ThreadPanelEntityLinkProps) => (
   <Box align="center" className="tw:min-w-0 tw:gap-1.5">
-    <span className={PANEL_HEADER_LAYOUT.entity}>
+    <Box className={PANEL_HEADER_LAYOUT.entity}>
       <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
         <Box
           align="center"
@@ -224,16 +224,17 @@ const ThreadPanelEntityLink = ({
             data-testid="entity-link"
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             {/* Truncated on the text: .header-link sets the link's wrapping. */}
-            <span className="tw:block tw:truncate">
+            {/* The prose wrapper would draw the name, and its "…", in body text. */}
+            <Typography ellipsis className="tw:text-brand-secondary">
               {entityRef
                 ? getEntityName(entityRef)
                 : entityDisplayName(entityType, entityFQN)}
-            </span>
+            </Typography>
           </Link>
         </Box>
       </EntityPopOverCard>
-    </span>
-    <span className={PANEL_HEADER_LAYOUT.field}>
+    </Box>
+    <Box className={PANEL_HEADER_LAYOUT.field}>
       <FeedFieldPath
         truncateColumn
         about={about}
@@ -241,7 +242,7 @@ const ThreadPanelEntityLink = ({
         entityType={entityType}
         showField={showField}
       />
-    </span>
+    </Box>
   </Box>
 );
 

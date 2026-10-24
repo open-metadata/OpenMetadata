@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  Card,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -262,8 +263,9 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         {t('label.back')}
       </Button>
       {/* Framed like the list's cards, so the open thread reads as the same
-          conversation. */}
-      <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface">
+          conversation. Overflow stays visible: the reply composer's mention
+          list opens below the frame. */}
+      <Card className="tw:overflow-visible">
         <ActivityFeedCardNew
           isForFeedTab
           isOpenInDrawer
@@ -271,7 +273,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           showThread
           feed={selectedConversation}
         />
-      </div>
+      </Card>
     </Fragment>
   );
 
