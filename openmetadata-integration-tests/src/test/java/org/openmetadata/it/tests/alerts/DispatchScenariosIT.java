@@ -42,6 +42,7 @@ import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.events.consumer.AbstractEventConsumer;
 import org.openmetadata.service.events.consumer.AlertingSettings;
 import org.openmetadata.service.events.consumer.ledger.AlertRecord;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
@@ -74,6 +75,44 @@ class DispatchScenariosIT {
 
       assertEveryChannelDelivered(receiver, alert, before);
     }
+  }
+
+  // The stored row holds ciphertext; what reaches the channel is the configuration as written.
+  @Test
+  void aDestinationIsSentToAsConfiguredWhileStoredEncrypted(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("header-token");
+      SubscriptionDestination slack =
+          AlertFixtures.external(SLACK, receiver.url("/slack-secret"))
+              .withConfig(
+                  new Webhook()
+                      .withEndpoint(URI.create(receiver.url("/slack-secret")))
+                      .withHeaders(Map.of("Authorization", headerValue)));
+      EventSubscription alert = createAlert(ns, "dispatch_secret", List.of(slack));
+      QuietAlert.settle(alert);
+      Map<String, Object> stored =
+          JsonUtils.convertValue(alert.getDestinations().getFirst().getConfig(), Map.class);
+      assertTrue(((String) stored.get("endpoint")).startsWith(Fernet.FERNET_PREFIX));
+      assertFalse(JsonUtils.pojoToJson(stored).contains(headerValue));
+
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(alert);
+
+      List<RecordingReceiver.Received> sends =
+          receiver.received().stream().filter(send -> "/slack-secret".equals(send.path())).toList();
+      assertEquals(EVENTS_ABOUT_THE_TABLE, sends.size());
+      assertTrue(
+          sends.stream().allMatch(send -> headerValue.equals(authorizationOf(send))),
+          "the header is sent as written");
+    }
+  }
+
+  private static String authorizationOf(RecordingReceiver.Received send) {
+    return send.headers().entrySet().stream()
+        .filter(header -> header.getKey().equalsIgnoreCase("Authorization"))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
   }
 
   // Every tick of this test stops after one event and runs again at once. What the ticks send

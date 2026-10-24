@@ -219,8 +219,11 @@ class McpResponseUtilsTest {
         PasswordEntityMasker.PASSWORD_MASK,
         masked.at("/destinations/0/config/authType/secretKey").asText());
     assertEquals(
-        "https://hooks.example.com", masked.at("/destinations/0/config/endpoint").asText());
+        PasswordEntityMasker.PASSWORD_MASK,
+        masked.at("/destinations/0/config/endpoint").asText(),
+        "an incoming-webhook URL is a credential");
     assertTrue(JsonUtils.pojoToJson(alert).contains(STORED_SECRET), MUST_NOT_MUTATE);
+    assertTrue(JsonUtils.pojoToJson(alert).contains("https://hooks.example.com"), MUST_NOT_MUTATE);
   }
 
   @Test

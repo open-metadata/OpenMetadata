@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,14 +33,17 @@ import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
+import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.AlertDiagnostics;
+import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.definition.AlertDefinitionPolicy;
@@ -263,13 +267,48 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     }
   }
 
+  /** A destination as stored, and the alert it belongs to. */
+  public record StoredDestination(UUID alertId, SubscriptionDestination destination) {}
+
+  /** The stored destination with this id, whichever alert holds it. */
+  public Optional<StoredDestination> findDestination(UUID destinationId) {
+    return daoCollection.eventSubscriptionDAO().listAllEventsSubscriptions().stream()
+        .map(json -> JsonUtils.readValue(json, EventSubscription.class))
+        .flatMap(alert -> storedDestinations(alert, destinationId))
+        .findFirst();
+  }
+
+  private static Stream<StoredDestination> storedDestinations(
+      EventSubscription alert, UUID destinationId) {
+    return listOrEmpty(alert.getDestinations()).stream()
+        .filter(destination -> destinationId.equals(destination.getId()))
+        .map(destination -> new StoredDestination(alert.getId(), destination));
+  }
+
   @Override
   public EntityRepository<EventSubscription>.EntityUpdater getUpdater(
       EventSubscription original,
       EventSubscription updated,
       Operation operation,
       ChangeSource changeSource) {
+    // Every update path builds its updater here: the one point where the stored and the incoming
+    // alert meet before the diff and the store. A secret sent back as read is the stored one, and
+    // the rest is encrypted before the diff, so the change description and the stored row carry
+    // ciphertext only.
+    DestinationSecrets.restore(original, updated);
+    if (operation != Operation.SOFT_DELETE) {
+      DestinationSecretGuards.requireNoMaskedSecrets(updated.getDestinations());
+      DestinationSecretGuards.requireStoredCiphertext(original, updated);
+    }
+    DestinationSecrets.encrypt(updated.getDestinations());
     return new EventSubscriptionUpdater(original, updated, operation);
+  }
+
+  /** PATCH is the one write that can read a stored secret, through a copy or move operation. */
+  @Override
+  protected void validatePatch(
+      EventSubscription original, EventSubscription updated, JsonPatch patch) {
+    DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, updated, patch);
   }
 
   public class EventSubscriptionUpdater extends EntityUpdater {
@@ -311,7 +350,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
                 recordChange(
                     "destinations",
                     original.getDestinations(),
-                    DestinationSecrets.encrypt(updated.getDestinations()),
+                    updated.getDestinations(),
                     true,
                     objectMatch,
                     false));

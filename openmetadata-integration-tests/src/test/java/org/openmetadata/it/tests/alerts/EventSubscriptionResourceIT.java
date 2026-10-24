@@ -23,6 +23,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -43,6 +44,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -60,7 +62,10 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
 /**
  * Integration tests for EventSubscription entity operations.
@@ -2048,7 +2053,7 @@ public class EventSubscriptionResourceIT
 
   private CreateEventSubscription buildOAuth2SubscriptionRequest(
       TestNamespace ns, String nameSuffix, Map<String, Object> oauth2Map) {
-    Map<String, Object> webhookConfig = new java.util.LinkedHashMap<>();
+    Map<String, Object> webhookConfig = new LinkedHashMap<>();
     webhookConfig.put("endpoint", "http://localhost:8585/api/v1/test/webhook/test");
     webhookConfig.put("authType", oauth2Map);
 
@@ -2184,5 +2189,220 @@ public class EventSubscriptionResourceIT
     } catch (Exception e) {
       return null;
     }
+  }
+
+  /**
+   * A destination's endpoint, header values and credentials are secrets: stored encrypted, masked
+   * in every response for every caller, and kept as stored when a caller sends the mask back.
+   */
+  @Test
+  void test_destinationSecretsAreMaskedEncryptedAndRestored(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("hook");
+    String headerValue = ns.prefix("header-token");
+    String secretKey = ns.prefix("signing-key");
+    List<String> plaintexts = List.of(endpoint, headerValue, secretKey);
+
+    EventSubscription created =
+        createEntity(secretRequest(ns, "secret_sub", endpoint, headerValue, secretKey));
+    String id = created.getId().toString();
+    assertSecretsMasked(created.getDestinations().getFirst());
+    Map<String, Object> storedConfig = storedConfig(created.getId());
+    assertEquals(endpoint, decrypted(storedConfig.get("endpoint")));
+    assertEquals(headerValue, decrypted(headersOf(storedConfig).get("Authorization")));
+    assertEquals(secretKey, decrypted(authTypeOf(storedConfig).get("secretKey")));
+
+    String path = "/v1/events/subscriptions/" + id;
+    List<String> reads =
+        List.of(
+            rawGet(SdkClients.adminClient(), path),
+            rawGet(SdkClients.adminClient(), "/v1/events/subscriptions/name/" + created.getName()),
+            rawGet(SdkClients.adminClient(), path + "/versions"),
+            rawGet(SdkClients.adminClient(), "/v1/events/subscriptions/id/" + id + "/destinations"),
+            rawGet(plainUserClient(), path),
+            rawGet(SdkClients.ingestionBotClient(), path));
+    reads.forEach(response -> assertNoSecretOrCiphertext(response, plaintexts));
+    assertNoSecretOrCiphertext(
+        rawGet(SdkClients.adminClient(), "/v1/events/subscriptions?limit=1000"), plaintexts);
+
+    EventSubscription sentBack = getEntity(id).withDescription("edited with the masks sent back");
+    EventSubscription edited = patchEntity(id, sentBack);
+    assertEquals("edited with the masks sent back", edited.getDescription());
+    assertSecretsMasked(edited.getDestinations().getFirst());
+    assertEquals(storedConfig, storedConfig(created.getId()), "the stored ciphertext is kept");
+
+    String otherEndpoint = endpoint + "-moved";
+    EventSubscription withNewEndpoint = getEntity(id);
+    Map<String, Object> config = configOf(withNewEndpoint.getDestinations().getFirst());
+    config.put("endpoint", otherEndpoint);
+    withNewEndpoint.getDestinations().getFirst().withConfig(config);
+    patchEntity(id, withNewEndpoint);
+    Map<String, Object> moved = storedConfig(created.getId());
+    assertEquals(otherEndpoint, decrypted(moved.get("endpoint")));
+    assertEquals(headersOf(storedConfig), headersOf(moved), "the other secrets are kept");
+    assertNoSecretOrCiphertext(
+        rawGet(SdkClients.adminClient(), path + "/versions"), List.of(otherEndpoint, headerValue));
+  }
+
+  @Test
+  void test_destinationSecretsTheServerAloneWrites_400(TestNamespace ns) throws Exception {
+    String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("guarded");
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    EventSubscription created =
+        createEntity(secretRequest(ns, "guarded_sub", endpoint, ns.prefix("header"), null));
+
+    assertRefused(() -> createEntity(secretRequest(ns, "masked_sub", endpoint, mask, null)));
+    assertRefused(
+        () ->
+            createEntity(
+                secretRequest(
+                    ns,
+                    "cipher_sub",
+                    endpoint,
+                    Fernet.getInstance().encrypt(ns.prefix("foreign")),
+                    null)));
+
+    EventSubscription unmatched = getEntity(created.getId().toString());
+    unmatched.getDestinations().getFirst().withId(UUID.randomUUID());
+    assertRefused(() -> patchEntity(created.getId().toString(), unmatched));
+
+    JsonNode copyOut =
+        JsonUtils.readTree(
+            """
+            [{"op":"copy","from":"/destinations/0/config/endpoint","path":"/description"}]
+            """);
+    assertRefused(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), copyOut));
+    assertEquals(
+        endpoint,
+        decrypted(storedConfig(created.getId()).get("endpoint")),
+        "a refused request changes nothing");
+  }
+
+  /** A destination sent back as read is tested with the secrets stored for it, only as stored. */
+  @Test
+  void test_testDestinationWithMaskedValuesUsesTheStoredSecrets(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      String headerValue = ns.prefix("header-token");
+      EventSubscription created =
+          createEntity(secretRequest(ns, "tested_sub", receiver.url("/hook"), headerValue, null));
+      SubscriptionDestination masked = created.getDestinations().getFirst();
+      assertSecretsMasked(masked);
+
+      HttpResponse<String> response = postTestDestination(List.of(masked));
+
+      assertEquals(200, response.statusCode(), response.body());
+      List<SubscriptionDestination> results =
+          JsonUtils.readObjects(response.body(), SubscriptionDestination.class);
+      assertEquals(TestDestinationStatus.Status.SUCCESS, testStatus(results.getFirst()));
+      assertNull(results.getFirst().getConfig());
+      assertEquals(1, receiver.received().size());
+      assertEquals("/hook", receiver.received().getFirst().path());
+      assertEquals(headerValue, headerOf(receiver.received().getFirst(), "Authorization"));
+
+      SubscriptionDestination elsewhere = JsonUtils.deepCopy(masked, SubscriptionDestination.class);
+      Map<String, Object> config = configOf(elsewhere);
+      config.put("endpoint", receiver.url("/elsewhere"));
+      elsewhere.withConfig(config);
+      assertEquals(400, postTestDestination(List.of(elsewhere)).statusCode());
+
+      SubscriptionDestination unknown =
+          JsonUtils.deepCopy(masked, SubscriptionDestination.class).withId(UUID.randomUUID());
+      assertEquals(400, postTestDestination(List.of(unknown)).statusCode());
+      assertEquals(1, receiver.received().size(), "a refused test sends nothing");
+    }
+  }
+
+  private static CreateEventSubscription secretRequest(
+      TestNamespace ns, String name, String endpoint, String headerValue, String secretKey) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", endpoint);
+    config.put("headers", Map.of("Authorization", headerValue));
+    if (secretKey != null) {
+      config.put("authType", Map.of("type", "bearer", "secretKey", secretKey));
+    }
+    return new CreateEventSubscription()
+        .withName(ns.prefix(name))
+        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withResources(List.of("all"))
+        .withEnabled(false)
+        .withDestinations(
+            List.of(
+                new SubscriptionDestination()
+                    .withType(SubscriptionDestination.SubscriptionType.SLACK)
+                    .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+                    .withConfig(config)));
+  }
+
+  private static void assertSecretsMasked(SubscriptionDestination destination) {
+    String mask = PasswordEntityMasker.PASSWORD_MASK;
+    Map<String, Object> config = configOf(destination);
+    assertEquals(mask, config.get("endpoint"));
+    assertEquals(mask, headersOf(config).get("Authorization"));
+    if (config.get("authType") != null) {
+      assertEquals(mask, authTypeOf(config).get("secretKey"));
+    }
+  }
+
+  private static void assertNoSecretOrCiphertext(String response, List<String> plaintexts) {
+    plaintexts.forEach(
+        secret -> assertFalse(response.contains(secret), "response carries " + secret));
+    assertFalse(response.contains(Fernet.FERNET_PREFIX), "response carries ciphertext");
+  }
+
+  private static void assertRefused(Runnable request) {
+    OpenMetadataException rejected = assertThrows(OpenMetadataException.class, request::run);
+    int status =
+        rejected.getCause() instanceof InvalidRequestException cause
+            ? cause.getStatusCode()
+            : rejected.getStatusCode();
+    assertEquals(400, status, rejected.getMessage());
+  }
+
+  /** A user with no role of its own: what every user may read, it may read. */
+  private static OpenMetadataClient plainUserClient() {
+    String name = "viewer" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@open-metadata.org";
+    SdkClients.adminClient().users().create(new CreateUser().withName(name).withEmail(email));
+    return SdkClients.createClient(name, email, new String[] {});
+  }
+
+  private static String rawGet(OpenMetadataClient client, String path) {
+    return client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+  }
+
+  private static Map<String, Object> storedConfig(UUID alertId) {
+    return configOf(AlertFixtures.stored(alertId).getDestinations().getFirst());
+  }
+
+  private static String decrypted(Object ciphertext) {
+    assertTrue(Fernet.isTokenized((String) ciphertext), "stored in the clear: " + ciphertext);
+    return Fernet.getInstance().decrypt((String) ciphertext);
+  }
+
+  private static String headerOf(RecordingReceiver.Received received, String name) {
+    return received.headers().entrySet().stream()
+        .filter(header -> header.getKey().equalsIgnoreCase(name))
+        .map(Map.Entry::getValue)
+        .findFirst()
+        .orElse(null);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> configOf(SubscriptionDestination destination) {
+    return new LinkedHashMap<>(JsonUtils.convertValue(destination.getConfig(), Map.class));
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> headersOf(Map<String, Object> config) {
+    return (Map<String, Object>) config.get("headers");
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, Object> authTypeOf(Map<String, Object> config) {
+    return (Map<String, Object>) config.get("authType");
   }
 }

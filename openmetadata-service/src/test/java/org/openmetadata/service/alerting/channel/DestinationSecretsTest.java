@@ -1,9 +1,11 @@
 package org.openmetadata.service.alerting.channel;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -14,10 +16,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.authentication.WebhookOAuth2Config;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
 import org.openmetadata.service.fernet.Fernet;
 
 class DestinationSecretsTest {
@@ -144,29 +151,189 @@ class DestinationSecretsTest {
     assertEquals(type, result.get(0).getType());
   }
 
-  // A destination with no authType passes through unchanged, whatever its webhook type. This guards
-  // the common case -- a Slack/Teams/GChat incoming webhook that only carries an endpoint --
-  // against
-  // a regression that would scramble or drop a secret-less configuration.
+  // An incoming-webhook URL is a credential of its own, so the endpoint of every webhook-family
+  // channel is encrypted, as every custom header value is; a query parameter is not.
   @ParameterizedTest
   @EnumSource(
       value = SubscriptionType.class,
       names = {"SLACK", "MS_TEAMS", "G_CHAT", "WEBHOOK"})
-  void encrypt_withoutAuthType_passesThroughUnchanged(SubscriptionType type) {
+  void encrypt_endpointAndHeaders_whateverTheWebhookType(SubscriptionType type) {
+    SubscriptionDestination dest = incomingWebhook(type);
+    List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
+    Map<String, Object> config = configOf(result.getFirst());
+    Map<String, String> headers = headersOf(result.getFirst());
+    assertEquals(ENDPOINT, Fernet.getInstance().decrypt((String) config.get("endpoint")));
+    assertEquals(TOKEN, Fernet.getInstance().decrypt((String) headers.get("Authorization")));
+    assertEquals(Map.of("team", "a"), config.get("queryParams"));
+    assertNull(config.get("authType"));
+    assertEquals(type, result.getFirst().getType());
+  }
+
+  @Test
+  void encrypt_emailReceivers_passThroughUnchanged() {
     SubscriptionDestination dest =
         new SubscriptionDestination()
             .withId(UUID.randomUUID())
-            .withType(type)
+            .withType(SubscriptionType.EMAIL)
             .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
-            .withConfig(new LinkedHashMap<>(Map.of("endpoint", "http://slack.example.com")));
-
+            .withConfig(new LinkedHashMap<>(Map.of("receivers", List.of("a@example.com"))));
     List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
+    assertEquals(List.of("a@example.com"), configOf(result.getFirst()).get("receivers"));
+  }
 
-    assertEquals(1, result.size());
-    assertEquals(type, result.get(0).getType());
-    Map<String, Object> config = JsonUtils.convertValue(result.get(0).getConfig(), Map.class);
-    assertEquals("http://slack.example.com", config.get("endpoint"));
-    assertNull(config.get("authType"));
+  @Test
+  void encrypt_isIdempotent_soAStoredValueSentAgainStaysTheSame() {
+    SubscriptionDestination dest = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(dest));
+    String once = (String) configOf(dest).get("endpoint");
+    DestinationSecrets.encrypt(List.of(dest));
+    assertEquals(once, configOf(dest).get("endpoint"));
+  }
+
+  @Test
+  void decrypted_isACopyAsItCanBeSentTo() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination usable = DestinationSecrets.decrypted(stored);
+    assertEquals(ENDPOINT, configOf(usable).get("endpoint"));
+    assertEquals(TOKEN, headersOf(usable).get("Authorization"));
+    assertTrue(((String) configOf(stored).get("endpoint")).startsWith(Fernet.FERNET_PREFIX));
+    assertEquals(ENDPOINT, WebhookConfigRules.stored(stored).getEndpoint().toString());
+  }
+
+  @Test
+  void mask_hidesEverySecretOfTheAlertAndItsHistory_onACopy() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.WEBHOOK);
+    stored.withConfig(withBearer(configOf(stored), "hmac-key"));
+    DestinationSecrets.encrypt(List.of(stored));
+    EventSubscription alert =
+        new EventSubscription()
+            .withId(UUID.randomUUID())
+            .withName("alert")
+            .withDestinations(List.of(stored))
+            .withChangeDescription(
+                destinationsChange(List.of(incomingWebhook(SubscriptionType.WEBHOOK))));
+
+    EventSubscription masked = DestinationSecrets.mask(alert);
+
+    Map<String, Object> config = configOf(masked.getDestinations().getFirst());
+    assertEquals(PASSWORD_MASK, config.get("endpoint"));
+    assertEquals(
+        PASSWORD_MASK, headersOf(masked.getDestinations().getFirst()).get("Authorization"));
+    assertEquals(PASSWORD_MASK, authTypeOf(masked.getDestinations().getFirst()).get("secretKey"));
+    assertEquals(Map.of("team", "a"), config.get("queryParams"));
+    String history = JsonUtils.pojoToJson(masked.getChangeDescription());
+    assertFalse(history.contains(ENDPOINT), "the change description recorded the plaintext");
+    assertFalse(history.contains(TOKEN));
+    assertTrue(
+        JsonUtils.pojoToJson(alert).contains(Fernet.FERNET_PREFIX), "the alert is untouched");
+  }
+
+  @Test
+  void mask_versionHistory() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.G_CHAT);
+    EventSubscription alert = new EventSubscription().withDestinations(List.of(stored));
+    EntityHistory masked =
+        DestinationSecrets.mask(
+            new EntityHistory()
+                .withEntityType("eventsubscription")
+                .withVersions(List.of(JsonUtils.pojoToJson(alert))));
+    String version = (String) masked.getVersions().getFirst();
+    assertFalse(version.contains(ENDPOINT));
+    assertTrue(version.contains(PASSWORD_MASK));
+  }
+
+  @Test
+  void restore_maskStandsForTheStoredValue_byIdAndByPosition() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    EventSubscription original = new EventSubscription().withDestinations(List.of(stored));
+
+    SubscriptionDestination byId = DestinationSecrets.mask(List.of(stored)).getFirst();
+    SubscriptionDestination byPosition =
+        DestinationSecrets.mask(List.of(stored)).getFirst().withId(null);
+    DestinationSecrets.restore(original, new EventSubscription().withDestinations(List.of(byId)));
+    DestinationSecrets.restore(
+        original, new EventSubscription().withDestinations(List.of(byPosition)));
+
+    assertEquals(configOf(stored), configOf(byId));
+    assertEquals(configOf(stored), configOf(byPosition));
+  }
+
+  @Test
+  void restore_plaintextTheStoredCiphertextDecryptsTo_keepsTheCiphertext() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination sentAgain =
+        incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
+    SubscriptionDestination changed =
+        incomingWebhook(SubscriptionType.SLACK).withId(stored.getId());
+    changed.withConfig(new LinkedHashMap<>(Map.of("endpoint", "https://hooks.example.com/other")));
+
+    DestinationSecrets.restore(stored, sentAgain);
+    DestinationSecrets.restore(stored, changed);
+
+    assertEquals(configOf(stored), configOf(sentAgain));
+    assertEquals("https://hooks.example.com/other", configOf(changed).get("endpoint"));
+  }
+
+  @Test
+  void restore_leavesADestinationOfAnotherKindAlone() {
+    SubscriptionDestination stored = incomingWebhook(SubscriptionType.SLACK);
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination other =
+        DestinationSecrets.mask(List.of(stored))
+            .getFirst()
+            .withId(null)
+            .withType(SubscriptionType.WEBHOOK);
+
+    DestinationSecrets.restore(
+        new EventSubscription().withDestinations(List.of(stored)),
+        new EventSubscription().withDestinations(List.of(other)));
+
+    assertEquals(PASSWORD_MASK, configOf(other).get("endpoint"));
+    assertTrue(DestinationSecrets.hasMaskedSecrets(other));
+    assertFalse(DestinationSecrets.hasMaskedSecrets(stored));
+  }
+
+  static final String ENDPOINT = "https://hooks.example.com/services/T0/B0/token";
+  static final String TOKEN = "Bearer header-token";
+
+  static SubscriptionDestination incomingWebhook(SubscriptionType type) {
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("endpoint", ENDPOINT);
+    config.put("headers", new LinkedHashMap<>(Map.of("Authorization", TOKEN)));
+    config.put("queryParams", new LinkedHashMap<>(Map.of("team", "a")));
+    return new SubscriptionDestination()
+        .withId(UUID.randomUUID())
+        .withType(type)
+        .withCategory(SubscriptionDestination.SubscriptionCategory.EXTERNAL)
+        .withConfig(config);
+  }
+
+  private static Map<String, Object> withBearer(Map<String, Object> config, String secretKey) {
+    Map<String, Object> withAuth = new LinkedHashMap<>(config);
+    withAuth.put("authType", new LinkedHashMap<>(Map.of("type", "bearer", "secretKey", secretKey)));
+    return withAuth;
+  }
+
+  private static ChangeDescription destinationsChange(List<SubscriptionDestination> destinations) {
+    FieldChange change =
+        new FieldChange()
+            .withName("destinations")
+            .withOldValue(JsonUtils.pojoToJson(destinations))
+            .withNewValue(JsonUtils.pojoToJson(destinations));
+    return new ChangeDescription().withFieldsUpdated(List.of(change));
+  }
+
+  @SuppressWarnings("unchecked")
+  static Map<String, Object> configOf(SubscriptionDestination destination) {
+    return JsonUtils.convertValue(destination.getConfig(), Map.class);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, String> headersOf(SubscriptionDestination destination) {
+    return (Map<String, String>) configOf(destination).get("headers");
   }
 
   @Test
