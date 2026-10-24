@@ -97,6 +97,7 @@ VERSIONS = {
     "factory-boy": "factory-boy~=3.3.3",
     "rarfile": "rarfile~=4.2",
     "py7zr": "py7zr~=1.1.3",
+    "brotli": "Brotli>=1.2.1",  # CVE-2026-111497; py7zr only requires >=1.2.0
 }
 
 COMMONS = {
@@ -105,6 +106,7 @@ COMMONS = {
         VERSIONS["pyarrow"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
+        VERSIONS["brotli"],
     },
     "datalake": {
         VERSIONS["asammdf"],
