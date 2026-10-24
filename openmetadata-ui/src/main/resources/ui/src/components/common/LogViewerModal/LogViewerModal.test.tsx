@@ -214,6 +214,9 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('log-viewer-inline')).toBeInTheDocument();
     expect(screen.getByTestId('lazy-log')).toHaveTextContent('alpha INFO one');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('log-viewer-fullscreen')
+    ).not.toBeInTheDocument();
   });
 
   it('renders nothing inline when closed', () => {

@@ -166,6 +166,31 @@ const LogViewerDownloadButton: FunctionComponent<
   );
 };
 
+const LogViewerFullScreenToggle: FunctionComponent<{
+  isFullScreen: boolean;
+  onToggle: () => void;
+}> = ({ isFullScreen, onToggle }) => {
+  const { t } = useTranslation();
+
+  return (
+    <LogViewerToolbarToggle
+      icon={
+        isFullScreen ? (
+          <Minimize01 aria-hidden className="lvm-icon" />
+        ) : (
+          <Maximize01 aria-hidden className="lvm-icon" />
+        )
+      }
+      isActive={isFullScreen}
+      label={
+        isFullScreen ? t('label.exit-full-screen') : t('label.full-screen-view')
+      }
+      testId="log-viewer-fullscreen"
+      onToggle={onToggle}
+    />
+  );
+};
+
 interface LogViewerHeaderActionsProps {
   isLive: boolean;
   isReconnecting: boolean;
@@ -183,6 +208,8 @@ interface LogViewerHeaderActionsProps {
   wrap: boolean;
   handleToggleWrap: () => void;
   isFullScreen: boolean;
+  // Inline the viewer has no dialog to grow into, so full screen is not offered.
+  showFullScreen: boolean;
   handleToggleFullScreen: () => void;
   onDownload?: () => void;
   downloading: boolean;
@@ -209,6 +236,7 @@ const LogViewerHeaderActions: FunctionComponent<
   wrap,
   handleToggleWrap,
   isFullScreen,
+  showFullScreen,
   handleToggleFullScreen,
   onDownload,
   downloading,
@@ -259,23 +287,12 @@ const LogViewerHeaderActions: FunctionComponent<
         testId="log-viewer-wrap"
         onToggle={handleToggleWrap}
       />
-      <LogViewerToolbarToggle
-        icon={
-          isFullScreen ? (
-            <Minimize01 aria-hidden className="lvm-icon" />
-          ) : (
-            <Maximize01 aria-hidden className="lvm-icon" />
-          )
-        }
-        isActive={isFullScreen}
-        label={
-          isFullScreen
-            ? t('label.exit-full-screen')
-            : t('label.full-screen-view')
-        }
-        testId="log-viewer-fullscreen"
-        onToggle={handleToggleFullScreen}
-      />
+      {showFullScreen && (
+        <LogViewerFullScreenToggle
+          isFullScreen={isFullScreen}
+          onToggle={handleToggleFullScreen}
+        />
+      )}
       {onDownload && (
         <LogViewerDownloadButton
           downloading={downloading}
@@ -642,6 +659,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
           matchCount={matchCount}
           query={query}
           searchText={searchText}
+          showFullScreen={!inline}
           theme={theme}
           toggleFollow={toggleFollow}
           wrap={wrap}
