@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Card,
   Owner,
   Tooltip,
@@ -22,6 +23,7 @@ import {
 import {
   CheckCircleFilled,
   CloseCircleFilled,
+  Comment,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -31,7 +33,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
 import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
 import { EntityType } from '../../../enums/entity.enum';
@@ -361,7 +362,14 @@ const TaskFeedCardFromTask = ({
       wrap="wrap">
       <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
-          <ReplyIcon height={20} width={20} onClick={showReplies} />
+          <ButtonUtility
+            aria-label={t('label.reply')}
+            color="tertiary"
+            data-testid="task-reply-button"
+            icon={Comment}
+            size="sm"
+            onClick={showReplies}
+          />
           {commentsCount > 0 ? (
             <Button
               color="link-gray"

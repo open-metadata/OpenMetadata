@@ -11,23 +11,21 @@
  *  limitations under the License.
  */
 
-import { Button, Card } from '@openmetadata/ui-core-components';
+import { Box, Button, Card, Skeleton } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
-import { lazy, useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
+import { FEED_MESSAGE_RENDERED_CONTENT_SELECTOR } from '../../../../constants/Feeds.constants';
 import { ActivityEventType } from '../../../../generated/entity/activity/activityEvent';
 import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
+import DeferredWidget from '../../../common/DeferredWidget/DeferredWidget.component';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
-
-const RichTextEditorPreviewerNew = withSuspenseFallback(
-  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
-);
 
 const ActivityDescriptionFeed = withSuspenseFallback(
   lazy(
@@ -57,8 +55,70 @@ const ActivityTagsFeed = withSuspenseFallback(
   )
 );
 
+const RichTextEditorPreviewerNew = withSuspenseFallback(
+  lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
+);
+
+const feedMessageSkeleton = (
+  <Box data-testid="feed-message-skeleton" direction="col" gap={2}>
+    <Skeleton height={14} variant="text" width="100%" />
+    <Skeleton height={14} variant="text" width="60%" />
+  </Box>
+);
+
+// The previewer and its editor both load lazily and the editor first renders empty, so
+// the skeleton stays until the hidden preview has rendered content; the field is never blank.
+const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isRendered, setIsRendered] = useState(false);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || isRendered) {
+      return;
+    }
+    const checkRendered = () => {
+      if (
+        container.textContent?.trim() ||
+        container.querySelector(FEED_MESSAGE_RENDERED_CONTENT_SELECTOR)
+      ) {
+        setIsRendered(true);
+      }
+    };
+    const observer = new MutationObserver(checkRendered);
+    observer.observe(container, {
+      characterData: true,
+      childList: true,
+      subtree: true,
+    });
+    checkRendered();
+
+    return () => observer.disconnect();
+  }, [isRendered]);
+
+  return (
+    <>
+      {isRendered ? null : feedMessageSkeleton}
+      <div className={isRendered ? undefined : 'tw:hidden'} ref={containerRef}>
+        <RichTextEditorPreviewerNew
+          clampByLines
+          className="text-wrap"
+          markdown={markdown}
+        />
+      </div>
+    </>
+  );
+};
+
+// Each preview mounts a read-only rich-text editor; a long feed mounting them all at
+// once blocks the main thread for tens of seconds, so only cards near the viewport do.
+const FeedMessagePreview = ({ markdown }: { markdown: string }) => (
+  <DeferredWidget placeholder={feedMessageSkeleton}>
+    <FeedMessagePreviewContent markdown={markdown} />
+  </DeferredWidget>
+);
+
 const FeedCardBodyNew = ({
-  isPost = false,
   feed,
   activity,
   isEditPost,
@@ -111,31 +171,18 @@ const FeedCardBodyNew = ({
       }
 
       return (
-        <RichTextEditorPreviewerNew
-          clampByLines
-          className="text-wrap"
+        <FeedMessagePreview
           markdown={getFrontEndFormat(activity.summary ?? message)}
         />
       );
     }
 
     return (
-      <RichTextEditorPreviewerNew
-        clampByLines
-        className="text-wrap"
+      <FeedMessagePreview
         markdown={getFrontEndFormat(feed?.message ?? message)}
       />
     );
-  }, [
-    isPost,
-    message,
-    postMessage,
-    feed,
-    isActivityEvent,
-    activity,
-    isForFeedTab,
-    showThread,
-  ]);
+  }, [message, feed, isActivityEvent, activity, isForFeedTab, showThread]);
 
   const feedBodyRender = useMemo(() => {
     if (isEditPost) {
@@ -171,7 +218,14 @@ const FeedCardBodyNew = ({
     }
 
     return feedBodyStyleCardsRender;
-  }, [isEditPost, message, feedBodyStyleCardsRender]);
+  }, [
+    isEditPost,
+    message,
+    feedBodyStyleCardsRender,
+    handleSave,
+    onEditCancel,
+    t,
+  ]);
 
   return (
     <Card
