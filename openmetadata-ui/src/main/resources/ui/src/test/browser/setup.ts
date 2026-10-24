@@ -21,6 +21,13 @@ initCoreI18n(i18next);
 
 const runnerUrl = globalThis.location.href;
 const unhandledApiCalls: string[] = [];
+// API requests MSW has seen but not answered yet. A page can fire one just
+// before the test ends (e.g. a refetch after a mutation); resetting handlers
+// under it would report it as unhandled in whichever test runs next.
+const inFlight = new Set<string>();
+
+worker.events.on('request:start', ({ requestId }) => inFlight.add(requestId));
+worker.events.on('request:end', ({ requestId }) => inFlight.delete(requestId));
 
 beforeAll(async () => {
   await worker.start({
@@ -40,6 +47,12 @@ afterEach(async () => {
   // vitest-browser-react only unmounts in the next test's beforeEach. Unmount
   // first so the page can't refetch against reset handlers or the reset URL.
   await cleanup();
+  // A mutation's onSettled refetch can start a moment after the last
+  // assertion; give it one tick to reach MSW, then let it finish.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  await expect.poll(() => inFlight.size, { timeout: 5000 }).toBe(0);
+
   // Every API call a page makes must be mocked on purpose, so a test can never
   // pass because a request silently failed.
   const unhandled = [...new Set(unhandledApiCalls.splice(0))];

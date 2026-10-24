@@ -19,16 +19,39 @@
  */
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, test } from 'vitest';
+import { Locator, locators, page, userEvent } from 'vitest/browser';
+import { APIEndpoint } from '../../../generated/entity/data/apiEndpoint';
+import { Mlmodel } from '../../../generated/entity/data/mlmodel';
+import { Pipeline } from '../../../generated/entity/data/pipeline';
+import { SearchIndex } from '../../../generated/entity/data/searchIndex';
 import {
+  Column,
   EntityReference,
   TagLabel,
 } from '../../../generated/entity/data/table';
-import { Locator, locators, page, userEvent } from 'vitest/browser';
+import { Topic } from '../../../generated/entity/data/topic';
 import {
   EntityServer,
   serveEntity,
   serveSeededEntityRules,
 } from '../fixtures/entityPage';
+import {
+  makeApiEndpoint,
+  makeContainer,
+  makeDashboard,
+  makeDashboardDataModel,
+  makeDirectory,
+  makeFile,
+  makeMetric,
+  makeMlModel,
+  makePipeline,
+  makeSearchIndex,
+  makeSpreadsheet,
+  makeStoredProcedure,
+  makeTopic,
+  makeWorksheet,
+  UNTOUCHED,
+} from '../fixtures/dataAssets';
 import { GLOSSARY_TERMS, serveGlossary } from '../fixtures/glossary';
 import { DATA_STEWARD, servePersona } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
@@ -126,35 +149,200 @@ interface EntityConfig {
   };
 }
 
-const NO_ACTIVITY = {
-  owners: [],
-  tags: [],
-  followers: [],
-  votes: { upVotes: 0, downVotes: 0, upVoters: [], downVoters: [] },
+/** A child that lives inside the entity, so the page edits it with a PATCH on the entity. */
+const childOf = <T,>(
+  server: EntityServer<EntityLike>,
+  read: (entity: T) => Child | undefined
+): ChildServer => ({
+  current: () => read(server.current() as unknown as T) ?? { name: '' },
+  writes: () => server.patches,
+});
+
+/** A table-like child the page edits through `PUT /columns/name/{fqn}`. */
+const columnOf = (parent: string, columns: Column[]): ChildServer => {
+  const store = serveColumns(parent, columns);
+
+  return { current: () => store.current()[0], writes: () => store.updates };
 };
+
+const at = (route: string, fqn?: string) =>
+  `/${route}/${encodeURIComponent(fqn ?? '')}`;
 
 const ENTITIES: EntityConfig[] = [
   {
+    label: 'ApiEndpoint',
+    url: at('apiEndpoint', makeApiEndpoint().fullyQualifiedName),
+    endpoint: 'apiEndpoints',
+    make: makeApiEndpoint,
+    serveExtras: (server) =>
+      childOf<APIEndpoint>(server, (e) => e.requestSchema?.schemaFields?.[0]),
+    children: {
+      tabId: 'schema',
+      rowId:
+        makeApiEndpoint().requestSchema?.schemaFields?.[0].fullyQualifiedName ??
+        '',
+    },
+  },
+  {
     label: 'Table',
-    url: `/table/${TABLE_FQN}`,
+    url: at('table', TABLE_FQN),
     endpoint: 'tables',
-    make: () => makeTable(NO_ACTIVITY),
+    make: () => makeTable(UNTOUCHED),
     serveExtras: () => {
       worker.use(
         http.get('/api/v1/queries', () => HttpResponse.json(EMPTY_LIST))
       );
-      const columns = serveColumns('tables', ALL_COLUMNS);
 
-      return {
-        current: () => columns.current()[0],
-        writes: () => columns.updates,
-      };
+      return columnOf('tables', ALL_COLUMNS);
     },
     children: {
       tabId: 'schema',
       rowId: ALL_COLUMNS[0].fullyQualifiedName ?? '',
       displayName: true,
     },
+  },
+  {
+    label: 'StoredProcedure',
+    url: at('storedProcedure', makeStoredProcedure().fullyQualifiedName),
+    endpoint: 'storedProcedures',
+    make: makeStoredProcedure,
+    serveExtras: () => undefined,
+  },
+  {
+    label: 'Dashboard',
+    url: at('dashboard', makeDashboard().fullyQualifiedName),
+    endpoint: 'dashboards',
+    make: makeDashboard,
+    serveExtras: () => undefined,
+  },
+  {
+    label: 'Pipeline',
+    url: at('pipeline', makePipeline().fullyQualifiedName),
+    endpoint: 'pipelines',
+    make: makePipeline,
+    serveExtras: (server) => childOf<Pipeline>(server, (e) => e.tasks?.[0]),
+    children: { tabId: 'tasks', rowId: makePipeline().tasks?.[0].name ?? '' },
+  },
+  {
+    label: 'Topic',
+    url: at('topic', makeTopic().fullyQualifiedName),
+    endpoint: 'topics',
+    make: makeTopic,
+    serveExtras: (server) =>
+      childOf<Topic>(server, (e) => e.messageSchema?.schemaFields?.[0]),
+    children: {
+      tabId: 'schema',
+      rowId:
+        makeTopic().messageSchema?.schemaFields?.[0].fullyQualifiedName ?? '',
+    },
+  },
+  {
+    label: 'MlModel',
+    url: at('mlmodel', makeMlModel().fullyQualifiedName),
+    endpoint: 'mlmodels',
+    make: makeMlModel,
+    serveExtras: (server) =>
+      childOf<Mlmodel>(server, (e) => {
+        const feature = e.mlFeatures?.[0];
+
+        return feature && { ...feature, name: feature.name ?? '' };
+      }),
+    children: {
+      tabId: 'features',
+      rowId: `feature-card-${makeMlModel().mlFeatures?.[0].name}`,
+      rowSelector: 'data-testid',
+    },
+  },
+  {
+    label: 'Container',
+    url: at('container', makeContainer().fullyQualifiedName),
+    endpoint: 'containers',
+    make: makeContainer,
+    serveExtras: () => {
+      worker.use(
+        http.get('/api/v1/containers/name/:fqn/children', () =>
+          HttpResponse.json(EMPTY_LIST)
+        ),
+        http.get('/api/v1/containers/name/:fqn/ancestors', () =>
+          HttpResponse.json([])
+        )
+      );
+    },
+  },
+  {
+    label: 'SearchIndex',
+    url: at('searchIndex', makeSearchIndex().fullyQualifiedName),
+    endpoint: 'searchIndexes',
+    make: makeSearchIndex,
+    serveExtras: (server) => childOf<SearchIndex>(server, (e) => e.fields?.[0]),
+    children: {
+      tabId: 'fields',
+      rowId: makeSearchIndex().fields[0].fullyQualifiedName ?? '',
+    },
+  },
+  {
+    label: 'DashboardDataModel',
+    url: at('dashboardDataModel', makeDashboardDataModel().fullyQualifiedName),
+    endpoint: 'dashboard/datamodels',
+    make: makeDashboardDataModel,
+    serveExtras: () =>
+      columnOf('dashboard/datamodels', makeDashboardDataModel().columns),
+    children: {
+      tabId: 'model',
+      rowId: makeDashboardDataModel().columns[0].fullyQualifiedName ?? '',
+      displayName: true,
+    },
+  },
+  {
+    label: 'Metric',
+    url: at('metric', makeMetric().fullyQualifiedName),
+    endpoint: 'metrics',
+    make: makeMetric,
+    serveExtras: (server) => {
+      worker.use(
+        http.get('/api/v1/metrics/:id/assets', () =>
+          HttpResponse.json(EMPTY_LIST)
+        ),
+        http.get('/api/v1/metrics/:id/hierarchy', () =>
+          HttpResponse.json({
+            current: server.current(),
+            ancestors: [],
+            children: [],
+            siblings: [],
+            childrenPaging: { total: 0 },
+            siblingPaging: { total: 0 },
+          })
+        )
+      );
+    },
+  },
+  {
+    label: 'Directory',
+    url: at('directory', makeDirectory().fullyQualifiedName),
+    endpoint: 'drives/directories',
+    make: makeDirectory,
+    serveExtras: () => undefined,
+  },
+  {
+    label: 'File',
+    url: at('file', makeFile().fullyQualifiedName),
+    endpoint: 'drives/files',
+    make: makeFile,
+    serveExtras: () => undefined,
+  },
+  {
+    label: 'Spreadsheet',
+    url: at('spreadsheet', makeSpreadsheet().fullyQualifiedName),
+    endpoint: 'drives/spreadsheets',
+    make: makeSpreadsheet,
+    serveExtras: () => undefined,
+  },
+  {
+    label: 'Worksheet',
+    url: at('worksheet', makeWorksheet().fullyQualifiedName),
+    endpoint: 'drives/worksheets',
+    make: makeWorksheet,
+    serveExtras: () => undefined,
   },
 ];
 
@@ -333,291 +521,302 @@ const addUpdateRemoveGlossaryTerms = async (
 const tagFqns = (entity: { tags?: TagLabel[] }) =>
   (entity.tags ?? []).map((t) => t.tagFQN);
 
-describe.each(ENTITIES)('Data Steward edits a $label', (config) => {
-  let server: EntityServer<EntityLike>;
-  let child: ChildServer | void;
-
-  beforeEach(async () => {
-    servePersona(DATA_STEWARD);
-    serveSeededEntityRules();
-    serveTiers();
-    serveSearch({ user: USERS, team: TEAMS, tag: CLASSIFICATION_TAGS });
-    serveGlossary();
-    server = serveEntity(config.endpoint, config.make(), {
-      ...DATA_STEWARD.user,
-      type: 'user',
-    });
-    child = config.serveExtras(server);
-    renderApp(config.url, DATA_STEWARD.user);
-
-    await expect.element(header()).toBeVisible();
-  });
-
-  test('user owners: add two, replace with a third, remove', async () => {
-    await setUserOwners([USERS[0], USERS[2]]);
-    await expectOwners(server, [USERS[0], USERS[2]]);
-
-    await setUserOwners([USERS[1]]);
-    await expectOwners(server, [USERS[1]]);
-
-    await expect
-      .element(header().getByTestId(USERS[0].displayName))
-      .not.toBeInTheDocument();
-
-    await openOwnerPicker('Users');
-    await userEvent.click(usersPanel().getByTestId('clear-all-button'));
-    await userEvent.click(
-      usersPanel().getByTestId('selectable-list-update-btn')
-    );
-    await expectOwners(server, []);
-
-    await expect
-      .element(header().getByTestId(USERS[1].displayName))
-      .not.toBeInTheDocument();
-    expect(server.patches).toHaveLength(3);
-  });
-
-  test('team owner: add, replace, remove', async () => {
-    for (const owner of TEAMS) {
-      await openOwnerPicker('Teams');
-      await userEvent.fill(
-        page.getByTestId('owner-select-teams-search-bar'),
-        owner.displayName
-      );
-      await userEvent.click(
-        page.getByTestId('owner-option').filter({ hasText: owner.displayName })
-      );
-      await expectOwners(server, [owner]);
-    }
-
-    await expect
-      .element(header().getByTestId(TEAMS[0].displayName))
-      .not.toBeInTheDocument();
-
-    await userEvent.click(page.getByTestId('edit-owner'));
-    await userEvent.click(page.getByTestId('remove-owner'));
-    await expectOwners(server, []);
-
-    await expect
-      .element(header().getByTestId(TEAMS[1].displayName))
-      .not.toBeInTheDocument();
-    expect(server.patches).toHaveLength(3);
-  });
-
-  test('tier: add, replace, remove', async () => {
-    for (const tier of ['Tier1', 'Tier2']) {
-      await userEvent.click(page.getByTestId('edit-tier'));
-      await userEvent.click(
-        page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`)
-      );
-
-      await expect
-        .poll(() => tagFqns(server.current()))
-        .toEqual([`Tier.${tier}`]);
-      await expect.element(page.getByTestId('Tier')).toHaveTextContent(tier);
-    }
-
-    await userEvent.click(page.getByTestId('edit-tier'));
-    await userEvent.click(
-      page.getByTestId('drop-down-menu').getByTestId('clear-filter-btn')
-    );
-
-    await expect.poll(() => tagFqns(server.current())).toEqual([]);
-    await expect.element(page.getByTestId('Tier')).toHaveTextContent('--');
-    expect(server.patches).toHaveLength(3);
-  });
-
-  test('description: update', async () => {
-    await userEvent.click(page.getByTestId('edit-description'));
-    await saveDescription(DESCRIPTION);
-
-    await expect
-      .poll(() => server.current().description)
-      .toBe(`<p>${DESCRIPTION}</p>`);
-    await expect
-      .element(
-        page.getByTestId('asset-description-container').getByRole('paragraph')
-      )
-      .toHaveTextContent(DESCRIPTION);
-    expect(server.patches).toEqual([
-      [{ op: 'add', path: '/description', value: `<p>${DESCRIPTION}</p>` }],
-    ]);
-  });
-
-  test('tags: add, update, remove', async () => {
-    await addUpdateRemoveTags(
-      () => page.getByTestId('KnowledgePanel.Tags'),
-      () => tagFqns(server.current())
-    );
-
-    expect(server.patches).toHaveLength(4);
-  });
-
-  test('glossary terms: add, update, remove', async () => {
-    await addUpdateRemoveGlossaryTerms(
-      () => page.getByTestId('KnowledgePanel.GlossaryTerms'),
-      () => tagFqns(server.current())
-    );
-
-    expect(server.patches).toHaveLength(4);
-  });
-
-  test('votes: up-vote, then down-vote', async () => {
-    await userEvent.click(page.getByTestId('up-vote-btn'));
-
-    await expect
-      .element(page.getByTestId('up-vote-count'))
-      .toHaveTextContent('1');
-
-    await userEvent.click(page.getByTestId('down-vote-btn'));
-
-    await expect
-      .element(page.getByTestId('down-vote-count'))
-      .toHaveTextContent('1');
-    await expect
-      .element(page.getByTestId('up-vote-count'))
-      .toHaveTextContent('0');
-
-    expect(server.votes).toEqual([
-      { updatedVoteType: 'votedUp' },
-      { updatedVoteType: 'votedDown' },
-    ]);
-  });
-
-  test('follow, then un-follow', async () => {
-    const follow = page.getByTestId('entity-follow-button');
-
-    await userEvent.click(follow);
-
-    await expect.poll(() => server.followed).toEqual([DATA_STEWARD.user.id]);
-    await expect.element(follow).toHaveTextContent('Unfollow');
-
-    await userEvent.click(follow);
-
-    await expect.poll(() => server.unfollowed).toEqual([DATA_STEWARD.user.id]);
-    await expect.element(follow).toHaveTextContent(/^Follow/);
-  });
-
-  test('display name: update', async () => {
-    const displayName = `Cypress ${server.current().name} updated`;
-
-    await userEvent.click(page.getByTestId('manage-button'));
-    await userEvent.click(page.getByTestId('rename-button'));
-
-    await expect
-      .element(page.getByRole('textbox', { name: /^Name/ }))
-      .toBeDisabled();
-
-    await userEvent.fill(
-      page.getByRole('textbox', { name: /Display Name/ }),
-      displayName
-    );
-    await userEvent.click(page.getByTestId('save-button'));
-
-    await expect
-      .element(page.getByTestId('entity-header-display-name'))
-      .toHaveTextContent(displayName);
-    expect(server.patches).toEqual([
-      [{ op: 'add', path: '/displayName', value: displayName }],
-    ]);
-  });
-
-  describe.runIf(config.children)('children', () => {
-    const {
-      tabId,
-      rowId,
-      rowSelector = 'data-row-key',
-      displayName,
-    } = config.children ?? { tabId: '', rowId: '' };
-    const row = () => page.getByCSS(`[${rowSelector}="${rowId}"]`);
-    const childServer = () => child as ChildServer;
+// The Table page renders a 120-column schema, so its multi-step tests run
+// past the default 15s.
+describe.each(ENTITIES)(
+  'Data Steward edits a $label',
+  { timeout: 60_000 },
+  (config) => {
+    let server: EntityServer<EntityLike>;
+    let child: ChildServer | void;
 
     beforeEach(async () => {
-      await userEvent.click(page.getByTestId(tabId));
+      servePersona(DATA_STEWARD);
+      serveSeededEntityRules();
+      serveTiers();
+      serveSearch({ user: USERS, team: TEAMS, tag: CLASSIFICATION_TAGS });
+      serveGlossary();
+      server = serveEntity(config.endpoint, config.make(), {
+        ...DATA_STEWARD.user,
+        type: 'user',
+      });
+      child = config.serveExtras(server);
+      renderApp(config.url, DATA_STEWARD.user);
 
-      await expect.element(row()).toBeVisible();
+      await expect.element(header()).toBeVisible();
     });
 
-    test('child tags: add, update, remove', async () => {
-      await addUpdateRemoveTags(row, () => tagFqns(childServer().current()));
+    test('user owners: add two, replace with a third, remove', async () => {
+      await setUserOwners([USERS[0], USERS[2]]);
+      await expectOwners(server, [USERS[0], USERS[2]]);
 
-      expect(childServer().writes()).toHaveLength(4);
+      await setUserOwners([USERS[1]]);
+      await expectOwners(server, [USERS[1]]);
+
+      await expect
+        .element(header().getByTestId(USERS[0].displayName))
+        .not.toBeInTheDocument();
+
+      await openOwnerPicker('Users');
+      await userEvent.click(usersPanel().getByTestId('clear-all-button'));
+      await userEvent.click(
+        usersPanel().getByTestId('selectable-list-update-btn')
+      );
+      await expectOwners(server, []);
+
+      await expect
+        .element(header().getByTestId(USERS[1].displayName))
+        .not.toBeInTheDocument();
+      expect(server.patches).toHaveLength(3);
     });
 
-    test('child glossary terms: add, update, remove', async () => {
-      await addUpdateRemoveGlossaryTerms(row, () =>
-        tagFqns(childServer().current())
+    test('team owner: add, replace, remove', async () => {
+      for (const owner of TEAMS) {
+        await openOwnerPicker('Teams');
+        await userEvent.fill(
+          page.getByTestId('owner-select-teams-search-bar'),
+          owner.displayName
+        );
+        await userEvent.click(
+          page
+            .getByTestId('owner-option')
+            .filter({ hasText: owner.displayName })
+        );
+        await expectOwners(server, [owner]);
+      }
+
+      await expect
+        .element(header().getByTestId(TEAMS[0].displayName))
+        .not.toBeInTheDocument();
+
+      await userEvent.click(page.getByTestId('edit-owner'));
+      await userEvent.click(page.getByTestId('remove-owner'));
+      await expectOwners(server, []);
+
+      await expect
+        .element(header().getByTestId(TEAMS[1].displayName))
+        .not.toBeInTheDocument();
+      expect(server.patches).toHaveLength(3);
+    });
+
+    test('tier: add, replace, remove', async () => {
+      for (const tier of ['Tier1', 'Tier2']) {
+        await userEvent.click(page.getByTestId('edit-tier'));
+        await userEvent.click(
+          page.getByTestId('drop-down-menu').getByTestId(`Tier.${tier}`)
+        );
+
+        await expect
+          .poll(() => tagFqns(server.current()))
+          .toEqual([`Tier.${tier}`]);
+        await expect.element(page.getByTestId('Tier')).toHaveTextContent(tier);
+      }
+
+      await userEvent.click(page.getByTestId('edit-tier'));
+      await userEvent.click(
+        page.getByTestId('drop-down-menu').getByTestId('clear-filter-btn')
       );
 
-      expect(childServer().writes()).toHaveLength(4);
+      await expect.poll(() => tagFqns(server.current())).toEqual([]);
+      await expect.element(page.getByTestId('Tier')).toHaveTextContent('--');
+      expect(server.patches).toHaveLength(3);
     });
 
-    test.runIf(displayName)(
-      'child display name: add, update, remove',
-      async () => {
-        const names = [
-          `Playwright ${rowId} updated`,
-          `Playwright ${rowId} updated again`,
-          '',
-        ];
-        let previous = '';
+    test('description: update', async () => {
+      await userEvent.click(page.getByTestId('edit-description'));
+      await saveDescription(DESCRIPTION);
 
-        for (const name of names) {
-          await userEvent.click(row().getByTestId('edit-displayName-button'));
+      await expect
+        .poll(() => server.current().description)
+        .toBe(`<p>${DESCRIPTION}</p>`);
+      await expect
+        .element(
+          page.getByTestId('asset-description-container').getByRole('paragraph')
+        )
+        .toHaveTextContent(DESCRIPTION);
+      expect(server.patches).toEqual([
+        [{ op: 'add', path: '/description', value: `<p>${DESCRIPTION}</p>` }],
+      ]);
+    });
+
+    test('tags: add, update, remove', async () => {
+      await addUpdateRemoveTags(
+        () => page.getByTestId('KnowledgePanel.Tags'),
+        () => tagFqns(server.current())
+      );
+
+      expect(server.patches).toHaveLength(4);
+    });
+
+    test('glossary terms: add, update, remove', async () => {
+      await addUpdateRemoveGlossaryTerms(
+        () => page.getByTestId('KnowledgePanel.GlossaryTerms'),
+        () => tagFqns(server.current())
+      );
+
+      expect(server.patches).toHaveLength(4);
+    });
+
+    test('votes: up-vote, then down-vote', async () => {
+      await userEvent.click(page.getByTestId('up-vote-btn'));
+
+      await expect
+        .element(page.getByTestId('up-vote-count'))
+        .toHaveTextContent('1');
+
+      await userEvent.click(page.getByTestId('down-vote-btn'));
+
+      await expect
+        .element(page.getByTestId('down-vote-count'))
+        .toHaveTextContent('1');
+      await expect
+        .element(page.getByTestId('up-vote-count'))
+        .toHaveTextContent('0');
+
+      expect(server.votes).toEqual([
+        { updatedVoteType: 'votedUp' },
+        { updatedVoteType: 'votedDown' },
+      ]);
+    });
+
+    test('follow, then un-follow', async () => {
+      const follow = page.getByTestId('entity-follow-button');
+
+      await userEvent.click(follow);
+
+      await expect.poll(() => server.followed).toEqual([DATA_STEWARD.user.id]);
+      await expect.element(follow).toHaveTextContent('Unfollow');
+
+      await userEvent.click(follow);
+
+      await expect
+        .poll(() => server.unfollowed)
+        .toEqual([DATA_STEWARD.user.id]);
+      await expect.element(follow).toHaveTextContent(/^Follow/);
+    });
+
+    test('display name: update', async () => {
+      const displayName = `Cypress ${server.current().name} updated`;
+
+      await userEvent.click(page.getByTestId('manage-button'));
+      await userEvent.click(page.getByTestId('rename-button'));
+
+      await expect
+        .element(page.getByRole('textbox', { name: /^Name/ }))
+        .toBeDisabled();
+
+      await userEvent.fill(
+        page.getByRole('textbox', { name: /Display Name/ }),
+        displayName
+      );
+      await userEvent.click(page.getByTestId('save-button'));
+
+      await expect
+        .element(page.getByTestId('entity-header-display-name'))
+        .toHaveTextContent(displayName);
+      expect(server.patches).toEqual([
+        [{ op: 'add', path: '/displayName', value: displayName }],
+      ]);
+    });
+
+    describe.runIf(config.children)('children', () => {
+      const {
+        tabId,
+        rowId,
+        rowSelector = 'data-row-key',
+        displayName,
+      } = config.children ?? { tabId: '', rowId: '' };
+      const row = () => page.getByCSS(`[${rowSelector}="${rowId}"]`);
+      const childServer = () => child as ChildServer;
+
+      beforeEach(async () => {
+        await userEvent.click(page.getByTestId(tabId));
+
+        await expect.element(row()).toBeVisible();
+      });
+
+      test('child tags: add, update, remove', async () => {
+        await addUpdateRemoveTags(row, () => tagFqns(childServer().current()));
+
+        expect(childServer().writes()).toHaveLength(4);
+      });
+
+      test('child glossary terms: add, update, remove', async () => {
+        await addUpdateRemoveGlossaryTerms(row, () =>
+          tagFqns(childServer().current())
+        );
+
+        expect(childServer().writes()).toHaveLength(4);
+      });
+
+      test.runIf(displayName)(
+        'child display name: add, update, remove',
+        async () => {
+          const names = [
+            `Playwright ${rowId} updated`,
+            `Playwright ${rowId} updated again`,
+            '',
+          ];
+          let previous = '';
+
+          for (const name of names) {
+            await userEvent.click(row().getByTestId('edit-displayName-button'));
+
+            await expect
+              .element(page.getByRole('textbox', { name: /^Name/ }))
+              .toBeDisabled();
+
+            const input = page.getByRole('textbox', { name: /Display Name/ });
+
+            await expect.element(input).toHaveValue(previous);
+
+            await userEvent.fill(input, name);
+            await userEvent.click(page.getByTestId('save-button'));
+
+            await expect
+              .poll(() => childServer().current().displayName)
+              .toBe(name || undefined);
+
+            const shown = row().getByTestId('column-display-name');
+            await (name
+              ? expect.element(shown).toHaveTextContent(name)
+              : expect.element(shown).not.toBeInTheDocument());
+            previous = name;
+          }
+
+          expect(childServer().writes()).toHaveLength(3);
+        }
+      );
+
+      test('child description: add, update, remove', async () => {
+        for (const text of [DESCRIPTION, `${DESCRIPTION} updated`, '']) {
+          await userEvent.click(
+            row().getByTestId('description').first().getByTestId('edit-button')
+          );
+          await saveDescription(text);
 
           await expect
-            .element(page.getByRole('textbox', { name: /^Name/ }))
-            .toBeDisabled();
-
-          const input = page.getByRole('textbox', { name: /Display Name/ });
-
-          await expect.element(input).toHaveValue(previous);
-
-          await userEvent.fill(input, name);
-          await userEvent.click(page.getByTestId('save-button'));
+            .element(page.getByTestId('editor'))
+            .not.toBeInTheDocument();
 
           await expect
-            .poll(() => childServer().current().displayName)
-            .toBe(name || undefined);
+            // A cleared description is "" after a PATCH, absent after a column PUT.
+            .poll(() => childServer().current().description ?? '')
+            .toBe(text ? `<p>${text}</p>` : '');
 
-          const shown = row().getByTestId('column-display-name');
-          await (name
-            ? expect.element(shown).toHaveTextContent(name)
-            : expect.element(shown).not.toBeInTheDocument());
-          previous = name;
+          await (text
+            ? expect
+                .element(
+                  row().getByTestId('viewer-container').getByRole('paragraph')
+                )
+                .toHaveTextContent(text)
+            : expect
+                .element(row().getByTestId('description'))
+                .toHaveTextContent('No Description'));
         }
 
         expect(childServer().writes()).toHaveLength(3);
-      }
-    );
-
-    test('child description: add, update, remove', async () => {
-      for (const text of [DESCRIPTION, `${DESCRIPTION} updated`, '']) {
-        await userEvent.click(
-          row().getByTestId('description').first().getByTestId('edit-button')
-        );
-        await saveDescription(text);
-
-        await expect
-          .element(page.getByTestId('editor'))
-          .not.toBeInTheDocument();
-
-        await expect
-          .poll(() => childServer().current().description)
-          .toBe(text ? `<p>${text}</p>` : undefined);
-
-        await (text
-          ? expect
-              .element(
-                row().getByTestId('viewer-container').getByRole('paragraph')
-              )
-              .toHaveTextContent(text)
-          : expect
-              .element(row().getByTestId('description'))
-              .toHaveTextContent('No Description'));
-      }
-
-      expect(childServer().writes()).toHaveLength(3);
+      });
     });
-  });
-});
+  }
+);

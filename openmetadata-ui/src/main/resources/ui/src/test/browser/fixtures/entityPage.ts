@@ -159,23 +159,31 @@ export const serveEntity = <T extends { id: string }>(
     }),
     http.put(`${base}/:id/followers`, async ({ request }) => {
       const userId = String(await request.json());
+      const follower = { ...actor, id: userId };
       server.followed.push(userId);
       stored = {
         ...stored,
-        followers: [
-          ...without(stored.followers, userId),
-          { ...actor, id: userId },
-        ],
+        followers: [...without(stored.followers, userId), follower],
       };
 
-      return HttpResponse.json({ changeDescription: {} });
+      // The ChangeEvent the server answers with; pages read the follower from it.
+      return HttpResponse.json({
+        changeDescription: {
+          fieldsAdded: [{ name: 'followers', newValue: [follower] }],
+        },
+      });
     }),
     http.delete(`${base}/:id/followers/:userId`, ({ params }) => {
       const userId = String(params.userId);
+      const follower = { ...actor, id: userId };
       server.unfollowed.push(userId);
       stored = { ...stored, followers: without(stored.followers, userId) };
 
-      return HttpResponse.json({ changeDescription: {} });
+      return HttpResponse.json({
+        changeDescription: {
+          fieldsDeleted: [{ name: 'followers', oldValue: [follower] }],
+        },
+      });
     })
   );
 
