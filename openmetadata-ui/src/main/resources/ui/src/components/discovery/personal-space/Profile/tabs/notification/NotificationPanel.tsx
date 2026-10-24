@@ -73,9 +73,13 @@ const NotificationSectionPlaceholder: FC<{
     return <Loader />;
   }
 
+  const EmptyStatePlaceholder = isDenied
+    ? PermissionPlaceholder
+    : NoDataPlaceholder;
+
   return (
     <Box className="tw:relative tw:min-h-60">
-      <NoDataPlaceholder
+      <EmptyStatePlaceholder
         icon={isDenied ? <Lock /> : undefined}
         title={t(isDenied ? 'label.access-denied' : 'label.no-data')}
       />

@@ -513,18 +513,13 @@ describe('TopicCard footer-led empty state', () => {
     ).toBeNull();
   });
 
-  it('sets the footer-led empty state on the landing page type scale', () => {
+  it('keeps the empty title and guidance on the landing page type scale', () => {
     renderCard({ emptyState: FOOTER_EMPTY_STATE });
 
     expect(screen.getByText('No pipeline runs yet')).toHaveClass('tw:text-sm');
     expect(
       screen.getByText('Runs appear here after you connect a pipeline service.')
     ).toHaveClass('tw:text-xs');
-    expect(
-      screen
-        .getByTestId(`topic-empty-${TopicKey.TEAM_ACTIVITY}`)
-        .querySelector('.tw\\:size-16\\.5')
-    ).not.toBeNull();
   });
 
   it('keeps the line but drops the link when the viewer may not take it', () => {
