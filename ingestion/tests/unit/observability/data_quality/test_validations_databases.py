@@ -471,6 +471,13 @@ ABORTED_BEFORE_ROW_COUNT = {
             None,
         ),
         (
+            "test_case_column_to_match_set_ordered_false",
+            "tableColumnToMatchSet",
+            "TABLE",
+            (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
+        ),
+        (
             "test_case_table_custom_sql_query",
             "tableCustomSQLQuery",
             "TABLE",
