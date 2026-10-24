@@ -355,6 +355,21 @@ WHERE name IN (
 UPDATE user_entity
 SET json = JSON_SET(json, '$.email', LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email'))))
 WHERE BINARY JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')) <> LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, '$.email')));
+
+-- Informix no longer declares supportsLineageExtraction or supportsUsageExtraction:
+-- the connector implements neither, and while they were declared the UI offered
+-- Lineage and Usage pipelines that fail on import. The connection schema sets
+-- additionalProperties false, so a stored service still carrying either field can
+-- no longer be deserialised -- and one such row fails the whole databaseServices
+-- listing, not just its own service.
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json,
+    '$.connection.config.supportsLineageExtraction',
+    '$.connection.config.supportsUsageExtraction')
+WHERE serviceType = 'Informix'
+  AND (JSON_CONTAINS_PATH(json, 'one', '$.connection.config.supportsLineageExtraction')
+       OR JSON_CONTAINS_PATH(json, 'one', '$.connection.config.supportsUsageExtraction'));
+
 -- External S3 sample-data storage support was removed (collate#5995), and with it the
 -- whole sampleDataStorageConfig property: once the external branch was gone the field
 -- could only ever hold an empty object, so it carried no information and was dropped

@@ -105,7 +105,6 @@ class ServiceUtilClassBase {
     DatabaseServiceType.Epic,
     PipelineServiceType.Snowplow,
     DriveServiceType.SharePoint,
-    DatabaseServiceType.Informix,
     DatabaseServiceType.ServiceNow,
     DatabaseServiceType.Dremio,
     MetadataServiceType.Collibra,

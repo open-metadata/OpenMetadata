@@ -101,6 +101,7 @@ ignore_imports =
     metadata.sampler.messaging.kafka.sampler -> metadata.ingestion.source.messaging.kafka.connection
     metadata.sampler.pandas.burstiq.sampler -> metadata.ingestion.source.database.burstiq.client
     metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
+    metadata.sampler.sqlalchemy.informix.sampler -> metadata.ingestion.source.database.informix.queries
     metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
     metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection
     metadata.sampler.storage.s3.sampler -> metadata.ingestion.source.storage.s3.connection
