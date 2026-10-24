@@ -10,20 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 
-// The tour's grants on its mock table. Kept apart from mockTourData.constants, which cannot be
-// tree-shaken, so pages that only need the grants do not ship the whole mock dataset.
-export const mockTablePermission = {
-  Create: true,
-  Delete: true,
-  ViewAll: true,
-  ViewDataProfile: true,
-  EditAll: true,
+/**
+ * Remembers the page Help > Tour is opened from, so ending the tour returns
+ * there.
+ */
+const ProductTourPathRecorder = () => {
+  const { pathname, search } = useLocation();
+  const recordPath = useProductTourStore((state) => state.recordPath);
+
+  useEffect(() => {
+    recordPath(`${pathname}${search}`);
+  }, [pathname, search, recordPath]);
+
+  return null;
 };
 
-// The Explore summary panel's grant on the tour's mock table: view only. No edit or test
-// controls, since every edit would PATCH a table that does not exist, and the data quality
-// tab would query it by FQN.
-export const mockTourSummaryPanelPermission = {
-  ViewBasic: true,
-};
+export default ProductTourPathRecorder;

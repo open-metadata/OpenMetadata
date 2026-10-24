@@ -41,7 +41,6 @@ import {
   ROUTES,
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -83,8 +82,6 @@ const ExplorePageV1: FC<unknown> = () => {
     searchClassBase.getEntityTypeSearchIndexMapping();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { isTourOpen, tourMockSearchResults, tourMockSearchHitCounts } =
-    useTourProvider();
   const TABS_SEARCH_INDEXES = Object.keys(tabsInfo) as ExploreSearchIndex[];
   const { isNLPActive, isNLPEnabled } = useSearchStore();
   const isNLPRequestEnabled = isNLPEnabled && isNLPActive;
@@ -376,12 +373,6 @@ const ExplorePageV1: FC<unknown> = () => {
   const getCached = useExploreCache((s) => s.getCached);
   const setCached = useExploreCache((s) => s.setCached);
 
-  useEffect(() => {
-    if (isTourOpen && tourMockSearchHitCounts) {
-      setSearchHitCounts(tourMockSearchHitCounts);
-    }
-  }, [isTourOpen, tourMockSearchHitCounts]);
-
   // Create a dependency string to trigger fetch only when dependencies actually change. Also
   // doubles as the SWR cache key for {@link useExploreCache}.
   const fetchDependencies = useMemo(() => {
@@ -651,10 +642,8 @@ const ExplorePageV1: FC<unknown> = () => {
   };
 
   useEffect(() => {
-    if (!isTourOpen) {
-      performFetch();
-    }
-  }, [isTourOpen, fetchDependencies]);
+    performFetch();
+  }, [fetchDependencies]);
 
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
@@ -672,11 +661,11 @@ const ExplorePageV1: FC<unknown> = () => {
       browseQueryFilter={browseQueryFilter}
       currentPage={currentPage}
       isElasticSearchIssue={showIndexNotFoundAlert}
-      loading={isLoading && !isTourOpen}
+      loading={isLoading}
       pageSize={pageSize}
       quickFilters={advancedSearchQuickFilters}
       searchIndex={searchIndex}
-      searchResults={isTourOpen ? tourMockSearchResults : searchResults}
+      searchResults={searchResults}
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
