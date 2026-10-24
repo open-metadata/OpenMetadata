@@ -17,7 +17,7 @@ import { FC, lazy, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FEED_DRAWER_WIDTH } from '../../../constants/Feeds.constants';
 import { EntityType } from '../../../enums/entity.enum';
-import { useCloseOnLinkClick } from '../../../hooks/useCloseOnLinkClick';
+import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import ActivityPanelBody from '../ActivityFeedPanel/ActivityPanelBody';
 import ActivityPanelHeader from '../ActivityFeedPanel/ActivityPanelHeader';
@@ -50,7 +50,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
   const { t } = useTranslation();
   const { hideDrawer, selectedThread, selectedTask, selectedActivity } =
     useActivityFeedProvider();
-  const feedPanelRef = useCloseOnLinkClick<HTMLDivElement>(hideDrawer);
+  useCloseOnNavigation(hideDrawer);
 
   const entityType = useMemo(() => {
     if (selectedTask?.about?.type) {
@@ -134,9 +134,7 @@ const ActivityFeedDrawer: FC<ActivityFeedDrawerProps> = ({
       onOpenChange={(isOpen) => !isOpen && hideDrawer()}>
       {panel.header}
       <SlideoutMenu.Content className="tw:min-h-0 tw:flex-1 tw:h-auto tw:gap-0 tw:px-0 tw:md:px-0">
-        <div id="feed-panel" ref={feedPanelRef}>
-          {panel.body}
-        </div>
+        <div id="feed-panel">{panel.body}</div>
       </SlideoutMenu.Content>
     </SlideoutMenu>
   );

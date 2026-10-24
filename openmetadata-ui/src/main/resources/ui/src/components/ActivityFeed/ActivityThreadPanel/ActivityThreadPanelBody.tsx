@@ -39,7 +39,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
-import { useCloseOnLinkClick } from '../../../hooks/useCloseOnLinkClick';
+import { useCloseOnNavigation } from '../../../hooks/useCloseOnNavigation';
 import { useElementInView } from '../../../hooks/useElementInView';
 import {
   createConversation,
@@ -103,7 +103,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     TaskStatusGroup.Open
   );
   const [elementRef, isInView] = useElementInView(observerOptions);
-  const panelBodyRef = useCloseOnLinkClick<HTMLDivElement>(onCancel);
+  useCloseOnNavigation(onCancel);
   const conversationsRef = useRef(conversations);
 
   const isTaskType = view === 'tasks';
@@ -371,7 +371,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   return (
     <Fragment>
-      <div id="thread-panel-body" ref={panelBodyRef}>
+      <div id="thread-panel-body">
         {showHeader && isConversationType && (
           <FeedPanelHeader
             hideCloseIcon

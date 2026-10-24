@@ -105,6 +105,8 @@
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Feeds.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCloseOnLinkClick*",
         "openmetadata-service/src/main/java/org/openmetadata/service/tasks/**"
       ],
       "specs": [

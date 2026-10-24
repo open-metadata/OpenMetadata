@@ -22,8 +22,8 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
-import './feed-card-body-v1.less';
 import { INBOX_RECESSED_SURFACE_CLASS } from '../../../discovery/personal-space/InboxPage/inbox.utils';
+import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
 const RichTextEditorPreviewerNew = withSuspenseFallback(
@@ -51,7 +51,6 @@ const ActivityOwnersFeed = withSuspenseFallback(
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
 );
-// The same editor a new comment is written in.
 const CommentEditForm = withSuspenseFallback(
   lazy(() =>
     import('../../../common/CommentComposer/CommentComposer').then(

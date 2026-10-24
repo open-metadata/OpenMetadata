@@ -72,7 +72,6 @@ const getReplyLayout = (isThreadPanel?: boolean, isLastReply?: boolean) =>
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
-// The same editor a new comment is written in.
 const CommentEditForm = withSuspenseFallback(
   lazy(() =>
     import('../../common/CommentComposer/CommentComposer').then((module) => ({
@@ -195,7 +194,6 @@ const CommentCard = ({
     [message]
   );
 
-  // A rejected save rejects here too, so the form keeps the draft.
   const handleFormSave = useCallback(
     async (updatedMessage: string) => {
       await onEdit(updatedMessage);

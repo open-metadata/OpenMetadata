@@ -28,11 +28,11 @@ import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { EntityType } from '../../../enums/entity.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { EntityReference } from '../../../generated/entity/type';
 import {
   Conversation,
   ConversationReply,
 } from '../../../generated/entity/feed/conversation';
+import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
@@ -67,7 +67,6 @@ const ActivityFeedEditorNew = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
 );
 
-// The composer a new comment is written in.
 const CommentComposer = withSuspenseFallback(
   lazy(() => import('../../common/CommentComposer/CommentComposer'))
 );
