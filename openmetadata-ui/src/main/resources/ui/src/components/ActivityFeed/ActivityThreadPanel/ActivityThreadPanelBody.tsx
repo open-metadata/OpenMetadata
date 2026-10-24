@@ -17,7 +17,10 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowLeft,
+  MessageChatSquare,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -36,6 +39,7 @@ import { observerOptions } from '../../../constants/Mydata.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { Paging } from '../../../generated/type/paging';
+import { useCloseOnLinkClick } from '../../../hooks/useCloseOnLinkClick';
 import { useElementInView } from '../../../hooks/useElementInView';
 import {
   createConversation,
@@ -99,6 +103,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     TaskStatusGroup.Open
   );
   const [elementRef, isInView] = useElementInView(observerOptions);
+  const panelBodyRef = useCloseOnLinkClick<HTMLDivElement>(onCancel);
   const conversationsRef = useRef(conversations);
 
   const isTaskType = view === 'tasks';
@@ -247,15 +252,26 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   const renderActiveConversationView = () => (
     <Fragment>
-      <Button className="tw:mb-3" color="link-color" size="xs" onClick={onBack}>
+      <Button
+        className="tw:mb-3"
+        color="link-gray"
+        data-testid="thread-back"
+        iconLeading={ArrowLeft}
+        size="sm"
+        onClick={onBack}>
         {t('label.back')}
       </Button>
-      <ActivityFeedCardNew
-        isForFeedTab
-        isOpenInDrawer
-        showThread
-        feed={selectedConversation}
-      />
+      {/* Framed like the list's cards, so the open thread reads as the same
+          conversation. */}
+      <div className="tw:rounded-xl tw:border tw:border-secondary tw:bg-surface">
+        <ActivityFeedCardNew
+          isForFeedTab
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={selectedConversation}
+        />
+      </div>
     </Fragment>
   );
 
@@ -287,11 +303,13 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
       </div>
     );
 
+  // No isForFeedTab on the cards: Reply then opens the conversation here, as
+  // a click on the card does, rather than in a second drawer.
   const renderConversationList = () => (
     <div className={classNames(className, 'd-flex flex-col gap-3')}>
       {conversations.map((conversation) => (
         <FeedPanelBodyV1New
-          isForFeedTab
+          isThreadPanel
           feed={conversation}
           isActive={false}
           key={conversation.id}
@@ -310,7 +328,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
           <Box
             inline
             align="stretch"
-            className="layout-space w-full"
+            className="layout-space w-full tw:mb-4"
             direction="col"
             gap={2}
             itemClassName="layout-space-item">
@@ -343,7 +361,8 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
     if (isTaskType && !isUndefined(selectedTask)) {
       return renderActiveTaskView();
     }
-    if (!isUndefined(selectedConversation)) {
+    // A conversation picked for this panel shows only on its own tab.
+    if (isConversationType && !isUndefined(selectedConversation)) {
       return renderActiveConversationView();
     }
 
@@ -352,7 +371,7 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
 
   return (
     <Fragment>
-      <div id="thread-panel-body">
+      <div id="thread-panel-body" ref={panelBodyRef}>
         {showHeader && isConversationType && (
           <FeedPanelHeader
             hideCloseIcon
