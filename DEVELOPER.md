@@ -372,7 +372,7 @@ Authorization uses the `Authorizer` interface, injected into all resource classe
 
 **Pattern in resources:**
 ```java
-// All mutating operations must authorize:
+// All endpoints — including reads, listings, and sub-resource accesses — must authorize:
 authorizer.authorize(securityContext, operationContext, resourceContext);
 
 // OperationContext wraps the MetadataOperation enum:
@@ -389,7 +389,7 @@ new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TAGS)
 - `PolicyEvaluator` — evaluates rules against `SubjectContext` + `ResourceContextInterface` + `OperationContext`
 - `SubjectCache` — caches permission evaluations per user
 
-**When adding new resources:** ensure all mutating methods call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
+**When adding new resources:** ensure all endpoints (including reads, listings, and sub-resource accesses) call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
 
 ### Search Infrastructure
 
