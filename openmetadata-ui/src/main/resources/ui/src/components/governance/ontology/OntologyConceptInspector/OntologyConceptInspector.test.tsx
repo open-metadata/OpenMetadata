@@ -29,7 +29,10 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
-import { OntologyStudioModel } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import {
+  getModelRelations,
+  OntologyStudioModel,
+} from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
@@ -240,5 +243,78 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     expect(
       screen.getByTestId(`ontology-bind-property-${property.id}`)
     ).toBeEnabled();
+  });
+});
+
+describe('OntologyConceptInspector relationships', () => {
+  const account = {
+    ...concept,
+    id: 'account',
+    name: 'Account',
+    fullyQualifiedName: 'Sales.Account',
+    iri: 'urn:sales:Account',
+  };
+  const partOf: OntologyProperty = {
+    id: 'part-of',
+    name: 'partOf',
+    displayName: 'Part Of',
+    fullyQualifiedName: 'Sales.partOf',
+    iri: 'https://open-metadata.org/ontology/partOf',
+    ontology: { id: ontology.id, type: 'ontology' },
+    kind: Kind.Object,
+    domain: [account.iri],
+    range: [concept.iri],
+    inverse: 'https://open-metadata.org/ontology/hasPart',
+  };
+  const hasPart: OntologyProperty = {
+    id: 'has-part',
+    name: 'hasPart',
+    displayName: 'Has Part',
+    fullyQualifiedName: 'Sales.hasPart',
+    iri: 'https://open-metadata.org/ontology/hasPart',
+    ontology: { id: ontology.id, type: 'ontology' },
+    kind: Kind.Object,
+    inverse: partOf.iri,
+  };
+  const renderRelations = (properties: OntologyProperty[]) => {
+    const relationModel = {
+      ...model,
+      concepts: [concept, account],
+      properties,
+    };
+
+    return renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={relationModel}
+          relations={getModelRelations(relationModel)}
+          onClose={jest.fn()}
+          onSelectConcept={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({ revision: 0, assets: [] });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('reads an incoming relation through the inverse the ontology declares', () => {
+    renderRelations([partOf, hasPart]);
+
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/has part\s*Account/);
+  });
+
+  it('reads an incoming relation backwards when no inverse is declared', () => {
+    renderRelations([partOf]);
+
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent(/Account\s*part of/);
   });
 });

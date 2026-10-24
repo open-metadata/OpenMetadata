@@ -51,12 +51,10 @@ class OntologyHierarchyStorageTest {
           final var party = concept(fixture, "Party");
           final var properties = new OntologyPropertyRepository();
           final var property = properties.create(null, property(fixture, "p"));
-          final var inverse =
-              properties.create(null, property(fixture, "q").withInverse(property.getIri()));
           properties.create(
               null,
-              property(fixture, "r")
-                  .withInverse(inverse.getIri())
+              property(fixture, "q")
+                  .withInverse(property.getIri())
                   .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE)));
           final var axioms = new OntologyAxiomRepository();
           final var restriction =
@@ -79,7 +77,7 @@ class OntologyHierarchyStorageTest {
           assertEquals(0, fixture.rowCount("ontology_axiom_entity"));
           assertEquals(
               revision, fixture.ontologies.getState(fixture.ontology.getId()).getWorkingRevision());
-          assertEquals(6, fixture.capture(ignored -> {}).getMemberCount());
+          assertEquals(5, fixture.capture(ignored -> {}).getMemberCount());
         });
   }
 

@@ -83,6 +83,7 @@
     "openmetadata-ui/src/main/resources/ui/playwright/reporters/**",
     "openmetadata-ui/src/main/resources/ui/playwright/support/user/**",
     "openmetadata-ui/src/main/resources/ui/playwright/utils/**",
+    "openmetadata-ui/src/main/resources/ui/src/enums/permissions.enum.ts",
     "openmetadata-ui/src/main/resources/ui/vite.config.ts",
     "openmetadata-ui/src/main/resources/ui/vite/**"
   ],
@@ -594,17 +595,21 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useSparqlQueryLibrary.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Ontology*.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/Ontology*Test.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
         "openmetadata-spec/src/main/resources/json/schema/api/rdf/**"
       ],
       "projects": ["chromium"],
-      "specs": ["playwright/e2e/Features/OntologyStudio*.spec.ts"]
+      "specs": ["playwright/e2e/Features/Ontology*.spec.ts"]
     },
     {
       "sources": [
