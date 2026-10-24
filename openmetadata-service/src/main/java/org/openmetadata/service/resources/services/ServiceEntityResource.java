@@ -171,7 +171,9 @@ public abstract class ServiceEntityResource<
    * where it did; see {@link ConnectionSecretsGuard}.
    */
   protected T unmask(SecurityContext securityContext, T service) {
-    if (!readsStoredSecrets(securityContext) && service.getConnection() != null) {
+    // Only a write that carries a connection can keep a stored secret, so check that first and
+    // resolve the caller's subject only then — a connectionless write needs no guard.
+    if (service.getConnection() != null && !readsStoredSecrets(securityContext)) {
       repository.setFullyQualifiedName(service);
       requireSecretsReenteredOnRetarget(
           repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED),
