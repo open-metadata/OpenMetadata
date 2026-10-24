@@ -477,6 +477,93 @@ public class GlossaryCsvRelationTypesIT {
       SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS;
 
   @Test
+  void termExportContainsExactlyItsDescendants(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm parent = GlossaryTermTestFactory.createWithName(ns, glossary, "exportParent");
+    GlossaryTerm child = GlossaryTermTestFactory.createChild(ns, glossary, parent, "exportChild");
+    GlossaryTerm grandchild =
+        GlossaryTermTestFactory.createChild(ns, glossary, child, "exportGrandchild");
+    GlossaryTermTestFactory.createWithName(ns, glossary, "exportSibling");
+
+    String csv = exportTermCsv(parent.getFullyQualifiedName());
+    try (CSVParser parser =
+        CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new StringReader(csv))) {
+      List<CSVRecord> rows = parser.getRecords();
+      assertEquals(2, rows.size());
+      assertEquals(
+          List.of(child.getName(), grandchild.getName()),
+          rows.stream().map(row -> row.get("name*")).toList());
+      assertEquals(parent.getFullyQualifiedName(), rows.get(0).get("parent"));
+      assertEquals(child.getFullyQualifiedName(), rows.get(1).get("parent"));
+    }
+  }
+
+  @Test
+  void termImportValidatesBatchBeforePersistingHierarchyAndRelations(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm scope = GlossaryTermTestFactory.createWithName(ns, glossary, "importScope");
+    GlossaryTerm target = GlossaryTermTestFactory.createChild(ns, glossary, scope, "target");
+    String parentName = ns.prefix("importParent");
+    String childName = ns.prefix("importChild");
+    String parentFqn = scope.getFullyQualifiedName() + "." + parentName;
+    String childFqn = parentFqn + "." + childName;
+    String csv =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n"
+            + csvRow(scope.getFullyQualifiedName(), parentName, "")
+            + csvRow(parentFqn, childName, "relatedTo:" + target.getFullyQualifiedName());
+
+    JsonNode dryRun =
+        OBJECT_MAPPER.readTree(importTermCsv(scope.getFullyQualifiedName(), csv, true));
+    assertImportResult(dryRun, "success", true, 2, 2, 0);
+    assertEquals(404, termGetStatus(parentFqn));
+    assertEquals(404, termGetStatus(childFqn));
+
+    JsonNode imported =
+        OBJECT_MAPPER.readTree(importTermCsv(scope.getFullyQualifiedName(), csv, false));
+    assertImportResult(imported, "success", false, 2, 2, 0);
+    GlossaryTerm persistedParent = getGlossaryTerm(parentFqn, "parent");
+    GlossaryTerm persistedChild = getGlossaryTerm(childFqn, "parent,relatedTerms");
+    assertNotNull(persistedParent);
+    assertNotNull(persistedChild);
+    assertEquals(scope.getId(), persistedParent.getParent().getId());
+    assertEquals(persistedParent.getId(), persistedChild.getParent().getId());
+    assertEquals(1, persistedChild.getRelatedTerms().size());
+    assertEquals(target.getId(), persistedChild.getRelatedTerms().getFirst().getTerm().getId());
+    assertEquals("relatedTo", persistedChild.getRelatedTerms().getFirst().getRelationType());
+
+    String selfParent =
+        "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n"
+            + csvRow(childFqn, childName, "");
+    JsonNode rejected =
+        OBJECT_MAPPER.readTree(importTermCsv(scope.getFullyQualifiedName(), selfParent, false));
+    assertImportResult(rejected, "failure", false, 1, 0, 1);
+    GlossaryTerm unchanged = getGlossaryTerm(childFqn, "parent,relatedTerms");
+    assertNotNull(unchanged);
+    assertEquals(persistedParent.getId(), unchanged.getParent().getId());
+    assertEquals(target.getId(), unchanged.getRelatedTerms().getFirst().getTerm().getId());
+  }
+
+  private static String csvRow(String parent, String name, String relation) {
+    return CSVFormat.DEFAULT.format(
+            parent, name, "", "description", "", relation, "", "", "", "", "Draft", "", "", "", "")
+        + "\n";
+  }
+
+  private static void assertImportResult(
+      JsonNode result, String status, boolean dryRun, int processed, int passed, int failed) {
+    assertTrue(result.path("dryRun").isBoolean(), result.toString());
+    assertTrue(result.path("numberOfRowsProcessed").isInt(), result.toString());
+    assertTrue(result.path("numberOfRowsPassed").isInt(), result.toString());
+    assertTrue(result.path("numberOfRowsFailed").isInt(), result.toString());
+    assertEquals(status, result.path("status").asText(), result.toString());
+    assertEquals(dryRun, result.path("dryRun").asBoolean(), result.toString());
+    assertEquals(processed, result.path("numberOfRowsProcessed").asInt(), result.toString());
+    assertEquals(passed, result.path("numberOfRowsPassed").asInt(), result.toString());
+    assertEquals(failed, result.path("numberOfRowsFailed").asInt(), result.toString());
+  }
+
+  @Test
   void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTerm t1 = GlossaryTermTestFactory.createWithName(ns, glossary, "t1");
@@ -880,5 +967,59 @@ public class GlossaryCsvRelationTypesIT {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
     return response.body();
+  }
+
+  private String exportTermCsv(String termFqn) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/glossaryTerms/name/"
+                        + java.net.URLEncoder.encode(termFqn, "UTF-8")
+                        + "/export"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "text/plain")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+    return response.body();
+  }
+
+  private String importTermCsv(String termFqn, String csv, boolean dryRun) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/glossaryTerms/name/"
+                        + java.net.URLEncoder.encode(termFqn, "UTF-8")
+                        + "/import?dryRun="
+                        + dryRun))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "text/plain")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(csv))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+    return response.body();
+  }
+
+  private int termGetStatus(String termFqn) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    SdkClients.getServerUrl()
+                        + "/v1/glossaryTerms/name/"
+                        + java.net.URLEncoder.encode(termFqn, "UTF-8")))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString()).statusCode();
   }
 }

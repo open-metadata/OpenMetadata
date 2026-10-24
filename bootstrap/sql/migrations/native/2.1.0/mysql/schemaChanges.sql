@@ -1136,6 +1136,18 @@ DELETE FROM entity_relationship WHERE
 DELETE FROM entity_extension WHERE jsonSchema = 'ontologyChangeSet' AND (JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration')));
 DELETE FROM ontology_change_set_entity WHERE JSON_EXTRACT(json, '$.ontology.id') IS NULL AND (JSON_CONTAINS(json, '{"operationType":"UPSERT_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS(json, '{"operationType":"DELETE_ATTRIBUTE"}', '$.operations') OR JSON_CONTAINS_PATH(json, 'one', '$.operations[*].term.attributes', '$.operations[*].term.effectiveAttributes', '$.operations[*].term.realizedIn', '$.operations[*].term.conceptType', '$.operations[*].term.ontologySource', '$.operations[*].term.sourceMemoryIds', '$.operations[*].glossary.ontologyConfiguration'));
 
+-- Native concept bindings move from one document per concept to one row per concept and asset
+-- (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata, amendment v2).
+CREATE TABLE IF NOT EXISTS ontology_concept_binding (
+  conceptId VARCHAR(36) NOT NULL,
+  assetId VARCHAR(36) NOT NULL,
+  assetType VARCHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  assetFqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  columnBindings JSON NOT NULL,
+  PRIMARY KEY (conceptId, assetId),
+  KEY ontology_concept_binding_asset_index (assetId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

@@ -62,6 +62,9 @@ public interface RdfInfraDAOs {
   OntologyReferenceDAO ontologyReferenceDAO();
 
   @CreateSqlObject
+  OntologyConceptBindingDAO ontologyConceptBindingDAO();
+
+  @CreateSqlObject
   OntologyReleaseDAO ontologyReleaseDAO();
 
   @CreateSqlObject

@@ -85,6 +85,11 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   }
 
   @Override
+  protected void entitySpecificCleanup(final OntologyConcept concept) {
+    daoCollection.ontologyConceptBindingDAO().deleteConcept(concept.getId());
+  }
+
+  @Override
   protected String serializeForVersionHistory(final OntologyConcept entity) {
     final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
     node.remove(DERIVED_FIELDS);
