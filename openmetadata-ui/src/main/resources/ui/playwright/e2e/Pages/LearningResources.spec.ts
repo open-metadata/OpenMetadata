@@ -632,7 +632,9 @@ test.describe('Learning Resources - Search and Filters', () => {
     });
 
     await test.step('Verify filter chip is shown', async () => {
-      await expect(page.getByTitle('Discovery')).toBeVisible();
+      await expect(
+        page.getByTestId('filter-chip-category').getByTitle('Discovery')
+      ).toBeVisible();
     });
   });
 
@@ -649,7 +651,9 @@ test.describe('Learning Resources - Search and Filters', () => {
     });
 
     await test.step('Verify filter chip is shown', async () => {
-      await expect(page.getByTitle('Glossary')).toBeVisible();
+      await expect(
+        page.getByTestId('filter-chip-context').getByTitle('Glossary')
+      ).toBeVisible();
     });
   });
 
@@ -666,7 +670,9 @@ test.describe('Learning Resources - Search and Filters', () => {
     });
 
     await test.step('Verify filter chip is shown', async () => {
-      await expect(page.getByTitle('Active')).toBeVisible();
+      await expect(
+        page.getByTestId('filter-chip-status').getByTitle('Active')
+      ).toBeVisible();
     });
   });
 
@@ -675,7 +681,9 @@ test.describe('Learning Resources - Search and Filters', () => {
   }) => {
     await test.step('Apply a filter first', async () => {
       await applyLearningResourceFilter(page, 'Type', 'Video');
-      await expect(page.getByTitle('Video')).toBeVisible();
+      await expect(
+        page.getByTestId('filter-chip-type').getByTitle('Video')
+      ).toBeVisible();
     });
 
     await test.step('Clear all filters and verify clean API call', async () => {

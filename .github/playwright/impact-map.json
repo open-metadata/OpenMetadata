@@ -98,6 +98,7 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLink.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtilsPure.ts",
         "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
@@ -117,7 +118,13 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityLineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/LineageTable/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
@@ -126,9 +133,26 @@
       ]
     },
     {
+      "_comment": "The export modal and the PNG/CSV writers behind it: every spec that opens the export modal.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Export/**"
+      ],
+      "projects": ["chromium", "ImportExport"],
+      "specs": [
+        "playwright/e2e/Features/ClassificationImportExport.spec.ts",
+        "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
+        "playwright/e2e/Features/SampleDataTableOperations.spec.ts",
+        "playwright/e2e/Pages/CSVImportWithQuotesAndCommas.spec.ts",
+        "playwright/e2e/Pages/GlossaryImportExport.spec.ts",
+        "playwright/e2e/Pages/Users.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Explore/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Explore/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntitySummaryPanelUtils*",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/**"
       ],
       "projects": [
@@ -298,7 +322,11 @@
     {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/governance/glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/governance/glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -371,10 +399,12 @@
       "_comment": "The application config forms are built from the UI-local application schemas by ApplicationsClassBase, and the Search Indexing form additionally fills its entity picker from GET /v1/search/entityTypes. The Settings/** entry above selects no spec that actually opens an app config form, so a change to the schemas, the loader, or the endpoint that fills them shipped unrun — the SearchIndexApplication entity-picker locator broke once the server-driven list gained tableColumn and nothing caught it.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/**",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Applications.constant.ts",
         "openmetadata-ui/src/main/resources/ui/src/pages/AppInstall/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/**",
         "openmetadata-ui/src/main/resources/ui/src/jsons/applicationSchemas/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/searchIndex/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/AppRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/apps/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/search/SearchResource.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/SearchRepository.java"
@@ -384,7 +414,8 @@
         "playwright/e2e/Pages/SearchIndexApplication.spec.ts",
         "playwright/e2e/Pages/DataInsightReportApplication.spec.ts",
         "playwright/e2e/Pages/AppStopRunModal.spec.ts",
-        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts"
+        "playwright/e2e/Pages/AppRunsHistoryLogs.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts"
       ]
     },
     {
@@ -581,11 +612,15 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AddServicePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/EditConnectionFormPage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/SettingsRouter.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/ServiceInsights/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
-        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase*",
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ServicesOverview*.java",
@@ -610,7 +645,8 @@
         "openmetadata-ui/src/main/resources/ui/src/rest/serviceAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtils.tsx",
         "openmetadata-ui/src/main/resources/ui/src/utils/ServiceUtilClassBase.ts",
-        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ConnectionsRouterClassBase*",
+        "openmetadata-ui/src/main/resources/ui/src/components/integration/ConnectionServiceDetailsPage/connectionsBreadcrumb.utils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/IngestionConfigUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityDataBreadcrumbUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityServiceBreadcrumbUtils.ts",
@@ -684,6 +720,21 @@
       ]
     },
     {
+      "_comment": "What reaches an entity's activity feed is decided server-side: the ActivityFeedAlert seed filter and the repository that builds and lists activity events (an asset's feed includes its data contract's).",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ActivityStreamRepository.java",
+        "openmetadata-service/src/main/resources/json/data/eventsubscription/ActivityFeedEvents.json"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ActivityFeed.spec.ts",
+        "playwright/e2e/Features/ActivityAPI.spec.ts",
+        "playwright/e2e/Features/ActivityStream.spec.ts",
+        "playwright/e2e/Features/ActivityFeedTabBadge.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts"
+      ]
+    },
+    {
       "_comment": "The customize-landing-page and widget-filter playwright helpers are shared by every landing-page/customization spec. Without this entry a helper-only change (e.g. a wait fix in customizeLandingPage.ts or widgetFilters.ts) counted as an unmapped file, so CustomizeWidgets/CustomizeLandingPage and the other specs that execute the changed helpers never ran on the PR. Specs listed are the exact importers of these modules; DataInsight.spec.ts runs in the Data Insight project.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/utils/customizeLandingPage.ts",
@@ -715,9 +766,17 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.test.tsx",
         "openmetadata-ui/src/main/resources/ui/src/mocks/MyDataPage.mock.tsx",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCuratedAssets.ts",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts.ts",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDataProducts*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useDomainOverview*",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useOwnedAndFollowed.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useTotalDataAssets*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useMyTasks*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/usePipelineStatus*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/myTaskBuckets*",
+        "openmetadata-ui/src/main/resources/ui/src/rest/pipelineAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/enums/CustomizablePage.enum.ts",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/widgets/landing/**",
+        "openmetadata-service/src/main/resources/json/data/document/docs/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
         "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
@@ -762,7 +821,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/MetricsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/CustomMetricForm/**",
         "openmetadata-ui/src/main/resources/ui/src/components/Metric/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/MetricEntityUtils/**",
         "openmetadata-ui/src/main/resources/ui/src/components/BulkEditEntity/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useGridEditController.ts",
+        "openmetadata-ui/src/main/resources/ui/src/pages/EntityImport/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/metricsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/customMetricAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/importExportAPI.ts",
@@ -778,6 +840,7 @@
         "playwright/e2e/Features/BulkEditEntity.spec.ts",
         "playwright/e2e/Features/BulkEditOperationBadges.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/BulkEditTableGridInteractions.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/CsvJobsTray.spec.ts"
       ]
@@ -855,6 +918,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/AppModeSwitcher/**",
         "openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/home/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/SettingsAppModePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/Settings/DefaultAppModePage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/CustomizeAppModeSidebarPage/**",
@@ -864,7 +928,8 @@
       ],
       "projects": ["chromium"],
       "specs": [
-        "playwright/e2e/Features/AppMode/**/*.spec.ts"
+        "playwright/e2e/Features/AppMode/**/*.spec.ts",
+        "playwright/e2e/Features/AIMode/AppModeSidebarPersonaCustomization.spec.ts"
       ]
     },
     {
@@ -926,7 +991,10 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/profileNavConfig.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/PermissionsTab.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfileDetailsPanel.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/ProfilePage*",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/components/SettingsSection.tsx",
         "openmetadata-ui/src/main/resources/ui/src/constants/Profile.constants.ts"
       ],
@@ -937,6 +1005,69 @@
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
         "playwright/e2e/Pages/BotsProfile.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Settings modal Bots panel: list, add form, detail and token section.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/bots/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/BotsProfile.spec.ts"]
+    },
+    {
+      "_comment": "Settings modal Notifications panel: alert list, alert form and detail views.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/notification/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Settings modal Applications panel: installed apps, marketplace and install flow.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/applications/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/ApplicationsSettingsModal.spec.ts"]
+    },
+    {
+      "_comment": "Settings modal Governance panel: glossary term relations and intake forms.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/governance/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/ProfileGovernance.spec.ts"]
+    },
+    {
+      "_comment": "Settings modal Personas panel: persona list, detail and customize views.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/personas/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/AIMode/PersonaSettings.spec.ts"]
+    },
+    {
+      "_comment": "Settings modal Custom Properties panel.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts"]
+    },
+    {
+      "_comment": "Logged-in user permissions and their loading state, read by the settings modal's admin-only and permission-gated surfaces.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/context/PermissionProvider/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts"
       ]
     },
     {
@@ -1023,11 +1154,15 @@
       "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
-        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**"
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataContract/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/DataContractRedirectPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contractAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContractRepository.java"
       ],
       "projects": ["chromium", "ImportExport"],
       "specs": [
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
+        "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContractSLAValidation.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
@@ -1038,6 +1173,69 @@
     {
       "_comment": "The ESLint suppressions baseline is read only by the linter: it ships in neither the server nor the UI bundle, so no change to it can alter a spec outcome. Mapped to no specs rather than left unmapped, so pruning it does not escalate to a full-suite run.",
       "sources": ["openmetadata-ui/src/main/resources/ui/eslint-suppressions.json"],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "The AI-mode Data Quality Test Cases tab (list, filters, soft delete and restore). The generated map reaches only the shared classic components it renders, so a change to the AI-mode tab itself would otherwise run the full suite.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/DataQuality/TestCases/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/Observability.spec.ts",
+        "playwright/e2e/Features/AIMode/TestCaseBreadcrumb.spec.ts",
+        "playwright/e2e/Features/AIMode/TestCaseEdit.spec.ts",
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
+      ]
+    },
+    {
+      "_comment": "ConfirmationModal, its props and unit test. The generated map sends ConfirmationModal.tsx to the first three specs (through its testIds); TestSuiteDetailsPage.spec.ts is added because it asserts the destructive confirm on bulk remove.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ConfirmationModal/ConfirmationModal.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
+        "playwright/e2e/Features/TestSuiteMultiPipeline.spec.ts",
+        "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The AI-mode bundle test suite page and its test case search. TestSuiteDetailsPage.spec.ts runs the suite search in Classic and AI mode; the generated map reaches only the shared classic components it renders.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestSuiteDetail/**"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/TestSuiteDetailsPage.spec.ts"]
+    },
+    {
+      "_comment": "The AI-mode test case Run now / Retry controls. Only the AI-mode detail page and the run execution error banner render them, so the generated map does not reach them.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/RunTestCaseButton/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/RunTestCase.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The test case detail page header and its Deleted badge (Classic and AI mode). TestCaseSoftDeleteRestore is the only spec asserting the badge, and the generated map skips the deleted-badge test id (too many owners).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail*",
+        "openmetadata-ui/src/main/resources/ui/src/pages/IncidentManager/IncidentManagerDetailPage/TestCaseHeaderTitle.component*"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The limit banner shows only once a resource limit is reached, and only Collate enables the limits config that sets one, so no spec in this suite can display it. Mapped to no specs rather than left unmapped, so a change to it does not escalate to a full-suite run.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/components/common/LimitBanner/**"],
       "projects": [],
       "specs": []
     },
@@ -1083,6 +1281,177 @@
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts"
       ]
+    },
+    {
+      "_comment": "The first-login welcome screen and the post-deploy upgrade screen (the chunk-load ErrorFallback), with the brand hooks and artwork they render. WelcomeScreen.spec.ts drives the welcome screen in classic and AI mode (shown once, close, both actions, stays dismissed on the kept-alive AI home); AppModeAiPersonaLandsAtRoot.spec.ts covers the AI-mode landing route the gate wraps. No spec forces a chunk-load failure, so the upgrade screen is covered by ErrorFallback.test.tsx.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/MyDataPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useFirstLoginWelcome.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/personalSpace.module.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/ErrorBoundary/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/BrandData/**",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/upgrade-screen-*.svg",
+        "openmetadata-ui/src/main/resources/ui/src/assets/img/welcome-screen.png",
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/om-upgrade.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/WelcomeScreen.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeAiPersonaLandsAtRoot.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/SignUp/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Auth/SSOSelfSignup.spec.ts",
+        "playwright/e2e/Auth/OktaSelfSignupClaims.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/pages/SwaggerPage/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Flow/ApiDocs.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Mode-aware settings links (ADR:2026-10-21-settings-pages-are-classic-only): the path-to-modal-hash map, the route builders (pure paths) and the call sites that wrap them in getSettingsLink, and the hash router that opens the settings modal from a pushed link. Classic keeps its paths, so the classic settings specs whose links these builders produce run too.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/SettingsModalLinkUtils*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SettingsHashUtils*",
+        "openmetadata-ui/src/main/resources/ui/src/utils/RouterPaths.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/RouterUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityGovernanceBreadcrumbUtils*",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useSettingsHash*",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/PopOverCard/TeamPopoverTitle.component.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/pages/CustomizablePage/CustomizablePage.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityLinkUtils.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EntityUtilClassBase.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/Users.util.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ownerUtils.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiNotificationAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ProfileNotificationTab.spec.ts",
+        "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
+        "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/ApplicationsSettingsModal.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Pages/AIProfile/**/*.spec.ts",
+        "playwright/e2e/Pages/BotsProfile.spec.ts",
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts",
+        "playwright/e2e/Pages/Teams.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Settings-modal Members and Access Control panels, including the per-view permission gates that mirror classic SettingsRouter (ADR:2026-10-21-settings-pages-are-classic-only).",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/members/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/Profile/tabs/access-control/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/AppMode/AppModeUrlHandling.spec.ts",
+        "playwright/e2e/Pages/AIProfile/**/*.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AI-mode observability alert pages (list, details, add/edit drawer) and the alert kind they serve.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/observability/Alerts/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
+        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/Observability.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Breadcrumbs of the classic Add KPI, Add Role and Add Policy pages.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/constants/Breadcrumb.constants.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Roles.spec.ts",
+        "playwright/e2e/Pages/Policies.spec.ts"
+      ]
+    },
+    {
+      "_comment": "AI-mode Inbox (routed /inbox page): activity and task lists and their item components.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/InboxActivity.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
+        "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/__snapshots__/**"
+      ],
+      "projects": ["visual-regression"],
+      "specs": ["playwright/e2e/VisualRegression/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The Lineage section of the entity summary panel (Upstream/Downstream counts). ExplorePageRightPanel.spec.ts opens the panel and navigates from its lineage section; the data product Assets tab renders the same panel.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/LineageSection/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
+        "playwright/e2e/Pages/DataProducts.spec.ts"
+      ]
+    },
+    {
+      "_comment": "Service Insights widgets and their empty-state placeholders. Pagination.spec.ts and ServiceEntityPermissions.spec.ts open a service's Insights tab; ConnectionServiceDetails.spec.ts covers it in AI mode.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceInsightsWidgets.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Permissions/ServiceEntityPermissions.spec.ts",
+        "playwright/e2e/Features/AIMode/ConnectionServiceDetails.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The shared page pagers. Pagination.spec.ts and GlobalPageSize.spec.ts drive Next/Previous and the page size across list pages; the components' importers map them further.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPrevious/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/NextPreviousWithOffset/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/GlobalPageSize.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The Context Center icon in the classic left sidebar (also the Context Center asset and knowledge-page logo). Navbar.spec.ts walks the classic sidebar that renders it; its stroke weight is otherwise only visible to the visual-regression baselines.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/assets/svg/context-center.svg"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Flow/Navbar.spec.ts"]
     }
   ]
 }

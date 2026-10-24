@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
@@ -22,7 +21,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
 import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { ReactComponent as IconTeamsGrey } from '../../../../../assets/svg/teams-grey.svg';
@@ -31,6 +29,7 @@ import { EntityReference } from '../../../../../generated/entity/type';
 import { useAuth } from '../../../../../hooks/authHooks';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
 import Chip from '../../../../common/Chip/Chip.component';
+import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import TeamsSelectableNew from '../../../Team/TeamsSelectable/TeamsSelectableNew';
 import { UserProfileTeamsProps } from './UserProfileTeams.interface';
 
@@ -97,23 +96,20 @@ const UserProfileTeams = ({
       className="d-flex flex-col w-full  p-[20px] user-profile-card"
       data-testid="user-profile-teams">
       <div className="user-profile-card-header d-flex items-center justify-start gap-2 w-full">
-        <div>
-          <IconTeamsGrey height={16} />
+        <div className="d-flex flex-center user-page-icon tw:size-4">
+          <IconTeamsGrey height={18} width={18} />
         </div>
 
         <div className="d-flex justify-between w-full">
-          <Typography className="text-sm font-medium p-l-xss">
+          <Typography className="text-sm font-medium">
             {t('label.team-plural')}
           </Typography>
 
           {isAdminUser && !isDeletedUser && (
             <PopoverTrigger isOpen={isTeamsEdit} onOpenChange={setIsTeamsEdit}>
-              <ButtonUtility
-                color="tertiary"
+              <WidgetEditButton
                 data-testid="edit-teams-button"
-                icon={<EditIcon height={16} width={16} />}
-                size="xs"
-                tooltip={t('label.edit-entity', {
+                title={t('label.edit-entity', {
                   entity: t('label.team-plural'),
                 })}
               />

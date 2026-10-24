@@ -13,20 +13,20 @@
 
 @import (reference) '../../../styles/variables.less';
 
-.entity-summary-panel-container,
-.column-detail-panel-container {
+.entity-summary-panel-container {
   height: 100%;
   width: 100%;
-  background: var(--tw-color-bg-canvas);
+  background: var(--tw-background-color-canvas);
 
-  &.explore {
+  // Drawers take the core slideout's own surface.
+  &.explore,
+  &.lineage {
     background: transparent;
   }
 
-  &.lineage,
   &.glossary-term-assets-tab,
   &.ontology-explorer {
-    background: var(--tw-color-bg-canvas);
+    background: var(--tw-background-color-canvas);
   }
 
   &.explore,
@@ -52,7 +52,7 @@
     border-bottom: none !important;
     border-radius: var(--om-radius-lg) !important;
     display: flex;
-    border-color: var(--tw-color-border-subtle) !important;
+    border-color: var(--tw-border-color-subtle) !important;
     border-top: none !important;
 
     &.drawer-summary-panel-container {
@@ -74,7 +74,7 @@
       height: 100%;
       border-radius: var(--om-radius-lg);
       position: relative;
-      background: var(--om-color-bg-surface);
+      background: var(--tw-background-color-surface);
       &::-webkit-scrollbar {
         width: 0px;
         background: transparent;
@@ -154,8 +154,8 @@
   }
 
   .summary-panel-card {
-    background-color: var(--tw-color-bg-surface);
-    border: 1px solid var(--tw-color-border-subtle);
+    background-color: var(--tw-background-color-surface);
+    border: 1px solid var(--tw-border-color-subtle);
     box-shadow: var(--om-shadow-card);
   }
   .entity-icon {
@@ -172,7 +172,7 @@
     z-index: var(--om-z-999);
     top: 0;
     flex: 1;
-    background-color: var(--om-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
   }
   .title-container {
     display: flex;
@@ -182,7 +182,7 @@
     height: 49px;
     padding-left: var(--om-space-4);
     padding-right: var(--om-space-4);
-    background-color: var(--tw-color-bg-surface);
+    background-color: var(--tw-background-color-surface);
     .d-flex {
       flex: 1;
       min-width: 0;

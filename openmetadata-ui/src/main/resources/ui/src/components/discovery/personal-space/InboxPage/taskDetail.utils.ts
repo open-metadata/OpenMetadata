@@ -18,6 +18,7 @@ import {
   EntityReference,
   Task,
   TaskCategory,
+  TaskStatus,
   TaskType,
 } from '../../../../generated/entity/tasks/task';
 import { DescriptionUpdatePayload } from '../../../../generated/type/descriptionUpdatePayload';
@@ -30,6 +31,12 @@ import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseRe
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
+import {
+  getMetadataCompletionInstruction,
+  getMetadataCompletionPayload,
+  getRequiredFieldLabel,
+  isRevisionRequest,
+} from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import type { ActivityChange } from './inbox.utils';
 import {
@@ -186,6 +193,11 @@ const TASK_TYPE_BADGE: Record<
     color: 'orange',
     icon: 'approval',
   },
+  [TaskType.MetadataCompletion]: {
+    labelKey: 'label.missing-metadata',
+    color: 'warning',
+    icon: 'description',
+  },
   [TaskType.RecognizerFeedbackApproval]: {
     labelKey: 'label.recognizer-feedback',
     color: 'purple',
@@ -199,19 +211,36 @@ const DEFAULT_TYPE_BADGE = {
   icon: 'approval' as TaskTypeBadge['icon'],
 };
 
-const getTypeBadgeConfig = (task: Pick<Task, 'type' | 'category'>) =>
-  TASK_TYPE_BADGE[task.type] ??
-  (task.category === TaskCategory.Incident
-    ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
-    : DEFAULT_TYPE_BADGE);
+// A Metadata Completion task that carries a rejection asks for a revision, not for fields.
+const REVISION_BADGE: (typeof TASK_TYPE_BADGE)[string] = {
+  labelKey: 'label.revise-and-resubmit',
+  color: 'warning',
+  icon: 'approval',
+};
+
+const getTypeBadgeConfig = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => {
+  if (isRevisionRequest(task)) {
+    return REVISION_BADGE;
+  }
+
+  return (
+    TASK_TYPE_BADGE[task.type] ??
+    (task.category === TaskCategory.Incident
+      ? TASK_TYPE_BADGE[TaskType.TestCaseResolution]
+      : DEFAULT_TYPE_BADGE)
+  );
+};
 
 /**
  * What a task reads as, as a stable key: two types that share a label (a test
  * case incident and an incident) are one kind to a reviewer, so the list
  * groups them under one header and the filter offers them as one option.
  */
-export const getTaskTypeKey = (task: Pick<Task, 'type' | 'category'>) =>
-  getTypeBadgeConfig(task).labelKey;
+export const getTaskTypeKey = (
+  task: Pick<Task, 'type' | 'category'> & Partial<Pick<Task, 'payload'>>
+) => getTypeBadgeConfig(task).labelKey;
 
 /**
  * The type chip shown in the detail header and on each list row. Falls back to
@@ -587,6 +616,68 @@ const describeDomainUpdate = (
   };
 };
 
+// The fields still missing and whether the stage's conditions hold, which the server rewrites as
+// they change; the fixed instruction sits where other types put their requester's context.
+const describeMetadataCompletion = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getMetadataCompletionPayload(task);
+  // A closed task keeps the payload it had when it closed, which no longer describes the asset.
+  const isOpen = task.status === TaskStatus.Open;
+  const missingFields = isOpen ? payload.missingFields ?? [] : [];
+
+  return {
+    rows: [
+      ...(missingFields.length > 0
+        ? [
+            {
+              key: 'missingFields',
+              icon: 'columns' as const,
+              label: t('label.missing-field-plural'),
+              value: {
+                kind: 'list' as const,
+                items: missingFields.map((field) => ({
+                  label: getRequiredFieldLabel(field, t),
+                })),
+                title: t('label.missing-field-plural'),
+              },
+            },
+          ]
+        : []),
+      ...textRow(
+        'revisionComment',
+        'type',
+        t('label.comment'),
+        payload.revision
+          ? payload.revision.comment ??
+              t('message.metadata-completion-revision-no-comment')
+          : undefined
+      ),
+      ...textRow(
+        'revisionRequestedBy',
+        'user',
+        t('label.requested-by'),
+        payload.revision?.requestedBy
+      ),
+      // An unmet condition is reported, not spelled out: the stage's rule may be any JSON Logic.
+      ...textRow(
+        'conditions',
+        'shield',
+        t('label.condition-plural'),
+        isOpen && payload.conditionsMet === false
+          ? t('message.lifecycle-conditions-not-met')
+          : undefined
+      ),
+      ...getCommonRows(task, t),
+    ],
+    callout: {
+      label: t('label.context'),
+      text: getMetadataCompletionInstruction(payload, t),
+    },
+  };
+};
+
 type Describer = (task: Task, t: Translate) => Partial<TaskDetailDescriptor>;
 
 const DESCRIBERS: Record<string, Describer> = {
@@ -598,6 +689,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
+  [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };
 
 /**

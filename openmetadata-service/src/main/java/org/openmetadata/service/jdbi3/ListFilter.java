@@ -49,6 +49,9 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String ONTOLOGY_AXIOM_TABLE = "ontology_axiom_entity";
   private static final String ONTOLOGY_CHANGE_SET_TABLE = "ontology_change_set_entity";
+  private static final String ONTOLOGY_CONCEPT_TABLE = "ontology_concept_entity";
+  private static final String ONTOLOGY_PROPERTY_TABLE = "ontology_property_entity";
+  private static final String ONTOLOGY_RELEASE_TABLE = "ontology_release_entity";
   // An fqnHash joins one MD5 hex digest per FQN segment.
   private static final int FQN_HASH_SEGMENT_LENGTH = 32;
   private static final String FQN_HASH_COLUMN = "fqnHash";
@@ -119,6 +122,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getClassificationTagsCondition(tableName));
     conditions.add(getGlossaryTermsCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
+    conditions.add(getWorkflowInstanceIdCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getTestDefinitionCondition());
     conditions.add(getTestCaseOwnerCondition());
@@ -137,12 +141,14 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getCreatedByCondition());
     conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
+    conditions.add(getAboutEntityIdsCondition(tableName));
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
+    conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
     conditions.add(getAnnouncementTypeCondition());
     conditions.add(getAnnouncementStatusCondition());
@@ -169,21 +175,24 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     conditions.add(getAssetCondition());
-    conditions.add(getGlossaryIdCondition(tableName));
+    conditions.add(getOntologyIdCondition(tableName));
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
 
-  private String getGlossaryIdCondition(String tableName) {
-    String glossaryId = queryParams.get("glossaryId");
-    String condition = "";
-    if (!nullOrEmpty(glossaryId) && tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)) {
-      queryParams.put("glossaryIdParam", glossaryId);
-      condition = qualifyColumn(tableName, "glossaryId") + " = :glossaryIdParam";
+  private String getOntologyIdCondition(final String tableName) {
+    final String ontologyId = queryParams.get("ontologyId");
+    if (!nullOrEmpty(ontologyId)
+        && (tableMatches(tableName, ONTOLOGY_CONCEPT_TABLE)
+            || tableMatches(tableName, ONTOLOGY_AXIOM_TABLE)
+            || tableMatches(tableName, ONTOLOGY_PROPERTY_TABLE)
+            || tableMatches(tableName, ONTOLOGY_RELEASE_TABLE))) {
+      queryParams.put("ontologyIdParam", ontologyId);
+      return qualifyColumn(tableName, "ontologyId") + " = :ontologyIdParam";
     }
-    return condition;
+    return "";
   }
 
   /** Matches any of the comma-separated states, each bound as its own parameter. */
@@ -425,6 +434,19 @@ public class ListFilter extends Filter<ListFilter> {
     return buildFqnPrefixOrCondition("about", aboutEntityFqn);
   }
 
+  private String getAboutEntityIdsCondition(String tableName) {
+    String ids = queryParams.get("aboutEntityIds");
+    return nullOrEmpty(ids)
+        ? ""
+        : String.format(
+            "%s IN (SELECT toId FROM entity_relationship WHERE toEntity = '%s' "
+                + "AND relation = %d AND deleted = FALSE AND fromId IN (%s))",
+            qualifyColumn(tableName, "id"),
+            Entity.TASK,
+            Relationship.MENTIONED_IN.ordinal(),
+            buildIndexedBindParams("aboutEntityId", ids));
+  }
+
   /**
    * Filter tasks/entities by mentioned user.
    * Uses field_relationship table to find entities where the user was mentioned
@@ -507,6 +529,24 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityLinkCondition() {
     String entityLinkStr = queryParams.get("entityLink");
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
+  }
+
+  /**
+   * Matches workflow runs by the md5 of their entityLink, in the exact form the
+   * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+   */
+  private String getEntityLinkHashCondition() {
+    final String entityLinkHash = queryParams.get("entityLinkHash");
+    String condition = "";
+    if (entityLinkHash != null) {
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "entityLinkHash = :entityLinkHash"
+              : "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+    }
+    return condition;
   }
 
   /**
@@ -1339,6 +1379,11 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
+  }
+
+  private String getWorkflowInstanceIdCondition() {
+    String workflowInstanceId = queryParams.get("workflowInstanceId");
+    return workflowInstanceId == null ? "" : "workflowInstanceId = :workflowInstanceId";
   }
 
   public String getParentCondition(String tableName) {

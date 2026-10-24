@@ -47,6 +47,3 @@ export const GLOSSARY_TERM_STATUS_OPTIONS = [
     text: status,
   })),
 ];
-
-export const GLOSSARY_TERM_APPROVAL_WORKFLOW_DEFINITION_NAME =
-  'GlossaryTermApprovalWorkflow';

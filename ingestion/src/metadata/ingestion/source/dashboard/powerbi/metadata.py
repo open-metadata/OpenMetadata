@@ -446,31 +446,25 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/dashboards/{dashboard_id}?experience=power-bi"
         )
 
-    def _get_report_url(self, workspace_id: str, dashboard_details: PowerBIReport) -> str:
+    def _get_report_pages(self, workspace_id: str, report_id: str) -> list[ReportPage] | None:
         """
-        Method to build the dashboard url
+        Read a report's pages once per workspace, None when they cannot be read: the chart stage
+        ingests them as charts and the dashboard stage builds the report url from the same response
         """
-        page_id = ""
-        dashboard_id = dashboard_details.id
-        reports_prefix = DEFAULT_REPORTS_PREFIX
-        if isinstance(dashboard_details.format, str) and dashboard_details.format == RDL_REPORT_FORMAT:
-            reports_prefix = RDL_REPORTS_PREFIX
-        try:
-            pages: list[ReportPage] | None = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
-            if (
-                pages and pages[0].name
-            ):  # if there are pages and page has name then only add page id in url:  # if there are pages and page has name then only add page id in url
-                # get first page out of multiple pages otherwise
-                # get page if of single page
-                page_id = pages[0].name
-            page_id = f"/{page_id}" if page_id else ""
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error building report page url: {exc}")
+        if not self.state.has_cached_report_pages(report_id):
+            self.state.cache_report_pages(report_id, self.client.api_client.fetch_report_pages(workspace_id, report_id))
+        return self.state.get_report_pages(report_id)
+
+    def _get_report_url(self, workspace_id: str, dashboard_details: PowerBIReport, page_name: str | None = None) -> str:
+        """
+        Method to build the report url, opened on `page_name` when one is given
+        """
+        reports_prefix = RDL_REPORTS_PREFIX if dashboard_details.format == RDL_REPORT_FORMAT else DEFAULT_REPORTS_PREFIX
+        page_path = f"/{page_name}" if page_name else ""
         # https://app.powerbi.com/groups/4e57dcbb-***/reports/a2902011-***/098b***?experience=power-bi
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/{reports_prefix}/{dashboard_id}{page_id}?experience=power-bi"
+            f"{workspace_id}/{reports_prefix}/{dashboard_details.id}{page_path}?experience=power-bi"
         )
 
     def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:
@@ -515,7 +509,6 @@ class PowerbiSource(DashboardServiceSource):
             for dashboard in self.state.filtered_dashboards:
                 dashboard_details = self.get_dashboard_details(dashboard)
                 if isinstance(dashboard_details, PowerBIDashboard):
-                    dashboard_chart_ids = self.state.pop_dashboard_chart_ids(dashboard_details.id)
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         sourceUrl=SourceUrl(
@@ -527,37 +520,35 @@ class PowerbiSource(DashboardServiceSource):
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.displayName,
                         dashboardType=DashboardType.Dashboard,
-                        charts=[
-                            FullyQualifiedEntityName(
-                                fqn.build(
-                                    self.metadata,
-                                    entity_type=Chart,
-                                    service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
-                                    chart_name=chart,
-                                )
-                            )
-                            for chart in dashboard_chart_ids
-                        ],
+                        charts=self._get_chart_fqns(dashboard_details.id),
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
                 else:
                     description = Markdown(dashboard_details.description) if dashboard_details.description else None
+                    workspace_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
+                    report_pages = self._get_report_pages(workspace_id, dashboard_details.id)
                     dashboard_request = CreateDashboardRequest(
                         name=EntityName(dashboard_details.id),
                         dashboardType=DashboardType.Report,
                         sourceUrl=SourceUrl(
                             self._get_report_url(
-                                workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
+                                workspace_id=workspace_id,
                                 dashboard_details=dashboard_details,
+                                page_name=report_pages[0].name if report_pages else None,
                             )
                         ),
                         project=self.get_project_name(dashboard_details),
                         displayName=dashboard_details.name,
                         description=description,
+                        charts=self._get_chart_fqns(dashboard_details.id),
                         service=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
                         owners=self.get_owner_ref(dashboard_details=dashboard_details),
                     )
+                    if self.state.are_report_charts_unknown(dashboard_details.id):
+                        # Sending it would replace the charts the server holds under the report with none
+                        self.register_record(dashboard_request=dashboard_request)
+                        continue
                 yield Either(right=dashboard_request)
                 self.register_record(dashboard_request=dashboard_request)
                 self._advance_group_progress(self._progress_group_name(), "Dashboard")
@@ -570,49 +561,139 @@ class PowerbiSource(DashboardServiceSource):
                 )
             )
 
-    def yield_dashboard_chart(self, dashboard_details: Group) -> Iterable[Either[CreateChartRequest]]:
-        """Get chart method
-        Args:
-            dashboard_details:
-        Returns:
-            Iterable[Chart]
+    def _get_chart_fqns(self, dashboard_id: str) -> list[FullyQualifiedEntityName]:
         """
+        FQNs of the charts the chart stage recorded under a dashboard or report
+        """
+        return [
+            FullyQualifiedEntityName(
+                fqn.build(  # pyright: ignore[reportArgumentType]  # always a str for Chart
+                    self.metadata,
+                    entity_type=Chart,
+                    service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                    chart_name=chart_name,
+                )
+            )
+            for chart_name in self.state.pop_dashboard_chart_ids(dashboard_id)
+        ]
+
+    def _keep_stored_report_charts(self, report: PowerBIReport) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Keep the charts the server already lists under a report whose pages cannot be read this run,
+        so a failed read neither soft-deletes them (markDeletedCharts) nor empties the report's charts.
+        When the server cannot answer either, the report's charts are unknown: the report is left as
+        stored and the stale-chart pass is skipped
+        """
+        try:
+            report_fqn = fqn.build(
+                self.metadata,
+                entity_type=Dashboard,
+                service_name=self.context.get().dashboard_service,  # pyright: ignore[reportAttributeAccessIssue]
+                dashboard_name=report.id,
+            )
+            stored_report = self.metadata.get_by_name(entity=Dashboard, fqn=report_fqn, fields=["charts"])  # pyright: ignore[reportArgumentType]
+            stored_charts = stored_report.charts.root if stored_report and stored_report.charts else []
+            for chart in stored_charts:
+                if chart.name and chart.fullyQualifiedName:
+                    self.state.add_dashboard_chart(report.id, chart.name)
+                    self.chart_source_state.add(chart.fullyQualifiedName)
+            if stored_charts:
+                logger.warning(
+                    "Could not read the pages of PowerBI report [%s], keeping its %s ingested charts",
+                    report.id,
+                    len(stored_charts),
+                )
+        except Exception as exc:
+            self.state.mark_report_charts_unknown(report.id)
+            yield Either(
+                left=StackTraceError(
+                    name=report.name or report.id,
+                    error=(
+                        f"Could not read the pages of report [{report.id}] nor its stored charts, so the report is"
+                        f" left as stored and no chart is marked deleted this run: {exc}"
+                    ),
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    def _yield_chart(
+        self, dashboard_id: str, chart_name: str, display_name: str, source_url: str
+    ) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Yield one chart and record it under the dashboard or report it belongs to
+        """
+        try:
+            if filter_by_chart(self.source_config.chartFilterPattern, display_name):
+                self.status.filter(display_name, "Chart Pattern not Allowed")
+                return
+            chart_request = CreateChartRequest(
+                name=EntityName(chart_name),
+                displayName=display_name,
+                chartType=ChartType.Other,
+                sourceUrl=SourceUrl(source_url),
+                service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
+            )
+            yield Either(left=None, right=chart_request)
+            self.state.add_dashboard_chart(dashboard_id, chart_name)
+            self.register_record_chart(chart_request=chart_request)
+            self._advance_group_progress(self._progress_group_name(), "Chart")
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=display_name,
+                    error=f"Error creating chart [{display_name}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    def yield_dashboard_chart(self, dashboard_details: Group) -> Iterable[Either[CreateChartRequest]]:
+        """
+        Yield the tiles of each dashboard and the pages of each report as charts
+        """
+        workspace_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
         for dashboard in self.state.filtered_dashboards:
             dashboard_details = self.get_dashboard_details(dashboard)
             if isinstance(dashboard_details, PowerBIDashboard):
-                charts = dashboard_details.tiles
-                for chart in charts or []:
-                    try:
-                        chart_title = chart.title
-                        chart_display_name = chart_title if chart_title else chart.id
-                        if filter_by_chart(self.source_config.chartFilterPattern, chart_display_name):
-                            self.status.filter(chart_display_name, "Chart Pattern not Allowed")
-                            continue
-                        chart_request = CreateChartRequest(
-                            name=EntityName(chart.id),
-                            displayName=chart_display_name,
-                            chartType=ChartType.Other.value,
-                            sourceUrl=SourceUrl(
-                                self._get_chart_url(
-                                    report_id=chart.reportId,
-                                    workspace_id=self.context.get().workspace.id,  # pyright: ignore[reportAttributeAccessIssue]
-                                    dashboard_id=dashboard_details.id,
-                                )
-                            ),
-                            service=FullyQualifiedEntityName(self.context.get().dashboard_service),  # pyright: ignore[reportAttributeAccessIssue]
-                        )
-                        yield Either(right=chart_request)
-                        self.state.add_dashboard_chart(dashboard_details.id, chart.id)
-                        self.register_record_chart(chart_request=chart_request)
-                        self._advance_group_progress(self._progress_group_name(), "Chart")
-                    except Exception as exc:
-                        yield Either(
-                            left=StackTraceError(
-                                name=chart.title,
-                                error=f"Error creating chart [{chart.title}]: {exc}",
-                                stackTrace=traceback.format_exc(),
-                            )
-                        )
+                for tile in dashboard_details.tiles or []:
+                    yield from self._yield_chart(
+                        dashboard_id=dashboard_details.id,
+                        chart_name=tile.id,
+                        display_name=tile.title or tile.id,
+                        source_url=self._get_chart_url(
+                            report_id=tile.reportId,
+                            workspace_id=workspace_id,
+                            dashboard_id=dashboard_details.id,
+                        ),
+                    )
+            elif isinstance(dashboard_details, PowerBIReport):
+                pages = self._get_report_pages(workspace_id, dashboard_details.id)
+                if pages is None:
+                    yield from self._keep_stored_report_charts(dashboard_details)
+                    continue
+                for page in pages:
+                    if not page.name:
+                        logger.warning("Skipping a page without a name in PowerBI report [%s]", dashboard_details.id)
+                        continue
+                    yield from self._yield_chart(
+                        dashboard_id=dashboard_details.id,
+                        # Page names repeat across reports (`ReportSection` is the default first
+                        # page), so the report id keeps the chart name unique within the service
+                        chart_name=f"{dashboard_details.id}_{page.name}",
+                        display_name=page.displayName or page.name,
+                        source_url=self._get_report_url(workspace_id, dashboard_details, page_name=page.name),
+                    )
+
+    def mark_charts_as_deleted(self) -> Iterable[Either]:
+        """
+        Skip the stale-chart pass when some report's charts could not be read: they are missing from
+        the run's live set, so the pass would soft-delete them
+        """
+        if self.state.any_report_charts_unknown:
+            logger.warning("Not marking charts as deleted: the charts of some PowerBI reports could not be read")
+            return
+        yield from super().mark_charts_as_deleted()
 
     def _get_child_measures(self, table: PowerBiTable) -> list[Column]:
         """

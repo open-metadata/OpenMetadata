@@ -44,6 +44,13 @@ export type ActivityApiResponse = {
   data?: ActivityApiEvent[];
 };
 
+type ActivityActor = {
+  id: string;
+  name: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+};
+
 type ConversationResponse = {
   id?: string;
   message?: string;
@@ -319,15 +326,19 @@ export const createDescriptionActivityEventFromPage = async (
  * Seeds an activity event directly via the test-only endpoint, bypassing the async consumer.
  * Use for rendering-only tests; the delivery contract is covered by the backend ActivityResourceIT.
  * Actor name/displayName are set so the feed renders the actor (the UI resolves the actor by name).
+ * The actor defaults to the calling user; pass one to author the event as a user who cannot call
+ * this admin-only endpoint themselves.
  */
 export const insertActivityEventForTest = async (
   apiContext: APIRequestContext,
   table: TableClass,
   text: string,
-  eventType: ActivityEventType = 'DescriptionUpdated'
+  eventType: ActivityEventType = 'DescriptionUpdated',
+  actor?: ActivityActor
 ) => {
-  const userResponse = await apiContext.get('/api/v1/users/loggedInUser');
-  const adminUser = await userResponse.json();
+  const adminUser: ActivityActor =
+    actor ??
+    (await (await apiContext.get('/api/v1/users/loggedInUser')).json());
   const tableData = table.entityResponseData;
 
   const fqn = tableData.fullyQualifiedName ?? '';

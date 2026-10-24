@@ -29,6 +29,8 @@ export interface EntityTitleSectionProps {
   tooltipPlacement?: Placement;
   testId?: string;
   className?: string;
+  /** Drop the tinted title box, for a title that sits on its drawer's surface. */
+  plain?: boolean;
   hasEditPermission?: boolean;
   entityDisplayName?: string;
   onDisplayNameUpdate?: (updatedDisplayName: string) => void;

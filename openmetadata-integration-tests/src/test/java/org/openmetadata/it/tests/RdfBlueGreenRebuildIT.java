@@ -478,6 +478,7 @@ public class RdfBlueGreenRebuildIT {
             1024 * 1024);
         live.bulkStoreEntities(
             List.of(new EntityWriteRequest("table", id, model)), RdfWriteMode.RECONCILE);
+        live.replaceGraph("urn:journal:activeOntology", model);
       } finally {
         model.close();
       }
@@ -494,7 +495,8 @@ public class RdfBlueGreenRebuildIT {
       assertName(fixture.other.routedStorage(), id, "batch");
       assertEquals(1, fixture.other.routedStorage().getTripleCount("urn:journal:turtle"));
       assertEquals(0, fixture.other.routedStorage().getTripleCount("urn:journal:clear"));
-      assertEquals(7, invalidations.get());
+      assertEquals(1, fixture.other.routedStorage().getTripleCount("urn:journal:activeOntology"));
+      assertEquals(8, invalidations.get());
     }
   }
 

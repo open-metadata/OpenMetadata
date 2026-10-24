@@ -36,6 +36,7 @@ const DataInsightLeftPanel = () => {
             <li key={item.key}>
               <NavItemBase
                 current={item.key === (tab ?? DataInsightTabs.DATA_ASSETS)}
+                dataTestId={`data-insight-tab-${item.key}`}
                 href={getDataInsightPathWithFqn(item.key)}
                 icon={item.icon}
                 size="sm"

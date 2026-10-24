@@ -23,18 +23,22 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  ConstraintKey,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useId } from 'react';
-import { DrawerPopupContainerProvider } from '../../common/DrawerPopupContainerProvider/DrawerPopupContainerProvider';
-
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isString } from 'lodash';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
-import { ReactComponent as KeyIcon } from '../../../assets/svg/icon-key.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
@@ -629,7 +633,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
       previousFqnRef.current = undefined;
       fetchedColumnFqnRef.current = undefined;
     }
-  }, [isOpen, activeColumn?.fullyQualifiedName]);
+  }, [isOpen, activeColumn]);
 
   const handleTabChange = (tab: EntityRightPanelTab) => {
     setActiveTab(tab);
@@ -748,7 +752,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     if (!lineageData) {
       return (
-        <div className="tw:text-center tw:text-gray-400 tw:p-6">
+        <div className="tw:text-center tw:text-utility-gray-400 tw:p-6">
           {t('label.no-data-found')}
         </div>
       );
@@ -807,7 +811,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
               className={classNames('tw:text-xs tw:truncate', {
                 'tw:max-w-48 tw:cursor-default tw:font-medium tw:text-secondary':
                   isLastItem,
-                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-gray-400 hover:tw:underline':
+                'tw:max-w-32 tw:cursor-pointer tw:font-normal tw:text-utility-gray-400 hover:tw:underline':
                   !isLastItem,
               })}
               title={getEntityName(breadcrumb)}
@@ -818,7 +822,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </Typography>
             {index < breadcrumbPath.length - 1 && (
               <ChevronRight
-                className="tw:text-gray-400 tw:shrink-0"
+                className="tw:text-utility-gray-400 tw:shrink-0"
                 height={16}
                 width={16}
               />
@@ -868,7 +872,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <Typography
-        className="tw:text-gray-400 tw:text-xs"
+        className="tw:text-utility-gray-400 tw:text-xs"
         data-testid="entity-name"
         ellipsis={{ tooltip: true }}>
         {renderHighlightedText(activeColumn.name || '')}
@@ -905,7 +909,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
     return (
       <div className="data-type-chip tw:flex tw:items-center tw:gap-1">
-        <KeyIcon height={12} width={12} />
+        <ConstraintKey size={12} />
         {t('label.primary-key')}
       </div>
     );
@@ -1046,7 +1050,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
 
   const navFooter = (
     <div className="tw:flex tw:justify-between tw:items-center tw:w-full navigation-container">
-      <div className="tw:flex tw:items-center tw:gap-1 tw:mt-2">
+      <div className="tw:flex tw:items-center tw:gap-1">
         <Button
           aria-label={t('label.previous')}
           color="secondary"
@@ -1088,7 +1092,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
         {columnTitle}
       </SlideoutMenu.Header>
       <SlideoutMenu.Content role="region">
-        <DrawerPopupContainerProvider>
+        <>
           <div className="column-detail-panel-container">
             <div className="tw:flex tw:gap-2 tw:h-full">
               <Card className="summary-panel-container" variant="ghost">
@@ -1110,7 +1114,7 @@ export const ColumnDetailPanel = <T extends ColumnOrTask = Column>({
             </div>
           </div>
           {renderDisplayNameModal()}
-        </DrawerPopupContainerProvider>
+        </>
       </SlideoutMenu.Content>
       <SlideoutMenu.Footer>{navFooter}</SlideoutMenu.Footer>
     </SlideoutMenu>

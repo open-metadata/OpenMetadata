@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -45,6 +46,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
@@ -55,6 +57,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -417,14 +420,56 @@ class TaskWorkflowHandlerTest {
   }
 
   @Test
-  void testNonMetricWorkflowPreservesDirectResolutionFallback() {
+  void testRunningWorkflowRefusesToCloseATaskItHasNotFinishedCreating() {
     UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
     Task task =
         new Task()
             .withId(taskId)
-            .withWorkflowInstanceId(UUID.randomUUID())
+            .withWorkflowInstanceId(instanceId)
             .withStatus(TaskEntityStatus.Open)
             .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
+
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
+    }
+  }
+
+  @Test
+  void testNonMetricWorkflowPreservesDirectResolutionFallback() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
     Task storedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Completed);
     EntityReference resolvedBy =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("alice");
@@ -441,6 +486,11 @@ class TaskWorkflowHandlerTest {
       when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
 
       entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      // An instance that has ended can no longer resolve its task, so the task closes directly.
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(false);
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
@@ -672,5 +722,24 @@ class TaskWorkflowHandlerTest {
     assertTrue(
         parentTags == null || parentTags.isEmpty(),
         "Column tag suggestion must not tag the parent table");
+  }
+
+  @Test
+  void aRejectionWithoutItsOwnCommentUsesTheReviewersLatestTaskComment() {
+    EntityReference karan = new EntityReference().withName("karan").withType("user");
+    EntityReference owner = new EntityReference().withName("qaowner").withType("user");
+    List<TaskComment> comments =
+        List.of(
+            new TaskComment().withMessage("Earlier note").withAuthor(karan).withCreatedAt(1L),
+            new TaskComment().withMessage("Owner reply").withAuthor(owner).withCreatedAt(3L),
+            new TaskComment()
+                .withMessage("Add the refresh schedule")
+                .withAuthor(karan)
+                .withCreatedAt(2L));
+
+    assertEquals(
+        "Add the refresh schedule", TaskWorkflowHandler.latestCommentBy("karan", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("admin", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("karan", null));
   }
 }

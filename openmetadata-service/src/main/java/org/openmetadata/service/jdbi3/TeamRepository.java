@@ -516,18 +516,7 @@ public class TeamRepository extends EntityRepository<Team> {
                 .relationshipDAO()
                 .findToBatch(teamIds, Relationship.OWNS.ordinal(), ownsEntityType, Include.ALL);
 
-    Map<UUID, List<EntityReference>> teamToOwns = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject record : ownsRecords) {
-      UUID teamId = UUID.fromString(record.getFromId());
-      try {
-        EntityReference ownedRef =
-            Entity.getEntityReferenceById(
-                record.getToEntity(), UUID.fromString(record.getToId()), Include.ALL);
-        teamToOwns.computeIfAbsent(teamId, k -> new ArrayList<>()).add(ownedRef);
-      } catch (Exception e) {
-        LOG.warn("Failed to get entity reference for owned entity: {}", record.getToId(), e);
-      }
-    }
+    Map<UUID, List<EntityReference>> teamToOwns = resolveTargetsBySource(ownsRecords, Include.ALL);
 
     for (Team team : teams) {
       List<EntityReference> ownsRefs = teamToOwns.get(team.getId());
@@ -1513,6 +1502,17 @@ public class TeamRepository extends EntityRepository<Team> {
     }
   }
 
+  /** A team is given the domains an update sends; only a bot's PUT keeps a non-empty assignment. */
+  @Override
+  protected List<EntityReference> writtenDomains(
+      final Team original, final Team updated, final Operation operation, final boolean byBot) {
+    final boolean botKeepsStored =
+        operation.isPut() && byBot && !nullOrEmpty(original.getDomains());
+    return botKeepsStored
+        ? null
+        : EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class TeamUpdater extends EntityUpdater {
     public TeamUpdater(Team original, Team updated, Operation operation) {
@@ -1657,18 +1657,15 @@ public class TeamRepository extends EntityRepository<Team> {
 
     @Override
     protected void updateDomains() {
-      if (operation.isPut() && !nullOrEmpty(original.getDomains()) && updatedByBot()) {
-        // Revert change to non-empty domain if it is being updated by a bot
-        // This is to prevent bots from overwriting the domain. Domain need to be
-        // updated with a PATCH request
+      List<EntityReference> updatedDomains =
+          writtenDomains(original, updated, operation, updatedByBot());
+      if (updatedDomains == null) {
         updated.setDomains(original.getDomains());
         return;
       }
 
       List<EntityReference> origDomains =
           EntityUtil.populateEntityReferences(listOrEmptyMutable(original.getDomains()));
-      List<EntityReference> updatedDomains =
-          EntityUtil.populateEntityReferences(listOrEmptyMutable(updated.getDomains()));
 
       // Remove Domains for the user
       deleteTo(original.getId(), TEAM, Relationship.HAS, Entity.DOMAIN);

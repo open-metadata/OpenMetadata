@@ -30,7 +30,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { TFunction } from 'i18next';
-import { isEmpty, startCase } from 'lodash';
+import { startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -57,10 +57,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
 import { MapPatchAPIResponse } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import {
-  computeTaskEditAccessFlags,
-  computeTaskOwnershipFlags,
-} from '../../Entity/Task/TaskTab/TaskTab.utils';
+import { computeTaskOwnershipFlags } from '../../Entity/Task/TaskTab/TaskTab.utils';
 import { RequestHistory } from '../ChangeRequestTools/ChangeRequestTools.component';
 import {
   buildResolutions,
@@ -93,8 +90,8 @@ const GLOSSARY_ENTITIES = new Set<string>([
 
 /**
  * The review task of each request, read once per open request on the asset: its number, and
- * whether the current user can decide it. Who can decide is the same rule the task's own Tasks tab
- * applies to its Approve and Reject actions, over the same task, owners and glossary reviewers.
+ * whether the current user can decide it: its assignees, the same rule the task's own Tasks tab
+ * and the server apply.
  */
 const useReviewTasks = (
   requests: ChangeRequest[],
@@ -103,9 +100,6 @@ const useReviewTasks = (
   const { currentUser } = useApplicationStore();
   const [tasks, setTasks] = useState<Map<string, Task>>(new Map());
   const owners = (published?.owners ?? []) as EntityReference[];
-  const hasGlossaryReviewer = GLOSSARY_ENTITIES.has(requests[0]?.entityType)
-    ? !isEmpty(published?.reviewers)
-    : undefined;
 
   useEffect(() => {
     const ids = [
@@ -135,13 +129,14 @@ const useReviewTasks = (
         return false;
       }
 
-      return computeTaskEditAccessFlags({
-        ...computeTaskOwnershipFlags(owners, task, currentUser),
-        isAdminUser: Boolean(currentUser?.isAdmin),
-        hasGlossaryReviewer,
-        isTaskClosed: false,
-        ownersCount: owners.length,
-      }).hasEditAccess;
+      // A held change is decided by its review task's assignees, matching the server.
+      const { isAssignee, isPartOfAssigneeTeam } = computeTaskOwnershipFlags(
+        owners,
+        task,
+        currentUser
+      );
+
+      return isAssignee || isPartOfAssigneeTeam;
     },
     taskNumber: (taskId?: string) =>
       getTaskDisplayId(taskId ? tasks.get(taskId)?.taskId : undefined),

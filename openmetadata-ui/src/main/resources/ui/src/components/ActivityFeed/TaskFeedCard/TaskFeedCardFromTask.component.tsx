@@ -34,7 +34,6 @@ import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task
 import { ReactComponent as ReplyIcon } from '../../../assets/svg/ic-reply-2.svg';
 import EntityPopOverCard from '../../../components/common/PopOverCard/EntityPopOverCard';
 import UserPopOverCard from '../../../components/common/PopOverCard/UserPopOverCard';
-import { TASK_ENTITY_TYPES } from '../../../constants/Task.constant';
 import { EntityType } from '../../../enums/entity.enum';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -67,7 +66,12 @@ import {
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import {
+  getTaskResolveBody,
+  isOntologyReviewTask,
+} from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
   handleCardContainerKeyDown,
@@ -199,14 +203,18 @@ const TaskFeedCardFromTask = ({
       isEntityDetailsAvailable ? (
         <EntityPopOverCard entityFQN={entityFQN} entityType={entityType}>
           <Button
-            className="tw:w-[98%]"
+            ellipsis
+            className="tw:max-w-full"
             color="link-color"
             data-testid="redirect-task-button-link"
+            tooltip={`#${taskDisplayId} ${t(
+              getTaskTypeMessageKey(task) ?? 'label.task'
+            )} ${getNameFromFQN(entityFQN)} (${entityType})`}
             onClick={handleTaskLinkClick}>
             <Typography className="m-r-xss task-details-id">{`#${taskDisplayId} `}</Typography>
 
             <Typography className="m-r-xss  m-r-xss task-details-entity-link">
-              {t(TASK_ENTITY_TYPES[task.type] ?? 'label.task')}
+              {t(getTaskTypeMessageKey(task) ?? 'label.task')}
             </Typography>
 
             {taskColumnName}
@@ -227,7 +235,7 @@ const TaskFeedCardFromTask = ({
       handleTaskLinkClick,
       isEntityDetailsAvailable,
       t,
-      task.type,
+      task,
       taskDisplayId,
       taskColumnName,
     ]
@@ -242,15 +250,18 @@ const TaskFeedCardFromTask = ({
   const isApprovalWorkflowTask =
     isTaskApprovalRequest || isTaskRecognizerFeedbackApproval;
 
-  const getTransitionId = (resolutionType: TaskResolutionType) =>
+  const getTransition = (resolutionType: TaskResolutionType) =>
     task.availableTransitions?.find(
       (transition) => transition.resolutionType === resolutionType
-    )?.id ??
+    ) ??
     task.availableTransitions?.find((transition) =>
       resolutionType === TaskResolutionType.Rejected
         ? transition.id === 'reject'
         : transition.id === 'approve'
-    )?.id;
+    );
+
+  const canQuickResolve = () =>
+    task.status === TaskEntityStatus.Open && !isOntologyReviewTask(task);
 
   const updateTaskData = async (
     newValue: string,
@@ -260,11 +271,14 @@ const TaskFeedCardFromTask = ({
       return;
     }
     try {
-      const updatedTask = await resolveTaskAPI(task.id, {
-        transitionId: getTransitionId(resolutionType),
-        resolutionType,
-        newValue,
-      });
+      const updatedTask = await resolveTaskAPI(
+        task.id,
+        getTaskResolveBody(task, {
+          transitionId: getTransition(resolutionType)?.id,
+          resolutionType,
+          newValue,
+        })
+      );
       showSuccessToast(
         isTaskPendingFurtherApproval(updatedTask)
           ? 'Vote recorded.'
@@ -342,10 +356,10 @@ const TaskFeedCardFromTask = ({
   const renderTaskFooter = () => (
     <Box
       align="center"
-      className="task-feed-card-footer w-full"
+      className="task-feed-card-footer w-full tw:gap-y-3"
       justify="between"
       wrap="wrap">
-      <Box>
+      <Box align="center" gap={4}>
         <Box align="center" gap={2} justify="center">
           <ReplyIcon height={20} width={20} onClick={showReplies} />
           {commentsCount > 0 ? (
@@ -360,12 +374,7 @@ const TaskFeedCardFromTask = ({
           ) : null}
         </Box>
 
-        <Box
-          align="center"
-          className={classNames('text-grey-muted', {
-            'task-card-assignee': commentsCount > 0,
-          })}
-          gap={2}>
+        <Box align="center" className="tw:text-tertiary" gap={2}>
           <Owner
             isCompactView={false}
             owners={task.assignees ?? []}
@@ -375,22 +384,27 @@ const TaskFeedCardFromTask = ({
       </Box>
 
       {!isTaskTestCaseResult && hasEditAccess && !isSuggestionEmpty && (
-        <Box gap={2}>
-          {task.status === TaskEntityStatus.Open && (
+        <Box gap={4}>
+          {canQuickResolve() && (
             <Button
-              color="tertiary"
+              className="tw:gap-1.5 tw:text-success-primary tw:hover:text-success-primary"
+              color="link-gray"
               data-testid="approve-button"
               iconLeading={
-                <CheckCircleFilled className="tw:shrink-0" size={14} />
+                <CheckCircleFilled
+                  className="tw:shrink-0 tw:text-fg-success-primary"
+                  size={14}
+                />
               }
               size="xs"
               onPress={onTaskResolve}>
               {t('label.approve')}
             </Button>
           )}
-          {task.status === TaskEntityStatus.Open && (
+          {canQuickResolve() && (
             <Button
-              color="tertiary-destructive"
+              className="tw:gap-1.5"
+              color="link-destructive"
               data-testid="reject-button"
               iconLeading={
                 <CloseCircleFilled className="tw:shrink-0" size={14} />
@@ -413,7 +427,7 @@ const TaskFeedCardFromTask = ({
     <Card
       isClickable
       aria-label={`#${taskDisplayId} ${t(
-        TASK_ENTITY_TYPES[task.type] ?? 'label.task'
+        getTaskTypeMessageKey(task) ?? 'label.task'
       )}`}
       className={classNames(
         className,
@@ -437,14 +451,16 @@ const TaskFeedCardFromTask = ({
         )}
         wrap="wrap">
         <Box align="start" className="tw:w-full tw:min-w-0" direction="col">
-          <div className="tw:w-full">
+          <div className="tw:flex tw:w-full tw:min-w-0 tw:items-center">
             <TaskStatusIcon
-              className="tw:mr-1 tw:mt-1 tw:size-3.5 tw:shrink-0"
+              className="tw:mr-1 tw:size-3.5 tw:shrink-0"
               data-testid={`task-status-icon-${task.status?.toLowerCase()}`}
             />
-            {taskLinkTitleElement}
+            <div className="tw:flex tw:min-w-0 tw:flex-1">
+              {taskLinkTitleElement}
+            </div>
           </div>
-          <div className="tw:-mt-2">
+          <div className="tw:mt-1">
             <Typography>
               <UserPopOverCard
                 key={task.createdBy?.name}

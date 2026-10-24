@@ -18,7 +18,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   Input,
   SelectItemType,
   Skeleton,
@@ -58,6 +57,7 @@ import {
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -323,7 +323,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             {isRolesEdit && (
               <Box align="center" direction="row" gap={3}>
                 <Button
-                  color="link-gray"
+                  color="secondary"
                   data-testid="cancel-roles"
                   size="sm"
                   onPress={() => setIsRolesEdit(false)}>
@@ -377,7 +377,11 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
-                <Badge key={role.id} size="md" type="modern">
+                <Badge
+                  key={role.id}
+                  size="md"
+                  tooltip={getEntityName(role)}
+                  type="modern">
                   {getEntityName(role)}
                 </Badge>
               ))}
@@ -402,7 +406,12 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
               </Typography>
             ) : (
               botUserData.inheritedRoles?.map((role) => (
-                <Badge color="gray" key={role.id} size="sm" type="pill-color">
+                <Badge
+                  color="gray"
+                  key={role.id}
+                  size="sm"
+                  tooltip={getEntityName(role)}
+                  type="pill-color">
                   {getEntityName(role)}
                 </Badge>
               ))
@@ -672,7 +681,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
   if (!botData || !botUserData) {
     return (
       <div className="tw:relative tw:h-full tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           title={t('label.no-entity-found', {
             entity: t('label.bot'),
           })}
