@@ -12,17 +12,23 @@
  */
 
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import {
+  OntologyBulkJob,
+  Status,
+} from '../../generated/api/data/ontologyBulkJob';
 import { Operation } from '../../generated/api/data/ontologyBulkRequest';
 import { OntologyBulkResultArtifact } from '../../generated/api/data/ontologyBulkResultArtifact';
 import { ExecutionMode } from '../../generated/api/data/ontologyBulkSubmission';
 import { MediaType } from '../../generated/api/data/ontologyBulkTemplate';
 import { Glossary } from '../../generated/entity/data/glossary';
+import { DEFAULT_POLL_INTERVAL_MS } from '../../hooks/usePollingEffect';
 import {
   getOntologyBulkTemplate,
   listOntologyBulkJobs,
@@ -163,5 +169,68 @@ describe('OntologyBulkAuthoring', () => {
       '1'
     );
     expect(screen.getAllByText('label.valid')).not.toHaveLength(0);
+  });
+
+  it('submits a background job and keeps polling via noteBackgroundSubmission until the job appears', async () => {
+    jest.useFakeTimers();
+    const backgroundJob: OntologyBulkJob = {
+      createdAt: 1,
+      createdBy: 'admin',
+      dryRun: true,
+      glossary: { id: GLOSSARY.id, type: 'glossary' },
+      id: 42,
+      operation: Operation.CSVUpsert,
+      progress: 0,
+      status: Status.Queued,
+      total: 501,
+      updatedAt: 1,
+    };
+    mockSubmit.mockResolvedValue({
+      executionMode: ExecutionMode.Background,
+      job: backgroundJob,
+    });
+    // The initial fetch and the immediate post-submit refresh both return an
+    // empty list, so only noteBackgroundSubmission(42) keeps polling alive.
+    mockListJobs.mockResolvedValue({ jobs: [] });
+
+    render(
+      <OntologyBulkAuthoring glossary={GLOSSARY} relationshipTypes={[]} />
+    );
+
+    // Wait for the initial mount fetch to settle.
+    await waitFor(() => expect(mockListJobs).toHaveBeenCalledTimes(1));
+
+    const csvInput = within(screen.getByTestId('ontology-bulk-csv')).getByRole(
+      'textbox'
+    );
+    fireEvent.change(csvInput, {
+      target: {
+        value:
+          'action,termId,name,displayName,description,parentId,iri\n' +
+          'CREATE,91cdf0f6-9d67-4a74-ac63-af3df533e896,Customer,Customer,Customer concept,,',
+      },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-bulk-submit'));
+    });
+
+    // The post-submit refresh ran but the job is still not in the list.
+    // noteBackgroundSubmission(42) is the only reason polling stays active.
+    await waitFor(() => expect(mockListJobs).toHaveBeenCalledTimes(2));
+
+    expect(screen.queryByTestId('ontology-bulk-job-42')).toBeNull();
+
+    // A later poll returns the queued job.
+    mockListJobs.mockResolvedValue({ jobs: [backgroundJob] });
+    await act(async () => {
+      jest.advanceTimersByTime(DEFAULT_POLL_INTERVAL_MS);
+    });
+
+    expect(screen.getByTestId('ontology-bulk-job-42')).toHaveTextContent(
+      'label.queued'
+    );
+
+    jest.useRealTimers();
   });
 });

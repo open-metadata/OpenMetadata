@@ -62,10 +62,12 @@ public final class OntologyBulkJobManager implements OntologyBulkExecutionServic
     return toJob(requireBackgroundJob(id));
   }
 
-  public OntologyBulkJobList list(final String user, final int limit) {
+  public OntologyBulkJobList list(final String user, final String glossaryId, final int limit) {
     return new OntologyBulkJobList()
         .withJobs(
-            jobDao.listOntologyBulkJobsByUser(user, limit).stream().map(this::toJob).toList());
+            jobDao.listOntologyBulkJobsByUser(user, glossaryId, limit).stream()
+                .map(this::toJob)
+                .toList());
   }
 
   public OntologyBulkJob requestCancel(final long id) {
