@@ -278,6 +278,8 @@
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    <!-- Built for local use only; not installed or published to Maven Central. -->
+                    <attach>false</attach>
                 </configuration>
             </plugin>
         </plugins>

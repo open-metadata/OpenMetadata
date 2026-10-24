@@ -205,6 +205,9 @@
     <commonmark.version>0.26.0</commonmark.version>
     <flexmark.version>0.64.8</flexmark.version>
     <owasp-html-sanitizer.version>20260101.1</owasp-html-sanitizer.version>
+    <!-- Nothing is published to Maven Central by default; publish-maven-package.yml publishes an
+         explicit module list (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
+    <skipPublishing>true</skipPublishing>
   </properties>
 
   <dependencyManagement>
@@ -1022,6 +1025,9 @@
       <id>release</id>
       <build>
         <plugins>
+          <!-- Maven Central requires sources and Javadoc jars but accepts placeholders; real ones
+               would exceed its release-size limit
+               (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module). -->
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
@@ -1029,9 +1035,7 @@
             <executions>
               <execution>
                 <id>attach-sources</id>
-                <goals>
-                  <goal>jar-no-fork</goal>
-                </goals>
+                <phase>none</phase>
               </execution>
             </executions>
           </plugin>
@@ -1039,15 +1043,41 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
             <version>${maven-javadoc-plugin.version}</version>
-            <configuration>
-              <doclint>none</doclint>
-            </configuration>
             <executions>
               <execution>
                 <id>attach-javadocs</id>
+                <phase>none</phase>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-jar-plugin</artifactId>
+            <version>${maven-jar-plugin.version}</version>
+            <executions>
+              <execution>
+                <id>placeholder-sources</id>
+                <phase>package</phase>
                 <goals>
                   <goal>jar</goal>
                 </goals>
+                <configuration>
+                  <classifier>sources</classifier>
+                  <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                  <forceCreation>true</forceCreation>
+                </configuration>
+              </execution>
+              <execution>
+                <id>placeholder-javadoc</id>
+                <phase>package</phase>
+                <goals>
+                  <goal>jar</goal>
+                </goals>
+                <configuration>
+                  <classifier>javadoc</classifier>
+                  <classesDirectory>${maven.multiModuleProjectDirectory}/docs/maven-central-placeholder</classesDirectory>
+                  <forceCreation>true</forceCreation>
+                </configuration>
               </execution>
             </executions>
           </plugin>
