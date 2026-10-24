@@ -27,8 +27,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -155,13 +153,6 @@ public class DistributedSearchIndexExecutor {
   private EntityCompletionTracker entityTracker;
   private RecreateIndexHandler indexPromotionHandler;
   private ReindexContext stagedIndexContext;
-
-  // Reader stats tracking (accumulated across all worker threads)
-  private final AtomicLong coordinatorReaderSuccess = new AtomicLong(0);
-  private final AtomicLong coordinatorReaderFailed = new AtomicLong(0);
-  private final AtomicLong coordinatorReaderWarnings = new AtomicLong(0);
-  private final AtomicInteger coordinatorPartitionsCompleted = new AtomicInteger(0);
-  private final AtomicInteger coordinatorPartitionsFailed = new AtomicInteger(0);
 
   public DistributedSearchIndexExecutor(CollectionDAO collectionDAO) {
     this(collectionDAO, 10000, new ReindexStopSignal()); // Default partition size
@@ -472,8 +463,6 @@ public class DistributedSearchIndexExecutor {
                 .priority(Thread.MIN_PRIORITY)
                 .factory());
 
-    AtomicLong totalSuccess = new AtomicLong(0);
-    AtomicLong totalFailed = new AtomicLong(0);
     CountDownLatch workerLatch = new CountDownLatch(numWorkers);
 
     // Start worker threads that continuously claim and process partitions
@@ -484,14 +473,7 @@ public class DistributedSearchIndexExecutor {
       workerExecutor.submit(
           () -> {
             try {
-              runWorkerLoop(
-                  workerId,
-                  bulkSink,
-                  batchSize,
-                  stagedIndexContext,
-                  totalSuccess,
-                  totalFailed,
-                  reindexConfig);
+              runWorkerLoop(workerId, bulkSink, batchSize, stagedIndexContext, reindexConfig);
             } finally {
               workerLatch.countDown();
             }
@@ -706,8 +688,6 @@ public class DistributedSearchIndexExecutor {
       BulkSink bulkSink,
       int batchSize,
       ReindexContext stagedIndexContext,
-      AtomicLong totalSuccess,
-      AtomicLong totalFailed,
       ReindexingConfiguration reindexConfig) {
 
     LOG.info("Worker {} starting for job {}", workerId, currentJob.getId());
@@ -790,13 +770,6 @@ public class DistributedSearchIndexExecutor {
         activePartitions.add(partition.getId());
         try {
           PartitionWorker.PartitionResult result = worker.processPartition(partition);
-          totalSuccess.addAndGet(result.successCount());
-          totalFailed.addAndGet(result.failedCount());
-
-          coordinatorReaderSuccess.addAndGet(result.successCount());
-          coordinatorReaderFailed.addAndGet(result.readerFailed());
-          coordinatorReaderWarnings.addAndGet(result.readerWarnings());
-          coordinatorPartitionsCompleted.incrementAndGet();
 
           LOG.debug(
               "Worker {} completed partition {} (success: {}, failed: {}, readerFailed: {}, readerWarnings: {})",
