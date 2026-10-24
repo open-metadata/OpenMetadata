@@ -121,8 +121,15 @@ def test_datetime_to_timestamp_honors_fold(datetime_value, timezone_str, expecte
             "2023-02-01T05:00:00+00:00",
             datetime(2023, 2, 1, 5, 0, 0, tzinfo=timezone.utc).timestamp(),
         ),
-        # Numeric seconds timestamp (< 13 chars) — returned as int
+        # ISO-T datetime string with non-UTC offset (+05:30) — offset must be applied
+        (
+            "2023-02-01T05:00:00+05:30",
+            datetime(2023, 2, 1, 5, 0, 0, tzinfo=timezone(timedelta(hours=5, minutes=30))).timestamp(),
+        ),
+        # Numeric seconds timestamp (< 13 chars) — returned as int, NOT parsed as a date
         ("1675227600", 1675227600),
+        # Compact numeric date string (8 digits) — must stay numeric, not be parsed as ISO date
+        ("20230201", 20230201),
         # Numeric milliseconds timestamp (13+ chars) — divided by 1000
         ("1675227600000", 1675227600.0),
     ],

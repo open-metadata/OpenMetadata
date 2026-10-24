@@ -164,13 +164,17 @@ def convert_timestamp(timestamp: str) -> int | float:
     Returns:
         int | float: Unix timestamp in seconds.
     """
-    try:
-        dt = datetime.fromisoformat(timestamp)
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=dt_timezone.utc)
-        return dt.timestamp()
-    except ValueError:
-        pass
+    # Numeric strings (pure digits, or digits with a leading minus) are unix
+    # timestamps — handle them first so that compact date strings like "20230201"
+    # are never accidentally parsed as an ISO date on Python 3.11+.
+    if not timestamp.lstrip("-").isdigit():
+        try:
+            dt = datetime.fromisoformat(timestamp)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=dt_timezone.utc)
+            return dt.timestamp()
+        except ValueError:
+            pass
 
     if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
