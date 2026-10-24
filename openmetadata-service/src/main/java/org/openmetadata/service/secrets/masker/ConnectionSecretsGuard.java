@@ -18,6 +18,7 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -33,8 +34,10 @@ import org.openmetadata.service.secrets.SecretsUtil;
  * hand them to whatever the connection now points at.
  *
  * <p>Both connections are masked, which turns every secret into the same placeholder; whatever
- * still differs is a setting that is not secret. A secret counts as kept when it arrives masked,
- * as the stored value, or as any encoded value.
+ * still differs is a setting that is not secret. Any such change other than an ingestion filter, a
+ * capability flag or a description is treated as redirecting the connection, so a connector-specific
+ * target field the guard does not recognise fails closed rather than silently restoring the secret.
+ * A secret counts as kept when it arrives masked, as the stored value, or as any encoded value.
  * ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
  */
 public final class ConnectionSecretsGuard {
@@ -61,25 +64,34 @@ public final class ConnectionSecretsGuard {
       // A connection that cannot be read fails where it is unmasked and saved, restoring nothing.
       return;
     }
-    if (endpointChanged(maskedIncoming, maskedStored, "")
+    if (nonExemptFieldChanged(maskedIncoming, maskedStored)
         && keepsStoredSecret(maskedIncoming, incoming, stored)) {
       throw new BadRequestException(SECRETS_REQUIRED);
     }
   }
 
-  // The fields that say where a connection points. Only a change to one of these can redirect a
-  // kept secret to somewhere new; editing a filter, a flag or a description keeps the same target,
-  // so it must not force the secret to be re-entered. Matched case-insensitively as a substring, so
-  // hostPort, serverUrl, accountUrl, serviceEndpoint, databaseHost and the like are all covered.
-  private static final Set<String> ENDPOINT_FIELD_TOKENS =
-      Set.of("host", "url", "uri", "endpoint", "account", "server", "address", "port");
+  // Fields that cannot change where a connection points, so a change to one must not force the
+  // secret to be re-entered: ingestion filter patterns (names ending "filterPattern"), capability
+  // flags (names starting "supports") and free-text descriptions. Every other field is assumed able
+  // to redirect the connection. Matching known-safe fields rather than known-endpoint ones fails
+  // closed: a connector-specific target the list does not name (an Oracle TNS descriptor, a host in
+  // connectionArguments, Domo's instanceDomain) is still treated as a redirect, not silently kept.
+  private static final Set<String> EXEMPT_FIELD_SUFFIXES = Set.of("filterpattern", "description");
 
-  /** Whether any endpoint field differs between the two masked configs. */
-  private static boolean endpointChanged(JsonNode incoming, JsonNode stored, String key) {
+  private static boolean isExemptField(String key) {
+    String lower = key.toLowerCase(Locale.ROOT);
+    return lower.startsWith("supports") || EXEMPT_FIELD_SUFFIXES.stream().anyMatch(lower::endsWith);
+  }
+
+  /** Whether any field other than a known-safe one differs between the two masked configs. */
+  private static boolean nonExemptFieldChanged(JsonNode incoming, JsonNode stored) {
     if (incoming.isObject()) {
       for (Iterator<Map.Entry<String, JsonNode>> fields = incoming.fields(); fields.hasNext(); ) {
         Map.Entry<String, JsonNode> field = fields.next();
-        if (endpointChanged(field.getValue(), stored.path(field.getKey()), field.getKey())) {
+        if (isExemptField(field.getKey())) {
+          continue;
+        }
+        if (nonExemptFieldChanged(field.getValue(), stored.path(field.getKey()))) {
           return true;
         }
       }
@@ -87,18 +99,13 @@ public final class ConnectionSecretsGuard {
     }
     if (incoming.isArray()) {
       for (int i = 0; i < incoming.size(); i++) {
-        if (endpointChanged(incoming.get(i), stored.path(i), key)) {
+        if (nonExemptFieldChanged(incoming.get(i), stored.path(i))) {
           return true;
         }
       }
       return false;
     }
-    return isEndpointField(key) && !incoming.equals(stored);
-  }
-
-  private static boolean isEndpointField(String key) {
-    String lower = key.toLowerCase(java.util.Locale.ROOT);
-    return ENDPOINT_FIELD_TOKENS.stream().anyMatch(lower::contains);
+    return !incoming.equals(stored);
   }
 
   private static boolean keepsStoredSecret(JsonNode masked, JsonNode incoming, JsonNode stored) {

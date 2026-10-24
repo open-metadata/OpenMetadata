@@ -104,6 +104,48 @@ class ConnectionSecretsGuardTest {
     assertDoesNotThrow(() -> guard(filterChanged));
   }
 
+  /** A capability flag cannot redirect the connection, so toggling it keeps the masked secret. */
+  @Test
+  void aSupportsFlagChangeKeepsTheMaskedSecret() {
+    Map<String, Object> flagToggled =
+        Map.of(
+            "type",
+            "Mysql",
+            "username",
+            "openmetadata",
+            "hostPort",
+            "db.internal:3306",
+            "supportsProfiler",
+            false,
+            "authType",
+            Map.of("password", PASSWORD_MASK));
+
+    assertDoesNotThrow(() -> guard(flagToggled));
+  }
+
+  /**
+   * A field the guard does not recognise as safe is treated as a redirect and blocks, so a
+   * connector-specific target outside any endpoint-name list (here {@code databaseName}; in practice
+   * an Oracle TNS descriptor or Domo {@code instanceDomain}) cannot keep the masked secret.
+   */
+  @Test
+  void aChangeToAnUnrecognisedFieldCannotKeepTheMaskedSecret() {
+    Map<String, Object> retargeted =
+        Map.of(
+            "type",
+            "Mysql",
+            "username",
+            "openmetadata",
+            "hostPort",
+            "db.internal:3306",
+            "databaseName",
+            "someone_elses_db",
+            "authType",
+            Map.of("password", PASSWORD_MASK));
+
+    assertThrows(BadRequestException.class, () -> guard(retargeted));
+  }
+
   private static void guard(Map<String, Object> incoming) {
     ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
         incoming, STORED, "Mysql", ServiceType.DATABASE);

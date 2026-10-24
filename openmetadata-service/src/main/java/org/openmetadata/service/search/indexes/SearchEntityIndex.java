@@ -1,6 +1,9 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import org.openmetadata.service.Entity;
 
 public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex searchIndex)
@@ -22,13 +25,12 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
   }
 
   @Override
-  public java.util.Set<String> getRequiredReindexFields() {
+  public Set<String> getRequiredReindexFields() {
     // SearchIndexRepository.bulkPopulateEntityFieldTags only hydrates field-level tags when fields
     // contains "fields"; without it a reindex drops the search index's field tags from _source.
-    java.util.Set<String> fields =
-        new java.util.HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
     fields.add("fields");
-    return java.util.Collections.unmodifiableSet(fields);
+    return Collections.unmodifiableSet(fields);
   }
 
   public static Map<String, Float> getFields() {

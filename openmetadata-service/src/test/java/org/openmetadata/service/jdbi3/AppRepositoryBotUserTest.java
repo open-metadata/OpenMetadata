@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,8 +22,6 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
@@ -37,8 +36,8 @@ class AppRepositoryBotUserTest {
   void anAppDoesNotAdoptAPersonsAccountAsItsBot() {
     UserRepository userRepository = mock(UserRepository.class);
     BotRepository botRepository = mock(BotRepository.class);
-    when(userRepository.getByName(isNull(), eq("ReportAppBot"), any()))
-        .thenReturn(new User().withName("reportappbot").withIsBot(false));
+    User person = new User().withName("reportappbot").withIsBot(false);
+    when(userRepository.getByName(isNull(), eq("ReportAppBot"), any())).thenReturn(person);
     App app = new App().withName("ReportApp");
     AppRepository appRepository = mock(AppRepository.class, CALLS_REAL_METHODS);
 
@@ -50,8 +49,9 @@ class AppRepositoryBotUserTest {
           assertThrows(
               IllegalStateException.class, () -> appRepository.createNewAppBot(app, false));
 
+      // The existing person's account is named in the error and left as a person, not promoted.
       assertTrue(refused.getMessage().contains("reportappbot"), refused.getMessage());
-      verify(botRepository, never()).createInternal(any());
+      assertFalse(person.getIsBot());
     }
   }
 }

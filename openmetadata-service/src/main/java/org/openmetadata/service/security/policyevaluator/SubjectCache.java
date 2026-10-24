@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -111,8 +112,7 @@ public class SubjectCache {
   // or
   // role-policy change does. Downstream caches keyed only by user/role/team ids — the search RBAC
   // query cache — add this so a rule edit that leaves those ids unchanged still invalidates them.
-  private static final java.util.concurrent.atomic.AtomicLong POLICY_GENERATION =
-      new java.util.concurrent.atomic.AtomicLong();
+  private static final AtomicLong POLICY_GENERATION = new AtomicLong();
 
   public static long policyGeneration() {
     return POLICY_GENERATION.get();
