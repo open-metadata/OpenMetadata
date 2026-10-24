@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -472,6 +473,38 @@ class MetricGroupRepositoryTest {
       updater.runDeferredReactOperations();
 
       verify(dispatcher).onEntityUpdated(updated.getEntityReference(), null);
+    }
+  }
+
+  @Test
+  void postUpdateHydratesMetricCountBeforeTheLiveSearchDispatch() {
+    MetricGroup original = group("post_update_count_group").withDeleted(false);
+    MetricGroup updated =
+        new MetricGroup()
+            .withId(original.getId())
+            .withName(original.getName())
+            .withFullyQualifiedName(original.getFullyQualifiedName())
+            .withDeleted(false);
+    assertNull(updated.getMetricCount());
+    when(groupDAO.countNonDeletedMembers(updated.getId(), Relationship.HAS.ordinal()))
+        .thenReturn(1);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<RdfUpdater> rdf = mockStatic(RdfUpdater.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+
+      repository.postUpdate(original, updated);
+
+      assertEquals(1, updated.getMetricCount());
+      InOrder hydrationBeforeDispatch = inOrder(groupDAO, dispatcher);
+      hydrationBeforeDispatch
+          .verify(groupDAO)
+          .countNonDeletedMembers(updated.getId(), Relationship.HAS.ordinal());
+      hydrationBeforeDispatch
+          .verify(dispatcher)
+          .onEntityUpdated(updated, updated.getChangeDescription(), null);
     }
   }
 
