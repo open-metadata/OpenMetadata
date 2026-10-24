@@ -54,17 +54,34 @@ def test_convert_timestamp_iso_t_separator():
 
 
 def test_convert_timestamp_iso_with_timezone():
-    """Timezone-aware ISO string must be converted using its own offset."""
-    result = convert_timestamp("2023-04-04T13:53:13+00:00")
+    """Non-UTC offset must shift the result to the correct UTC timestamp."""
+    # +05:30 means the UTC time is 13:53:13 - 05:30 = 08:23:13
+    result = convert_timestamp("2023-04-04T13:53:13+05:30")
+    expected = datetime(2023, 4, 4, 8, 23, 13, tzinfo=timezone.utc).timestamp()
+    assert result == expected
+
+
+def test_convert_timestamp_iso_z_suffix():
+    """ISO string with trailing 'Z' must be accepted (Python 3.10 compat)."""
+    result = convert_timestamp("2023-04-04T13:53:13Z")
     expected = datetime(2023, 4, 4, 13, 53, 13, tzinfo=timezone.utc).timestamp()
     assert result == expected
 
 
 def test_convert_timestamp_numeric_seconds():
-    """Numeric seconds string (len < 13) must be returned as int."""
+    """Numeric seconds string (len < 13) must be returned as int, not a date."""
     assert convert_timestamp("1680616393") == 1680616393
 
 
 def test_convert_timestamp_numeric_milliseconds():
     """Numeric milliseconds string (len >= 13) must be divided by 1000."""
     assert convert_timestamp("1680616393000") == 1680616393.0
+
+
+def test_convert_timestamp_bare_digits_not_reinterpreted_as_date():
+    """A bare 8-digit string must be treated as a numeric seconds value, not a date.
+
+    On Python 3.11+ datetime.fromisoformat('20230404') returns April 4, 2023.
+    convert_timestamp must return the numeric value instead.
+    """
+    assert convert_timestamp("20230404") == 20230404
