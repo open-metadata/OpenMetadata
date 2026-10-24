@@ -3830,6 +3830,7 @@
     "view-plural": "مشاهدات",
     "view-property-plural": "عرض الخصائص",
     "view-reindex-failure-plural": "عرض حالات فشل إعادة الفهرسة",
+    "view-replies-by-user": "عرض الردود من {{user}}",
     "view-run-history": "عرض سجل التشغيل",
     "view-selected": "عرض المحدد",
     "view-upstream-issue": "عرض مشكلة المصدر",

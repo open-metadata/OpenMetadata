@@ -3830,6 +3830,7 @@
     "view-plural": "檢視",
     "view-property-plural": "檢視屬性",
     "view-reindex-failure-plural": "檢視重新索引失敗",
+    "view-replies-by-user": "查看 {{user}} 的回覆",
     "view-run-history": "檢視執行歷程",
     "view-selected": "檢視已選取",
     "view-upstream-issue": "檢視上游問題",

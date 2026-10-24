@@ -25,6 +25,7 @@ import {
   PressEvent,
 } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { FEED_FOOTER_AVATAR_SIZE } from '../../../../constants/Feeds.constants';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
@@ -34,8 +35,6 @@ import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 const MAX_VISIBLE_AVATARS = 3;
-// Matches the avatar button (a 24px picture plus the xs padding) so each AvatarStack slot fits it.
-const AVATAR_SIZE = 28;
 
 function FeedCardFooterNew({
   conversation,
@@ -115,12 +114,13 @@ function FeedCardFooterNew({
           <Box align="center" className="w-full rounded-8" gap={1}>
             {postLength > 0 && !isReply && (
               <AvatarStack
-                avatarSize={AVATAR_SIZE}
+                avatarSize={FEED_FOOTER_AVATAR_SIZE}
                 // The avatar fills its button while the icons sit inside padding, so the
                 // stack takes extra space to match the icons' visible gap.
                 className="tw:mr-0.75"
                 items={repliedUsers.map((user) => (
                   <ButtonUtility
+                    aria-label={t('label.view-replies-by-user', { user })}
                     className="tw:align-top"
                     color="tertiary"
                     icon={

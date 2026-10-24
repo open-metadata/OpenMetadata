@@ -3830,6 +3830,7 @@
     "view-plural": "การเข้าชม",
     "view-property-plural": "ดูคุณลักษณะ",
     "view-reindex-failure-plural": "ดูการสร้างดัชนีใหม่ที่ล้มเหลว",
+    "view-replies-by-user": "ดูการตอบกลับจาก {{user}}",
     "view-run-history": "ดูประวัติการรัน",
     "view-selected": "ดูที่เลือก",
     "view-upstream-issue": "ดูปัญหาต้นทาง",

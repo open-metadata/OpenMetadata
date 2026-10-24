@@ -59,7 +59,7 @@ const RichTextEditorPreviewerNew = withSuspenseFallback(
   lazy(() => import('../../../common/RichTextEditor/RichTextEditorPreviewNew'))
 );
 
-const feedMessageSkeleton = (
+const FeedMessageSkeleton = () => (
   <Box data-testid="feed-message-skeleton" direction="col" gap={2}>
     <Skeleton height={14} variant="text" width="100%" />
     <Skeleton height={14} variant="text" width="60%" />
@@ -98,7 +98,7 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
 
   return (
     <>
-      {isRendered ? null : feedMessageSkeleton}
+      {isRendered ? null : <FeedMessageSkeleton />}
       <div className={isRendered ? undefined : 'tw:hidden'} ref={containerRef}>
         <RichTextEditorPreviewerNew
           clampByLines
@@ -113,7 +113,7 @@ const FeedMessagePreviewContent = ({ markdown }: { markdown: string }) => {
 // Each preview mounts a read-only rich-text editor; a long feed mounting them all at
 // once blocks the main thread for tens of seconds, so only cards near the viewport do.
 const FeedMessagePreview = ({ markdown }: { markdown: string }) => (
-  <DeferredWidget placeholder={feedMessageSkeleton}>
+  <DeferredWidget placeholder={<FeedMessageSkeleton />}>
     <FeedMessagePreviewContent markdown={markdown} />
   </DeferredWidget>
 );

@@ -3830,6 +3830,7 @@
     "view-plural": "Vyer",
     "view-property-plural": "Visa egenskaper",
     "view-reindex-failure-plural": "Visa omindexeringsfel",
+    "view-replies-by-user": "Visa svar från {{user}}",
     "view-run-history": "Visa körhistorik",
     "view-selected": "Visa valda",
     "view-upstream-issue": "Visa uppströmsproblem",

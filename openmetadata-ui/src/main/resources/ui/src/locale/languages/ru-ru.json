@@ -3830,6 +3830,7 @@
     "view-plural": "Просмотры",
     "view-property-plural": "Показать свойства",
     "view-reindex-failure-plural": "Просмотр ошибок переиндексации",
+    "view-replies-by-user": "Посмотреть ответы {{user}}",
     "view-run-history": "Показать историю выполнений",
     "view-selected": "Просмотреть выбранное",
     "view-upstream-issue": "Посмотреть проблему выше по потоку",

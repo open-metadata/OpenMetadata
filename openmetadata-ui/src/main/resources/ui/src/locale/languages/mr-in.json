@@ -3830,6 +3830,7 @@
     "view-plural": "दृश्ये",
     "view-property-plural": "दृश्य गुणधर्म",
     "view-reindex-failure-plural": "पुनर्निर्देशांक अपयश पहा",
+    "view-replies-by-user": "{{user}} यांची उत्तरे पहा",
     "view-run-history": "रन इतिहास पहा",
     "view-selected": "निवडलेले पहा",
     "view-upstream-issue": "अपस्ट्रीम समस्या पहा",

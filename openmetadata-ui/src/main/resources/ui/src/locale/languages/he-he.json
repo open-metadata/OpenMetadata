@@ -3830,6 +3830,7 @@
     "view-plural": "תצוגות",
     "view-property-plural": "הצג מאפיינים",
     "view-reindex-failure-plural": "הצג כשלי אינדוקס מחדש",
+    "view-replies-by-user": "הצג תגובות מאת {{user}}",
     "view-run-history": "הצגת היסטוריית ריצות",
     "view-selected": "הצג נבחרים",
     "view-upstream-issue": "הצג בעיה במעלה הזרם",

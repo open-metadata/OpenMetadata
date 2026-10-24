@@ -3830,6 +3830,7 @@
     "view-plural": "Visualizações",
     "view-property-plural": "Visualizar Propriedades",
     "view-reindex-failure-plural": "Ver falhas de reindexação",
+    "view-replies-by-user": "Ver respostas de {{user}}",
     "view-run-history": "Ver histórico de execuções",
     "view-selected": "Ver selecionado",
     "view-upstream-issue": "Ver problema upstream",
