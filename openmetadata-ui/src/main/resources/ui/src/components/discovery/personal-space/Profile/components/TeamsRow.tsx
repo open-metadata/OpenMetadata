@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { TeamHierarchy } from '../../../../../generated/entity/teams/teamHierarchy';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../hooks/authHooks';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import { getTeamsHierarchy } from '../../../../../rest/teamsAPI';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../../../utils/TeamUtils';
@@ -40,7 +41,7 @@ const flattenTeams = (nodes: TeamHierarchy[]): TeamOption[] =>
 
 interface TeamsRowProps {
   userData: User;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   // Overrides the default admin-only rule (e.g. per-user EditAll permission).
   canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
@@ -54,6 +55,7 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
   description,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const { isAdminUser } = useAuth();
   const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
 
@@ -124,7 +126,8 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
     const newlyAddedTeams = draftTeamIds
       .filter((teamId) => !currentTeamIdSet.has(teamId))
       .map((teamId) => ({ id: teamId, type: 'team' }));
-    await updateUserDetails(
+
+    return updateUserDetails(
       { teams: [...retainedTeams, ...newlyAddedTeams] },
       'teams'
     );
@@ -133,7 +136,13 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={description ?? t('message.team-member-description')}
+      description={
+        description ??
+        copy(
+          'message.team-member-description',
+          'message.team-member-description-of-user'
+        )
+      }
       isSaveDisabled={isEmpty(xor(draftTeamIds, initialTeamIds))}
       lockedLabel={t('label.admin-managed')}
       renderEdit={() => (

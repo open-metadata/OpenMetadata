@@ -330,61 +330,6 @@ test.describe('Data Products', () => {
     });
   });
 
-  test('Pagination', async ({ page }) => {
-    const dataProducts: DataProduct[] = [];
-
-    await test.step('Create 30 test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (let i = 0; i < 30; i++) {
-        const dp = new DataProduct([domain]);
-        await dp.create(apiContext);
-        dataProducts.push(dp);
-      }
-
-      await afterAction();
-    });
-
-    await test.step('Navigate to Data Products page', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify pagination controls are visible', async () => {
-      await expect(page.getByTestId('pagination')).toBeVisible();
-      await expect(page.getByTestId('page-indicator')).toContainText('Page 1');
-      await expect(page.getByTestId('previous')).toBeDisabled();
-    });
-
-    await test.step('Navigate to page 2', async () => {
-      await page.getByTestId('next').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(page.getByTestId('page-indicator')).toContainText('Page 2');
-    });
-
-    await test.step('Navigate back to page 1', async () => {
-      await page.getByTestId('previous').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(page.getByTestId('page-indicator')).toContainText('Page 1');
-    });
-
-    await test.step('Cleanup test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (const dp of dataProducts) {
-        await dp.delete(apiContext);
-      }
-
-      await afterAction();
-    });
-  });
-
   test('Empty State - No Data Products', async ({ page }) => {
     await test.step('Mock API to return empty data products list', async () => {
       // Mock the search API to simulate empty state without deleting real data

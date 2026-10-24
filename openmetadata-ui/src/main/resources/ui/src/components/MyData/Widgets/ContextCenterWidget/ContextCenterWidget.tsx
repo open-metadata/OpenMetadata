@@ -45,10 +45,12 @@ import TopicCard from '../Common/TopicWidget/TopicCard';
 import {
   TOPIC_BLUE_TILE_CLASSES,
   TOPIC_ROW_CLASSES,
+  TOPIC_ROW_DIVIDER_CLASSES,
   TOPIC_ROW_TILE_CLASSES,
 } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
+  TopicIconTone,
   TopicKey,
 } from '../Common/TopicWidget/topics.types';
 
@@ -65,9 +67,9 @@ export const CONTEXT_CENTER_FETCH_LIMIT = 10;
 // The card is a digest; the footer link opens the full Context Center.
 const MAX_VISIBLE_ROWS = 6;
 
-const TONE = {
+const TONE: TopicIconTone = {
   icon: Articles,
-  tile: 'tw:bg-utility-gray-100 tw:text-utility-gray-700',
+  color: 'gray',
 };
 
 const PAGE_TYPE_LABEL_KEYS: Partial<Record<PageType, string>> = {
@@ -198,9 +200,7 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
       widgetKey={widgetKey}
       onRetry={() => void refetch()}>
       {!isError && pages.length > 0 && (
-        <ul
-          className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
-          data-testid="context-center-rows">
+        <ul className="tw:flex tw:flex-col" data-testid="context-center-rows">
           {pages.slice(0, MAX_VISIBLE_ROWS).map((page) => {
             const quickLinkUrl = getQuickLinkUrl(page);
             const openLabel = t('label.read');
@@ -210,7 +210,8 @@ const ContextCenterWidget: React.FC<ContextCenterWidgetProps> = ({
               <li
                 className={classNames(
                   'tw:flex tw:min-w-0 tw:items-center tw:gap-3 tw:py-3',
-                  TOPIC_ROW_CLASSES
+                  TOPIC_ROW_CLASSES,
+                  TOPIC_ROW_DIVIDER_CLASSES
                 )}
                 data-testid={`context-page-${page.id}`}
                 key={page.id}>

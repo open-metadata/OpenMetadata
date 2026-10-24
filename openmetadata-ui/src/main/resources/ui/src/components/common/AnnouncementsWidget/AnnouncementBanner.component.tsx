@@ -36,6 +36,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
 import { getUserPath } from '../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -196,7 +197,7 @@ const AnnouncementFooter = ({
           <Typography as="span" className="tw:text-secondary" size="text-xs">
             <Link
               className="tw:text-secondary tw:no-underline!"
-              to={getUserPath(createdBy)}
+              to={getSettingsLink(getUserPath(createdBy))}
               onClick={(e) => e.stopPropagation()}>
               {postedBy}
             </Link>

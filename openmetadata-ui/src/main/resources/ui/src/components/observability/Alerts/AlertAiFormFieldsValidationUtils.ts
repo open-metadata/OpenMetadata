@@ -125,7 +125,12 @@ const validateAlertAiRuleFields = ({
         'input'
       );
 
-      if (isRequiredValueMissing(argument.input)) {
+      // Rules shown from `filteringRules` carry no `input`: their values live in
+      // the stored SpEL condition, and the form keeps them read-only.
+      if (
+        argument.input !== undefined &&
+        isRequiredValueMissing(argument.input)
+      ) {
         errors[argumentPath] = argument.name
           ? getMessageFromArgumentName(argument.name)
           : getRequiredFieldMessage(t('label.value'), t);

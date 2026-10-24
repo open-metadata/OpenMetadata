@@ -655,7 +655,7 @@ const StoredProcedurePage = () => {
   }
 
   return (
-    <PageLayoutV1 pageTitle={entityName}>
+    <PageLayoutV1 fillEntityTabs pageTitle={entityName}>
       <Box direction="col" gap={3}>
         <div data-testid="entity-page-header">
           <DataAssetsHeader
