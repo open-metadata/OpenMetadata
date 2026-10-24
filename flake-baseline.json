@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-23T03:23:39Z",
+  "generatedAt": "2026-10-24T03:19:43Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38339539850",
-      "sourceSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
-      "recordedAt": "2026-10-13T03:32:52Z"
-    },
     {
       "runId": "38502607895",
       "sourceSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
@@ -53,6 +48,11 @@
       "runId": "39891471813",
       "sourceSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
       "recordedAt": "2026-10-23T03:23:39Z"
+    },
+    {
+      "runId": "40055442895",
+      "sourceSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
+      "recordedAt": "2026-10-24T03:19:43Z"
     }
   ],
   "entries": {
@@ -94,6 +94,26 @@
       "file": "Features/LandingPageWidgets/LandingPageDataEstate.spec.ts",
       "title": "Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen",
       "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
+      "hardFailure": false
+    },
+    "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
+      "observations": [
+        "40055442895"
+      ],
+      "project": "Basic",
+      "file": "Pages/Lineage/LineageLargeResponse.spec.ts",
+      "title": "Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
+      "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
+      "hardFailure": false
+    },
+    "Basic :: Pages/UserCreationWithPersona.spec.ts :: Create user with persona \u203a Create user with persona and verify on profile": {
+      "observations": [
+        "40055442895"
+      ],
+      "project": "Basic",
+      "file": "Pages/UserCreationWithPersona.spec.ts",
+      "title": "Create user with persona \u203a Create user with persona and verify on profile",
+      "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
       "hardFailure": false
     },
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database": {
@@ -198,16 +218,6 @@
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "hardFailure": true
     },
-    "chromium :: Features/QueryEntity.spec.ts :: Verify query duration": {
-      "observations": [
-        "38339539850"
-      ],
-      "project": "chromium",
-      "file": "Features/QueryEntity.spec.ts",
-      "title": "Verify query duration",
-      "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
-      "hardFailure": false
-    },
     "chromium :: Features/Table.spec.ts :: Large Table Column Search & Copy Link \u203a Opening and closing a column detail panel on page 2 keeps the columns list on page 2": {
       "observations": [
         "39534846171"
@@ -257,16 +267,6 @@
       "title": "Data Contracts \u203a Create Data Contract and validate for Database Schema",
       "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
       "hardFailure": false
-    },
-    "chromium :: Pages/DataContractsSemanticRules.spec.ts :: Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set": {
-      "observations": [
-        "38339539850"
-      ],
-      "project": "chromium",
-      "file": "Pages/DataContractsSemanticRules.spec.ts",
-      "title": "Data Contracts Semantics Rule Description \u203a Validate Description Rule Is_Not_Set",
-      "lastSeenSha": "29fd2650e19d9e84e2907594ab2d6a5715e99a36",
-      "hardFailure": true
     },
     "chromium :: Pages/DataProducts.spec.ts :: Data Products \u203a Search Data Products": {
       "observations": [
