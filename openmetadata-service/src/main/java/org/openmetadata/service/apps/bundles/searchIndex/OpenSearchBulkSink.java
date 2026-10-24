@@ -1888,16 +1888,6 @@ public class OpenSearchBulkSink implements BulkSink {
           || lowerCaseMessage.contains("too_many_requests");
     }
 
-    boolean isPayloadTooLargeError(Throwable error) {
-      if (error == null || error.getMessage() == null) {
-        return false;
-      }
-      String lowerCaseMessage = error.getMessage().toLowerCase();
-      return lowerCaseMessage.contains("request entity too large")
-          || lowerCaseMessage.contains("content too long")
-          || lowerCaseMessage.contains("413");
-    }
-
     private long calculateBackoff(int attemptNumber) {
       return initialBackoffMillis * (long) Math.pow(2, attemptNumber);
     }
