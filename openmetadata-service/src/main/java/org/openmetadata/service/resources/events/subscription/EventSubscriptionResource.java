@@ -31,6 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -53,6 +54,7 @@ import jakarta.ws.rs.core.UriBuilder;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -80,6 +82,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.alerting.AlertDiagnostics;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationSecretGuards;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.alerting.channel.DestinationValidation;
 import org.openmetadata.service.alerting.definition.AlertCatalog;
@@ -92,6 +96,7 @@ import org.openmetadata.service.events.consumer.schedule.AlertJobs;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
+import org.openmetadata.service.jdbi3.EventSubscriptionRepository.StoredDestination;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
@@ -246,7 +251,8 @@ public class EventSubscriptionResource
     if (!nullOrEmpty(notificationTemplate)) {
       filter.addQueryParam("notificationTemplate", notificationTemplate);
     }
-    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    return DestinationSecrets.mask(
+        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
 
   @GET
@@ -277,7 +283,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+    return DestinationSecrets.mask(getInternal(uriInfo, securityContext, id, fieldsParam, null));
   }
 
   @GET
@@ -309,7 +315,8 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+    return DestinationSecrets.mask(
+        getByNameInternal(uriInfo, securityContext, name, fieldsParam, null));
   }
 
   @POST
@@ -333,7 +340,7 @@ public class EventSubscriptionResource
       @Valid CreateEventSubscription request) {
     EventSubscription eventSub =
         mapper.createToEntity(request, securityContext.getUserPrincipal().getName());
-    return create(uriInfo, securityContext, eventSub);
+    return maskResponse(create(uriInfo, securityContext, eventSub));
   }
 
   @PUT
@@ -357,7 +364,7 @@ public class EventSubscriptionResource
       @Valid CreateEventSubscription create) {
     EventSubscription eventSub =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    return createOrUpdate(uriInfo, securityContext, eventSub);
+    return maskResponse(createOrUpdate(uriInfo, securityContext, eventSub));
   }
 
   @PATCH
@@ -386,7 +393,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, id, patch);
+    return maskResponse(patchInternal(uriInfo, securityContext, id, patch));
   }
 
   @PATCH
@@ -415,7 +422,7 @@ public class EventSubscriptionResource
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    return patchInternal(uriInfo, securityContext, fqn, patch);
+    return maskResponse(patchInternal(uriInfo, securityContext, fqn, patch));
   }
 
   @GET
@@ -439,7 +446,7 @@ public class EventSubscriptionResource
       @Parameter(description = "Id of the Event Subscription", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return super.listVersionsInternal(securityContext, id);
+    return DestinationSecrets.mask(super.listVersionsInternal(securityContext, id));
   }
 
   @GET
@@ -471,7 +478,7 @@ public class EventSubscriptionResource
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return super.getVersionInternal(securityContext, id, version);
+    return DestinationSecrets.mask(super.getVersionInternal(securityContext, id, version));
   }
 
   @DELETE
@@ -1370,7 +1377,7 @@ public class EventSubscriptionResource
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return AlertDiagnostics.listDestinations(id);
+    return DestinationSecrets.mask(AlertDiagnostics.listDestinations(id));
   }
 
   @GET
@@ -1403,7 +1410,7 @@ public class EventSubscriptionResource
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
     EventSubscription sub = repository.getByName(null, name, repository.getFields("id"));
-    return AlertDiagnostics.listDestinations(sub.getId());
+    return DestinationSecrets.mask(AlertDiagnostics.listDestinations(sub.getId()));
   }
 
   @PUT
@@ -1472,13 +1479,16 @@ public class EventSubscriptionResource
     }
 
     List<SubscriptionDestination> resultDestinations =
-        request.getDestinations().stream().map(this::sendTestMessageToDestination).toList();
+        request.getDestinations().stream()
+            .map(destination -> sendTestMessageToDestination(securityContext, destination))
+            .toList();
 
     return Response.ok(resultDestinations).build();
   }
 
   private SubscriptionDestination sendTestMessageToDestination(
-      SubscriptionDestination destination) {
+      SecurityContext securityContext, SubscriptionDestination destination) {
+    withStoredSecrets(securityContext, destination);
     DestinationValidation.validate(destination);
     try {
       Destination<ChangeEvent> alert = AlertFactory.getAlert(new EventSubscription(), destination);
@@ -1492,6 +1502,41 @@ public class EventSubscriptionResource
               System.currentTimeMillis()));
     }
     return destination.withConfig(null);
+  }
+
+  /**
+   * A destination sent as it was read carries masks for its secrets. It is tested with the secrets
+   * stored for it, by a caller allowed to edit the alert that holds them, and only as stored: one
+   * whose credentials changed is tested once every one of them is entered.
+   */
+  private void withStoredSecrets(
+      SecurityContext securityContext, SubscriptionDestination destination) {
+    if (DestinationSecrets.hasMaskedSecrets(destination)) {
+      StoredDestination stored = storedDestination(destination);
+      OperationContext editing = new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+      authorizer.authorize(securityContext, editing, getResourceContextById(stored.alertId()));
+      DestinationSecrets.restore(stored.destination(), destination);
+      DestinationSecretGuards.requireSecretsAsStored(stored.destination(), destination);
+    } else {
+      DestinationSecretGuards.requireNoCiphertext(List.of(destination));
+    }
+  }
+
+  private StoredDestination storedDestination(SubscriptionDestination destination) {
+    return Optional.ofNullable(destination.getId())
+        .flatMap(repository::findDestination)
+        .orElseThrow(
+            () ->
+                new BadRequestException(
+                    "A destination with masked values is tested as stored; provide the actual values"));
+  }
+
+  private static Response maskResponse(Response response) {
+    // The create, update and patch endpoints return the alert itself; the masked copy keeps the
+    // status and the change-type header, from which the change event is built.
+    return response.getEntity() instanceof EventSubscription alert
+        ? Response.fromResponse(response).entity(DestinationSecrets.mask(alert)).build()
+        : response;
   }
 
   /** Endpoint query strings can carry credentials, so keep them out of the returned reason. */

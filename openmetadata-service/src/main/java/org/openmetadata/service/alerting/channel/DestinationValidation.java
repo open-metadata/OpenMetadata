@@ -67,8 +67,11 @@ public final class DestinationValidation {
   // Compared by content, never by id: a PUT carries no ids, so every destination of one gets a
   // new id, and that alone must not make an unchanged destination look new. An empty value says
   // nothing either, so the empty headers or authentication a form fills in change nothing.
+  // Secrets are compared as they are used: a stored value the server has since encrypted, or a
+  // secret sent again, is the same configuration.
   private static JsonNode whatAUserConfigures(SubscriptionDestination destination) {
-    ObjectNode content = (ObjectNode) JsonUtils.valueToTree(destination);
+    ObjectNode content =
+        (ObjectNode) JsonUtils.valueToTree(DestinationSecrets.decrypted(destination));
     content.remove(NOT_PART_OF_WHAT_A_USER_CONFIGURES);
     return withoutEmptyValues(content);
   }

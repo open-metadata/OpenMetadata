@@ -30,7 +30,8 @@ public class EventSubscriptionMapper
                 .withResources(create.getResources())
                 .withRules(null)
                 .withActions(null))
-        .withDestinations(DestinationSecrets.encrypt(getSubscriptions(create.getDestinations())))
+        .withDestinations(
+            DestinationSecrets.ofANewAlert(getSubscriptions(create.getDestinations())))
         .withProvider(create.getProvider())
         .withRetries(create.getRetries())
         .withPollInterval(create.getPollInterval())

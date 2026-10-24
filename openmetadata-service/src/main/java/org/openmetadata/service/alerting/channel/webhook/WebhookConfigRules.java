@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.ConfigRules;
 import org.openmetadata.service.alerting.channel.DestinationConfig;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.util.URLValidator;
 
 /** The rules of every channel that posts to an HTTP endpoint. */
@@ -66,12 +67,14 @@ public class WebhookConfigRules implements ConfigRules {
     return stored(destination);
   }
 
+  /** As it can be sent to: the configuration with its secrets decrypted. */
   public static Webhook stored(SubscriptionDestination destination) {
-    return DestinationConfig.stored(destination, Webhook.class);
+    return DestinationConfig.stored(DestinationSecrets.decrypted(destination), Webhook.class);
   }
 
   static Webhook submitted(SubscriptionDestination destination) {
-    return DestinationConfig.submitted(destination, Webhook.class, "webhook");
+    return DestinationConfig.submitted(
+        DestinationSecrets.decrypted(destination), Webhook.class, "webhook");
   }
 
   private static boolean usesOAuth2(Webhook webhook) {
