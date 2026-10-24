@@ -24,6 +24,7 @@ import { AxiosError } from 'axios';
 import { isNull, noop } from 'lodash';
 import {
   forwardRef,
+  lazy,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -61,6 +62,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
@@ -68,7 +70,10 @@ import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.i
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import { ColumnsType } from '../../../common/Table/Table.interface';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import StopScheduleModal from '../../../Modals/StopScheduleRun/StopScheduleRunModal';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
@@ -95,6 +100,16 @@ const renderAppLogsRow = (record: AppRunRecordWithId) => (
   <AppLogsViewer data={record} />
 );
 
+const InlineEntityLogs = withSuspenseFallback(
+  lazy(() => import('../../../common/LogViewerModal/LogsViewerModalContainer'))
+);
+
+const getPipelineRunId = (record?: AppRunRecordWithId) => {
+  const rawRunId = record?.properties?.pipelineRunId;
+
+  return typeof rawRunId === 'string' ? rawRunId : undefined;
+};
+
 const AppRunsHistory = forwardRef(
   (
     {
@@ -102,6 +117,8 @@ const AppRunsHistory = forwardRef(
       maxRecords,
       jsonSchema,
       showPagination = true,
+      embedded = false,
+      onViewRunConfig,
     }: AppRunsHistoryProps,
     ref
   ) => {
@@ -159,9 +176,22 @@ const AppRunsHistory = forwardRef(
       return [syntheticRecord];
     }, [appData, appRunsHistoryData, isExternalApp]);
 
+    const toggleExpandedRow = useCallback(
+      (key: string) =>
+        setExpandedRowKeys((prev) =>
+          prev.includes(key)
+            ? prev.filter((item) => item !== key)
+            : [...prev, key]
+        ),
+      []
+    );
+
     const handleRowExpandable = useCallback(
       (key?: string, record?: AppRunRecordWithId) => {
         if (key) {
+          if (embedded) {
+            return toggleExpandedRow(key);
+          }
           if (isExternalApp && appData) {
             const rawRunId = record?.properties?.pipelineRunId;
             const runId = typeof rawRunId === 'string' ? rawRunId : undefined;
@@ -182,7 +212,14 @@ const AppRunsHistory = forwardRef(
           }
         }
       },
-      [expandedRowKeys, isExternalApp, appData, openLogs]
+      [
+        embedded,
+        expandedRowKeys,
+        isExternalApp,
+        appData,
+        openLogs,
+        toggleExpandedRow,
+      ]
     );
 
     const showLogAction = useCallback(
@@ -212,10 +249,15 @@ const AppRunsHistory = forwardRef(
         if (!jsonSchema) {
           return;
         }
+        if (onViewRunConfig) {
+          onViewRunConfig(record);
+
+          return;
+        }
         setShowConfigModal(true);
         setAppRunRecordConfig(record.config ?? {});
       },
-      [jsonSchema]
+      [jsonSchema, onViewRunConfig]
     );
 
     const getActionButton = useCallback(
@@ -271,6 +313,33 @@ const AppRunsHistory = forwardRef(
         showLogAction,
         t,
       ]
+    );
+
+    const renderEmbeddedLogsRow = useCallback(
+      (record: AppRunRecordWithId) =>
+        isExternalApp ? (
+          <InlineEntityLogs
+            inline
+            fqn={appData?.name ?? ''}
+            logEntityType={GlobalSettingOptions.APPLICATIONS}
+            runId={getPipelineRunId(record)}
+            onClose={() => toggleExpandedRow(record.id)}
+          />
+        ) : (
+          <AppLogsViewer embedded data={record} />
+        ),
+      [appData?.name, isExternalApp, toggleExpandedRow]
+    );
+
+    const expandable = useMemo<ExpandableConfig<AppRunRecordWithId>>(
+      () => ({
+        expandedRowRender: embedded ? renderEmbeddedLogsRow : renderAppLogsRow,
+        rowExpandable: (record) =>
+          !showLogAction(record) && (embedded || hasAppRunStats(record)),
+        expandedRowKeys,
+        onExpandedRowsChange: (keys) => setExpandedRowKeys(keys.map(String)),
+      }),
+      [embedded, expandedRowKeys, renderEmbeddedLogsRow, showLogAction]
     );
 
     const tableColumn: ColumnsType<AppRunRecordWithId> = useMemo(
@@ -512,13 +581,7 @@ const AppRunsHistory = forwardRef(
           }}
           data-testid="app-run-history-table"
           dataSource={tableData}
-          expandable={{
-            expandedRowRender: renderAppLogsRow,
-            showExpandColumn: false,
-            rowExpandable: (record) =>
-              !showLogAction(record) && hasAppRunStats(record),
-            expandedRowKeys,
-          }}
+          expandable={expandable}
           loading={isLoading}
           locale={{
             emptyText: (

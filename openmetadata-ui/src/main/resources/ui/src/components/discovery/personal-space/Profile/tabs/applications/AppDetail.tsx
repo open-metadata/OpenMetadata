@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowLeft,
   Clock,
   GridView,
   LinkExternal01,
@@ -32,8 +33,15 @@ import {
 import { RJSFSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
-import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
+import { isEmpty, noop } from 'lodash';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { SEARCH_INDEXING_APPLICATION } from '../../../../../../constants/explore.constants';
@@ -70,12 +78,14 @@ import applicationsClassBase from '../../../../../Settings/Applications/AppDetai
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../../../../../Settings/Applications/AppLiveIndexing/AppLiveIndexing.component';
 import AppRunsHistory from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.component';
+import type { AppRunRecordWithId } from '../../../../../Settings/Applications/AppRunsHistory/AppRunsHistory.interface';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
-import McpApplicationConfiguration from '../../../../../Settings/Applications/McpApplicationConfiguration/McpApplicationConfiguration';
 import type { AppPlugin } from '../../../../../Settings/Applications/plugins/AppPlugin';
 import ConfirmDialog from '../platform-settings/ConfirmDialog';
 import { HintToggle } from './AppConfigForm';
 import {
+  SUB_PAGE_EDIT_SCHEDULE,
+  SUB_PAGE_RUN_CONFIG,
   TAB_CONFIGURATION,
   TAB_LABEL_KEYS,
   TAB_LIVE_INDEXING,
@@ -89,8 +99,15 @@ import {
   isAppUnavailable,
   isRuntimeDisabled,
 } from './Applications.utils';
+import AppScheduleEdit from './AppScheduleEdit';
+import McpConfigForm from './McpConfigForm';
 
 type AppAction = 'restore' | 'disable' | 'uninstall';
+
+/** A page shown in place of the tabs, one level under the app in the breadcrumb. */
+type AppSubPage =
+  | { type: typeof SUB_PAGE_RUN_CONFIG; record: AppRunRecordWithId }
+  | { type: typeof SUB_PAGE_EDIT_SCHEDULE };
 
 interface AppDetailProps extends ApplicationsViewProps {
   fqn: string;
@@ -187,6 +204,45 @@ const MetaItem: FC<{
   </Box>
 );
 
+/** A past run's configuration, read-only, as a page under the app. */
+const RunConfigPage: FC<{
+  appData: App;
+  jsonSchema?: RJSFSchema;
+  runConfig: AppRunRecordWithId;
+  onBack: () => void;
+}> = ({ appData, jsonSchema, runConfig, onBack }) => {
+  const { t } = useTranslation();
+  const ConfigurationComponent =
+    applicationsClassBase.getModalAppConfigurationComponent();
+
+  return (
+    <Box data-testid="app-run-config" direction="col" gap={4}>
+      <Box>
+        <Button
+          noTextPadding
+          color="link-color"
+          data-testid="app-run-config-back"
+          iconLeading={ArrowLeft}
+          size="sm"
+          onPress={onBack}>
+          {t('label.back')}
+        </Button>
+      </Box>
+      {jsonSchema && (
+        <ConfigurationComponent
+          isReadOnly
+          appData={{ ...appData, appConfiguration: runConfig.config }}
+          isSaving={false}
+          jsonSchema={jsonSchema}
+          showHint={false}
+          submitLabel={t('label.save')}
+          onSave={noop}
+        />
+      )}
+    </Box>
+  );
+};
+
 const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const { t } = useTranslation();
   const { isAdminUser } = useAuth();
@@ -199,6 +255,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const [action, setAction] = useState<AppAction>();
   const [selectedTab, setSelectedTab] = useState<Key>();
   const [showHint, setShowHint] = useState(false);
+  const [subPage, setSubPage] = useState<AppSubPage>();
   // Bumped by Cancel to remount the configuration form with the saved values.
   const [configFormKey, setConfigFormKey] = useState(0);
   const { canEditAll, canDelete, can } = useEntityPermissions(
@@ -227,17 +284,15 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       try {
         setJsonSchema(await applicationsClassBase.importSchema(fqn));
       } catch {
+        // Shown as the empty state when the app ends up with no tabs.
         setJsonSchema(undefined);
-        showErrorToast(
-          t('server.no-application-schema-found', { appName: fqn })
-        );
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsLoading(false);
     }
-  }, [fqn, t]);
+  }, [fqn]);
 
   useEffect(() => {
     void fetchAppDetails();
@@ -288,6 +343,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     if (!appData) {
       return;
     }
+    setLoadingFor('schedule', true);
     try {
       await patchApp(
         {
@@ -301,8 +357,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         },
         t('label.schedule')
       );
+      setSubPage(undefined);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingFor('schedule', false);
     }
   };
 
@@ -374,6 +433,9 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     }
   };
 
+  const handleViewRunConfig = (record: AppRunRecordWithId) =>
+    setSubPage({ type: SUB_PAGE_RUN_CONFIG, record });
+
   const getTabs = (): DetailTab[] => {
     if (!appData) {
       return [];
@@ -394,6 +456,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         show: showSchedule,
         content: (
           <AppSchedule
+            embedded
             appData={appData}
             canDeploy={can(Operation.Deploy)}
             canEdit={canEditAll}
@@ -407,7 +470,9 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
             }}
             onDemandTrigger={handleRunNow}
             onDeployTrigger={handleDeploy}
+            onEditSchedule={() => setSubPage({ type: SUB_PAGE_EDIT_SCHEDULE })}
             onSave={handleScheduleSave}
+            onViewRunConfig={handleViewRunConfig}
           />
         ),
       },
@@ -416,9 +481,12 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         show: Boolean(configKind),
         content:
           configKind === 'mcp' ? (
-            <McpApplicationConfiguration
-              appName={appData.name}
+            <McpConfigForm
+              appData={appData}
               jsonSchema={jsonSchema as RJSFSchema}
+              key={configFormKey}
+              showHint={showHint}
+              onCancel={() => setConfigFormKey((key) => key + 1)}
             />
           ) : (
             <ConfigurationComponent
@@ -437,7 +505,14 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       {
         id: TAB_RUNS,
         show: isAvailable && showSchedule,
-        content: <AppRunsHistory appData={appData} jsonSchema={jsonSchema} />,
+        content: (
+          <AppRunsHistory
+            embedded
+            appData={appData}
+            jsonSchema={jsonSchema}
+            onViewRunConfig={handleViewRunConfig}
+          />
+        ),
       },
       {
         id: TAB_LIVE_INDEXING,
@@ -453,7 +528,21 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
 
   const activeTab = selectedTab ?? tabs[0]?.id;
   // Joined to a string so the header effect only re-runs when the set of tabs changes.
-  const headerTabIds = PluginDetails ? '' : tabs.map(({ id }) => id).join(',');
+  const headerTabIds =
+    PluginDetails || subPage ? '' : tabs.map(({ id }) => id).join(',');
+  const subPageHeader = useMemo(() => {
+    if (!subPage) {
+      return undefined;
+    }
+
+    return {
+      label:
+        subPage.type === SUB_PAGE_RUN_CONFIG
+          ? t('label.entity-configuration', { entity: t('label.run') })
+          : t('label.update-entity', { entity: t('label.schedule') }),
+      onBack: () => setSubPage(undefined),
+    };
+  }, [subPage, t]);
 
   useEffect(() => {
     if (!appData) {
@@ -472,6 +561,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       description: '',
       icon: applicationsClassBase.getAppIcon(appData.name),
       crumb: appName,
+      subPage: subPageHeader,
       titleSuffix:
         appData.deleted || runtimeDisabled ? (
           <Badge
@@ -540,6 +630,7 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     headerTabIds,
     isLoading,
     onHeaderChange,
+    subPageHeader,
     runtimeDisabled,
     runtimeDisabledReason,
     showHint,
@@ -568,6 +659,52 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     );
   }
 
+  const renderContent = () => {
+    if (subPage?.type === SUB_PAGE_RUN_CONFIG) {
+      return (
+        <RunConfigPage
+          appData={appData}
+          jsonSchema={jsonSchema}
+          runConfig={subPage.record}
+          onBack={() => setSubPage(undefined)}
+        />
+      );
+    }
+    if (subPage?.type === SUB_PAGE_EDIT_SCHEDULE) {
+      return (
+        <AppScheduleEdit
+          appData={appData}
+          isSaving={Boolean(loading.schedule)}
+          onCancel={() => setSubPage(undefined)}
+          onSave={handleScheduleSave}
+        />
+      );
+    }
+
+    if (PluginDetails) {
+      return <PluginDetails />;
+    }
+
+    return (
+      tabs.find(({ id }) => id === activeTab)?.content ?? (
+        <Box className="tw:relative tw:flex-1 tw:min-h-90">
+          <NoDataPlaceholder
+            data-testid="app-detail-empty"
+            description={
+              jsonSchema
+                ? undefined
+                : t('server.no-application-schema-found', {
+                    appName: getEntityName(appData),
+                  })
+            }
+            icon={GridView}
+            title={t('label.no-entity', { entity: t('label.configuration') })}
+          />
+        </Box>
+      )
+    );
+  };
+
   const actionMessage: Record<AppAction, string> = {
     restore: t('message.restore-action-description', {
       entityType: getEntityName(appData),
@@ -583,12 +720,11 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   };
 
   return (
-    <Box className="tw:px-8 tw:pb-8" data-testid="app-detail" direction="col">
-      {PluginDetails ? (
-        <PluginDetails />
-      ) : (
-        tabs.find(({ id }) => id === activeTab)?.content
-      )}
+    <Box
+      className="tw:flex-1 tw:px-8 tw:pb-8"
+      data-testid="app-detail"
+      direction="col">
+      {renderContent()}
 
       <ConfirmDialog
         confirmLabel={action ? actionLabel[action] : ''}

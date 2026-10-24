@@ -29,7 +29,11 @@ export type InstallStep = 'details' | 'configure' | 'schedule';
 export type ApplicationsHeader = Omit<
   ProfileHeaderOverride,
   'breadcrumbs' | 'onBreadcrumbAction'
-> & { crumb?: string };
+> & {
+  crumb?: string;
+  // A page nested under the current view, e.g. one run's configuration.
+  subPage?: { label: string; onBack: () => void };
+};
 
 export interface ApplicationsViewProps {
   onNavigate: (view: ApplicationsView) => void;

@@ -445,6 +445,26 @@ const LogViewerFooter: FunctionComponent<LogViewerFooterProps> = ({
   );
 };
 
+const InlineLogViewerFrame: FunctionComponent<{
+  open: boolean;
+  className: string;
+  children: ReactNode;
+}> = ({ open, className, children }) =>
+  open ? (
+    <div className={className} data-testid="log-viewer-inline">
+      {children}
+    </div>
+  ) : null;
+
+// Inline the viewer sits in the page flow, so it takes a fixed height rather than the viewport's.
+const getSurfaceHeightClass = (isFullScreen: boolean, inline?: boolean) => {
+  if (isFullScreen) {
+    return 'tw:h-[95vh]';
+  }
+
+  return inline ? 'tw:h-120' : 'tw:h-[80vh]';
+};
+
 const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
   const {
     open,
@@ -470,6 +490,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     streamHealth,
     streamTruncated = false,
     streamError = null,
+    inline,
   } = props;
 
   // 'stream' == live run: the caller grows `logs` while the run is active and
@@ -591,6 +612,88 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
 
   const isFullScreenClass = isFullScreen ? 'lvm-fullscreen' : '';
 
+  const surface = (
+    <div
+      className={classNames(
+        'lvm-surface tw:flex tw:flex-col tw:overflow-hidden tw:shadow-xl tw:rounded-2xl',
+        getSurfaceHeightClass(isFullScreen, inline)
+      )}>
+      <div className="lvm-header tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-3">
+        <div className="lvm-header-title tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+          <File02 aria-hidden className="lvm-file-icon" />
+          <span
+            className="lvm-title tw:truncate"
+            data-testid="log-viewer-title">
+            {title}
+          </span>
+        </div>
+        <LogViewerHeaderActions
+          downloading={downloading}
+          enableCopy={enableCopy}
+          enableSearch={enableSearch}
+          followTail={followTail}
+          handleJumpToEnd={handleJumpToEnd}
+          handleToggleFullScreen={handleToggleFullScreen}
+          handleToggleWrap={handleToggleWrap}
+          hasCopied={hasCopied}
+          isFullScreen={isFullScreen}
+          isLive={isLive}
+          isReconnecting={isReconnecting}
+          matchCount={matchCount}
+          query={query}
+          searchText={searchText}
+          theme={theme}
+          toggleFollow={toggleFollow}
+          wrap={wrap}
+          onClose={onClose}
+          onCopyToClipBoard={() => onCopyToClipBoard(resolvedLogs)}
+          onDownload={onDownload}
+          onSearchChange={handleSearchChange}
+        />
+      </div>
+      <LogViewerNotices
+        streamError={streamError}
+        streamTruncated={streamTruncated}
+      />
+      <LogViewerBody
+        bodyRef={bodyRef}
+        colorize={colorize}
+        filteredLogs={filteredLogs}
+        handleScroll={handleScroll}
+        lazyLogRef={lazyLogRef}
+        resolvedFollow={resolvedFollow}
+        resolvedLoading={resolvedLoading}
+        showEmptyState={showEmptyState}
+        wrap={wrap}
+      />
+      {hasFooter && (
+        <LogViewerFooter
+          lastRun={lastRun}
+          resolvedTotalLines={resolvedTotalLines}
+          runId={runId}
+          status={status}
+        />
+      )}
+    </div>
+  );
+
+  const viewerClassName = classNames(
+    'log-viewer-modal',
+    `theme-${theme}`,
+    isFullScreenClass,
+    {
+      'dark-mode': theme === 'dark',
+    }
+  );
+
+  if (inline) {
+    return (
+      <InlineLogViewerFrame className={viewerClassName} open={open}>
+        {surface}
+      </InlineLogViewerFrame>
+    );
+  }
+
   return (
     <ModalOverlay
       isDismissable
@@ -608,81 +711,8 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
           'tw:max-w-[max(56rem,60vw)]': !isFullScreen,
           'tw:max-w-[95vw]': isFullScreen,
         })}>
-        <AriaDialog
-          aria-label={title}
-          className={classNames(
-            'log-viewer-modal',
-            `theme-${theme}`,
-            isFullScreenClass,
-            {
-              'dark-mode': theme === 'dark',
-            }
-          )}>
-          <div
-            className={classNames(
-              'lvm-surface tw:flex tw:flex-col tw:overflow-hidden tw:shadow-xl tw:rounded-2xl',
-              {
-                'tw:h-[80vh]': !isFullScreen,
-                'tw:h-[95vh]': isFullScreen,
-              }
-            )}>
-            <div className="lvm-header tw:flex tw:items-center tw:justify-between tw:gap-3 tw:px-4 tw:py-3">
-              <div className="lvm-header-title tw:flex tw:min-w-0 tw:items-center tw:gap-3">
-                <File02 aria-hidden className="lvm-file-icon" />
-                <span
-                  className="lvm-title tw:truncate"
-                  data-testid="log-viewer-title">
-                  {title}
-                </span>
-              </div>
-              <LogViewerHeaderActions
-                downloading={downloading}
-                enableCopy={enableCopy}
-                enableSearch={enableSearch}
-                followTail={followTail}
-                handleJumpToEnd={handleJumpToEnd}
-                handleToggleFullScreen={handleToggleFullScreen}
-                handleToggleWrap={handleToggleWrap}
-                hasCopied={hasCopied}
-                isFullScreen={isFullScreen}
-                isLive={isLive}
-                isReconnecting={isReconnecting}
-                matchCount={matchCount}
-                query={query}
-                searchText={searchText}
-                theme={theme}
-                toggleFollow={toggleFollow}
-                wrap={wrap}
-                onClose={onClose}
-                onCopyToClipBoard={() => onCopyToClipBoard(resolvedLogs)}
-                onDownload={onDownload}
-                onSearchChange={handleSearchChange}
-              />
-            </div>
-            <LogViewerNotices
-              streamError={streamError}
-              streamTruncated={streamTruncated}
-            />
-            <LogViewerBody
-              bodyRef={bodyRef}
-              colorize={colorize}
-              filteredLogs={filteredLogs}
-              handleScroll={handleScroll}
-              lazyLogRef={lazyLogRef}
-              resolvedFollow={resolvedFollow}
-              resolvedLoading={resolvedLoading}
-              showEmptyState={showEmptyState}
-              wrap={wrap}
-            />
-            {hasFooter && (
-              <LogViewerFooter
-                lastRun={lastRun}
-                resolvedTotalLines={resolvedTotalLines}
-                runId={runId}
-                status={status}
-              />
-            )}
-          </div>
+        <AriaDialog aria-label={title} className={viewerClassName}>
+          {surface}
         </AriaDialog>
       </Modal>
     </ModalOverlay>

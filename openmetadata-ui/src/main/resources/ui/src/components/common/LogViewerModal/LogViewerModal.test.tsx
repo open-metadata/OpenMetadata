@@ -208,6 +208,20 @@ describe('LogViewerModal', () => {
     expect(screen.getByTestId('lazy-log')).toHaveTextContent('alpha INFO one');
   });
 
+  it('renders in the page flow without a dialog when inline', () => {
+    render(<LogViewerModal {...defaultProps} inline />);
+
+    expect(screen.getByTestId('log-viewer-inline')).toBeInTheDocument();
+    expect(screen.getByTestId('lazy-log')).toHaveTextContent('alpha INFO one');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing inline when closed', () => {
+    render(<LogViewerModal {...defaultProps} inline open={false} />);
+
+    expect(screen.queryByTestId('log-viewer-inline')).not.toBeInTheDocument();
+  });
+
   it('renders nothing when closed', () => {
     render(<LogViewerModal {...defaultProps} open={false} />);
 
