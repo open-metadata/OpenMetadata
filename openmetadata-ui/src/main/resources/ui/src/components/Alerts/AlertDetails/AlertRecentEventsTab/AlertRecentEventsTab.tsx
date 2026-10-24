@@ -57,6 +57,7 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import {
@@ -178,10 +179,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     if (isEmpty(alertRecentEvents)) {
       const isFiltered = filter !== AlertRecentEventFilters.ALL;
+      const EmptyStatePlaceholder = isFiltered
+        ? NoFilteredResultsPlaceholder
+        : NoDataPlaceholder;
 
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <NoDataPlaceholder
+          <EmptyStatePlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'

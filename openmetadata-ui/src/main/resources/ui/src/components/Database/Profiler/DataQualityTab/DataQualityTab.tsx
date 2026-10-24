@@ -75,6 +75,7 @@ import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -169,6 +170,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   deletionMode = TEST_CASE_DELETION_MODE.HARD,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
+  const EmptyStatePlaceholder = hasActiveFilters
+    ? NoFilteredResultsPlaceholder
+    : NoDataPlaceholder;
   const navigate = useNavigate();
   const [selectedTestCase, setSelectedTestCase] = useState<TestCaseAction>();
   const [isStatusLoading, setIsStatusLoading] = useState(true);
@@ -1187,7 +1191,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 </div>
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
-                  <NoDataPlaceholder
+                  <EmptyStatePlaceholder
                     actions={
                       !hasActiveFilters && emptyStateAction
                         ? [emptyStateAction]
