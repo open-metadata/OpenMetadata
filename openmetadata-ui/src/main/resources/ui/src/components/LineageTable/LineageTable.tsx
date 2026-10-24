@@ -116,12 +116,14 @@ const LINEAGE_IMPACT_OPTION_ICONS: Record<
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { updateEntityData } = useLineageHandlers();
-  const { selectedQuickFilters, setSelectedQuickFilters } = useLineageStore(
-    useShallow((s) => ({
-      selectedQuickFilters: s.selectedQuickFilters,
-      setSelectedQuickFilters: s.setSelectedQuickFilters,
-    }))
-  );
+  const { selectedQuickFilters, setSelectedQuickFilters, timeFilter } =
+    useLineageStore(
+      useShallow((s) => ({
+        selectedQuickFilters: s.selectedQuickFilters,
+        setSelectedQuickFilters: s.setSelectedQuickFilters,
+        timeFilter: s.timeFilter,
+      }))
+    );
 
   const { lineageConfig } = useLineageStore();
   const { fqn } = useFqn();
@@ -504,8 +506,16 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     t,
   ]);
 
+  // Prevents stale fetch responses from overwriting the table. When the page
+  // is reset to 1 (e.g. on mount or time-range change), the old-page request
+  // and the page-1 request can race; only the latest request's result should be
+  // applied.
+  const latestFetchIdRef = useRef(0);
+
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
+    const fetchId = ++latestFetchIdRef.current;
+
     const fetchColumnLevelNodes = async () => {
       const columnLevelConfig = {
         ...lineageConfig,
@@ -522,7 +532,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         columnFilter: columnFilterValue,
         direction: lineageDirection,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
+
+      if (fetchId !== latestFetchIdRef.current) {
+        return;
+      }
 
       const upstreamEdges = map(res.upstreamEdges ?? [], (edge) => edge);
       const downstreamEdges = map(res.downstreamEdges ?? [], (edge) => edge);
@@ -557,6 +573,8 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         queryFilter,
         lineageDirection,
         columnFilterValue,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
       const shouldIncludePaginationInfo =
         paginationInfoKeyRef.current !== paginationInfoKey;
@@ -574,7 +592,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         query_filter: queryFilter,
         column_filter: columnFilterValue,
         include_pagination_info: shouldIncludePaginationInfo,
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
       });
+
+      if (fetchId !== latestFetchIdRef.current) {
+        return;
+      }
 
       delete res.nodes[fqn];
       if (shouldIncludePaginationInfo) {
@@ -609,15 +633,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         await fetchTableLevelNodes();
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
-      setFilterNodes([]);
-      setColumnLineageNodes([], []);
-      if (impactLevel === EImpactLevel.TableLevel) {
-        paginationInfoKeyRef.current = null;
-        setLineagePagingInfo(null);
+      if (fetchId === latestFetchIdRef.current) {
+        showErrorToast(error as AxiosError);
+        setFilterNodes([]);
+        setColumnLineageNodes([], []);
+        if (impactLevel === EImpactLevel.TableLevel) {
+          paginationInfoKeyRef.current = null;
+          setLineagePagingInfo(null);
+        }
       }
     } finally {
-      setLoading(false);
+      if (fetchId === latestFetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [
     lineageConfig,
@@ -635,7 +663,39 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     setLineagePagingInfo,
     setLoading,
     impactLevel,
+    timeFilter?.startTime,
+    timeFilter?.endTime,
   ]);
+
+  // Reset to page 1 on mount and whenever the time range changes. The ref
+  // starts as null so the effect fires on the first render — this catches the
+  // case where the user changed the time range while the table was unmounted
+  // (e.g. switched to the graph view, narrowed the range, then switched back).
+  // `handlePageChange` from `usePaging` is recreated whenever `currentPage`
+  // changes, so listing it as a dependency would re-run this effect on every
+  // page navigation. Track it in a ref so only the time bounds drive the effect.
+  const prevTimeBoundsRef = useRef<{
+    startTime: number | undefined;
+    endTime: number | undefined;
+  } | null>(null);
+  const handlePageChangeRef = useRef(handlePageChange);
+  handlePageChangeRef.current = handlePageChange;
+
+  useEffect(() => {
+    const prev = prevTimeBoundsRef.current;
+
+    if (
+      prev === null ||
+      prev.startTime !== timeFilter?.startTime ||
+      prev.endTime !== timeFilter?.endTime
+    ) {
+      prevTimeBoundsRef.current = {
+        startTime: timeFilter?.startTime,
+        endTime: timeFilter?.endTime,
+      };
+      handlePageChangeRef.current(1);
+    }
+  }, [timeFilter?.startTime, timeFilter?.endTime]);
 
   // Table-level lineage: fetch on all dependencies
   useEffect(() => {

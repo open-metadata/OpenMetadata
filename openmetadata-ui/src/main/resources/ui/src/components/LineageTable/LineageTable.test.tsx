@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -1233,6 +1239,460 @@ describe('LineageTable', () => {
       onPageReset?.();
 
       expect(handlePageChange).toHaveBeenCalledWith(1);
+    });
+  });
+
+  describe('timeFilter forwarding to backend fetches', () => {
+    const startTime = 1700000000000;
+    const endTime = 1790000000000;
+
+    const setupStoreWithTimeFilter = (
+      timeFilter: { startTime?: number; endTime?: number } | undefined
+    ) => {
+      mockUseLineageStore.mockReturnValue({
+        selectedQuickFilters: [],
+        setSelectedQuickFilters: jest.fn(),
+        timeFilter,
+        lineageConfig: {
+          downstreamDepth: 2,
+          upstreamDepth: 2,
+        } as LineageConfig,
+        setLineageConfig: jest.fn(),
+      });
+    };
+
+    it('passes startTime/endTime from timeFilter to getLineageByEntityCount in table-level mode', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime,
+            endTime,
+          })
+        );
+      });
+    });
+
+    it('passes startTime/endTime from timeFilter to getLineageDataByFQN in column-level mode', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.ColumnLevel,
+      });
+
+      mockGetLineageDataByFQN.mockResolvedValue({
+        nodes: {},
+        upstreamEdges: {},
+        downstreamEdges: {},
+      });
+      mockPrepareUpstreamColumnLevelNodesFromUpstreamEdges.mockReturnValue([]);
+      mockPrepareDownstreamColumnLevelNodesFromDownstreamEdges.mockReturnValue(
+        []
+      );
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetLineageDataByFQN).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime,
+            endTime,
+          })
+        );
+      });
+    });
+
+    it('does not pass startTime/endTime when timeFilter is empty (default All Time)', async () => {
+      setupStoreWithTimeFilter({});
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled();
+      });
+
+      const callArgs = mockGetLineageByEntityCount.mock.calls[0][0] as Record<
+        string,
+        unknown
+      >;
+
+      expect(callArgs.startTime).toBeUndefined();
+      expect(callArgs.endTime).toBeUndefined();
+    });
+
+    it('refetches table-level data when the time filter changes', async () => {
+      setupStoreWithTimeFilter({});
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(1);
+      });
+
+      // Change the time filter — this must trigger a refetch with the new range
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime,
+            endTime,
+          })
+        );
+      });
+    });
+
+    it('refetches column-level data when the time filter changes', async () => {
+      setupStoreWithTimeFilter({});
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.ColumnLevel,
+      });
+
+      mockGetLineageDataByFQN.mockResolvedValue({
+        nodes: {},
+        upstreamEdges: {},
+        downstreamEdges: {},
+      });
+      mockPrepareUpstreamColumnLevelNodesFromUpstreamEdges.mockReturnValue([]);
+      mockPrepareDownstreamColumnLevelNodesFromDownstreamEdges.mockReturnValue(
+        []
+      );
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageDataByFQN).toHaveBeenCalledTimes(1);
+      });
+
+      // Change the time filter — this must trigger a refetch with the new range
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageDataByFQN).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime,
+            endTime,
+          })
+        );
+      });
+    });
+
+    it('re-fetches pagination info when the time filter changes (paginationInfoKey includes time)', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const setLineagePagingInfo = jest.fn();
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+        setLineagePagingInfo,
+      });
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      // First fetch must request pagination info (paginationInfoKey mismatch on mount)
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime,
+            endTime,
+            include_pagination_info: true,
+          })
+        );
+      });
+
+      mockGetLineageByEntityCount.mockClear();
+
+      // Change the time filter — the paginationInfoKey changes so the next
+      // fetch must re-request pagination info (include_pagination_info: true)
+      setupStoreWithTimeFilter({
+        startTime: startTime + 1000,
+        endTime: endTime + 1000,
+      });
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({
+            startTime: startTime + 1000,
+            endTime: endTime + 1000,
+            include_pagination_info: true,
+          })
+        );
+      });
+    });
+
+    it('resets to page 1 when the time filter changes', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      const handlePageChange = jest.fn();
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled();
+      });
+
+      handlePageChange.mockClear();
+
+      setupStoreWithTimeFilter({
+        startTime: startTime + 1000,
+        endTime: endTime + 1000,
+      });
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
+      });
+    });
+
+    it('does not reset to page 1 when only the current page changes (time filter unchanged)', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChangePage1 = jest.fn();
+      const handlePageChangePage2 = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 1,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange: handlePageChangePage1,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalled();
+      });
+
+      // Simulate the user navigating to page 2. The real `usePaging` hook
+      // recreates `handlePageChange` whenever `currentPage` changes, so give
+      // the mock a new identity to mirror that. The time filter is unchanged,
+      // so the table must NOT reset to page 1.
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange: handlePageChangePage2,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledWith(
+          expect.objectContaining({ from: 25 })
+        );
+      });
+
+      expect(handlePageChangePage2).not.toHaveBeenCalledWith(1);
+    });
+
+    it('resets to page 1 on mount when timeFilter is set (catches time changes made while unmounted)', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChange = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+      });
+
+      render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
+      });
+    });
+
+    it('ignores stale fetch response when page is reset to 1 on mount', async () => {
+      setupStoreWithTimeFilter({ startTime, endTime });
+
+      const handlePageChange = jest.fn();
+
+      mockUsePaging.mockReturnValue({
+        currentPage: 2,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      const setFilterNodes = jest.fn();
+      mockUseLineageTableState.mockReturnValue({
+        ...defaultMockState,
+        impactLevel: EImpactLevel.TableLevel,
+        setFilterNodes,
+      });
+
+      // The stale (page 2) fetch stays pending until the fresh (page 1)
+      // fetch resolves and applies its result. We then resolve the stale
+      // fetch with distinct rows to prove the stale-response guard
+      // discards them rather than letting them overwrite page 1.
+      let resolveStaleFetch: (value: unknown) => void = () => {};
+      mockGetLineageByEntityCount.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveStaleFetch = resolve;
+          })
+      );
+
+      const { rerender } = render(<LineageTable entity={mockEntity} />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(1);
+      });
+
+      await waitFor(() => {
+        expect(handlePageChange).toHaveBeenCalledWith(1);
+      });
+
+      // Simulate the page change so a second (fresh, page 1) fetch starts
+      mockUsePaging.mockReturnValue({
+        currentPage: 1,
+        pageSize: 25,
+        paging: { total: 100 },
+        showPagination: true,
+        handlePageChange,
+        handlePagingChange: jest.fn(),
+        handlePageSizeChange: jest.fn(),
+      } as unknown as ReturnType<typeof usePaging>);
+
+      rerender(<LineageTable entity={mockEntity} />);
+
+      await waitFor(() => {
+        expect(mockGetLineageByEntityCount).toHaveBeenCalledTimes(2);
+      });
+
+      // The fresh (page 1) response should have been applied with the
+      // default mock data (node1, node2).
+      await waitFor(() => {
+        const lastCall =
+          setFilterNodes.mock.calls[setFilterNodes.mock.calls.length - 1];
+
+        expect(lastCall[0]).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'node1' }),
+            expect.objectContaining({ id: 'node2' }),
+          ])
+        );
+      });
+
+      const callCountAfterFresh = setFilterNodes.mock.calls.length;
+
+      // Now resolve the stale (page 2) fetch with distinct rows. The guard
+      // must discard this response — setFilterNodes should not be called
+      // again with the stale data.
+      await act(async () => {
+        resolveStaleFetch({
+          nodes: {
+            'stale.table': {
+              entity: {
+                id: 'stale',
+                fullyQualifiedName: 'stale.table',
+                name: 'stale',
+                entityType: EntityType.TABLE,
+                nodeDepth: 1,
+                owners: [],
+                domains: [],
+                tags: [],
+                type: 'table',
+              },
+              paging: {},
+              nodeDepth: 1,
+            },
+          },
+          upstreamEdges: {},
+          downstreamEdges: {},
+          paginationInfo: mockLineagePagingInfo,
+        });
+      });
+
+      // The stale response must not have overwritten the fresh rows.
+      expect(setFilterNodes.mock.calls.length).toBe(callCountAfterFresh);
+
+      const lastCall =
+        setFilterNodes.mock.calls[setFilterNodes.mock.calls.length - 1];
+
+      for (const node of lastCall[0]) {
+        expect(node).not.toHaveProperty('id', 'stale');
+      }
     });
   });
 });
