@@ -93,6 +93,13 @@ def _(elements, compiler, **kwargs):  # pylint: disable=unused-argument
     return f"DATE('now', 'localtime', '-{interval} {interval_unit}')"
 
 
+@compiles(DateAddFn, Dialects.Impala)
+def _(elements, compiler, **kwargs):
+    """Impala date function. Bare CURRENT_TIMESTAMP is not a function there (#35590)."""
+    interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return f"CAST(NOW() - INTERVAL {interval} {interval_unit} AS DATE)"
+
+
 # ------------------
 # Datetime Functions
 # ------------------
@@ -159,6 +166,12 @@ def _(elements, compiler, **kwargs):
 def _(elements, compiler, **kwargs):
     """SQLite datetime function"""
     return sqlite_function(elements, compiler, **kwargs)
+
+
+@compiles(DatetimeAddFn, Dialects.Impala)
+def _(elements, compiler, **kwargs):
+    """Impala datetime function"""
+    return impala_function(elements, compiler, **kwargs)
 
 
 # -------------------
@@ -238,6 +251,12 @@ def _(elements, compiler, **kwargs):
     return sqlite_function(elements, compiler, **kwargs)
 
 
+@compiles(TimestampAddFn, Dialects.Impala)
+def _(elements, compiler, **kwargs):
+    """Impala timestamp function"""
+    return impala_function(elements, compiler, **kwargs)
+
+
 # -----------------------------------
 # Shared timestamp/datetime Functions
 # -----------------------------------
@@ -285,6 +304,16 @@ def clickhouse_function(elements, compiler, **kwargs):
     """ClickHouse timestamp and datetime function"""
     interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
     return f"(NOW() - interval {interval} {interval_unit})"
+
+
+def impala_function(elements, compiler, **kwargs):
+    """Impala timestamp and datetime function.
+
+    Impala resolves bare CURRENT_TIMESTAMP as a column reference. Use NOW() and
+    unquoted INTERVAL literals instead (#35590).
+    """
+    interval, interval_unit = [compiler.process(element, **kwargs) for element in elements.clauses]
+    return f"(NOW() - INTERVAL {interval} {interval_unit})"
 
 
 def db2_function(elements, compiler, **kwargs):
