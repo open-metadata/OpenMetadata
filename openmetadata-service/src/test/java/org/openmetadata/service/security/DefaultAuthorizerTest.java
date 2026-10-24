@@ -593,12 +593,20 @@ class DefaultAuthorizerTest {
                       deniedRequest.resourceContext(),
                       deniedRequest.operationContext()))
           .thenThrow(new PolicyDeniedException("denied by rule"));
+      // allowedRequest passes (the default mock returns normally).
 
+      // The Deny must win in either order: [allowed, denied] must refuse too, so an early success
+      // cannot let the loop return before the later Deny is seen.
       assertThrows(
           PolicyDeniedException.class,
           () ->
               authorizer.authorizeRequests(
                   securityContext, List.of(deniedRequest, allowedRequest), AuthorizationLogic.ANY));
+      assertThrows(
+          PolicyDeniedException.class,
+          () ->
+              authorizer.authorizeRequests(
+                  securityContext, List.of(allowedRequest, deniedRequest), AuthorizationLogic.ANY));
     }
   }
 

@@ -275,13 +275,15 @@ public class SubjectCache {
 
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
-    POLICY_GENERATION.incrementAndGet();
     // The policy caches are derived from the team graph, so they have to be dropped together. The
     // graph goes first: a load that starts once the caches are swapped must not read it stale and
     // publish the result into the new cache.
     TeamHierarchyResolver.invalidateAll();
     USER_POLICIES_CACHE.invalidateAll();
     USER_CONTEXT_CACHE.invalidateAll();
+    // Bump last: a concurrent read that sees the new generation must do so only after the stale
+    // policies are gone, so it recomputes from fresh state rather than re-caching the old rules.
+    POLICY_GENERATION.incrementAndGet();
   }
 
   public static User getUserContext(String userName) {

@@ -18,6 +18,7 @@ package org.openmetadata.service.security;
  * matters where several checks are tried and any one passing is enough: a resource the caller is
  * merely not allowed to reach may be reachable another way, but one an explicit Deny names must not
  * be, so a Deny on any of the tried resources refuses the whole request.
+ * ADR:2026-10-24-any-authorization-honours-an-explicit-deny
  */
 public class PolicyDeniedException extends AuthorizationException {
   public PolicyDeniedException(String msg) {

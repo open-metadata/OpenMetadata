@@ -1011,8 +1011,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
 
   /** Whether a patch changes the schedule or configuration the app is installed with. */
   private static boolean touchesScheduleOrConfig(JsonPatch patch) {
-    return JsonUtils.extractPatchedFields(patch).stream()
-        .anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
+    Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
+    // A whole-document replace (path "/") names no top-level field, so treat it as touching the
+    // schedule and config — it may change either, and must still require EditAll and reschedule.
+    if (patchedFields.isEmpty() && !patch.toJsonArray().isEmpty()) {
+      return true;
+    }
+    return patchedFields.stream().anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
   }
 
   @PATCH

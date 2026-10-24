@@ -382,11 +382,13 @@ public interface SearchClient
                   }
                   }
                   if (ctx._source.containsKey('classification')) {
-                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
-                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-                    }
-                    if (ctx._source.classification.containsKey('name')) {
-                      ctx._source.classification.name = params.newParentFQN;
+                    String classificationFQN = ctx._source.classification.fullyQualifiedName;
+                    if (classificationFQN != null &&
+                        (classificationFQN.equals(params.oldParentFQN) || classificationFQN.startsWith(params.oldParentFQN + '.'))) {
+                      ctx._source.classification.fullyQualifiedName = params.newParentFQN + classificationFQN.substring(params.oldParentFQN.length());
+                      if (ctx._source.classification.containsKey('name')) {
+                        ctx._source.classification.name = params.newParentFQN;
+                      }
                     }
                   }
                   if (ctx._source.containsKey('tags')) {

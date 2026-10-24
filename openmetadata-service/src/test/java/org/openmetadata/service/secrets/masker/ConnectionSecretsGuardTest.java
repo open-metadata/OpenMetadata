@@ -78,19 +78,30 @@ class ConnectionSecretsGuardTest {
   }
 
   @Test
-  void anotherUserNameIsANewEndpointToo() {
-    Map<String, Object> otherUser =
+  void aNewEndpointCannotKeepAnExternalSecretReference() {
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            guard(mysql("elsewhere.example:3306", "secret:/openmetadata/database/other/password")));
+  }
+
+  /** Changing a non-endpoint field keeps the same target, so the masked secret need not be re-entered. */
+  @Test
+  void aNonEndpointChangeKeepsTheMaskedSecret() {
+    Map<String, Object> filterChanged =
         Map.of(
             "type",
             "Mysql",
             "username",
-            "someone-else",
+            "openmetadata",
             "hostPort",
             "db.internal:3306",
+            "databaseFilterPattern",
+            Map.of("includes", java.util.List.of("sales")),
             "authType",
             Map.of("password", PASSWORD_MASK));
 
-    assertThrows(BadRequestException.class, () -> guard(otherUser));
+    assertDoesNotThrow(() -> guard(filterChanged));
   }
 
   private static void guard(Map<String, Object> incoming) {
