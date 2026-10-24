@@ -13,6 +13,7 @@
 Validator for table custom SQL Query test case
 """
 
+import numbers
 import traceback
 from typing import Any, cast
 
@@ -287,12 +288,12 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
-                if not isinstance(result, int):
+                if not isinstance(result, (int, numbers.Number)):
                     raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
                         "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
                     )
-                return result
+                return int(result)
             return cursor.fetchall()
         except Exception as exc:
             self.runner._session.rollback()  # pylint: disable=protected-access

@@ -4,7 +4,8 @@ Unit tests for BaseTableCustomSQLQueryValidator passed/failed row count logic
 
 import unittest
 from datetime import datetime
-from unittest.mock import Mock, patch
+from decimal import Decimal
+from unittest.mock import MagicMock, Mock, patch
 
 from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
     TableCustomSQLQueryValidator,
@@ -400,6 +401,58 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
         self.assertEqual(result.passedRows, 10)
         self.assertEqual(result.failedRows, 990)
+
+
+class TestTableCustomSQLQueryCountStrategyDecimal(unittest.TestCase):
+    """Regression tests: Snowflake returns COUNT(*) as decimal.Decimal, not int."""
+
+    def setUp(self):
+        self.mock_runner = Mock()
+        self.mock_test_case = Mock()
+        self.mock_test_case.parameterValues = []
+        self.mock_test_case.fullyQualifiedName = "test.case"
+        self.mock_test_case.dimensionColumns = None
+        self.mock_execution_date = int(datetime.now().timestamp())
+
+        self.validator = TableCustomSQLQueryValidator(
+            runner=self.mock_runner,
+            test_case=self.mock_test_case,
+            execution_date=self.mock_execution_date,
+        )
+
+    def test_count_strategy_accepts_decimal_and_returns_int(self):
+        """_run_results with COUNT strategy must accept Decimal and return int."""
+        from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
+            Strategy,
+        )
+
+        mock_cursor = MagicMock()
+        mock_cursor.scalar.return_value = Decimal("42")
+        self.mock_runner._session.execute.return_value = mock_cursor
+
+        result = self.validator._run_results(
+            "SELECT COUNT(*) FROM table_name WHERE col IS NULL",
+            strategy=Strategy.COUNT,
+        )
+
+        self.assertEqual(result, 42)
+        self.assertIsInstance(result, int)
+
+    def test_count_strategy_rejects_non_numeric(self):
+        """_run_results with COUNT strategy must still raise for non-numeric results."""
+        from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
+            Strategy,
+        )
+
+        mock_cursor = MagicMock()
+        mock_cursor.scalar.return_value = "not-a-number"
+        self.mock_runner._session.execute.return_value = mock_cursor
+
+        with self.assertRaises(ValueError):
+            self.validator._run_results(
+                "SELECT 'bad' FROM table_name",
+                strategy=Strategy.COUNT,
+            )
 
 
 if __name__ == "__main__":
