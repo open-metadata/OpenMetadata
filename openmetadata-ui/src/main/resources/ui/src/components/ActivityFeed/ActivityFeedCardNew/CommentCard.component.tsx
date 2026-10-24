@@ -15,7 +15,10 @@ import classNames from 'classnames';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import { ReactionOperation } from '../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../enums/reactions.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { Reaction, ReactionType } from '../../../generated/type/reaction';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
@@ -36,8 +39,45 @@ import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEdito
 import '../ActivityFeedTab/activity-feed-tab.less';
 import Reactions from '../Reactions/Reactions';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
+// In the thread panels a reply reads compactly, as in the Inbox: a small
+// avatar, no separator before the time, reactions close under the message and
+// no rule between replies.
+const getReplyLayout = (isThreadPanel?: boolean, isLastReply?: boolean) =>
+  isThreadPanel
+    ? {
+        root: 'd-flex items-start justify-start relative gap-3',
+        avatar: 'tw:shrink-0 tw:pt-0.5',
+        // Held to the row's width: an editor holding a long unbroken word
+        // would otherwise widen the reply past the card.
+        body: 'w-full tw:min-w-0',
+        avatarSize: 'xs' as const,
+        showSeparator: false,
+        reactions: 'tw:mt-1',
+        // Core icons that follow the theme, as in the Inbox.
+        reactionsVariant: ReactionsVariant.Pill,
+      }
+    : {
+        root: classNames(
+          'd-flex items-start justify-start relative reply-card gap-2',
+          { 'reply-card-border-bottom': !isLastReply }
+        ),
+        avatar: 'profile-picture',
+        body: 'w-full',
+        avatarSize: 'sm' as const,
+        showSeparator: true,
+        reactions: 'm-y-md',
+        reactionsVariant: ReactionsVariant.Default,
+      };
+
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
+);
+const CommentEditForm = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CommentComposer/CommentComposer').then((module) => ({
+      default: module.CommentEditForm,
+    }))
+  )
 );
 
 /**
@@ -74,6 +114,11 @@ interface CommentCardProps {
    * outside the activity feed have no second editor to close.
    */
   closeFeedEditor?: () => void;
+  /**
+   * In the activity thread panels: Edit / Delete sit in a menu, and the reply
+   * is edited in the comment edit form.
+   */
+  isThreadPanel?: boolean;
 }
 
 const CommentCard = ({
@@ -85,6 +130,7 @@ const CommentCard = ({
   onDelete,
   onReaction,
   closeFeedEditor,
+  isThreadPanel,
 }: CommentCardProps) => {
   // Unpacked once here so the rest of the component reads the same field names
   // regardless of which comment shape the caller handed over.
@@ -148,7 +194,27 @@ const CommentCard = ({
     [message]
   );
 
+  const handleFormSave = useCallback(
+    async (updatedMessage: string) => {
+      await onEdit(updatedMessage);
+      setIsEditPost(false);
+    },
+    [onEdit]
+  );
+
   const feedBodyRender = useMemo(() => {
+    if (isEditPost && isThreadPanel) {
+      return (
+        <div ref={editorRef}>
+          <CommentEditForm
+            message={message}
+            testId="edit-message"
+            onCancel={() => setIsEditPost(false)}
+            onSave={handleFormSave}
+          />
+        </div>
+      );
+    }
     if (isEditPost) {
       return (
         <div ref={editorRef}>
@@ -170,25 +236,27 @@ const CommentCard = ({
         markdown={getFrontEndFormat(message)}
       />
     );
-  }, [isEditPost, postMessage, handleSave]);
+  }, [
+    isEditPost,
+    isThreadPanel,
+    message,
+    defaultValue,
+    handleSave,
+    handleFormSave,
+  ]);
+
+  const layout = getReplyLayout(isThreadPanel, isLastReply);
 
   return (
-    <div
-      className={classNames(
-        'd-flex items-start justify-start relative reply-card gap-2',
-        {
-          'reply-card-border-bottom': !isLastReply,
-        }
-      )}
-      data-testid="feed-reply-card">
-      <div className="profile-picture">
+    <div className={layout.root} data-testid="feed-reply-card">
+      <div className={layout.avatar}>
         <UserPopOverCard userName={authorName}>
           <div className="d-flex items-center">
-            <ProfilePicture name={authorName} width="32" />
+            <ProfilePicture name={authorName} size={layout.avatarSize} />
           </div>
         </UserPopOverCard>
       </div>
-      <div className="w-full">
+      <div className={layout.body}>
         <div className="d-flex items-center gap-2 tw:justify-between">
           <div className="d-flex items-center gap-2 flex-wrap">
             <Typography className="activity-feed-user-name reply-card-user-name not-prose">
@@ -200,13 +268,15 @@ const CommentCard = ({
                 </Link>
               </UserPopOverCard>
             </Typography>
-            <Typography
-              className="m-b-xss"
-              color="secondary"
-              size="text-lg"
-              weight="bold">
-              {seperator}
-            </Typography>
+            {layout.showSeparator && (
+              <Typography
+                className="m-b-xss"
+                color="secondary"
+                size="text-lg"
+                weight="bold">
+                {seperator}
+              </Typography>
+            )}
             <Tooltip
               excludeTriggerFromTabOrder
               title={formatDateTime(createdAt)}>
@@ -221,6 +291,7 @@ const CommentCard = ({
           </div>
           <ActivityFeedActions
             isReply
+            asMenu={isThreadPanel}
             canDelete={canDelete}
             canEdit={canEdit}
             onDelete={onDelete}
@@ -230,11 +301,12 @@ const CommentCard = ({
         {feedBodyRender}
 
         {onReaction && (
-          <div className="m-y-md">
+          <div className={layout.reactions}>
             <div className="w-full" data-testid="feed-card-footer">
               <div className="d-flex items-center gap-2 w-full">
                 <Reactions
                   reactions={reactions ?? []}
+                  variant={layout.reactionsVariant}
                   onReactionSelect={onReaction}
                 />
               </div>

@@ -95,3 +95,7 @@ export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
 export const GLOBAL_BORDER = '#dde3ea';
+
+// The conversation drawers take 40% of the screen, but not so little that a
+// thread gets cramped on a narrow one.
+export const FEED_DRAWER_WIDTH = 'max(40vw, 480px)';

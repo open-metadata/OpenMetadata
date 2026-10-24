@@ -12,13 +12,18 @@
  */
 
 import { AvatarStack, Box, Button } from '@openmetadata/ui-core-components';
+import { MessageDotsCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { noop } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { PressEvent } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ThreadIcon } from '../../../../assets/svg/ic-reply-2.svg';
-import { ReactionOperation } from '../../../../enums/reactions.enum';
+import {
+  ReactionOperation,
+  ReactionsVariant,
+} from '../../../../enums/reactions.enum';
 import { ReactionType } from '../../../../generated/type/reaction';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
@@ -27,7 +32,66 @@ import Reactions from '../../Reactions/Reactions';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 const MAX_VISIBLE_AVATARS = 3;
-const AVATAR_SIZE = 20;
+
+const getReactionsVariant = (showReplyCount: boolean) =>
+  showReplyCount ? ReactionsVariant.Pill : ReactionsVariant.Default;
+
+// The Inbox footer's text button: a 16px icon in the reaction smiley's colour.
+const LABELLED_REPLY_CLASS =
+  'tw:px-2 tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover';
+
+// "Reply" while there are none, then how many: "1 Reply", "3 Replies".
+const getReplyCountLabel = (count: number, t: TFunction): string => {
+  if (!count) {
+    return t('label.reply');
+  }
+
+  return count === 1
+    ? t('label.one-reply')
+    : t('label.number-reply-plural', { number: count });
+};
+
+interface ReplyButtonProps {
+  count: number;
+  showCount: boolean;
+  onPress: (event: PressEvent) => void;
+}
+
+const ReplyButton = ({ count, showCount, onPress }: ReplyButtonProps) => {
+  const { t } = useTranslation();
+
+  // The labelled one (activity thread panels) is the Inbox's footer button:
+  // the core icon, coloured for the theme. The legacy SVG is dark in dark mode.
+  if (showCount) {
+    return (
+      <Button
+        className={LABELLED_REPLY_CLASS}
+        color="tertiary"
+        data-testid="reply-button"
+        iconLeading={<MessageDotsCircle data-icon data-testid="reply-count" />}
+        size="sm"
+        onPress={onPress}>
+        {getReplyCountLabel(count, t)}
+      </Button>
+    );
+  }
+
+  return (
+    <Button
+      aria-label={t('label.reply')}
+      className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
+      color="tertiary"
+      data-testid="reply-button"
+      iconLeading={
+        <ThreadIcon data-testid="reply-count" height={18} width={18} />
+      }
+      onPress={onPress}
+    />
+  );
+};
+
+// The stack's slot matches the `xs` avatar inside it.
+const AVATAR_SIZE = 24;
 
 function FeedCardFooterNew({
   conversation,
@@ -35,8 +99,9 @@ function FeedCardFooterNew({
   reply,
   isReply = false,
   isForFeedTab = false,
+  onReplyPress,
+  showReplyCount = false,
 }: Readonly<FeedCardFooterProps>) {
-  const { t } = useTranslation();
   const { showDrawer, updateReactions } = useActivityFeedProvider();
 
   const postLength = useMemo(
@@ -84,33 +149,37 @@ function FeedCardFooterNew({
   const handleRepliesPress = useCallback(
     (event: PressEvent) => {
       event.continuePropagation();
-      if (isForFeedTab) {
+      if (onReplyPress) {
+        onReplyPress();
+      } else if (isForFeedTab) {
         showReplies();
       }
     },
-    [isForFeedTab, showReplies]
+    [isForFeedTab, onReplyPress, showReplies]
   );
 
   return (
     <Box align="start" className={classNames({ 'm-y-md': isReply })}>
       <Box
-        className="footer-container tw:w-full"
+        // footer-container pins the row to 24px, which the labelled reply
+        // button's 40px hover outgrows.
+        className={showReplyCount ? 'tw:w-full' : 'footer-container tw:w-full'}
         data-testid="feed-card-footer"
         direction="col">
         <div>
           <Box align="center" className="w-full rounded-8" gap={2}>
-            {postLength > 0 && !isReply && (
+            {postLength > 0 && !isReply && !showReplyCount && (
               <AvatarStack
                 avatarSize={AVATAR_SIZE}
                 items={repliedUsers.map((user) => (
                   <Button
                     noTextPadding
-                    className="p-0 tw:h-10! tw:border tw:border-transparent"
+                    className="p-0 tw:rounded-full"
                     color="tertiary"
                     key={user}
                     onPress={handleRepliesPress}>
                     <UserPopOverCard userName={user}>
-                      <ProfilePicture name={user} width="20" />
+                      <ProfilePicture name={user} size="xs" />
                     </UserPopOverCard>
                   </Button>
                 ))}
@@ -120,23 +189,16 @@ function FeedCardFooterNew({
             )}
 
             {!isReply && (
-              <Button
-                aria-label={t('label.reply')}
-                className="p-0 flex-center tw:h-10! tw:border tw:border-transparent"
-                color="tertiary"
-                data-testid="reply-button"
-                iconLeading={
-                  <ThreadIcon
-                    data-testid="reply-count"
-                    height={18}
-                    width={18}
-                  />
-                }
+              <ReplyButton
+                count={postLength}
+                showCount={showReplyCount}
                 onPress={handleRepliesPress}
               />
             )}
             <Reactions
+              // The pill reactions draw core icons that follow the theme.
               reactions={(reply ?? conversation)?.reactions ?? []}
+              variant={getReactionsVariant(showReplyCount)}
               onReactionSelect={onReactionUpdate ?? noop}
             />
           </Box>

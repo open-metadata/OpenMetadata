@@ -22,6 +22,7 @@ import {
   getFrontEndFormat,
   MarkdownToHTMLConverter,
 } from '../../../../utils/FeedUtilsPure';
+import { INBOX_RECESSED_SURFACE_CLASS } from '../../../discovery/personal-space/InboxPage/inbox.utils';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
@@ -50,6 +51,13 @@ const ActivityOwnersFeed = withSuspenseFallback(
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
 );
+const CommentEditForm = withSuspenseFallback(
+  lazy(() =>
+    import('../../../common/CommentComposer/CommentComposer').then(
+      (module) => ({ default: module.CommentEditForm })
+    )
+  )
+);
 const ActivityTagsFeed = withSuspenseFallback(
   lazy(
     () =>
@@ -69,6 +77,7 @@ const FeedCardBodyNew = ({
   isForFeedTab,
   isFeedWidget,
   isActive,
+  isThreadPanel,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -173,6 +182,19 @@ const FeedCardBodyNew = ({
     return feedBodyStyleCardsRender;
   }, [isEditPost, message, feedBodyStyleCardsRender]);
 
+  if (isEditPost && isThreadPanel) {
+    return (
+      <div className="tw:mt-3 tw:min-w-0">
+        <CommentEditForm
+          message={message}
+          testId="edit-message"
+          onCancel={() => onEditCancel?.()}
+          onSave={async (updatedMessage) => onUpdate?.(updatedMessage)}
+        />
+      </div>
+    );
+  }
+
   return (
     <Card
       className={classNames(
@@ -185,7 +207,10 @@ const FeedCardBodyNew = ({
               'tw:max-h-100',
               isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
             ]
-          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide'
+          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide',
+        // In the thread panels the card shares the drawer's surface, so the
+        // message sits recessed into it, as the Inbox's does.
+        isThreadPanel && ['tw:border-transparent', INBOX_RECESSED_SURFACE_CLASS]
       )}>
       {feedBodyRender}
     </Card>
