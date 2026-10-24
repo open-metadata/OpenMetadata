@@ -652,7 +652,7 @@ snowflake-connector-python==4.7.3
 snowflake-snowpark-python==1.55.0
 snowflake-sqlalchemy==1.11.1
 sortedcontainers==2.4.0
-soupsieve==2.9.2
+soupsieve==2.10
 spython==0.3.14
 sqlalchemy-bigquery==1.17.2
 sqlalchemy-spanner==1.20.1
