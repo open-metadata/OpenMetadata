@@ -149,12 +149,28 @@ def get_end_of_day_timestamp_mill(
 
 
 def convert_timestamp(timestamp: str) -> int | float:
-    """convert timestamp to int
+    """Convert a timestamp string to a Unix timestamp (seconds).
+
+    Handles three input formats:
+    - ISO / human-readable datetime strings (e.g. '2023-04-04 13:53:13.042525'):
+      parsed via ``datetime.fromisoformat``; naive strings are assumed UTC.
+    - Numeric seconds strings (len < 13): returned as ``int``.
+    - Numeric milliseconds strings (len >= 13): divided by 1000 and returned as
+      ``float``.
+
     Args:
-        timestamp (str):
-    Retunrs:
-        int
+        timestamp (str): timestamp string in one of the supported formats.
+
+    Returns:
+        int | float: Unix timestamp in seconds.
     """
+    try:
+        dt = datetime.fromisoformat(timestamp)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=dt_timezone.utc)
+        return dt.timestamp()
+    except ValueError:
+        pass
     if len(timestamp) < 13:  # check for ms timestamp
         return int(timestamp)
     return float(timestamp) / 1000

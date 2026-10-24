@@ -11,11 +11,12 @@
 
 """test time utils"""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest import mock
 from unittest.mock import patch
 
 from metadata.utils.time_utils import (
+    convert_timestamp,
     get_beginning_of_day_timestamp_mill,
     get_end_of_day_timestamp_mill,
 )
@@ -33,3 +34,37 @@ def test_get_beginning_of_day_timestamp_mill(mock_dt):
 def test_get_end_of_day_timestamp_mill(mock_dt):
     mock_dt.now.return_value = NOW_UTC
     assert get_end_of_day_timestamp_mill() == 1668556799999
+
+
+# ---- convert_timestamp tests ----
+
+def test_convert_timestamp_iso_with_microseconds():
+    """Human-readable datetime string (the failing case) must parse correctly."""
+    # '2023-04-04 13:53:13.042525' is naive UTC
+    result = convert_timestamp("2023-04-04 13:53:13.042525")
+    expected = datetime(2023, 4, 4, 13, 53, 13, 42525, tzinfo=timezone.utc).timestamp()
+    assert result == expected
+
+
+def test_convert_timestamp_iso_t_separator():
+    """ISO 8601 string with T separator must parse correctly."""
+    result = convert_timestamp("2023-04-04T13:53:13")
+    expected = datetime(2023, 4, 4, 13, 53, 13, tzinfo=timezone.utc).timestamp()
+    assert result == expected
+
+
+def test_convert_timestamp_iso_with_timezone():
+    """Timezone-aware ISO string must be converted using its own offset."""
+    result = convert_timestamp("2023-04-04T13:53:13+00:00")
+    expected = datetime(2023, 4, 4, 13, 53, 13, tzinfo=timezone.utc).timestamp()
+    assert result == expected
+
+
+def test_convert_timestamp_numeric_seconds():
+    """Numeric seconds string (len < 13) must be returned as int."""
+    assert convert_timestamp("1680616393") == 1680616393
+
+
+def test_convert_timestamp_numeric_milliseconds():
+    """Numeric milliseconds string (len >= 13) must be divided by 1000."""
+    assert convert_timestamp("1680616393000") == 1680616393.0
