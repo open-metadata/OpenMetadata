@@ -31,10 +31,12 @@ import {
   formatThroughput,
   getAppRunFailureLogs,
   getEntityStatsData,
+  hasAppRunStats,
 } from '../../../../utils/ApplicationUtils';
 import { getLayoutGutter } from '../../../../utils/common/layout.utils';
 import { formatDateTimeWithTimezone } from '../../../../utils/date-time/DateTimeUtils';
 import AppBadge from '../../../common/Badge/Badge.component';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import Table from '../../../common/Table/TableV2';
 import './app-logs-viewer.less';
@@ -78,7 +80,7 @@ const CountBadge = ({
   </Badge>
 );
 
-const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
+const AppLogsViewer = ({ data, embedded = false }: AppLogsViewerProps) => {
   const { t } = useTranslation();
   const [showFailuresDrawer, setShowFailuresDrawer] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
@@ -620,6 +622,11 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
 
   return (
     <>
+      {embedded && !hasAppRunStats(data) && (
+        <Box className="tw:relative tw:min-h-40">
+          <NoDataPlaceholder title={t('message.no-data-available')} />
+        </Box>
+      )}
       {renderOverallStats(successContext?.stats?.jobStats)}
       {renderOverallStats(failureContext?.stats?.jobStats)}
 
@@ -673,8 +680,12 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
           <Button
             color="link-color"
             data-testid="view-logs-button"
-            onPress={() => setShowLogsModal(true)}>
-            {t('label.view-entity', { entity: t('label.log-plural') })}
+            onPress={() =>
+              setShowLogsModal((show) => (embedded ? !show : true))
+            }>
+            {embedded && showLogsModal
+              ? t('label.hide-log-plural')
+              : t('label.view-entity', { entity: t('label.log-plural') })}
           </Button>
         </Box>
       )}
@@ -696,12 +707,26 @@ const AppLogsViewer = ({ data }: AppLogsViewerProps) => {
         onClose={() => setShowFailuresDrawer(false)}
       />
 
-      <LogViewerModal
-        logs={failureLogs}
-        open={showLogsModal}
-        title={t('label.log-plural')}
-        onClose={() => setShowLogsModal(false)}
-      />
+      {embedded ? (
+        showLogsModal && (
+          <Box className="tw:mt-4">
+            <LogViewerModal
+              inline
+              open
+              logs={failureLogs}
+              title={t('label.log-plural')}
+              onClose={() => setShowLogsModal(false)}
+            />
+          </Box>
+        )
+      ) : (
+        <LogViewerModal
+          logs={failureLogs}
+          open={showLogsModal}
+          title={t('label.log-plural')}
+          onClose={() => setShowLogsModal(false)}
+        />
+      )}
     </>
   );
 };
