@@ -454,6 +454,22 @@ class TestTableCustomSQLQueryCountStrategyDecimal(unittest.TestCase):
                 strategy=Strategy.COUNT,
             )
 
+    def test_count_strategy_rejects_fractional_decimal(self):
+        """_run_results with COUNT strategy must raise for fractional Decimal values."""
+        from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
+            Strategy,
+        )
+
+        mock_cursor = MagicMock()
+        mock_cursor.scalar.return_value = Decimal("0.5")
+        self.mock_runner._session.execute.return_value = mock_cursor
+
+        with self.assertRaises(ValueError):
+            self.validator._run_results(
+                "SELECT 0.5 FROM table_name",
+                strategy=Strategy.COUNT,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

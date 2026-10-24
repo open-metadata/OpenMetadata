@@ -288,7 +288,9 @@ class TableCustomSQLQueryValidator(FailedSampleValidatorMixin, BaseTableCustomSQ
             )
             if strategy == Strategy.COUNT:
                 result = cursor.scalar()
-                if not isinstance(result, (int, numbers.Number)):
+                if not isinstance(result, (int, numbers.Number)) or (
+                    not isinstance(result, int) and result != int(result)
+                ):
                     raise ValueError(  # noqa: TRY301
                         f"When using COUNT strategy, the result must be an integer. Received: {type(result)}\n"
                         "Example: SELECT COUNT(*) FROM table_name WHERE my_value IS NOT NULL"
