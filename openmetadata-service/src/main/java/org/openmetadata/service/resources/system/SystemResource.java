@@ -522,6 +522,45 @@ public class SystemResource {
         .toList();
   }
 
+  @PUT
+  @Path("/settings/entityRulesSettings/rules/{ruleName}/enabled")
+  @Operation(
+      operationId = "toggleEntityRuleEnabled",
+      summary = "Toggle a Data Asset Rule's enabled flag",
+      description =
+          "Enable or disable a single semantics rule by name. Unlike a full-list PUT, this "
+              + "endpoint sends only the rule name and the new enabled state, so rules the "
+              + "caller never read are preserved. The write uses compare-and-set: if the stored "
+              + "entity rules setting changed since the server read it, the request fails with "
+              + "412 Precondition Failed instead of silently overwriting the newer value.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored setting changed since it was read")
+      })
+  public Response toggleEntityRuleEnabled(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to toggle", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @Parameter(
+              description = "New enabled state (true or false)",
+              schema = @Schema(type = "boolean"))
+          boolean enabled) {
+    authorizer.authorizeAdmin(securityContext);
+    Response response = systemRepository.toggleEntityRuleEnabled(ruleName, enabled);
+    return forResponse(response);
+  }
+
   @GET
   @Path("/search/nlq")
   @Operation(
