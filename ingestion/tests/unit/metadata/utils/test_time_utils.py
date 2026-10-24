@@ -48,7 +48,11 @@ from datetime import datetime, timedelta, timezone  # noqa: E402
 
 import pytest  # noqa: E402
 
-from metadata.utils.time_utils import datetime_to_timestamp, utc_from_timestamp  # noqa: E402
+from metadata.utils.time_utils import (  # noqa: E402
+    convert_timestamp,
+    datetime_to_timestamp,
+    utc_from_timestamp,
+)
 
 
 @pytest.mark.parametrize(
@@ -103,3 +107,31 @@ def test_datetime_to_timestamp(datetime_value, milliseconds, expected_timestamp)
 )
 def test_datetime_to_timestamp_honors_fold(datetime_value, timezone_str, expected_timestamp):
     assert datetime_to_timestamp(datetime_value, timezone_str=timezone_str) == expected_timestamp
+
+
+@pytest.mark.parametrize(
+    "timestamp_str, expected_seconds",
+    [
+        # Human-readable datetime string (space separator) — treated as UTC naive
+        ("2023-02-01 05:00:00", datetime(2023, 2, 1, 5, 0, 0, tzinfo=timezone.utc).timestamp()),
+        # ISO-T datetime string (no timezone) — treated as UTC naive
+        ("2023-02-01T05:00:00", datetime(2023, 2, 1, 5, 0, 0, tzinfo=timezone.utc).timestamp()),
+        # ISO-T datetime string with UTC offset
+        (
+            "2023-02-01T05:00:00+00:00",
+            datetime(2023, 2, 1, 5, 0, 0, tzinfo=timezone.utc).timestamp(),
+        ),
+        # Numeric seconds timestamp (< 13 chars) — returned as int
+        ("1675227600", 1675227600),
+        # Numeric milliseconds timestamp (13+ chars) — divided by 1000
+        ("1675227600000", 1675227600.0),
+    ],
+)
+def test_convert_timestamp(timestamp_str, expected_seconds):
+    result = convert_timestamp(timestamp_str)
+    assert result == pytest.approx(expected_seconds, abs=1)
+
+
+def test_convert_timestamp_invalid_raises():
+    with pytest.raises((ValueError, TypeError)):
+        convert_timestamp("not-a-timestamp")
