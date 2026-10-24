@@ -10,6 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { deepClone } from 'fast-json-patch';
+import { http, HttpResponse } from 'msw';
+import { UpdateColumn } from '../../../generated/api/data/updateColumn';
 import { Paging } from '../../../generated/type/paging';
 import {
   Column,
@@ -17,6 +20,7 @@ import {
   Table,
   TableType,
 } from '../../../generated/entity/data/table';
+import { worker } from '../msw';
 
 export const TABLE_FQN = 'sample_data.ecommerce_db.shopify.orders';
 
@@ -73,4 +77,67 @@ export const pageOf = (
       total,
     },
   };
+};
+
+/** The columns of one table/data model as the server holds them, and each column write. */
+export interface ColumnServer {
+  current: () => Column[];
+  /** Each `PUT /columns/name/{fqn}` the page sent, in order. */
+  updates: { fqn: string; body: UpdateColumn }[];
+}
+
+/**
+ * Serves `/api/v1/<parent>/name/:fqn/columns` (paged like ChildFieldPageReader)
+ * and `PUT /api/v1/columns/name/:fqn`, which updates only the fields sent and
+ * clears a blank displayName/description (ColumnRepository.updateColumn).
+ */
+export const serveColumns = (
+  parent: string,
+  columns: Column[]
+): ColumnServer => {
+  let stored = deepClone(columns) as Column[];
+  const server: ColumnServer = { current: () => stored, updates: [] };
+  const blankToUndefined = (value?: string) =>
+    value === undefined || value.trim() ? value : undefined;
+
+  worker.use(
+    http.get(`/api/v1/${parent}/name/:fqn/columns`, ({ request }) => {
+      const params = new URL(request.url).searchParams;
+
+      return HttpResponse.json(
+        pageOf(stored, {
+          offset: Number(params.get('offset') ?? 0),
+          limit: Number(params.get('limit') ?? 50),
+        })
+      );
+    }),
+    http.put('/api/v1/columns/name/:fqn', async ({ request, params }) => {
+      const fqn = String(params.fqn);
+      const body = (await request.json()) as UpdateColumn;
+      server.updates.push({ fqn, body });
+      stored = stored.map((column) => {
+        if (column.fullyQualifiedName !== fqn) {
+          return column;
+        }
+        const updated = { ...column };
+        if (body.displayName !== undefined) {
+          updated.displayName = blankToUndefined(body.displayName);
+        }
+        if (body.description !== undefined) {
+          updated.description = blankToUndefined(body.description);
+        }
+        if (body.tags !== undefined) {
+          updated.tags = body.tags as Column['tags'];
+        }
+
+        return updated;
+      });
+
+      return HttpResponse.json(
+        stored.find((column) => column.fullyQualifiedName === fqn)
+      );
+    })
+  );
+
+  return server;
 };

@@ -13,10 +13,13 @@
 import { http, HttpResponse } from 'msw';
 import { worker } from '../msw';
 
-type Doc = { id: string; name: string; displayName?: string } & Record<
-  string,
-  unknown
->;
+/** Any entity-shaped document; generated entity types fit as they are. */
+type Doc = {
+  id?: string;
+  name: string;
+  displayName?: string;
+  fullyQualifiedName?: string;
+};
 
 /** Index alias as the UI sends it (`SearchIndex`, e.g. `user`, `team`) → documents. */
 export type SearchCorpus = Partial<Record<string, Doc[]>>;
@@ -27,6 +30,7 @@ const matches = (doc: Doc, q: string) => {
   return (
     !term ||
     doc.name.toLowerCase().includes(term) ||
+    (doc.fullyQualifiedName ?? '').toLowerCase().includes(term) ||
     (doc.displayName ?? '').toLowerCase().includes(term)
   );
 };
