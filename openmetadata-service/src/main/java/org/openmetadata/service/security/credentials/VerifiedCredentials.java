@@ -38,7 +38,7 @@ record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos) {
    */
   VerifiedCredentials reconfirmedAt(SourceFingerprint fingerprint, long stampNanos) {
     boolean unchanged = fingerprint.equals(record.fingerprint());
-    return unchanged && stampNanos > verifiedAtNanos
+    return unchanged && isLater(stampNanos, verifiedAtNanos)
         ? new VerifiedCredentials(record, stampNanos)
         : this;
   }
@@ -48,6 +48,14 @@ record VerifiedCredentials(CredentialRecord record, long verifiedAtNanos) {
    * stamp; on a tie the existing entry stays.
    */
   static VerifiedCredentials newer(VerifiedCredentials existing, VerifiedCredentials candidate) {
-    return candidate.verifiedAtNanos > existing.verifiedAtNanos ? candidate : existing;
+    return isLater(candidate.verifiedAtNanos, existing.verifiedAtNanos) ? candidate : existing;
+  }
+
+  /**
+   * Stamps follow the {@link System#nanoTime} contract: only differences are meaningful, so a
+   * reading that wrapped past {@code Long.MAX_VALUE} is still later than one taken just before.
+   */
+  private static boolean isLater(long stampNanos, long thanNanos) {
+    return stampNanos - thanNanos > 0;
   }
 }

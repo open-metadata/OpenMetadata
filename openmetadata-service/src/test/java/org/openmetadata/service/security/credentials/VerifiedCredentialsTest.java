@@ -15,6 +15,7 @@ package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,21 @@ class VerifiedCredentialsTest {
     assertSame(entry, entry.reconfirmedAt(SourceFingerprint.ABSENT, 200L));
     assertSame(entry, entry.reconfirmedAt(FINGERPRINT, 100L));
     assertSame(entry, entry.reconfirmedAt(FINGERPRINT, 50L));
+  }
+
+  @Test
+  void stampsThatCrossLongMaxValueStillOrderByElapsedTime() {
+    long beforeWrap = Long.MAX_VALUE - 10;
+    long afterWrap = beforeWrap + 20;
+    assertTrue(afterWrap < beforeWrap, "the raw longs order the wrong way once the clock wraps");
+    VerifiedCredentials early = entryAt(beforeWrap);
+    VerifiedCredentials late = entryAt(afterWrap);
+
+    assertSame(late, VerifiedCredentials.newer(early, late));
+    assertSame(late, VerifiedCredentials.newer(late, early));
+    assertEquals(afterWrap, early.reconfirmedAt(FINGERPRINT, afterWrap).verifiedAtNanos());
+    assertSame(late, late.reconfirmedAt(FINGERPRINT, beforeWrap));
+    assertEquals(20L, early.ageNanos(afterWrap));
   }
 
   @Test
