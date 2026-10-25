@@ -417,7 +417,7 @@ export const ContractSchemaFormTab: React.FC<{
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
-        render: (_, record: Column) => (
+        render: (_: unknown, record: Column) => (
           <Typography className="schema-table-name tw:text-primary">
             {getEntityName(record)}
           </Typography>
