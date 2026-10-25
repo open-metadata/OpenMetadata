@@ -104,6 +104,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.auth.UserTokenCache;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TeamHierarchyResolver;
@@ -361,6 +362,16 @@ public class UserRepository extends EntityRepository<User> {
     }
 
     store(user, update);
+    // A new user has no other stored credential, so only a JWT mechanism is worth a hint;
+    // storeEntities
+    // (bulk import) skips it because one hint per row would publish one Redis message per row.
+    if (!update && carriesJwt(user.getAuthenticationMechanism())) {
+      Credentials.changed(user.getName());
+    }
+  }
+
+  private static boolean carriesJwt(AuthenticationMechanism mechanism) {
+    return mechanism != null && mechanism.getAuthType() == AuthenticationMechanism.AuthType.JWT;
   }
 
   @Override
@@ -610,6 +621,10 @@ public class UserRepository extends EntityRepository<User> {
 
   protected void entitySpecificCleanup(User entityInterface) {
     TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), USER);
+    CollectionDAO transactionDAO = RepositoryTransactionContext.currentDAO();
+    (transactionDAO == null ? daoCollection : transactionDAO)
+        .getTokenDAO()
+        .deleteAllForUser(entityInterface.getId());
   }
 
   /* Validate if the user is already part of the given team */
@@ -1689,6 +1704,7 @@ public class UserRepository extends EntityRepository<User> {
     super.postDelete(entity, hardDelete);
     JwtFilter.invalidateResolvedEmailIdentity(entity.getEmail());
     revokeLiveSessions(entity);
+    Credentials.changed(entity.getName());
     if (hardDelete) {
       // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
       userPreferencesRepository.delete(entity.getId());
@@ -1723,6 +1739,7 @@ public class UserRepository extends EntityRepository<User> {
           } else {
             UserTokenCache.reloadToken(userName);
           }
+          Credentials.changed(userName);
         });
   }
 
@@ -2187,6 +2204,14 @@ public class UserRepository extends EntityRepository<User> {
           true);
     }
 
+    private static boolean storedMechanismChanged(
+        AuthenticationMechanism original, AuthenticationMechanism updated) {
+      if (original == null || updated == null) {
+        return original != null || updated != null;
+      }
+      return !JsonUtils.areEquals(original, updated);
+    }
+
     private void updateAuthenticationMechanism(User original, User updated) {
       AuthenticationMechanism origAuthMechanism = original.getAuthenticationMechanism();
       AuthenticationMechanism updatedAuthMechanism = updated.getAuthenticationMechanism();
@@ -2204,6 +2229,9 @@ public class UserRepository extends EntityRepository<User> {
           && updatedAuthMechanism != null
           && !JsonUtils.areEquals(origAuthMechanism, updatedAuthMechanism)) {
         recordChange(AUTH_MECHANISM_FIELD, "old-encrypted-value", "new-encrypted-value");
+      }
+      if (storedMechanismChanged(origAuthMechanism, updatedAuthMechanism)) {
+        Credentials.changed(updated.getName());
       }
     }
   }

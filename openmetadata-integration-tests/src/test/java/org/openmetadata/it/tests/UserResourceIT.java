@@ -82,6 +82,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.TokenUtil;
 
 /**
  * Integration tests for User entity operations.
@@ -3072,6 +3073,68 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     restoreEntity(owner.getId().toString());
 
     assertEquals(owner.getId(), getLoggedInUser(patClient).getId());
+  }
+
+  @Test
+  void test_hardDelete_removesTokenRows(TestNamespace ns) {
+    User owner = createRegularUser(ns, "pathard");
+    createPersonalAccessToken(clientFor(owner), ns.prefix("pat"));
+    Entity.getTokenRepository()
+        .insertToken(TokenUtil.getEmailVerificationToken(owner.getId(), UUID.randomUUID()));
+    assertEquals(2, tokenRowCount(owner));
+
+    hardDeleteEntity(owner.getId().toString());
+
+    assertEquals(0, tokenRowCount(owner));
+  }
+
+  @Test
+  void test_revokePat_onlyDeletesTheCallersTokens(TestNamespace ns) {
+    OpenMetadataClient attacker = clientFor(createRegularUser(ns, "patattacker"));
+    OpenMetadataClient victim = clientFor(createRegularUser(ns, "patvictim"));
+    PersonalAccessToken victimPat = createPersonalAccessToken(victim, ns.prefix("pat"));
+    OpenMetadataClient victimPatClient = clientWithToken(victimPat.getJwtToken());
+    assertNotNull(getLoggedInUser(victimPatClient));
+
+    attacker
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + victimPat.getToken() + "\"]}");
+
+    assertNotNull(getLoggedInUser(victimPatClient));
+    String listed =
+        victim.getHttpClient().executeForString(HttpMethod.GET, "/v1/users/security/token", null);
+    assertTrue(listed.contains(victimPat.getToken().toString()), listed);
+  }
+
+  @Test
+  void test_revokePat_withoutIdsDeletesNothing(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patnoids"));
+    OpenMetadataClient first =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat1")).getJwtToken());
+    OpenMetadataClient second =
+        clientWithToken(createPersonalAccessToken(owner, ns.prefix("pat2")).getJwtToken());
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/users/security/token/revoke?removeAll=false", "{\"tokenIds\":[]}");
+
+    assertNotNull(getLoggedInUser(first));
+    assertNotNull(getLoggedInUser(second));
+  }
+
+  private static int tokenRowCount(User user) {
+    return Entity.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM user_tokens WHERE userid = :id")
+                    .bind("id", user.getId().toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   /**

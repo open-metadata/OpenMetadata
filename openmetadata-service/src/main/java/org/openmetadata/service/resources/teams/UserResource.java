@@ -1994,12 +1994,10 @@ public class UserResource extends EntityResource<User, UserRepository> {
         user.getName(),
         () -> {
           if (removeAll) {
-            tokenRepository.deleteTokenByUserAndType(
-                user.getId(), TokenType.PERSONAL_ACCESS_TOKEN.value());
+            tokenRepository.revokeAllPersonalAccessTokens(user.getName(), user.getId());
           } else {
-            List<String> ids =
-                request.getTokenIds().stream().map(UUID::toString).collect(Collectors.toList());
-            tokenRepository.deleteAllToken(ids);
+            tokenRepository.revokePersonalAccessTokens(
+                user.getName(), user.getId(), request.getTokenIds());
           }
           return null;
         });
@@ -2055,7 +2053,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       UserTokenCache.mutateToken(
           user.getName(),
           () -> {
-            tokenRepository.insertToken(personalAccessToken);
+            tokenRepository.insertPersonalAccessToken(user.getName(), personalAccessToken);
             return null;
           });
       return Response.status(Response.Status.OK).entity(personalAccessToken).build();
