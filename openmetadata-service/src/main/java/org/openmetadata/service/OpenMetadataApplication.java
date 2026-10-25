@@ -199,6 +199,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
+import org.openmetadata.service.security.credentials.CredentialVerifier;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
@@ -433,6 +435,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register Authorizer
     registerAuthorizer(catalogConfig, environment);
+
+    startCredentialVerifier(catalogConfig, environment);
 
     // Register Authenticator
     registerAuthenticator(SecurityConfigurationManager.getInstance());
@@ -736,6 +740,26 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       LOG.info(
           "Configured ServletHandler to allow ambiguous URIs (required for %2F, %22 in paths)");
     }
+  }
+
+  /**
+   * Shadow mode: the verifier runs and is health-checked, but requests are still authenticated by
+   * the legacy path. The ops CLI never reaches here, so it installs none.
+   */
+  private void startCredentialVerifier(
+      OpenMetadataApplicationConfig catalogConfig, Environment environment) {
+    CredentialVerifier verifier =
+        CredentialVerifier.create(
+            catalogConfig
+                .getCredentialVerification()
+                .forPool(catalogConfig.getDataSourceFactory().getMaxSize()),
+            jdbi,
+            SecretsManagerFactory::getSecretsManager,
+            List.of());
+    verifier.start();
+    Credentials.install(verifier);
+    environment.lifecycle().manage(verifier);
+    environment.healthChecks().register("credential-verifier", verifier.healthCheck());
   }
 
   /**

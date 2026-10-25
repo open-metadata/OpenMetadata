@@ -15,14 +15,31 @@ package org.openmetadata.service.security.credentials;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.dropwizard.configuration.ConfigurationException;
+import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
+import io.dropwizard.configuration.YamlConfigurationFactory;
 import io.dropwizard.jackson.Jackson;
+import io.dropwizard.util.Duration;
+import jakarta.validation.Validation;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.events.AuditExcludeFilterFactory;
+import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
+import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 
 class CredentialVerificationConfigTest {
   private static final ObjectMapper YAML = Jackson.newObjectMapper(new YAMLFactory());
@@ -138,5 +155,106 @@ class CredentialVerificationConfigTest {
         }) {
       assertTrue(message(field + ": 0s").contains(field), field);
     }
+  }
+
+  @Test
+  void shippedYamlBlockWithNoEnvVarsEqualsDefaults() throws Exception {
+    assertEquals(
+        CredentialVerificationConfig.defaults(),
+        parseShipped(shippedWithBlock(null)).getCredentialVerification());
+  }
+
+  @Test
+  void overrideBlockParsesToTheOverriddenValues() throws Exception {
+    CredentialVerificationConfig config =
+        parseShipped(
+                shippedWithBlock(
+                    "credentialVerification:\n  maxStaleness: 1s\n  sweepInterval: 100ms\n  loadTimeout: 500ms\n"))
+            .getCredentialVerification();
+
+    assertEquals(Duration.seconds(1), config.maxStaleness());
+    assertEquals(Duration.milliseconds(100), config.sweepInterval());
+    assertEquals(Duration.milliseconds(500), config.missRefreshMinAge());
+  }
+
+  @Test
+  void invalidBlockFailsNamingTheBlock() {
+    ConfigurationException failure =
+        assertThrows(
+            ConfigurationException.class,
+            () ->
+                parseShipped(
+                    shippedWithBlock(
+                        "credentialVerification:\n  maxStaleness: 3s\n  sweepInterval: 2s\n")));
+
+    assertTrue(failure.getMessage().contains("credentialVerification:"), failure.getMessage());
+  }
+
+  @Test
+  void absentBlockGivesDefaults() throws Exception {
+    assertEquals(
+        CredentialVerificationConfig.defaults(),
+        parseShipped(shippedWithBlock("")).getCredentialVerification());
+  }
+
+  @Test
+  void forPoolLowersReadsToHalfASmallPool() {
+    assertEquals(
+        5, CredentialVerificationConfig.defaults().forPool(10).maxConcurrentRequestReads());
+  }
+
+  @Test
+  void forPoolKeepsReadsWhenThePoolIsLarge() {
+    CredentialVerificationConfig defaults = CredentialVerificationConfig.defaults();
+
+    assertSame(defaults, defaults.forPool(100));
+    assertEquals(16, defaults.forPool(100).maxConcurrentRequestReads());
+  }
+
+  @Test
+  void forPoolNeverGoesBelowOne() {
+    assertEquals(1, CredentialVerificationConfig.defaults().forPool(1).maxConcurrentRequestReads());
+    assertEquals(1, CredentialVerificationConfig.defaults().forPool(0).maxConcurrentRequestReads());
+  }
+
+  @Test
+  void forPoolKeepsEveryOtherKnob() {
+    CredentialVerificationConfig lowered = CredentialVerificationConfig.defaults().forPool(10);
+
+    assertEquals(
+        new CredentialVerificationConfig(null, null, null, null, 5, null, null, null, null),
+        lowered);
+  }
+
+  private static final Path SHIPPED_CONFIG = Path.of("../conf/openmetadata.yaml");
+  private static final String BLOCK_START = "\ncredentialVerification:";
+
+  private static String shippedWithBlock(String replacement) throws IOException {
+    String yaml = Files.readString(SHIPPED_CONFIG);
+    int start = yaml.indexOf(BLOCK_START);
+    assertTrue(start >= 0, "conf/openmetadata.yaml has no credentialVerification block");
+    String tail = replacement == null ? yaml.substring(start) : "\n" + replacement;
+    return yaml.substring(0, start) + tail;
+  }
+
+  private static OpenMetadataApplicationConfig parseShipped(String yaml)
+      throws IOException, ConfigurationException {
+    var mapper = Jackson.newObjectMapper();
+    mapper.registerSubtypes(
+        AuditExcludeFilterFactory.class,
+        AuditOnlyFilterFactory.class,
+        SwitchableEventLayoutFactory.class,
+        SwitchableAccessLayoutFactory.class);
+    var factory =
+        new YamlConfigurationFactory<>(
+            OpenMetadataApplicationConfig.class,
+            Validation.buildDefaultValidatorFactory().getValidator(),
+            mapper,
+            "dw");
+    return factory.build(
+        new SubstitutingSourceProvider(
+            path -> new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)),
+            new EnvironmentVariableSubstitutor(false, true)),
+        "inline.yaml");
   }
 }

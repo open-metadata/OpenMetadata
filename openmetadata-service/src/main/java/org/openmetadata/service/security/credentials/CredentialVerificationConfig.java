@@ -73,6 +73,27 @@ public record CredentialVerificationConfig(
     return new CredentialVerificationConfig(null, null, null, null, null, null, null, null, null);
   }
 
+  /**
+   * This config with {@code maxConcurrentRequestReads} lowered to half the database pool, so
+   * credential reads on request threads can never fill a small pool.
+   */
+  public CredentialVerificationConfig forPool(int poolMaxSize) {
+    int cap = Math.max(1, poolMaxSize / 2);
+    if (maxConcurrentRequestReads <= cap) {
+      return this;
+    }
+    return new CredentialVerificationConfig(
+        maxStaleness,
+        sweepInterval,
+        missRefreshMinAge,
+        loadTimeout,
+        cap,
+        idleExpiry,
+        maxSubjects,
+        batchSize,
+        deepVerifyInterval);
+  }
+
   public long maxStalenessNanos() {
     return maxStaleness.toNanoseconds();
   }

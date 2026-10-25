@@ -21,6 +21,7 @@ import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Ticker;
 import com.google.common.collect.Lists;
 import io.dropwizard.lifecycle.Managed;
+import io.micrometer.core.instrument.Metrics;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +45,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Jdbi;
+import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.security.AuthenticationException;
 import org.openmetadata.service.security.credentials.CredentialMetrics.EvictionCause;
 import org.openmetadata.service.security.credentials.CredentialMetrics.NudgeOutcome;
@@ -115,6 +119,20 @@ public final class CredentialVerifier implements Managed {
   /** Called on the thread that installed a re-read showing {@code subject} lost digests. */
   public interface RevocationListener {
     void revoked(CredentialSubject subject, Collection<TokenDigest> removed);
+  }
+
+  /** Builds the one production verifier, over the global meter registry like the cache bundle. */
+  public static CredentialVerifier create(
+      CredentialVerificationConfig config,
+      Jdbi jdbi,
+      Supplier<SecretsManager> secretsManager,
+      List<RevocationListener> revocationListeners) {
+    return new CredentialVerifier(
+        config,
+        new JdbiCredentialSource(jdbi, secretsManager, config),
+        Ticker.systemTicker(),
+        new CredentialMetrics(Metrics.globalRegistry),
+        revocationListeners);
   }
 
   CredentialVerifier(
