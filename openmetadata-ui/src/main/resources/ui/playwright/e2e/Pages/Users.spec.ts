@@ -1263,8 +1263,7 @@ test.describe('User Profile Persona Interactions', () => {
     await test.step('Navigate to persona page by clicking on default persona chip', async () => {
       const defaultPersonaChip = adminPage
         .getByTestId('default-persona-chip')
-        .getByTestId('tag-chip')
-        .first();
+        .getByTestId('tag-chip');
       const personaLink = defaultPersonaChip.locator('a').first();
 
       // Verify the persona link has text content

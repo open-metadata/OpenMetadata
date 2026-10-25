@@ -291,6 +291,29 @@ describe('TaskFeedCardFromTask', () => {
     expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
   });
 
+  it('opens the task replies and lets the click select the card', async () => {
+    const showTaskDrawer = jest.fn();
+    const onTaskClick = jest.fn();
+    (useActivityFeedProvider as jest.Mock).mockReturnValue({
+      setActiveTask: jest.fn(),
+      showTaskDrawer,
+    });
+
+    await act(async () => {
+      render(
+        <TaskFeedCardFromTask task={MOCK_TASK} onTaskClick={onTaskClick} />,
+        {
+          wrapper: MemoryRouter,
+        }
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reply' }));
+
+    expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
+    expect(onTaskClick).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
   it('approves and rejects an assigned task through the Task V2 API', async () => {
     const assignedTask: Task = {
       ...MOCK_TASK,

@@ -46,7 +46,7 @@ const renderBody = () =>
     />
   );
 
-const expectPreviewShown = async (content: HTMLElement) => {
+const expectPreviewShown = (content: HTMLElement) => {
   expect(screen.queryByTestId('feed-message-skeleton')).not.toBeInTheDocument();
   expect(content.parentElement).not.toHaveClass('tw:hidden');
 };
@@ -57,7 +57,7 @@ describe('FeedCardBodyNew message preview', () => {
 
     renderBody();
 
-    await expectPreviewShown(await screen.findByText('Rendered description'));
+    expectPreviewShown(await screen.findByText('Rendered description'));
   });
 
   it('replaces the skeleton when the preview renders only an image', async () => {
@@ -65,7 +65,7 @@ describe('FeedCardBodyNew message preview', () => {
 
     renderBody();
 
-    await expectPreviewShown(await screen.findByTestId('preview-image'));
+    expectPreviewShown(await screen.findByTestId('preview-image'));
   });
 
   it('keeps the skeleton while the preview is empty and swaps once it fills in', async () => {
@@ -81,6 +81,6 @@ describe('FeedCardBodyNew message preview', () => {
       jest.advanceTimersByTime(100);
     });
 
-    await expectPreviewShown(await screen.findByText('Late description'));
+    expectPreviewShown(await screen.findByText('Late description'));
   });
 });

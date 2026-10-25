@@ -29,6 +29,10 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useMemo } from 'react';
+import {
+  ButtonProps as AriaButtonProps,
+  PressEvent,
+} from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-close-task.svg';
@@ -349,6 +353,16 @@ const TaskFeedCardFromTask = ({
     showTaskDrawer?.(task);
   }, [showTaskDrawer, task]);
 
+  // The press must keep bubbling so the card also selects the task, as the
+  // reply icon did before. ButtonUtility does not declare onPress, so it is
+  // passed as typed react-aria props.
+  const replyPressProps: Pick<AriaButtonProps, 'onPress'> = {
+    onPress: (event: PressEvent) => {
+      event.continuePropagation();
+      showReplies();
+    },
+  };
+
   const commentsCount = task.comments?.length ?? 0;
 
   // Kept as a closure so the footer's own branching (reply count, edit
@@ -368,7 +382,7 @@ const TaskFeedCardFromTask = ({
             data-testid="task-reply-button"
             icon={Comment}
             size="sm"
-            onClick={showReplies}
+            {...replyPressProps}
           />
           {commentsCount > 0 ? (
             <Button
