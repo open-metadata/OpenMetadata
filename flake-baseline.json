@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-24T03:19:43Z",
+  "generatedAt": "2026-10-25T03:28:13Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "38502607895",
-      "sourceSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
-      "recordedAt": "2026-10-14T03:40:35Z"
-    },
     {
       "runId": "38842001693",
       "sourceSha": "86d6c73df087d49d5d77fe5ccc6785ab8d45034a",
@@ -53,6 +48,11 @@
       "runId": "40055442895",
       "sourceSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
       "recordedAt": "2026-10-24T03:19:43Z"
+    },
+    {
+      "runId": "40155676742",
+      "sourceSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "recordedAt": "2026-10-25T03:28:13Z"
     }
   ],
   "entries": {
@@ -66,16 +66,6 @@
       "lastSeenSha": "1fe0f038adb7a005571de9879af2ad56833f43e3",
       "hardFailure": false
     },
-    "Basic :: Features/DescriptionSuggestion.spec.ts :: Description Task Workflows \u203a should add and accept a requested table description": {
-      "observations": [
-        "38502607895"
-      ],
-      "project": "Basic",
-      "file": "Features/DescriptionSuggestion.spec.ts",
-      "title": "Description Task Workflows \u203a should add and accept a requested table description",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
-      "hardFailure": false
-    },
     "Basic :: Features/LandingPageWidgets/LandingPageContextCenter.spec.ts :: Landing page Context Center \u203a says how many pages changed this week": {
       "observations": [
         "39713219915"
@@ -86,24 +76,15 @@
       "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
       "hardFailure": false
     },
-    "Basic :: Features/LandingPageWidgets/LandingPageDataEstate.spec.ts :: Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen": {
-      "observations": [
-        "38502607895"
-      ],
-      "project": "Basic",
-      "file": "Features/LandingPageWidgets/LandingPageDataEstate.spec.ts",
-      "title": "Landing page data estate \u203a widening the range refetches the window and keeps the estate on screen",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
-      "hardFailure": false
-    },
     "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges": {
       "observations": [
-        "40055442895"
+        "40055442895",
+        "40155676742"
       ],
       "project": "Basic",
       "file": "Pages/Lineage/LineageLargeResponse.spec.ts",
       "title": "Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
-      "lastSeenSha": "5cbc32a8c916ac86f7f343fd99c73bbcd5398dd0",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": false
     },
     "Basic :: Pages/UserCreationWithPersona.spec.ts :: Create user with persona \u203a Create user with persona and verify on profile": {
@@ -138,7 +119,6 @@
     },
     "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service": {
       "observations": [
-        "38502607895",
         "39091104477"
       ],
       "project": "ImportExport",
@@ -177,25 +157,26 @@
       "lastSeenSha": "db2643864be8a6a12403d264c69cc3f1301b16df",
       "hardFailure": false
     },
-    "chromium :: Features/CuratedAssets.spec.ts :: Curated Assets Widget \u203a Test Stored Procedures with display name filter": {
+    "chromium :: Features/ContextCenterArticles.spec.ts :: Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card": {
       "observations": [
-        "38502607895"
+        "40155676742"
       ],
       "project": "chromium",
-      "file": "Features/CuratedAssets.spec.ts",
-      "title": "Curated Assets Widget \u203a Test Stored Procedures with display name filter",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
-      "hardFailure": false
+      "file": "Features/ContextCenterArticles.spec.ts",
+      "title": "Context Center Articles \u203a Quick link lifecycle validates, creates, edits, and deletes from card",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
     },
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly": {
       "observations": [
         "39091104477",
-        "39713219915"
+        "39713219915",
+        "40155676742"
       ],
       "project": "chromium",
       "file": "Features/DataQuality/TestLibrary.spec.ts",
       "title": "Test Library \u203a should display test platform badges correctly",
-      "lastSeenSha": "0b68d6b781b00e9341b52f6b5eb257e3bf41ce68",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": false
     },
     "chromium :: Features/GlobalPageSize.spec.ts :: Table & Data Model columns table pagination \u203a Page size should persist across different pages": {
@@ -216,6 +197,36 @@
       "file": "Features/OntologyNativeStudio.spec.ts",
       "title": "Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell",
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
+      "hardFailure": true
+    },
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Features/SampleDataDomainDataProduct.spec.ts",
+      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct exists under TestDomain",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Features/SampleDataDomainDataProduct.spec.ts",
+      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDataProduct shows correct details and domain association",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Features/SampleDataDomainDataProduct.spec.ts :: Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Features/SampleDataDomainDataProduct.spec.ts",
+      "title": "Sample Data Domain and Data Product Validation \u203a Verify TestDomain exists from sample data ingestion",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
       "hardFailure": true
     },
     "chromium :: Features/Table.spec.ts :: Large Table Column Search & Copy Link \u203a Opening and closing a column detail panel on page 2 keeps the columns list on page 2": {
@@ -266,16 +277,6 @@
       "file": "Pages/DataContracts.spec.ts",
       "title": "Data Contracts \u203a Create Data Contract and validate for Database Schema",
       "lastSeenSha": "b68f1d73b530ff98e65eeee5474df0b536cf8711",
-      "hardFailure": false
-    },
-    "chromium :: Pages/DataProducts.spec.ts :: Data Products \u203a Search Data Products": {
-      "observations": [
-        "38502607895"
-      ],
-      "project": "chromium",
-      "file": "Pages/DataProducts.spec.ts",
-      "title": "Data Products \u203a Search Data Products",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
       "hardFailure": false
     },
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete": {
@@ -474,6 +475,66 @@
       "lastSeenSha": "33485c661e853f0354e429555c58438782d42609",
       "hardFailure": false
     },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service filter selection": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify Impact Analysis service filter selection",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify Impact Analysis service type filter selection": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify Impact Analysis service type filter selection",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify downstream count for all the entities",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify filters for Impact Analysis \u203a verify upstream count for all the entities",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service filter selection": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify lineage service filter selection",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "chromium :: Pages/Lineage/LineageFilters.spec.ts :: Lineage Filters \u203a Verify lineage service type filter selection": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "chromium",
+      "file": "Pages/Lineage/LineageFilters.spec.ts",
+      "title": "Lineage Filters \u203a Verify lineage service type filter selection",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
     "chromium :: Pages/ServiceEntity.spec.ts :: Api Service \u203a Inactive Announcement create & delete": {
       "observations": [
         "38842001693",
@@ -605,19 +666,29 @@
       "lastSeenSha": "adb1d317f68e6e4c87e06ff6bc6fe3f6b9b55a47",
       "hardFailure": true
     },
-    "chromium :: Pages/TasksUIFlow.spec.ts :: Task Activity Feed Integration \u203a Verify task shows correct metadata": {
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords": {
       "observations": [
-        "38502607895"
+        "40155676742"
       ],
-      "project": "chromium",
-      "file": "Pages/TasksUIFlow.spec.ts",
-      "title": "Task Activity Feed Integration \u203a Verify task shows correct metadata",
-      "lastSeenSha": "fd6a65dfb255f40c06ea1051ab9e2b8de7b878af",
-      "hardFailure": false
+      "project": "search-nightly",
+      "file": "Search/SearchRelevance.spec.ts",
+      "title": "Search relevance sample data \u203a ranks clear provider address intent above weak high-signal description matches with stopwords",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
+    },
+    "search-nightly :: Search/SearchRelevance.spec.ts :: Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches": {
+      "observations": [
+        "40155676742"
+      ],
+      "project": "search-nightly",
+      "file": "Search/SearchRelevance.spec.ts",
+      "title": "Search relevance sample data \u203a ranks name and structural table matches before tier and usage description matches",
+      "lastSeenSha": "f862ad021059f748ac55880ffa495166c1836498",
+      "hardFailure": true
     }
   },
   "stableIds": [
-    "ImportExport :: Features/BulkImport.spec.ts :: Bulk Import Export \u203a Database service",
+    "Basic :: Pages/Lineage/LineageLargeResponse.spec.ts :: Lineage tab with a very large lineage response \u203a keeps the page responsive while it processes 52,550 edges",
     "chromium :: Features/DataQuality/TestLibrary.spec.ts :: Test Library \u203a should display test platform badges correctly",
     "chromium :: Pages/Entity.spec.ts :: Api Endpoint \u203a Inactive Announcement create & delete",
     "chromium :: Pages/Entity.spec.ts :: Chart \u203a Inactive Announcement create & delete",
