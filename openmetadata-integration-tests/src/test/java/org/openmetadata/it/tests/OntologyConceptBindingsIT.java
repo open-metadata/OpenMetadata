@@ -299,7 +299,6 @@ class OntologyConceptBindingsIT extends BaseOntologyApprovalIT {
     return ids;
   }
 
-  /** Every page the cursor leads to, in order, each holding at most {@code limit} assets. */
   private static List<OntologyConceptBindingsResponse> pages(
       OpenMetadataClient client, OntologyConcept concept, int limit) {
     final var pages = new ArrayList<OntologyConceptBindingsResponse>();

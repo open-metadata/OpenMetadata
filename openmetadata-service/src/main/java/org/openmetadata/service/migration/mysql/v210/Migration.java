@@ -67,7 +67,6 @@ public class Migration extends MigrationProcessImpl {
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
-    // Concept bindings are rows from 2.1 on; the copy leaves existing rows alone. Restartable.
     copyConceptBindingsToRows(handle, MYSQL);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the

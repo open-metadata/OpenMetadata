@@ -16,6 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -45,11 +46,14 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.ConceptAssetCount;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.OntologyConceptRepository;
+import org.openmetadata.service.jdbi3.OntologyReferenceDAO.AxiomPosition;
+import org.openmetadata.service.jdbi3.OntologyReferenceDAO.EdgeAxiomRow;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -64,6 +68,8 @@ import org.openmetadata.service.util.RestUtil;
  */
 public final class NativeOntologyDataGraphService {
   private static final String PROPERTY_TABLE = "ontology_property_entity";
+  private static final int BINDING_SCAN_PAGE_SIZE = 500;
+  private static final int AXIOM_SCAN_PAGE_SIZE = 500;
 
   public record Query(
       int limit, int offset, int assetsPerConcept, int edgeLimit, int lineageEdgeLimit) {}
@@ -113,26 +119,38 @@ public final class NativeOntologyDataGraphService {
     }
     final var visibleConcepts =
         visibleConcepts(access, ranked.stream().map(ConceptAssetCount::conceptId).toList());
-    final var rows = store.rows(visibleConcepts.keySet());
-    final var visibleAssets = visibleAssets(access, rows);
-    final Map<UUID, List<BindingRow>> visibleRows =
-        rows.stream()
-            .filter(row -> visibleAssets.containsKey(row.assetId()))
-            .collect(Collectors.groupingBy(BindingRow::conceptId));
-    final List<Ranked> clusters = new ArrayList<>();
+    final var summaries = visibleBindings(access, visibleConcepts.keySet(), assetsPerConcept);
+    final var references = references(summaries);
+    final List<Cluster> clusters = new ArrayList<>();
     for (final var count : ranked) {
       final var concept = visibleConcepts.get(count.conceptId());
-      final var visible = visibleRows.getOrDefault(count.conceptId(), List.of());
-      if (concept != null && !visible.isEmpty()) {
-        clusters.add(
-            new Ranked(
-                concept,
-                visible.subList(0, Math.min(assetsPerConcept, visible.size())),
-                visible.size()));
+      final var summary = summaries.get(count.conceptId());
+      if (concept != null && summary.assetCount() > 0) {
+        clusters.add(new Cluster(concept, summary.resolve(concept, references)));
       }
     }
-    final var references = references(clusters);
-    return clusters.stream().map(cluster -> cluster.resolve(references, visibleAssets)).toList();
+    return List.copyOf(clusters);
+  }
+
+  private Map<UUID, VisibleSummary> visibleBindings(
+      final Access access, final Set<UUID> conceptIds, final int previewSize) {
+    final Map<UUID, VisibleSummary> summaries = new LinkedHashMap<>();
+    conceptIds.forEach(id -> summaries.put(id, new VisibleSummary(previewSize)));
+    BindingPosition after = null;
+    do {
+      after = scanBindingPage(access, summaries, after);
+    } while (after != null);
+    return summaries;
+  }
+
+  private BindingPosition scanBindingPage(
+      final Access access, final Map<UUID, VisibleSummary> summaries, final BindingPosition after) {
+    final var rows = store.page(summaries.keySet(), after, BINDING_SCAN_PAGE_SIZE);
+    final var visible = visibleAssets(access, rows);
+    rows.forEach(row -> summaries.get(row.conceptId()).add(row, visible.get(row.assetId())));
+    return rows.size() == BINDING_SCAN_PAGE_SIZE
+        ? new BindingPosition(rows.getLast().conceptId(), rows.getLast().assetId())
+        : null;
   }
 
   private Map<UUID, OntologyConcept> visibleConcepts(final Access access, final List<UUID> ids) {
@@ -160,7 +178,6 @@ public final class NativeOntologyDataGraphService {
     return live;
   }
 
-  /** Admins skip the per-entity policy load; everyone else gets the batched VIEW_BASIC filter. */
   private Set<UUID> viewableIds(final Access access, final List<EntityReference> references) {
     if (references.isEmpty()) {
       return Set.of();
@@ -171,8 +188,12 @@ public final class NativeOntologyDataGraphService {
     return visibility.viewableIds(access.securityContext(), references);
   }
 
-  private static Map<UUID, EntityReference> references(final List<Ranked> clusters) {
-    final var pageRows = clusters.stream().flatMap(cluster -> cluster.page().stream()).toList();
+  private static Map<UUID, EntityReference> references(final Map<UUID, VisibleSummary> summaries) {
+    final var pageRows =
+        summaries.values().stream()
+            .flatMap(summary -> summary.preview().stream())
+            .map(Preview::row)
+            .toList();
     final Map<UUID, EntityReference> references = new HashMap<>();
     BindingRow.assetIdsByType(pageRows)
         .forEach(
@@ -182,11 +203,6 @@ public final class NativeOntologyDataGraphService {
     return references;
   }
 
-  /**
-   * An object property joins two returned concepts when an axiom of the first asserts the property
-   * towards the second, or restricts the first over the property to a filler naming the second.
-   * The query already keeps only the axiom types that can state either.
-   */
   private List<NativeOntologyConceptEdge> edges(
       final Access access,
       final UUID ontologyId,
@@ -199,25 +215,65 @@ public final class NativeOntologyDataGraphService {
     if (conceptsByIri.isEmpty()) {
       return List.of();
     }
-    final var axioms =
-        dao.ontologyReferenceDAO()
-            .listPropertyEdgeAxioms(
-                ontologyId,
-                conceptsByIri.keySet().stream().map(DigestUtils::sha256Hex).toList(),
-                GlossaryTermRepository.ontologyRelationCandidateLimit(edgeLimit));
+    final var links = links(access, ontologyId, conceptsByIri, edgeLimit);
+    final var properties = viewableProperties(access, ontologyId, links);
+    return links.stream()
+        .map(link -> link.edge(properties.get(link.propertyIri().toString())))
+        .toList();
+  }
+
+  private Set<Link> links(
+      final Access access,
+      final UUID ontologyId,
+      final Map<String, UUID> conceptsByIri,
+      final int edgeLimit) {
+    final var hashes = conceptsByIri.keySet().stream().map(DigestUtils::sha256Hex).toList();
     final Set<Link> links = new LinkedHashSet<>();
-    for (final String json : axioms) {
+    AxiomPosition after = AxiomPosition.FIRST;
+    do {
+      final var candidates =
+          dao.ontologyReferenceDAO()
+              .listPropertyEdgeAxioms(ontologyId, hashes, after, AXIOM_SCAN_PAGE_SIZE);
+      addViewableLinks(access, candidates, conceptsByIri, links, edgeLimit);
+      after = candidates.size() == AXIOM_SCAN_PAGE_SIZE ? candidates.getLast().position() : null;
+    } while (after != null && links.size() < edgeLimit);
+    return links;
+  }
+
+  private void addViewableLinks(
+      final Access access,
+      final List<EdgeAxiomRow> candidates,
+      final Map<String, UUID> conceptsByIri,
+      final Set<Link> links,
+      final int edgeLimit) {
+    final var viewable =
+        viewableIds(
+            access,
+            candidates.stream()
+                .map(row -> new EntityReference().withId(row.id()).withType(Entity.ONTOLOGY_AXIOM))
+                .toList());
+    for (final var candidate : candidates) {
       if (links.size() >= edgeLimit) {
         break;
       }
-      final var axiom = JsonUtils.readValue(json, OntologyAxiom.class);
-      final UUID from =
-          axiom.getSubjectIri() == null
-              ? null
-              : conceptsByIri.get(axiom.getSubjectIri().toString());
-      if (from == null) {
-        continue;
+      if (viewable.contains(candidate.id())) {
+        addLinks(
+            JsonUtils.readValue(candidate.json(), OntologyAxiom.class),
+            conceptsByIri,
+            links,
+            edgeLimit);
       }
+    }
+  }
+
+  private static void addLinks(
+      final OntologyAxiom axiom,
+      final Map<String, UUID> conceptsByIri,
+      final Set<Link> links,
+      final int edgeLimit) {
+    final UUID from =
+        axiom.getSubjectIri() == null ? null : conceptsByIri.get(axiom.getSubjectIri().toString());
+    if (from != null) {
       for (final var target : targets(axiom)) {
         final UUID to = conceptsByIri.get(target.classIri().toString());
         if (to != null && links.size() < edgeLimit) {
@@ -225,10 +281,6 @@ public final class NativeOntologyDataGraphService {
         }
       }
     }
-    final var properties = viewableProperties(access, ontologyId, links);
-    return links.stream()
-        .map(link -> link.edge(properties.get(link.propertyIri().toString())))
-        .toList();
   }
 
   static List<Target> targets(final OntologyAxiom axiom) {
@@ -276,10 +328,6 @@ public final class NativeOntologyDataGraphService {
     };
   }
 
-  /**
-   * The ontology's declarations of the linked property IRIs that the reader may view. A hidden
-   * declaration is treated as absent, so its name reaches no one who cannot read the property.
-   */
   private Map<String, OntologyProperty> viewableProperties(
       final Access access, final UUID ontologyId, final Set<Link> links) {
     final Set<String> iris = new LinkedHashSet<>();
@@ -361,29 +409,57 @@ public final class NativeOntologyDataGraphService {
     }
   }
 
-  private record Ranked(OntologyConcept concept, List<BindingRow> page, int assetCount) {
-    Cluster resolve(final Map<UUID, EntityReference> references, final Map<UUID, LiveAsset> live) {
-      final List<NativeOntologyClusterAsset> assets = new ArrayList<>();
-      for (final var row : page) {
-        final var reference = references.get(row.assetId());
-        if (reference != null) {
-          assets.add(
-              new NativeOntologyClusterAsset()
-                  .withAsset(reference)
-                  .withServiceType(live.get(row.assetId()).serviceType())
-                  .withColumnCount(row.columns().size()));
+  record Preview(BindingRow row, LiveAsset live) {
+    NativeOntologyClusterAsset resolve(final Map<UUID, EntityReference> references) {
+      final var reference = references.get(row.assetId());
+      if (reference == null || Boolean.TRUE.equals(reference.getDeleted())) {
+        throw new ServiceUnavailableException(
+            "Bound assets changed while reading the graph. Retry the read.");
+      }
+      return new NativeOntologyClusterAsset()
+          .withAsset(reference)
+          .withServiceType(live.serviceType())
+          .withColumnCount(row.columns().size());
+    }
+  }
+
+  static final class VisibleSummary {
+    private final int previewSize;
+    private final List<Preview> preview = new ArrayList<>();
+    private int assetCount;
+
+    VisibleSummary(final int previewSize) {
+      this.previewSize = previewSize;
+    }
+
+    void add(final BindingRow row, final LiveAsset live) {
+      if (live != null) {
+        assetCount++;
+        if (preview.size() < previewSize) {
+          preview.add(new Preview(row, live));
         }
       }
-      return new Cluster(
-          concept,
-          new NativeOntologyAssetCluster()
-              .withConcept(concept.getEntityReference())
-              .withAssetCount(assetCount)
-              .withAssets(assets)
-              .withAfter(
-                  assetCount > page.size()
-                      ? RestUtil.encodeCursor(page.getLast().assetId().toString())
-                      : null));
+    }
+
+    int assetCount() {
+      return assetCount;
+    }
+
+    List<Preview> preview() {
+      return List.copyOf(preview);
+    }
+
+    NativeOntologyAssetCluster resolve(
+        final OntologyConcept concept, final Map<UUID, EntityReference> references) {
+      final var assets = preview.stream().map(item -> item.resolve(references)).toList();
+      return new NativeOntologyAssetCluster()
+          .withConcept(concept.getEntityReference())
+          .withAssetCount(assetCount)
+          .withAssets(assets)
+          .withAfter(
+              assetCount > assets.size()
+                  ? RestUtil.encodeCursor(assets.getLast().getAsset().getId().toString())
+                  : null);
     }
   }
 

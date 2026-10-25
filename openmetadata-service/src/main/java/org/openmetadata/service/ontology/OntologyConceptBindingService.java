@@ -150,7 +150,6 @@ public final class OntologyConceptBindingService {
     return next;
   }
 
-  /** Drops rows whose asset is soft or hard deleted and returns the rows that remain. */
   private List<BindingRow> prune(final OntologyConceptBindingStore locked, final UUID conceptId) {
     final var rows = locked.rows(conceptId);
     final var live = locked.liveAssets(rows).keySet();
@@ -258,10 +257,6 @@ public final class OntologyConceptBindingService {
         .toList();
   }
 
-  /**
-   * One load per asset type with the fields policies read, then the same authorize call a direct
-   * read gets. Tags are batch-loaded for the whole page the first time a policy reads them.
-   */
   private <T extends EntityInterface<?>> void loadViewable(
       final Access access,
       final EntityRepository<T> repository,
@@ -389,7 +384,6 @@ public final class OntologyConceptBindingService {
         new ResourceContext<>(repository.getEntityType(), entity, repository));
   }
 
-  /** The fields authorization reads, plus columns on tables so bound paths can be resolved. */
   private static Fields fields(final EntityRepository<?> repository) {
     final var fieldNames =
         new HashSet<>(ResourceContext.authorizationFields(repository).getFieldList());

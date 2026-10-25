@@ -32,6 +32,8 @@ import { CreateOntologyProperty } from '../generated/api/data/createOntologyProp
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
+import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -65,7 +67,6 @@ import type { PreviewNativeOntologyImport } from '../generated/api/data/previewN
 import { PreviewNativeOntologyPack } from '../generated/api/data/previewNativeOntologyPack';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
-import { UpdateOntologyConceptBinding } from '../generated/api/data/updateOntologyConceptBinding';
 import type { Ontology } from '../generated/entity/data/ontology';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
 import {
@@ -85,6 +86,11 @@ import {
 } from '../generated/type/ontologyReleaseMember';
 import { OntologyState } from '../generated/type/ontologyState';
 import { ListParams } from '../interface/API.interface';
+import {
+  BindingSnapshot,
+  RemoveAsset,
+  ReplaceAsset,
+} from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
@@ -110,7 +116,7 @@ const collectOntologyConceptBindings = async (
   id: string,
   firstPage: OntologyConceptBindingsResponse,
   signal?: AbortSignal
-): Promise<OntologyConceptBindingsResponse> => {
+): Promise<BindingSnapshot> => {
   const assets = [...firstPage.assets];
   let after = firstPage.after;
   while (after) {
@@ -123,7 +129,7 @@ const collectOntologyConceptBindings = async (
   }
 
   // Keep the starting revision so a write conflicts if bindings changed during paging.
-  return { ...firstPage, assets, after: undefined };
+  return { kind: 'complete', revision: firstPage.revision, assets };
 };
 
 export const getOntologyConceptBindings = async (
@@ -140,23 +146,19 @@ export const getOntologyConceptBindings = async (
 
 export const putOntologyConceptBinding = async (
   id: string,
-  request: UpdateOntologyConceptBinding
-) => {
-  const response = await APIClient.put<OntologyConceptBindingsResponse>(
+  request: ReplaceAsset
+): Promise<void> => {
+  await APIClient.put(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
     request
   );
-
-  return collectOntologyConceptBindings(id, response.data);
 };
 
 export const deleteOntologyConceptBinding = async (
   id: string,
-  assetType: string,
-  assetId: string,
-  expectedRevision: number
-) => {
-  const response = await APIClient.delete<OntologyConceptBindingsResponse>(
+  { assetType, assetId, expectedRevision }: RemoveAsset
+): Promise<void> => {
+  await APIClient.delete(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(
       id
     )}/bindings/${encodeURIComponent(assetType)}/${encodeURIComponent(
@@ -164,8 +166,6 @@ export const deleteOntologyConceptBinding = async (
     )}`,
     { params: { expectedRevision } }
   );
-
-  return collectOntologyConceptBindings(id, response.data);
 };
 
 export const listOntologyReleaseHistory = async (
@@ -356,12 +356,43 @@ export const getOntologyWorkingDiff = async (
   return response.data;
 };
 
+/**
+ * The generated preview type carries its own copy of the change-set enums, which
+ * do not unify with the ones the apply flow takes; the wire shape is the same.
+ */
+export interface NativeOntologyImportPreview {
+  summary: NativeOntologyImportSummary;
+  changeSet: CreateOntologyChangeSet;
+}
+
 export const previewNativeOntologyImport = async (
   ontologyId: string,
   request: PreviewNativeOntologyImport
 ) => {
-  const response = await APIClient.post<CreateOntologyChangeSet>(
+  const response = await APIClient.post<NativeOntologyImportPreview>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const previewNativeOntologyImportWithoutTarget = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `${ONTOLOGIES_PATH}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const detectNativeOntologyImportFormat = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportDetection>(
+    `${ONTOLOGIES_PATH}/imports/detect`,
     request
   );
 

@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
@@ -16,11 +17,77 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 
 class OntologyReleaseComparisonStorageTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void groupedWorkingPagesKeepTheirRevisionAndCursorKind(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          fixture.addConcepts(2);
+          final var comparison = new OntologyReleaseComparison(fixture.releases);
+          final var first =
+              fixture
+                  .capture
+                  .snapshot()
+                  .read(
+                      fixture.ontology.getId(),
+                      ignored -> {},
+                      snapshot ->
+                          comparison.compareWorkingByConcept(snapshot, 1, null, ignored -> {}));
+          assertEquals(3, first.getPaging().getTotal());
+          assertEquals(1, first.getGroups().size());
+          final String cursor = first.getPaging().getAfter();
+          assertNotNull(cursor);
+          fixture
+              .capture
+              .snapshot()
+              .read(
+                  fixture.ontology.getId(),
+                  ignored -> {},
+                  snapshot -> {
+                    final var next =
+                        comparison.compareWorkingByConcept(snapshot, 1, cursor, ignored -> {});
+                    assertEquals(1, next.getGroups().size());
+                    assertThrows(
+                        BadRequestException.class,
+                        () -> comparison.compareWorking(snapshot, 1, cursor, ignored -> {}));
+                    return null;
+                  });
+          fixture.concepts.create(
+              null,
+              new OntologyConcept()
+                  .withId(UUID.randomUUID())
+                  .withName("Concept2")
+                  .withOntology(fixture.ontology.getEntityReference())
+                  .withConceptType(OntologyConceptType.OWL_CLASS)
+                  .withVersion(0.1)
+                  .withUpdatedAt(1L)
+                  .withUpdatedBy("admin"));
+          fixture
+              .capture
+              .snapshot()
+              .read(
+                  fixture.ontology.getId(),
+                  ignored -> {},
+                  snapshot -> {
+                    assertThrows(
+                        PreconditionFailedException.class,
+                        () ->
+                            comparison.compareWorkingByConcept(snapshot, 1, cursor, ignored -> {}));
+                    return null;
+                  });
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,

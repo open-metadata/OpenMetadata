@@ -65,7 +65,6 @@ public class Migration extends MigrationProcessImpl {
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
-    // Concept bindings are rows from 2.1 on; the copy leaves existing rows alone. Restartable.
     copyConceptBindingsToRows(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the

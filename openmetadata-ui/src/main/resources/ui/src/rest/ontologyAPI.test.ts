@@ -87,9 +87,9 @@ describe('ontologyAPI', () => {
       .mockResolvedValueOnce({ data: { revision: 5, assets: [boundTable] } });
 
     expect(await getOntologyConceptBindings('concept/id', signal)).toEqual({
+      kind: 'complete',
       revision: 4,
       assets: [boundTable],
-      after: undefined,
     });
     expect(mockedApiClient.get).toHaveBeenLastCalledWith(
       '/ontologyConcepts/concept%2Fid/bindings',
@@ -98,7 +98,37 @@ describe('ontologyAPI', () => {
   });
 
   it.each(['put', 'delete'] as const)(
-    'returns all bindings after a %s, retaining off-page columns',
+    'confirms a successful %s independently of an unavailable continuation read',
+    async (method) => {
+      mockedApiClient[method].mockResolvedValueOnce({
+        data: { revision: 6, assets: [], after: 'next' },
+      });
+      mockedApiClient.get.mockRejectedValue(
+        new Error('later page unavailable')
+      );
+      const write =
+        method === 'put'
+          ? putOntologyConceptBinding('concept', {
+              expectedRevision: 5,
+              asset: {
+                assetId: 'topic',
+                assetType: AssetType.Topic,
+                columns: [],
+              },
+            })
+          : deleteOntologyConceptBinding('concept', {
+              assetType: AssetType.Topic,
+              assetId: 'topic',
+              expectedRevision: 5,
+            });
+
+      await expect(write).resolves.toBeUndefined();
+      expect(mockedApiClient.get).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(['put', 'delete'] as const)(
+    'discards the %s response page and revision',
     async (method) => {
       mockedApiClient[method].mockResolvedValueOnce({
         data: { revision: 6, assets: [], after: 'next' },
@@ -116,13 +146,14 @@ describe('ontologyAPI', () => {
                 columns: [],
               },
             })
-          : await deleteOntologyConceptBinding('concept', 'topic', 'topic', 5);
+          : await deleteOntologyConceptBinding('concept', {
+              assetType: AssetType.Topic,
+              assetId: 'topic',
+              expectedRevision: 5,
+            });
 
-      expect(result).toEqual({
-        revision: 6,
-        assets: [boundTable],
-        after: undefined,
-      });
+      expect(result).toBeUndefined();
+      expect(mockedApiClient.get).not.toHaveBeenCalled();
     }
   );
 

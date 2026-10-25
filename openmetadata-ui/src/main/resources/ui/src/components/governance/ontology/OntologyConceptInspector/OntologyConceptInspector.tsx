@@ -31,6 +31,7 @@ import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
   getConceptAncestors,
@@ -491,30 +492,35 @@ const OntologyConceptInspector = ({
       />
       {conceptRelations.length > 0 ? (
         <InspectorList>
-          {conceptRelations.map(({ direction, other, relation }) => (
-            <InspectorRow key={`${direction}:${relation.key}`}>
-              {direction === 'outgoing' ? (
-                <Badge color="brand" size="sm" type="pill-color">
-                  {humanizeName(getModelRelationLabel(relation))}
-                </Badge>
-              ) : null}
-              <Button
-                noTextPadding
-                className="tw:min-w-0 tw:flex-1 tw:justify-start"
-                color="tertiary"
-                data-testid={`ontology-concept-relation-${other.id}`}
-                onPress={() => onSelectConcept(other)}>
-                <span className="tw:truncate">
-                  {other.displayName ?? other.name}
-                </span>
-              </Button>
-              {direction === 'incoming' ? (
-                <Badge color="brand" size="sm" type="pill-color">
-                  {humanizeName(getModelRelationLabel(relation))}
-                </Badge>
-              ) : null}
-            </InspectorRow>
-          ))}
+          {conceptRelations.map(({ direction, other, relation }) => {
+            const inverseLabel =
+              direction === 'incoming'
+                ? getInverseRelationLabel(relation, model)
+                : undefined;
+            const readsForward = direction === 'outgoing' || !!inverseLabel;
+            const badge = (
+              <Badge color="brand" size="sm" type="pill-color">
+                {humanizeName(inverseLabel ?? getModelRelationLabel(relation))}
+              </Badge>
+            );
+
+            return (
+              <InspectorRow key={`${direction}:${relation.key}`}>
+                {readsForward ? badge : null}
+                <Button
+                  noTextPadding
+                  className="tw:min-w-0 tw:flex-1 tw:justify-start"
+                  color="tertiary"
+                  data-testid={`ontology-concept-relation-${other.id}`}
+                  onPress={() => onSelectConcept(other)}>
+                  <span className="tw:truncate">
+                    {other.displayName ?? other.name}
+                  </span>
+                </Button>
+                {readsForward ? null : badge}
+              </InspectorRow>
+            );
+          })}
         </InspectorList>
       ) : (
         <InspectorEmptyText>

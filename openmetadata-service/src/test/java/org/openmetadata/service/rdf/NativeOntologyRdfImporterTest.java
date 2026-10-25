@@ -1,12 +1,15 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.SKOS;
@@ -18,15 +21,20 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.ConceptMapping.ConceptMappingType;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
@@ -456,6 +464,217 @@ class NativeOntologyRdfImporterTest {
     }
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = NativeOntologyImportFormat.class,
+      names = {"CSV", "TURTLE"})
+  void metadataOnlyUpdatesClearAndRepeatWithoutMutatingTheSnapshot(
+      NativeOntologyImportFormat format) {
+    final var root = root();
+    final var initial = imported(root, METADATA_BASE);
+    final String before = JsonUtils.pojoToJson(initial);
+    final var richSource = importer.read(metadataRequest(format, true));
+    final var rich = importer.preview(richSource, initial);
+    assertEquals(1, rich.getSummary().getCounts().getUpdatedConcepts());
+    assertEquals(1, rich.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(2, rich.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(2, rich.getChangeSet().getOperations().size());
+    final var concept =
+        rich.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getConcept)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    final var property =
+        rich.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getProperty)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Boolean.TRUE, concept.getAbstract());
+    assertEquals(URI.create("https://example.org/standard"), concept.getDefinitionSource());
+    assertEquals(Boolean.TRUE, concept.getDeprecated());
+    assertEquals(URI.create("https://example.org/Account"), concept.getReplacedBy());
+    assertEquals(Boolean.TRUE, property.getDeprecated());
+    assertEquals(URI.create("https://example.org/identifier"), property.getReplacedBy());
+    assertEquals(before, JsonUtils.pojoToJson(initial));
+
+    final var richSnapshot = imported(root, METADATA_BASE + METADATA_ANNOTATIONS);
+    assertEquals(
+        0, importer.preview(richSource, richSnapshot).getChangeSet().getOperations().size());
+    final var cleared =
+        importer.preview(importer.read(metadataRequest(format, false)), richSnapshot);
+    assertEquals(1, cleared.getSummary().getCounts().getUpdatedConcepts());
+    assertEquals(1, cleared.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(2, cleared.getChangeSet().getOperations().size());
+    final var clearedConcept =
+        cleared.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getConcept)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    final var clearedProperty =
+        cleared.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getProperty)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Boolean.FALSE, clearedConcept.getAbstract());
+    assertNull(clearedConcept.getDefinitionSource());
+    assertEquals(Boolean.FALSE, clearedConcept.getDeprecated());
+    assertNull(clearedConcept.getReplacedBy());
+    assertEquals(Boolean.FALSE, clearedProperty.getDeprecated());
+    assertNull(clearedProperty.getReplacedBy());
+    assertEquals(
+        0,
+        importer
+            .preview(importer.read(metadataRequest(format, false)), initial)
+            .getChangeSet()
+            .getOperations()
+            .size());
+  }
+
+  private static final String METADATA_BASE =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix om: <https://open-metadata.org/ontology/> .
+      @prefix dct: <http://purl.org/dc/terms/> .
+      <https://example.org/Customer> a owl:Class .
+      <https://example.org/Account> a owl:Class .
+      <https://example.org/code> a owl:DatatypeProperty .
+      <https://example.org/identifier> a owl:DatatypeProperty .
+      """;
+  private static final String METADATA_ANNOTATIONS =
+      """
+      <https://example.org/Customer> om:abstract true; dct:source <https://example.org/standard>;
+        owl:deprecated true; dct:isReplacedBy <https://example.org/Account> .
+      <https://example.org/code> owl:deprecated true; dct:isReplacedBy <https://example.org/identifier> .
+      """;
+
+  private static PreviewNativeOntologyImport metadataRequest(
+      NativeOntologyImportFormat format, boolean populated) {
+    if (format == NativeOntologyImportFormat.TURTLE) {
+      return turtleRequest(METADATA_BASE + (populated ? METADATA_ANNOTATIONS : ""));
+    }
+    final String header =
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+    final List<String> rows = new ArrayList<>();
+    rows.add(header);
+    for (final String name : List.of("Customer", "Account", "code", "identifier")) {
+      final boolean concept = name.equals("Customer") || name.equals("Account");
+      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      cells.set(0, concept ? "CONCEPT" : "PROPERTY");
+      cells.set(1, "https://example.org/" + name);
+      cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
+      if (populated && name.equals("Customer")) {
+        cells.set(23, "true");
+        cells.set(24, "https://example.org/standard");
+        cells.set(25, "true");
+        cells.set(26, "https://example.org/Account");
+      }
+      if (populated && name.equals("code")) {
+        cells.set(25, "true");
+        cells.set(26, "https://example.org/identifier");
+      }
+      rows.add(String.join(",", cells));
+    }
+    return new PreviewNativeOntologyImport()
+        .withFormat(format)
+        .withData(String.join("\r\n", rows) + "\r\n");
+  }
+
+  @Test
+  void classModelAnnotationsImportAsClassAndPropertyFields() {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; om:abstract true;
+          dct:source <https://standards.example.org/party>; owl:deprecated true;
+          dct:isReplacedBy <https://example.org/Account> .
+        <https://example.org/Account> a owl:Class; owl:deprecated false .
+        <https://example.org/code> a owl:DatatypeProperty; owl:deprecated "1"^^xsd:boolean;
+          dct:isReplacedBy <https://example.org/identifier> .
+        <https://example.org/identifier> a owl:DatatypeProperty .
+        """,
+            RdfSerializationFormat.TURTLE);
+    try {
+      final var operations = importer.reconcile(model, snapshot).getOperations();
+      final var concepts =
+          operations.stream()
+              .map(OntologyChangeOperation::getConcept)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toMap(concept -> concept.getIri().toString(), c -> c));
+      final var customer = concepts.get("https://example.org/Customer");
+      assertEquals(Boolean.TRUE, customer.getAbstract());
+      assertEquals(
+          URI.create("https://standards.example.org/party"), customer.getDefinitionSource());
+      assertEquals(Boolean.TRUE, customer.getDeprecated());
+      assertEquals(URI.create("https://example.org/Account"), customer.getReplacedBy());
+      final var account = concepts.get("https://example.org/Account");
+      assertEquals(Boolean.FALSE, account.getAbstract());
+      assertNull(account.getDefinitionSource());
+      assertEquals(Boolean.FALSE, account.getDeprecated());
+      assertNull(account.getReplacedBy());
+      final var code =
+          operations.stream()
+              .map(OntologyChangeOperation::getProperty)
+              .filter(
+                  property ->
+                      property != null
+                          && "https://example.org/code".equals(property.getIri().toString()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals(Boolean.TRUE, code.getDeprecated());
+      assertEquals(URI.create("https://example.org/identifier"), code.getReplacedBy());
+    } finally {
+      model.close();
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "owl:deprecated \"yes\" | http://www.w3.org/2002/07/owl#deprecated requires an xsd:boolean value",
+        "om:abstract \"true\" | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "om:abstract \"2\"^^xsd:boolean | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "dct:source \"ISO 8000\" | Expected an absolute RDF IRI",
+        "dct:isReplacedBy \"Account\" | Expected an absolute RDF IRI"
+      })
+  void classModelAnnotationsRefuseValuesOfTheWrongShape(String statement, String message) {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; %s .
+        """
+                .formatted(statement),
+            RdfSerializationFormat.TURTLE);
+    try {
+      assertEquals(
+          message,
+          assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot))
+              .getMessage());
+    } finally {
+      model.close();
+    }
+  }
+
   @Test
   void caseDistinctIrisStayDistinct() {
     final var root = root();
@@ -481,6 +700,261 @@ class NativeOntologyRdfImporterTest {
     } finally {
       model.close();
     }
+  }
+
+  @Test
+  void previewCountsEveryParsedDefinitionOnceByKindAndOutcome() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(1, counts.getNewConcepts());
+    assertEquals(1, counts.getUpdatedConcepts());
+    assertEquals(1, counts.getNewProperties());
+    assertEquals(1, counts.getUpdatedProperties());
+    assertEquals(1, counts.getNewRelations());
+    assertEquals(3, counts.getNewMappings());
+    assertEquals(2, counts.getSkippedDefinitions());
+    assertEquals(1, counts.getSkippedRelations());
+    assertEquals(NativeOntologyImportFormat.TURTLE, preview.getSummary().getDetectedFormat());
+    assertEquals(5, preview.getChangeSet().getOperations().size());
+    assertEquals(root.getFullyQualifiedName(), preview.getChangeSet().getOntology());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void summarizeAndPreviewAgreeOnAnEmptyTarget() {
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+
+    final var summary = importer.summarize(source);
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(summary, preview.getSummary());
+    final var counts = summary.getCounts();
+    assertEquals(3, counts.getNewConcepts());
+    assertEquals(0, counts.getUpdatedConcepts());
+    assertEquals(3, counts.getNewProperties());
+    assertEquals(0, counts.getUpdatedProperties());
+    assertEquals(2, counts.getNewRelations());
+    assertEquals(4, counts.getNewMappings());
+    assertEquals(0, counts.getSkippedDefinitions());
+    assertEquals(0, counts.getSkippedRelations());
+    assertEquals(8, preview.getChangeSet().getOperations().size());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void reimportingTheSameFileSkipsEverything() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(BASE_TURTLE));
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(0, counts.getNewConcepts() + counts.getUpdatedConcepts());
+    assertEquals(0, counts.getNewProperties() + counts.getUpdatedProperties());
+    assertEquals(0, counts.getNewRelations());
+    assertEquals(0, counts.getNewMappings());
+    assertEquals(4, counts.getSkippedDefinitions());
+    assertEquals(1, counts.getSkippedRelations());
+    assertEquals(0, preview.getChangeSet().getOperations().size());
+    assertCountInvariants(source.document(), preview);
+  }
+
+  @Test
+  void ontologyLabelComesFromASingleHeaderOnly() {
+    final String prefixes =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        <https://example.org/C> a owl:Class .
+        """;
+    final String oneHeader =
+        prefixes + "<https://example.org/o> a owl:Ontology ; rdfs:label \"Finance\" .\n";
+    final String twoHeaders =
+        oneHeader + "<https://example.org/o2> a owl:Ontology ; rdfs:label \"Risk\" .\n";
+
+    assertEquals(
+        "Finance", importer.summarize(importer.read(turtleRequest(oneHeader))).getOntologyLabel());
+    assertNull(importer.summarize(importer.read(turtleRequest(twoHeaders))).getOntologyLabel());
+    assertNull(importer.summarize(importer.read(turtleRequest(prefixes))).getOntologyLabel());
+  }
+
+  @Test
+  void previewLeavesTheParsedDocumentUnchanged() {
+    final var root = root();
+    final var source = importer.read(turtleRequest(NEXT_TURTLE));
+    final String before = JsonUtils.pojoToJson(source.document());
+
+    final var preview = importer.preview(source, imported(root, BASE_TURTLE));
+
+    assertEquals(before, JsonUtils.pojoToJson(source.document()));
+    assertNull(source.document().concepts().getFirst().getId());
+    assertNull(source.document().axioms().getFirst().getName());
+    assertEquals(5, preview.getChangeSet().getOperations().size());
+    importer.preview(source, emptySnapshot(root));
+    assertEquals(before, JsonUtils.pojoToJson(source.document()));
+  }
+
+  @Test
+  void changeSetNamesTheSourceFamily() {
+    final var root = root();
+    final var document = importer.read(turtleRequest(BASE_TURTLE)).document();
+    final var csv = new NativeOntologyRdfImporter.Source(NativeOntologyImportFormat.CSV, document);
+
+    final var preview = importer.preview(csv, emptySnapshot(root));
+
+    assertEquals(NativeOntologyImportFormat.CSV, preview.getSummary().getDetectedFormat());
+    assertEquals("Native CSV import", preview.getChangeSet().getDisplayName());
+    assertEquals("Native CSV import preview", preview.getChangeSet().getDescription());
+    final var axiom = axiomOperations(preview.getChangeSet()).getFirst().getAxiom();
+    assertEquals("Imported from native CSV", axiom.getDescription());
+    assertEquals("Imported subclass of", axiom.getDisplayName());
+    final var rdf =
+        importer.preview(importer.read(turtleRequest(BASE_TURTLE)), emptySnapshot(root));
+    assertEquals("Native RDF import", rdf.getChangeSet().getDisplayName());
+    assertEquals(
+        "Imported from native RDF",
+        axiomOperations(rdf.getChangeSet()).getFirst().getAxiom().getDescription());
+  }
+
+  @Test
+  void bothPreviewsRefuseMoreThanOneThousandChangedDefinitions() {
+    final var atLimit = importer.read(turtleRequest(classes(1000)));
+    final var pastLimit = importer.read(turtleRequest(classes(1001)));
+
+    assertEquals(1000, importer.summarize(atLimit).getCounts().getNewConcepts());
+    assertEquals(
+        1000,
+        importer.preview(atLimit, emptySnapshot(root())).getSummary().getCounts().getNewConcepts());
+    final String message = "A native import accepts at most 1000 changed definitions";
+    assertEquals(
+        message,
+        assertThrows(BadRequestException.class, () -> importer.summarize(pastLimit)).getMessage());
+    assertEquals(
+        message,
+        assertThrows(
+                BadRequestException.class, () -> importer.preview(pastLimit, emptySnapshot(root())))
+            .getMessage());
+  }
+
+  @Test
+  void aRequestWithoutARecognizableFormatNamesTheFiveFormats() {
+    final var request = new PreviewNativeOntologyImport().withData("not an ontology");
+
+    assertEquals(
+        "Specify format as one of turtle, rdfxml, ntriples, jsonld, or csv",
+        assertThrows(BadRequestException.class, () -> importer.read(request)).getMessage());
+  }
+
+  private static final String COUNT_PREFIXES =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+      @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+      @prefix ex: <https://example.org/counts/> .
+      """;
+  private static final String BASE_TURTLE =
+      COUNT_PREFIXES
+          + """
+          ex:A a owl:Class ; rdfs:label "A" .
+          ex:B a owl:Class ; rdfs:label "B" ; skos:exactMatch <https://external.example/B1> .
+          ex:p a owl:ObjectProperty ; rdfs:label "p" ; rdfs:domain ex:A ; rdfs:range ex:B .
+          ex:q a owl:DatatypeProperty ; rdfs:label "q" ; rdfs:comment "Before" .
+          ex:A rdfs:subClassOf ex:B .
+          """;
+  private static final String NEXT_TURTLE =
+      COUNT_PREFIXES
+          + """
+          ex:A a owl:Class ; rdfs:label "A" .
+          ex:B a owl:Class ; rdfs:label "B renamed" ;
+            skos:exactMatch <https://external.example/B1> ;
+            skos:closeMatch <https://external.example/B2> .
+          ex:C a owl:Class ; rdfs:label "C" ;
+            skos:exactMatch <https://external.example/C1> ;
+            skos:relatedMatch <https://external.example/C2> .
+          ex:p a owl:ObjectProperty ; rdfs:label "p" ; rdfs:domain ex:A ; rdfs:range ex:B .
+          ex:q a owl:DatatypeProperty ; rdfs:label "q" ; rdfs:comment "After" .
+          ex:r a owl:ObjectProperty ; rdfs:label "r" .
+          ex:A rdfs:subClassOf ex:B .
+          ex:C rdfs:subClassOf ex:A .
+          """;
+
+  private static String classes(int count) {
+    final StringBuilder turtle = new StringBuilder();
+    for (int index = 0; index < count; index++) {
+      turtle
+          .append("<https://example.org/big/C")
+          .append(index)
+          .append("> a <http://www.w3.org/2002/07/owl#Class> .\n");
+    }
+    return turtle.toString();
+  }
+
+  private static PreviewNativeOntologyImport turtleRequest(String turtle) {
+    return new PreviewNativeOntologyImport()
+        .withFormat(NativeOntologyImportFormat.TURTLE)
+        .withData(turtle);
+  }
+
+  private static OntologyWorkingSnapshot.Snapshot emptySnapshot(Ontology root) {
+    return new OntologyWorkingSnapshot.Snapshot(
+        state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+  }
+
+  /** The snapshot a target holds after the planned import of {@code turtle} has been applied. */
+  private OntologyWorkingSnapshot.Snapshot imported(Ontology root, String turtle) {
+    final var plan = importer.preview(importer.read(turtleRequest(turtle)), emptySnapshot(root));
+    final var entries = new ArrayList<OntologyWorkingSnapshot.Entry>();
+    entries.add(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root));
+    for (final OntologyChangeOperation operation : plan.getChangeSet().getOperations()) {
+      entries.add(
+          switch (operation.getOperationType()) {
+            case UPSERT_CONCEPT -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.CONCEPT, operation.getConcept());
+            case UPSERT_PROPERTY -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.PROPERTY, operation.getProperty());
+            case UPSERT_AXIOM -> new OntologyWorkingSnapshot.Entry(
+                MemberKind.AXIOM, operation.getAxiom());
+            default -> throw new IllegalStateException(
+                "Import plans only upsert: " + operation.getOperationType());
+          });
+    }
+    return new OntologyWorkingSnapshot.Snapshot(state(root), entries);
+  }
+
+  private static List<OntologyChangeOperation> axiomOperations(CreateOntologyChangeSet plan) {
+    return plan.getOperations().stream()
+        .filter(
+            operation -> operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM)
+        .toList();
+  }
+
+  private static void assertCountInvariants(
+      NativeOntologyDocument document, NativeOntologyImportPreview preview) {
+    final var counts = preview.getSummary().getCounts();
+    assertEquals(
+        document.concepts().size() + document.properties().size(),
+        counts.getNewConcepts()
+            + counts.getUpdatedConcepts()
+            + counts.getNewProperties()
+            + counts.getUpdatedProperties()
+            + counts.getSkippedDefinitions(),
+        "concepts + properties = new + updated + skipped definitions");
+    assertEquals(
+        document.axioms().size(),
+        counts.getNewRelations() + counts.getSkippedRelations(),
+        "axioms = new + skipped relations");
+    assertEquals(
+        preview.getChangeSet().getOperations().size(),
+        counts.getNewConcepts()
+            + counts.getUpdatedConcepts()
+            + counts.getNewProperties()
+            + counts.getUpdatedProperties()
+            + counts.getNewRelations(),
+        "operations = new + updated definitions + new relations");
   }
 
   private static ConceptMapping richMapping(ConceptMappingType type, String source) {

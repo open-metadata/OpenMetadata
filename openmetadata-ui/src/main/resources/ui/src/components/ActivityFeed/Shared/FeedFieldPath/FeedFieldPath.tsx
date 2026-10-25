@@ -93,7 +93,7 @@ const FeedFieldPath = ({
           <Separator />
           <Typography
             as="span"
-            className="tw:shrink-0"
+            className="tw:min-w-0 tw:truncate"
             color="secondary"
             data-testid="feed-field-path-field"
             size="text-sm"

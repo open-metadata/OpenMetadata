@@ -102,18 +102,18 @@ const OntologyConceptDataGraph = ({
         {concept && bindings.isPending ? (
           <Typography role="status">{t('label.loading')}</Typography>
         ) : null}
-        {bindings.isError ? (
+        {bindings.readState === 'unavailable' ? (
           <Alert variant="error">
-            {t('message.temporary-error-try-reloading')}
+            {t('message.ontology-binding-read-unavailable')}
             <Button
               color="link-color"
               size="xs"
-              onPress={() => void bindings.refetch()}>
+              onPress={() => void bindings.retryRead().catch(() => undefined)}>
               {t('label.retry')}
             </Button>
           </Alert>
         ) : null}
-        {bindings.isSuccess && bindings.data.assets.length === 0 ? (
+        {bindings.isSuccess && bindings.data?.assets.length === 0 ? (
           <Typography size="text-xs">
             {t('message.no-data-available')}
           </Typography>
@@ -142,7 +142,7 @@ const OntologyConceptDataGraph = ({
         <OntologyControlButtons
           isLoading={bindings.isFetching}
           onFitToScreen={() => void graphRef.current?.fitView()}
-          onRefresh={() => void bindings.refetch()}
+          onRefresh={() => void bindings.retryRead().catch(() => undefined)}
           onZoomIn={() => graphRef.current?.zoomIn()}
           onZoomOut={() => graphRef.current?.zoomOut()}
         />

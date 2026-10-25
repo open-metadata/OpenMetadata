@@ -18,6 +18,7 @@ import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.ConceptAssetCount;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.LiveAsset;
@@ -71,11 +72,17 @@ public final class OntologyConceptBindingStore {
     return dao.ontologyConceptBindingDAO().list(conceptId);
   }
 
-  public List<BindingRow> rows(final Collection<UUID> conceptIds) {
+  public List<BindingRow> page(
+      final Collection<UUID> conceptIds, final BindingPosition after, final int limit) {
     return conceptIds.isEmpty()
         ? List.of()
         : dao.ontologyConceptBindingDAO()
-            .listForConcepts(conceptIds.stream().map(UUID::toString).toList());
+            .listForConceptsAfter(
+                conceptIds.stream().map(UUID::toString).toList(),
+                after != null,
+                after == null ? FIRST_PAGE : after.conceptId().toString(),
+                after == null ? FIRST_PAGE : after.assetId().toString(),
+                limit);
   }
 
   public List<ConceptAssetCount> boundConcepts(

@@ -17,10 +17,15 @@ import {
   Button,
   ButtonUtility,
   Card,
+  Checkbox,
+  Dialog,
   Input,
+  Modal,
+  ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
   lazy,
@@ -34,23 +39,36 @@ import {
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
+import { CreateRelationshipType } from '../../../../generated/api/data/createRelationshipType';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { OntologyProperty } from '../../../../generated/entity/data/ontologyProperty';
-import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
+import { RelationshipType } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   createOntologyAxiom,
   createOntologyProperty,
+  createRelationshipType,
+  getRelationshipTypeByName,
+  listRelationshipTypes,
+  patchOntologyProperty,
+  patchRelationshipType,
 } from '../../../../rest/ontologyAPI';
 import {
+  buildInverseBackLink,
+  buildNativeRelationCatalog,
+  buildNativeRelationGroups,
+  MAX_RELATIONSHIP_TYPE_PAGES,
+  NativeRelationStep,
+  NativeRelationType,
+  planNativeRelation,
+  planRelationshipType,
+  RelationshipTypeDraft,
+  toNativeRelationType,
+} from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
+import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
+import {
   buildDataPropertyRequest,
-  buildObjectPropertyRequest,
-  buildRestrictionAxiomRequest,
-  buildSubClassAxiomRequest,
   DataPropertyInput,
-  getObjectProperties,
-  getPropertyLabel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
@@ -69,7 +87,6 @@ import {
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
-import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
@@ -89,6 +106,144 @@ const FILTERS = {
 const SETTINGS = { layout: LayoutType.Hierarchical, showEdgeLabels: true };
 const GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-border-color-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
+const RELATIONSHIP_TYPES_QUERY_KEY = 'relationship-types';
+const NO_RELATIONSHIP_TYPES: RelationshipType[] = [];
+
+const missingRelationType = (id: string): never => {
+  throw new Error(`Unknown relation type ${id}`);
+};
+
+const writeStep = (step: NativeRelationStep) => {
+  switch (step.kind) {
+    case 'property':
+      return createOntologyProperty(step.request);
+    case 'link':
+      return patchOntologyProperty(step.id, step.patch);
+    case 'axiom':
+      return createOntologyAxiom(step.request);
+  }
+};
+
+/** A name the registry already holds, from a stale list or a parallel admin, resolves to that type. */
+const ensureRelationshipType = async (
+  request: CreateRelationshipType
+): Promise<RelationshipType> => {
+  try {
+    return await createRelationshipType(request);
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 409) {
+      return getRelationshipTypeByName(request.name);
+    }
+
+    throw error;
+  }
+};
+
+interface RelationshipTypeDialogProps {
+  readonly label: string;
+  readonly onCancel: () => void;
+  readonly onSubmit: (draft: RelationshipTypeDraft) => void;
+}
+
+const RelationshipTypeDialog = ({
+  label,
+  onCancel,
+  onSubmit,
+}: RelationshipTypeDialogProps) => {
+  const { t } = useTranslation();
+  const [name, setName] = useState(label);
+  const [inverseName, setInverseName] = useState('');
+  const [symmetric, setSymmetric] = useState(false);
+  const [description, setDescription] = useState('');
+
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          onCancel();
+        }
+      }}>
+      <Modal>
+        <Dialog
+          aria-labelledby="relationship-type-dialog-title"
+          width={480}
+          onClose={onCancel}>
+          <Box
+            className="tw:p-5"
+            data-testid="relationship-type-dialog"
+            direction="col"
+            gap={4}>
+            <Typography
+              id="relationship-type-dialog-title"
+              role="heading"
+              size="text-md"
+              weight="bold">
+              {t('label.add-entity', { entity: t('label.relationship-type') })}
+            </Typography>
+            <Input
+              inputDataTestId="relationship-type-name"
+              label={t('label.name')}
+              size="sm"
+              value={name}
+              onChange={setName}
+            />
+            <Checkbox
+              data-testid="relationship-type-symmetric"
+              isSelected={symmetric}
+              label={t('label.symmetric')}
+              onChange={setSymmetric}
+            />
+            {symmetric ? (
+              <Typography color="secondary" size="text-xs">
+                {t('message.symmetric-relationship-type')}
+              </Typography>
+            ) : (
+              <Input
+                inputDataTestId="relationship-type-inverse"
+                label={t('label.inverse-name')}
+                size="sm"
+                value={inverseName}
+                onChange={setInverseName}
+              />
+            )}
+            <Input
+              inputDataTestId="relationship-type-description"
+              label={t('label.description')}
+              size="sm"
+              value={description}
+              onChange={setDescription}
+            />
+            <Box gap={2} justify="end">
+              <Button
+                color="secondary"
+                data-testid="relationship-type-cancel"
+                size="sm"
+                onPress={onCancel}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                data-testid="relationship-type-submit"
+                isDisabled={name.trim().length === 0}
+                size="sm"
+                onPress={() =>
+                  onSubmit({
+                    description,
+                    inverseLabel: inverseName,
+                    label: name,
+                    symmetric,
+                  })
+                }>
+                {t('label.create')}
+              </Button>
+            </Box>
+          </Box>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
 
 interface OntologyGraphViewProps {
   readonly ontology: Ontology;
@@ -126,9 +281,9 @@ const OntologyGraphView = ({
 }: OntologyGraphViewProps) => {
   const { t } = useTranslation();
   const graphRef = useRef<OntologyGraphHandle>(null);
-  const pendingRelationProperty = useRef<{
-    key: string;
-    property: OntologyProperty;
+  const [typeDraft, setTypeDraft] = useState<{
+    label: string;
+    resolve: (draft?: RelationshipTypeDraft) => void;
   }>();
   const handledCreateConceptRequest = useRef(createConceptRequestKey);
   const [search, setSearch] = useState('');
@@ -190,6 +345,11 @@ const OntologyGraphView = ({
     ResourceEntity.ONTOLOGY_PROPERTY
   );
   const canCreateAxiom = canCreateDefinition(ResourceEntity.ONTOLOGY_AXIOM);
+  const canCreateRelationType = [
+    ResourceEntity.RELATIONSHIP_TYPE,
+    ResourceEntity.ONTOLOGY_PROPERTY,
+    ResourceEntity.ONTOLOGY_AXIOM,
+  ].every(canCreateDefinition);
   const conceptPermissionId = conceptEditor?.conceptId ?? selectedId;
   const { canEditAll: canEditConcept } = useEntityPermissions(
     ResourceEntity.ONTOLOGY_CONCEPT,
@@ -202,33 +362,38 @@ const OntologyGraphView = ({
     }
   );
   const selected = model?.concepts.find((concept) => concept.id === selectedId);
-  const relationTypeGroups = useMemo<RelationTypeOptionGroup[]>(
+  const {
+    data: relationTypes = NO_RELATIONSHIP_TYPES,
+    error: registryError,
+    refetch: refetchRegistry,
+  } = useQuery({
+    queryKey: [RELATIONSHIP_TYPES_QUERY_KEY],
+    enabled: isEditing,
+    gcTime: 30_000,
+    staleTime: 30_000,
+    retry: false,
+    queryFn: () =>
+      listAllPages(
+        (after) => listRelationshipTypes({ limit: 1000, after }),
+        MAX_RELATIONSHIP_TYPE_PAGES
+      ),
+  });
+  const catalog = useMemo(
     () =>
       model
-        ? [
-            {
-              id: 'hierarchy',
-              options: [
-                {
-                  id: 'isA',
-                  label: t('label.is-a'),
-                  paletteKey: PaletteKey.Purple,
-                },
-              ],
-              title: t('label.hierarchy'),
-            },
-            {
-              id: 'properties',
-              options: getObjectProperties(model).map((property) => ({
-                id: property.iri,
-                label: getPropertyLabel(property),
-                paletteKey: PaletteKey.Blue,
-              })),
-              title: t('label.relationship-plural'),
-            },
-          ]
+        ? buildNativeRelationCatalog(model, relationTypes, {
+            subClassOf: t('label.is-a'),
+          })
         : [],
-    [model, t]
+    [model, relationTypes, t]
+  );
+  const relationTypeGroups = useMemo(
+    () =>
+      buildNativeRelationGroups(catalog, {
+        core: t('label.core-owl-skos'),
+        custom: t('label.custom-admin-defined'),
+      }),
+    [catalog, t]
   );
 
   const showWriteError = useCallback(
@@ -240,18 +405,56 @@ const OntologyGraphView = ({
     [t]
   );
 
+  useEffect(() => {
+    if (registryError) {
+      showWriteError(registryError);
+    }
+  }, [registryError, showWriteError]);
+
+  const createType = useCallback(
+    async (label: string): Promise<NativeRelationType | undefined> => {
+      const wanted = label.trim().toLowerCase();
+      const existing = catalog.find(
+        (candidate) => candidate.label.toLowerCase() === wanted
+      );
+      if (existing || !canCreateRelationType) {
+        return existing;
+      }
+      const draft = await new Promise<RelationshipTypeDraft | undefined>(
+        (resolve) => setTypeDraft({ label: label.trim(), resolve })
+      );
+      setTypeDraft(undefined);
+      if (!draft) {
+        return undefined;
+      }
+      const plan = planRelationshipType(draft, relationTypes);
+      const inverse = plan.inverse
+        ? await ensureRelationshipType(plan.inverse)
+        : undefined;
+      const primary = await ensureRelationshipType(plan.primary);
+      if (inverse) {
+        const backLink = buildInverseBackLink(inverse, primary);
+        if (backLink.length > 0) {
+          await patchRelationshipType(inverse.id, backLink);
+        }
+      }
+      void refetchRegistry();
+
+      return toNativeRelationType(
+        primary,
+        inverse ? [primary, inverse] : [primary]
+      );
+    },
+    [canCreateRelationType, catalog, refetchRegistry, relationTypes]
+  );
+
   const createRelation = useCallback(
     async (
       fromId: string,
       toId: string,
       relationType: string
     ): Promise<boolean> => {
-      if (
-        !model ||
-        !canCreateAxiom ||
-        (relationType.startsWith(NEW_RELATION_TYPE_PREFIX) &&
-          !canCreateProperty)
-      ) {
+      if (!model || !canCreateAxiom) {
         return false;
       }
       const from = model.concepts.find((concept) => concept.id === fromId);
@@ -261,78 +464,38 @@ const OntologyGraphView = ({
 
         return false;
       }
-      const pendingKey = `${fromId}|${toId}|${relationType}`;
-      const getOrCreateRelationProperty = async () => {
-        if (!relationType.startsWith(NEW_RELATION_TYPE_PREFIX)) {
-          const property = model.properties.find(
-            (candidate) => candidate.iri === relationType
-          );
-          if (!property) {
-            throw new Error('Missing ontology relationship property');
-          }
-
-          return property;
-        }
-        if (pendingRelationProperty.current?.key === pendingKey) {
-          return pendingRelationProperty.current.property;
-        }
-        const created = await createOntologyProperty(
-          buildObjectPropertyRequest(
-            model,
-            relationType.slice(NEW_RELATION_TYPE_PREFIX.length),
-            from,
-            to
-          )
-        );
-        pendingRelationProperty.current = {
-          key: pendingKey,
-          property: created,
-        };
-        onWorkingChange?.();
-
-        return created;
-      };
-
+      let written = false;
       try {
-        if (relationType === 'isA') {
-          await createOntologyAxiom(
-            buildSubClassAxiomRequest({
-              from,
-              model,
-              statement: `${from.name} is a ${to.name}`,
-              to,
-            })
-          );
-        } else {
-          const property = await getOrCreateRelationProperty();
-          await createOntologyAxiom(
-            buildRestrictionAxiomRequest({
-              from,
-              model,
-              property,
-              statement: `${from.name} ${getPropertyLabel(property)} ${
-                to.name
-              }`,
-              to,
-            })
-          );
+        const type = relationType.startsWith(NEW_RELATION_TYPE_PREFIX)
+          ? await createType(
+              relationType.slice(NEW_RELATION_TYPE_PREFIX.length)
+            )
+          : catalog.find((candidate) => candidate.id === relationType) ??
+            missingRelationType(relationType);
+        if (!type) {
+          return false;
         }
-        if (pendingRelationProperty.current?.key === pendingKey) {
-          pendingRelationProperty.current = undefined;
+        for (const step of planNativeRelation({ from, model, to, type })) {
+          written = true;
+          await writeStep(step);
+          onWorkingChange?.();
         }
-        onWorkingChange?.();
-        await refetch();
 
         return true;
       } catch (error) {
         showWriteError(error);
 
         return false;
+      } finally {
+        if (written) {
+          await refetch();
+        }
       }
     },
     [
       canCreateAxiom,
-      canCreateProperty,
+      catalog,
+      createType,
       model,
       onWorkingChange,
       refetch,
@@ -468,7 +631,7 @@ const OntologyGraphView = ({
         <OntologyConceptInspector
           canAddProperty={canCreateProperty}
           canAddRelation={canCreateAxiom}
-          canCreateRelationType={canCreateProperty}
+          canCreateRelationType={canCreateRelationType}
           canEditBindings={isEditing && canEditConcept}
           concept={selected}
           model={model}
@@ -541,7 +704,7 @@ const OntologyGraphView = ({
           }>
           <OntologyGraphG6
             studioMode
-            canCreateRelationType={canCreateProperty}
+            canCreateRelationType={canCreateRelationType}
             edges={graph.edges}
             glossaries={[]}
             glossaryColorMap={{}}
@@ -595,6 +758,14 @@ const OntologyGraphView = ({
         ))}
       </Box>
     ) : null;
+  const renderTypeDialog = () =>
+    typeDraft ? (
+      <RelationshipTypeDialog
+        label={typeDraft.label}
+        onCancel={() => typeDraft.resolve(undefined)}
+        onSubmit={typeDraft.resolve}
+      />
+    ) : null;
 
   return (
     <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:overflow-hidden">
@@ -620,6 +791,7 @@ const OntologyGraphView = ({
         {renderSurface()}
       </div>
       {renderSidebar()}
+      {renderTypeDialog()}
     </div>
   );
 };

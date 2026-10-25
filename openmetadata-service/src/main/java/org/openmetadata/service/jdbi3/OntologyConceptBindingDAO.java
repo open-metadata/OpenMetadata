@@ -64,6 +64,8 @@ public interface OntologyConceptBindingDAO {
 
   record ConceptAssetCount(UUID conceptId, long assetCount) {}
 
+  record BindingPosition(UUID conceptId, UUID assetId) {}
+
   record LiveAsset(UUID id, String serviceType) {}
 
   @ConnectionAwareSqlUpdate(
@@ -130,9 +132,16 @@ public interface OntologyConceptBindingDAO {
       "SELECT "
           + COLUMNS
           + " FROM ontology_concept_binding WHERE conceptId IN (<conceptIds>) "
-          + "ORDER BY conceptId ASC, assetId ASC")
+          + "AND (:hasAfter = FALSE OR conceptId > :afterConceptId "
+          + "OR (conceptId = :afterConceptId AND assetId > :afterAssetId)) "
+          + "ORDER BY conceptId ASC, assetId ASC LIMIT :limit")
   @RegisterRowMapper(BindingRowMapper.class)
-  List<BindingRow> listForConcepts(@BindList("conceptIds") List<String> conceptIds);
+  List<BindingRow> listForConceptsAfter(
+      @BindList("conceptIds") List<String> conceptIds,
+      @Bind("hasAfter") boolean hasAfter,
+      @Bind("afterConceptId") String afterConceptId,
+      @Bind("afterAssetId") String afterAssetId,
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT binding.conceptId, COUNT(*) AS assetCount "

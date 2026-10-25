@@ -66,12 +66,20 @@ describe('OntologyDataAssetPicker', () => {
   });
 
   it('saves native associations without glossary tagging and excludes linked assets from select all', async () => {
-    const saveAssets = jest.fn().mockResolvedValue({ failedRequest: [] });
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
     render(
       <OntologyDataAssetPicker
-        native={{ assetTypes: ['table'], linkedIds: ['t-1'], saveAssets }}
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
         onCancel={jest.fn()}
-        onPartialSave={jest.fn()}
         onSave={jest.fn()}
       />
     );

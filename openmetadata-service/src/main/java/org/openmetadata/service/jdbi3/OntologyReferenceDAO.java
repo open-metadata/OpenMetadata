@@ -13,6 +13,7 @@ import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -28,6 +29,20 @@ public interface OntologyReferenceDAO {
       " AND (sourceType > :afterType OR (sourceType = :afterType AND "
           + "(sourceId > :afterId OR (sourceId = :afterId AND role > :afterRole)))) "
           + "ORDER BY sourceType, sourceId, role LIMIT :limit";
+
+  record AxiomPosition(String name, String id) {
+    public static final AxiomPosition FIRST = new AxiomPosition("", "");
+
+    public boolean hasAfter() {
+      return !id.isEmpty();
+    }
+  }
+
+  record EdgeAxiomRow(String name, UUID id, String json) {
+    public AxiomPosition position() {
+      return new AxiomPosition(name, id.toString());
+    }
+  }
 
   @SqlUpdate(
       "INSERT INTO ontology_reference (ontologyId, sourceType, sourceId, role, iri, iriHash) "
@@ -127,17 +142,30 @@ public interface OntologyReferenceDAO {
       @Bind("limit") int limit);
 
   @SqlQuery(
-      "SELECT a.json FROM ontology_axiom_entity a WHERE a.ontologyId = :ontologyId "
+      "SELECT a.name, a.id, a.json FROM ontology_axiom_entity a WHERE a.ontologyId = :ontologyId "
           + "AND a.deleted = FALSE AND a.axiomType IN "
           + "('SUBCLASS_OF', 'EQUIVALENT_CLASS', 'OBJECT_PROPERTY_ASSERTION') AND EXISTS "
           + "(SELECT 1 FROM ontology_reference r WHERE r.sourceId = a.id "
           + "AND r.ontologyId = a.ontologyId AND r.sourceType = 'ontologyAxiom' "
           + "AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>)) "
+          + "AND (:after.hasAfter = FALSE OR a.name > :after.name "
+          + "OR (a.name = :after.name AND a.id > :after.id)) "
           + "ORDER BY a.name, a.id LIMIT :limit")
-  List<String> listPropertyEdgeAxioms(
+  @RegisterRowMapper(EdgeAxiomRowMapper.class)
+  List<EdgeAxiomRow> listPropertyEdgeAxioms(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
+      @BindMethods("after") AxiomPosition after,
       @Bind("limit") int limit);
+
+  class EdgeAxiomRowMapper implements RowMapper<EdgeAxiomRow> {
+    @Override
+    public EdgeAxiomRow map(final ResultSet rows, final StatementContext context)
+        throws SQLException {
+      return new EdgeAxiomRow(
+          rows.getString("name"), UUID.fromString(rows.getString("id")), rows.getString("json"));
+    }
+  }
 
   class ReferenceMapper implements RowMapper<OntologyReference> {
     @Override

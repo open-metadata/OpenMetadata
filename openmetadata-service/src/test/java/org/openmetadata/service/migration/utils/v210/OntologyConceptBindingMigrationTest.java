@@ -20,7 +20,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -42,10 +48,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-/**
- * Runs the 2.1.0 copy of concept binding documents into {@code ontology_concept_binding} rows
- * against real MySQL and PostgreSQL, on the table the shipped {@code schemaChanges.sql} creates.
- */
 @Testcontainers(disabledWithoutDocker = true)
 class OntologyConceptBindingMigrationTest {
   private static final String PASSWORD = "binding-copy-test";
@@ -90,6 +92,7 @@ class OntologyConceptBindingMigrationTest {
     try (Handle handle = open(dialect)) {
       ConnectionType connectionType = connectionType(dialect);
       createTables(handle, dialect);
+      assertBindingKeys(handle);
       List<OntologyColumnBinding> columns =
           List.of(
               new OntologyColumnBinding()
@@ -275,6 +278,49 @@ class OntologyConceptBindingMigrationTest {
             .toList();
     assertFalse(shipped.isEmpty(), "the 2.1.0 " + dialect + " migration creates " + BINDING_TABLE);
     shipped.forEach(handle::execute);
+  }
+
+  private static void assertBindingKeys(Handle handle) {
+    try {
+      var connection = handle.getConnection();
+      DatabaseMetaData metadata = connection.getMetaData();
+      String catalog = connection.getCatalog();
+      String schema = connection.getSchema();
+      List<Map.Entry<Integer, String>> primaryKeys = new ArrayList<>();
+      try (ResultSet keys = metadata.getPrimaryKeys(catalog, schema, BINDING_TABLE)) {
+        while (keys.next()) {
+          primaryKeys.add(
+              Map.entry(
+                  keys.getInt("KEY_SEQ"), keys.getString("COLUMN_NAME").toLowerCase(Locale.ROOT)));
+        }
+      }
+      assertEquals(
+          List.of("conceptid", "assetid"),
+          primaryKeys.stream()
+              .sorted(Comparator.comparingInt(Map.Entry::getKey))
+              .map(Map.Entry::getValue)
+              .toList());
+
+      Map<String, Map<Integer, String>> indexes = new TreeMap<>();
+      try (ResultSet rows = metadata.getIndexInfo(catalog, schema, BINDING_TABLE, false, false)) {
+        while (rows.next()) {
+          String name = rows.getString("INDEX_NAME");
+          String column = rows.getString("COLUMN_NAME");
+          if (rows.getShort("TYPE") != DatabaseMetaData.tableIndexStatistic
+              && name != null
+              && column != null) {
+            indexes
+                .computeIfAbsent(name, ignored -> new TreeMap<>())
+                .put(rows.getInt("ORDINAL_POSITION"), column.toLowerCase(Locale.ROOT));
+          }
+        }
+      }
+      assertTrue(
+          indexes.values().stream().anyMatch(columns -> "assetid".equals(columns.get(1))),
+          "assetId must lead an index for asset-side lookup: " + indexes);
+    } catch (SQLException exception) {
+      throw new IllegalStateException("Could not inspect binding table metadata", exception);
+    }
   }
 
   private static void seedEntity(Handle handle, String table, UUID id, String fqnHash) {

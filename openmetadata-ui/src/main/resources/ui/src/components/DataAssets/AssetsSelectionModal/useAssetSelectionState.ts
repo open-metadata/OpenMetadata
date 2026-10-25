@@ -28,7 +28,7 @@ import {
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
-import { TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
@@ -97,6 +97,19 @@ type BulkAssetsActivity = Pick<
 > & {
   result?: BulkOperationResult;
 };
+
+// A port names a data asset. Columns share the data asset search index but cannot be ports.
+const PORT_ASSETS_FILTER: QueryFilterInterface = {
+  query: {
+    bool: { must_not: [{ term: { entityType: EntityType.TABLE_COLUMN } }] },
+  },
+};
+
+const assetsFilterFor = (type: AssetsOfEntity) =>
+  type === AssetsOfEntity.DATA_PRODUCT_INPUT_PORT ||
+  type === AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT
+    ? PORT_ASSETS_FILTER
+    : undefined;
 
 export const useAssetSelectionState = ({
   entityFqn,
@@ -245,7 +258,8 @@ export const useAssetSelectionState = ({
     if (open) {
       const combinedQueryFilter = getCombinedQueryFilterObject(
         queryFilter as unknown as QueryFilterInterface,
-        quickFilterQuery as QueryFilterInterface
+        quickFilterQuery as QueryFilterInterface,
+        assetsFilterFor(type)
       );
       fetchEntities({
         index: activeFilter,
@@ -488,7 +502,8 @@ export const useAssetSelectionState = ({
       ) {
         const combinedQueryFilter = getCombinedQueryFilterObject(
           queryFilter as unknown as QueryFilterInterface,
-          quickFilterQuery as QueryFilterInterface
+          quickFilterQuery as QueryFilterInterface,
+          assetsFilterFor(type)
         );
 
         if (isLoading) {
@@ -513,6 +528,7 @@ export const useAssetSelectionState = ({
       queryFilter,
       isLoading,
       fetchEntities,
+      type,
     ]
   );
 
@@ -622,6 +638,7 @@ export const useAssetSelectionState = ({
   }, [socket, handleTerminalActivity]);
 
   return {
+    assetsFilter: assetsFilterFor(type),
     search,
     setSearch,
     items,

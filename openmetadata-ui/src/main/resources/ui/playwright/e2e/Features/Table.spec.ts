@@ -665,7 +665,6 @@ test.describe('Large Table Column Search & Copy Link', () => {
   });
 
   const largeTable = new TableClass();
-  const largeTableName = `large_table_${uuid()}`;
   const targetColumnName = 'test_col_071';
   type TableColumn = NonNullable<
     Parameters<TableClass['createAdditionalTable']>[0]['columns']
@@ -674,6 +673,9 @@ test.describe('Large Table Column Search & Copy Link', () => {
   let createdTable: Record<string, ColumnDataType | string | number>;
 
   test.beforeAll('Setup large table', async ({ browser }) => {
+    // fullyParallel can rerun this hook in the same worker, so the name must be
+    // minted per run or the second POST collides with the first table (409).
+    const largeTableName = `large_table_${uuid()}`;
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
     // Create base hierarchy (service, db, schema) - assuming create() does this

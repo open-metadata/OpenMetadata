@@ -380,7 +380,7 @@ CREATE TABLE IF NOT EXISTS rdf_custom_ontology (
 -- 1.12.1 created it, but the ALTER TABLE that precedes it in that script has no IF NOT EXISTS, so
 -- on any deployment where search_text already existed the script aborted before reaching the index
 -- and every `q=` audit search has been a full table scan since.
-SET @ddl = (
+SET @audit_log_search_text_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -393,13 +393,13 @@ SET @ddl = (
     'CREATE FULLTEXT INDEX idx_audit_log_search_text ON audit_log_event (search_text)'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE audit_log_search_text_stmt FROM @audit_log_search_text_ddl;
+EXECUTE audit_log_search_text_stmt;
+DEALLOCATE PREPARE audit_log_search_text_stmt;
 
 -- event_type and entity_type are filterable on their own and pair with the event_ts ordering every
 -- list query uses; without them a filtered page scans every row in the time window.
-SET @ddl = (
+SET @audit_log_event_type_ts_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -412,11 +412,11 @@ SET @ddl = (
     'CREATE INDEX idx_audit_log_event_type_ts ON audit_log_event (event_type, event_ts DESC)'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE audit_log_event_type_ts_stmt FROM @audit_log_event_type_ts_ddl;
+EXECUTE audit_log_event_type_ts_stmt;
+DEALLOCATE PREPARE audit_log_event_type_ts_stmt;
 
-SET @ddl = (
+SET @audit_log_entity_type_ts_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -429,16 +429,16 @@ SET @ddl = (
     'CREATE INDEX idx_audit_log_entity_type_ts ON audit_log_event (entity_type, event_ts DESC)'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE audit_log_entity_type_ts_stmt FROM @audit_log_entity_type_ts_ddl;
+EXECUTE audit_log_entity_type_ts_stmt;
+DEALLOCATE PREPARE audit_log_entity_type_ts_stmt;
 
 -- Index automations_workflow.updatedAt for the DataRetention app's workflow cleanup, which
 -- selects the oldest expired rows with `WHERE updatedAt < ? ORDER BY updatedAt LIMIT ?` once per
 -- batch. Without it that is a full scan plus a top-k sort of a table that grows unbounded with
 -- test connection, query runner and reverse ingestion runs. MySQL has no
 -- `CREATE INDEX IF NOT EXISTS`, so guard via information_schema.
-SET @ddl = (
+SET @automations_workflow_updated_at_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -451,9 +451,9 @@ SET @ddl = (
     'CREATE INDEX idx_automations_workflow_updated_at ON automations_workflow (updatedAt)'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE automations_workflow_updated_at_stmt FROM @automations_workflow_updated_at_ddl;
+EXECUTE automations_workflow_updated_at_stmt;
+DEALLOCATE PREPARE automations_workflow_updated_at_stmt;
 
 -- audit_log_event.entity_fqn stores the raw FQN. For lineage events that FQN is two
 -- entity FQNs joined by the relationship marker, so ordinary deeply-nested entities
@@ -462,7 +462,7 @@ DEALLOCATE PREPARE stmt;
 -- lookups go through entity_fqn_hash (idx_audit_log_event_entity_hash_ts), an
 -- MD5-per-segment digest that stays far inside its own bound -- so the column has no
 -- reason to be length-capped.
-SET @ddl = (
+SET @audit_log_entity_fqn_text_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -476,9 +476,49 @@ SET @ddl = (
     'ALTER TABLE audit_log_event MODIFY COLUMN entity_fqn TEXT NULL'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE audit_log_entity_fqn_text_stmt FROM @audit_log_entity_fqn_text_ddl;
+EXECUTE audit_log_entity_fqn_text_stmt;
+DEALLOCATE PREPARE audit_log_entity_fqn_text_stmt;
+
+-- 2.0.0 meant to add this index, but its block reused `PREPARE stmt FROM @ddl`, so the runner
+-- skipped it as already executed and no MySQL database has it. Databases past 2.0.0 never re-read
+-- that folder, so it is added here.
+SET @wf_instance_state_execution_id_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE wf_instance_state_execution_id_stmt FROM @wf_instance_state_execution_id_ddl;
+EXECUTE wf_instance_state_execution_id_stmt;
+DEALLOCATE PREPARE wf_instance_state_execution_id_stmt;
+
+-- task_entity creates this index inline. Environments whose task_entity predates the inline
+-- approvedById column got the column from a 2.0.0 guard, but that guard's index block reused
+-- `PREPARE stmt FROM @ddl` and was skipped, so the index is added here.
+SET @task_entity_approved_by_id_idx_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'task_entity'
+        AND index_name = 'idx_approved_by_id'
+    ),
+    'SELECT 1',
+    'ALTER TABLE task_entity ADD KEY idx_approved_by_id (approvedById)'
+  )
+);
+PREPARE task_entity_approved_by_id_idx_stmt FROM @task_entity_approved_by_id_idx_ddl;
+EXECUTE task_entity_approved_by_id_idx_stmt;
+DEALLOCATE PREPARE task_entity_approved_by_id_idx_stmt;
 
 -- Announcement type: stored generated column so the list API can filter by type. Rows written
 -- before the field existed have no $.type and read back as the Notice default.

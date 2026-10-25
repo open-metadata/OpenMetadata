@@ -10,9 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, renderHook } from '@testing-library/react';
+import { act, render, renderHook, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
+import {
+  MemoryRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { getSettingsLink } from '../utils/SettingsModalLinkUtils';
+import { useAppModeStore } from './useAppMode';
 import { useSettingsHash } from './useSettingsHash';
 
 // Real MemoryRouter (no react-router mock): the hook drives navigation through
@@ -186,6 +196,23 @@ describe('useSettingsHash', () => {
     expect(result.current.settings.state.tab).toBeNull();
   });
 
+  // A mode-aware settings link (`getSettingsLink`) pushes `#<tab>` on the same
+  // pathname; the store must adopt it so the modal opens over the page.
+  it('should adopt a settings hash pushed by a link on the same page', () => {
+    const { result } = renderHook(
+      () => ({ navigate: useNavigate(), settings: useSettingsHash() }),
+      { wrapper }
+    );
+
+    act(() => {
+      globalThis.location.hash = '#bots/ingestion-bot';
+      result.current.navigate('#bots/ingestion-bot');
+    });
+
+    expect(result.current.settings.state.tab).toBe('bots');
+    expect(result.current.settings.state.subPath).toBe('ingestion-bot');
+  });
+
   // Deep link opened in a new tab: an initial app/auth redirect can strip the
   // URL hash before the hook's mount sync runs. The captured hash must survive.
   it('keeps a captured deep-link hash when a later mount sees an empty URL hash', () => {
@@ -204,5 +231,178 @@ describe('useSettingsHash', () => {
     expect(second.result.current.state.subPath).toBe('roles-detail/Admin');
 
     act(() => second.result.current.clearHash());
+  });
+
+  // The push that brought the page here (e.g. the post-login landing) must not
+  // wipe a captured deep link: only pushes after mount are settings links.
+  it('keeps a captured deep-link hash when it mounts on a PUSH navigation', () => {
+    globalThis.location.hash = '#access-control/roles';
+    renderHook(() => useSettingsHash(), { wrapper }).unmount();
+    globalThis.location.hash = '';
+
+    const Probe = () => (
+      <span data-testid="tab">{useSettingsHash().state.tab ?? 'none'}</span>
+    );
+
+    // `<Navigate>` pushes; the probe mounts on the landing route it pushed to.
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route element={<Navigate to="/landing" />} path="/" />
+          <Route element={<Probe />} path="/landing" />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('tab')).toHaveTextContent('access-control');
+  });
+
+  describe('a settings link followed in AI mode', () => {
+    const renderOnPage = (entry: string) =>
+      renderHook(
+        () => ({
+          location: useLocation(),
+          navigate: useNavigate(),
+          settings: useSettingsHash(),
+        }),
+        { wrapper: makeWrapper(entry) }
+      );
+
+    const follow = (
+      result: ReturnType<typeof renderOnPage>['result'],
+      classicPath: string
+    ) => {
+      const link = getSettingsLink(classicPath);
+      act(() => {
+        globalThis.location.hash = link.slice(link.indexOf('#'));
+        result.current.navigate(link);
+      });
+
+      return link;
+    };
+
+    beforeEach(() => {
+      useAppModeStore.getState().setMode(AI_APP_MODE);
+      globalThis.history.replaceState(null, '', '/x?a=1');
+    });
+
+    afterEach(() => {
+      useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+      globalThis.history.replaceState(null, '', '/');
+    });
+
+    it('keeps the page query string, and closing keeps it too', () => {
+      const { result } = renderOnPage('/x?a=1');
+
+      expect(follow(result, '/settings/members/teams/Org')).toBe(
+        '?a=1#members/teams/Org'
+      );
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '#members/teams/Org',
+      });
+      expect(result.current.settings.state.tab).toBe('members');
+
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '',
+      });
+    });
+
+    it('closes by going back to the page entry, not by adding a duplicate', () => {
+      const { result } = renderOnPage('/x?a=1');
+      const pageKey = result.current.location.key;
+
+      follow(result, '/settings/members/teams');
+      // A link followed inside the modal pushes one more entry.
+      follow(result, '/settings/members/teams/Org');
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location.key).toBe(pageKey);
+      expect(result.current.settings.state.tab).toBeNull();
+    });
+
+    // Panels, the paging hook and the modal each mount the hook; one push is
+    // still one entry to pop.
+    it('counts a push once however many hooks see it', () => {
+      const { result } = renderHook(
+        () => ({
+          location: useLocation(),
+          navigate: useNavigate(),
+          settings: useSettingsHash(),
+          panel: useSettingsHash(),
+          paging: useSettingsHash(),
+        }),
+        { wrapper: makeWrapper('/x?a=1') }
+      );
+      const pageKey = result.current.location.key;
+
+      follow(result, '/settings/members/teams');
+      follow(result, '/settings/members/teams/Org');
+      // The last-mounted hook's effects run after the others have adopted the
+      // push, so it is the one that would miscount.
+      act(() => result.current.paging.clearHash());
+
+      expect(result.current.location.key).toBe(pageKey);
+      expect(result.current.location).toMatchObject({
+        pathname: '/x',
+        search: '?a=1',
+        hash: '',
+      });
+    });
+
+    // The count lives with the hook instance, so a modal that was never closed
+    // (a test that ends mid-flow, an HMR remount) cannot make a later close pop
+    // the page itself off the history.
+    it('does not carry a count over to a new mount', () => {
+      const first = renderOnPage('/x?a=1');
+      follow(first.result, '/settings/members/teams');
+      follow(first.result, '/settings/members/teams/Org');
+      first.unmount();
+
+      const { result } = renderHook(
+        () => ({
+          location: useLocation(),
+          settings: useSettingsHash(),
+        }),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <MemoryRouter initialEntries={['/a', '/y']} initialIndex={1}>
+              {children}
+            </MemoryRouter>
+          ),
+        }
+      );
+      act(() => {
+        result.current.settings.setHash('bots');
+        globalThis.location.hash = '#bots';
+      });
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location).toMatchObject({
+        pathname: '/y',
+        hash: '',
+      });
+    });
+
+    // A modal link to another page (e.g. team detail → Explore) navigates, then
+    // closes the modal; the close must not pop history back onto the modal.
+    it('keeps a navigation to another page that lands before the close', () => {
+      const { result } = renderOnPage('/x?a=1');
+
+      follow(result, '/settings/members/teams/Org');
+      act(() => {
+        globalThis.location.hash = '';
+        result.current.navigate('/explore');
+        result.current.settings.clearHash();
+      });
+
+      expect(result.current.location.pathname).toBe('/explore');
+      expect(result.current.settings.state.tab).toBeNull();
+    });
   });
 });

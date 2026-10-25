@@ -146,7 +146,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
       return {
         name: column,
         title: (
-          <div className="d-flex flex-column">
+          <Box className="tw:text-start tw:wrap-anywhere" direction="col">
             <Typography> {column}</Typography>
             {matchedColumn?.dataType && (
               <Typography
@@ -155,7 +155,7 @@ const SampleDataTable: FC<SampleDataProps> = ({
                 matchedColumn?.dataType ?? ''
               )})`}</Typography>
             )}
-          </div>
+          </Box>
         ),
         dataIndex: columnKey,
         key: columnKey,
