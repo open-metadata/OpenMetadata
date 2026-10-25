@@ -563,33 +563,21 @@ export const addLineageViaMenu = async (
   const popover = page.getByTestId('add-lineage-popover');
   await expect(popover).toBeVisible();
 
-  // Type rows carry their search index as test id, which is locale-independent
-  // where the option labels are not.
-  await popover.getByTestId('add-lineage-type-select').click();
-  await page
-    .getByTestId('drop-down-menu')
-    .getByTestId(getEntityTypeSearchIndexMapping(toEntity.type))
-    .click();
-
-  const toName = get(toEntity, 'entityResponseData.name') ?? '';
-  const toFqn = get(toEntity, 'entityResponseData.fullyQualifiedName') ?? '';
-  await popover
-    .getByTestId('add-lineage-entity-input')
-    .getByRole('combobox')
-    .fill(toName);
-  // Asset options are keyed by FQN, which tells apart entities that share a
-  // name across services. The list also searches on open, so wait for the
-  // option itself rather than for a search response.
-  const assetOption = page.getByTestId(`option-${toFqn}`);
-  await expect(assetOption).toBeVisible();
-
   const lineageMutation = page.waitForResponse(
     (response) =>
       response.request().method() === 'PUT' &&
       new URL(response.url()).pathname.endsWith('/api/v1/lineage')
   );
-  await assetOption.click();
+
   if (columnFqn) {
+    // A column edit picks its counterpart among the nodes already on the
+    // canvas, keyed by entity id.
+    const toId = get(toEntity, 'entityResponseData.id') ?? '';
+    await popover
+      .getByTestId('add-lineage-canvas-asset-select')
+      .getByRole('button')
+      .click();
+    await page.locator(`[role="listbox"]:visible [data-key="${toId}"]`).click();
     await popover
       .getByTestId('add-lineage-column-select')
       .getByRole('button')
@@ -597,6 +585,27 @@ export const addLineageViaMenu = async (
     await page
       .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
       .click();
+  } else {
+    // Type rows carry their search index as test id, which is
+    // locale-independent where the option labels are not.
+    await popover.getByTestId('add-lineage-type-select').click();
+    await page
+      .getByTestId('drop-down-menu')
+      .getByTestId(getEntityTypeSearchIndexMapping(toEntity.type))
+      .click();
+
+    const toName = get(toEntity, 'entityResponseData.name') ?? '';
+    const toFqn = get(toEntity, 'entityResponseData.fullyQualifiedName') ?? '';
+    await popover
+      .getByTestId('add-lineage-entity-input')
+      .getByRole('combobox')
+      .fill(toName);
+    // Asset options are keyed by FQN, which tells apart entities that share a
+    // name across services. The list also searches on open, so wait for the
+    // option itself rather than for a search response.
+    const assetOption = page.getByTestId(`option-${toFqn}`);
+    await expect(assetOption).toBeVisible();
+    await assetOption.click();
   }
   await popover.getByTestId('add-lineage-submit').click();
   const lineageResponse = await lineageMutation;
@@ -995,6 +1004,8 @@ export const addColumnLineage = async (
   fromOwnerFqn?: string
 ) => {
   const fromColumn = await revealColumn(page, fromColumnFqn, fromOwnerFqn);
+  // The column menu only connects to nodes already on the canvas, so callers
+  // must put the target there first.
 
   await addLineageViaMenu(page, {
     trigger: fromColumn,
@@ -1003,8 +1014,7 @@ export const addColumnLineage = async (
     columnFqn: toColumnFqn,
   });
 
-  // The canvas only draws edges whose nodes are in view, and a target the
-  // popover just added lands wherever the layout puts it.
+  // The canvas only draws edges whose nodes are in view.
   await fitToScreen(page);
   await expect(
     page.getByTestId(`column-edge-${fromColumnFqn}-${toColumnFqn}`)

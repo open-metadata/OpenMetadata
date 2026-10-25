@@ -36,7 +36,7 @@ export interface CriticalAnnouncementBannerProps {
 // short announcement stays centred when the rail matches the tallest one.
 const BANNER_CLASS =
   'tw:relative tw:flex tw:rounded-xl tw:bg-utility-gray-900 ' +
-  'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-secondary tw:[.dark-mode_&]:bg-primary tw:[.dark-mode_&]:shadow-xs';
+  'tw:[.dark-mode_&]:border tw:[.dark-mode_&]:border-subtle tw:[.dark-mode_&]:bg-surface';
 
 const CONTENT_CLASS =
   'dark-mode tw:flex tw:flex-1 tw:items-center tw:gap-4 tw:py-4 tw:pr-12 tw:pl-5';

@@ -20,4 +20,5 @@ export interface WidgetActionButtonProps {
   'aria-expanded'?: boolean;
   'aria-haspopup'?: 'dialog';
   className?: string;
+  compact?: boolean;
 }

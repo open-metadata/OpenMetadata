@@ -65,18 +65,25 @@ const ProposedBy = ({ proposal }: { proposal: GlossaryProposal }) => {
   return (
     <Box align="center" gap={2} wrap="wrap">
       {proposal.source === 'ai' ? (
-        <span className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5 tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-utility-purple-700">
-          <AskCollateSparkle aria-hidden className="tw:size-3" />
+        <span
+          className={classNames(
+            'tw:inline-flex tw:min-w-0 tw:items-center tw:gap-1 tw:rounded-md tw:bg-utility-purple-100 tw:px-2 tw:py-0.5',
+            'tw:text-xs tw:font-semibold tw:wrap-anywhere tw:text-utility-purple-700'
+          )}>
+          <AskCollateSparkle aria-hidden className="tw:size-3 tw:shrink-0" />
           {proposal.derivation?.evidence?.agent ?? t('label.ai-agent')}
         </span>
       ) : (
-        <Box align="center" gap={2}>
+        <Box align="center" className="tw:min-w-0" gap={2}>
           <Avatar
             alt={author}
             initials={author.charAt(0).toUpperCase()}
             size="xs"
           />
-          <Typography size="text-xs" weight="semibold">
+          <Typography
+            className="tw:min-w-0 tw:wrap-anywhere"
+            size="text-xs"
+            weight="semibold">
             {author}
           </Typography>
         </Box>
@@ -96,10 +103,14 @@ const ProposalSummary = ({ proposal }: { proposal: GlossaryProposal }) => {
       <span className="tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
         {proposal.term.parent ? t('label.new-child-term') : t('label.new-term')}
       </span>
-      <Typography size="text-sm" weight="semibold">
+      {/* Names and descriptions can be one unbroken token (FQN-like); break anywhere so they stay in the card. */}
+      <Typography className="tw:wrap-anywhere" size="text-sm" weight="semibold">
         {getEntityName(proposal.term)}
       </Typography>
-      <Typography className="tw:line-clamp-3" color="secondary" size="text-sm">
+      <Typography
+        className="tw:line-clamp-3 tw:wrap-anywhere"
+        color="secondary"
+        size="text-sm">
         {getTextFromHtmlString(proposal.term.description)}
       </Typography>
     </Box>

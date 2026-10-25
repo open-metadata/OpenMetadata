@@ -56,9 +56,11 @@ const UserProfileCard: React.FC<UserProfileCardProps> = ({
       data-testid="ask-user-card">
       <Box align="center" gap={2}>
         <AIUserMenu />
+        {/* Concentric with the 32px launcher inside it: its 4px radius plus
+            the ~4px inset gives this frame its 8px. */}
         <Box
           align="center"
-          className="tw:size-10 tw:shrink-0 tw:rounded-xl tw:border tw:border-secondary tw:bg-surface"
+          className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
           justify="center">
           <InboxIconButton />
         </Box>

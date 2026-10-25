@@ -925,6 +925,12 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
           root.create(apiContext),
           downstream.create(apiContext),
         ]);
+        // The column menu connects to nodes already on the canvas.
+        await connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: downstream.entityResponseData.id, type: 'table' }
+        );
         await root.visitEntityPage(page);
         await visitLineageTab(page);
         await activateColumnLayer(page);
