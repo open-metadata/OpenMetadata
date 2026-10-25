@@ -65,7 +65,10 @@ class OntologyPropertyInverseStorageTest {
         fixture -> {
           final var properties = new OntologyPropertyRepository();
           final var integer = URI.create("http://www.w3.org/2001/XMLSchema#integer");
-          final var values = List.of(new OntologyLiteral().withValue("1").withDatatypeIri(integer));
+          final var values =
+              List.of(
+                  new OntologyLiteral().withValue("1").withDatatypeIri(integer),
+                  new OntologyLiteral().withValue("2").withDatatypeIri(integer));
           final var count =
               properties.create(
                   null,

@@ -2084,7 +2084,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const renderTableSection = () =>
     glossaryTerms.length > 0 ? (
       <TableCard.Root
-        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:border tw:border-subtle tw:outline-0"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
         size="sm">
         <Table
           cellClassName="tw:p-2 tw:align-middle"
@@ -2145,9 +2145,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     ) : (
       // Show empty state within the table container when search returns no results
       // This keeps the search bar and filters visible
-      <TableCard.Root
-        className="tw:border tw:border-subtle tw:outline-0"
-        size="sm">
+      <TableCard.Root size="sm">
         <Table
           columns={columns}
           containerClassName="glossary-terms-table tw:border-0 tw:rounded-none"

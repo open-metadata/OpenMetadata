@@ -25,7 +25,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { ReactNode, useEffect, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -64,6 +64,29 @@ const toItems = (options: Array<{ label: string; value: string }>) =>
 const findItem = (items: FormSelectItem[], id?: string) =>
   items.find((item) => item.id === id) ?? null;
 
+// The backend resolves a bare `columnName` against top-level columns only,
+// case-insensitively (`ODCSTableTarget.resolveColumn`), so a leaf name may only
+// resolve to a top-level column FQN; a struct child sharing the name would
+// retarget the SLA. Anything unmatched returns null and is preserved on save.
+const findColumnItem = (
+  items: FormSelectItem[],
+  topLevelIds: Set<string>,
+  id?: string
+) => {
+  if (!id) {
+    return null;
+  }
+  const name = id.toLowerCase();
+
+  return (
+    items.find((item) => item.id === id) ??
+    items.find(
+      (item) => topLevelIds.has(item.id) && item.label?.toLowerCase() === name
+    ) ??
+    null
+  );
+};
+
 const toNumberString = (value?: number) =>
   value === undefined ? '' : String(value);
 
@@ -72,8 +95,17 @@ const toNonNegative = (value?: string) =>
     ? undefined
     : Number(value);
 
+// Parse an `HH:mm` prefix tolerantly so documented, server-supported values
+// such as "09:00 UTC" round-trip through the form instead of being dropped.
 const toTimeValue = (time?: string): TimePickerValue | null => {
-  const [hour, minute] = (time ?? '').split(':').map(Number);
+  const match = /^(\d{1,2}):(\d{2})/.exec((time ?? '').trim());
+
+  if (!match) {
+    return null;
+  }
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
 
   return Number.isInteger(hour) && Number.isInteger(minute)
     ? { hour, minute }
@@ -83,45 +115,92 @@ const toTimeValue = (time?: string): TimePickerValue | null => {
 const toTimeString = ({ hour, minute }: TimePickerValue) =>
   `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-const toContractSLA = (values: Partial<ContractSLAFormValues>): ContractSLA => {
-  const sla: ContractSLA = {};
+type ModelledSLAKey =
+  | 'availabilityTime'
+  | 'timezone'
+  | 'columnName'
+  | 'maxLatency'
+  | 'refreshFrequency'
+  | 'retention';
+
+// Maps each RHF field name to the SLA key it feeds, so a single "touched" set
+// can track whether the user interacted with any form field behind that key.
+const SLA_FIELD_GROUP: Partial<
+  Record<keyof ContractSLAFormValues, ModelledSLAKey>
+> = {
+  availabilityTime: 'availabilityTime',
+  timezone: 'timezone',
+  columnName: 'columnName',
+  max_latency_value: 'maxLatency',
+  max_latency_unit: 'maxLatency',
+  refresh_frequency_interval: 'refreshFrequency',
+  refresh_frequency_unit: 'refreshFrequency',
+  retention_period: 'retention',
+  retention_unit: 'retention',
+};
+
+const toModelledSLA = (
+  values: Partial<ContractSLAFormValues>
+): Pick<ContractSLA, ModelledSLAKey> => {
   const refreshInterval = toNonNegative(values.refresh_frequency_interval);
   const maxLatency = toNonNegative(values.max_latency_value);
   const retention = toNonNegative(values.retention_period);
 
-  if (values.availabilityTime) {
-    sla.availabilityTime = toTimeString(values.availabilityTime);
-  }
-  if (values.timezone) {
-    sla.timezone = values.timezone.id as Timezone;
-  }
-  if (values.columnName) {
-    sla.columnName = values.columnName.id;
-  }
-  if (values.max_latency_unit && maxLatency !== undefined) {
-    sla.maxLatency = {
-      unit: values.max_latency_unit.id as NonNullable<
-        ContractSLA['maxLatency']
-      >['unit'],
-      value: maxLatency,
-    };
-  }
-  if (values.refresh_frequency_unit && refreshInterval !== undefined) {
-    sla.refreshFrequency = {
-      interval: refreshInterval,
-      unit: values.refresh_frequency_unit.id as NonNullable<
-        ContractSLA['refreshFrequency']
-      >['unit'],
-    };
-  }
-  if (values.retention_unit && retention !== undefined) {
-    sla.retention = {
-      period: retention,
-      unit: values.retention_unit.id as NonNullable<
-        ContractSLA['retention']
-      >['unit'],
-    };
-  }
+  return {
+    availabilityTime: values.availabilityTime
+      ? toTimeString(values.availabilityTime)
+      : undefined,
+    timezone: values.timezone?.id as Timezone | undefined,
+    columnName: values.columnName?.id,
+    maxLatency:
+      values.max_latency_unit && maxLatency !== undefined
+        ? {
+            unit: values.max_latency_unit.id as NonNullable<
+              ContractSLA['maxLatency']
+            >['unit'],
+            value: maxLatency,
+          }
+        : undefined,
+    refreshFrequency:
+      values.refresh_frequency_unit && refreshInterval !== undefined
+        ? {
+            interval: refreshInterval,
+            unit: values.refresh_frequency_unit.id as NonNullable<
+              ContractSLA['refreshFrequency']
+            >['unit'],
+          }
+        : undefined,
+    retention:
+      values.retention_unit && retention !== undefined
+        ? {
+            period: retention,
+            unit: values.retention_unit.id as NonNullable<
+              ContractSLA['retention']
+            >['unit'],
+          }
+        : undefined,
+  };
+};
+
+// Start from the stored SLA so values the form cannot round-trip (a
+// "09:00 UTC" availabilityTime, an unmatched columnName, unmodeled keys —
+// ContractSLA is an open type) survive a save instead of becoming JSON-Patch
+// `remove` ops. A modeled key is removed only once the user touched and
+// cleared it, so clearing a field the form could not seed still removes it.
+const toContractSLA = (
+  values: Partial<ContractSLAFormValues>,
+  storedSLA: ContractSLA,
+  touched: Set<ModelledSLAKey>
+): ContractSLA => {
+  const sla: ContractSLA = { ...storedSLA };
+
+  Object.entries(toModelledSLA(values)).forEach(([key, value]) => {
+    if (value !== undefined) {
+      sla[key] = value;
+    } else if (touched.has(key as ModelledSLAKey)) {
+      delete sla[key];
+    }
+  });
 
   return sla;
 };
@@ -139,12 +218,19 @@ export const ContractSLAFormTab: React.FC<{
   const { t } = useTranslation();
   const { data: tableData } = useGenericContext();
 
-  const columnItems = useMemo(() => {
+  const { columnItems, topLevelColumnIds } = useMemo(() => {
     const { columns } = tableData as Table;
 
-    return isEmpty(columns)
-      ? []
-      : toItems(getColumnOptionsFromTableColumn(columns, true));
+    return {
+      columnItems: isEmpty(columns)
+        ? []
+        : toItems(getColumnOptionsFromTableColumn(columns, true)),
+      topLevelColumnIds: new Set(
+        (columns ?? []).map(
+          (column) => column.fullyQualifiedName ?? column.name
+        )
+      ),
+    };
   }, [tableData]);
 
   const { refreshUnitItems, latencyUnitItems, retentionUnitItems } = useMemo(
@@ -186,7 +272,11 @@ export const ContractSLAFormTab: React.FC<{
       retention_unit: findItem(retentionUnitItems, sla?.retention?.unit),
       availabilityTime: toTimeValue(sla?.availabilityTime),
       timezone: findItem(timezoneItems, sla?.timezone),
-      columnName: findItem(columnItems, sla?.columnName),
+      columnName: findColumnItem(
+        columnItems,
+        topLevelColumnIds,
+        sla?.columnName
+      ),
     };
   };
 
@@ -201,10 +291,40 @@ export const ContractSLAFormTab: React.FC<{
     }
   }, [initialValues]);
 
+  // Keep the latest stored SLA available to the `watch` subscription without
+  // forcing a re-subscribe whenever the parent re-renders the contract.
+  const storedSLARef = useRef<ContractSLA | undefined>(initialValues?.sla);
   useEffect(() => {
-    const { unsubscribe } = form.watch((values, { type }) => {
+    storedSLARef.current = initialValues?.sla;
+  });
+
+  // Track which SLA field groups the user has touched, so a cleared value is
+  // removed even when the form could not seed the stored value (e.g. an
+  // unparseable availabilityTime or an unmatched columnName). Reset whenever
+  // a new contract is loaded.
+  const touchedSLAFieldsRef = useRef<Set<ModelledSLAKey>>(new Set());
+  useEffect(() => {
+    if (initialValues) {
+      touchedSLAFieldsRef.current = new Set();
+    }
+  }, [initialValues]);
+
+  useEffect(() => {
+    const { unsubscribe } = form.watch((values, { type, name }) => {
       if (type === 'change') {
-        onChange({ sla: toContractSLA(values as ContractSLAFormValues) });
+        const group = name
+          ? SLA_FIELD_GROUP[name as keyof ContractSLAFormValues]
+          : undefined;
+        if (group) {
+          touchedSLAFieldsRef.current.add(group);
+        }
+        onChange({
+          sla: toContractSLA(
+            values as ContractSLAFormValues,
+            storedSLARef.current ?? {},
+            touchedSLAFieldsRef.current
+          ),
+        });
       }
     });
 

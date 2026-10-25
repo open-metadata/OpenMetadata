@@ -649,6 +649,34 @@ describe('DataQualityTab', () => {
         expect(screen.getByText(/label.no-entity/)).toBeInTheDocument();
       });
     });
+
+    it('reports no matching results when a search finds no test cases', async () => {
+      const { getListTestCaseBySearch } = jest.requireMock(
+        '../../../../rest/testAPI'
+      );
+      const { getListTestCaseIncidentStatus } = jest.requireMock(
+        '../../../../rest/incidentManagerAPI'
+      );
+      getListTestCaseIncidentStatus.mockResolvedValue({ data: [] });
+
+      render(<DataQualityTab {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getAllByTestId('data-quality-section')[0]
+        ).toBeInTheDocument();
+      });
+
+      // The search re-queries the API; the counts from the first load stay.
+      getListTestCaseBySearch.mockResolvedValueOnce({ data: [] });
+      fireEvent.change(screen.getAllByTestId('search-input')[0], {
+        target: { value: 'zzz_no_such_test' },
+      });
+
+      expect(
+        await screen.findByText('label.no-matching-result-plural')
+      ).toBeInTheDocument();
+    });
   });
 
   describe('Tab Navigation', () => {

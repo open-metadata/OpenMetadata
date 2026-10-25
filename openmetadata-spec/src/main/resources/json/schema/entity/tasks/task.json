@@ -178,6 +178,44 @@
       },
       "additionalProperties": false
     },
+    "reviewVoteDecision": {
+      "javaType": "org.openmetadata.schema.type.TaskReviewVoteDecision",
+      "description": "What a counted review vote decided.",
+      "type": "string",
+      "enum": ["Approved", "Rejected"],
+      "javaEnums": [
+        {"name": "Approved"},
+        {"name": "Rejected"}
+      ]
+    },
+    "taskReviewVote": {
+      "javaType": "org.openmetadata.schema.type.TaskReviewVote",
+      "description": "One counted vote on a multi-reviewer approval task. The server records it; clients cannot set it.",
+      "type": "object",
+      "properties": {
+        "voter": {
+          "description": "User who cast the vote.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "assignee": {
+          "description": "Assignee entry the vote covers: the voter's own entry, or the team the voter votes through.",
+          "$ref": "../../type/entityReference.json"
+        },
+        "decision": {
+          "$ref": "#/definitions/reviewVoteDecision"
+        },
+        "comment": {
+          "description": "Comment given with the vote, kept verbatim.",
+          "type": "string"
+        },
+        "timestamp": {
+          "description": "When the vote was counted.",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "required": ["voter", "assignee", "decision", "timestamp"],
+      "additionalProperties": false
+    },
     "externalReference": {
       "javaType": "org.openmetadata.schema.type.TaskExternalReference",
       "description": "Reference to an external system like JIRA or ServiceNow.",
@@ -465,6 +503,13 @@
     "ontologyReview": {
       "description": "Immutable, server-managed review target for ontology approval tasks.",
       "$ref": "../../type/ontologyReviewTarget.json"
+    },
+    "reviewVotes": {
+      "description": "Counted votes on a workflow approval task, one per voter, including the deciding vote. Server-managed.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/taskReviewVote"
+      }
     }
   },
   "required": ["id", "name", "category", "type", "status", "createdBy"],

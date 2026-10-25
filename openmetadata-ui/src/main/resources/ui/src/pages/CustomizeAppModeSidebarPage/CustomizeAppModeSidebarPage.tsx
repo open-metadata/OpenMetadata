@@ -59,6 +59,7 @@ import {
 } from '../../rest/DocStoreAPI';
 import { getPersonaByName } from '../../rest/PersonaAPI';
 import { getPersonaDetailsPath } from '../../utils/RouterUtils';
+import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import {
   getSidebarHiddenKeys,
@@ -177,7 +178,7 @@ const CustomizeAppModeSidebarPage = () => {
     }
 
     const timer = setTimeout(
-      () => navigate(getPersonaDetailsPath(personaFqn)),
+      () => navigate(getSettingsLink(getPersonaDetailsPath(personaFqn))),
       100
     );
 
@@ -246,7 +247,7 @@ const CustomizeAppModeSidebarPage = () => {
   }, [items]);
 
   const handleCancel = useCallback(() => {
-    navigate(getPersonaDetailsPath(personaFqn));
+    navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
   }, [navigate, personaFqn]);
 
   const handleVisibilityToggle = useCallback(

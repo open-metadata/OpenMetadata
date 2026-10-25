@@ -323,7 +323,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             {isRolesEdit && (
               <Box align="center" direction="row" gap={3}>
                 <Button
-                  color="link-gray"
+                  color="secondary"
                   data-testid="cancel-roles"
                   size="sm"
                   onPress={() => setIsRolesEdit(false)}>

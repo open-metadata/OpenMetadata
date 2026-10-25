@@ -15,7 +15,6 @@ import {
   BadgeWithDot,
   Box,
   Button,
-  EmptyPlaceholder,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -38,6 +37,7 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import AllOntologiesGraphView from '../../components/governance/ontology/AllOntologiesGraphView/AllOntologiesGraphView';
@@ -1560,7 +1560,7 @@ const OntologyExplorerPage: React.FC = () => {
         <div
           className="tw:relative tw:h-full tw:min-h-70"
           data-testid="all-ontologies-empty">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             actions={
               canCreateOntology
                 ? [

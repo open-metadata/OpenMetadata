@@ -98,7 +98,9 @@ export const filterAndSortProperties = (
   properties: CustomProperty[],
   extension: Record<string, unknown> | undefined,
   searchText: string,
-  sortMode: CustomPropertySortMode
+  sortMode: CustomPropertySortMode,
+  // The card grid packs full-width cards last; a table has no such layout.
+  { groupWideLast = true }: { groupWideLast?: boolean } = {}
 ): CustomProperty[] => {
   const filtered = properties.filter((property) =>
     matchesPropertySearch(property, searchText)
@@ -125,7 +127,9 @@ export const filterAndSortProperties = (
   // Full-width cards (tables, SQL, markdown, time intervals) follow the
   // half-width ones so the two-column grid stays packed, as in the design.
   const byWidth = (property: CustomProperty) =>
-    Number(Boolean(getPropertyTypeMeta(property.propertyType.name).isWide));
+    groupWideLast
+      ? Number(Boolean(getPropertyTypeMeta(property.propertyType.name).isWide))
+      : 0;
 
   return filtered.sort(
     (a, b) => byWidth(a) - byWidth(b) || comparators[sortMode](a, b)

@@ -101,18 +101,14 @@ describe('TabsLabel component', () => {
     expect(badge('first')).toHaveClass('tw:bg-utility-gray-50');
   });
 
-  it('Proposed items show as a purple count after the tab count, named for screen readers', () => {
+  it('Proposed items show as a worded purple badge after the tab count', () => {
     render(<TabsLabel count={8} id="terms" name="Terms" proposedCount={2} />);
 
-    const proposed = screen.getByTestId('proposed-count');
-    const badge = proposed.querySelector('[aria-hidden="true"] > span');
+    const badge = screen.getByTestId('proposed-count').firstElementChild;
 
     expect(screen.getByTestId('count')).toHaveTextContent('8');
-    expect(badge).toHaveTextContent(/^2$/);
+    expect(badge).toHaveTextContent('label.count-proposed');
     expect(badge).toHaveClass('tw:bg-utility-purple-50');
-    expect(proposed.querySelector('.tw\\:sr-only')).toHaveTextContent(
-      'label.count-proposed'
-    );
   });
 
   it('Nothing waiting for review shows no proposed count', () => {

@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
@@ -27,6 +28,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Repository
 public class OntologyPropertyRepository extends OntologyEntityRepository<OntologyProperty> {
@@ -38,7 +40,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         OntologyProperty.class,
         Entity.getCollectionDAO().ontologyPropertyDAO(),
         COLLECTION_PATH,
-        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith");
+        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith,deprecated,replacedBy");
   }
 
   @Override
@@ -53,8 +55,28 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     if (entity.getInverse() != null) {
       requireAbsoluteIri(entity.getInverse(), "inverse");
     }
+    if (entity.getReplacedBy() != null) {
+      requireAbsoluteIri(entity.getReplacedBy(), "replacedBy");
+    }
     validatePropertyKind(entity);
     validateDataMetadata(entity);
+    requireEnumeration(entity);
+  }
+
+  private void requireEnumeration(final OntologyProperty entity) {
+    if (listOrEmpty(entity.getEnumValues()).size() != 1) {
+      return;
+    }
+    // One-value enumerations stored before this rule stay editable until their values change.
+    final OntologyProperty stored =
+        findByNameOrNull(
+            FullyQualifiedName.add(entity.getOntology().getFullyQualifiedName(), entity.getName()),
+            Include.ALL);
+    if (stored == null
+        || !JsonUtils.pojoToJson(stored.getEnumValues())
+            .equals(JsonUtils.pojoToJson(entity.getEnumValues()))) {
+      throw new BadRequestException("An enumeration needs at least two allowed values");
+    }
   }
 
   @Override

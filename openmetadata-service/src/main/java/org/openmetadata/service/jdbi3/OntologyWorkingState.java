@@ -146,7 +146,10 @@ final class OntologyWorkingState {
         final T current =
             json == null ? null : JsonUtils.readValue(json, entities.getEntityClass());
         references.replace(
-            Entity.getEntityTypeFromClass(entities.getEntityClass()), baseline.entityId(), current);
+            Entity.getEntityTypeFromClass(entities.getEntityClass()),
+            baseline.entityId(),
+            baseline.json() != null,
+            current);
         CHANGES
             .get()
             .definitions()

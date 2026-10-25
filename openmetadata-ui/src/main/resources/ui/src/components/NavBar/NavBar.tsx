@@ -596,7 +596,7 @@ const NavBar = () => {
                     ? SidebarCollapsedIcon
                     : SidebarExpandedIcon
                 }
-                size="sm"
+                size="lg"
                 onClick={() =>
                   setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
                 }

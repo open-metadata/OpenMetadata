@@ -35,6 +35,22 @@
       "description": "False while the stage's lifecycle conditions are not met.",
       "type": "boolean",
       "default": true
+    },
+    "revision": {
+      "description": "Present on a Revise and resubmit task: the stage's approval was rejected and the asset is to be revised (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.MetadataCompletionRevision",
+      "properties": {
+        "comment": {
+          "description": "What the reviewer asked to change, when they left a comment.",
+          "type": "string"
+        },
+        "requestedBy": {
+          "description": "Name of the user who rejected the approval.",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": [

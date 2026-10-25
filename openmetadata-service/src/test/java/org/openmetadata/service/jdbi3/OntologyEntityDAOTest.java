@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
@@ -64,6 +65,8 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -76,6 +79,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReview;
+import org.openmetadata.service.tasks.TaskReviewVotes;
 
 class OntologyEntityDAOTest {
   private static final URI NAMESPACE = URI.create("https://example.org/sales/");
@@ -678,10 +682,13 @@ class OntologyEntityDAOTest {
                 "ontologyAsyncReview",
                 Map.of("customTaskId", taskId.toString(), "approvalThreshold", 2))
             .getId();
+    Map<String, Object> firstVote = vote("alice");
+    firstVote.put(
+        TaskReviewVotes.variable(taskId), durableVote("alice", "Original first comment", 1L));
     assertEquals(
-        TaskResolutionOutcome.WAITING_FOR_VOTES,
-        workflow.resolveTaskOutcome(taskId, vote("alice")));
+        TaskResolutionOutcome.WAITING_FOR_VOTES, workflow.resolveTaskOutcome(taskId, firstVote));
     Map<String, Object> variables = vote("bob");
+    variables.put(TaskReviewVotes.variable(taskId), durableVote("bob", "Final comment", 2L));
     variables.put(OntologyWorkflowDecision.VARIABLE, JsonUtils.pojoToJson(decision));
     assertEquals(
         TaskResolutionOutcome.STAGE_ADVANCED, workflow.resolveTaskOutcome(taskId, variables));
@@ -701,10 +708,25 @@ class OntologyEntityDAOTest {
     assertEquals(taskId, committed.taskId());
     assertEquals(decision.target(), committed.target());
     assertEquals(Set.of("alice", "bob"), Set.copyOf(committed.voters()));
+    assertEquals(
+        List.of("Original first comment", "Final comment"),
+        committed.reviewVotes().stream().map(TaskReviewVote::getComment).toList());
 
     workflow.initializeNewProcessEngine(engine);
     assertEquals(committed, workflow.completedOntologyDecision(processId).orElseThrow());
     assertEquals(committed, workflow.completedOntologyDecision(processId).orElseThrow());
+  }
+
+  private static String durableVote(String user, String comment, long timestamp) {
+    EntityReference voter = new EntityReference().withType(Entity.USER).withName(user);
+    return JsonUtils.pojoToJson(
+        List.of(
+            new TaskReviewVote()
+                .withVoter(voter)
+                .withAssignee(voter)
+                .withDecision(TaskReviewVoteDecision.Approved)
+                .withComment(comment)
+                .withTimestamp(timestamp)));
   }
 
   private static void assertContinuingWorkflowIsNotComplete(
@@ -986,6 +1008,35 @@ class OntologyEntityDAOTest {
         .withPropertyChain(null)
         .withCharacteristics(null)
         .withDisjointWith(List.of(NAMESPACE.resolve("annotation")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withKind(OntologyPropertyKind.DATA).withDisjointWith(null);
+    property.withEnumValues(List.of(new OntologyLiteral().withValue("Gold")));
+    assertEquals(
+        "An enumeration needs at least two allowed values",
+        assertThrows(BadRequestException.class, () -> repository.validateDefinition(property))
+            .getMessage());
+    property.withEnumValues(
+        List.of(new OntologyLiteral().withValue("Gold"), new OntologyLiteral().withValue("Gold")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(
+        List.of(
+            new OntologyLiteral().withValue("Gold"), new OntologyLiteral().withValue("Silver")));
+    assertDoesNotThrow(() -> repository.validateDefinition(property));
+    property.withEnumValues(
+        List.of(
+            new OntologyLiteral()
+                .withValue("invalid")
+                .withDatatypeIri(URI.create("http://www.w3.org/2001/XMLSchema#integer"))));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(List.of(new OntologyLiteral()));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withEnumValues(List.of()).withUnit(" ");
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property
+        .withUnit(null)
+        .withDomain(List.of(NAMESPACE.resolve("same"), NAMESPACE.resolve("same")));
+    assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
+    property.withDomain(null).withReplacedBy(URI.create("relative"));
     assertThrows(BadRequestException.class, () -> repository.validateDefinition(property));
   }
 
