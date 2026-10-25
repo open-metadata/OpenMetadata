@@ -97,6 +97,10 @@ public record CredentialVerificationConfig(
     return deepVerifyInterval.toNanoseconds();
   }
 
+  CheckDecision.Policy policy() {
+    return new CheckDecision.Policy(maxStalenessNanos(), missRefreshMinAgeNanos());
+  }
+
   private static <T> T orDefault(T value, T fallback) {
     return value == null ? fallback : value;
   }
