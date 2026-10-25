@@ -3689,6 +3689,10 @@ om:ontologyReview a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "ontologyReview" .
 
+om:approvalRule a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "approvalRule" .
+
 om:reviewers a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "reviewers" .

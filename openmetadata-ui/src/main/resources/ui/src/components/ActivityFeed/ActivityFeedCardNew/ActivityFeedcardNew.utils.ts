@@ -61,11 +61,13 @@ export const handleCardContainerKeyDown =
   };
 
 // Extras for the clickable core `Card` that replaced the antd
-// `<Button block type="text">` wrapper: nowrap and select-none are what that
-// button's base style handed to the card, the core Card focus outline has no
-// colour of its own, and the transparent border reserves the 1px the ghost
-// variant's hover border adds so hovering does not shift the feed list.
+// `<Button block type="text">` wrapper: select-none comes from that button's
+// base style. Its nowrap is left out on purpose: it stopped feed text wrapping,
+// so cards overflowed their panel and the panel scrolled sideways. The core
+// Card focus outline has no colour of its own, and the transparent border
+// reserves the 1px the ghost variant's hover border adds so hovering does not
+// shift the feed list.
 // overflow-visible undoes Card's default clipping so the reply editor's
 // absolutely positioned @mention list is not cut off at the card edge.
 export const CARD_CONTAINER_CLASS_NAME =
-  'tw:select-none tw:whitespace-nowrap tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';
+  'tw:select-none tw:border tw:border-transparent tw:outline-focus-ring tw:overflow-visible';

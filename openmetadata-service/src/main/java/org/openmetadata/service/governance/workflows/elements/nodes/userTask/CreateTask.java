@@ -216,7 +216,13 @@ public class CreateTask implements TaskListener {
       // the task on the first resolution that moves it.
       boolean catalogCounts =
           reviewsChangeRequest(delegateTask) && reviewPolicy.getPartialDecisions();
-      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : approvalThreshold);
+      int taskApprovalThreshold =
+          resolveApprovalThreshold(
+              WorkflowVariableResolver.stringVariable(
+                  delegateTask, WorkflowStartVariables.APPROVAL_MODE),
+              approvalThreshold,
+              task.getAssignees());
+      delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
       delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
@@ -950,6 +956,19 @@ public class CreateTask implements TaskListener {
           priorTaskId,
           prior == null ? null : prior.getStatus());
     }
+  }
+
+  /**
+   * The approval threshold a new task starts with. Under {@link
+   * WorkflowStartVariables#APPROVAL_MODE_ALL_ASSIGNEES} every assignee entry must approve, so the
+   * node's threshold is raised to the entry count; a team is one entry, covered by any member.
+   * Every other mode keeps the node's threshold.
+   */
+  static int resolveApprovalThreshold(
+      String approvalMode, int nodeThreshold, List<EntityReference> assignees) {
+    return WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
+        ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
+        : nodeThreshold;
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(

@@ -51,7 +51,8 @@ def test_release_comparison_preserves_snapshot_coordinates_and_bounds_pages():
         OntologyReleaseDiff.model_validate({**payload, "data": [{**change, "memberKind": "GLOSSARY_TERM"}]})
 
 
-def test_review_target_pins_the_submitted_entity_history_version():
+@pytest.mark.parametrize("approval_rule", [None, "AnyReviewer", "AllReviewers"])
+def test_review_target_pins_the_submitted_entity_history_version(approval_rule):
     payload = {
         "entityId": "00000000-0000-0000-0000-000000000001",
         "ontologyId": "00000000-0000-0000-0000-000000000002",
@@ -59,8 +60,10 @@ def test_review_target_pins_the_submitted_entity_history_version():
         "contentDigest": "a" * 64,
         "author": "author",
     }
+    if approval_rule is not None:
+        payload["approvalRule"] = approval_rule
     stored = OntologyReviewTarget.model_validate(payload).model_dump(mode="json", exclude_none=True)
-    assert stored == payload
+    assert stored == {**payload, "approvalRule": approval_rule or "AnyReviewer"}
     for required in ("ontologyId", "entityVersion"):
         invalid = dict(payload)
         del invalid[required]

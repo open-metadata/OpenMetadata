@@ -11,6 +11,11 @@
  *  limitations under the License.
  */
 
+import {
+  Bell01,
+  MarkerPin01,
+  ZapFast,
+} from '@openmetadata/ui-core-components/icons';
 import { filter, startCase } from 'lodash';
 import {
   SubscriptionCategory,
@@ -91,4 +96,28 @@ export const DATA_CONTRACT_STATUS_OPTIONS = [
   { label: 'label.failed', value: 'Failed' },
   { label: 'label.running', value: 'Running' },
   { label: 'label.aborted', value: 'Aborted' },
+];
+
+export const ALERT_EMPTY_STATE_FEATURES = [
+  {
+    key: 'trigger',
+    Icon: ZapFast,
+    iconClassName: 'tw:text-fg-brand-primary',
+    titleKey: 'label.pick-a-trigger',
+    descriptionKey: 'message.alert-pick-a-trigger-description',
+  },
+  {
+    key: 'destination',
+    Icon: MarkerPin01,
+    iconClassName: 'tw:text-fg-warning-primary',
+    titleKey: 'label.choose-the-destination',
+    descriptionKey: 'message.alert-choose-destination-description',
+  },
+  {
+    key: 'stay-ahead',
+    Icon: Bell01,
+    iconClassName: 'tw:text-fg-success-primary',
+    titleKey: 'label.stay-ahead',
+    descriptionKey: 'message.alert-stay-ahead-description',
+  },
 ];

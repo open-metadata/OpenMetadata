@@ -36,6 +36,7 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { getPersonaDetailsPath } from '../../../../utils/RouterUtils';
+import { getSettingsLink } from '../../../../utils/SettingsModalLinkUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { UnsavedChangesModal } from '../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
 import './customizable-page-header.less';
@@ -84,7 +85,7 @@ export const CustomizablePageHeader = ({
   const requestExit = useCallback(
     (id: string) => {
       if (!chrome) {
-        navigate(getPersonaDetailsPath(personaFqn));
+        navigate(getSettingsLink(getPersonaDetailsPath(personaFqn)));
 
         return;
       }
@@ -160,7 +161,7 @@ export const CustomizablePageHeader = ({
       onPress={handleClose}
     />
   ) : (
-    <Link to={getPersonaDetailsPath(personaFqn)} />
+    <Link to={getSettingsLink(getPersonaDetailsPath(personaFqn))} />
   );
 
   const headerActions = (
