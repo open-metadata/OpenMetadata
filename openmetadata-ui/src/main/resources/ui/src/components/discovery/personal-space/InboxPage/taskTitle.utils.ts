@@ -21,6 +21,7 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
+import { getTaskTypeMessageKey } from '../../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   getPlainDescription,
   resolveIncidentTestCaseFqn,
@@ -52,7 +53,7 @@ const getAuthoredTaskTitle = (task: Task) =>
 // Several task-type message keys are unset upstream and i18next echoes the
 // key back — that must never reach the UI, so treat it as no label.
 const getTaskTypeLabel = (task: Task, t?: TFunction) => {
-  const typeKey = TASK_TYPE_MESSAGE_KEYS[task.type ?? ''];
+  const typeKey = getTaskTypeMessageKey(task);
   const typeLabel = typeKey && t ? t(typeKey) : '';
 
   return typeLabel && typeLabel !== typeKey ? typeLabel : '';
@@ -179,7 +180,10 @@ export const splitTaskTitleSearch = (
   const lowered = words.map((word) => word.toLowerCase());
   const best = Math.max(
     0,
-    ...Object.values(TASK_TYPE_MESSAGE_KEYS).map((key) => {
+    ...[
+      ...Object.values(TASK_TYPE_MESSAGE_KEYS),
+      'message.revise-and-resubmit-message',
+    ].map((key) => {
       const label = t(key);
 
       return label && label !== key

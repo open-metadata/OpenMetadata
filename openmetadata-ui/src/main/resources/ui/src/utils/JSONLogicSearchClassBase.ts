@@ -23,6 +23,7 @@ import { get, sortBy } from 'lodash';
 import {
   LIST_VALUE_OPERATORS,
   MULTISELECT_FIELD_OPERATORS,
+  NULL_CHECK_OPERATORS,
   RANGE_FIELD_OPERATORS,
   SEARCH_INDICES_WITH_COLUMNS_FIELD,
   TEXT_FIELD_DESCRIPTION_OPERATORS,
@@ -466,7 +467,8 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.ENTITY_STATUS]: {
         label: t('label.status'),
         type: 'select',
-        operators: LIST_VALUE_OPERATORS,
+        // A lifecycle starts an entity that has no stage yet, so a rule may ask whether one is set.
+        operators: [...LIST_VALUE_OPERATORS, ...NULL_CHECK_OPERATORS],
         mainWidgetProps: this.mainWidgetProps,
         valueSources: ['value'],
         fieldSettings: {
