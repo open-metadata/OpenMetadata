@@ -65,7 +65,9 @@ const renderedRowOrder = async (page: Page) =>
 const renderedNames = (body: {
   data?: { displayName?: string; name: string }[];
 }): string[] =>
-  (body.data ?? []).map((pipeline) => pipeline.displayName || pipeline.name);
+  (body.data ?? []).map((pipeline) =>
+    (pipeline.displayName || pipeline.name).trim()
+  );
 
 const waitForSortedListing = (page: Page, { cursored = false } = {}) =>
   waitForResponseWithStatus(
