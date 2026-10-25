@@ -104,6 +104,16 @@ public final class Credentials {
           principalName,
           failure);
     }
+    announceQuietly(principalName);
+  }
+
+  private static void announceQuietly(String principalName) {
+    try {
+      CredentialChangeAnnouncer.announce(principalName);
+    } catch (RuntimeException failure) {
+      LOG.warn(
+          "Credential change of {} was not announced to other servers", principalName, failure);
+    }
   }
 
   private static void sleep(Duration bound) {
