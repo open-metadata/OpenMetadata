@@ -224,8 +224,7 @@ const ThreadPanelEntityLink = ({
             data-testid="entity-link"
             to={entityUtilClassBase.getEntityLink(entityType, entityFQN)}>
             {/* Truncated on the text: .header-link sets the link's wrapping. */}
-            {/* The prose wrapper would draw the name, and its "…", in body text. */}
-            <Typography ellipsis className="tw:text-brand-secondary">
+            <Typography ellipsis color="brand">
               {entityRef
                 ? getEntityName(entityRef)
                 : entityDisplayName(entityType, entityFQN)}
