@@ -67,6 +67,7 @@ VERSIONS = {
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
     "spacy": "spacy>=3.8.2,<3.9",
+    "preshed": "preshed<3.0.14",  # 3.0.14 rejects unsigned 64-bit spaCy tokenizer hashes.
     "looker-sdk": "looker-sdk>=22.20.0,!=24.18.0",
     "lkml": "lkml~=1.3",
     "tableau": "tableauserverclient==0.40",  # pre-0.37 pins urllib3<2, which conflicts with collate-data-diff's urllib3>=2.7
@@ -440,6 +441,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["grpc-tools"],
         VERSIONS["sqlalchemy-bigquery"],
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["presidio-analyzer"],
     },
     "sap-hana": {"hdbcli", "sqlalchemy-hana"},
@@ -464,11 +466,12 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
     "pyarrow": {VERSIONS["pyarrow"]},
     "pii-processor": {
         VERSIONS["spacy"],
+        VERSIONS["preshed"],
         VERSIONS["pandas"],
         VERSIONS["numpy"],
         VERSIONS["presidio-analyzer"],
     },
-    "presidio-analyzer": {VERSIONS["presidio-analyzer"]},
+    "presidio-analyzer": {VERSIONS["presidio-analyzer"], VERSIONS["preshed"]},
 }
 
 dev = {
