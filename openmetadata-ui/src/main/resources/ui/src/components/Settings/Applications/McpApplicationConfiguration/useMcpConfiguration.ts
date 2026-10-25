@@ -105,7 +105,7 @@ export const useMcpConfiguration = () => {
   }, [applyConfig]);
 
   useEffect(() => {
-    fetchMcpConfig();
+    void fetchMcpConfig();
   }, [fetchMcpConfig]);
 
   const saveMcpConfig = useCallback(
