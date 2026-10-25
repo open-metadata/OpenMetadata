@@ -4,3 +4,10 @@
 -- EXECUTE failed or was interrupted could never succeed again. The Java step checks
 -- information_schema before each DDL and is rerun until it completes.
 -- See ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration.
+
+-- MCP SSO sign-in waits for the user to approve the client on a consent page. The pending
+-- approval lives on the pending request row so it survives any server answering the POST.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN consent_token_hash VARCHAR(64),
+    ADD COLUMN consent_user_name VARCHAR(256);

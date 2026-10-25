@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.server.auth.html;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 public class HtmlTemplates {
 
   private static final String LOGIN_FORM_TEMPLATE =
@@ -165,6 +167,90 @@ public class HtmlTemplates {
       </html>
       """;
 
+  private static final String CONSENT_FORM_TEMPLATE =
+      """
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Authorize Access - OpenMetadata</title>
+          <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                  background: #f8f9fc;
+                  min-height: 100vh;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  padding: 20px;
+              }
+              .consent-container {
+                  background: #fff;
+                  border-radius: 20px;
+                  padding: 48px;
+                  max-width: 500px;
+                  width: 100%%;
+                  box-shadow: 0px 24px 48px -12px rgba(10, 13, 18, 0.18);
+                  text-align: center;
+              }
+              h1 {
+                  color: #262626;
+                  margin-bottom: 24px;
+                  font-size: 28px;
+                  font-weight: 600;
+              }
+              p {
+                  color: #595959;
+                  margin-bottom: 16px;
+                  font-size: 14px;
+                  line-height: 1.5;
+                  overflow-wrap: anywhere;
+              }
+              strong { color: #262626; }
+              form {
+                  display: flex;
+                  gap: 16px;
+                  margin-top: 32px;
+              }
+              button {
+                  flex: 1;
+                  background: #1570ef;
+                  color: white;
+                  border: 1px solid #1570ef;
+                  border-radius: 8px;
+                  font-size: 16px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  height: 48px;
+              }
+              button.deny {
+                  background: #fff;
+                  color: #262626;
+                  border-color: #d9d9d9;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="consent-container">
+              <h1>Authorize Access</h1>
+              <p><strong>%s</strong> is requesting access to OpenMetadata as
+                 <strong>%s</strong>.</p>
+              <p>If you approve, it can act on your behalf and you will be sent to
+                 <strong>%s</strong>. Deny the request if you did not start it or do not
+                 recognize that address.</p>
+              <form method="POST" action="%s"
+                    onsubmit="if (this.dataset.sent) return false; this.dataset.sent = 'true';">
+                  <input type="hidden" name="consent_token" value="%s">
+                  <button type="submit" name="decision" value="deny" class="deny">Deny</button>
+                  <button type="submit" name="decision" value="approve">Approve</button>
+              </form>
+          </div>
+      </body>
+      </html>
+      """;
+
   public static String generateLoginForm(String clientName, String errorMessage, String csrfToken) {
 
     String errorHtml =
@@ -176,6 +262,25 @@ public class HtmlTemplates {
     String safeCsrfToken = escapeHtml(csrfToken != null ? csrfToken : "");
 
     return String.format(LOGIN_FORM_TEMPLATE, safeClientName, errorHtml, safeCsrfToken);
+  }
+
+  public static String generateConsentForm(
+      String clientName,
+      String userName,
+      String redirectTarget,
+      String consentUrl,
+      String consentToken) {
+
+    String safeClientName =
+        escapeHtml(nullOrEmpty(clientName) || clientName.isBlank() ? "An application" : clientName);
+
+    return String.format(
+        CONSENT_FORM_TEMPLATE,
+        safeClientName,
+        escapeHtml(userName),
+        escapeHtml(redirectTarget),
+        escapeHtml(consentUrl),
+        escapeHtml(consentToken));
   }
 
   public static String escapeHtml(String input) {
