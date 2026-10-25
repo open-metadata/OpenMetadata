@@ -25,8 +25,13 @@ import org.jdbi.v3.core.Handle;
  * first, so a rerun carries on from wherever an interrupted attempt stopped. On PostgreSQL that
  * includes an interrupted CONCURRENTLY build, which leaves an INVALID index that IF NOT EXISTS
  * alone would skip forever; it is dropped and rebuilt instead.
+ *
+ * <p>Also adds the MCP consent columns to mcp_pending_auth_requests on MySQL, under the same rule.
+ * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
 public final class MigrationUtil {
+  /** Marker for re-running the consent column step from 2.1.0 (see mysql/v210/Migration). */
+  public static final String MCP_CONSENT_COLUMNS_STEP = "mcpPendingAuthConsentColumns";
 
   private static final String COLUMN_EXISTS =
       """
@@ -53,6 +58,23 @@ public final class MigrationUtil {
       CREATE INDEX idx_wf_instance_entity_link
         ON workflow_instance_time_series (entityLinkHash, workflowDefinitionId, timestamp)
       """;
+
+  private static final String CONSENT_TOKEN_HASH_EXISTS =
+      """
+      SELECT COUNT(*) FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'mcp_pending_auth_requests'
+        AND column_name = 'consent_token_hash'
+      """;
+  private static final String ADD_CONSENT_TOKEN_HASH =
+      "ALTER TABLE mcp_pending_auth_requests ADD COLUMN consent_token_hash VARCHAR(64)";
+  private static final String CONSENT_USER_NAME_EXISTS =
+      """
+      SELECT COUNT(*) FROM information_schema.columns
+      WHERE table_schema = DATABASE() AND table_name = 'mcp_pending_auth_requests'
+        AND column_name = 'consent_user_name'
+      """;
+  private static final String ADD_CONSENT_USER_NAME =
+      "ALTER TABLE mcp_pending_auth_requests ADD COLUMN consent_user_name VARCHAR(256)";
 
   private static final String POSTGRES_INDEX_IS_VALID =
       """
@@ -87,6 +109,11 @@ public final class MigrationUtil {
   public static void addWorkflowRunEntityLinkIndexOnMySql(final Handle handle) {
     executeUnless(handle, COLUMN_EXISTS, ADD_COLUMN);
     executeUnless(handle, INDEX_EXISTS, ADD_INDEX);
+  }
+
+  public static void addMcpConsentColumnsOnMySql(final Handle handle) {
+    executeUnless(handle, CONSENT_TOKEN_HASH_EXISTS, ADD_CONSENT_TOKEN_HASH);
+    executeUnless(handle, CONSENT_USER_NAME_EXISTS, ADD_CONSENT_USER_NAME);
   }
 
   private static void executeUnless(final Handle handle, final String exists, final String ddl) {

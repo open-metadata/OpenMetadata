@@ -92,7 +92,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   // pending request, so the provider can confirm the link succeeded before it reports the redirect.
   public static final String MCP_STATE_LINKED = "mcp.state.linked";
 
-  // Fields of the consent page (HtmlTemplates.generateConsentForm) posted to /mcp/consent.
+  /** Where the consent page posts the user's decision; the transport routes it here. */
+  public static final String CONSENT_PATH = "/mcp/consent";
+
+  // Fields of the consent page (HtmlTemplates.generateConsentForm) posted to CONSENT_PATH.
   static final String AUTH_REQUEST_ID_PARAM = "auth_request_id";
   static final String CONSENT_TOKEN_PARAM = "consent_token";
   static final String CONSENT_DECISION_PARAM = "decision";
@@ -561,7 +564,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    OAuthClientInformation client = requireRegisteredRedirect(pendingRequest);
+    final OAuthClientInformation client = requireRegisteredRedirect(pendingRequest);
 
     // Clients register themselves and the IdP only sees OpenMetadata's own client id, so the round
     // trip proves who the user is, not that they want this client to act for them. The user
@@ -569,8 +572,10 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     // answer comes from the browser that authenticated. The pending approval is kept on the
     // pending request row, not in the HttpSession, so any server can answer the POST.
     // ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
-    PendingConsent consent = new PendingConsent(generateSecureToken(32), authRequestId, userName);
-    if (pendingAuthRepository.storeConsent(authRequestId, consent.token(), userName)) {
+    // The id is read back from the stored row, so the page never echoes the request's RelayState.
+    final PendingConsent consent =
+        new PendingConsent(generateSecureToken(32), pendingRequest.authRequestId(), userName);
+    if (pendingAuthRepository.storeConsent(consent.authRequestId(), consent.token(), userName)) {
       serveConsentPage(response, client, URI.create(pendingRequest.redirectUri()), consent);
     } else {
       LOG.warn("MCP authorization request {} already has a sign-in waiting", authRequestId);
@@ -585,7 +590,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * (security: prevent open redirect).
    */
   private OAuthClientInformation requireRegisteredRedirect(McpPendingAuthRequest pendingRequest) {
-    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
+    final OAuthClientInformation client =
+        clientRepository.findByClientId(pendingRequest.clientId());
     if (client == null) {
       throw new IllegalStateException(
           "Client not found for pending auth request: " + pendingRequest.clientId());
@@ -630,7 +636,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 consent.userName(),
                 describeRedirectTarget(redirectUri),
                 UriUtils.withoutTrailingSlash(getBaseUrl())
-                    + "/mcp/consent?"
+                    + CONSENT_PATH
+                    + "?"
                     + AUTH_REQUEST_ID_PARAM
                     + "="
                     + consent.authRequestId(),
@@ -648,8 +655,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    */
   public void handleConsentDecision(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-    String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
-    String userName =
+    final String authRequestId = request.getParameter(AUTH_REQUEST_ID_PARAM);
+    final String userName =
         pendingAuthRepository.takeConsent(authRequestId, request.getParameter(CONSENT_TOKEN_PARAM));
     if (userName == null) {
       LOG.warn("No waiting MCP client approval matches the submitted consent");
@@ -657,7 +664,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           HttpServletResponse.SC_FORBIDDEN,
           "This approval is no longer valid. Please restart the authorization flow.");
     } else {
-      boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
+      final boolean approved = CONSENT_APPROVE.equals(request.getParameter(CONSENT_DECISION_PARAM));
       relayConsentDecision(authRequestId, userName, approved, response);
     }
   }
@@ -665,7 +672,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   private void relayConsentDecision(
       String authRequestId, String userName, boolean approved, HttpServletResponse response)
       throws IOException {
-    McpPendingAuthRequest pendingRequest = pendingAuthRepository.findByAuthRequestId(authRequestId);
+    final McpPendingAuthRequest pendingRequest =
+        pendingAuthRepository.findByAuthRequestId(authRequestId);
     if (pendingRequest == null) {
       response.sendError(
           HttpServletResponse.SC_BAD_REQUEST,
@@ -673,7 +681,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     } else {
       // The client may have been removed or changed since the consent page was served.
       requireRegisteredRedirect(pendingRequest);
-      String redirectUrl =
+      final String redirectUrl =
           UriUtils.constructAuthorizationResponseUri(
               pendingRequest.redirectUri(),
               consentResponseParams(userName, pendingRequest, approved),
@@ -686,7 +694,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   /** The client callback's query: a code on approval, {@code access_denied} otherwise. */
   private Map<String, String> consentResponseParams(
       String userName, McpPendingAuthRequest pendingRequest, boolean approved) {
-    Map<String, String> queryParams = new HashMap<>();
+    final Map<String, String> queryParams = new HashMap<>();
     if (approved) {
       queryParams.put(
           "code",
@@ -743,8 +751,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
    * {@code a_b.example} that a browser still navigates to.
    */
   private static String describeRedirectTarget(URI redirectUri) {
-    String authority = redirectUri.getRawAuthority();
-    String hostAndPort =
+    final String authority = redirectUri.getRawAuthority();
+    final String hostAndPort =
         authority == null ? "" : "//" + authority.substring(authority.lastIndexOf('@') + 1);
     return redirectUri.getScheme() + ":" + hostAndPort;
   }

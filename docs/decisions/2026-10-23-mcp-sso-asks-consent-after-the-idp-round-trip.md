@@ -40,5 +40,8 @@ for the named client; that page does not show the redirect host yet.
 
 - Every MCP SSO authorization takes one extra click. Approvals are not remembered per user and
   client.
-- `mcp_pending_auth_requests` gains `consent_token_hash` and `consent_user_name` (2.0.7
-  migration), so any server can answer the POST.
+- `mcp_pending_auth_requests` gains `consent_token_hash` and `consent_user_name`, so any server
+  can answer the POST. PostgreSQL adds them in the 2.0.7 `schemaChanges.sql` with `IF NOT EXISTS`.
+  MySQL adds them from the 2.0.7 Java migration, which checks `information_schema` first
+  (ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration), and again from 2.1.0, since
+  a database already at 2.1.0 reprocesses 2.0.7 for its SQL only.

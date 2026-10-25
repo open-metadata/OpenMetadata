@@ -17,6 +17,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.mcp.AuthEnrichedMcpContextExtractor;
 import org.openmetadata.mcp.auth.AuthorizationCode;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
@@ -629,7 +630,7 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       handleRevocationRequest(request, response);
     } else if (path.equals("/mcp/login") && basicAuthLoginServlet != null) {
       basicAuthLoginServlet.doPost(request, response);
-    } else if (path.equals("/mcp/consent")
+    } else if (path.equals(UserSSOOAuthProvider.CONSENT_PATH)
         && authProvider instanceof UserSSOOAuthProvider ssoProvider) {
       handleConsentRequest(ssoProvider, request, response);
     } else {
@@ -1163,20 +1164,32 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   /**
    * Browser-facing like /mcp/login: the consent page served after an SSO sign-in posts the user's
-   * decision here. The provider answers the browser itself; this only keeps an unexpected failure
-   * from surfacing as a raw container error page.
+   * decision here. The provider answers the browser itself; this turns the two failures it can
+   * raise into a plain error page instead of a raw container one.
    */
   private void handleConsentRequest(
       UserSSOOAuthProvider ssoProvider, HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     try {
       ssoProvider.handleConsentDecision(request, response);
-    } catch (Exception ex) {
+    } catch (IllegalStateException ex) {
+      // The client was removed or its redirect URI changed after the consent page was served.
+      LOG.warn("MCP consent no longer matches a registered client: {}", ex.getMessage());
+      sendConsentError(
+          response,
+          HttpServletResponse.SC_BAD_REQUEST,
+          "This application is no longer registered. Please restart the authorization flow.");
+    } catch (JdbiException ex) {
       LOG.error("MCP consent processing failed", ex);
-      if (!response.isCommitted()) {
-        response.sendError(
-            HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Consent processing failed");
-      }
+      sendConsentError(
+          response, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Consent processing failed");
+    }
+  }
+
+  private static void sendConsentError(HttpServletResponse response, int status, String message)
+      throws IOException {
+    if (!response.isCommitted()) {
+      response.sendError(status, message);
     }
   }
 

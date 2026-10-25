@@ -1,7 +1,9 @@
 package org.openmetadata.mcp.server.transport;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -11,6 +13,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.List;
@@ -19,12 +22,65 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider.AuthFailure;
 
 class OAuthHttpStatelessServerTransportProviderTest {
 
   private static final URI RESOURCE_METADATA =
       URI.create("https://example.com/mcp/.well-known/oauth-protected-resource");
+
+  // ── consent route ─────────────────────────────────────────────────────────
+
+  @Test
+  void doPost_consentPathUnderBasePath_reachesTheSsoProvider() throws Exception {
+    UserSSOOAuthProvider ssoProvider = mock(UserSSOOAuthProvider.class);
+    HttpServletRequest request = consentPost("/data-catalog");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+
+    transportWith(ssoProvider).doPost(request, response);
+
+    verify(ssoProvider).handleConsentDecision(request, response);
+  }
+
+  @Test
+  void doPost_consentForAClientRemovedMeanwhile_answersBadRequest() throws Exception {
+    UserSSOOAuthProvider ssoProvider = mock(UserSSOOAuthProvider.class);
+    HttpServletRequest request = consentPost("");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    doThrow(new IllegalStateException("Client not found"))
+        .when(ssoProvider)
+        .handleConsentDecision(request, response);
+
+    transportWith(ssoProvider).doPost(request, response);
+
+    verify(response).sendError(eq(HttpServletResponse.SC_BAD_REQUEST), anyString());
+  }
+
+  private static HttpServletRequest consentPost(String contextPath) {
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn(contextPath);
+    when(request.getRequestURI()).thenReturn(contextPath + UserSSOOAuthProvider.CONSENT_PATH);
+    return request;
+  }
+
+  /**
+   * The constructor needs a running auth stack, so the transport is allocated without it and
+   * given only the provider that doPost routes the consent POST to.
+   */
+  private static OAuthHttpStatelessServerTransportProvider transportWith(
+      UserSSOOAuthProvider ssoProvider) throws Exception {
+    Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+    unsafeField.setAccessible(true);
+    sun.misc.Unsafe unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+    OAuthHttpStatelessServerTransportProvider transport =
+        (OAuthHttpStatelessServerTransportProvider)
+            unsafe.allocateInstance(OAuthHttpStatelessServerTransportProvider.class);
+    Field authProvider =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredField("authProvider");
+    unsafe.putObject(transport, unsafe.objectFieldOffset(authProvider), ssoProvider);
+    return transport;
+  }
 
   // ── sanitizeRedirectUrlForLogging ─────────────────────────────────────────
 

@@ -26,13 +26,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the MCP consent SQL on the shipped migrations: a consent is stored once per request,
- * claimed once with its token hash and never after the request expires.
+ * claimed once with its token hash and never after the request expires. On MySQL the columns come
+ * from the 2.0.7 Java migration step, run twice to show a rerun is harmless.
  * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -41,6 +43,7 @@ class McpPendingConsentSqlTest {
   private static final String DATABASE = "mcp_consent";
   private static final String PASSWORD = "mcp-consent-test";
   private static final String TABLE = "mcp_pending_auth_requests";
+  private static final String MYSQL = "mysql";
   private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7");
   private static final long NOW = 1_000_000L;
   private static final long LATER = NOW + 600_000L;
@@ -62,7 +65,7 @@ class McpPendingConsentSqlTest {
       String url =
           "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
               .formatted(database.getHost(), database.getMappedPort(3306), DATABASE);
-      runChecks(url, "root", "com.mysql.cj.jdbc.Driver", "mysql");
+      runChecks(url, "root", "com.mysql.cj.jdbc.Driver", MYSQL);
     }
   }
 
@@ -143,6 +146,10 @@ class McpPendingConsentSqlTest {
               .filter(statement -> statement.contains(TABLE))
               .toList();
       jdbi.useHandle(handle -> statements.forEach(handle::execute));
+    }
+    if (MYSQL.equals(dialect)) {
+      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
+      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
     }
   }
 }

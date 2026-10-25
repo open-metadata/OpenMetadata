@@ -89,7 +89,7 @@ public class McpPendingAuthRequestRepository {
    * @return false if the request is gone, expired or already has a consent
    */
   public boolean storeConsent(String authRequestId, String consentToken, String userName) {
-    long now = System.currentTimeMillis();
+    final long now = System.currentTimeMillis();
     return dao.storeConsent(
             authRequestId,
             OAuthTokenRepository.hashToken(consentToken),
@@ -106,7 +106,7 @@ public class McpPendingAuthRequestRepository {
    * @return the user who was asked, or null if the token does not match a waiting consent
    */
   public String takeConsent(String authRequestId, String consentToken) {
-    boolean claimed =
+    final boolean claimed =
         consentToken != null
             && dao.claimConsent(
                     authRequestId,
