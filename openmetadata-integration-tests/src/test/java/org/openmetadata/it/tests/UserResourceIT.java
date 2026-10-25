@@ -3006,6 +3006,28 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
   }
 
   @Test
+  void test_sameSecondPats_independent(TestNamespace ns) {
+    OpenMetadataClient owner = clientFor(createRegularUser(ns, "patsamesec"));
+    PersonalAccessToken first = createPersonalAccessToken(owner, ns.prefix("pat1"));
+    PersonalAccessToken second = createPersonalAccessToken(owner, ns.prefix("pat2"));
+    assertNotEquals(first.getJwtToken(), second.getJwtToken());
+    OpenMetadataClient firstClient = clientWithToken(first.getJwtToken());
+    OpenMetadataClient secondClient = clientWithToken(second.getJwtToken());
+    assertNotNull(getLoggedInUser(firstClient));
+    assertNotNull(getLoggedInUser(secondClient));
+
+    owner
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/users/security/token/revoke",
+            "{\"tokenIds\":[\"" + first.getToken() + "\"]}");
+
+    assertUnauthorized(firstClient);
+    assertNotNull(getLoggedInUser(secondClient));
+  }
+
+  @Test
   void test_revokeAllPersonalAccessTokens_rejectsEveryToken(TestNamespace ns) {
     OpenMetadataClient owner = clientFor(createRegularUser(ns, "patowner"));
     OpenMetadataClient first =
