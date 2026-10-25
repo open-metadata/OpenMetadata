@@ -189,7 +189,16 @@ public class UserRepository extends EntityRepository<User> {
   // however usernames , emails cannot be case-sensitive
   @Override
   public void setFullyQualifiedName(User user) {
-    user.setFullyQualifiedName(quoteName(user.getName().toLowerCase()));
+    user.setFullyQualifiedName(quoteName(canonicalUserName(user.getName())));
+  }
+
+  /**
+   * The one place a user name becomes the form stored in the FQN and its {@code nameHash}. It keeps
+   * the default-locale {@code toLowerCase()} the stored hashes were computed with, so changing it
+   * would orphan existing rows.
+   */
+  public static String canonicalUserName(String userName) {
+    return userName.toLowerCase();
   }
 
   public final Fields getFieldsWithUserAuth(String fields) {
@@ -396,7 +405,7 @@ public class UserRepository extends EntityRepository<User> {
     // Updates only the lastActivityTime field in the JSON using JSON_SET
     // This method is used for immediate updates (e.g., in tests)
     // For production use, UserActivityTracker should be used for batch updates
-    String fqn = quoteName(userName.toLowerCase());
+    String fqn = quoteName(canonicalUserName(userName));
 
     LOG.debug(
         "Updating lastActivityTime for user: {} (fqn: {}) to: {}", userName, fqn, lastActivityTime);
@@ -422,7 +431,7 @@ public class UserRepository extends EntityRepository<User> {
 
     for (Map.Entry<String, Long> entry : userActivityMap.entrySet()) {
       // User FQNs are stored with quoteName applied, so we must match that format
-      String fqn = quoteName(entry.getKey().toLowerCase());
+      String fqn = quoteName(canonicalUserName(entry.getKey()));
       String fqnHash = FullyQualifiedName.buildHash(fqn);
 
       nameHashes.add(fqnHash);
