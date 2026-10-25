@@ -579,6 +579,15 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_ASSIGNEES = "taskAssignees";
 
     /**
+     * Set only by an ontology release review whose frozen rule is AllReviewers. CreateTask raises
+     * the task's approval threshold to its assignee entry count when the value is {@link
+     * #APPROVAL_MODE_ALL_ASSIGNEES}; every other workflow keeps the node's threshold.
+     */
+    public static final String APPROVAL_MODE = "approvalMode";
+
+    public static final String APPROVAL_MODE_ALL_ASSIGNEES = "allAssignees";
+
+    /**
      * Top-level workflow variable derived from {@code payload.expirationDate} on start. Exposed
      * so boundary-timer expressions ({@code ${taskPayloadExpirationDate}}) can arm on nodes that
      * run BEFORE any domain-specific promote step. Value is the ISO-8601 instant string that

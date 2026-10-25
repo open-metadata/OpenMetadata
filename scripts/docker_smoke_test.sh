@@ -140,7 +140,9 @@ else
   fail "the java runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
 fi
 
-# Why the base is cc-debian13 and not base-debian12, cc-debian12 or alpine.
+# Why the base is debian13 plus the C++ runtime from distroless cc, and not
+# base-debian12, cc-debian12 or alpine. -L follows the libstdc++.so.6 symlink, so
+# a symlink left without its target fails here.
 # libstdc++/libgcc are what DJL's libtokenizers.so and onnxruntime link; libz is
 # what libtorch's libgfortran links, and cc-debian12 ships every one of those
 # except libz. All three have to resolve inside the image or the natives will not
@@ -149,7 +151,7 @@ docker create --name "$CONTAINER" "$IMAGE" >/dev/null
 for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
   found=""
   for dir in /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu /usr/lib/aarch64-linux-gnu /lib/aarch64-linux-gnu /usr/lib; do
-    if docker cp "$CONTAINER:$dir/$lib" "$WORKDIR_TMP/" >/dev/null 2>&1; then found="$dir"; break; fi
+    if docker cp -L "$CONTAINER:$dir/$lib" "$WORKDIR_TMP/" >/dev/null 2>&1; then found="$dir"; break; fi
   done
   if [ -n "$found" ]; then
     pass "$lib is present ($found)"
@@ -158,6 +160,28 @@ for lib in libstdc++.so.6 libgcc_s.so.1 libz.so.1; do
   fi
 done
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+
+# libgomp1 is left out on purpose (see the Dockerfile): nothing in the image
+# loads the system libgomp.so.1, because libtorch ships its own, and Debian 13
+# will not patch libgomp1's CVEs. The three packages copied in from distroless
+# cc must keep their status.d entries, or scanners stop seeing them.
+status_d="$(docker run --rm --entrypoint /bin/sh "$IMAGE" -c 'ls /var/lib/dpkg/status.d' 2>/dev/null || true)"
+unregistered=""
+for pkg in gcc-14-base libgcc-s1 libstdc++6; do
+  echo "$status_d" | grep -qx "$pkg" || unregistered="$unregistered $pkg"
+done
+if [ -n "$unregistered" ]; then
+  fail "no status.d entry for$unregistered -- scanners will not list these packages"
+else
+  pass "gcc-14-base, libgcc-s1 and libstdc++6 are registered in status.d"
+fi
+gomp="$(docker run --rm --entrypoint /bin/sh "$IMAGE" -c \
+  'ls /var/lib/dpkg/status.d/libgomp1 /usr/lib/*-linux-gnu/libgomp.so* 2>/dev/null' || true)"
+if [ -z "$gomp" ]; then
+  pass "libgomp1 is not in the image"
+else
+  fail "libgomp1 is back in the image -- is the final stage distroless cc again? $(echo "$gomp" | tr '\n' ' ')"
+fi
 
 # Run through `-c` so the script's shebang is resolved, matching the Kubernetes
 # init container rather than having BusyBox read the script directly. This also

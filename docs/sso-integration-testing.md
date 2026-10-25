@@ -52,8 +52,8 @@ void loginRoundTrip(TestNamespace ns) {
   changed, because the server fills masked values from what is stored.
 - **Use a fresh identity per test** (`ns.shortPrefix(...)`). The lockout counters, the email-to-name
   cache and the permission cache are JVM-wide.
-- **Never reuse a key id.** The server caches keys by `kid` for a day; `MockOidcKeys` mints a new id
-  for every key.
+- **Never reuse a key id.** The server caches each key set it downloads for a day and resolves a
+  `kid` from it; `MockOidcKeys` mints a new id for every key.
 - **Edit stored sessions through `SessionStateInjector`.** It bumps the session's version and
   refreshes the server's 10-second session cache; a raw `UPDATE` is overwritten or ignored.
 - **Use `localhost`, never `127.0.0.1`,** in any URL the server validates: its outbound URL policy

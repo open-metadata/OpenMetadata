@@ -14,6 +14,7 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyReleaseChangeSummary;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
@@ -164,6 +165,27 @@ public final class OntologyReleaseComparison {
         .toList();
   }
 
+  /** Whether two definitions carry the same governed content, the identity every diff uses. */
+  public static boolean sameContent(
+      final OntologyDefinition before, final OntologyDefinition after) {
+    return OntologyReview.digest(before).equals(OntologyReview.digest(after));
+  }
+
+  static OntologyReleaseChangeSummary summarize(
+      final List<OntologyReleaseMember> before, final List<OntologyReleaseMember> after) {
+    final var changes = compareMembers(before, after);
+    return new OntologyReleaseChangeSummary()
+        .withAdded(count(changes, OntologyReleaseChangeType.ADDED))
+        .withChanged(count(changes, OntologyReleaseChangeType.CHANGED))
+        .withRemoved(count(changes, OntologyReleaseChangeType.REMOVED))
+        .withDeprecated(count(changes, OntologyReleaseChangeType.DEPRECATED));
+  }
+
+  private static int count(
+      final List<OntologyReleaseMemberChange> changes, final OntologyReleaseChangeType type) {
+    return (int) changes.stream().filter(change -> change.getChangeType() == type).count();
+  }
+
   private static void requireLimit(final int limit) {
     if (limit < 1 || limit > 1000) {
       throw new BadRequestException("An ontology comparison page requires a limit from 1 to 1000");
@@ -204,10 +226,7 @@ public final class OntologyReleaseComparison {
 
   private static OntologyReleaseMemberChange memberChange(
       final Snapshot before, final Snapshot after) {
-    if (before != null
-        && after != null
-        && OntologyReview.digest(before.definition())
-            .equals(OntologyReview.digest(after.definition()))) {
+    if (before != null && after != null && sameContent(before.definition(), after.definition())) {
       return null;
     }
     final Snapshot selected = after == null ? before : after;

@@ -1,9 +1,9 @@
 # Ontology releases use the existing approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures)
+- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model)
 - **Deciders:** Harsha
-- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts`
+- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts`
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context
@@ -79,3 +79,38 @@ fields. Release review, activation and metadata assignment are distinct operatio
 the existing separate Flowable and entity transactions; it is not another approval engine. Native
 bulk/CSV authoring and cross-ontology imports are deferred. Glossary relationships and approval policy
 retain their existing behavior.
+
+## Amendment (v13, 2026-10-22)
+
+An ontology carries an `approvalRule`, `AnyReviewer` by default or `AllReviewers`, and
+`prepareReview` freezes it into the task's `ontologyReview` target. The rule reaches the workflow as
+the start variable `approvalMode=allAssignees`, which `CreateTask` turns into the task's
+`approvalThreshold`: the larger of the node's threshold and the number of assignee entries. Only an
+ontology review sets the variable, so every other workflow keeps its node threshold, and
+`handleMultiApproval`, `isAwaitingAdditionalVotes` and `ApprovalTaskCompletionValidator` read the
+threshold unchanged. The reviewer rule stays one team or several users, so under `AllReviewers` a
+team is one entry that any member covers, and the entry count equals the distinct-voter count the
+workflow enforces. The requester's and the author's own user entries are left out of the assignees,
+because neither can vote; a review with no other entry is refused at submission.
+
+Each counted vote on a workflow approval task is recorded in `reviewVotes` as voter, covered entry,
+decision, comment and timestamp, one per voter. This shared task behavior includes non-ontology
+workflows. Typed vote details commit in the same Flowable command as the vote count, under a
+variable keyed by task UUID, then project onto the task. Completed process history supplies the
+same details during ontology reconciliation. This closes the race where a final vote could
+reconstruct an earlier voter before that voter's task write, losing the original comment. The
+Flowable lists remain the count. No ontology vote table or decision endpoint is added.
+
+While any release of an ontology is `In Review`, a change to the ontology's `reviewers` or
+`approvalRule` is refused with 409 under the ontology state lock that starting, deciding and
+cancelling a review also take. Reviewer eligibility is still checked on every vote, and team
+membership is not frozen. The repair path for a reviewer change during a review is to cancel the
+review, change the reviewers, and submit a new review.
+
+`GET /v1/ontologyReleases/{id}/review` and `GET /v1/ontologies/reviews?view=assigned|created|pending`
+read a review from the task alone: each entry with `Pending`, `Approved` or `Rejected` and its vote,
+the deciding vote with its verbatim reason, `callerCanVote`, and `callerCompletesRule` derived from
+the frozen rule and the recorded votes. The list covers open reviews; a decided review is read
+through its release. List rows and totals include only releases the caller can view under the
+same policy check as the per-release endpoint. The scan follows bounded database pages through
+all open reviews, so unrelated recent reviews cannot hide older assigned reviews.

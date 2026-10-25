@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -80,6 +81,7 @@ import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
+import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.RdfUpdater;
@@ -87,6 +89,7 @@ import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -109,6 +112,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
 
   public OntologyResource(final Authorizer authorizer, final Limits limits) {
     super(Entity.ONTOLOGY, authorizer, limits);
+    addViewOperation("publicationStatus", MetadataOperation.VIEW_BASIC);
     packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
     packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
     releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());
@@ -329,6 +333,41 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       reference.setSource(context.getEntity().getEntityReference());
     }
     return references;
+  }
+
+  @GET
+  @Path("/reviews")
+  @Operation(
+      operationId = "listOntologyReleaseReviews",
+      summary = "List the open release reviews the calling user is part of",
+      description =
+          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. A decided review is read through its release.")
+  public ResultList<OntologyReleaseReview> listReviews(
+      @Context final SecurityContext securityContext,
+      @QueryParam("view") @DefaultValue("assigned") final String view,
+      @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(100) final int limit,
+      @QueryParam("after") final String after) {
+    final var releases =
+        (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE);
+    return releases.listReviews(
+        OntologyReleaseReviewReader.View.parse(view),
+        user(securityContext),
+        limit,
+        after,
+        release -> canViewRelease(securityContext, release));
+  }
+
+  private boolean canViewRelease(
+      final SecurityContext securityContext, final OntologyRelease release) {
+    try {
+      authorizer.authorize(
+          securityContext,
+          new OperationContext(Entity.ONTOLOGY_RELEASE, MetadataOperation.VIEW_ALL),
+          new ResourceContext<>(Entity.ONTOLOGY_RELEASE, release.getId(), null));
+      return true;
+    } catch (AuthorizationException denied) {
+      return false;
+    }
   }
 
   @GET

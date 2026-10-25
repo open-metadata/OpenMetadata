@@ -315,6 +315,66 @@ describe('ActivityFeedCardNew', () => {
     );
   });
 
+  it('reads an activity event entity from its reference without an ANTLR error', () => {
+    // The server appends whatever field changed to `about`; `entityStatus` is
+    // not in the EntityLink grammar, so parsing it logged an ANTLR error
+    // ("no viable alternative at input '::entityStatus'") on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          activity={{
+            ...activity,
+            about: '<#E::table::service.table::entityStatus>',
+            fieldName: 'entityStatus',
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it('reads an activity-sourced conversation entity from its reference without an ANTLR error', () => {
+    // The server copies the activity's `about` (with the changed field) into
+    // the conversation it creates from it.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          showThread
+          feed={{
+            ...conversation,
+            about: '<#E::table::service.table::entityStatus>',
+            source: ConversationSource.Activity,
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByTestId('entity-link')).toHaveAttribute(
+      'href',
+      '/table/service.table'
+    );
+
+    errorSpy.mockRestore();
+  });
+
   it('renders activity replies in the open side panel', () => {
     mockProviderValue.activityReplies = [activityReply];
 

@@ -1,7 +1,7 @@
 # Components migrated from Ant Design adopt the core component's styling
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-11 (initial)
+- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-23 (landing-page segmented controls exception)
 - **Deciders:** Harshit Shah
 - **Guard:** reviewer
 - **Related:** ADR:2026-10-11-antd-imports-are-frozen-by-eslint-suppressions, open-metadata/openmetadata-collate#6884, open-metadata/openmetadata-collate#6891, open-metadata/OpenMetadata#35209
@@ -33,3 +33,10 @@ refreshed baselines show it. Layout that depended on antd internals (`.ant-card-
 `.ant-card-head`) moves onto the call site's own children rather than onto the core component.
 Revisit only if the design system adopts per-screen variants, which would then be added as core
 props.
+
+## Amendment — v2: landing-page segmented controls
+
+The landing page's segmented controls — the Topics list/grid switch, the Collapse/Expand all
+control, the topic filter and stat chips, and Collate's "Needs you now" tabs — restyle core
+components from the call site until core ships a segmented variant. The scope and exit are in
+ADR:2026-10-23-landing-page-segmented-controls-are-styled-at-the-call-site.

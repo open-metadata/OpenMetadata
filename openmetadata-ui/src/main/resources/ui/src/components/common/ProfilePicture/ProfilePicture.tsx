@@ -185,15 +185,17 @@ const ProfilePicture = ({
   const isLoadingWithoutUrl = isPicLoading && !profileURL;
   const edge = getAvatarEdge(isSolid, borderless, matchRingToFill);
 
+  // Teams have no picture of their own (useUserProfile only hands back the
+  // static teams icon URL), and an <img> of that SVG cannot follow the theme's
+  // currentColor, so the inline placeholder icon is drawn instead.
   if (isTeam) {
     return (
       <Avatar
-        className={className}
+        className={classNames('tw:text-fg-secondary', className)}
         contrastBorder={false}
         data-testid="profile-avatar"
         placeholderIcon={IconTeams}
         size={avatarSize}
-        src={profileURL || undefined}
         style={{ backgroundColor: 'transparent' }}
       />
     );

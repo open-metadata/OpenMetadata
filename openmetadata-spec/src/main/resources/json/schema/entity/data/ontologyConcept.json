@@ -119,6 +119,11 @@
       },
       "existingJavaType": "java.util.List<java.net.URI>",
       "readOnly": true
+    },
+    "lifecycleStatus": {
+      "description": "Release review state of this concept, derived by the server from ontology releases. Not stored or independently editable.",
+      "$ref": "../../type/ontologyDefinitionStatus.json",
+      "readOnly": true
     }
   },
   "required": [

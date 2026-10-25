@@ -9,8 +9,11 @@ import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
@@ -24,6 +27,74 @@ import org.openmetadata.service.util.jdbi.BindJson;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
 public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
+  record RoleCandidate(String ontologyId, String activeReleaseId, String json) {}
+
+  record MemberVersion(
+      String releaseId, String memberKind, String memberId, Double sourceVersion) {}
+
+  record WorkingVersion(String ontologyId, String id, String version) {}
+
+  /**
+   * For each ontology: its newest sealed release, its newest release in each of the Approved and
+   * In Review statuses, and its active release.
+   */
+  @SqlQuery(
+      "SELECT ontologyId, activeReleaseId, json FROM ("
+          + "SELECT r.ontologyId AS ontologyId, r.id AS id, r.entityStatus AS entityStatus, "
+          + "r.json AS json, s.activeReleaseId AS activeReleaseId, "
+          + "ROW_NUMBER() OVER (PARTITION BY r.ontologyId ORDER BY r.releaseRevision DESC) AS latestRank, "
+          + "ROW_NUMBER() OVER (PARTITION BY r.ontologyId, r.entityStatus "
+          + "ORDER BY r.releaseRevision DESC) AS statusRank "
+          + "FROM ontology_release_entity r LEFT JOIN ontology_state s ON s.ontologyId = r.ontologyId "
+          + "WHERE r.ontologyId IN (<ontologyIds>) AND r.sealedAt IS NOT NULL "
+          + "AND (r.deleted IS NULL OR r.deleted = false)) ranked "
+          + "WHERE latestRank = 1 OR (statusRank = 1 AND entityStatus IN ('Approved', 'In Review')) "
+          + "OR id = activeReleaseId")
+  @RegisterConstructorMapper(RoleCandidate.class)
+  List<RoleCandidate> listRoleCandidates(@BindList("ontologyIds") List<String> ontologyIds);
+
+  @SqlQuery(
+      "SELECT releaseId, memberKind, memberId, sourceVersion FROM ontology_release_member "
+          + "WHERE releaseId IN (<releaseIds>) AND memberKind = :memberKind "
+          + "AND memberId IN (<memberIds>)")
+  @RegisterConstructorMapper(MemberVersion.class)
+  List<MemberVersion> listMemberVersions(
+      @BindList("releaseIds") List<String> releaseIds,
+      @Bind("memberKind") String memberKind,
+      @BindList("memberIds") List<String> memberIds);
+
+  @SqlQuery(
+      "SELECT releaseId, memberKind, memberId, sourceVersion FROM ontology_release_member "
+          + "WHERE releaseId IN (<releaseIds>)")
+  @RegisterConstructorMapper(MemberVersion.class)
+  List<MemberVersion> listAllMemberVersions(@BindList("releaseIds") List<String> releaseIds);
+
+  @SqlQuery(
+      "SELECT * FROM ontology_release_member WHERE releaseId IN (<releaseIds>) "
+          + "AND memberKind = :memberKind AND memberId IN (<memberIds>)")
+  @RegisterRowMapper(MemberMapper.class)
+  List<OntologyReleaseMember> listMemberPayloads(
+      @BindList("releaseIds") List<String> releaseIds,
+      @Bind("memberKind") String memberKind,
+      @BindList("memberIds") List<String> memberIds);
+
+  /** Versions of the non-deleted working definitions that {@code ownerColumn} ties to an ontology. */
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <ownerColumn> AS ontologyId, id, json_unquote(json_extract(json, '$.version')) AS version "
+              + "FROM <table> WHERE <ownerColumn> IN (<ontologyIds>) AND deleted = FALSE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT <ownerColumn> AS ontologyId, id, json ->> 'version' AS version "
+              + "FROM <table> WHERE <ownerColumn> IN (<ontologyIds>) AND deleted = FALSE",
+      connectionType = POSTGRES)
+  @RegisterConstructorMapper(WorkingVersion.class)
+  List<WorkingVersion> listWorkingVersions(
+      @Define("table") String table,
+      @Define("ownerColumn") String ownerColumn,
+      @BindList("ontologyIds") List<String> ontologyIds);
+
   @ConnectionAwareSqlQuery(
       value =
           "SELECT json_unquote(json_extract(json, '$.semanticVersion')) FROM ontology_release_entity "
@@ -38,6 +109,24 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
               + "AND json ->> 'semanticVersion' IS NOT NULL ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
       connectionType = POSTGRES)
   String findLatestSemanticVersion(@BindUUID("ontologyId") UUID ontologyId);
+
+  @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND entityStatus = :entityStatus AND (deleted IS NULL OR deleted = false) "
+          + "ORDER BY releaseRevision")
+  List<String> listByStatus(
+      @BindUUID("ontologyId") UUID ontologyId, @Bind("entityStatus") String entityStatus);
+
+  @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE entityStatus = :entityStatus "
+          + "AND (deleted IS NULL OR deleted = false) "
+          + "AND (updatedAt < :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id > :afterId)) "
+          + "ORDER BY updatedAt DESC, id LIMIT :limit")
+  List<String> listAllByStatus(
+      @Bind("entityStatus") String entityStatus,
+      @Bind("limit") int limit,
+      @Bind("afterUpdatedAt") long afterUpdatedAt,
+      @Bind("afterId") String afterId);
 
   @SqlQuery(
       "SELECT COALESCE(MAX(releaseRevision), 0) FROM ontology_release_entity "

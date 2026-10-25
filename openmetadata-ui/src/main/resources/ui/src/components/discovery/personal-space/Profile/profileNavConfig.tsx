@@ -37,11 +37,12 @@ import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
 import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
-import ProfileDetailsPanel from './ProfileDetailsPanel';
+import ProfileTabPanel from './ProfileTabPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
+import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
 import NotificationPanel from './tabs/notification/NotificationPanel';
 import PermissionsTab from './tabs/PermissionsTab';
@@ -103,6 +104,8 @@ export interface ProfileHeaderOverride {
   meta?: React.ReactNode;
   /** Tab strip rendered at the bottom of the header (e.g. an app's detail tabs). */
   tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
 }
 
 /**
@@ -113,7 +116,10 @@ export interface ProfileHeaderOverride {
 export interface ProfileNavRenderContext {
   userData: User;
   isProfileLoading: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  /** The full profile failed to load; userData is only the partial store copy. */
+  loadError?: boolean;
+  onReload?: () => void;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   /** Allows a panel to override the header breadcrumbs/title shown by ProfilePage. */
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
@@ -150,13 +156,9 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.profile',
     description: 'message.profile-page-description',
     icon: User01,
-    render: ({ userData, isProfileLoading, updateUserDetails }) => (
-      <ProfileDetailsPanel
-        isProfileLoading={isProfileLoading}
-        updateUserDetails={updateUserDetails}
-        userData={userData}
-      />
-    ),
+    // Draws its own scroll body: another user's detail needs the Members layout.
+    selfContainedLayout: true,
+    render: (ctx) => <ProfileTabPanel {...ctx} />,
   },
   {
     id: 'permissions',
@@ -193,6 +195,8 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.access-control',
     description: 'message.access-control-description',
     icon: AccessControlIcon,
+    // Admin-only whatever view permissions a non-admin holds
+    // (ADR:2026-10-21-settings-pages-are-classic-only).
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -259,7 +263,10 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.member-plural',
     description: 'message.team-member-management-description',
     icon: Users01,
-    isVisible: (_permissions, isAdmin) => isAdmin,
+    // As in classic: anyone who may view teams or users; the panel gates each
+    // section (ADR:2026-10-21-settings-pages-are-classic-only).
+    isVisible: (permissions, isAdmin) =>
+      canOpenMembers(getMembersAccess(permissions, isAdmin)),
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <MembersPanel onHeaderChange={onHeaderChange} />
@@ -299,11 +306,8 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     label: 'label.application-plural',
     description: 'message.application-settings-description',
     icon: GridView,
-    isVisible: (permissions) =>
-      userPermissions.hasViewPermissions(
-        ResourceEntity.APPLICATION,
-        permissions
-      ),
+    // Classic shows the Applications settings card to admins only.
+    isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
       <ApplicationsPanel onHeaderChange={onHeaderChange} />
