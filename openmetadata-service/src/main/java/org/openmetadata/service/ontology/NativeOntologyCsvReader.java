@@ -141,7 +141,17 @@ final class NativeOntologyCsvReader {
             .withDisplayName(row.text(Column.LABEL))
             .withDescription(row.text(Column.DESCRIPTION))
             .withSynonyms(new LinkedHashSet<>(distinct(row, Column.SYNONYMS)))
-            .withConceptMappings(mappings(row)));
+            .withConceptMappings(mappings(row))
+            .withAbstract(flag(row, Column.ABSTRACT))
+            .withDefinitionSource(
+                row.filled(Column.DEFINITION_SOURCE)
+                    ? NativeOntologyCsvCells.iri(row.cell(Column.DEFINITION_SOURCE))
+                    : null)
+            .withDeprecated(flag(row, Column.DEPRECATED))
+            .withReplacedBy(
+                row.filled(Column.REPLACED_BY)
+                    ? NativeOntologyCsvCells.iri(row.cell(Column.REPLACED_BY))
+                    : null));
     for (final URI parent : iris(row, Column.PARENTS, true)) {
       axioms.add(subclassOf(row, iri, parent));
     }
@@ -183,14 +193,19 @@ final class NativeOntologyCsvReader {
             .withRange(iris(row, Column.RANGE, true))
             .withEnumValues(enumValues(row))
             .withUnit(row.text(Column.UNIT))
-            .withIsIdentifier(identifier(row))
+            .withIsIdentifier(flag(row, Column.IDENTIFIER))
             .withInverse(
                 row.filled(Column.INVERSE)
                     ? NativeOntologyCsvCells.iri(row.cell(Column.INVERSE))
                     : null)
             .withCharacteristics(characteristics(row))
             .withPropertyChain(iris(row, Column.PROPERTY_CHAIN, false))
-            .withDisjointWith(iris(row, Column.DISJOINT_WITH, true)));
+            .withDisjointWith(iris(row, Column.DISJOINT_WITH, true))
+            .withDeprecated(flag(row, Column.DEPRECATED))
+            .withReplacedBy(
+                row.filled(Column.REPLACED_BY)
+                    ? NativeOntologyCsvCells.iri(row.cell(Column.REPLACED_BY))
+                    : null));
   }
 
   private List<OntologyLiteral> enumValues(final Row row) {
@@ -200,12 +215,12 @@ final class NativeOntologyCsvReader {
         .toList();
   }
 
-  private static Boolean identifier(final Row row) {
-    if (!row.filled(Column.IDENTIFIER)) {
+  private static Boolean flag(final Row row, final Column column) {
+    if (!row.filled(column)) {
       return false;
     }
-    if (!"true".equals(row.text(Column.IDENTIFIER))) {
-      throw row.cell(Column.IDENTIFIER).invalid("expected true or an empty cell");
+    if (!"true".equals(row.text(column))) {
+      throw row.cell(column).invalid("expected true or an empty cell");
     }
     return true;
   }

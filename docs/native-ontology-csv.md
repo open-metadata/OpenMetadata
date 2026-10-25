@@ -7,18 +7,18 @@ The CSV that native ontology import reads and that export writes. One row is one
 The first row must be exactly this, in this order (a byte order mark is tolerated):
 
 ```
-kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions
+kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy
 ```
 
-A subset of the columns is rejected. Every row states the whole definition, so an empty cell clears that field on an existing definition, as a missing `rdfs:comment` does in RDF. A subset header would silently wipe synonyms or mappings in the columns it omitted.
+Legacy 23-column headers, subset headers, and reordered headers are rejected. The complete 27-column header is required. Every row states the whole definition, so an empty cell clears that field on an existing definition, as a missing `rdfs:comment` does in RDF. Definitions omitted from the file remain untouched. A subset header would silently wipe fields in the columns it omitted.
 
 ## Rows
 
 | `kind` | Required | Optional |
 |---|---|---|
 | `ONTOLOGY` (at most one) | none | `iri`, `label`, `description` |
-| `CONCEPT` | `iri`, `conceptType` | `label`, `description`, `parents`, `synonyms`, `mappings` |
-| `PROPERTY` | `iri`, `propertyKind` | `label`, `description`, `domain`, `range`, `enumValues`, `unit`, `identifier`, `inverse`, `characteristics`, `propertyChain`, `disjointWith` |
+| `CONCEPT` | `iri`, `conceptType` | `label`, `description`, `parents`, `synonyms`, `mappings`, `abstract`, `definitionSource`, `deprecated`, `replacedBy` |
+| `PROPERTY` | `iri`, `propertyKind` | `label`, `description`, `domain`, `range`, `enumValues`, `unit`, `identifier`, `inverse`, `characteristics`, `propertyChain`, `disjointWith`, `deprecated`, `replacedBy` |
 | `AXIOM` | `iri` (the subject), `axiomType` | `property`, `target`, `literal`, `expressions` |
 
 Any other filled cell fails the row. The `ONTOLOGY` row supplies the file's label, which names a new ontology; it never replaces the chosen target.
@@ -31,7 +31,9 @@ Any other filled cell fails the row. The `ONTOLOGY` row supplies the file's labe
 - `parents`: IRIs of named superclasses. Each becomes a `SUBCLASS_OF` axiom with one named-class expression. A repeated item fails the row.
 - `mappings`: `TYPE:iri` items, split at the first colon.
 - `literal` and `enumValues`: N-Triples literal syntax, for example `"red"` or `"4"^^<http://www.w3.org/2001/XMLSchema#integer>`. `xsd:string` is written bare. Language tags are rejected.
-- `identifier`: `true` or empty.
+- `identifier`, `abstract`, and `deprecated`: `true` or empty. Empty means false; `false`, numeric values, and other spellings are rejected.
+- `definitionSource`: the absolute IRI of the defining document or standard, or empty to clear.
+- `replacedBy`: an absolute replacement IRI, or empty to clear. Existing repository validation requires a different definition of the same kind in the same ontology.
 - `expressions`: a JSON array of native class expressions. Unknown properties fail. Class axioms need it; a class assertion needs exactly one. Property assertions need `property` plus `target` (object) or `literal` (data). Each `AXIOM` row passes the same shape guard as an authored axiom.
 
 ## Strictness and limits
@@ -49,8 +51,8 @@ Left out, as in RDF import: ids, names, FQNs, owners, reviewers, versions, prove
 ## Example
 
 ```
-kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions
-ONTOLOGY,https://example.org/shop,Shop,Orders and customers,,,,,,,,,,,,,,,,,,,
-CONCEPT,https://example.org/Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,
-CONCEPT,https://example.org/Customer,Customer,Someone who buys,OWL_CLASS,https://example.org/Party,Client,EXACT_MATCH:https://schema.org/Customer,,,,,,,,,,,,,,,
+kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy
+ONTOLOGY,https://example.org/shop,Shop,Orders and customers,,,,,,,,,,,,,,,,,,,,,,,
+CONCEPT,https://example.org/Party,Party,,OWL_CLASS,,,,,,,,,,,,,,,,,,,,,,
+CONCEPT,https://example.org/Customer,Customer,Someone who buys,OWL_CLASS,https://example.org/Party,Client,EXACT_MATCH:https://schema.org/Customer,,,,,,,,,,,,,,,,,,,
 ```

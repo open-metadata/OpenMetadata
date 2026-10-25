@@ -55,7 +55,6 @@ public final class NativeOntologyCsvCodec {
     return text.startsWith(BOM) ? text.substring(BOM.length()) : text;
   }
 
-  /** The 23 columns, in header order. */
   enum Column {
     KIND("kind"),
     IRI("iri"),
@@ -79,7 +78,11 @@ public final class NativeOntologyCsvCodec {
     PROPERTY("property"),
     TARGET("target"),
     LITERAL("literal"),
-    EXPRESSIONS("expressions");
+    EXPRESSIONS("expressions"),
+    ABSTRACT("abstract"),
+    DEFINITION_SOURCE("definitionSource"),
+    DEPRECATED("deprecated"),
+    REPLACED_BY("replacedBy");
 
     private final String header;
 
@@ -99,7 +102,15 @@ public final class NativeOntologyCsvCodec {
     CONCEPT(
         EnumSet.of(Column.IRI, Column.CONCEPT_TYPE),
         EnumSet.of(
-            Column.LABEL, Column.DESCRIPTION, Column.PARENTS, Column.SYNONYMS, Column.MAPPINGS)),
+            Column.LABEL,
+            Column.DESCRIPTION,
+            Column.PARENTS,
+            Column.SYNONYMS,
+            Column.MAPPINGS,
+            Column.ABSTRACT,
+            Column.DEFINITION_SOURCE,
+            Column.DEPRECATED,
+            Column.REPLACED_BY)),
     PROPERTY(
         EnumSet.of(Column.IRI, Column.PROPERTY_KIND),
         EnumSet.of(
@@ -113,7 +124,9 @@ public final class NativeOntologyCsvCodec {
             Column.INVERSE,
             Column.CHARACTERISTICS,
             Column.PROPERTY_CHAIN,
-            Column.DISJOINT_WITH)),
+            Column.DISJOINT_WITH,
+            Column.DEPRECATED,
+            Column.REPLACED_BY)),
     AXIOM(
         EnumSet.of(Column.IRI, Column.AXIOM_TYPE),
         EnumSet.of(Column.PROPERTY, Column.TARGET, Column.LITERAL, Column.EXPRESSIONS));

@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -52,6 +54,138 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
+  @Test
+  void csvMetadataPreviewIsReadOnlyAndApplyPersistsAndClearsFields(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final String baseIri = "https://example.org/metadata/" + ns.shortPrefix() + "/";
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+    final var richFile = metadataCsv(baseIri, true);
+    final var preview = client.ontologies().previewImport(ontology.getId(), richFile);
+    assertEquals(counts(2, 0, 2, 0, 0, 0, 0, 0), preview.getSummary().getCounts());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(List.of(), conceptIds(ontology));
+    assertEquals(
+        0,
+        client
+            .ontologyProperties()
+            .list(new ListParams().addFilter("ontology", ontology.getFullyQualifiedName()))
+            .getData()
+            .size());
+    final var draft =
+        ns.trackRoot(
+            "ontologyChangeSet",
+            client
+                .ontologyChangeSets()
+                .create(preview.getChangeSet().withName(ns.prefix("csvMetadata"))));
+    assertEquals(
+        OntologyChangeSetState.APPLIED,
+        OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "csvMetadataEditor")
+            .getState());
+    assertMetadata(ontology, baseIri, true);
+    assertEquals(
+        0,
+        client
+            .ontologies()
+            .previewImport(ontology.getId(), richFile)
+            .getChangeSet()
+            .getOperations()
+            .size());
+
+    final long richRevision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+    final var clearFile = metadataCsv(baseIri, false);
+    final var clearPreview = client.ontologies().previewImport(ontology.getId(), clearFile);
+    assertEquals(counts(0, 1, 0, 1, 0, 0, 2, 0), clearPreview.getSummary().getCounts());
+    assertEquals(richRevision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertMetadata(ontology, baseIri, true);
+    final var clearDraft =
+        ns.trackRoot(
+            "ontologyChangeSet",
+            client
+                .ontologyChangeSets()
+                .create(clearPreview.getChangeSet().withName(ns.prefix("clearCsvMetadata"))));
+    assertEquals(
+        OntologyChangeSetState.APPLIED,
+        OntologyChangeSetTestSupport.applyOntologyChangeSet(
+                client, clearDraft, ns, "clearCsvEditor")
+            .getState());
+    assertMetadata(ontology, baseIri, false);
+    assertEquals(
+        0,
+        client
+            .ontologies()
+            .previewImport(ontology.getId(), clearFile)
+            .getChangeSet()
+            .getOperations()
+            .size());
+  }
+
+  static PreviewNativeOntologyImport metadataCsv(String baseIri, boolean populated) {
+    final var rows = new ArrayList<String>();
+    rows.add(
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy");
+    final var ontology = new ArrayList<>(Collections.nCopies(27, ""));
+    ontology.set(0, "ONTOLOGY");
+    ontology.set(2, "Party model");
+    rows.add(String.join(",", ontology));
+    for (final String name : List.of("Customer", "Party", "code", "identifier")) {
+      final boolean concept = name.equals("Customer") || name.equals("Party");
+      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      cells.set(0, concept ? "CONCEPT" : "PROPERTY");
+      cells.set(1, baseIri + name);
+      cells.set(2, name);
+      cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
+      if (populated && name.equals("Customer")) {
+        cells.set(23, "true");
+        cells.set(24, baseIri + "standard");
+        cells.set(25, "true");
+        cells.set(26, baseIri + "Party");
+      }
+      if (populated && name.equals("code")) {
+        cells.set(25, "true");
+        cells.set(26, baseIri + "identifier");
+      }
+      rows.add(String.join(",", cells));
+    }
+    return new PreviewNativeOntologyImport()
+        .withFormat(NativeOntologyImportFormat.CSV)
+        .withData(String.join("\r\n", rows) + "\r\n");
+  }
+
+  static void assertMetadata(Ontology ontology, String baseIri, boolean populated) {
+    final var client = SdkClients.adminClient();
+    final var concept =
+        client
+            .ontologyConcepts()
+            .list(new ListParams().addFilter("ontology", ontology.getFullyQualifiedName()))
+            .getData()
+            .stream()
+            .filter(item -> URI.create(baseIri + "Customer").equals(item.getIri()))
+            .findFirst()
+            .orElseThrow();
+    final var property =
+        client
+            .ontologyProperties()
+            .list(new ListParams().addFilter("ontology", ontology.getFullyQualifiedName()))
+            .getData()
+            .stream()
+            .filter(item -> URI.create(baseIri + "code").equals(item.getIri()))
+            .findFirst()
+            .orElseThrow();
+    final var persistedConcept = client.ontologyConcepts().get(concept.getId());
+    final var persistedProperty = client.ontologyProperties().get(property.getId());
+    assertEquals(populated, persistedConcept.getAbstract());
+    assertEquals(
+        populated ? URI.create(baseIri + "standard") : null,
+        persistedConcept.getDefinitionSource());
+    assertEquals(populated, persistedConcept.getDeprecated());
+    assertEquals(
+        populated ? URI.create(baseIri + "Party") : null, persistedConcept.getReplacedBy());
+    assertEquals(populated, persistedProperty.getDeprecated());
+    assertEquals(
+        populated ? URI.create(baseIri + "identifier") : null, persistedProperty.getReplacedBy());
+  }
+
   @Test
   void detectionUsesContentBeforeAMisleadingFileName() {
     final var request =

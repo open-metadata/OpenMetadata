@@ -26,4 +26,6 @@ export interface FeedCardBodyV1Props {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isFeedWidget?: boolean;
+  /** The card is the selected one, drawn on the brand tint. */
+  isActive?: boolean;
 }

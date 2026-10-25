@@ -1,5 +1,6 @@
 package org.openmetadata.sdk.services.ontology;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
@@ -20,6 +21,13 @@ import org.openmetadata.sdk.services.EntityServiceBase;
 public final class OntologyService extends EntityServiceBase<Ontology> {
   public OntologyService(final HttpClient httpClient) {
     super(httpClient, "/v1/ontologies");
+  }
+
+  @Override
+  protected void normalizePatchNodes(
+      final JsonNode original, final JsonNode updated, final Ontology entity) {
+    removeField(original, "publicationStatus");
+    removeField(updated, "publicationStatus");
   }
 
   public Ontology create(final CreateOntology request) {

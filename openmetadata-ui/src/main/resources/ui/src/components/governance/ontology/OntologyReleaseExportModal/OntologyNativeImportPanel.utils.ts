@@ -284,7 +284,7 @@ export const detectNativeImportFile = async (
   try {
     text = await file.text();
     const detection = await detectNativeOntologyImportFormat({
-      data: text.slice(0, NATIVE_IMPORT_DETECT_WINDOW),
+      data: text.slice(0, NATIVE_IMPORT_DETECT_WINDOW + 1),
       fileName: file.name,
     });
     dispatch({ type: 'detected', fileId, format: detection.detectedFormat });

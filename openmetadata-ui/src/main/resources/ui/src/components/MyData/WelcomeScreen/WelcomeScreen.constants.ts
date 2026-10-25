@@ -11,25 +11,49 @@
  *  limitations under the License.
  */
 
-// Figma 15448:9083: a radial glow rising into the brand colour along the bottom
-// 65% of the panel; dark mode keeps it faint. `--tw-*` is the runtime name of
-// the core theme variables, and it follows the configured brand colour.
-const GLOW_SHAPE = 'ellipse 168% 168% at 56% -31%';
-const BRAND = 'var(--tw-color-brand-500)';
+import { CSSProperties } from 'react';
+import { WelcomeTheme } from '../../../utils/BrandData/BrandClassBase';
 
-const brandMix = (percent: number) =>
-  `color-mix(in srgb, ${BRAND} ${percent}%, transparent)`;
+/**
+ * Glow from the approved Figma frame (Rectangle 8) in the given core colour
+ * token. Figma renders a transparent-to-colour stop at t² rather than CSS's t,
+ * so the extra stops keep it as soft as the mock; dark mode uses a wider
+ * ellipse peaking at 30% of the colour.
+ */
+export const getWelcomeGlow = (colorToken: string, isDark: boolean) => {
+  const color = `var(--tw-color-${colorToken})`;
+  const stops = isDark
+    ? [
+        '220.28% 218.41% at 55.79% -31.38%',
+        'transparent 47%',
+        `color-mix(in srgb, ${color} 20%, transparent) 60%`,
+        `color-mix(in srgb, ${color} 30%, transparent) 73%`,
+        `color-mix(in srgb, ${color} 30%, transparent) 87%`,
+        `color-mix(in srgb, ${color} 20%, transparent)`,
+      ]
+    : [
+        '168.55% 167.82% at 55.79% -31.38%',
+        'transparent 55%',
+        `color-mix(in srgb, ${color} 6%, transparent) 66%`,
+        `color-mix(in srgb, ${color} 25%, transparent) 77.5%`,
+        `color-mix(in srgb, ${color} 56%, transparent) 89%`,
+        color,
+      ];
 
-export const WELCOME_GLOW_LIGHT = `radial-gradient(${GLOW_SHAPE}, ${[
-  'transparent 55%',
-  `${brandMix(50)} 77.5%`,
-  `${brandMix(75)} 88.75%`,
-  BRAND,
-].join(', ')})`;
+  return `radial-gradient(${stops.join(', ')})`;
+};
 
-export const WELCOME_GLOW_DARK = `radial-gradient(${GLOW_SHAPE}, ${[
-  'transparent 47%',
-  `${brandMix(8)} 60%`,
-  `${brandMix(20)} 73%`,
-  brandMix(20),
-].join(', ')})`;
+/**
+ * Pins the primary button's `bg-brand-solid` to the product's fixed welcome
+ * colours, so a custom theme does not change it. `undefined` (a downstream
+ * brand class without getWelcomeTheme) leaves the theme colours.
+ */
+export const getWelcomeThemeStyle = (
+  welcomeTheme?: WelcomeTheme
+): CSSProperties | undefined =>
+  welcomeTheme
+    ? ({
+        '--tw-background-color-brand-solid': `var(--tw-color-${welcomeTheme.button})`,
+        '--tw-background-color-brand-solid_hover': `var(--tw-color-${welcomeTheme.buttonHover})`,
+      } as CSSProperties)
+    : undefined;

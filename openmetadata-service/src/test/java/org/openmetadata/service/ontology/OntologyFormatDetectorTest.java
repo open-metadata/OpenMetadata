@@ -50,6 +50,15 @@ class OntologyFormatDetectorTest {
   }
 
   @Test
+  void onlyTheCompleteCanonicalCsvHeaderHasAContentSignature() {
+    final String legacy = CSV.substring(0, CSV.indexOf(",abstract"));
+    assertEquals(Optional.empty(), detect(legacy, null));
+    assertEquals(Optional.empty(), detect(CSV.replace("kind,iri", "iri,kind"), null));
+    assertEquals(Optional.of(NativeOntologyImportFormat.CSV), detect(legacy, "old.csv"));
+    assertEquals(Optional.of(NativeOntologyImportFormat.CSV), detect(CSV, null));
+  }
+
+  @Test
   void skipsABomBlankLinesAndLeadingComments() {
     assertEquals(
         Optional.of(NativeOntologyImportFormat.TURTLE),
@@ -98,6 +107,17 @@ class OntologyFormatDetectorTest {
     assertEquals(Optional.of(NativeOntologyImportFormat.TURTLE), detect(longTurtle, null));
     final String longNTriples = N_TRIPLES.repeat(OntologyFormatDetector.WINDOW / 40);
     assertEquals(Optional.of(NativeOntologyImportFormat.NTRIPLES), detect(longNTriples, null));
+  }
+
+  @Test
+  void aBrowserSampleWithOneExtraCharacterMatchesTheFullNTriplesSource() {
+    final String source = "<urn:a> <urn:b> <urn:c> .\n".repeat(4_000);
+    final String sample = source.substring(0, OntologyFormatDetector.WINDOW + 1);
+    assertEquals(Optional.of(NativeOntologyImportFormat.NTRIPLES), detect(source, "large.nt"));
+    assertEquals(detect(source, "large.nt"), detect(sample, "large.nt"));
+    assertEquals(
+        Optional.of(NativeOntologyImportFormat.TURTLE),
+        detect(source.substring(0, OntologyFormatDetector.WINDOW), "large.nt"));
   }
 
   @Test

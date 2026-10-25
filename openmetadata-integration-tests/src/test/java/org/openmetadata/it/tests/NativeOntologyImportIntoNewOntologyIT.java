@@ -48,12 +48,13 @@ public class NativeOntologyImportIntoNewOntologyIT extends BaseOntologyApprovalI
   void createsTheTargetFromTheFileLabelThenPreviewsAndAppliesIntoIt(TestNamespace ns) {
     final OpenMetadataClient client = SdkClients.adminClient();
     final String baseIri = "https://example.org/parties/" + ns.shortPrefix() + "/";
-    final PreviewNativeOntologyImport file = partyTurtle(baseIri);
+    final PreviewNativeOntologyImport file =
+        NativeOntologyImportPreviewIT.metadataCsv(baseIri, true);
     final User owner = client.users().getByName("admin");
 
     final NativeOntologyImportSummary summary = client.ontologies().previewImport(file);
     assertEquals("Party model", summary.getOntologyLabel());
-    assertEquals(counts(2, 0, 0, 0, 1, 0, 0, 0), summary.getCounts());
+    assertEquals(counts(2, 0, 2, 0, 0, 0, 0, 0), summary.getCounts());
 
     final CreateOntology request = newOntologyRequest(summary.getOntologyLabel(), owner);
     final Ontology ontology = ns.trackRoot("ontology", client.ontologies().create(request));
@@ -65,9 +66,19 @@ public class NativeOntologyImportIntoNewOntologyIT extends BaseOntologyApprovalI
         List.of(owner.getId()),
         current(ontology).getOwners().stream().map(reference -> reference.getId()).toList());
 
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
     final NativeOntologyImportPreview preview =
         client.ontologies().previewImport(ontology.getId(), file);
     assertEquals(summary.getCounts(), preview.getSummary().getCounts());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(Set.of(), conceptIris(ontology));
+    assertEquals(
+        0,
+        client
+            .ontologyProperties()
+            .list(new ListParams().addFilter("ontology", ontology.getFullyQualifiedName()))
+            .getData()
+            .size());
     final OntologyChangeSet draft =
         ns.trackRoot(
             "ontologyChangeSet",
@@ -78,10 +89,11 @@ public class NativeOntologyImportIntoNewOntologyIT extends BaseOntologyApprovalI
         OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "newOntologyEditor");
 
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
-    assertEquals(3, applied.getApplicationResult().getOperationsApplied());
+    assertEquals(4, applied.getApplicationResult().getOperationsApplied());
+    NativeOntologyImportPreviewIT.assertMetadata(ontology, baseIri, true);
     assertEquals(Set.of(baseIri + "Customer", baseIri + "Party"), conceptIris(ontology));
     assertEquals(
-        counts(0, 0, 0, 0, 0, 0, 2, 1),
+        counts(0, 0, 0, 0, 0, 0, 4, 0),
         client.ontologies().previewImport(ontology.getId(), file).getSummary().getCounts());
   }
 

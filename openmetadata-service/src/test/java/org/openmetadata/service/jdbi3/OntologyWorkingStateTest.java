@@ -168,6 +168,63 @@ class OntologyWorkingStateTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aFinalizerThatKeepsWritingFailsTheMutationInsteadOfLooping(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          CollectionDAO dao = handle.attach(CollectionDAO.class);
+          Ontology ontology = definition();
+          OntologyWorkingState state = new OntologyWorkingState(dao);
+          List<Integer> passes = new ArrayList<>();
+          IllegalStateException error =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      dao.inTransaction(
+                          ignored ->
+                              state.mutate(
+                                  dao.ontologyEntityDAO(),
+                                  List.of(ontology),
+                                  () -> {
+                                    dao.ontologyEntityDAO()
+                                        .insert(ontology, ontology.getFullyQualifiedName());
+                                    state.beforeValidation(
+                                        "restless",
+                                        (ontologyId, changes) -> {
+                                          passes.add(changes.size());
+                                          Ontology stored =
+                                              dao.ontologyEntityDAO()
+                                                  .findEntityById(ontology.getId());
+                                          state.mutate(
+                                              dao.ontologyEntityDAO(),
+                                              List.of(stored),
+                                              () -> {
+                                                dao.ontologyEntityDAO()
+                                                    .update(
+                                                        stored.withDescription(
+                                                            "pass " + passes.size()));
+                                                return null;
+                                              });
+                                        });
+                                    return null;
+                                  })));
+          assertEquals("Ontology writes did not settle within 8 passes", error.getMessage());
+          assertEquals(List.of(1, 1, 1, 1, 1, 1, 1, 1), passes);
+          assertEquals(
+              0,
+              handle
+                  .createQuery("SELECT COUNT(*) FROM ontology_entity WHERE id = :id")
+                  .bind("id", ontology.getId().toString())
+                  .mapTo(Integer.class)
+                  .one());
+        });
+  }
+
   private static Ontology definition() {
     String name = "Concurrent" + UUID.randomUUID();
     return new Ontology()

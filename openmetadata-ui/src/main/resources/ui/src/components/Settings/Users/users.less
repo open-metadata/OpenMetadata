@@ -18,7 +18,11 @@
   overflow-y: scroll;
 }
 
-.summary-panel-container {
+// Scoped to the summary panel: unscoped, this lazily loaded rule also painted
+// the column detail drawer. :where() keeps the old specificity so the scoping
+// changes nothing else. Being unlayered, it still beats the panel's layered
+// tw: utilities (e.g. tw:bg-surface), exactly as before.
+:where(.entity-summary-panel-container) .summary-panel-container {
   border-radius: var(--om-radius-xl);
   border: 1px solid var(--om-color-gray-blue-100);
   background-color: var(--tw-color-bg-primary);
@@ -31,11 +35,11 @@
   .profile-section-user-details-card {
     padding: var(--om-space-20);
     margin-bottom: var(--om-space-20);
-    background: var(--tw-color-bg-primary);
+    background: var(--tw-background-color-surface);
     justify-content: center;
     align-items: center;
     border-radius: var(--om-radius-xl);
-    border: 1px solid var(--om-color-gray-blue-100);
+    border: 1px solid var(--tw-border-color-secondary);
 
     .user-details-menu-icon {
       position: absolute;
@@ -49,7 +53,7 @@
       font-style: normal;
       font-weight: var(--om-font-weight-semibold);
       line-height: 28px;
-      color: var(--om-color-gray-900);
+      color: var(--tw-text-color-primary);
       text-align: center;
       word-break: break-word;
     }
@@ -107,12 +111,12 @@
 }
 
 .user-profile-card {
-  background: white;
+  background: var(--tw-background-color-surface);
   padding: var(--om-space-20) var(--om-space-20) var(--om-space-10)
     var(--om-space-20);
   border-radius: var(--om-radius-xl);
   margin-bottom: var(--om-space-20);
-  border: 1px solid var(--om-color-gray-blue-100);
+  border: 1px solid var(--tw-border-color-secondary);
 
   .user-profile-card-header {
     margin-bottom: @margin-xs;

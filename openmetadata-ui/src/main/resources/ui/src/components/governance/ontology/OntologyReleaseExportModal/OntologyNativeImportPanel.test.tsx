@@ -213,6 +213,20 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
+  it('keeps one extra character so detection recognizes a truncated N-Triples sample', async () => {
+    const source = '<urn:a> <urn:b> <urn:c> .\n'.repeat(4_000);
+
+    renderPanel();
+    dropFile('large.nt', source);
+
+    await screen.findByTestId('ontology-native-import-format');
+
+    expect(detectNativeOntologyImportFormat).toHaveBeenCalledWith({
+      data: source.slice(0, 65_537),
+      fileName: 'large.nt',
+    });
+  });
+
   it('parses the latest file when an earlier detection finishes last', async () => {
     let finishFirstDetection:
       | ((value: { detectedFormat: string }) => void)

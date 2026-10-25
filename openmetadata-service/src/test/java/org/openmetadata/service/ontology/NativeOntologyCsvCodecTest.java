@@ -40,6 +40,10 @@ class NativeOntologyCsvCodecTest {
       <https://example.org/Customer> a owl:Class ;
         rdfs:label "Customer" ;
         rdfs:comment "Someone who buys" ;
+        om:abstract true ;
+        <http://purl.org/dc/terms/source> <https://example.org/standard> ;
+        owl:deprecated true ;
+        <http://purl.org/dc/terms/isReplacedBy> <https://example.org/Party> ;
         rdfs:subClassOf <https://example.org/Party> ;
         skos:altLabel "Client" ;
         skos:exactMatch <https://schema.org/Customer> .
@@ -49,6 +53,8 @@ class NativeOntologyCsvCodecTest {
 
       <https://example.org/buys> a owl:ObjectProperty, owl:TransitiveProperty ;
         rdfs:label "buys" ;
+        owl:deprecated true ;
+        <http://purl.org/dc/terms/isReplacedBy> <https://example.org/grandparentOf> ;
         rdfs:domain <https://example.org/Customer> ;
         rdfs:range <https://example.org/Party> ;
         owl:inverseOf <https://example.org/boughtBy> ;
@@ -119,6 +125,28 @@ class NativeOntologyCsvCodecTest {
   }
 
   @Test
+  void roundTripsClassAndPropertyMetadata() {
+    final NativeOntologyDocument document = fromTurtle();
+    document
+        .concepts()
+        .getFirst()
+        .withAbstract(true)
+        .withDefinitionSource(URI.create(EX + "standard"))
+        .withDeprecated(true)
+        .withReplacedBy(URI.create(EX + "Party"));
+    document
+        .properties()
+        .getFirst()
+        .withDeprecated(true)
+        .withReplacedBy(URI.create(EX + "grandparentOf"));
+
+    final String written = NativeOntologyCsvCodec.write(document);
+    final NativeOntologyDocument reread = NativeOntologyCsvCodec.read(written);
+    assertEquals(document, reread);
+    assertEquals(written, NativeOntologyCsvCodec.write(reread));
+  }
+
+  @Test
   void readsTheSameDocumentAsTheRdfReaderForTheSameOntology() {
     final NativeOntologyDocument rdf = fromTurtle();
     final NativeOntologyDocument csv =
@@ -137,6 +165,68 @@ class NativeOntologyCsvCodecTest {
         1,
         written.lines().filter(line -> line.contains(",SUBCLASS_OF,")).count(),
         "only the restriction superclass stays an axiom row");
+  }
+
+  @Test
+  void caseDistinctConceptsKeepTheirOwnParentsAfterWriting() {
+    final NativeOntologyDocument document =
+        NativeOntologyCsvCodec.read(
+            csv(
+                row(
+                    "KIND",
+                    "CONCEPT",
+                    "IRI",
+                    "https://EXAMPLE.org/C",
+                    "CONCEPT_TYPE",
+                    "OWL_CLASS",
+                    "PARENTS",
+                    "urn:P"),
+                row(
+                    "KIND",
+                    "CONCEPT",
+                    "IRI",
+                    "https://example.org/C",
+                    "CONCEPT_TYPE",
+                    "OWL_CLASS",
+                    "PARENTS",
+                    "urn:Q")));
+    final NativeOntologyDocument reread =
+        NativeOntologyCsvCodec.read(NativeOntologyCsvCodec.write(document));
+    assertEquals(2, reread.axioms().size());
+    assertEquals(
+        List.of("https://EXAMPLE.org/C urn:P", "https://example.org/C urn:Q"),
+        reread.axioms().stream()
+            .map(
+                axiom ->
+                    axiom.getSubjectIri().toString()
+                        + " "
+                        + axiom.getExpressions().getFirst().getClassIri().toString())
+            .sorted()
+            .toList());
+  }
+
+  @Test
+  void anUndeclaredCaseDistinctSubjectStaysItsOwnAxiom() {
+    final NativeOntologyDocument document =
+        NativeOntologyCsvCodec.read(
+            csv(
+                concept("https://EXAMPLE.org/C"),
+                row(
+                    "KIND",
+                    "AXIOM",
+                    "AXIOM_TYPE",
+                    "SUBCLASS_OF",
+                    "IRI",
+                    "https://example.org/C",
+                    "EXPRESSIONS",
+                    "[{\"kind\":\"NAMED_CLASS\",\"classIri\":\"urn:Q\"}]")));
+    final String written = NativeOntologyCsvCodec.write(document);
+    assertEquals(1, written.lines().filter(line -> line.contains(",SUBCLASS_OF,")).count());
+    final NativeOntologyDocument reread = NativeOntologyCsvCodec.read(written);
+    assertEquals(1, reread.axioms().size());
+    assertEquals("https://example.org/C", reread.axioms().getFirst().getSubjectIri().toString());
+    assertEquals(
+        "urn:Q", reread.axioms().getFirst().getExpressions().getFirst().getClassIri().toString());
   }
 
   @Test
@@ -189,6 +279,130 @@ class NativeOntologyCsvCodecTest {
     assertEquals(
         List.of("a;b", "say \"hi\"", "plain"),
         List.copyOf(good.concepts().getFirst().getSynonyms()));
+  }
+
+  @Test
+  void rejectsLegacyPartialAndReorderedHeaders() {
+    final String expected =
+        "CSV row 1: the header must be exactly " + NativeOntologyCsvCodec.HEADER;
+    final String legacy =
+        NativeOntologyCsvCodec.HEADER.substring(
+            0, NativeOntologyCsvCodec.HEADER.indexOf(",abstract"));
+    for (final String header :
+        List.of(
+            legacy, "kind,iri", NativeOntologyCsvCodec.HEADER.replace("kind,iri", "iri,kind"))) {
+      assertEquals(expected, errorOf(header + "\r\n"));
+      assertEquals(false, NativeOntologyCsvCodec.isHeader(header));
+    }
+  }
+
+  @Test
+  void metadataCellsRequireTrueOrEmptyFlagsAndAbsoluteIris() {
+    for (final String flag : List.of("ABSTRACT", "DEPRECATED")) {
+      for (final String invalid : List.of("false", "TRUE", "1", "0", "yes", " true")) {
+        assertTrue(
+            errorOf(
+                    csv(
+                        row(
+                            "KIND",
+                            "CONCEPT",
+                            "IRI",
+                            EX + "A",
+                            "CONCEPT_TYPE",
+                            "OWL_CLASS",
+                            flag,
+                            invalid)))
+                .endsWith("expected true or an empty cell"));
+      }
+    }
+    for (final String column : List.of("DEFINITION_SOURCE", "REPLACED_BY")) {
+      assertTrue(
+          errorOf(
+                  csv(
+                      row(
+                          "KIND",
+                          "CONCEPT",
+                          "IRI",
+                          EX + "A",
+                          "CONCEPT_TYPE",
+                          "OWL_CLASS",
+                          column,
+                          "relative")))
+              .endsWith("'relative' is not an absolute IRI"));
+    }
+    assertTrue(
+        errorOf(
+                csv(
+                    row(
+                        "KIND",
+                        "PROPERTY",
+                        "IRI",
+                        EX + "p",
+                        "PROPERTY_KIND",
+                        "DATA",
+                        "DEPRECATED",
+                        "false")))
+            .endsWith("expected true or an empty cell"));
+    assertTrue(
+        errorOf(
+                csv(
+                    row(
+                        "KIND",
+                        "PROPERTY",
+                        "IRI",
+                        EX + "p",
+                        "PROPERTY_KIND",
+                        "DATA",
+                        "REPLACED_BY",
+                        "relative")))
+            .endsWith("'relative' is not an absolute IRI"));
+    final var defaults =
+        NativeOntologyCsvCodec.read(
+            csv(
+                concept(EX + "A"),
+                row("KIND", "PROPERTY", "IRI", EX + "p", "PROPERTY_KIND", "DATA")));
+    assertEquals(Boolean.FALSE, defaults.concepts().getFirst().getAbstract());
+    assertEquals(Boolean.FALSE, defaults.concepts().getFirst().getDeprecated());
+    assertEquals(Boolean.FALSE, defaults.properties().getFirst().getDeprecated());
+  }
+
+  @Test
+  void metadataIsRejectedOnInapplicableRowKinds() {
+    for (final String column :
+        List.of("ABSTRACT", "DEFINITION_SOURCE", "DEPRECATED", "REPLACED_BY")) {
+      final String value =
+          column.equals("ABSTRACT") || column.equals("DEPRECATED") ? "true" : EX + "B";
+      for (final String kind : List.of("ONTOLOGY", "AXIOM")) {
+        assertTrue(
+            errorOf(
+                    csv(
+                        row(
+                            "KIND",
+                            kind,
+                            "IRI",
+                            EX + "A",
+                            "AXIOM_TYPE",
+                            kind.equals("AXIOM") ? "SUBCLASS_OF" : "",
+                            column,
+                            value)))
+                .endsWith("a " + kind + " row leaves this cell empty"));
+      }
+    }
+    for (final String column : List.of("ABSTRACT", "DEFINITION_SOURCE")) {
+      assertTrue(
+          errorOf(
+                  csv(
+                      row(
+                          "KIND",
+                          "PROPERTY",
+                          "IRI",
+                          EX + "p",
+                          "PROPERTY_KIND",
+                          "DATA",
+                          column,
+                          "true")))
+              .endsWith("a PROPERTY row leaves this cell empty"));
+    }
   }
 
   @Test
@@ -247,7 +461,7 @@ class NativeOntologyCsvCodecTest {
         "CSV row 3: a second ONTOLOGY row; the first is row 2",
         errorOf(csv(row("KIND", "ONTOLOGY"), row("KIND", "ONTOLOGY"))));
     assertEquals(
-        "CSV row 2: expected 23 cells but found 2",
+        "CSV row 2: expected 27 cells but found 2",
         errorOf(NativeOntologyCsvCodec.HEADER + "\r\nCONCEPT,x\r\n"));
   }
 

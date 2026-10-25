@@ -35,7 +35,7 @@ import org.openmetadata.service.ontology.NativeOntologyCsvCodec.RowKind;
  */
 final class NativeOntologyCsvWriter {
   private final NativeOntologyDocument document;
-  private final Map<URI, TreeSet<String>> foldedParents = new HashMap<>();
+  private final Map<String, TreeSet<String>> foldedParents = new HashMap<>();
   private final Set<OntologyAxiom> folded = Collections.newSetFromMap(new IdentityHashMap<>());
 
   private NativeOntologyCsvWriter(final NativeOntologyDocument document) {
@@ -82,14 +82,14 @@ final class NativeOntologyCsvWriter {
 
   /** A parent folds into its child's row once; a repeat stays an axiom row so no statement is lost. Identity, not equality: a repeat equals the axiom it repeats. */
   private void foldParents() {
-    final Set<URI> conceptIris = new HashSet<>();
-    document.concepts().forEach(concept -> conceptIris.add(concept.getIri()));
+    final Set<String> conceptIris = new HashSet<>();
+    document.concepts().forEach(concept -> conceptIris.add(concept.getIri().toString()));
     for (final OntologyAxiom axiom : document.axioms()) {
       final URI parent = namedParent(axiom);
       if (parent != null
-          && conceptIris.contains(axiom.getSubjectIri())
+          && conceptIris.contains(axiom.getSubjectIri().toString())
           && foldedParents
-              .computeIfAbsent(axiom.getSubjectIri(), ignored -> new TreeSet<>())
+              .computeIfAbsent(axiom.getSubjectIri().toString(), ignored -> new TreeSet<>())
               .add(parent.toString())) {
         folded.add(axiom);
       }
@@ -130,12 +130,22 @@ final class NativeOntologyCsvWriter {
         row,
         Column.PARENTS,
         NativeOntologyCsvCells.join(
-            List.copyOf(foldedParents.getOrDefault(concept.getIri(), new TreeSet<>()))));
+            List.copyOf(foldedParents.getOrDefault(concept.getIri().toString(), new TreeSet<>()))));
     put(row, Column.SYNONYMS, sortedJoin(orEmpty(concept.getSynonyms()), Function.identity()));
     put(
         row,
         Column.MAPPINGS,
         sortedJoin(listOrEmpty(concept.getConceptMappings()), NativeOntologyCsvCells::mapping));
+    put(row, Column.ABSTRACT, Boolean.TRUE.equals(concept.getAbstract()) ? "true" : null);
+    put(
+        row,
+        Column.DEFINITION_SOURCE,
+        concept.getDefinitionSource() == null ? null : concept.getDefinitionSource().toString());
+    put(row, Column.DEPRECATED, Boolean.TRUE.equals(concept.getDeprecated()) ? "true" : null);
+    put(
+        row,
+        Column.REPLACED_BY,
+        concept.getReplacedBy() == null ? null : concept.getReplacedBy().toString());
     return row;
   }
 
@@ -170,6 +180,11 @@ final class NativeOntologyCsvWriter {
         row,
         Column.DISJOINT_WITH,
         sortedJoin(listOrEmpty(property.getDisjointWith()), URI::toString));
+    put(row, Column.DEPRECATED, Boolean.TRUE.equals(property.getDeprecated()) ? "true" : null);
+    put(
+        row,
+        Column.REPLACED_BY,
+        property.getReplacedBy() == null ? null : property.getReplacedBy().toString());
     return row;
   }
 

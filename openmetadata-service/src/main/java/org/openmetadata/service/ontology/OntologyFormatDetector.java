@@ -12,7 +12,7 @@ import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 /**
  * Names the format of an import file from its content first and its file name second, so a
  * misleading extension never decides how a file is parsed. Reads at most {@link #WINDOW}
- * characters, which is all the browser sends to the detect endpoint.
+ * characters. A longer browser sample signals that the window is truncated.
  */
 public final class OntologyFormatDetector {
   public static final int WINDOW = 65_536;

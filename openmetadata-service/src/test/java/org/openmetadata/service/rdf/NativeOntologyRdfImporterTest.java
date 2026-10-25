@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.SKOS;
@@ -459,6 +461,217 @@ class NativeOntologyRdfImporterTest {
       } finally {
         model.close();
       }
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = NativeOntologyImportFormat.class,
+      names = {"CSV", "TURTLE"})
+  void metadataOnlyUpdatesClearAndRepeatWithoutMutatingTheSnapshot(
+      NativeOntologyImportFormat format) {
+    final var root = root();
+    final var initial = imported(root, METADATA_BASE);
+    final String before = JsonUtils.pojoToJson(initial);
+    final var richSource = importer.read(metadataRequest(format, true));
+    final var rich = importer.preview(richSource, initial);
+    assertEquals(1, rich.getSummary().getCounts().getUpdatedConcepts());
+    assertEquals(1, rich.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(2, rich.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(2, rich.getChangeSet().getOperations().size());
+    final var concept =
+        rich.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getConcept)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    final var property =
+        rich.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getProperty)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Boolean.TRUE, concept.getAbstract());
+    assertEquals(URI.create("https://example.org/standard"), concept.getDefinitionSource());
+    assertEquals(Boolean.TRUE, concept.getDeprecated());
+    assertEquals(URI.create("https://example.org/Account"), concept.getReplacedBy());
+    assertEquals(Boolean.TRUE, property.getDeprecated());
+    assertEquals(URI.create("https://example.org/identifier"), property.getReplacedBy());
+    assertEquals(before, JsonUtils.pojoToJson(initial));
+
+    final var richSnapshot = imported(root, METADATA_BASE + METADATA_ANNOTATIONS);
+    assertEquals(
+        0, importer.preview(richSource, richSnapshot).getChangeSet().getOperations().size());
+    final var cleared =
+        importer.preview(importer.read(metadataRequest(format, false)), richSnapshot);
+    assertEquals(1, cleared.getSummary().getCounts().getUpdatedConcepts());
+    assertEquals(1, cleared.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(2, cleared.getChangeSet().getOperations().size());
+    final var clearedConcept =
+        cleared.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getConcept)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    final var clearedProperty =
+        cleared.getChangeSet().getOperations().stream()
+            .map(OntologyChangeOperation::getProperty)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElseThrow();
+    assertEquals(Boolean.FALSE, clearedConcept.getAbstract());
+    assertNull(clearedConcept.getDefinitionSource());
+    assertEquals(Boolean.FALSE, clearedConcept.getDeprecated());
+    assertNull(clearedConcept.getReplacedBy());
+    assertEquals(Boolean.FALSE, clearedProperty.getDeprecated());
+    assertNull(clearedProperty.getReplacedBy());
+    assertEquals(
+        0,
+        importer
+            .preview(importer.read(metadataRequest(format, false)), initial)
+            .getChangeSet()
+            .getOperations()
+            .size());
+  }
+
+  private static final String METADATA_BASE =
+      """
+      @prefix owl: <http://www.w3.org/2002/07/owl#> .
+      @prefix om: <https://open-metadata.org/ontology/> .
+      @prefix dct: <http://purl.org/dc/terms/> .
+      <https://example.org/Customer> a owl:Class .
+      <https://example.org/Account> a owl:Class .
+      <https://example.org/code> a owl:DatatypeProperty .
+      <https://example.org/identifier> a owl:DatatypeProperty .
+      """;
+  private static final String METADATA_ANNOTATIONS =
+      """
+      <https://example.org/Customer> om:abstract true; dct:source <https://example.org/standard>;
+        owl:deprecated true; dct:isReplacedBy <https://example.org/Account> .
+      <https://example.org/code> owl:deprecated true; dct:isReplacedBy <https://example.org/identifier> .
+      """;
+
+  private static PreviewNativeOntologyImport metadataRequest(
+      NativeOntologyImportFormat format, boolean populated) {
+    if (format == NativeOntologyImportFormat.TURTLE) {
+      return turtleRequest(METADATA_BASE + (populated ? METADATA_ANNOTATIONS : ""));
+    }
+    final String header =
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+    final List<String> rows = new ArrayList<>();
+    rows.add(header);
+    for (final String name : List.of("Customer", "Account", "code", "identifier")) {
+      final boolean concept = name.equals("Customer") || name.equals("Account");
+      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      cells.set(0, concept ? "CONCEPT" : "PROPERTY");
+      cells.set(1, "https://example.org/" + name);
+      cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
+      if (populated && name.equals("Customer")) {
+        cells.set(23, "true");
+        cells.set(24, "https://example.org/standard");
+        cells.set(25, "true");
+        cells.set(26, "https://example.org/Account");
+      }
+      if (populated && name.equals("code")) {
+        cells.set(25, "true");
+        cells.set(26, "https://example.org/identifier");
+      }
+      rows.add(String.join(",", cells));
+    }
+    return new PreviewNativeOntologyImport()
+        .withFormat(format)
+        .withData(String.join("\r\n", rows) + "\r\n");
+  }
+
+  @Test
+  void classModelAnnotationsImportAsClassAndPropertyFields() {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; om:abstract true;
+          dct:source <https://standards.example.org/party>; owl:deprecated true;
+          dct:isReplacedBy <https://example.org/Account> .
+        <https://example.org/Account> a owl:Class; owl:deprecated false .
+        <https://example.org/code> a owl:DatatypeProperty; owl:deprecated "1"^^xsd:boolean;
+          dct:isReplacedBy <https://example.org/identifier> .
+        <https://example.org/identifier> a owl:DatatypeProperty .
+        """,
+            RdfSerializationFormat.TURTLE);
+    try {
+      final var operations = importer.reconcile(model, snapshot).getOperations();
+      final var concepts =
+          operations.stream()
+              .map(OntologyChangeOperation::getConcept)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toMap(concept -> concept.getIri().toString(), c -> c));
+      final var customer = concepts.get("https://example.org/Customer");
+      assertEquals(Boolean.TRUE, customer.getAbstract());
+      assertEquals(
+          URI.create("https://standards.example.org/party"), customer.getDefinitionSource());
+      assertEquals(Boolean.TRUE, customer.getDeprecated());
+      assertEquals(URI.create("https://example.org/Account"), customer.getReplacedBy());
+      final var account = concepts.get("https://example.org/Account");
+      assertEquals(Boolean.FALSE, account.getAbstract());
+      assertNull(account.getDefinitionSource());
+      assertEquals(Boolean.FALSE, account.getDeprecated());
+      assertNull(account.getReplacedBy());
+      final var code =
+          operations.stream()
+              .map(OntologyChangeOperation::getProperty)
+              .filter(
+                  property ->
+                      property != null
+                          && "https://example.org/code".equals(property.getIri().toString()))
+              .findFirst()
+              .orElseThrow();
+      assertEquals(Boolean.TRUE, code.getDeprecated());
+      assertEquals(URI.create("https://example.org/identifier"), code.getReplacedBy());
+    } finally {
+      model.close();
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "owl:deprecated \"yes\" | http://www.w3.org/2002/07/owl#deprecated requires an xsd:boolean value",
+        "om:abstract \"true\" | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "om:abstract \"2\"^^xsd:boolean | https://open-metadata.org/ontology/abstract requires an xsd:boolean value",
+        "dct:source \"ISO 8000\" | Expected an absolute RDF IRI",
+        "dct:isReplacedBy \"Account\" | Expected an absolute RDF IRI"
+      })
+  void classModelAnnotationsRefuseValuesOfTheWrongShape(String statement, String message) {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var model =
+        importer.parse(
+            """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix dct: <http://purl.org/dc/terms/> .
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        @prefix om: <https://open-metadata.org/ontology/> .
+        <https://example.org/Customer> a owl:Class; %s .
+        """
+                .formatted(statement),
+            RdfSerializationFormat.TURTLE);
+    try {
+      assertEquals(
+          message,
+          assertThrows(BadRequestException.class, () -> importer.reconcile(model, snapshot))
+              .getMessage());
+    } finally {
+      model.close();
     }
   }
 
