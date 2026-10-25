@@ -98,17 +98,19 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
   // width, so a long label ("Active access requests") takes the room it needs
   // instead of wrapping, and a narrow pane wraps whole tiles, never words. The
   // tiles always fill the row, so no empty cell shows the separator colour.
+  // In dark the subtle rule vanishes against the lifted tiles, so the gaps and
+  // the top edge take the stronger rule. The strip and its tiles are surfaces,
+  // not layout Boxes, so they are plain elements.
   return (
-    <Box
-      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary"
+    <div
+      className="tw:flex tw:flex-wrap tw:gap-px tw:border-t tw:border-secondary tw:bg-border-secondary tw:dark:border-primary tw:dark:bg-border-primary"
       data-testid={`${testIdPrefix}-tiles`}>
       {tiles.map((tile) => (
-        <Box
-          align="start"
-          className="tw:flex-auto tw:bg-secondary tw:px-4 tw:py-3"
+        // In dark the pane behind the card is bg-secondary, so the tiles lift to
+        // bg-surface to stay visible.
+        <div
+          className="tw:flex tw:flex-auto tw:flex-col tw:items-start tw:gap-1 tw:bg-secondary tw:px-4 tw:py-3 tw:dark:bg-surface"
           data-testid={`${testIdPrefix}-${tile.key}`}
-          direction="col"
-          gap={1}
           key={tile.key}>
           <TileValue tile={tile} />
           <Typography
@@ -116,9 +118,9 @@ export const TaskStatTileGrid: React.FC<TaskStatTileGridProps> = ({
             size="text-xs">
             {tile.label}
           </Typography>
-        </Box>
+        </div>
       ))}
-    </Box>
+    </div>
   );
 };
 

@@ -498,7 +498,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
         {isLoading ? (
           <InboxTaskListSkeleton />
         ) : (
-          <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
+          <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
             {/* Without a detail pane, the list is where "nothing here" shows. */}
             {(onOpenTask && emptyState) ||
               (groupedList ?? tasks.map(renderRow))}
@@ -715,7 +715,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // Invalidate the cached badge totals so a task action re-fetches them.
   const refreshStatusCounts = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
     });
   }, [queryClient]);
@@ -726,7 +726,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // next visit.
   const invalidateTaskLists = useCallback(
     (refetch = false) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [TASK_LIST_QUERY_KEY, scope],
         refetchType: refetch ? 'active' : 'none',
       });
