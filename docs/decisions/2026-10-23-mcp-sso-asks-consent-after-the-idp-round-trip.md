@@ -13,7 +13,8 @@ MCP clients register themselves at `/mcp/register` with their own redirect URI. 
 (confidential client) or SAML sign-in, `handleSSOCallbackWithDbState` issued the authorization code
 as soon as the IdP identified the user. The IdP only knows OpenMetadata's own client id, so it
 cannot tell MCP clients apart, and no page named the MCP client before the code went to its
-redirect URI. Basic and LDAP sign-in already name the client on `/mcp/login`.
+redirect URI. Basic and LDAP sign-in go through `/mcp/login`, where the user types their password
+for the named client; that page does not show the redirect host yet.
 
 ## Decision
 
