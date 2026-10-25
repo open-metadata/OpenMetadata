@@ -17,7 +17,7 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 cd openmetadata-ui-core-components/src/main/resources/ui
 yarn build              # Production build to dist/
 yarn dev                # Watch mode build
-yarn type-check         # TypeScript type checking (tsc --noEmit)
+yarn type-check         # Native TypeScript 7 type checking (no emit)
 yarn storybook          # Launch Storybook on port 6006
 yarn clean              # Remove dist/
 ```

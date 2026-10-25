@@ -364,7 +364,7 @@ Usage guidance:
 3. Name files by role (§3): `.tsx`, `.types.ts`, `.utils.ts`, `.test.tsx`.
 4. Put business logic in `*.utils.ts` and unit-test it.
 5. Import API types from `generated/` — never redeclare them.
-6. Run `yarn ui-checkstyle:changed` and `npx tsc --noEmit`.
+6. Run `yarn ui-checkstyle:changed` and `yarn tsc:check`.
 
 ---
 
