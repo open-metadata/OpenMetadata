@@ -27,7 +27,11 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertCircle,
+  Plus,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { lazy, useEffect, useMemo, useState } from 'react';
@@ -56,6 +60,7 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import SliderWithInput from '../../../../common/SliderWithInput/SliderWithInput';
 import '../table-profiler.less';
@@ -88,6 +93,10 @@ const ProfilerSettingsModal = ({
   const [storedConfig, setStoredConfig] = useState<TableProfilerConfig>();
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  // The PUT replaces the stored config whole, so saving the DEFAULT_VALUES
+  // left by a failed load would wipe it.
+  const [isFetchFailed, setIsFetchFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const values = useWatch({ control: form.control });
   const includeColumns = useFieldArray({
     control: form.control,
@@ -115,7 +124,7 @@ const ProfilerSettingsModal = ({
           partitionIntervalType &&
           SUPPORTED_COLUMN_DATA_TYPE_FOR_INTERVAL[
             partitionIntervalType
-          ].includes(column.dataType)
+          ]?.includes(column.dataType)
         ) {
           items.push({ id: column.name, label: column.name });
         }
@@ -133,6 +142,7 @@ const ProfilerSettingsModal = ({
         const { tableProfilerConfig } = await getTableProfilerConfig(tableId);
         if (active) {
           setStoredConfig(tableProfilerConfig);
+          setIsFetchFailed(false);
           reset(
             tableProfilerConfig
               ? toFormValues(tableProfilerConfig)
@@ -141,6 +151,7 @@ const ProfilerSettingsModal = ({
         }
       } catch (error) {
         if (active) {
+          setIsFetchFailed(true);
           showErrorToast(
             error as AxiosError,
             t('server.fetch-table-profiler-config-error')
@@ -161,7 +172,7 @@ const ProfilerSettingsModal = ({
     return () => {
       active = false;
     };
-  }, [tableId, reset, t]);
+  }, [tableId, reset, t, retryCount]);
 
   const handleCancel = () => {
     reset(storedConfig ? toFormValues(storedConfig) : DEFAULT_VALUES);
@@ -330,11 +341,7 @@ const ProfilerSettingsModal = ({
     </FormField>
   );
 
-  const content = isDataLoading ? (
-    <Box align="center" className="profiler-settings-loader" justify="center">
-      <Loader />
-    </Box>
-  ) : (
+  const formContent = (
     <HookForm
       autoComplete="off"
       className="profiler-settings-drawer-content"
@@ -685,6 +692,43 @@ const ProfilerSettingsModal = ({
     </HookForm>
   );
 
+  const renderContent = () => {
+    if (isDataLoading) {
+      return (
+        <Box
+          align="center"
+          className="profiler-settings-loader"
+          justify="center">
+          <Loader />
+        </Box>
+      );
+    }
+    if (isFetchFailed) {
+      return (
+        <Box
+          className="tw:relative tw:min-h-56 tw:w-full"
+          data-testid="profiler-settings-load-error">
+          <SomethingWentWrongPlaceholder
+            actions={[
+              {
+                key: 'retry',
+                color: 'primary',
+                label: t('label.retry'),
+                onPress: () => setRetryCount((count) => count + 1),
+              },
+            ]}
+            icon={<AlertCircle className="tw:text-fg-error-primary" />}
+            title={t('server.fetch-table-profiler-config-error')}
+          />
+        </Box>
+      );
+    }
+
+    return formContent;
+  };
+
+  const content = renderContent();
+
   return (
     <SlideoutMenu
       aria-label={t('label.setting-plural')}
@@ -708,6 +752,7 @@ const ProfilerSettingsModal = ({
           </Button>
           <Button
             form="profiler-setting-form"
+            isDisabled={isFetchFailed}
             isLoading={isLoading}
             type="submit">
             {t('label.save')}

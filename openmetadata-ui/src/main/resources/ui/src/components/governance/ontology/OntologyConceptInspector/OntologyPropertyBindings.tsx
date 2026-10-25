@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Link01, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Link01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { InspectorRemoveButton } from '../../../OntologyExplorer/OntologyInspectorSection';
+import { getOntologyBindingWriteMessage } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyColumnBindingEditor from './OntologyColumnBindingEditor';
 
 interface OntologyPropertyBindingsProps {
@@ -45,13 +51,14 @@ const OntologyPropertyBindings = ({
     ) ?? [];
 
   const renderEditor = () => {
-    if (!canAdd || !canEdit || !bindings.isSuccess) {
+    if (!canAdd || !canEdit) {
       return null;
     }
 
     return isOpen ? (
       <OntologyColumnBindingEditor
         conceptId={conceptId}
+        key={`${conceptId}:${propertyId}`}
         propertyId={propertyId}
         onClose={() => setIsOpen(false)}
       />
@@ -60,6 +67,7 @@ const OntologyPropertyBindings = ({
         color="link-color"
         data-testid={`ontology-bind-property-${propertyId}`}
         iconLeading={Plus}
+        isDisabled={!bindings.editableSnapshot}
         size="xs"
         onPress={() => setIsOpen(true)}>
         {t('label.ontology-bind-to-column')}
@@ -91,32 +99,35 @@ const OntologyPropertyBindings = ({
               : ''}
           </Typography>
           {canEdit ? (
-            <InspectorRemoveButton
-              isDisabled={bindings.update.isPending}
-              label={t('label.remove-entity', {
+            <ButtonUtility
+              color="tertiary"
+              data-testid={`ontology-binding-remove-${propertyId}`}
+              icon={Trash01}
+              isDisabled={!bindings.editableSnapshot}
+              size="xs"
+              tooltip={t('label.remove-entity', {
                 entity: column.columnPath.join(' › '),
               })}
-              testId={`ontology-binding-remove-${propertyId}`}
-              onRemove={() => {
-                if (bindings.data) {
-                  void bindings.update
-                    .mutateAsync({
-                      id: conceptId,
-                      request: {
-                        expectedRevision: bindings.data.revision,
-                        asset: {
-                          assetId: asset.assetId,
-                          assetType: AssetType.Table,
-                          columns: asset.columns
-                            .filter((item) => item !== column)
-                            .map(({ propertyId, columnPath }) => ({
-                              propertyId,
-                              columnPath,
-                            })),
-                        },
-                      },
-                    })
-                    .catch(() => undefined);
+              onClick={async () => {
+                if (bindings.editableSnapshot) {
+                  const result = await bindings.replaceAsset({
+                    expectedRevision: bindings.editableSnapshot.revision,
+                    asset: {
+                      assetId: asset.assetId,
+                      assetType: AssetType.Table,
+                      columns: asset.columns
+                        .filter((item) => item !== column)
+                        .map(({ propertyId, columnPath }) => ({
+                          propertyId,
+                          columnPath,
+                        })),
+                    },
+                  });
+                  const notify =
+                    result.kind === 'confirmed'
+                      ? showSuccessToast
+                      : showErrorToast;
+                  notify(t(getOntologyBindingWriteMessage(result)));
                 }
               }}
             />

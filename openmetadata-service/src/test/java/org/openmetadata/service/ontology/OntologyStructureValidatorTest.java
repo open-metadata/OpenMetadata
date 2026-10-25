@@ -122,6 +122,33 @@ class OntologyStructureValidatorTest {
   }
 
   @Test
+  void aReplacementMustBeAnotherDefinitionOfTheSameKind() {
+    final var account = concept("Account");
+    final var identifier = property(URI.create("urn:identifier"), OntologyPropertyKind.DATA);
+    final var self = concept("Self");
+    assertEquals(
+        List.of(), violations(concept("Customer").withReplacedBy(account.getIri()), account));
+    assertEquals(
+        List.of(),
+        violations(
+            property(PROPERTY, OntologyPropertyKind.DATA).withReplacedBy(identifier.getIri()),
+            identifier));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"),
+        violations(concept("Customer").withReplacedBy(account.getIri())));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"),
+        violations(concept("Customer").withReplacedBy(identifier.getIri()), identifier));
+    assertEquals(
+        List.of("UNDECLARED_PROPERTY /replacedBy"),
+        violations(
+            property(PROPERTY, OntologyPropertyKind.DATA).withReplacedBy(account.getIri()),
+            account));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"), violations(self.withReplacedBy(self.getIri())));
+  }
+
+  @Test
   void classRolesInPropertyDomainsAndRangesRequireDeclarations() {
     OntologyConcept customer = concept("Customer");
     OntologyProperty owns =
@@ -380,6 +407,12 @@ class OntologyStructureValidatorTest {
   private static OntologyReleaseStructureReport validate(OntologyDefinition... definitions) {
     return OntologyStructureValidator.validate(
         RELEASE, Arrays.stream(definitions).map(value -> member(RELEASE.getId(), value)).toList());
+  }
+
+  private static List<String> violations(OntologyDefinition... definitions) {
+    return validate(definitions).getViolations().stream()
+        .map(issue -> issue.getViolation().getCode() + " " + issue.getViolation().getPath())
+        .toList();
   }
 
   private static OntologyReleaseMember member(UUID releaseId, OntologyDefinition definition) {

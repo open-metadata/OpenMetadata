@@ -125,8 +125,8 @@ const ApplicationsPanel: FC<ApplicationsPanelProps> = ({ onHeaderChange }) => {
         <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
           <PermissionPlaceholder
             data-testid="app-no-permission"
+            description={t('message.no-permission-to-view')}
             icon={Lock01}
-            title={t('message.no-permission-to-view')}
           />
         </Box>
       );

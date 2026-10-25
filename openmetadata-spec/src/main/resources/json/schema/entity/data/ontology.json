@@ -86,6 +86,15 @@
         "$ref": "../../type/ontologyPackInstallation.json"
       },
       "default": []
+    },
+    "publicationStatus": {
+      "description": "Publication state derived by the server from ontology releases. Not stored or independently editable.",
+      "$ref": "../../type/ontologyPublicationStatus.json",
+      "readOnly": true
+    },
+    "approvalRule": {
+      "description": "How many reviewers must approve a release review. Frozen into each review task when a review is requested.",
+      "$ref": "../../type/ontologyApprovalRule.json"
     }
   },
   "required": [

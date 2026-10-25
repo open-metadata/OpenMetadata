@@ -48,6 +48,7 @@ import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry.G
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -140,6 +141,33 @@ public final class ApprovalGate {
       String impersonatedBy,
       Edit edit) {
     return evaluate(original, updated, user, impersonatedBy, edit, true);
+  }
+
+  /**
+   * Admission for an edit of relations the entity's JSON does not carry, such as a data product's
+   * ports. {@code base} and {@code proposed} are the entity's JSON before and after the edit, with
+   * those relations as list fields.
+   */
+  public static Optional<StagedChange> admitRelations(
+      final EntityInterface entity,
+      final JsonNode base,
+      final JsonNode proposed,
+      final ChangeActor actor) {
+    final String entityType = Entity.getEntityTypeFromObject(entity);
+    final List<GatingRule> rules = GovernanceApprovalRegistry.gatingRules(entityType);
+    Optional<StagedChange> staged = Optional.empty();
+    if (!rules.isEmpty() && !isBotChange(actor.userName(), actor.impersonatedBy())) {
+      final Timer.Sample sample = ChangeRequestMetrics.startAdmission();
+      staged =
+          stage(
+              rules,
+              entityType,
+              new Edited(entity, entity, base, proposed, differingFields(base, proposed)),
+              actor.userName(),
+              actor.impersonatedBy());
+      ChangeRequestMetrics.stopAdmission(sample, entityType);
+    }
+    return staged;
   }
 
   /** Whether an edit of {@code entityType} by {@code user} can be held at all. */
@@ -290,6 +318,15 @@ public final class ApprovalGate {
 
   private record GatedBy(GatingRule rule, Set<String> fields) {}
 
+  // An edit as the gate judges it: the entity before and as it would be published, their JSON,
+  // and the fields that differ.
+  private record Edited(
+      EntityInterface original,
+      EntityInterface published,
+      JsonNode base,
+      JsonNode proposed,
+      Set<String> changed) {}
+
   private static Optional<StagedChange> planStage(
       List<GatingRule> rules,
       String entityType,
@@ -304,27 +341,55 @@ public final class ApprovalGate {
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(published);
     Set<String> changed = changedFields(entityType, original, base, proposed, edit);
-    List<GatedBy> gating =
-        gatingWorkflows(rules, entityType, published, triggerNames(base, proposed, changed));
+    return stage(
+        rules,
+        entityType,
+        new Edited(original, published, base, proposed, changed),
+        user,
+        impersonatedBy);
+  }
+
+  private static Optional<StagedChange> stage(
+      final List<GatingRule> rules,
+      final String entityType,
+      final Edited edited,
+      final String user,
+      final String impersonatedBy) {
+    final List<GatedBy> gating =
+        gatingWorkflows(
+            rules,
+            entityType,
+            edited.published(),
+            triggerNames(edited.base(), edited.proposed(), edited.changed()));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
-      rejectMutuallyExclusiveTags(published, changed);
-      rejectStageMoveOutsideLifecycle(entityType, original, published, changed);
-      GatedBy review = gating.get(0);
+      rejectMutuallyExclusiveTags(edited.published(), edited.changed());
+      rejectStageMoveOutsideLifecycle(
+          entityType, edited.original(), edited.published(), edited.changed());
+      final GatedBy review = gating.get(0);
       staged =
           Optional.of(
               new StagedChange(
                   entityType,
-                  original.getId(),
-                  original.getFullyQualifiedName(),
-                  original.getVersion(),
+                  edited.original().getId(),
+                  edited.original().getFullyQualifiedName(),
+                  edited.original().getVersion(),
                   user,
                   impersonatedBy,
                   review.rule().workflowDefinitionId(),
-                  MutationPlanner.plan(base, proposed, changed, review.fields())));
+                  MutationPlanner.plan(
+                      edited.base(), edited.proposed(), edited.changed(), review.fields())));
     }
     return staged;
+  }
+
+  private static Set<String> differingFields(final JsonNode base, final JsonNode proposed) {
+    final Set<String> names = new TreeSet<>();
+    base.fieldNames().forEachRemaining(names::add);
+    proposed.fieldNames().forEachRemaining(names::add);
+    names.removeIf(name -> !MutationPlanner.differs(base.get(name), proposed.get(name)));
+    return names;
   }
 
   private static List<GatedBy> gatingWorkflows(

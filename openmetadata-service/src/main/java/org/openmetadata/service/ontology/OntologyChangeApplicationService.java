@@ -21,6 +21,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeSetState;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -67,6 +69,7 @@ public final class OntologyChangeApplicationService {
   private final ChangeTransaction transaction;
   private final EntityCacheInvalidator cacheInvalidator;
   private final OntologyPackCatalog packs;
+  private final OntologyWorkingSnapshot workingSnapshot;
   private final PackInstallWriter installWriter;
   private final Clock clock;
 
@@ -88,6 +91,7 @@ public final class OntologyChangeApplicationService {
     this.transaction = dependencies.transaction();
     this.cacheInvalidator = dependencies.cacheInvalidator();
     this.packs = dependencies.packs();
+    this.workingSnapshot = dependencies.workingSnapshot();
     this.installWriter = dependencies.installWriter();
     this.clock = clock;
   }
@@ -97,10 +101,8 @@ public final class OntologyChangeApplicationService {
     final OntologyChangeSet changeSet = requireApplicable(changeSetId);
     final List<OntologyChangeOperation> operations = activeOperations(changeSet);
     preflight.validate(changeSet, operations);
-    final PreparedPackInstall install =
-        OntologyPackInstallations.prepare(packs, changeSet, user, clock.millis());
     final ApplicationExecution execution =
-        new ApplicationExecution(uriInfo, changeSetId, user, new ArrayList<>(), install);
+        new ApplicationExecution(uriInfo, changeSetId, user, new ArrayList<>());
     final PutResponse<OntologyChangeSet> response =
         applyOperations(execution, changeSet, operations);
     publishApplied(response.getEntity(), user);
@@ -117,13 +119,13 @@ public final class OntologyChangeApplicationService {
           transaction.execute(
               () -> {
                 if (changeSet.getOntology() == null) {
-                  return applyAtomically(execution, operations);
+                  return applyAtomically(execution, operations, null);
                 }
                 return executor.inScope(
                     changeSet,
                     () -> {
                       preflight.validate(changeSet, operations);
-                      return applyAtomically(execution, operations);
+                      return applyNative(execution, changeSet, operations);
                     });
               });
     } catch (OperationApplicationException failure) {
@@ -138,6 +140,23 @@ public final class OntologyChangeApplicationService {
     return response;
   }
 
+  private PutResponse<OntologyChangeSet> applyNative(
+      final ApplicationExecution execution,
+      final OntologyChangeSet changeSet,
+      final List<OntologyChangeOperation> operations) {
+    if (changeSet.getSourcePack() == null) {
+      return applyAtomically(execution, operations, null);
+    }
+    final PreparedPackInstall install =
+        workingSnapshot.read(
+            changeSet.getOntology().getId(),
+            ignored -> {},
+            snapshot ->
+                OntologyPackInstallations.prepare(
+                    packs, snapshot, changeSet, execution.user(), clock.millis()));
+    return applyAtomically(execution, operations, install);
+  }
+
   private void invalidateMutationCaches(final ApplicationExecution execution) {
     execution.results().stream()
         .map(OntologyChangeOperationResult::getEntity)
@@ -147,11 +166,13 @@ public final class OntologyChangeApplicationService {
   }
 
   private PutResponse<OntologyChangeSet> applyAtomically(
-      final ApplicationExecution execution, final List<OntologyChangeOperation> operations) {
+      final ApplicationExecution execution,
+      final List<OntologyChangeOperation> operations,
+      final PreparedPackInstall install) {
     execution.results().clear();
     executeOperations(execution, operations);
-    if (execution.install() != null) {
-      installWriter.write(execution.install(), execution.user());
+    if (install != null) {
+      installWriter.write(install, execution.user());
     }
     final OntologyChangeApplicationResult result =
         applicationResult(execution.user(), execution.results());
@@ -333,6 +354,15 @@ public final class OntologyChangeApplicationService {
         work -> termRepository.executeInTransaction(work),
         OntologyChangeApplicationService::invalidateEntityCache,
         OntologyPackCatalog.bundled(),
+        new OntologyWorkingSnapshot(
+            (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY),
+            Map.of(
+                MemberKind.CONCEPT,
+                (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+                MemberKind.PROPERTY,
+                (OntologyPropertyRepository) Entity.getEntityRepository(Entity.ONTOLOGY_PROPERTY),
+                MemberKind.AXIOM,
+                (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM))),
         (install, user) ->
             ((OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY))
                 .recordPackInstallation(
@@ -356,6 +386,7 @@ public final class OntologyChangeApplicationService {
       ChangeTransaction transaction,
       EntityCacheInvalidator cacheInvalidator,
       OntologyPackCatalog packs,
+      OntologyWorkingSnapshot workingSnapshot,
       PackInstallWriter installWriter) {}
 
   @FunctionalInterface
@@ -377,8 +408,7 @@ public final class OntologyChangeApplicationService {
       UriInfo uriInfo,
       UUID changeSetId,
       String user,
-      List<OntologyChangeOperationResult> results,
-      PreparedPackInstall install) {}
+      List<OntologyChangeOperationResult> results) {}
 
   private static final class OperationApplicationException extends RuntimeException {
     private OperationApplicationException(final RuntimeException cause) {

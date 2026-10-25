@@ -1,5 +1,6 @@
 package org.openmetadata.service.ontology;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -9,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.ws.rs.ClientErrorException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -24,61 +24,47 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyColumnBinding;
-import org.openmetadata.schema.type.OntologyConceptBindings;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.service.exception.BadRequestException;
 
 class OntologyBindingRulesTest {
-  @Test
-  void replacingOneAssetPreservesAssociationsTheWriterDidNotSend() {
-    final var hidden = asset();
-    final var visible = asset();
-    final var current = bindings(hidden, visible);
-    final var updated =
-        OntologyBindingRules.replace(
-            current, asset().withAssetId(visible.getAssetId()).withColumns(List.of(column())), 0L);
-    assertEquals(1L, updated.getRevision());
-    assertEquals(hidden, updated.getAssets().getFirst());
-    assertEquals(1, updated.getAssets().getLast().getColumns().size());
-    assertEquals(2, updated.getAssets().size());
-  }
+  private static final long MAX_REVISION = 9_007_199_254_740_991L;
 
   @Test
-  void staleChangedWritesConflictButIdenticalRetriesDoNotAdvanceTheRevision() {
-    final var asset = asset();
-    final var current = bindings(asset).withRevision(4L);
-    assertSame(current, OntologyBindingRules.replace(current, asset, 0L));
-    final var failure =
-        assertThrows(
-            ClientErrorException.class, () -> OntologyBindingRules.replace(current, asset(), 0L));
-    assertEquals(409, failure.getResponse().getStatus());
+  void staleChangedWritesConflictAndTheRevisionAdvancesByOne() {
+    assertEquals(5L, OntologyBindingRules.nextRevision(4L, 4L));
+    final var stale =
+        assertThrows(ClientErrorException.class, () -> OntologyBindingRules.nextRevision(4L, 0L));
+    assertEquals(409, stale.getResponse().getStatus());
+    assertThrows(ClientErrorException.class, () -> OntologyBindingRules.nextRevision(4L, 5L));
     assertThrows(
         ClientErrorException.class,
-        () -> OntologyBindingRules.remove(current, asset.getAssetType(), asset.getAssetId(), 0L));
-    assertEquals(List.of(asset), current.getAssets());
-    assertSame(
-        current, OntologyBindingRules.remove(current, asset.getAssetType(), UUID.randomUUID(), 0L));
-    assertEquals(
-        List.of(),
-        OntologyBindingRules.remove(current, asset.getAssetType(), asset.getAssetId(), 4L)
-            .getAssets());
+        () -> OntologyBindingRules.nextRevision(MAX_REVISION, MAX_REVISION));
   }
 
   @Test
-  void equivalentColumnOrderIsAnIdempotentRetry() {
+  void equivalentColumnOrderIsTheSameBinding() {
     final var first = column();
     final var second = column();
-    final var asset = asset().withColumns(List.of(first, second));
-    final var current = bindings(asset).withRevision(2L);
-    assertSame(
-        current,
-        OntologyBindingRules.replace(
-            current,
-            new OntologyAssetBinding()
-                .withAssetType(asset.getAssetType())
-                .withAssetId(asset.getAssetId())
-                .withColumns(List.of(second, first)),
-            0L));
+    assertTrue(OntologyBindingRules.sameColumns(List.of(first, second), List.of(second, first)));
+    assertTrue(OntologyBindingRules.sameColumns(null, List.of()));
+    assertFalse(OntologyBindingRules.sameColumns(List.of(first), List.of(first, second)));
+    final var otherPath =
+        new OntologyColumnBinding()
+            .withPropertyId(first.getPropertyId())
+            .withColumnPath(List.of("other"));
+    assertFalse(OntologyBindingRules.sameColumns(List.of(first), List.of(otherPath)));
+  }
+
+  @Test
+  void columnCapacityIsPerConceptAndAssetsAreUncapped() {
+    assertDoesNotThrow(() -> OntologyBindingRules.requireColumnCapacity(500));
+    final var failure =
+        assertThrows(
+            BadRequestException.class, () -> OntologyBindingRules.requireColumnCapacity(501));
+    assertEquals("Concept bindings exceed the 500 column limit", failure.getMessage());
+    IntStream.range(0, 150)
+        .forEach(index -> assertDoesNotThrow(() -> OntologyBindingRules.validate(asset())));
   }
 
   @Test
@@ -141,6 +127,7 @@ class OntologyBindingRulesTest {
     assertThrows(
         BadRequestException.class,
         () -> OntologyBindingRules.validate(asset().withColumns(List.of(duplicate, duplicate))));
+    assertDoesNotThrow(() -> OntologyBindingRules.validate(asset().withColumns(columns(100))));
     assertThrows(
         BadRequestException.class,
         () -> OntologyBindingRules.validate(asset().withColumns(columns(101))));
@@ -160,39 +147,11 @@ class OntologyBindingRulesTest {
   }
 
   @Test
-  void enforcesDocumentCapsWithoutDiscardingExistingData() {
-    final var hundred =
-        new OntologyConceptBindings()
-            .withRevision(0L)
-            .withAssets(IntStream.range(0, 100).mapToObj(index -> asset()).toList());
-    assertThrows(
-        BadRequestException.class, () -> OntologyBindingRules.replace(hundred, asset(), 0L));
-    final var full = new ArrayList<OntologyAssetBinding>();
-    IntStream.range(0, 5).forEach(index -> full.add(asset().withColumns(columns(100))));
-    assertThrows(
-        BadRequestException.class,
-        () ->
-            OntologyBindingRules.replace(
-                new OntologyConceptBindings().withRevision(0L).withAssets(full),
-                asset().withColumns(List.of(column())),
-                0L));
-    assertEquals(5, full.size());
-  }
-
-  @Test
   void revisionMustBePresentAndExactlyRepresentable() {
-    for (final Long invalid : new Long[] {null, -1L, 9_007_199_254_740_992L}) {
+    for (final Long invalid : new Long[] {null, -1L, MAX_REVISION + 1}) {
       assertThrows(BadRequestException.class, () -> OntologyBindingRules.requireRevision(invalid));
     }
-    assertThrows(
-        ClientErrorException.class,
-        () ->
-            OntologyBindingRules.replace(
-                bindings().withRevision(9_007_199_254_740_991L), asset(), 9_007_199_254_740_991L));
-  }
-
-  private static OntologyConceptBindings bindings(OntologyAssetBinding... assets) {
-    return new OntologyConceptBindings().withRevision(0L).withAssets(List.of(assets));
+    assertDoesNotThrow(() -> OntologyBindingRules.requireRevision(MAX_REVISION));
   }
 
   private static OntologyAssetBinding asset() {

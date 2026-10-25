@@ -29,14 +29,14 @@ let letExpectedUserName = {
 
 const mockShowErrorToast = jest.fn();
 
+const DEFAULT_NEW_USER = { name: '', email: '', picture: '' };
+
+let mockNewUser: Record<string, string> | undefined = DEFAULT_NEW_USER;
+
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn(() => ({
     setIsSigningUp: jest.fn(),
-    newUser: {
-      name: '',
-      email: '',
-      picture: '',
-    },
+    newUser: mockNewUser,
   })),
 }));
 
@@ -69,9 +69,14 @@ jest.mock('../../utils/AuthProvider.util', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
+  Navigate: jest.fn(({ to }) => <div data-testid="navigate">{to}</div>),
 }));
 
 describe('SignUp page', () => {
+  afterEach(() => {
+    mockNewUser = DEFAULT_NEW_USER;
+  });
+
   it('Component should render properly', async () => {
     (createUser as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({ data: {} })
@@ -169,5 +174,14 @@ describe('SignUp page', () => {
     const usernameInput = screen.getByTestId('username-input');
 
     expect(usernameInput).toHaveAttribute('type', 'hidden');
+  });
+
+  it('should redirect to signin instead of crashing when there is no new user', () => {
+    mockNewUser = undefined;
+
+    render(<SignUp />);
+
+    expect(screen.getByTestId('navigate')).toHaveTextContent('/signin');
+    expect(screen.queryByTestId('create-user-form')).not.toBeInTheDocument();
   });
 });

@@ -30,7 +30,15 @@ public final class OntologyReleaseContent {
   private static List<String> semanticFields(final OntologyDefinition definition) {
     return switch (definition) {
       case Ontology ignored -> List.of("iri", "namespace", "layer", "prefixes");
-      case OntologyConcept ignored -> List.of("iri", "conceptType", "synonyms", "conceptMappings");
+      case OntologyConcept ignored -> List.of(
+          "iri",
+          "conceptType",
+          "synonyms",
+          "conceptMappings",
+          "abstract",
+          "definitionSource",
+          "deprecated",
+          "replacedBy");
       case OntologyProperty ignored -> List.of(
           "iri",
           "kind",
@@ -42,7 +50,9 @@ public final class OntologyReleaseContent {
           "inverse",
           "characteristics",
           "propertyChain",
-          "disjointWith");
+          "disjointWith",
+          "deprecated",
+          "replacedBy");
       case OntologyAxiom ignored -> List.of(
           "axiomType",
           "subjectIri",

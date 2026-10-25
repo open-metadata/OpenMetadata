@@ -129,10 +129,15 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
     install(ns, ontology, "fibo", Set.of("foundations"));
     final var client = SdkClients.adminClient();
     final Ontology stored = client.ontologies().get(ontology.getId());
-    final Ontology put = JsonUtils.deepCopy(stored, Ontology.class);
-    put.setInstalledPacks(null);
-    put.setDescription("Updated after installation");
-    client.ontologies().update(ontology.getId(), put);
+    final Ontology put =
+        client
+            .ontologies()
+            .upsert(
+                request(ns)
+                    .withName(stored.getName())
+                    .withDescription("Updated after installation"));
+    assertEquals(ontology.getId(), put.getId());
+    assertEquals("Updated after installation", put.getDescription());
     assertEquals(
         stored.getInstalledPacks(), client.ontologies().get(ontology.getId()).getInstalledPacks());
 
@@ -191,7 +196,7 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
     final var patch = JsonUtils.getObjectMapper().createArrayNode();
     patch.addObject().put("op", "replace").put("path", "/sourcePack/version").put("value", "0.0.0");
     assertEquals(
-        400,
+        405,
         assertThrows(
                 OpenMetadataException.class,
                 () ->
@@ -208,7 +213,7 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void failedApplyRollsBackDefinitionsAndInstallation(TestNamespace ns) {
+  void alteredPackPlanIsRejectedBeforeDefinitionsAndInstallation(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
@@ -232,9 +237,16 @@ public class NativeOntologyPackInstallStateIT extends BaseOntologyApprovalIT {
         ns.trackRoot(
             "ontologyChangeSet",
             client.ontologyChangeSets().create(plan.withName(ns.prefix("rollback"))));
-    final OntologyChangeSet failed =
-        OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "libraryEditor");
-    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    assertEquals(
+        412,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    OntologyChangeSetTestSupport.applyOntologyChangeSet(
+                        client, draft, ns, "libraryEditor"))
+            .getStatusCode());
+    assertEquals(
+        OntologyChangeSetState.DRAFT, client.ontologyChangeSets().get(draft.getId()).getState());
     assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
     assertTrue(
         client.ontologies().get(ontology.getId()).getInstalledPacks() == null

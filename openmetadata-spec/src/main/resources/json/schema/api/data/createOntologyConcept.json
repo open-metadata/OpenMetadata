@@ -37,6 +37,18 @@
     "conceptMappings": {
       "$ref": "../../entity/data/ontologyConcept.json#/properties/conceptMappings"
     },
+    "abstract": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/abstract"
+    },
+    "definitionSource": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/definitionSource"
+    },
+    "deprecated": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/deprecated"
+    },
+    "replacedBy": {
+      "$ref": "../../entity/data/ontologyConcept.json#/properties/replacedBy"
+    },
     "ontology": {
       "description": "Fully qualified name of the owning ontology.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"

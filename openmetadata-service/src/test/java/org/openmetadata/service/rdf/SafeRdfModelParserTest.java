@@ -133,4 +133,14 @@ class SafeRdfModelParserTest {
                 "<relative> <https://example.org/p> <https://example.org/o> .",
                 RdfSerializationFormat.TURTLE));
   }
+
+  @Test
+  void rejectsRdfBeyondTheSourceSizeLimit() {
+    final String oversized = "x".repeat(SafeRdfModelParser.MAX_INPUT_BYTES + 1);
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> parser.parse(oversized, RdfSerializationFormat.TURTLE));
+    assertEquals("Native ontology RDF must contain at most 10 MiB of data", exception.getMessage());
+  }
 }

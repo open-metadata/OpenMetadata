@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportSummary.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyImportSummary",
+  "description": "What a native ontology import would change, counted from one parse of the source. Nothing is persisted.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportSummary",
+  "definitions": {
+    "counts": {
+      "description": "Every parsed concept, property, and axiom is counted once as new, updated, or skipped. `newMappings` counts mappings inside new and updated concepts, so it overlaps the concept counts.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportCounts",
+      "properties": {
+        "newConcepts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedConcepts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "newProperties": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updatedProperties": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "newRelations": {
+          "description": "Parsed axioms the target does not hold yet.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "newMappings": {
+          "description": "Concept mappings the target does not hold yet.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedDefinitions": {
+          "description": "Parsed concepts and properties identical to the stored ones.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "skippedRelations": {
+          "description": "Parsed axioms the target already holds.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "newConcepts",
+        "updatedConcepts",
+        "newProperties",
+        "updatedProperties",
+        "newRelations",
+        "newMappings",
+        "skippedDefinitions",
+        "skippedRelations"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "detectedFormat": {
+      "description": "Format the server parsed: the requested format, or the detected one when the request omits it.",
+      "$ref": "previewNativeOntologyImport.json#/definitions/format"
+    },
+    "ontologyLabel": {
+      "description": "Label of the source ontology, when the source declares exactly one ontology header with a label.",
+      "type": "string"
+    },
+    "counts": {
+      "$ref": "#/definitions/counts"
+    }
+  },
+  "required": ["detectedFormat", "counts"],
+  "additionalProperties": false
+}

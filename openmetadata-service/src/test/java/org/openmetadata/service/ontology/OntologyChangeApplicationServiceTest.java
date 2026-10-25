@@ -105,6 +105,7 @@ class OntologyChangeApplicationServiceTest {
             transaction,
             cacheInvalidator,
             OntologyPackCatalog.bundled(),
+            null,
             (install, user) -> {});
     service = new OntologyChangeApplicationService(repository, dependencies, clock);
   }

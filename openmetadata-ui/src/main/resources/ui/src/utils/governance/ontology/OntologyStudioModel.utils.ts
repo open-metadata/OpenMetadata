@@ -20,7 +20,6 @@ import {
   CreateOntologyAxiom,
   ExpressionKind as CreateExpressionKind,
   Provenance,
-  RestrictionKind as CreateRestrictionKind,
 } from '../../../generated/api/data/createOntologyAxiom';
 import {
   CreateOntologyProperty,
@@ -463,7 +462,7 @@ export const toPascalCase = (value: string): string =>
     .map((word) => word.charAt(0).toLocaleUpperCase() + word.slice(1))
     .join('');
 
-const toCamelCase = (value: string): string => {
+export const toCamelCase = (value: string): string => {
   const pascal = toPascalCase(value);
 
   return pascal.charAt(0).toLocaleLowerCase() + pascal.slice(1);
@@ -510,55 +509,6 @@ export const buildSubClassAxiomRequest = ({
   ontology: model.ontology.fullyQualifiedName,
   provenance: Provenance.Manual,
   subjectIri: from.iri,
-});
-
-/** States that every instance of the source is related to some instance of the target. */
-export const buildRestrictionAxiomRequest = ({
-  model,
-  from,
-  to,
-  statement,
-  property,
-}: RelationAxiomInput & {
-  readonly property: OntologyProperty;
-}): CreateOntologyAxiom => ({
-  axiomType: CreateAxiomType.SubclassOf,
-  description: statement,
-  displayName: statement,
-  expressions: [
-    {
-      filler: { classIri: to.iri, kind: CreateExpressionKind.NamedClass },
-      kind: CreateExpressionKind.Restriction,
-      propertyIri: property.iri,
-      restrictionKind: CreateRestrictionKind.Some,
-    },
-  ],
-  name: getAvailableName(
-    `${toPascalCase(from.name)}${toPascalCase(property.name)}${toPascalCase(
-      to.name
-    )}`,
-    model.axioms.map((axiom) => axiom.name)
-  ),
-  ontology: model.ontology.fullyQualifiedName,
-  provenance: Provenance.Manual,
-  subjectIri: from.iri,
-});
-
-export const buildObjectPropertyRequest = (
-  model: OntologyStudioModel,
-  label: string,
-  from: OntologyConcept,
-  to: OntologyConcept
-): CreateOntologyProperty => ({
-  displayName: label.trim(),
-  domain: [from.iri],
-  kind: CreatePropertyKind.Object,
-  name: getAvailableName(
-    toCamelCase(label) || 'relatesTo',
-    model.properties.map((property) => property.name)
-  ),
-  ontology: model.ontology.fullyQualifiedName,
-  range: [to.iri],
 });
 
 export interface DataPropertyInput {

@@ -37,7 +37,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
 import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
 import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
@@ -770,7 +769,6 @@ const TeamDetailsV1 = ({
               </Tooltip>
             </>
           }
-          icon={<AddPlaceHolderIcon className="h-32 w-32" />}
         />
       </div>
     ) : (

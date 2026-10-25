@@ -1,10 +1,11 @@
 # Native concept bindings remain operational metadata
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-23 (binding rows, bounded paging, the ontology data graph) · v3 2026-10-24 (write confirmation and complete read recovery)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** OntologyConceptBindingsIT, OntologyBindingRulesTest
-- **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models
+- **Guard:** OntologyConceptBindingsIT, NativeOntologyDataGraphIT, OntologyBindingRulesTest, OntologyConceptBindingMigrationTest, ontologyAPI.test.ts, useOntologyConceptBindings.test.tsx, OntologyConceptAssets.test.tsx, OntologyColumnBindingEditor.test.tsx, OntologyPropertyBindings.test.tsx, OntologyConceptDataGraph.test.tsx, OntologyConceptInspector.test.tsx
+- **Related:** ADR:2026-10-17-glossaries-do-not-own-ontology-models,
+  [#35984](https://github.com/open-metadata/OpenMetadata/issues/35984)
 
 ## Context
 
@@ -23,3 +24,19 @@ Column assignments use a native data-property UUID and exact column-name segment
 ## Consequences
 
 Catalog renames resolve through stable UUIDs. Catalog changes do not require semantic publication. Restoring an asset does not restore links already pruned by a later binding change. The Data graph shows the selected concept's authorized assets and columns; it does not infer lineage or aggregate every concept's catalog access.
+
+## Amendment — 2026-10-23: binding rows, bounded paging, and the ontology data graph
+
+Each association is one row of `ontology_concept_binding`, keyed by concept and asset id and indexed by asset id. The binding revision stays in the `ontology.conceptBindings` extension and is still compared under the ontology lock, so the write contract above is unchanged. The 2.1.0 migration copies every existing document into rows once and leaves the documents in place.
+
+The cap of 100 assets per concept is removed. The 500-assignment, 100-per-asset, and column path bounds stay. `GET /ontologyConcepts/{id}/bindings` pages viewable assets in asset id order with a `limit` of at most 100 and an opaque `after` cursor. One request examines at most ten times `limit` rows, so a reader hidden from most of a large concept gets short pages and a cursor instead of a slow request. A page may hold fewer than `limit` assets while a cursor follows, and the last page may be empty. The cursor names the last row examined, which can be an asset the reader cannot view; it carries that asset's id and nothing else.
+
+The binding editor's REST adapter collects all pages for reads, including pages after an empty result. Its asset picker must know every linked asset before deciding that a selection is new; otherwise it could replace an off-page asset's column assignments with an empty list. The collected result retains the first page's revision so an intervening mutation causes the next write to conflict.
+
+Mutation transport confirms HTTP success and discards the response page and revision. The hook then collects a new complete read before permitting dependent edits. A successful write stays confirmed if that read fails. The last complete snapshot remains available for display, but cannot authorize editing until a complete read succeeds. All mounted editors share this admission check through the existing concept query and pending mutation. The pending mutation survives unmount and owns reconciliation for its originating concept. A competing write, an active read, or a stale expected revision is refused before transport.
+
+Conflicts and uncertain responses stop the picker batch. Earlier confirmed selections remain completed, and later selections remain unattempted. Read recovery performs GETs only and never resumes the batch. A deliberate new Save compares the remaining selections against the refreshed complete snapshot. Writes have retries disabled and cannot wait offline for a delayed send after reconnection. Switching concepts stops the unsent remainder and cannot redirect an old completion into the new editor.
+
+`GET /ontologies/{id}/dataGraph` pages an ontology's bound concepts by offset, ranked by stored binding count, so every reader sees the same order and `paging.total`. Each cluster's `assetCount` and its first assets are only what the reader may view, and a concept with nothing viewable is left out. Edges join returned concepts through object property assertions and class restrictions. Axiom `ViewBasic` permission is required before emitting an edge, including one with a local-name label. The property reference and its display name appear only when the reader may view the property. Lineage edges join returned assets. The Data graph shows the concepts the reader may view with their viewable assets and the observed lineage between the returned assets.
+
+Each graph response contains at most 12 concept clusters, four preview assets per cluster, and 500 concept edges. Internal scans use bounded batches while preserving exact visible asset counts and continuing through denied or irrelevant candidates. These response bounds do not limit the total number of bound concepts. Preview continuation starts after the last returned preview asset. Clients advance through stored ranks by the requested page size, including after a short page.

@@ -14,31 +14,30 @@ import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
-import { useState } from 'react';
+import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
-import { BulkOperationResult } from '../../../../generated/type/bulkOperationResult';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { NativeBindingBatchOutcome } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getOntologyAssetPath,
+  getOntologyBindingWriteMessage,
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import {
   InspectorEmptyText,
-  InspectorList,
-  InspectorRemoveButton,
-  InspectorRow,
-  InspectorSection,
   InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 
@@ -87,6 +86,8 @@ const OntologyConceptAssets = ({
   const bindings = useOntologyConceptBindings(conceptId);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [page, setPage] = useState(0);
+  const batch = useRef<AbortController>();
+  useEffect(() => () => batch.current?.abort(), [conceptId]);
   const assets = bindings.data?.assets ?? [];
   const visiblePage = Math.min(
     page,
@@ -94,49 +95,59 @@ const OntologyConceptAssets = ({
   );
   const saveAssets = async (
     selected: EntityReference[]
-  ): Promise<BulkOperationResult> => {
-    const failedRequest: NonNullable<BulkOperationResult['failedRequest']> = [];
-    let current = bindings.data;
-    for (const asset of selected) {
+  ): Promise<NativeBindingBatchOutcome> => {
+    const run = new AbortController();
+    batch.current?.abort();
+    batch.current = run;
+    const completedIds: string[] = [];
+    let current = bindings.editableSnapshot;
+    for (const [index, asset] of selected.entries()) {
       const assetType = NATIVE_BINDING_ASSET_TYPES.find(
         (type) => type === asset.type
       );
-      if (!current || !assetType) {
-        failedRequest.push({
-          request: asset,
-          message: t('server.unexpected-error'),
-        });
-
-        continue;
+      if (run.signal.aborted || !current || !assetType) {
+        return {
+          completedIds,
+          remaining: selected.slice(index),
+          stop: 'not-ready',
+        };
       }
       if (
         current.assets.some(
           (item) => item.assetId === asset.id && item.assetType === assetType
         )
       ) {
+        completedIds.push(asset.id);
+
         continue;
       }
-      try {
-        current = await bindings.update.mutateAsync({
-          id: conceptId,
-          request: {
-            expectedRevision: current.revision,
-            asset: { assetType, assetId: asset.id, columns: [] },
-          },
-        });
-      } catch {
-        failedRequest.push({
-          request: asset,
-          message: t('message.temporary-error-try-reloading'),
-        });
+      const result = await bindings.replaceAsset({
+        expectedRevision: current.revision,
+        asset: { assetType, assetId: asset.id, columns: [] },
+      });
+      if (result.kind !== 'confirmed') {
+        return {
+          completedIds,
+          remaining: selected.slice(index),
+          stop: result.kind,
+        };
       }
+      completedIds.push(asset.id);
+      if (result.read.kind === 'unavailable') {
+        return {
+          completedIds,
+          remaining: selected.slice(index + 1),
+          stop: 'read-unavailable',
+        };
+      }
+      current = result.read.snapshot;
     }
 
-    return { failedRequest };
+    return { completedIds, remaining: [], stop: 'none' };
   };
 
   const renderPicker = () => {
-    if (!canEdit || !bindings.isSuccess) {
+    if (!canEdit) {
       return null;
     }
 
@@ -144,11 +155,14 @@ const OntologyConceptAssets = ({
       <OntologyDataAssetPicker
         native={{
           assetTypes: NATIVE_BINDING_ASSET_TYPES,
+          isDisabled: !bindings.editableSnapshot,
           linkedIds: assets.map((asset) => asset.assetId),
           saveAssets,
         }}
-        onCancel={() => setIsPickerOpen(false)}
-        onPartialSave={() => void bindings.refetch()}
+        onCancel={() => {
+          batch.current?.abort();
+          setIsPickerOpen(false);
+        }}
         onSave={() => setIsPickerOpen(false)}
       />
     ) : (
@@ -156,6 +170,7 @@ const OntologyConceptAssets = ({
         color="secondary"
         data-testid="ontology-native-link-assets"
         iconLeading={Plus}
+        isDisabled={!bindings.editableSnapshot}
         size="xs"
         onPress={() => setIsPickerOpen(true)}>
         {t('label.add-entity', { entity: t('label.data-asset-plural') })}
@@ -164,7 +179,11 @@ const OntologyConceptAssets = ({
   };
 
   return (
-    <InspectorSection testId="ontology-native-assets">
+    <Box
+      className="tw:py-1"
+      data-testid="ontology-native-assets"
+      direction="col"
+      gap={2}>
       <InspectorSectionHeading
         count={assets.length}
         label={t('label.data-asset-plural')}
@@ -175,24 +194,30 @@ const OntologyConceptAssets = ({
       {bindings.isPending ? (
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}
-      {bindings.isError ? (
+      {bindings.readState === 'unavailable' ? (
         <Alert variant="error">
-          {t('message.temporary-error-try-reloading')}
+          {t('message.ontology-binding-read-unavailable')}
           <Button
             color="link-color"
             size="sm"
-            onPress={() => void bindings.refetch()}>
+            onPress={() => void bindings.retryRead().catch(() => undefined)}>
             {t('label.retry')}
           </Button>
         </Alert>
       ) : null}
       {assets.length > 0 ? (
-        <InspectorList>
+        <Box
+          className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
+          direction="col">
           {assets
             .slice(visiblePage * 10, (visiblePage + 1) * 10)
             .map((binding) => {
               return (
-                <InspectorRow key={`${binding.assetType}:${binding.assetId}`}>
+                <Box
+                  align="center"
+                  className="tw:min-h-12 tw:px-3 tw:py-2"
+                  gap={3}
+                  key={`${binding.assetType}:${binding.assetId}`}>
                   <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
                     <OntologyAssetLinks asset={binding.asset} />
                     <Typography ellipsis color="secondary" size="text-xs">
@@ -206,32 +231,36 @@ const OntologyConceptAssets = ({
                     </Typography>
                   </Box>
                   {canEdit ? (
-                    <InspectorRemoveButton
-                      isDisabled={
-                        bindings.remove.isPending || bindings.update.isPending
-                      }
-                      label={t('label.remove-entity', {
+                    <ButtonUtility
+                      color="tertiary"
+                      data-testid={`ontology-native-asset-remove-${binding.assetId}`}
+                      icon={Trash01}
+                      isDisabled={!bindings.editableSnapshot}
+                      size="xs"
+                      tooltip={t('label.remove-entity', {
                         entity: getEntityName(binding.asset),
                       })}
-                      testId={`ontology-native-asset-remove-${binding.assetId}`}
-                      onRemove={() => {
-                        if (bindings.data) {
-                          void bindings.remove
-                            .mutateAsync({
-                              id: conceptId,
-                              assetType: binding.assetType,
-                              assetId: binding.assetId,
-                              revision: bindings.data.revision,
-                            })
-                            .catch(() => undefined);
+                      onClick={async () => {
+                        if (bindings.editableSnapshot) {
+                          const result = await bindings.removeAsset({
+                            assetType: binding.assetType,
+                            assetId: binding.assetId,
+                            expectedRevision:
+                              bindings.editableSnapshot.revision,
+                          });
+                          const notify =
+                            result.kind === 'confirmed'
+                              ? showSuccessToast
+                              : showErrorToast;
+                          notify(t(getOntologyBindingWriteMessage(result)));
                         }
                       }}
                     />
                   ) : null}
-                </InspectorRow>
+                </Box>
               );
             })}
-        </InspectorList>
+        </Box>
       ) : null}
       {assets.length === 0 && bindings.isSuccess ? (
         <InspectorEmptyText>
@@ -257,7 +286,7 @@ const OntologyConceptAssets = ({
         </Box>
       ) : null}
       {renderPicker()}
-    </InspectorSection>
+    </Box>
   );
 };
 

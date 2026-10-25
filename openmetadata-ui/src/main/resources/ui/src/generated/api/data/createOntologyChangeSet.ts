@@ -360,10 +360,23 @@ export enum ProviderType {
  * terms.
  */
 export interface OntologyConcept {
+    /**
+     * An abstract class has no direct instances; data is classified by its subclasses.
+     */
+    abstract?:          boolean;
     changeDescription?: ChangeDescription;
     conceptMappings?:   ConceptMapping[];
     conceptType:        OntologyConceptType;
-    deleted?:           boolean;
+    /**
+     * IRI of the document or standard this definition is taken from.
+     */
+    definitionSource?: string;
+    deleted?:          boolean;
+    /**
+     * A deprecated definition stays resolvable for existing references but should not be used
+     * for new ones.
+     */
+    deprecated?:        boolean;
     description?:       string;
     displayName?:       string;
     fullyQualifiedName: string;
@@ -377,14 +390,23 @@ export interface OntologyConcept {
     /**
      * Persisted semantic IRI. Renaming the catalog entity must preserve this identity.
      */
-    iri:  string;
-    name: string;
+    iri: string;
+    /**
+     * Release review state of this concept, derived by the server from ontology releases. Not
+     * stored or independently editable.
+     */
+    lifecycleStatus?: OntologyDefinitionStatus;
+    name:             string;
     /**
      * Owning ontology entity. Glossaries do not own ontology definitions.
      */
     ontology:  EntityReference;
     owners?:   EntityReference[];
     provider?: ProviderType;
+    /**
+     * IRI of the concept in the same ontology that replaces this one.
+     */
+    replacedBy?: string;
     /**
      * Direct named subclasses, derived from non-deleted ontology-owned SUBCLASS_OF axioms. Not
      * stored or independently editable.
@@ -445,6 +467,19 @@ export enum OntologyConceptType {
     Both = "BOTH",
     OwlClass = "OWL_CLASS",
     SkosConcept = "SKOS_CONCEPT",
+}
+
+/**
+ * Release review state of this concept, derived by the server from ontology releases. Not
+ * stored or independently editable.
+ *
+ * Release review state of an ontology definition. The server derives it from ontology
+ * releases, and clients cannot set it.
+ */
+export enum OntologyDefinitionStatus {
+    Approved = "Approved",
+    Draft = "Draft",
+    InReview = "InReview",
 }
 
 /**
@@ -850,7 +885,12 @@ export interface OntologyProperty {
     changeDescription?: ChangeDescription;
     characteristics?:   Characteristic[];
     deleted?:           boolean;
-    description?:       string;
+    /**
+     * A deprecated definition stays resolvable for existing references but should not be used
+     * for new ones.
+     */
+    deprecated?:  boolean;
+    description?: string;
     /**
      * Semantic IRIs of properties disjoint with this property.
      */
@@ -862,7 +902,8 @@ export interface OntologyProperty {
     domain?: string[];
     /**
      * Allowed typed values for a DATA property, projected as an OWL data enumeration. An absent
-     * datatype denotes xsd:string. Empty means no enumeration constraint.
+     * datatype denotes xsd:string. Empty means no enumeration constraint; an enumeration needs
+     * at least two allowed values.
      */
     enumValues?:        Literal[];
     fullyQualifiedName: string;
@@ -902,6 +943,10 @@ export interface OntologyProperty {
      * Semantic IRIs of range classes or datatypes.
      */
     range?: string[];
+    /**
+     * IRI of the property in the same ontology that replaces this one.
+     */
+    replacedBy?: string;
     /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.

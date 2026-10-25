@@ -12,6 +12,7 @@
  */
 
 import {
+  Alert,
   Box,
   Button,
   ButtonUtility,
@@ -23,12 +24,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Search, XClose } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
+import { NativeBindingBatchOutcome } from '../../interface/governance/ontology/ontologyConceptBindings.types';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
@@ -56,18 +58,22 @@ type OntologyDataAssetPickerProps = {
   readonly onCancel: () => void;
   /** Every selected asset was added. */
   readonly onSave: () => void;
-  /** Some assets were added and others were not; the picker stays open. */
-  readonly onPartialSave: () => void;
 } & (
-  | { readonly term: GlossaryTerm; readonly native?: never }
+  | {
+      readonly term: GlossaryTerm;
+      readonly native?: never;
+      readonly onPartialSave: () => void;
+    }
   | {
       readonly term?: never;
+      readonly onPartialSave?: never;
       readonly native: {
         readonly assetTypes: string[];
         readonly linkedIds: string[];
+        readonly isDisabled: boolean;
         readonly saveAssets: (
           assets: EntityReference[]
-        ) => ReturnType<typeof addAssetsToGlossaryTerm>;
+        ) => Promise<NativeBindingBatchOutcome>;
       };
     }
 );
@@ -108,6 +114,15 @@ const OntologyDataAssetPicker = ({
     () => new Map()
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [nativeResult, setNativeResult] = useState<NativeBindingBatchOutcome>();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const termFqn = term?.fullyQualifiedName ?? term?.name;
   const nativeAssetTypes = native?.assetTypes;
 
@@ -207,51 +222,80 @@ const OntologyDataAssetPicker = ({
       return next;
     });
 
+  const saveNativeAssets = async (
+    config: NonNullable<OntologyDataAssetPickerProps['native']>
+  ) => {
+    const result = await config.saveAssets(
+      [...selected.values()].filter(
+        (asset) => !config.linkedIds.includes(asset.id)
+      )
+    );
+    if (!mounted.current) {
+      return;
+    }
+    setNativeResult(result);
+    setSelected(new Map(result.remaining.map((asset) => [asset.id, asset])));
+    if (result.stop === 'none') {
+      onSave();
+    }
+  };
+
+  const saveGlossaryAssets = async (
+    termToSave: GlossaryTerm,
+    notifyPartialSave: () => void
+  ) => {
+    const result = await addAssetsToGlossaryTerm(termToSave, [
+      ...selected.values(),
+    ]);
+    const refused = result.failedRequest ?? [];
+    if (refused.length === 0) {
+      onSave();
+
+      return;
+    }
+    const failed = new Map(
+      refused.flatMap(({ message, request }) => {
+        const id = (request as EntityReference | undefined)?.id;
+
+        return id ? [[id, message ?? ''] as const] : [];
+      })
+    );
+    setFailures(failed);
+    if (failed.size === refused.length) {
+      setSelected(
+        (current) => new Map([...current].filter(([id]) => failed.has(id)))
+      );
+    }
+    const visibleIds = new Set(results.map(({ id }) => id));
+    const hidden = refused.find(
+      ({ request }) =>
+        !visibleIds.has((request as EntityReference | undefined)?.id ?? '')
+    );
+    if (hidden) {
+      showErrorToast(hidden.message ?? t('server.unexpected-error'));
+    }
+    if (refused.length < selected.size) {
+      notifyPartialSave();
+    }
+  };
+
   const handleSave = async () => {
+    if (isSaving || native?.isDisabled) {
+      return;
+    }
     setIsSaving(true);
     try {
-      // Full references: a column is resolved through its FQN.
-      const result = native
-        ? await native.saveAssets([...selected.values()])
-        : await addAssetsToGlossaryTerm(term, [...selected.values()]);
-      const refused = result.failedRequest ?? [];
-      if (refused.length === 0) {
-        onSave();
-
-        return;
-      }
-      const failed = new Map(
-        refused.flatMap(({ message, request }) => {
-          const id = (request as EntityReference | undefined)?.id;
-
-          return id ? [[id, message ?? ''] as const] : [];
-        })
-      );
-      setFailures(failed);
-      // A refusal the server did not tie to an asset leaves the whole
-      // selection in place, as nothing tells which asset it was.
-      if (failed.size === refused.length) {
-        setSelected(
-          (current) => new Map([...current].filter(([id]) => failed.has(id)))
-        );
-      }
-      // A refused asset may be outside the current search, where its row and
-      // reason are not shown.
-      const visibleIds = new Set(results.map(({ id }) => id));
-      const hidden = refused.find(
-        ({ request }) =>
-          !visibleIds.has((request as EntityReference | undefined)?.id ?? '')
-      );
-      if (hidden) {
-        showErrorToast(hidden.message ?? t('server.unexpected-error'));
-      }
-      if (refused.length < selected.size) {
-        onPartialSave();
+      if (native) {
+        await saveNativeAssets(native);
+      } else {
+        await saveGlossaryAssets(term, onPartialSave);
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setIsSaving(false);
+      if (mounted.current) {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -405,6 +449,15 @@ const OntologyDataAssetPicker = ({
         </ul>
         {renderListFooter()}
       </Card>
+      {nativeResult && nativeResult.stop !== 'none' ? (
+        <Alert data-testid="ontology-native-batch-status" variant="warning">
+          {t('message.ontology-binding-batch-stopped', {
+            completed: nativeResult.completedIds.length,
+            remaining: nativeResult.remaining.length,
+          })}{' '}
+          {t(`message.ontology-binding-${nativeResult.stop}`)}
+        </Alert>
+      ) : null}
       <Box align="center" gap={2} justify="end">
         {renderSelectedCount()}
         <Button color="secondary" size="sm" onPress={onCancel}>
@@ -413,7 +466,7 @@ const OntologyDataAssetPicker = ({
         <Button
           color="primary"
           data-testid="ontology-data-asset-save"
-          isDisabled={selected.size === 0 || isSaving}
+          isDisabled={selected.size === 0 || isSaving || native?.isDisabled}
           isLoading={isSaving}
           size="sm"
           onPress={() => void handleSave()}>

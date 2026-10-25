@@ -15,6 +15,7 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -27,13 +28,17 @@ import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.OntologyPackManifest;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackInstallationRecord;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
 import org.openmetadata.schema.type.OntologyPackSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 public final class OntologyPackInstallations {
   private OntologyPackInstallations() {}
@@ -62,6 +67,7 @@ public final class OntologyPackInstallations {
 
   public static PreparedPackInstall prepare(
       final OntologyPackCatalog catalog,
+      final OntologyWorkingSnapshot.Snapshot working,
       final OntologyChangeSet changeSet,
       final String user,
       final long now) {
@@ -75,6 +81,7 @@ public final class OntologyPackInstallations {
     } catch (IllegalArgumentException | BadRequestException exception) {
       throw new PreconditionFailedException(exception.getMessage());
     }
+    requireMatchingPlan(catalog, working, changeSet);
     final OntologyPackManifest manifest = match.manifest();
     final OntologyPackInstallation installation =
         new OntologyPackInstallation()
@@ -97,6 +104,59 @@ public final class OntologyPackInstallations {
         changeSet.getOntology().getId(),
         installation,
         manifest.getModules().stream().map(OntologyPackModule::getId).toList());
+  }
+
+  private static void requireMatchingPlan(
+      final OntologyPackCatalog catalog,
+      final OntologyWorkingSnapshot.Snapshot working,
+      final OntologyChangeSet changeSet) {
+    final List<OntologyChangeOperation> operations = listOrEmpty(changeSet.getOperations());
+    if (operations.isEmpty() || !Objects.equals(changeSet.getUndoCursor(), operations.size())) {
+      throw new PreconditionFailedException(
+          "A library installation requires its complete active plan");
+    }
+    if (!Objects.equals(working.root().getId(), changeSet.getOntology().getId())
+        || !Objects.equals(
+            working.state().getWorkingRevision(), changeSet.getBaseWorkingRevision())) {
+      throw new PreconditionFailedException(
+          "Ontology changed since this library draft was created");
+    }
+    final var source = changeSet.getSourcePack();
+    final var selected = catalog.loadSelected(source.getPackId(), source.getModuleIds());
+    final var importer = new NativeOntologyRdfImporter();
+    final var model =
+        importer.parse(selected.body(), RdfSerializationFormat.parse(selected.format()));
+    try {
+      final var expected = importer.reconcile(model, working).getOperations();
+      requireMatchingOperations(expected, operations);
+    } finally {
+      model.close();
+    }
+  }
+
+  static void requireMatchingOperations(
+      final List<OntologyChangeOperation> expected,
+      final List<OntologyChangeOperation> operations) {
+    if (!normalizedPlan(expected).equals(normalizedPlan(operations))) {
+      throw new PreconditionFailedException(
+          "Library draft operations differ from the bundled import plan");
+    }
+  }
+
+  private static Map<JsonNode, Long> normalizedPlan(
+      final List<OntologyChangeOperation> operations) {
+    return operations.stream()
+        .map(OntologyPackInstallations::normalizedOperation)
+        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+  }
+
+  private static JsonNode normalizedOperation(final OntologyChangeOperation operation) {
+    final var copy = JsonUtils.deepCopy(operation, OntologyChangeOperation.class);
+    copy.setId(null);
+    if (copy.getTargetId() == null && NativeOntologyChanges.definition(copy) != null) {
+      NativeOntologyChanges.definition(copy).setId(null);
+    }
+    return JsonUtils.getObjectMapper().valueToTree(copy);
   }
 
   public static List<OntologyPackInstallation> record(

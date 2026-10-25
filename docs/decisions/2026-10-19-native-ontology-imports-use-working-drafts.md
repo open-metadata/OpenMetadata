@@ -1,9 +1,9 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** NativeOntologyImportPreviewIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest
+- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT
 - **Related:** Ontology Studio publication and release contracts
 
 ## Context
@@ -46,4 +46,18 @@ The ontology keeps one entry per pack ID. A later install of the same version ad
 
 ## Amendment
 
-The catalogue's total 1,000-ontology cap in v4 is replaced by keyset pages of at most 1,000 raw installed ontologies. Each page batch-loads the fields used by authorization, and the scan advances by its final raw ID even when the caller cannot view any row on that page. The response contains every visible installation; a hidden or later row cannot make a pack appear uninstalled. Response size and scan time grow with installations. If that cost becomes too large for an interactive request, the API and client need explicit pagination rather than a silent total cap.
+The catalogue's total 1,000-ontology cap in the durable-installation amendment is replaced by keyset pages of at most 1,000 raw installed ontologies. Each page batch-loads the fields used by authorization, and the scan advances by its final raw ID even when the caller cannot view any row on that page. The response contains every visible installation; a hidden or later row cannot make a pack appear uninstalled. Response size and scan time grow with installations. If that cost becomes too large for an interactive request, the API and client need explicit pagination rather than a silent total cap.
+
+## Amendment
+
+Import accepts a fifth format, the native CSV defined in `docs/native-ontology-csv.md`, and `format` becomes optional on `PreviewNativeOntologyImport`. When omitted, `OntologyFormatDetector` decides from the first 65,536 characters: content signatures first (JSON-LD, RDF/XML, the native CSV header, N-Triples, Turtle), the file extension only when the content has none. A detected N-Triples source parses with the Turtle grammar, because detection sees a window and every N-Triples file is valid Turtle. `POST /v1/ontologies/imports/detect` exposes the same detector, so the browser never re-encodes its rules.
+
+`POST /v1/ontologies/{id}/imports/preview` now returns `{summary, changeSet}`. The summary names the format the server parsed with and counts, from the same classification that produces the operations, new and updated concepts and properties, new relations (axioms), new mappings, skipped definitions identical to the stored ones, and skipped relations. `POST /v1/ontologies/imports/preview` classifies against an empty target, requires `Create` on ontologies, and returns the summary without a change set. Neither writes. CSV rows count toward the 1,000 changed-definition limit, parsing is strict, and the first malformed row fails the whole preview with its row and column.
+
+Import into a new ontology has no endpoint. The client uses the library installation flow above: create the target with a unique name from the file's label and a `urn:openmetadata:ontology:<uuid>` identity, preview against it, then apply the change set under its lease with the same retry identity. Source definition IRIs stay unchanged. `NativeOntologyImportIntoNewOntologyIT` guards the create, preview, apply, and lost-create-response paths.
+
+## Amendment
+
+Applying a stamped library draft recomputes the selected bundled import against the locked working revision before any definition or installation write. The complete, nonempty active plan must match that import. Comparison ignores only independently generated operation IDs and new definition IDs. Target IDs, base versions, payloads, attribution, operation multiplicity, and ordered property chains remain significant. Empty, altered, or partially undone stamped plans return 412. Restoring the unchanged full plan restores eligibility. Ordinary unstamped drafts retain their existing behavior.
+
+Preparation runs within the bounded snapshot read. Application runs after that read returns, under the same outer transaction and ontology lock, so definition writes do not consume the snapshot's read deadline. Valid partial reinstalls retain the existing same-version module union. No-op previews still create no draft, and an already applied draft remains a client recovery read rather than another application.

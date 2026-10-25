@@ -48,7 +48,7 @@ jest.mock('../../rest/ontologyAPI', () => ({
   ...jest.requireActual('../../rest/ontologyAPI'),
   getOntologyConceptBindings: jest
     .fn()
-    .mockResolvedValue({ revision: 0, assets: [] }),
+    .mockResolvedValue({ kind: 'complete', revision: 0, assets: [] }),
   getOntology: jest.fn(),
   getOntologyWorkingDiff: jest.fn(),
   listOntologyAxioms: jest.fn(),

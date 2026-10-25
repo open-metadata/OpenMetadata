@@ -46,10 +46,12 @@ public final class OntologyPackCatalog {
 
   private final List<OntologyPackManifest> manifests;
   private final OntologyPackVerifier verifier;
+  private final OntologyPackContentLoader contentLoader;
 
   public OntologyPackCatalog(final ClassLoader classLoader) {
     final ClassLoader requiredClassLoader = Objects.requireNonNull(classLoader);
-    verifier = new OntologyPackVerifier(new OntologyPackContentLoader(requiredClassLoader));
+    contentLoader = new OntologyPackContentLoader(requiredClassLoader);
+    verifier = new OntologyPackVerifier(contentLoader);
     manifests = load(requiredClassLoader);
     requireUniquePackIds(manifests);
     manifests.forEach(verifier::verify);
@@ -69,6 +71,11 @@ public final class OntologyPackCatalog {
   public List<OntologyPackModule> select(
       final OntologyPackManifest manifest, final Collection<String> moduleIds) {
     return verifier.select(manifest, moduleIds);
+  }
+
+  OntologyPackContentLoader.SelectedPack loadSelected(
+      final String packId, final Collection<String> moduleIds) {
+    return contentLoader.loadSelected(this, packId, moduleIds);
   }
 
   private static List<OntologyPackManifest> load(final ClassLoader classLoader) {
