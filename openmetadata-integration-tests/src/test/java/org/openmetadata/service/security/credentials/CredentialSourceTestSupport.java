@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.security.credentials;
 
+import com.github.benmanes.caffeine.cache.Ticker;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -23,6 +27,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.security.AuthenticationException;
 
 /** Reaches the package-private {@code JdbiCredentialSource} from integration tests. */
 public final class CredentialSourceTestSupport {
@@ -31,6 +36,67 @@ public final class CredentialSourceTestSupport {
   private static JdbiCredentialSource source(Jdbi jdbi) {
     return new JdbiCredentialSource(
         jdbi, SecretsManagerFactory::getSecretsManager, CredentialVerificationConfig.defaults());
+  }
+
+  /** The staleness bound of the verifier the running test server authenticates requests with. */
+  public static Duration serverMaxStaleness() {
+    return Credentials.verifier().maxStaleness();
+  }
+
+  /**
+   * An extra verifier over the live tables, with meters of its own so two of them can coexist in
+   * one JVM. It is not started; call {@link TestVerifier#start()} to run its sweep.
+   */
+  public static TestVerifier newVerifier(Jdbi jdbi, CredentialVerificationConfig config) {
+    MeterRegistry registry = new SimpleMeterRegistry();
+    CredentialVerifier verifier =
+        new CredentialVerifier(
+            config,
+            new JdbiCredentialSource(jdbi, SecretsManagerFactory::getSecretsManager, config),
+            Ticker.systemTicker(),
+            new CredentialMetrics(registry),
+            List.of());
+    return new TestVerifier(verifier, registry);
+  }
+
+  /** A {@link CredentialVerifier} and the meters it reports to, seen from outside its package. */
+  public static final class TestVerifier {
+    private final CredentialVerifier verifier;
+    private final MeterRegistry registry;
+
+    private TestVerifier(CredentialVerifier verifier, MeterRegistry registry) {
+      this.verifier = verifier;
+      this.registry = registry;
+    }
+
+    public void start() {
+      verifier.start();
+    }
+
+    public void stop() {
+      verifier.stop();
+    }
+
+    /**
+     * True when the verifier accepts {@code rawToken} as a current credential of {@code userName},
+     * false when it confirms the token is not current. "Cannot confirm" propagates as {@link
+     * CredentialUnavailableException}, because a test must not read it as a rejection.
+     */
+    public boolean accepts(String userName, String rawToken) {
+      boolean accepted = true;
+      try {
+        verifier.require(
+            new OmCredential.Stored(CredentialSubject.of(userName)), rawToken, "not current");
+      } catch (AuthenticationException rejected) {
+        accepted = false;
+      }
+      return accepted;
+    }
+
+    /** How many principals this verifier's sweeps found changed in the database, so far. */
+    public double sweepChangedSubjects() {
+      return registry.get("om.credential.sweep.changed.subjects").counter().count();
+    }
   }
 
   /** The cheap read's fingerprint of {@code userName}; compare with equals. */
