@@ -37,8 +37,8 @@ const gatedInbox = (
 );
 
 // My Data is no longer an inbox tab: the inbox is Activity and Triage. Its own
-// route stays because `/` redirects here in AI mode, making it the landing
-// page; the user menu also opens it in the personal-space modal.
+// route stays as a direct link to the page the user menu opens in the
+// personal-space modal; the AI landing page is `/`, not this route.
 // The welcome gate wraps the route element only: the modal's copy of My Data
 // must never show the first-login welcome screen.
 const gatedMyData = (

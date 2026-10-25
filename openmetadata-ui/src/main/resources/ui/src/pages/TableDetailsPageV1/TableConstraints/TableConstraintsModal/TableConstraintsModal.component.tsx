@@ -449,7 +449,7 @@ const TableConstraintsModal = ({
       data-testid="table-constraint-modal"
       footer={[
         <Button
-          color="link-color"
+          color="secondary"
           isDisabled={isLoading}
           key="cancel-btn"
           onClick={onClose}>

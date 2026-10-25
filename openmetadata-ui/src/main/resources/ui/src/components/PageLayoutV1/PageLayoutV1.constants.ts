@@ -30,5 +30,6 @@ export const ENTITY_TABS_FILL_COLUMN_CLASS = [
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-col',
   'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]]:flex-[1_0_auto]',
-  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]>*]:flex-[1_0_auto]',
+  // A spinner keeps its square size; growing it stretches it into an ellipse.
+  'tw:in-[.assistant-content]:[&_.entity-details-page-tabs_[role=tabpanel]>*:not(.loader)]:flex-[1_0_auto]',
 ].join(' ');

@@ -184,7 +184,9 @@ class NativeOntologyMemoryIT extends BaseOntologyApprovalIT {
 
     assertEquals(OntologyChangeSetState.APPLIED, applied.getState());
     assertEquals(7, applied.getApplicationResult().getOperationsApplied());
-    assertEquals(revision + 1, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertEquals(
+        revision + operations.size(),
+        client.ontologies().state(ontology.getId()).getWorkingRevision());
     final var created = client.ontologyConcepts().get(fundsTransfer.getId().toString());
     assertEquals(Boolean.TRUE, created.getAbstract());
     assertEquals(source, created.getDefinitionSource());

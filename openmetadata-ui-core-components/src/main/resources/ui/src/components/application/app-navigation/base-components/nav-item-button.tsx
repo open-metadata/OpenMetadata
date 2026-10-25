@@ -24,12 +24,17 @@ const variants = sortCx({
 
 const styles = {
   md: {
-    root: 'tw:size-10',
+    root: 'tw:size-10 tw:rounded-md',
     icon: 'tw:size-5',
   },
   lg: {
-    root: 'tw:size-12',
+    root: 'tw:size-12 tw:rounded-md',
     icon: 'tw:size-6',
+  },
+  // Same box, icon and radius as NavItemBase `lg`, so a collapsed rail keeps the expanded rows' grid.
+  xl: {
+    root: 'tw:size-14 tw:rounded-xl',
+    icon: 'tw:size-7',
   },
 };
 
@@ -45,7 +50,7 @@ interface NavItemButtonProps {
   /** Whether the button is currently active. */
   current?: boolean;
   /** Size of the button. */
-  size?: 'md' | 'lg';
+  size?: keyof typeof styles;
   /** Visual style; `solid` matches NavItemBase's solid variant. */
   variant?: keyof typeof variants;
   /** Fires when the item is activated, whether it renders as a link (`href` set) or a button. */
@@ -86,7 +91,7 @@ export const NavItemButton = ({
   };
 
   const buttonClassName = cx(
-    'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-md tw:p-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
+    'tw:relative tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-center tw:p-2 tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear tw:select-none tw:focus-visible:z-10 tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     variants[variant].root,
     open && variants[variant].open,
     // Same current-page treatment as the expanded NavItemBase, so the
