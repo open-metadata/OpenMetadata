@@ -44,7 +44,7 @@ class OntologyPropertyInverseStorageTest {
 
           assertThrows(
               BadRequestException.class,
-              () -> rejected.delete("reviewer", partOf.getId(), false, true));
+              () -> rejected.delete("admin", partOf.getId(), false, true));
 
           assertEquals(hasPart.getIri(), inverseOf(properties, partOf));
           final var partner = properties.find(hasPart.getId(), Include.NON_DELETED);
