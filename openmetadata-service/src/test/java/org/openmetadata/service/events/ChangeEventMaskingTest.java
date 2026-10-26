@@ -16,7 +16,6 @@ package org.openmetadata.service.events;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
@@ -71,12 +70,6 @@ class ChangeEventMaskingTest {
                 .withEntity(Map.of("name", "orders")));
 
     assertSame(event, ChangeEventMasking.masked(event));
-  }
-
-  @Test
-  void onlyEntitiesWithMaskedFieldsAreRewritten() {
-    assertTrue(ChangeEventMasking.hasMaskedFields(User.class));
-    assertFalse(ChangeEventMasking.hasMaskedFields(Table.class));
   }
 
   private static ChangeEvent userEvent(Object entity) {

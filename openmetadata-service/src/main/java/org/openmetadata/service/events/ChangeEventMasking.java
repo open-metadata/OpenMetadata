@@ -18,20 +18,12 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Optional;
-import java.util.Set;
-import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.MaskedFields;
 
 /**
  * What a change event is stored as. The entity it carries leaves out every field its schema marks
@@ -44,17 +36,13 @@ public final class ChangeEventMasking {
   private static final JsonFactory JSON_FACTORY = new JsonFactory();
   private static final String ENTITY = "entity";
   private static final String ENTITY_TYPE = "entityType";
-  private static final String SCHEMA_PACKAGE = "org.openmetadata.schema.";
-  // One entry per entity class, so the cap is never reached; it is there to bound the cache.
-  private static final Cache<Class<?>, Boolean> HAS_MASKED_FIELDS =
-      Caffeine.newBuilder().maximumSize(1_000).build();
 
   private ChangeEventMasking() {}
 
   public static String masked(String changeEventJson) {
     return entityTypeOf(changeEventJson)
         .map(Entity::getEntityClassFromType)
-        .filter(ChangeEventMasking::hasMaskedFields)
+        .filter(MaskedFields::anyIn)
         .map(entityClass -> withMaskedEntity(changeEventJson, entityClass))
         .orElse(changeEventJson);
   }
@@ -88,32 +76,5 @@ public final class ChangeEventMasking {
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
-  }
-
-  static boolean hasMaskedFields(Class<?> entityClass) {
-    return HAS_MASKED_FIELDS.get(entityClass, type -> declaresMaskedField(type, new HashSet<>()));
-  }
-
-  private static boolean declaresMaskedField(Class<?> type, Set<Class<?>> seen) {
-    boolean schemaType = type.getName().startsWith(SCHEMA_PACKAGE) && !type.isEnum();
-    return schemaType
-        && seen.add(type)
-        && Arrays.stream(type.getDeclaredFields())
-            .anyMatch(
-                field ->
-                    field.isAnnotationPresent(MaskedField.class)
-                        || declaresMaskedField(valueType(field), seen));
-  }
-
-  // A list's elements, or the field's own type.
-  private static Class<?> valueType(Field field) {
-    Type generic = field.getGenericType();
-    boolean listOfClass =
-        generic instanceof ParameterizedType parameterized
-            && parameterized.getActualTypeArguments().length == 1
-            && parameterized.getActualTypeArguments()[0] instanceof Class<?>;
-    return listOfClass
-        ? (Class<?>) ((ParameterizedType) generic).getActualTypeArguments()[0]
-        : field.getType();
   }
 }

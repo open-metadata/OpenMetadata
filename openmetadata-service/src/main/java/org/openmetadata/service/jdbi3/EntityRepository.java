@@ -280,6 +280,7 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.secrets.masker.MaskedFields;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
@@ -6455,21 +6456,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Fields no version of this entity shows, such as secrets: versions are stored without them, and
-   * every read of a version or of the entity history leaves them out, older rows included.
+   * Fields no version of this entity shows: the ones its schema marks secret as a whole. Versions
+   * are stored without them, and every read of a version or of the entity history leaves them out,
+   * older rows included. A field that only holds secrets inside it, such as a service connection,
+   * stays; its resource masks those secrets for each caller.
    */
-  protected List<String> getFieldsHiddenFromHistory() {
-    return List.of();
+  private List<String> fieldsHiddenFromHistory() {
+    return MaskedFields.wholeFieldsOf(entityClass);
   }
 
   private String withoutFieldsHiddenFromHistory(String versionJson) {
-    List<String> hidden = getFieldsHiddenFromHistory();
+    List<String> hidden = fieldsHiddenFromHistory();
     ObjectNode node = hidden.isEmpty() ? null : (ObjectNode) JsonUtils.readTree(versionJson);
     return node == null ? versionJson : node.remove(hidden).toString();
   }
 
   private T withoutFieldsHiddenFromHistory(T entity) {
-    return getFieldsHiddenFromHistory().isEmpty()
+    return fieldsHiddenFromHistory().isEmpty()
         ? entity
         : JsonUtils.readValue(
             withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity)), entityClass);
@@ -6478,7 +6481,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   // A stored version has no hidden fields, so one read back to merge a session's edits takes the
   // current values: otherwise the merged change would report them as changed.
   private String withHiddenFieldsOf(T current, String versionJson) {
-    List<String> hidden = getFieldsHiddenFromHistory();
+    List<String> hidden = fieldsHiddenFromHistory();
     boolean restore = versionJson != null && !hidden.isEmpty();
     ObjectNode version = restore ? (ObjectNode) JsonUtils.readTree(versionJson) : null;
     if (restore) {
