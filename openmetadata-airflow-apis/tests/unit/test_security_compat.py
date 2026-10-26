@@ -25,6 +25,8 @@ Airflow 3.
 
 import base64
 import json
+import os
+from pathlib import Path
 
 import pytest
 from flask import Flask
@@ -330,21 +332,46 @@ class TestBasicCredentialsAgainstFabUserStore:
         assert app.probe_calls == []
 
 
+def _dict_users_simple_auth_manager(simple):
+    """
+    The static API as Airflow 3.0 and 3.1 ship it: `get_users()` returns dicts and
+    `get_passwords(users)` takes the user list, which the decorator must drive without
+    a TypeError on those versions.
+    """
+
+    class DictUsersSimpleAuthManager(simple.SimpleAuthManager):
+        @staticmethod
+        def get_users():
+            entries = os.environ["AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS"].split(",")
+            return [{"username": username, "role": role} for username, role in (entry.split(":") for entry in entries)]
+
+        @staticmethod
+        def get_passwords(users):
+            usernames = {user["username"] for user in users}
+            passwords_file = Path(os.environ["AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE"])
+            with passwords_file.open() as f:
+                return {k: v for k, v in json.load(f).items() if k in usernames}
+
+    return DictUsersSimpleAuthManager
+
+
 class TestBasicCredentialsAgainstSimpleAuthManager:
     """
     Basic credentials resolved by the real SimpleAuthManager, the auth manager the
     stock ingestion image runs, from its configured users and password file.
     """
 
-    @pytest.fixture
-    def manager(self, monkeypatch, tmp_path, use_auth_manager):
+    @pytest.fixture(params=["installed", "airflow-3.0-and-3.1-shape"])
+    def manager(self, request, monkeypatch, tmp_path, use_auth_manager):
         simple = pytest.importorskip("airflow.api_fastapi.auth.managers.simple.simple_auth_manager")
         passwords = tmp_path / "simple_auth_manager_passwords.json"
         passwords.write_text(json.dumps({"admin": "adminpass", "viewer": "viewerpass"}))
         monkeypatch.setenv("AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS", "admin:admin,viewer:viewer")
         monkeypatch.setenv("AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE", str(passwords))
         monkeypatch.setenv("AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_ALL_ADMINS", "False")
-        return use_auth_manager(simple.SimpleAuthManager())
+        if request.param == "installed":
+            return use_auth_manager(simple.SimpleAuthManager())
+        return use_auth_manager(_dict_users_simple_auth_manager(simple)())
 
     def test_admin_credentials_dispatch_on_edit_route(self, app, manager):
         response = app.test_client().get("/edit", headers=_basic("admin", "adminpass"))

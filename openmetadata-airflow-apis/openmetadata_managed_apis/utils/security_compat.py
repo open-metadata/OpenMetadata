@@ -13,6 +13,7 @@ Compatibility layer for Airflow security decorators across versions
 """
 
 import hmac
+import inspect
 import logging
 from collections.abc import Callable, Sequence
 from functools import wraps
@@ -216,11 +217,34 @@ def _simple_auth_manager_user(auth_manager) -> Any | None:
         return None
     username, password = credentials
 
-    expected = auth_manager.get_passwords().get(username, "")
-    for user in auth_manager.get_users():
-        if user.username == username and hmac.compare_digest(expected.encode("utf-8"), password.encode("utf-8")):
-            return user
+    users = auth_manager.get_users()
+    expected = _simple_auth_manager_passwords(auth_manager, users).get(username, "")
+    for user in users:
+        if _simple_auth_manager_username(user) == username and hmac.compare_digest(
+            expected.encode("utf-8"), password.encode("utf-8")
+        ):
+            return _as_simple_auth_manager_user(user)
     return None
+
+
+def _simple_auth_manager_passwords(auth_manager, users) -> dict[str, str]:
+    # Airflow 3.0 and 3.1 take the user list to filter the file; 3.2+ take nothing.
+    if inspect.signature(auth_manager.get_passwords).parameters:
+        return auth_manager.get_passwords(users)
+    return auth_manager.get_passwords()
+
+
+def _simple_auth_manager_username(user) -> str:
+    # Airflow 3.0 and 3.1 list users as dicts; 3.2+ as SimpleAuthManagerUser objects.
+    return user["username"] if isinstance(user, dict) else user.username
+
+
+def _as_simple_auth_manager_user(user) -> Any:
+    if not isinstance(user, dict):
+        return user
+    from airflow.api_fastapi.auth.managers.simple.user import SimpleAuthManagerUser
+
+    return SimpleAuthManagerUser(username=user["username"], role=user["role"])
 
 
 def _fab_user(security_manager) -> Any | None:
@@ -231,7 +255,8 @@ def _fab_user(security_manager) -> Any | None:
     username, password = credentials
 
     user = None
-    if getattr(security_manager, "auth_type", None) == _fab_ldap_auth_type():
+    ldap_auth_type = _fab_ldap_auth_type()
+    if ldap_auth_type is not None and getattr(security_manager, "auth_type", None) == ldap_auth_type:
         user = security_manager.auth_user_ldap(username, password)
     if user is None:
         user = security_manager.auth_user_db(username, password)
