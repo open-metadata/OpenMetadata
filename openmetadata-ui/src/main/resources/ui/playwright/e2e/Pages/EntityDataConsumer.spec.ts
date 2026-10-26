@@ -13,6 +13,7 @@
 import { Page } from '@playwright/test';
 import { isUndefined } from 'lodash';
 import { COMMON_TIER_TAG } from '../../constant/common';
+import { migratedTo } from '../../constant/migration';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../support/entity/ContainerClass';
 import { DashboardClass } from '../../support/entity/DashboardClass';
@@ -40,6 +41,10 @@ import {
 import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const user = new UserClass();
+
+const MIGRATED = migratedTo.browser(
+  'src/test/browser/entity-matrix/EntityDataConsumer.*.browser.test.tsx'
+);
 
 const entities = [
   ApiEndpointClass,
@@ -95,16 +100,26 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
 
     // Running following 2 tests serially since they are dependent on each other
     test.describe.serial('Owner permission tests', () => {
-      test('User as Owner Add, Update and Remove', async ({ page }) => {
-        test.slow(true);
+      test(
+        'User as Owner Add, Update and Remove',
+        MIGRATED,
+        async ({ page }) => {
+          test.slow(true);
 
-        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
-        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
-        const OWNER3 = EntityDataClass.user3.getUserDisplayName();
-        await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
-      });
+          const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+          const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+          const OWNER3 = EntityDataClass.user3.getUserDisplayName();
+          await entity.owner(
+            page,
+            [OWNER1, OWNER3],
+            [OWNER2],
+            undefined,
+            false
+          );
+        }
+      );
 
-      test('No edit owner permission', async ({ page }) => {
+      test('No edit owner permission', MIGRATED, async ({ page }) => {
         await page.reload({ waitUntil: 'domcontentloaded' });
         await waitForAllLoadersToDisappear(page);
         await waitForWidgetsToRender(page);
@@ -113,22 +128,22 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
       });
     });
 
-    test('Tier Add, Update and Remove', async ({ page }) => {
+    test('Tier Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tier(page, COMMON_TIER_TAG[0].name, COMMON_TIER_TAG[3].name);
     });
 
     // Only the Table variant is flaky (3 of 11 sampled merge_group runs); the
     // other 15 entity types are clean, so the tag is scoped rather than
     // quarantining the whole generated set. See playwright/QUARANTINE.md.
-    test('Update description', async ({ page }) => {
+    test('Update description', MIGRATED, async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
-    test('Tag Add, Update and Remove', async ({ page }) => {
+    test('Tag Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
-    test('Glossary Term Add, Update and Remove', async ({ page }) => {
+    test('Glossary Term Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
@@ -138,73 +153,85 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Tag Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
-
-        await entity.tagChildren({
-          page,
-          tag1: 'PersonalData.Personal',
-          tag2: 'PII.None',
-          rowId: entity.childrenSelectorId ?? '',
-          rowSelector,
-          entityEndpoint: entity.endpoint,
-        });
-      });
-
-      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
-        test('DisplayName edit for child entities should not be allowed', async ({
-          page,
-        }) => {
+      test(
+        'Tag Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
           await page.getByTestId(entity.childrenTabId ?? '').click();
 
-          await expect(
-            page
-              .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
-              .getByTestId('edit-displayName-button')
-          ).not.toBeVisible();
-        });
+          await entity.tagChildren({
+            page,
+            tag1: 'PersonalData.Personal',
+            tag2: 'PII.None',
+            rowId: entity.childrenSelectorId ?? '',
+            rowSelector,
+            entityEndpoint: entity.endpoint,
+          });
+        }
+      );
+
+      if (['Table', 'DashboardDataModel'].includes(entity.type)) {
+        test(
+          'DisplayName edit for child entities should not be allowed',
+          MIGRATED,
+          async ({ page }) => {
+            await page.getByTestId(entity.childrenTabId ?? '').click();
+
+            await expect(
+              page
+                .locator(
+                  `[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`
+                )
+                .getByTestId('edit-displayName-button')
+            ).not.toBeVisible();
+          }
+        );
       }
 
-      test('Description Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Description Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.descriptionUpdateChildren(
-          page,
-          entity.childrenSelectorId ?? '',
-          rowSelector,
-          entity.endpoint
-        );
-      });
+          await entity.descriptionUpdateChildren(
+            page,
+            entity.childrenSelectorId ?? '',
+            rowSelector,
+            entity.endpoint
+          );
+        }
+      );
     }
 
     // Run only if entity has children
     if (!isUndefined(entity.childrenTabId)) {
-      test('Glossary Term Add, Update and Remove for child entities', async ({
-        page,
-      }) => {
-        await page.getByTestId(entity.childrenTabId ?? '').click();
+      test(
+        'Glossary Term Add, Update and Remove for child entities',
+        MIGRATED,
+        async ({ page }) => {
+          await page.getByTestId(entity.childrenTabId ?? '').click();
 
-        await entity.glossaryTermChildren({
-          page,
-          glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
-          glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
-          rowId: entity.childrenSelectorId ?? '',
-          entityEndpoint: entity.endpoint,
-          rowSelector:
-            entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
-        });
-      });
+          await entity.glossaryTermChildren({
+            page,
+            glossaryTerm1: EntityDataClass.glossaryTerm1.responseData,
+            glossaryTerm2: EntityDataClass.glossaryTerm2.responseData,
+            rowId: entity.childrenSelectorId ?? '',
+            entityEndpoint: entity.endpoint,
+            rowSelector:
+              entity.type === 'MlModel' ? 'data-testid' : 'data-row-key',
+          });
+        }
+      );
     }
 
-    test(`UpVote & DownVote entity`, async ({ page }) => {
+    test(`UpVote & DownVote entity`, MIGRATED, async ({ page }) => {
       await entity.upVote(page);
       await entity.downVote(page);
     });
 
+    // Not migrated: it also checks the home page's followed-entities widget,
+    // which reads the search index.
     test(`Follow & Un-follow entity`, async ({ page }) => {
       test.slow(true);
 
