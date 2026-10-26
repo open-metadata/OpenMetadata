@@ -1021,6 +1021,28 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   /**
+   * The descriptors of an entity that other documents hold in a reference list (domains[],
+   * dataProducts[]) rather than under a field named after its type, where the nested display-name
+   * script would fail. SearchRepository relabels those copies by id, so the name and the display
+   * name only have to open the propagation pass.
+   */
+  protected static List<PropagationDescriptor> relabeledByReference(
+      List<PropagationDescriptor> descriptors) {
+    List<PropagationDescriptor> relabeled =
+        new ArrayList<>(
+            descriptors.stream()
+                .filter(descriptor -> !FIELD_DISPLAY_NAME.equals(descriptor.fieldName()))
+                .toList());
+    relabeled.add(
+        new PropagationDescriptor(
+            Entity.FIELD_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    relabeled.add(
+        new PropagationDescriptor(
+            FIELD_DISPLAY_NAME, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
+    return relabeled;
+  }
+
+  /**
    * Determine whether parent traversal is required for inheritance based on requested fields and
    * whether the entity already has local values.
    */
@@ -3346,6 +3368,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
         entityType);
   }
 
+  /**
+   * A rename or move rewrites every descendant's FQN in the database without running their
+   * updaters, so their search documents still carry the old FQN. Rebuild them from the renamed
+   * rows once the transaction commits. Matching by the ids captured before the rewrite stays
+   * boundary-safe, unlike a prefix rewrite over the raw FQN. If the rebuild fails, the retry is
+   * filed under the renamed entity, whose retry re-indexes its contained descendants.
+   */
+  protected final void reindexRenamedDescendants(
+      String descendantType, List<EntityDAO.EntityIdFqnPair> descendants, String newFqn) {
+    if (nullOrEmpty(descendants)) {
+      return;
+    }
+    List<EntityReference> references =
+        descendants.stream()
+            .map(descendant -> new EntityReference().withId(descendant.id).withType(descendantType))
+            .toList();
+    searchRepository.deferIfFlushScopeActive(
+        () -> searchRepository.updateEntitiesByReference(references),
+        "reindexRenamedDescendants",
+        null,
+        newFqn,
+        entityType);
+  }
+
   private static void dropDescendantCacheEntries(
       String entityType, List<EntityDAO.EntityIdFqnPair> affected) {
     // Rename cascades run inside the rename flush transaction. Route each descendant through
@@ -4575,6 +4621,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     setFieldsInternal(originalEntity, new Fields(allowedFields, "votes"));
+    // The search update rewrites only the votes when the entity carries this change. Without it,
+    // the document would be rebuilt from this bare read, blanking owners, domains and tags, and the
+    // last stored change would be replayed to the children.
+    originalEntity.setIncrementalChangeDescription(change);
+    originalEntity.setChangeDescription(change);
     ChangeEvent changeEvent =
         new ChangeEvent()
             .withId(UUID.randomUUID())
@@ -7175,12 +7226,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
       invalidateMany(changedEntities);
     }
     try (var ignored = phase(phasePrefix + "LifecycleDispatch")) {
+      hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
     // one audit-log entry and avoids 100k change_event inserts on the delete hot path.
+  }
+
+  /**
+   * The search handler indexes the dispatched entities as they are, and a bulk updater loads only
+   * what a PUT touches. Without the rest of what their documents carry (followers, votes, the owners
+   * and domains a descendant inherits), the rewrite would blank those fields.
+   */
+  private void hydrateForSearchIndex(List<T> entities) {
+    if (!supportsSearch || searchRepository == null) {
+      return;
+    }
+    setFieldsInBulk(
+        getOnlySupportedFields(
+            String.join(
+                ",", searchRepository.getSearchIndexFactory().getReindexFieldsFor(entityType))),
+        entities);
   }
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
@@ -9218,11 +9286,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         compareAndUpdate(
             FIELD_TAGS,
             () ->
-                updateTags(
-                    updated.getFullyQualifiedName(),
-                    FIELD_TAGS,
-                    original.getTags(),
-                    updated.getTags()));
+                updated.setTags(
+                    updateTags(
+                        updated.getFullyQualifiedName(),
+                        FIELD_TAGS,
+                        original.getTags(),
+                        updated.getTags())));
         compareAndUpdate(FIELD_DOMAINS, this::updateDomains);
         compareAndUpdate(FIELD_DATA_PRODUCTS, this::updateDataProducts);
         compareAndUpdate(FIELD_EXPERTS, this::updateExperts);
@@ -9443,14 +9512,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
     }
 
-    protected void updateTags(
+    /**
+     * Applies the tag changes for {@code fqn} and returns the tags it ends up with. A PUT merges the
+     * stored tags into the requested ones, and when the request carried no tags that merge lands in
+     * a new list, so callers must keep the returned list rather than the one they passed in.
+     */
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       origTags = listOrEmpty(origTags);
       // updatedTags cannot be immutable list, as we are adding the origTags to updatedTags even if
       // its empty.
       updatedTags = Optional.ofNullable(updatedTags).orElse(new ArrayList<>());
       if (origTags.isEmpty() && updatedTags.isEmpty()) {
-        return; // Nothing to update
+        return requestedTags; // Nothing to update
       }
 
       List<TagLabel> addedTags = new ArrayList<>();
@@ -9514,10 +9589,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             addedTags.stream().map(tag -> tag.withAppliedBy(updatingUser.getName())).toList(), fqn);
       }
 
-      // Record changes for audit trail
+      // Record changes for audit trail. `updatedTags` stays the live list: it is what this
+      // method returns, ordered by the sort below.
       recordListChange(
           fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
+      return updatedTags;
     }
 
     /**
@@ -10870,11 +10947,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
         updateColumnDataLength(columnPrefix, stored, updated);
         updateColumnPrecision(columnPrefix, stored, updated);
         updateColumnScale(columnPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(columnPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
         updateColumnConstraint(columnPrefix, stored, updated);
         if (!Objects.equals(stored.getExtension(), updated.getExtension())) {
           storeColumnExtension(entityId, updated);
@@ -13436,7 +13514,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
         continue;
       }
       try {
-        deleteInternal(deletedBy, stale.id, recursive, hardDelete);
+        // The full delete, not deleteInternal: its post-delete steps take the entity out of search.
+        delete(deletedBy, stale.id, recursive, hardDelete);
         deletedHashes.add(fqnHash);
         successRequests.add(staleSuccess(stale.fqn));
       } catch (Exception e) {

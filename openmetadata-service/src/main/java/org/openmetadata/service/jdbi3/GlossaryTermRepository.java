@@ -394,6 +394,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    // Term labels on assets carry a copy of the term's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     descriptors.add(
         new PropagationDescriptor(
             FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
@@ -2119,8 +2124,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     @Override
-    protected void updateTags(
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -2155,6 +2161,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
+      return updatedTags.isEmpty() ? requestedTags : updatedTags;
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -2318,6 +2325,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     /**
@@ -2384,6 +2392,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateAssetIndexes(oldFqn, newFqn);
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     private void validateParent() {
