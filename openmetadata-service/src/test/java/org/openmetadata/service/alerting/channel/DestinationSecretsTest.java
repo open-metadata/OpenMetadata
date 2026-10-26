@@ -170,6 +170,22 @@ class DestinationSecretsTest {
   }
 
   @Test
+  void numericHeaderValuesAcceptedByWebhookParsingAreStillSecrets() {
+    SubscriptionDestination destination = incomingWebhook(SubscriptionType.WEBHOOK);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(destination));
+    config.put("headers", Map.of("Authorization", 123456789));
+    destination.withConfig(config);
+    assertEquals(
+        "123456789", WebhookConfigRules.stored(destination).getHeaders().get("Authorization"));
+
+    SubscriptionDestination masked = DestinationSecrets.mask(List.of(destination)).getFirst();
+    assertEquals(PASSWORD_MASK, headersOf(masked).get("Authorization"));
+    DestinationSecrets.encrypt(List.of(destination));
+    assertEquals(
+        "123456789", Fernet.getInstance().decrypt(headersOf(destination).get("Authorization")));
+  }
+
+  @Test
   void encrypt_emailReceivers_passThroughUnchanged() {
     SubscriptionDestination dest =
         new SubscriptionDestination()
@@ -258,6 +274,7 @@ class DestinationSecretsTest {
 
     assertEquals(configOf(stored), configOf(byId));
     assertEquals(configOf(stored), configOf(byPosition));
+    assertEquals(stored.getId(), byPosition.getId());
   }
 
   @Test

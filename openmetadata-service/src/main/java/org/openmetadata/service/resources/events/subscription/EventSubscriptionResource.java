@@ -506,7 +506,7 @@ public class EventSubscriptionResource
           UUID id) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
-    return delete(uriInfo, securityContext, id, true, true);
+    return maskResponse(delete(uriInfo, securityContext, id, true, true));
   }
 
   @DELETE
@@ -555,7 +555,7 @@ public class EventSubscriptionResource
           String name) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.DELETE);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
-    return deleteByName(uriInfo, securityContext, name, true, true);
+    return maskResponse(deleteByName(uriInfo, securityContext, name, true, true));
   }
 
   @GET

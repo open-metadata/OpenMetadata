@@ -228,6 +228,14 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
   }
 
   @Override
+  protected EventSubscription createNewEntity(EventSubscription entity) {
+    // PUT reaches prepare with update=true even when it creates an alert. At this point the
+    // repository knows it is a create, and encryption runs before the retryable store.
+    entity.withDestinations(DestinationSecrets.ofANewAlert(entity.getDestinations()));
+    return super.createNewEntity(entity);
+  }
+
+  @Override
   public void storeEntity(EventSubscription entity, boolean update) {
     // Ensure all destinations have unique IDs before storage (handles all operations: POST, PUT,
     // PATCH)
@@ -241,8 +249,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     List<String> jsons = new ArrayList<>(entities.size());
     for (EventSubscription entity : entities) {
       ensureDestinationIds(entity);
+      // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
+      // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
+      EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
+      stored.withDestinations(DestinationSecrets.ofANewAlert(stored.getDestinations()));
       fqns.add(entity.getFullyQualifiedName());
-      jsons.add(serializeForStorage(entity));
+      jsons.add(serializeForStorage(stored));
     }
     dao.insertMany(dao.getTableName(), dao.getNameHashColumn(), fqns, jsons);
   }

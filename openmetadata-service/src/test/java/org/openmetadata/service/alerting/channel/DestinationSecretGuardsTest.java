@@ -7,6 +7,7 @@ import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.c
 import static org.openmetadata.service.alerting.channel.DestinationSecretsTest.incomingWebhook;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
@@ -96,6 +97,36 @@ class DestinationSecretGuardsTest {
   }
 
   @Test
+  void storedOAuthCredentialsCannotBeTestedAtAnotherTokenUrl() {
+    SubscriptionDestination destination = incomingWebhook(SubscriptionType.WEBHOOK);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(destination));
+    config.put(
+        "authType",
+        Map.of(
+            "type",
+            "oauth2",
+            "tokenUrl",
+            "https://auth.example.com/token",
+            "clientId",
+            "client",
+            "clientSecret",
+            "secret"));
+    destination.withConfig(config);
+    DestinationSecrets.encrypt(List.of(destination));
+    SubscriptionDestination submitted = DestinationSecrets.mask(List.of(destination)).getFirst();
+    DestinationSecrets.restore(destination, submitted);
+    assertDoesNotThrow(
+        () -> DestinationSecretGuards.requireSecretsAsStored(destination, submitted));
+
+    var changed = JsonUtils.valueToTree(submitted.getConfig());
+    ((ObjectNode) changed.path("authType")).put("tokenUrl", "https://elsewhere.example.com/token");
+    submitted.withConfig(changed);
+    assertThrows(
+        BadRequestException.class,
+        () -> DestinationSecretGuards.requireSecretsAsStored(destination, submitted));
+  }
+
+  @Test
   void aPatchMayNotCopyAStoredSecretOutOfItsField() {
     SubscriptionDestination storedDestination = stored();
     EventSubscription original = alertWith(storedDestination);
@@ -112,6 +143,24 @@ class DestinationSecretGuardsTest {
     assertDoesNotThrow(
         () -> DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, copied, replace),
         "only a copy or move can read a stored secret");
+  }
+
+  @Test
+  void aPatchMayNotCopyALegacyNumericSecretIntoANumericField() {
+    SubscriptionDestination destination = incomingWebhook(SubscriptionType.WEBHOOK);
+    Map<String, Object> config = new LinkedHashMap<>(configOf(destination));
+    config.put("headers", Map.of("Authorization", 123));
+    destination.withConfig(config);
+    EventSubscription original = alertWith(destination);
+    EventSubscription copied =
+        JsonUtils.deepCopy(original, EventSubscription.class).withBatchSize(123);
+    JsonPatch patch =
+        Json.createPatchBuilder()
+            .copy("/batchSize", "/destinations/0/config/headers/Authorization")
+            .build();
+    assertThrows(
+        BadRequestException.class,
+        () -> DestinationSecretGuards.requireSecretsOnlyInSecretFields(original, copied, patch));
   }
 
   @Test

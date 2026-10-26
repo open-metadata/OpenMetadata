@@ -64,6 +64,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 
@@ -2244,6 +2245,131 @@ public class EventSubscriptionResourceIT
   }
 
   @Test
+  void test_putDestinationSecretsPreservesStoredValues(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("put_hook");
+    CreateEventSubscription request =
+        secretRequest(ns, "put_secrets", endpoint, "header-token", "signing-key");
+    EventSubscription created = createEntity(request);
+    Map<String, Object> stored = storedConfig(created.getId());
+    UUID destinationId = created.getDestinations().getFirst().getId();
+
+    request.withDestinations(created.getDestinations()).withDescription("masked PUT");
+    request.getDestinations().getFirst().withId(null);
+    EventSubscription updated = putSubscription(request);
+    assertEquals("masked PUT", updated.getDescription());
+    assertSecretsMasked(updated.getDestinations().getFirst());
+    assertEquals(stored, storedConfig(created.getId()));
+    assertEquals(destinationId, updated.getDestinations().getFirst().getId());
+
+    CreateEventSubscription plaintext =
+        secretRequest(ns, "put_secrets", endpoint, "header-token", "signing-key");
+    plaintext.withDescription("plaintext PUT");
+    updated = putSubscription(plaintext);
+    assertEquals("plaintext PUT", updated.getDescription());
+    assertSecretsMasked(updated.getDestinations().getFirst());
+    assertEquals(stored, storedConfig(created.getId()));
+    assertEquals(destinationId, updated.getDestinations().getFirst().getId());
+  }
+
+  @Test
+  void test_putNewDestinationSecretsAreEncryptedAndGuarded(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("new_put_hook");
+    EventSubscription created =
+        putSubscription(secretRequest(ns, "new_put_secrets", endpoint, "header-token", null));
+    assertSecretsMasked(created.getDestinations().getFirst());
+    assertEquals(endpoint, decrypted(storedConfig(created.getId()).get("endpoint")));
+    assertRefused(
+        () ->
+            putSubscription(
+                secretRequest(
+                    ns, "new_put_mask", endpoint, PasswordEntityMasker.PASSWORD_MASK, null)));
+    assertRefused(
+        () ->
+            putSubscription(
+                secretRequest(
+                    ns,
+                    "new_put_cipher",
+                    endpoint,
+                    Fernet.getInstance().encrypt("foreign"),
+                    null)));
+  }
+
+  @Test
+  void test_batchCreateDestinationSecretsAreEncrypted(TestNamespace ns) {
+    String endpoint = "http://localhost:8585/" + ns.prefix("batch_hook");
+    EventSubscription entity =
+        new EventSubscriptionMapper()
+            .createToEntity(
+                secretRequest(ns, "batch_secrets", endpoint, "batch-header", null), "admin");
+    AlertFixtures.repository().prepareInternal(entity, false);
+    AlertFixtures.repository().createManyEntitiesForImport(List.of(entity));
+    assertEquals(endpoint, decrypted(storedConfig(entity.getId()).get("endpoint")));
+    assertEquals(
+        "batch-header", decrypted(headersOf(storedConfig(entity.getId())).get("Authorization")));
+    assertSecretsMasked(getEntity(entity.getId().toString()).getDestinations().getFirst());
+  }
+
+  @Test
+  void test_deleteDestinationSecretsAreMasked(TestNamespace ns) {
+    for (boolean legacy : List.of(false, true)) {
+      for (boolean byName : List.of(false, true)) {
+        String suffix = "delete_secret_" + legacy + "_" + byName;
+        String endpoint = "http://localhost:8585/" + ns.prefix(suffix);
+        CreateEventSubscription request =
+            secretRequest(ns, suffix, endpoint, "delete-header-token", "delete-signing-key");
+        EventSubscription created = createEntity(request);
+        if (legacy) {
+          EventSubscription stored = AlertFixtures.stored(created.getId());
+          stored
+              .getDestinations()
+              .getFirst()
+              .withConfig(request.getDestinations().getFirst().getConfig());
+          AlertFixtures.writeBehindTheServer(stored);
+        }
+        String path =
+            "/v1/events/subscriptions/" + (byName ? "name/" + created.getName() : created.getId());
+        String response =
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(HttpMethod.DELETE, path, null);
+        assertNoSecretOrCiphertext(
+            response, List.of(endpoint, "delete-header-token", "delete-signing-key"));
+        assertSecretsMasked(
+            JsonUtils.readValue(response, EventSubscription.class).getDestinations().getFirst());
+        assertNull(AlertFixtures.stored(created.getId()));
+      }
+    }
+  }
+
+  @Test
+  void test_testDestinationCannotRedirectStoredOAuthCredentials(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      CreateEventSubscription request =
+          secretRequest(ns, "oauth_test_secret", receiver.url("/hook"), "header-token", null);
+      Map<String, Object> config = configOf(request.getDestinations().getFirst());
+      config.put(
+          "authType",
+          new WebhookOAuth2Config()
+              .withType(WebhookOAuth2Config.Type.OAUTH_2)
+              .withTokenUrl(URI.create(receiver.url("/token")))
+              .withClientId("client-id")
+              .withClientSecret("client-secret"));
+      request.getDestinations().getFirst().withConfig(config);
+      SubscriptionDestination masked = createEntity(request).getDestinations().getFirst();
+      config = configOf(masked);
+      Map<String, Object> auth = new LinkedHashMap<>(authTypeOf(config));
+      auth.put("tokenUrl", receiver.url("/other-token"));
+      config.put("authType", auth);
+      masked.withConfig(config);
+
+      assertEquals(400, postTestDestination(List.of(masked)).statusCode());
+      assertTrue(
+          receiver.received().isEmpty(),
+          "stored credentials must never reach the changed token URL");
+    }
+  }
+
+  @Test
   void test_destinationSecretsTheServerAloneWrites_400(TestNamespace ns) throws Exception {
     String endpoint = "http://localhost:8585/api/v1/test/webhook/" + ns.prefix("guarded");
     String mask = PasswordEntityMasker.PASSWORD_MASK;
@@ -2314,6 +2440,12 @@ public class EventSubscriptionResourceIT
       assertEquals(400, postTestDestination(List.of(unknown)).statusCode());
       assertEquals(1, receiver.received().size(), "a refused test sends nothing");
     }
+  }
+
+  private static EventSubscription putSubscription(CreateEventSubscription request) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/events/subscriptions", request, EventSubscription.class);
   }
 
   private static CreateEventSubscription secretRequest(

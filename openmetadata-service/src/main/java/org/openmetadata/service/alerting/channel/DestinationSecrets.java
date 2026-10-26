@@ -120,7 +120,7 @@ public final class DestinationSecrets {
   public static boolean hasMaskedSecrets(SubscriptionDestination destination) {
     JsonNode config = JsonUtils.valueToTree(destination.getConfig());
     return secretFieldsOf(destination, config).stream()
-        .anyMatch(field -> PASSWORD_MASK.equals(config.at(field).textValue()));
+        .anyMatch(field -> PASSWORD_MASK.equals(config.at(field).asText(null)));
   }
 
   /**
@@ -135,7 +135,13 @@ public final class DestinationSecrets {
     for (int position = 0; position < incoming.size(); position++) {
       SubscriptionDestination destination = incoming.get(position);
       counterpart(stored, destination, position)
-          .ifPresent(storedDestination -> restore(storedDestination, destination));
+          .ifPresent(
+              storedDestination -> {
+                restore(storedDestination, destination);
+                if (destination.getId() == null) {
+                  destination.withId(storedDestination.getId());
+                }
+              });
     }
   }
 
@@ -145,9 +151,9 @@ public final class DestinationSecrets {
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
     boolean changed = false;
     for (JsonPointer field : secretFieldsOf(updated, updatedConfig)) {
-      String storedValue = storedConfig.at(field).textValue();
+      String storedValue = storedConfig.at(field).asText(null);
       if (storedValue != null
-          && standsForStored(updatedConfig.at(field).textValue(), storedValue)) {
+          && standsForStored(updatedConfig.at(field).asText(null), storedValue)) {
         set(updatedConfig, field, storedValue);
         changed = true;
       }
@@ -229,7 +235,7 @@ public final class DestinationSecrets {
       JsonNode config, List<JsonPointer> fields, UnaryOperator<String> transform) {
     boolean changed = false;
     for (JsonPointer field : fields) {
-      String value = config.at(field).textValue();
+      String value = config.at(field).asText();
       String transformed = transform.apply(value);
       if (!transformed.equals(value)) {
         set(config, field, transformed);

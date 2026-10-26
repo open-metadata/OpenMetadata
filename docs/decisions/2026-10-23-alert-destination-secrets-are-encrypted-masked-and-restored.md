@@ -1,7 +1,7 @@
 # An alert destination's endpoint, header values and credentials are encrypted at rest, masked in every response, and restored from the stored alert when the mask is sent back
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial)
+- **Revisions:** v1 2026-10-23 (initial); v2 2026-10-26 (bind stored OAuth2 test credentials to their token URL)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `DestinationSecretsTest`, `DestinationSecretGuardsTest`, `EventSubscriptionResourceIT#test_destinationSecretsAreMaskedEncryptedAndRestored`
 - **Related:** ADR:2026-10-20-mcp-responses-mask-stored-credentials
@@ -33,8 +33,9 @@ mask back, decrypt only at the point of use.
   nothing. A mask with no stored value, ciphertext that is not the stored value, and a PATCH `copy`
   or `move` of a stored secret into another field are refused with 400.
 - A test send of a destination that carries masks uses the stored secrets, only for a caller
-  allowed to edit the alert that holds them, and only when every secret is the stored one; a
-  destination whose credentials changed is tested once all of them are entered.
+  allowed to edit the alert that holds them, and only when every secret and the OAuth2 token URL
+  are the stored ones; a destination whose credentials or token URL changed is tested once all
+  credentials are entered.
 - Changed destinations are compared with their secrets decrypted, so a stored destination an
   earlier release accepted is still not re-validated when the alert is otherwise edited.
 

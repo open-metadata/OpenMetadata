@@ -42,6 +42,7 @@ public final class DestinationSecretGuards {
       "Destination %s is tested with its stored credentials; to test changed credentials, enter every one of them";
   private static final String COPIED_MESSAGE =
       "A destination secret cannot be copied or moved out of its field; it was found at '%s'";
+  private static final JsonPointer TOKEN_URL = JsonPointer.compile("/authType/tokenUrl");
   private static final List<String> SERVER_SET_FIELDS =
       List.of("changeDescription", "incrementalChangeDescription", "updatedBy");
 
@@ -79,7 +80,7 @@ public final class DestinationSecretGuards {
       firstSecret(
               destination,
               (field, value) ->
-                  Fernet.isTokenized(value) && !value.equals(storedConfig.at(field).textValue()))
+                  Fernet.isTokenized(value) && !value.equals(storedConfig.at(field).asText(null)))
           .ifPresent(field -> refuse(ENCRYPTED_MESSAGE, destination, field));
     }
   }
@@ -88,8 +89,14 @@ public final class DestinationSecretGuards {
   public static void requireSecretsAsStored(
       SubscriptionDestination stored, SubscriptionDestination submitted) {
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
-    firstSecret(submitted, (field, value) -> !value.equals(storedConfig.at(field).textValue()))
+    firstSecret(submitted, (field, value) -> !value.equals(storedConfig.at(field).asText(null)))
         .ifPresent(field -> refuse(CHANGED_FOR_TEST_MESSAGE, submitted, field));
+    // OAuth credentials are sent to the token URL, not the webhook endpoint. Keeping only the
+    // secret fields unchanged would allow a test to send stored credentials to another server.
+    JsonNode submittedConfig = JsonUtils.valueToTree(submitted.getConfig());
+    if (!storedConfig.at(TOKEN_URL).equals(submittedConfig.at(TOKEN_URL))) {
+      refuse(CHANGED_FOR_TEST_MESSAGE, submitted, TOKEN_URL);
+    }
   }
 
   /**
@@ -125,7 +132,7 @@ public final class DestinationSecretGuards {
       SubscriptionDestination destination, SecretTest test) {
     JsonNode config = JsonUtils.valueToTree(destination.getConfig());
     return DestinationSecrets.secretFieldsOf(destination, config).stream()
-        .filter(field -> test.fails(field, config.at(field).textValue()))
+        .filter(field -> test.fails(field, config.at(field).asText()))
         .findFirst();
   }
 
@@ -138,7 +145,7 @@ public final class DestinationSecretGuards {
     for (SubscriptionDestination destination : listOrEmpty(original.getDestinations())) {
       JsonNode config = JsonUtils.valueToTree(destination.getConfig());
       DestinationSecrets.secretFieldsOf(destination, config)
-          .forEach(field -> secrets.add(config.at(field).textValue()));
+          .forEach(field -> secrets.add(config.at(field).asText()));
     }
     secrets.removeIf(secret -> secret.isBlank() || PASSWORD_MASK.equals(secret));
     return secrets;
@@ -158,6 +165,8 @@ public final class DestinationSecretGuards {
     if (node.isTextual()) {
       String text = node.textValue();
       found = values.stream().anyMatch(text::contains) ? Optional.of(pointer) : found;
+    } else if (node.isValueNode() && !node.isNull()) {
+      found = values.contains(node.asText()) ? Optional.of(pointer) : found;
     } else if (node.isArray()) {
       for (int i = 0; i < node.size() && found.isEmpty(); i++) {
         found = findText(node.get(i), pointer.appendIndex(i), values);

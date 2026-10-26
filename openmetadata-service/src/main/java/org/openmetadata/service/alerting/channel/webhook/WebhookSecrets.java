@@ -34,22 +34,22 @@ public final class WebhookSecrets {
 
   private WebhookSecrets() {}
 
-  /** The locations, in this configuration, of the secrets it carries a text value for. */
+  /** The locations of secrets, including scalar values the webhook parser coerces to strings. */
   public static List<JsonPointer> fieldsIn(JsonNode config) {
     List<JsonPointer> fields = new ArrayList<>();
     if (config != null && config.isObject()) {
-      addIfText(fields, config, ENDPOINT);
+      addIfScalar(fields, config, ENDPOINT);
       config
           .path(HEADERS.last().getMatchingProperty())
           .properties()
-          .forEach(header -> addIfText(fields, config, HEADERS.appendProperty(header.getKey())));
-      AUTHENTICATION.forEach(pointer -> addIfText(fields, config, pointer));
+          .forEach(header -> addIfScalar(fields, config, HEADERS.appendProperty(header.getKey())));
+      AUTHENTICATION.forEach(pointer -> addIfScalar(fields, config, pointer));
     }
     return List.copyOf(fields);
   }
 
-  private static void addIfText(List<JsonPointer> fields, JsonNode config, JsonPointer pointer) {
-    if (config.at(pointer).isTextual()) {
+  private static void addIfScalar(List<JsonPointer> fields, JsonNode config, JsonPointer pointer) {
+    if (config.at(pointer).isValueNode() && !config.at(pointer).isNull()) {
       fields.add(pointer);
     }
   }
