@@ -27,6 +27,7 @@ import { render } from 'vitest-browser-react';
 import AuthenticatedAppRouter from '../../components/AppRouter/AuthenticatedAppRouter';
 import ApplicationsProvider from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
+import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from '../../context/PermissionProvider/PermissionProvider';
 import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { ThemeProvider as UntitledUIThemeProvider } from '../../context/UntitledUIThemeProvider/theme-provider';
@@ -135,9 +136,11 @@ export const renderApp = (url: string, user: User = ADMIN_USER) => {
     <AppProviders>
       <PermissionProvider>
         <ApplicationsProvider>
-          <AirflowStatusProvider>
-            <AuthenticatedAppRouter />
-          </AirflowStatusProvider>
+          <AsyncDeleteProvider>
+            <AirflowStatusProvider>
+              <AuthenticatedAppRouter />
+            </AirflowStatusProvider>
+          </AsyncDeleteProvider>
         </ApplicationsProvider>
       </PermissionProvider>
     </AppProviders>

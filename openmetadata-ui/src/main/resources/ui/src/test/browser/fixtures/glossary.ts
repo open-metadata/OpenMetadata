@@ -71,7 +71,10 @@ export const serveGlossary = () =>
     }),
     http.get('/api/v1/search/query', ({ request }) => {
       const params = new URL(request.url).searchParams;
-      if (params.get('getHierarchy') !== 'true') {
+      if (
+        params.get('index') !== 'glossaryTerm' ||
+        params.get('getHierarchy') !== 'true'
+      ) {
         return undefined;
       }
       const children = matching(params.get('q') ?? '');

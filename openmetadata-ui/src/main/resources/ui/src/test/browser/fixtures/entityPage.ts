@@ -82,11 +82,14 @@ export interface EntityServer<T> {
   votes: QueryVote[];
   followed: string[];
   unfollowed: string[];
+  /** Each async DELETE's query string (`?hardDelete=…&recursive=…`), in order. */
+  deletes: string[];
 }
 
 type Voted = {
   votes?: Votes;
   followers?: EntityReference[];
+  deleted?: boolean;
 };
 
 const without = (refs: EntityReference[] = [], id: string) =>
@@ -137,12 +140,36 @@ export const serveEntity = <T extends { id: string }>(
     votes: [],
     followed: [],
     unfollowed: [],
+    deletes: [],
   };
+  let hardDeleted = false;
   const base = `/api/v1/${endpoint}`;
 
   worker.use(
-    http.get(`${base}/name/:fqn`, () => HttpResponse.json(stored)),
+    http.get(`${base}/name/:fqn`, () =>
+      hardDeleted
+        ? HttpResponse.json({ code: 404 }, { status: 404 })
+        : HttpResponse.json(stored)
+    ),
     http.get(`${base}/:id`, () => HttpResponse.json(stored)),
+    // EntityResource.deleteByIdAsync: a soft delete marks the entity
+    // deleted, a hard one removes it; either way the job runs later.
+    http.delete(`${base}/async/:id`, ({ request }) => {
+      const { search, searchParams } = new URL(request.url);
+      server.deletes.push(search);
+      hardDeleted = searchParams.get('hardDelete') === 'true';
+      stored = { ...stored, deleted: true };
+
+      return HttpResponse.json({
+        jobId: `delete-job-${server.deletes.length}`,
+        message: 'Delete operation initiated',
+      });
+    }),
+    http.put(`${base}/restore`, () => {
+      stored = { ...stored, deleted: false };
+
+      return HttpResponse.json(stored);
+    }),
     http.patch(`${base}/:id`, async ({ request }) => {
       const ops = (await request.json()) as Operation[];
       server.patches.push(ops);

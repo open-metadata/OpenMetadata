@@ -51,3 +51,51 @@ export const serveTiers = () =>
       )
     )
   );
+
+/** Seeded Certification classification (json/data/tags/certification.json). */
+export const CERTIFICATIONS: Tag[] = ['Bronze', 'Silver', 'Gold'].map(
+  (name, i) => ({
+    ...tag('Certification', name, 31 + i),
+    style: { iconURL: `${name}Certification.svg` },
+  })
+);
+
+type BoolQuery = { query?: { bool?: { must?: unknown[] } } };
+
+/** Only the picker requires the class; the tag picker excludes it (`must_not`). */
+const isCertificationQuery = (queryFilter: string | null) =>
+  ((JSON.parse(queryFilter ?? '{}') as BoolQuery).query?.bool?.must ?? []).some(
+    (clause) =>
+      JSON.stringify(clause) ===
+      JSON.stringify({
+        term: { 'classification.name.keyword': 'Certification' },
+      })
+  );
+
+/**
+ * The certification picker's search: `index=tag` narrowed to the
+ * Certification classification. Other tag searches fall through to the
+ * test's `serveSearch`. Records each query in `queries`.
+ */
+export const serveCertifications = (queries: URLSearchParams[]) =>
+  worker.use(
+    http.get('/api/v1/search/query', ({ request }) => {
+      const params = new URL(request.url).searchParams;
+      if (!isCertificationQuery(params.get('query_filter'))) {
+        return undefined;
+      }
+      queries.push(params);
+      const term = (params.get('q') ?? '').replace(/\*/g, '').toLowerCase();
+      const hits = CERTIFICATIONS.filter((c) =>
+        c.name.toLowerCase().includes(term)
+      );
+
+      return HttpResponse.json({
+        hits: {
+          total: { value: hits.length },
+          hits: hits.map((c) => ({ _index: 'tag', _id: c.id, _source: c })),
+        },
+        aggregations: {},
+      });
+    })
+  );

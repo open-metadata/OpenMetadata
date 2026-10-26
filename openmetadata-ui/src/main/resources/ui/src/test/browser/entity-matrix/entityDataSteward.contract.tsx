@@ -25,6 +25,8 @@ import { beforeEach, describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { DATA_STEWARD } from '../fixtures/personas';
 import {
+  addReplaceRemoveTeamOwner,
+  addReplaceRemoveUserOwners,
   addUpdateRemoveChildDescription,
   addUpdateRemoveGlossaryTerms,
   addUpdateRemoveTags,
@@ -34,20 +36,14 @@ import {
   entityConfig,
   EntityLabel,
   EntityPage,
-  expectOwners,
   followThenUnfollow,
-  header,
   mountEntityPage,
   openChildrenTab,
-  openOwnerPicker,
   setReplaceClearTier,
-  setUserOwners,
   tagFqns,
-  TEAMS,
   updateDescription,
+  updateDisplayName,
   upVoteThenDownVote,
-  USERS,
-  usersPanel,
 } from './entityMatrix';
 
 export const describeDataStewardFlows = (label: EntityLabel) => {
@@ -61,58 +57,11 @@ export const describeDataStewardFlows = (label: EntityLabel) => {
       entity = await mountEntityPage(config, DATA_STEWARD);
     });
 
-    test('user owners: add two, replace with a third, remove', async () => {
-      await setUserOwners([USERS[0], USERS[2]]);
-      await expectOwners(server(), [USERS[0], USERS[2]]);
+    test('user owners: add two, replace with a third, remove', () =>
+      addReplaceRemoveUserOwners(server()));
 
-      await setUserOwners([USERS[1]]);
-      await expectOwners(server(), [USERS[1]]);
-
-      await expect
-        .element(header().getByTestId(USERS[0].displayName))
-        .not.toBeInTheDocument();
-
-      await openOwnerPicker('Users');
-      await userEvent.click(usersPanel().getByTestId('clear-all-button'));
-      await userEvent.click(
-        usersPanel().getByTestId('selectable-list-update-btn')
-      );
-      await expectOwners(server(), []);
-
-      await expect
-        .element(header().getByTestId(USERS[1].displayName))
-        .not.toBeInTheDocument();
-      expect(server().patches).toHaveLength(3);
-    });
-
-    test('team owner: add, replace, remove', async () => {
-      for (const owner of TEAMS) {
-        await openOwnerPicker('Teams');
-        await userEvent.fill(
-          page.getByTestId('owner-select-teams-search-bar'),
-          owner.displayName
-        );
-        await userEvent.click(
-          page
-            .getByTestId('owner-option')
-            .filter({ hasText: owner.displayName })
-        );
-        await expectOwners(server(), [owner]);
-      }
-
-      await expect
-        .element(header().getByTestId(TEAMS[0].displayName))
-        .not.toBeInTheDocument();
-
-      await userEvent.click(page.getByTestId('edit-owner'));
-      await userEvent.click(page.getByTestId('remove-owner'));
-      await expectOwners(server(), []);
-
-      await expect
-        .element(header().getByTestId(TEAMS[1].displayName))
-        .not.toBeInTheDocument();
-      expect(server().patches).toHaveLength(3);
-    });
+    test('team owner: add, replace, remove', () =>
+      addReplaceRemoveTeamOwner(server()));
 
     test('tier: add, replace, remove', () =>
       setReplaceClearTier(server(), ['Tier1', 'Tier2']));
@@ -142,29 +91,7 @@ export const describeDataStewardFlows = (label: EntityLabel) => {
     test('follow, then un-follow', () =>
       followThenUnfollow(server(), DATA_STEWARD.user.id));
 
-    test('display name: update', async () => {
-      const displayName = `Cypress ${server().current().name} updated`;
-
-      await userEvent.click(page.getByTestId('manage-button'));
-      await userEvent.click(page.getByTestId('rename-button'));
-
-      await expect
-        .element(page.getByRole('textbox', { name: /^Name/ }))
-        .toBeDisabled();
-
-      await userEvent.fill(
-        page.getByRole('textbox', { name: /Display Name/ }),
-        displayName
-      );
-      await userEvent.click(page.getByTestId('save-button'));
-
-      await expect
-        .element(page.getByTestId('entity-header-display-name'))
-        .toHaveTextContent(displayName);
-      expect(server().patches).toEqual([
-        [{ op: 'add', path: '/displayName', value: displayName }],
-      ]);
-    });
+    test('display name: update', () => updateDisplayName(server()));
 
     describe.runIf(config.children)('children', () => {
       const { rowId = '', displayName } = config.children ?? {};

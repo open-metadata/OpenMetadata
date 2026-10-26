@@ -31,6 +31,7 @@ import {
   TagLabel,
 } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
+import { AssetCertification } from '../../../generated/type/assetCertification';
 import {
   EntityServer,
   serveEntity,
@@ -53,13 +54,17 @@ import {
   makeWorksheet,
   UNTOUCHED,
 } from '../fixtures/dataAssets';
+import { AnnouncementServer } from '../fixtures/announcements';
+import { DATA_PRODUCTS, DOMAINS, serveDomains } from '../fixtures/domains';
 import { GLOSSARY_TERMS, serveGlossary } from '../fixtures/glossary';
 import { Persona, servePersona } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
 import {
+  CERTIFICATIONS,
   CLASSIFICATION_TAGS,
   PERSONAL_DATA_PERSONAL,
   PII_NONE,
+  serveCertifications,
   serveTiers,
 } from '../fixtures/tags';
 import {
@@ -116,6 +121,10 @@ export interface EntityLike {
   displayName?: string;
   tags?: TagLabel[];
   owners?: EntityReference[];
+  domains?: EntityReference[];
+  dataProducts?: EntityReference[];
+  certification?: AssetCertification;
+  deleted?: boolean;
 }
 
 /** A child row (column, field, task, feature) as the server holds it. */
@@ -149,13 +158,19 @@ export type EntityLabel =
   | 'Spreadsheet'
   | 'Worksheet';
 
-export interface EntityConfig {
-  label: EntityLabel;
+/** How one details page is served: its URL, API endpoint and fixture. */
+export interface PageConfig {
   url: string;
   endpoint: string;
   make: () => EntityLike;
   /** Mocks the page's other calls; returns the first child's store if it has children. */
   serveExtras: (server: EntityServer<EntityLike>) => ChildServer | void;
+  /** What the user does once the page is up to reach the widgets (e.g. open a tab). */
+  afterMount?: () => Promise<void>;
+}
+
+export interface EntityConfig extends PageConfig {
+  label: EntityLabel;
   /** Mirrors the Playwright class's `childrenTabId`; absent = no child tests. */
   children?: {
     tabId: string;
@@ -419,6 +434,86 @@ export const expectOwners = async (
   }
 };
 
+/** Sets two user owners, replaces them with a third, then removes all. */
+export const addReplaceRemoveUserOwners = async (
+  server: EntityServer<EntityLike>
+) => {
+  await setUserOwners([USERS[0], USERS[2]]);
+  await expectOwners(server, [USERS[0], USERS[2]]);
+
+  await setUserOwners([USERS[1]]);
+  await expectOwners(server, [USERS[1]]);
+
+  await expect
+    .element(header().getByTestId(USERS[0].displayName))
+    .not.toBeInTheDocument();
+
+  await openOwnerPicker('Users');
+  await userEvent.click(usersPanel().getByTestId('clear-all-button'));
+  await userEvent.click(usersPanel().getByTestId('selectable-list-update-btn'));
+  await expectOwners(server, []);
+
+  await expect
+    .element(header().getByTestId(USERS[1].displayName))
+    .not.toBeInTheDocument();
+  expect(server.patches).toHaveLength(3);
+};
+
+/** Sets one team owner, replaces it with another, then removes it. */
+export const addReplaceRemoveTeamOwner = async (
+  server: EntityServer<EntityLike>
+) => {
+  for (const owner of TEAMS) {
+    await openOwnerPicker('Teams');
+    await userEvent.fill(
+      page.getByTestId('owner-select-teams-search-bar'),
+      owner.displayName
+    );
+    await userEvent.click(
+      page.getByTestId('owner-option').filter({ hasText: owner.displayName })
+    );
+    await expectOwners(server, [owner]);
+  }
+
+  await expect
+    .element(header().getByTestId(TEAMS[0].displayName))
+    .not.toBeInTheDocument();
+
+  await userEvent.click(page.getByTestId('edit-owner'));
+  await userEvent.click(page.getByTestId('remove-owner'));
+  await expectOwners(server, []);
+
+  await expect
+    .element(header().getByTestId(TEAMS[1].displayName))
+    .not.toBeInTheDocument();
+  expect(server.patches).toHaveLength(3);
+};
+
+/** Renames the entity's display name from the manage menu; the name stays locked. */
+export const updateDisplayName = async (server: EntityServer<EntityLike>) => {
+  const displayName = `Cypress ${server.current().name} updated`;
+
+  await userEvent.click(page.getByTestId('manage-button'));
+  await userEvent.click(page.getByTestId('rename-button'));
+
+  await expect
+    .element(page.getByRole('textbox', { name: /^Name/ }))
+    .toBeDisabled();
+
+  await userEvent.fill(
+    page.getByRole('textbox', { name: /Display Name/ }),
+    displayName
+  );
+  await userEvent.click(page.getByTestId('save-button'));
+
+  await expect
+    .element(page.getByTestId('entity-header-display-name'))
+    .toHaveTextContent(displayName);
+  expect(server.patches).toEqual([
+    [{ op: 'add', path: '/displayName', value: displayName }],
+  ]);
+};
+
 export const DESCRIPTION =
   'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus varius quam eu mi ullamcorper, in porttitor magna mollis.';
 
@@ -447,6 +542,25 @@ const toggleTag = async (scope: Scope, fqn: string) => {
     page.getByTestId('classification-tag-picker-search'),
     fqn
   );
+  // Let the debounced search land before picking: its results re-render the
+  // tree, and a click on the unfiltered list can be lost in that re-render.
+  const name = fqn.split('.').pop() ?? fqn;
+
+  await expect
+    .poll(() =>
+      searches.some(
+        (q) => q.get('index') === 'tag' && q.get('q')?.includes(name)
+      )
+    )
+    .toBe(true);
+
+  for (const other of CLASSIFICATION_TAGS) {
+    if (other.fullyQualifiedName !== fqn) {
+      await expect
+        .element(page.getByTestId(`tree-node-${other.fullyQualifiedName}`))
+        .not.toBeInTheDocument();
+    }
+  }
   await userEvent.click(page.getByTestId(`tree-node-${fqn}`));
   await userEvent.click(page.getByTestId('update-btn'));
 
@@ -576,7 +690,7 @@ export interface EntityPage {
  * answered for `persona`, then opens the page signed in as that persona.
  */
 export const mountEntityPage = async (
-  config: EntityConfig,
+  config: PageConfig,
   persona: Persona
 ): Promise<EntityPage> => {
   serveSeededEntityRules();
@@ -585,8 +699,11 @@ export const mountEntityPage = async (
     user: USERS,
     team: TEAMS,
     tag: CLASSIFICATION_TAGS,
+    dataProduct: DATA_PRODUCTS,
   });
+  serveCertifications(searches);
   serveGlossary();
+  serveDomains();
   const server = serveEntity(config.endpoint, config.make(), {
     ...persona.user,
     type: 'user',
@@ -597,7 +714,9 @@ export const mountEntityPage = async (
     const screen = await renderApp(config.url, persona.user);
 
     // A worker's first mount also loads the page's lazy route chunks.
-    await expect.element(header(), { timeout: 30_000 }).toBeVisible();
+    await expect.element(header(), { timeout: 60_000 }).toBeVisible();
+
+    await config.afterMount?.();
 
     return screen;
   };
@@ -611,6 +730,393 @@ export const mountEntityPage = async (
       screen = await open();
     },
   };
+};
+
+const fqns = (refs: EntityReference[] = []) =>
+  refs.map((ref) => ref.fullyQualifiedName);
+
+/** Picks (or, if picked, un-picks) `domain` in the single-select domain picker. */
+const toggleDomain = async (domain: (typeof DOMAINS)[number]) => {
+  await userEvent.click(page.getByTestId('add-domain'));
+  await userEvent.fill(
+    page.getByTestId('domain-selectable-tree-search'),
+    domain.name
+  );
+  await userEvent.click(
+    page.getByTestId(`tree-node-${domain.fullyQualifiedName}`)
+  );
+
+  await expect
+    .element(page.getByTestId('domain-selectable-tree-search'))
+    .not.toBeInTheDocument();
+};
+
+const dataProductsPanel = () => page.getByTestId('KnowledgePanel.DataProducts');
+
+/** Toggles `products` in the data product picker and saves. */
+const toggleDataProducts = async (products: typeof DATA_PRODUCTS) => {
+  const container = dataProductsPanel().getByTestId('data-products-container');
+  await userEvent.click(
+    container
+      .getByTestId('add-data-product')
+      .or(container.getByTestId('edit-button'))
+      .first()
+  );
+  const picker = page.getByTestId('drop-down-menu');
+  for (const product of products) {
+    await userEvent.fill(
+      picker.getByTestId('search-input'),
+      product.displayName ?? ''
+    );
+    await userEvent.click(picker.getByTestId(product.fullyQualifiedName ?? ''));
+  }
+  await userEvent.click(picker.getByTestId('update-btn'));
+
+  await expect.element(picker).not.toBeInTheDocument();
+};
+
+/**
+ * The spec's domain flow: per domain, set it, add data products of that
+ * domain, remove them, then clear the domain — asserting after each write what
+ * the server holds and what the page shows. With the seeded "Data Product
+ * Domain Validation" rule on, the data product search is narrowed to the
+ * entity's domain.
+ */
+export const domainWithDataProducts = async (
+  server: EntityServer<EntityLike>
+) => {
+  const dataProducts = () => fqns(server.current().dataProducts);
+  const expectDataProducts = async (want: typeof DATA_PRODUCTS) => {
+    await expect
+      .poll(dataProducts)
+      .toEqual(want.map((p) => p.fullyQualifiedName));
+
+    for (const product of DATA_PRODUCTS) {
+      const chip = dataProductsPanel().getByTestId(
+        `data-product-${product.fullyQualifiedName}`
+      );
+      await (want.includes(product)
+        ? expect.element(chip).toBeVisible()
+        : expect.element(chip).not.toBeInTheDocument());
+    }
+  };
+  const plan: [(typeof DOMAINS)[number], (typeof DATA_PRODUCTS)[]][] = [
+    [DOMAINS[0], [[DATA_PRODUCTS[0]], [DATA_PRODUCTS[1]]]],
+    [DOMAINS[1], [[DATA_PRODUCTS[2]]]],
+  ];
+
+  for (const [domain, additions] of plan) {
+    await toggleDomain(domain);
+
+    await expect
+      .poll(() => fqns(server.current().domains))
+      .toEqual([domain.fullyQualifiedName]);
+    await expect
+      .element(page.getByTestId(`domain-tag-${domain.fullyQualifiedName}`))
+      .toHaveTextContent(domain.displayName ?? '');
+
+    searches.splice(0);
+    const added: typeof DATA_PRODUCTS = [];
+    for (const products of additions) {
+      await toggleDataProducts(products);
+      added.push(...products);
+      await expectDataProducts(added);
+    }
+    const narrowed = searches.filter((q) => q.get('index') === 'dataProduct');
+
+    expect(narrowed.length).toBeGreaterThan(0);
+
+    for (const query of narrowed) {
+      expect(query.get('query_filter')).toContain(domain.fullyQualifiedName);
+    }
+
+    for (const product of [...added]) {
+      await toggleDataProducts([product]);
+      added.splice(added.indexOf(product), 1);
+      await expectDataProducts(added);
+    }
+
+    await toggleDomain(domain);
+
+    await expect.poll(() => fqns(server.current().domains)).toEqual([]);
+    await expect
+      .element(page.getByTestId('no-domain-text'))
+      .toHaveTextContent('--');
+  }
+};
+
+const DAY = 86_400_000;
+
+/** Picks `date` in the core DatePicker opened by `trigger`, paging months forward. */
+const pickDate = async (trigger: Locator, date: Date) => {
+  await userEvent.click(trigger);
+  const calendar = page
+    .getByRole('dialog')
+    .filter({ has: page.getByRole('grid') });
+  const heading = calendar.getByRole('heading');
+  const month = date.toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  await expect.element(heading).toBeVisible();
+
+  while (!heading.element().textContent?.includes(month)) {
+    const shown = heading.element().textContent ?? '';
+    await userEvent.click(calendar.getByCSS('button[slot="next"]'));
+
+    await expect.element(heading).not.toHaveTextContent(shown);
+  }
+  await userEvent.click(
+    calendar.getByRole('gridcell').getByRole('button', {
+      name: new RegExp(`(^|\\D)${date.getDate()}(\\D|$)`),
+      disabled: false,
+    })
+  );
+  await userEvent.click(calendar.getByRole('button', { name: 'Apply' }));
+
+  await expect.element(calendar).not.toBeInTheDocument();
+};
+
+const openAnnouncements = async () => {
+  await userEvent.click(page.getByTestId('manage-button'));
+  await userEvent.click(page.getByTestId('announcement-button'));
+
+  await expect.element(page.getByTestId('announcement-drawer')).toBeVisible();
+};
+
+const closeAnnouncements = async () => {
+  await userEvent.click(
+    page
+      .getByTestId('announcement-drawer')
+      .getByRole('button', { name: 'Close' })
+  );
+
+  await expect
+    .element(page.getByTestId('announcement-drawer'))
+    .not.toBeInTheDocument();
+};
+
+const NO_ANNOUNCEMENTS =
+  'No Announcements, Click on add announcement to add one.';
+
+/** Adds an announcement running from `fromDay` to `toDay` days out. */
+const addAnnouncement = async (
+  title: string,
+  description: string,
+  [fromDay, toDay]: [number, number]
+) => {
+  await openAnnouncements();
+
+  // Both flows start from none; once listed, the drawer has settled.
+  await expect
+    .element(page.getByTestId('announcement-error'))
+    .toHaveTextContent(NO_ANNOUNCEMENTS);
+
+  const dialog = page.getByTestId('add-announcement-dialog');
+
+  // The drawer may still be sliding in; a click mid-animation can miss.
+  await expect
+    .poll(
+      async () => {
+        if (!dialog.query()) {
+          await userEvent.click(page.getByTestId('add-announcement'));
+        }
+
+        return dialog.query() !== null;
+      },
+      { timeout: 10_000 }
+    )
+    .toBe(true);
+
+  await userEvent.fill(dialog.getByCSS('#title'), title);
+  await pickDate(
+    dialog.getByTestId('startTime').getByRole('button'),
+    new Date(Date.now() + fromDay * DAY)
+  );
+  await pickDate(
+    dialog.getByTestId('endTime').getByRole('button'),
+    new Date(Date.now() + toDay * DAY)
+  );
+  await userEvent.fill(dialog.getByCSS('#description'), description);
+  await userEvent.click(dialog.getByCSS('#announcement-submit'));
+
+  await expect.element(dialog).not.toBeInTheDocument();
+};
+
+/** The created announcement is about the open entity and runs over the picked days. */
+const expectCreated = (
+  announcements: AnnouncementServer,
+  fqn: string,
+  title: string,
+  [fromDay, toDay]: [number, number]
+) => {
+  const [created] = announcements.created;
+  const day = (millis: number) => new Date(millis).toDateString();
+
+  expect(announcements.created).toHaveLength(1);
+  expect(created.displayName).toBe(title);
+  expect(created.entityLink).toContain(`::${fqn}>`);
+  expect([day(created.startTime), day(created.endTime)]).toEqual([
+    day(Date.now() + fromDay * DAY),
+    day(Date.now() + toDay * DAY),
+  ]);
+};
+
+/**
+ * The spec's active announcement: create one running from today, see it on
+ * the entity header after a reload, edit it in the drawer, then delete it.
+ */
+export const announcementLifecycle = async (
+  entity: EntityPage,
+  announcements: AnnouncementServer
+) => {
+  const fqn = String(
+    (entity.server.current() as { fullyQualifiedName?: string })
+      .fullyQualifiedName
+  );
+  const card = () =>
+    page.getByTestId('announcement-drawer').getByTestId('announcement-card');
+
+  await addAnnouncement(
+    'Playwright Test Announcement',
+    'Playwright Test Announcement Description',
+    [0, 5]
+  );
+  expectCreated(announcements, fqn, 'Playwright Test Announcement', [0, 5]);
+  const [{ id }] = announcements.current();
+  await closeAnnouncements();
+  await entity.reload();
+
+  const banner = page.getByTestId('entity-header-announcements');
+
+  await expect
+    .element(banner)
+    .toHaveTextContent(/Playwright Test Announcement/);
+  await expect
+    .element(banner)
+    .toHaveTextContent(/Playwright Test Announcement Description/);
+
+  await openAnnouncements();
+  await userEvent.click(card().getByTestId('announcement-actions'));
+  await userEvent.click(page.getByTestId('announcement-edit-action'));
+  const edit = page.getByTestId('edit-announcement-dialog');
+  await userEvent.fill(
+    edit.getByCSS('#title'),
+    'Edited Playwright Test Announcement'
+  );
+  await userEvent.fill(
+    edit.getByCSS('#description'),
+    'Updated Playwright Test Announcement Description'
+  );
+  await userEvent.click(edit.getByTestId('announcement-submit'));
+
+  await expect.element(edit).not.toBeInTheDocument();
+  await expect
+    .element(card())
+    .toHaveTextContent(/Edited Playwright Test Announcement/);
+  await expect
+    .element(card())
+    .toHaveTextContent(/Updated Playwright Test Announcement Description/);
+  expect(announcements.patches).toHaveLength(1);
+
+  await userEvent.click(card().getByTestId('announcement-actions'));
+  await userEvent.click(page.getByTestId('announcement-delete-action'));
+  const confirm = page.getByTestId('announcement-delete-confirm');
+
+  await expect
+    .element(confirm)
+    .toHaveTextContent(
+      'Are you sure you want to permanently delete this message?'
+    );
+
+  await userEvent.click(confirm.getByTestId('save-button'));
+
+  await expect
+    .element(page.getByTestId('announcement-error'))
+    .toHaveTextContent(NO_ANNOUNCEMENTS);
+  expect(announcements.deletes).toEqual([`${id}?hardDelete=true`]);
+
+  await closeAnnouncements();
+};
+
+/** A scheduled (not yet active) announcement is listed under the Scheduled tab only. */
+export const scheduledAnnouncement = async (
+  entity: EntityPage,
+  announcements: AnnouncementServer
+) => {
+  const fqn = String(
+    (entity.server.current() as { fullyQualifiedName?: string })
+      .fullyQualifiedName
+  );
+  const title = 'Inactive Playwright announcement';
+
+  await addAnnouncement(
+    title,
+    'Inactive Playwright announcement description',
+    [6, 11]
+  );
+  expectCreated(announcements, fqn, title, [6, 11]);
+
+  const drawer = page.getByTestId('announcement-drawer');
+  await userEvent.click(drawer.getByTestId('announcement-status-Scheduled'));
+
+  await expect
+    .element(drawer.getByTestId('announcement-card').filter({ hasText: title }))
+    .toBeVisible();
+
+  await userEvent.click(drawer.getByTestId('announcement-status-Active'));
+
+  await expect
+    .element(page.getByTestId('announcement-error'))
+    .toBeInTheDocument();
+
+  await closeAnnouncements();
+
+  await expect
+    .element(page.getByTestId('entity-header-announcements'))
+    .not.toBeInTheDocument();
+};
+
+/** Sets the Gold certification, replaces it with Silver, then clears it. */
+export const setReplaceClearCertification = async (
+  server: EntityServer<EntityLike>
+) => {
+  const certified = () => server.current().certification?.tagLabel.tagFQN;
+  const picker = () => page.getByTestId('drop-down-menu');
+
+  for (const certification of [CERTIFICATIONS[2], CERTIFICATIONS[1]]) {
+    await userEvent.click(page.getByTestId('edit-certification'));
+    await userEvent.fill(
+      picker().getByTestId('search-input'),
+      certification.name
+    );
+
+    // Wait for the debounced search so it cannot land in the next test.
+    await expect
+      .poll(() =>
+        searches.some((q) => q.get('q')?.includes(certification.name))
+      )
+      .toBe(true);
+
+    await userEvent.click(
+      picker().getByTestId(certification.fullyQualifiedName ?? '')
+    );
+
+    await expect.poll(certified).toBe(certification.fullyQualifiedName);
+    await expect
+      .element(page.getByTestId('certification-label'))
+      .toHaveTextContent(certification.displayName ?? '');
+  }
+
+  await userEvent.click(page.getByTestId('edit-certification'));
+  await userEvent.click(picker().getByTestId('clear-filter-btn'));
+
+  await expect.poll(certified).toBeUndefined();
+  await expect
+    .element(page.getByTestId('certification-label'))
+    .toHaveTextContent('--');
+  expect(server.patches).toHaveLength(3);
 };
 
 /** Sets `tiers[0]`, replaces it with `tiers[1]`, then clears the tier. */

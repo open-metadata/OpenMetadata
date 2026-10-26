@@ -16,6 +16,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { User } from '../../../generated/entity/teams/user';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { worker } from '../msw';
+import { ADMIN_USER } from './user';
 
 /**
  * A persona is what the server would answer for a signed-in user: the user
@@ -34,6 +35,15 @@ export interface Persona {
   /** Allow rules with a `noOwner()` condition. */
   ifNoOwner?: Operation[];
 }
+
+/**
+ * A user with `isAdmin`: PolicyEvaluator answers every operation `allow`
+ * without consulting any policy.
+ */
+export const ADMIN: Persona = {
+  user: ADMIN_USER,
+  allowed: [],
+};
 
 /**
  * DataSteward role (DataStewardPolicy) plus what every user inherits from the
@@ -177,6 +187,9 @@ const accessFor = (
   operation: Operation,
   entity?: Owned
 ) => {
+  if (persona.user.isAdmin) {
+    return 'allow';
+  }
   const unconditional = [
     ...persona.allowed,
     ...(persona.allowedOn?.[resource] ?? []),
