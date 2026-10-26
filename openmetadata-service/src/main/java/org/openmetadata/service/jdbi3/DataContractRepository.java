@@ -183,9 +183,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       dataContract.setCreatedAt(dataContract.getUpdatedAt());
       dataContract.setCreatedBy(dataContract.getUpdatedBy());
       // A new contract has no result or history yet, and is never a virtual inherited one. Its
-      // suite reference is dropped only when another contract owns the suite: a PUT that creates
-      // runs prepare twice, and the first pass has already made the contract's own suite.
-      releaseForeignTestSuite(dataContract);
+      // suite reference is kept for createOrUpdateDataContractTestSuite to check: a PUT that
+      // creates runs prepare twice, and the first pass has already made the contract's own suite.
       dataContract.setLatestResult(null);
       dataContract.setContractUpdates(null);
       dataContract.setInherited(null);
@@ -245,7 +244,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
-    unlinkForeignTestSuite(original);
+    unlinkForeignTestSuite(original, updated);
     postCreateOrUpdate(updated);
   }
 
@@ -317,10 +316,14 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   /**
    * Removes the link from a suite the contract used to reference but does not own, so that suite's
    * runs stop writing this contract's results. Runs after the update, not in prepare(), because a
-   * PUT prepares before it authorizes.
+   * PUT prepares before it authorizes. Follow, vote and result updates also reach postUpdate, so
+   * it acts only when this update dropped the reference.
    */
-  private void unlinkForeignTestSuite(DataContract original) {
-    TestSuite foreign = findForeignTestSuite(original);
+  private void unlinkForeignTestSuite(DataContract original, DataContract updated) {
+    boolean referenceDropped =
+        !Objects.equals(
+            EntityUtil.getId(original.getTestSuite()), EntityUtil.getId(updated.getTestSuite()));
+    TestSuite foreign = referenceDropped ? findForeignTestSuite(original) : null;
     if (foreign != null) {
       deleteRelationship(
           foreign.getId(),
@@ -867,8 +870,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     try {
       if (update) { // If we're running an update, fetch the existing test suite information
         restoreExistingDataContract(dataContract);
-        releaseForeignTestSuite(dataContract);
       }
+      releaseForeignTestSuite(dataContract);
 
       // If we don't have quality expectations or a test suite, we don't need to create one
       if (nullOrEmpty(dataContract.getQualityExpectations())
@@ -902,15 +905,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
+  // Include.ALL, as the upsert itself uses: a PUT on a soft-deleted contract restores it under its
+  // own id, so it must keep that contract's suite rather than make one named after a fresh id.
   private void restoreExistingDataContract(DataContract dataContract) {
     setFullyQualifiedName(dataContract);
     Optional<DataContract> existing =
         getByNameOrNull(
-            null,
-            dataContract.getFullyQualifiedName(),
-            Fields.EMPTY_FIELDS,
-            Include.NON_DELETED,
-            false);
+            null, dataContract.getFullyQualifiedName(), Fields.EMPTY_FIELDS, Include.ALL, false);
     dataContract.setTestSuite(existing.map(DataContract::getTestSuite).orElse(null));
     dataContract.setLatestResult(existing.map(DataContract::getLatestResult).orElse(null));
     dataContract.setId(existing.map(DataContract::getId).orElse(dataContract.getId()));

@@ -8896,6 +8896,29 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         .anyMatch(link -> contract.getId().equals(link.getId()));
   }
 
+  /** A PUT that restores a soft-deleted contract keeps the suite named after that contract. */
+  @Test
+  void testPutRestoringASoftDeletedContractKeepsItsOwnSuite(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    TestCase test = rowCountTest(client, ns, table, "restored_tc");
+    CreateDataContract request =
+        new CreateDataContract()
+            .withName(ns.prefix("restored"))
+            .withEntity(table.getEntityReference())
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withQualityExpectations(List.of(test.getEntityReference()));
+    DataContract created = createEntity(request);
+    deleteEntity(created.getId().toString());
+
+    DataContract restored = client.dataContracts().createOrUpdate(request);
+
+    assertEquals(created.getId(), restored.getId());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
+    TestSuite suite = client.testSuites().get(restored.getTestSuite().getId().toString(), "");
+    assertEquals(created.getId().toString(), suite.getName());
+  }
+
   private DataContract contractWithExpectations(
       TestNamespace ns, Table table, String name, List<TestCase> tests) {
     return createEntity(

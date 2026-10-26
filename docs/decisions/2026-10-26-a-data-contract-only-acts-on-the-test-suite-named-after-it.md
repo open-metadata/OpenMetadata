@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-10-26 (initial)
 - **Deciders:** Vishnu Jain
 - **Guard:** `DataContractTestSuiteOwnershipTest`, `DataContractResourceIT`
-  (`testUpdateReleasesAnotherContractsTestSuite`, `testHardDeleteLeavesAnotherContractsTestSuite`),
+  (`testUpdateReleasesAnotherContractsTestSuite`, `testHardDeleteLeavesAnotherContractsTestSuite`,
+  `testPutRestoringASoftDeletedContractKeepsItsOwnSuite`),
   `CreateEntityToolTest` (`aDataContractCannotBeGivenFieldsItsRepositoryOwns`)
 
 ## Context
@@ -30,6 +31,8 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
   `CONTAINS` link back to the contract, so the suite's runs stop writing this contract's results.
   A contract with expectations then gets its own suite. The link is removed in `postUpdate`, after
   the update is authorized and stored, because a PUT runs `prepare` before it authorizes.
+- A PUT that restores a soft-deleted contract finds it with `Include.ALL`, as the upsert does, so
+  it keeps that contract's id and suite instead of making a suite named after a fresh id.
 - Only `prepare` creates a contract's suite, since it also stores the reference. `postCreate` and
   `postUpdate` only find it: a result update reaches them without `prepare`, and a suite created
   there would not be stored on the contract.
@@ -40,5 +43,6 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
 - Contract suites must keep being named after the contract id. Changing that needs a new record and
   a migration of the stored references.
 - A contract that already stored another suite's reference keeps it, and the suite's link back,
-  until its next update or hard delete (which removes all of the contract's links). Until then,
-  validating it aborts with "no test suite defined" instead of running that suite's pipeline.
+  until its next update (follow, vote and result updates leave both alone) or hard delete, which
+  removes all of the contract's links. Until then, validating it aborts with "does not have a test
+  suite defined" instead of running that suite's pipeline.
