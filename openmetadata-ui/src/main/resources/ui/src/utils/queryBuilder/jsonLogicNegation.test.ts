@@ -107,6 +107,24 @@ describe('fromEngineJsonLogic', () => {
   });
 });
 
+// Written through the API under an explicit NOT, which the editor cannot produce: their per-element meaning was meant.
+const apiNegations: Array<[string, Record<string, unknown>]> = [
+  ['every tag is A', { '!': tagIsNot('A') }],
+  ['every tag is in [A]', { '!': tagNotIn(['A']) }],
+  ['no tag is unset', { '!': tagNotSet }],
+  ['a NOT around a per-element row', { '!': { and: [tagIsNot('A')] } }],
+];
+
+describe('rules under an explicit NOT', () => {
+  it.each(apiNegations)('saves "%s" as written', (_, rule) => {
+    expect(toEngineJsonLogic(rule)).toEqual(rule);
+  });
+
+  it.each(apiNegations)('loads "%s" as written', (_, rule) => {
+    expect(fromEngineJsonLogic(rule)).toEqual(rule);
+  });
+});
+
 describe('JSON Logic negation through the builder', () => {
   const config = buildQueryBuilderConfig({
     outputType: SearchOutputType.JSONLogic,
@@ -177,4 +195,18 @@ describe('JSON Logic negation through the builder', () => {
       rulesOf({ '!': { and: [tagIs('A'), tagIs('B')] } }).negatedGroups
     ).toEqual(['group']);
   });
+
+  it.each(apiNegations)(
+    'saves "%s" back with the meaning it was stored with',
+    (_, rule) => {
+      const [inner] = Object.values(rule);
+      const asGroup = (inner as Record<string, unknown>).and
+        ? rule
+        : { '!': { and: [inner] } };
+
+      expect(JSON.parse(toJsonLogicQuery(load(rule), config).value)).toEqual(
+        asGroup
+      );
+    }
+  );
 });

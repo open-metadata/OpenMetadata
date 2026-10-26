@@ -54,11 +54,9 @@ final class NegatedListRuleRewriter {
     return rewritten == null || rewritten.equals(parsed.get()) ? rule : rewritten.toString();
   }
 
-  /** Whether {@code rule} already negates a whole list, the shape {@link #rewrite} produces. */
-  static boolean hasNegatedList(final String rule) {
-    return parse(rule).map(NegatedListRuleRewriter::hasNegatedList).orElse(false);
-  }
-
+  // An explicit `!` is left as written: the editor offers no NOT, so one came through the API, and
+  // a
+  // per-element condition under it was meant per element.
   private static JsonNode rewriteNode(final JsonNode node) {
     final Map.Entry<String, JsonNode> entry = singleEntry(node);
     JsonNode rewritten = node;
@@ -66,28 +64,11 @@ final class NegatedListRuleRewriter {
       final Optional<JsonNode> negatedList = negateWholeList(entry);
       if (negatedList.isPresent()) {
         rewritten = negatedList.get();
-      } else if (NOT.equals(entry.getKey())) {
-        rewritten = operation(NOT, rewriteNode(entry.getValue()));
       } else if (isConjunction(entry)) {
         rewritten = operation(entry.getKey(), rewriteEach((ArrayNode) entry.getValue()));
       }
     }
     return rewritten;
-  }
-
-  private static boolean hasNegatedList(final JsonNode node) {
-    final Map.Entry<String, JsonNode> entry = singleEntry(node);
-    boolean negatesList = false;
-    if (entry != null && NOT.equals(entry.getKey())) {
-      final Map.Entry<String, JsonNode> operand = singleEntry(entry.getValue());
-      negatesList =
-          (operand != null && SOME.equals(operand.getKey())) || hasNegatedList(entry.getValue());
-    } else if (entry != null && isConjunction(entry)) {
-      for (final JsonNode child : entry.getValue()) {
-        negatesList = negatesList || hasNegatedList(child);
-      }
-    }
-    return negatesList;
   }
 
   /** {@code !some(list, positive)} for a {@code some} whose condition negates one element. */

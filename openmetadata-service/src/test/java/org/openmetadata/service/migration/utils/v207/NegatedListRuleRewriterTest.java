@@ -14,10 +14,8 @@
 package org.openmetadata.service.migration.utils.v207;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.jamsesso.jsonlogic.JsonLogic;
 import io.github.jamsesso.jsonlogic.JsonLogicException;
@@ -89,7 +87,12 @@ class NegatedListRuleRewriterTest {
         Arguments.of(
             "a negation the editor cannot load back as a row",
             "{\"some\":[{\"var\":\"relatedTerms\"},{\"!\":{\"some\":[{\"var\":\"x\"},{\"==\":[{\"var\":\"y\"},\"A\"]}]}}]}"),
-        Arguments.of("a custom operator", "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"));
+        Arguments.of("a custom operator", "{\"and\":[{\"isReviewer\":{\"var\":\"updatedBy\"}}]}"),
+        // Written through the API under an explicit NOT, which the editor cannot produce.
+        Arguments.of("every tag is A", not(tagIsNot("A"))),
+        Arguments.of("every tag is in [A]", not(tagNotIn("A"))),
+        Arguments.of("no tag is unset", not(TAG_NOT_SET)),
+        Arguments.of("a NOT around a per-element row", not(and(tagIsNot("A")))));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -99,11 +102,11 @@ class NegatedListRuleRewriterTest {
   }
 
   @Test
-  void rewritesInsideNegationsAndDisjunctions() {
+  void rewritesInsideDisjunctionsButNotUnderAnExplicitNegation() {
     assertEquals(
-        "{\"or\":[%s,%s]}".formatted(not(not(tagIs("A"))), tagIs("B")),
+        "{\"or\":[%s,%s]}".formatted(not(tagIsNot("A")), not(tagIs("B"))),
         NegatedListRuleRewriter.rewrite(
-            "{\"or\":[%s,%s]}".formatted(not(tagIsNot("A")), tagIs("B"))));
+            "{\"or\":[%s,%s]}".formatted(not(tagIsNot("A")), tagIsNot("B"))));
   }
 
   @Test
@@ -122,12 +125,6 @@ class NegatedListRuleRewriterTest {
   @Test
   void leavesAMissingRuleMissing() {
     assertNull(NegatedListRuleRewriter.rewrite(null));
-  }
-
-  @Test
-  void recognisesARuleThatAlreadyNegatesAWholeList() {
-    assertTrue(NegatedListRuleRewriter.hasNegatedList(and(not(tagIs("A")))));
-    assertFalse(NegatedListRuleRewriter.hasNegatedList(and(tagIsNot("A"))));
   }
 
   /** The rule engine's own library decides each case, so the rewrite is checked against runtime. */

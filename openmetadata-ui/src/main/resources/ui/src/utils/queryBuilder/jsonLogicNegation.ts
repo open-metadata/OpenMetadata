@@ -119,19 +119,13 @@ export const toEngineJsonLogic = (node: unknown): unknown => {
     return node;
   }
 
-  const [operator, args] = singleEntry(node) ?? [];
   const positiveSome = rewriteSome(POSITIVE_OF, node);
-  let result: unknown = node;
 
-  if (positiveSome) {
-    result = { '!': positiveSome };
-  } else if (operator === '!') {
-    result = { '!': toEngineJsonLogic(args) };
-  } else {
-    result = mapConjunction(node, toEngineJsonLogic) ?? node;
-  }
-
-  return result;
+  // An explicit `!` is left as written: the editor offers no NOT, so one came through the API, and a per-element
+  // condition under it was meant per element.
+  return positiveSome
+    ? { '!': positiveSome }
+    : mapConjunction(node, toEngineJsonLogic) ?? node;
 };
 
 // `!and[x]` is how RAQB writes a negated single-rule group; it is only unwrapped when `x` can become an "Is Not" row,
@@ -150,15 +144,10 @@ export const fromEngineJsonLogic = (node: unknown): unknown => {
   }
 
   const [operator, args] = singleEntry(node) ?? [];
-  let result: unknown = node;
 
-  if (operator === '!') {
-    result = rewriteSome(NEGATION_OF, onlyChildOf(args)) ?? {
-      '!': fromEngineJsonLogic(args),
-    };
-  } else {
-    result = mapConjunction(node, fromEngineJsonLogic) ?? node;
-  }
-
-  return result;
+  // Inside any other `!` nothing is reversed, matching the save side, so a rule written through the API saves back
+  // as it was stored.
+  return operator === '!'
+    ? rewriteSome(NEGATION_OF, onlyChildOf(args)) ?? node
+    : mapConjunction(node, fromEngineJsonLogic) ?? node;
 };

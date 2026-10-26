@@ -26,7 +26,8 @@ that and RAQB's shape at its save/load boundary (`utils/queryBuilder/jsonLogicNe
 | Is Not Set | `!some(list, field != null)` |
 
 Only shapes the loader can turn back into a row are rewritten; any other negation inside a `some`
-keeps RAQB's shape. A NOT the editor cannot express as a row stays a negated group and is drawn with
+keeps RAQB's shape. Nothing under an explicit `!` is rewritten, on save or by the migration: the
+editor offers no NOT, so such a rule came through the API and its per-element meaning was meant. A NOT the editor cannot express as a row stays a negated group and is drawn with
 a NOT badge, never dropped.
 
 ## Consequences

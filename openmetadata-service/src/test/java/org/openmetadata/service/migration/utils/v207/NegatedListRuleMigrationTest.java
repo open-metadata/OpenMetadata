@@ -103,15 +103,13 @@ class NegatedListRuleMigrationTest {
     ObjectNode definition = workflow(IS, IS);
 
     assertFalse(NegatedListRuleMigration.rewriteWorkflow(definition));
-    assertFalse(NegatedListRuleMigration.hasNegatedList(definition));
   }
 
   @Test
-  void aWorkflowAlreadyRewrittenIsRecognisedForRedeploy() {
-    ObjectNode definition = workflow(IS_NOT, IS);
+  void aWorkflowAlreadyInTheNewShapeIsLeftAlone() {
+    ObjectNode definition = workflow(IS_NOT, encodedFilter(IS_NOT));
 
     assertFalse(NegatedListRuleMigration.rewriteWorkflow(definition));
-    assertTrue(NegatedListRuleMigration.hasNegatedList(definition));
   }
 
   @Test

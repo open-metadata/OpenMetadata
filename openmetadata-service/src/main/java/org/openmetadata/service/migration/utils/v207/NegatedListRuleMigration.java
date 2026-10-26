@@ -32,8 +32,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.Workflow;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -81,33 +79,26 @@ public final class NegatedListRuleMigration {
 
   /**
    * Needs the WorkflowHandler initialized: storing a definition also deploys it, and only a
-   * redeployed workflow runs its new rules. Fails after trying every workflow, so a failed deploy
-   * leaves the step unrecorded for the next run to retry.
+   * redeployed workflow runs its new rules. A workflow that fails is logged and the rest still run,
+   * as earlier workflow migrations do, so one undeployable workflow does not block the upgrade.
    */
   public static void rewriteWorkflowRules() {
     final WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    final List<String> failed = new ArrayList<>();
     for (final WorkflowDefinition stored :
         repository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter())) {
       try {
         rewriteAndRedeploy(repository, stored);
       } catch (RuntimeException e) {
-        // Flowable reports a failed deploy with its own unchecked exceptions; the rest still run.
-        LOG.error("[v207] Failed to rewrite workflow '{}'", stored.getName(), e);
-        failed.add(stored.getName());
+        // Flowable reports a failed deploy with its own unchecked exceptions.
+        LOG.error(
+            "[v207] Failed to rewrite workflow '{}'; save it again to apply the corrected rules",
+            stored.getName(),
+            e);
       }
-    }
-    if (!failed.isEmpty()) {
-      throw new IllegalStateException(
-          "Workflows %s kept their rules undeployed; run the migration again".formatted(failed));
     }
   }
 
-  /**
-   * A definition already in the new shape is deployed again: a run interrupted after storing it,
-   * before deploying it, left Flowable on the old rules, and nothing left to rewrite says so.
-   */
   public static void rewriteAndRedeploy(
       final WorkflowDefinitionRepository repository, final WorkflowDefinition stored) {
     final ObjectNode definition = (ObjectNode) JsonUtils.valueToTree(stored);
@@ -115,8 +106,6 @@ public final class NegatedListRuleMigration {
       repository.createOrUpdate(
           null, JsonUtils.treeToValue(definition, WorkflowDefinition.class), ADMIN_USER_NAME);
       LOG.info("[v207] Rewrote and redeployed the negated list rules of '{}'", stored.getName());
-    } else if (hasNegatedList(definition)) {
-      WorkflowHandler.getInstance().deploy(new Workflow(stored));
     }
   }
 
@@ -128,13 +117,6 @@ public final class NegatedListRuleMigration {
     }
     encodedFilter.ifPresent(config -> config.put(FILTER, config.path(FILTER).toString()));
     return changed;
-  }
-
-  static boolean hasNegatedList(final ObjectNode definition) {
-    final ObjectNode decoded = definition.deepCopy();
-    decodeStringFilter(decoded);
-    return workflowRules(decoded).stream()
-        .anyMatch(field -> NegatedListRuleRewriter.hasNegatedList(field.rule()));
   }
 
   static List<RuleField> workflowRules(final ObjectNode definition) {
