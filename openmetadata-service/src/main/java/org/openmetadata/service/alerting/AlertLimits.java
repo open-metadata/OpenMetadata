@@ -4,8 +4,11 @@ import jakarta.ws.rs.BadRequestException;
 import org.openmetadata.schema.entity.events.EventSubscription;
 
 /**
- * The bounds on what an alert may hold and what one request may ask for, kept in one place. The
- * request schemas carry the same numbers, which a test keeps equal to these.
+ * The bounds on what an alert may hold and what one request may ask for, kept in one place
+ * (ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick). A stored alert's bounds are
+ * checked here, on every save, because PUT sends the create schema for alerts already stored past
+ * them; the schemas of requests that are never stored carry their bound, which a test keeps equal
+ * to these.
  */
 public final class AlertLimits {
 
@@ -15,7 +18,9 @@ public final class AlertLimits {
   public static final String MAX_LISTING_ROWS_MESSAGE =
       "must be less than or equal to " + MAX_LISTING_ROWS;
 
-  /** The most change events an alert may ask to read at a time. */
+  /** The fewest and the most change events an alert may ask to read at a time. */
+  public static final int MIN_BATCH_SIZE = 1;
+
   public static final int MAX_BATCH_SIZE = 1000;
 
   /** The most destinations one alert, or one test send, may hold. */
@@ -34,6 +39,21 @@ public final class AlertLimits {
     requireNoGrowthPast(
         "destinations", destinationsOf(original), destinationsOf(updated), MAX_DESTINATIONS);
     requireNoGrowthPast("batchSize", batchSizeOf(original), batchSizeOf(updated), MAX_BATCH_SIZE);
+    requireBatchSizeOfAtLeastOne(original, updated);
+  }
+
+  // An alert that reads no event at a time never reads one again.
+  private static void requireBatchSizeOfAtLeastOne(
+      EventSubscription original, EventSubscription updated) {
+    Integer batchSize = updated.getBatchSize();
+    Integer before = original == null ? null : original.getBatchSize();
+    boolean setBelowTheMinimum =
+        batchSize != null && batchSize < MIN_BATCH_SIZE && !batchSize.equals(before);
+    if (setBelowTheMinimum) {
+      throw new BadRequestException(
+          String.format(
+              "batchSize must be greater than or equal to %d, got %d", MIN_BATCH_SIZE, batchSize));
+    }
   }
 
   private static void requireNoGrowthPast(String field, long before, long after, long limit) {

@@ -87,7 +87,12 @@ final class DeadlineConnector implements Connector {
     }
   }
 
+  // An Error, such as running out of memory while the body is read, is thrown as it is, so the
+  // alert tick that sent it sees it as an interrupted tick rather than a failed send.
   private static ProcessingException asProcessingException(Throwable cause) {
+    if (cause instanceof Error error) {
+      throw error;
+    }
     return cause instanceof ProcessingException failed
         ? failed
         : new ProcessingException(cause.getMessage(), cause);

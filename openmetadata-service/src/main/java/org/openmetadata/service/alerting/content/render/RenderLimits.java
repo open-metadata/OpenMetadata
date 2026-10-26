@@ -1,6 +1,9 @@
 package org.openmetadata.service.alerting.content.render;
 
-/** How much a chat notification may grow while it is turned from HTML into Markdown and parsed. */
+/**
+ * How much a chat notification may grow while it is turned from HTML into Markdown and parsed
+ * (ADR:2026-10-26-alerting-bounds-the-work-of-each-request-and-tick).
+ */
 public final class RenderLimits {
 
   public static final int MAX_MARKDOWN_CHARS = 50_000;
