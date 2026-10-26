@@ -21,6 +21,7 @@ import {
   TaskListScope,
   TaskStatusFilter,
 } from './taskScope.utils';
+import { userTaskCountQuery } from './useUserTasks';
 
 const TASK_COUNTS_STALE_TIME = 30_000;
 
@@ -34,17 +35,26 @@ const TASK_COUNTS_STALE_TIME = 30_000;
  */
 export const useTaskStatusCounts = (
   scope: TaskListScope
-): Record<TaskStatusFilter, number> => {
+): Record<TaskStatusFilter, number | undefined> => {
   const scopeKey = getTaskScopeKey(scope);
+  // A user's total is |assigned| + |created| − |both|, not one page's total.
   const countQueries = useQueries({
-    queries: STATUS_COUNT_GROUPS.map((statusGroup) => ({
-      queryKey: [TASK_STATUS_COUNTS_QUERY_KEY, scopeKey, statusGroup ?? 'all'],
-      queryFn: () =>
-        listScopedTasks(scope, { statusGroup, limit: 1 }).then(
-          (res) => res.paging?.total ?? 0
-        ),
-      staleTime: TASK_COUNTS_STALE_TIME,
-    })),
+    queries: STATUS_COUNT_GROUPS.map((statusGroup) =>
+      scope.type === 'user'
+        ? userTaskCountQuery(scope.user, statusGroup)
+        : {
+            queryKey: [
+              TASK_STATUS_COUNTS_QUERY_KEY,
+              scopeKey,
+              statusGroup ?? 'all',
+            ],
+            queryFn: () =>
+              listScopedTasks(scope, { statusGroup, limit: 1 }).then(
+                (res) => res.paging?.total ?? 0
+              ),
+            staleTime: TASK_COUNTS_STALE_TIME,
+          }
+    ),
   });
 
   return getStatusCounts(countQueries);

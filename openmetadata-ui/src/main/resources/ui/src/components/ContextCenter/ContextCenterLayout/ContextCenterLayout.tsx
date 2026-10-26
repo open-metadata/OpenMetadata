@@ -13,12 +13,14 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import React, { PropsWithChildren, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   CreateKnowledgePage,
   PageType,
@@ -54,6 +56,7 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   const queryClient = useQueryClient();
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isAddQuickLinkOpen, setIsAddQuickLinkOpen] = useState(false);
+  const isAiMode = useIsAiMode();
 
   // Every Context Center route mounts its own ContextCenterLayout, and the
   // intent bus keeps a single listener per name. Navigating to a non-cacheable
@@ -125,7 +128,13 @@ const ContextCenterLayout: React.FC<PropsWithChildren> = ({ children }) => {
   );
 
   return (
-    <div className="tw:flex tw:flex-col tw:h-full tw:overflow-auto tw:bg-canvas">
+    // Transparent in AI mode so the shell's content card shows; classic paints
+    // the canvas (see ContextCenterClassBase.getPageContainerClassName).
+    <div
+      className={classNames(
+        'tw:flex tw:flex-col tw:h-full tw:overflow-auto',
+        !isAiMode && 'tw:bg-canvas'
+      )}>
       {/* Reloads the embedded page on a contextMemory/page change for the active CC route
           (registry → markRouteDirty); the layout, its modals and intents stay mounted. */}
       <LiveRefreshBoundary>{children}</LiveRefreshBoundary>

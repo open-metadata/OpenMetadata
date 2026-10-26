@@ -45,7 +45,7 @@ const ActivityFeedCountLabel: React.FC<
       count={
         activityCount &&
         getActivityFeedTabCount(
-          activityCount.total + taskCounts[taskStatus],
+          activityCount.total + (taskCounts[taskStatus] ?? 0),
           activityCount.isCapped
         )
       }

@@ -16,11 +16,12 @@ import { ActivityFilter } from './inbox.utils';
 import type { TaskListScope } from './taskScope.utils';
 
 /**
- * Whose activity a feed reads: the viewer's own Inbox, everything about one
- * entity, or what one user did.
+ * Whose activity a feed reads: an Inbox (the viewer's, or with `userId` another
+ * user's, as their member page shows it), everything about one entity, or what
+ * one user did.
  */
 export type ActivityScope =
-  | { type: 'inbox' }
+  | { type: 'inbox'; userId?: string }
   | { type: 'entity'; entityLink: string }
   | { type: 'user'; userName: string };
 
@@ -58,6 +59,6 @@ export const getActivityScopeKey = (scope: ActivityScope): string => {
     case 'user':
       return `user:${scope.userName}`;
     default:
-      return 'inbox';
+      return scope.userId ? `inbox:${scope.userId}` : 'inbox';
   }
 };

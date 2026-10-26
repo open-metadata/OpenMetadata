@@ -22,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
-import { useGlossaryProposalCounts } from '../../../hooks/governance/glossary/useGlossaryProposals';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import type { FeedCounts } from '../../../interface/feed.interface';
 import {
@@ -36,6 +35,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
+import { getReviewTab } from '../../../utils/GlossaryUtils';
 import { getGlossaryTermDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -138,19 +138,6 @@ const GlossaryDetails = ({
     }
   };
 
-  const proposalScope = useMemo(
-    () =>
-      glossary?.id && !isVersionView
-        ? {
-            fullyQualifiedName: glossary.fullyQualifiedName ?? '',
-            id: glossary.id,
-            isGlossary: true,
-          }
-        : undefined,
-    [glossary?.id, glossary?.fullyQualifiedName, isVersionView]
-  );
-  const { counts: proposalCounts } = useGlossaryProposalCounts(proposalScope);
-
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
 
@@ -162,7 +149,6 @@ const GlossaryDetails = ({
             id={EntityTabs.TERMS}
             isActive={activeTab === EntityTabs.TERMS}
             name={tabLabelMap[EntityTabs.TERMS] ?? t('label.term-plural')}
-            proposedCount={proposalCounts.all}
           />
         ),
         key: EntityTabs.TERMS,
@@ -170,6 +156,13 @@ const GlossaryDetails = ({
       },
       ...(!isVersionView
         ? [
+            getReviewTab({
+              activeTab,
+              entityFqn: glossary.fullyQualifiedName ?? '',
+              name: tabLabelMap[EntityTabs.REVIEW],
+              openTaskCount: feedCount.openTaskCount,
+              onTasksChange: fetchTaskCounts,
+            }),
             {
               label: (
                 <TabsLabel
@@ -232,9 +225,10 @@ const GlossaryDetails = ({
     glossary.fullyQualifiedName,
     feedCount.conversationCount,
     feedCount.totalTasksCount,
+    feedCount.openTaskCount,
+    fetchTaskCounts,
     activeTab,
     isVersionView,
-    proposalCounts.all,
   ]);
 
   useEffect(() => {

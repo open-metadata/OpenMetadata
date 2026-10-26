@@ -17,15 +17,20 @@ import {
   FilterFunnel01,
   Inbox01,
 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { Task } from '../../../../../rest/tasksAPI';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { getTaskTypeBadge } from '../taskDetail.utils';
 import { TaskTypeGroup } from '../taskList.utils';
+import { getTaskStatusLabel } from '../taskResolution.utils';
 import { TaskStatusFilter } from '../taskScope.utils';
 import { useIsScrolled } from '../useIsScrolled';
 import InboxTaskListItem from './InboxTaskListItem';
@@ -35,6 +40,8 @@ import TaskDetailSkeleton from './TaskDetailSkeleton';
 import { TASK_TYPE_DOT_CLASS } from './TaskTypeIcon';
 
 export interface TaskQueueEmptyStateProps {
+  // The list failed to load; shown in place of any empty state.
+  error?: unknown;
   status: TaskStatusFilter;
   isNarrowed: boolean;
   // Set when a narrowed scan stopped at its cap with pages still unread, so
@@ -45,20 +52,106 @@ export interface TaskQueueEmptyStateProps {
   // The descriptions speak to the viewer about their own queue; an entity's
   // queue shows the title alone.
   isPersonal?: boolean;
+  // Set when the list is another user's, so the copy names them, not "you".
+  userFirstName?: string;
+  onRetry?: () => void;
 }
+
+// Another user's tab names them and keeps the status: their Closed tab must not
+// say they have no tasks at all while Open has some. The viewer's own copy
+// ("assigned to you") would misread here.
+const USER_EMPTY_STATE: Record<
+  TaskStatusFilter,
+  { titleKey: string; descriptionKey: string; testId: string }
+> = {
+  all: {
+    titleKey: 'label.no-tasks-yet',
+    descriptionKey: 'message.user-tasks-empty-description',
+    testId: 'inbox-tasks-user-empty',
+  },
+  open: {
+    titleKey: 'label.no-open-tasks-yet',
+    descriptionKey: 'message.user-open-tasks-empty-description',
+    testId: 'inbox-tasks-user-open-empty',
+  },
+  closed: {
+    titleKey: 'label.no-closed-tasks-yet',
+    descriptionKey: 'message.user-closed-tasks-empty-description',
+    testId: 'inbox-tasks-user-closed-empty',
+  },
+};
+
+// A failed load: a permission gap says so, anything else offers a retry.
+const TaskQueueLoadError = ({
+  error,
+  onRetry,
+}: {
+  error: unknown;
+  onRetry?: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN ? (
+    <PermissionPlaceholder
+      permissionValue={t('label.view-entity', {
+        entity: t('label.task-plural'),
+      })}
+    />
+  ) : (
+    <SomethingWentWrongPlaceholder
+      description={t('server.entity-fetch-error', {
+        entity: t('label.task-plural'),
+      })}
+      onReload={onRetry}
+    />
+  );
+};
+
+const UserTasksEmptyState = ({
+  status,
+  userFirstName,
+}: {
+  status: TaskStatusFilter;
+  userFirstName: string;
+}) => {
+  const { t } = useTranslation();
+  const { titleKey, descriptionKey, testId } = USER_EMPTY_STATE[status];
+
+  return (
+    <NoDataPlaceholder
+      data-testid={testId}
+      description={t(descriptionKey, { name: userFirstName })}
+      icon={
+        status === 'closed' ? (
+          <Inbox01 className="tw:size-7" />
+        ) : (
+          <CheckCircle className="tw:size-7 tw:text-utility-success-600" />
+        )
+      }
+      title={t(titleKey)}
+    />
+  );
+};
 
 // A dedicated empty state per status: All = generic "nothing to do", Open =
 // "no open tasks", Closed = archival. A search or filter that matches nothing
 // says so instead, with a way back to the whole queue.
 export const TaskQueueEmptyState = ({
+  error,
   status,
   isNarrowed,
   scannedCount,
   onClearFilters,
   onLoadMore,
   isPersonal = true,
+  userFirstName,
+  onRetry,
 }: TaskQueueEmptyStateProps) => {
   const { t } = useTranslation();
+
+  if (error) {
+    return <TaskQueueLoadError error={error} onRetry={onRetry} />;
+  }
   const isScanCapped = scannedCount !== undefined;
   const clearAction = {
     key: 'clear-filters',
@@ -126,7 +219,15 @@ export const TaskQueueEmptyState = ({
     ),
   };
 
-  return <>{isNarrowed ? noMatch : emptyStateByStatus[status]}</>;
+  if (isNarrowed) {
+    return noMatch;
+  }
+
+  return userFirstName ? (
+    <UserTasksEmptyState status={status} userFirstName={userFirstName} />
+  ) : (
+    <>{emptyStateByStatus[status]}</>
+  );
 };
 
 export interface TaskQueueBodyProps {
@@ -134,6 +235,9 @@ export interface TaskQueueBodyProps {
   toolbar: ReactNode;
   // Shown in place of the detail when no task matches.
   emptyState?: ReactNode;
+  // A failed load with nothing listed leaves nothing to filter, so the
+  // placeholder takes the whole body.
+  isLoadFailed?: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
@@ -143,31 +247,37 @@ export interface TaskQueueBodyProps {
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
   setSelectedTaskId: (id: string) => void;
+  // Set for a list-only layout: no detail pane, and a row opens its task here.
+  onOpenTask?: (taskId: string) => void;
+  // Whose ids read an open task's status on its row (list-only layout).
+  statusUserIds?: ReadonlySet<string>;
   handleCommentsChanged: (updated: Task) => void;
   handleResolved: (resolved: Task) => void;
   handleTaskUpdated: () => void;
 }
 
-// The two panes: the list column (its controls over the grouped rows) and the
-// selected task's detail, each scrolling on its own.
-const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
-  toolbar,
+type TaskQueueDetailPaneProps = Pick<
+  TaskQueueBodyProps,
+  | 'emptyState'
+  | 'isLoading'
+  | 'tasks'
+  | 'selectedTaskId'
+  | 'handleCommentsChanged'
+  | 'handleResolved'
+  | 'handleTaskUpdated'
+>;
+
+// The selected task beside the list, or why there is none.
+const TaskQueueDetailPane = ({
   emptyState,
   isLoading,
-  isLoadingMore,
   tasks,
-  groups,
   selectedTaskId,
-  scrollRef,
-  sentinelRef,
-  setSelectedTaskId,
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
-}) => {
+}: TaskQueueDetailPaneProps) => {
   const { t } = useTranslation();
-  const { isScrolled: isListScrolled, onScroll: onListScroll } =
-    useIsScrolled();
 
   const detailContent = selectedTaskId ? (
     <TaskDetailPanel
@@ -186,14 +296,55 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
     </Box>
   );
 
-  const renderRow = (task: Task) => (
-    <InboxTaskListItem
-      isActive={selectedTaskId === task.id}
-      key={task.id}
-      task={task}
-      onClick={(selected) => setSelectedTaskId(selected.id)}
-    />
+  return (
+    <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
+      {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
+    </Box>
   );
+};
+
+// The two panes: the list column (its controls over the grouped rows) and the
+// selected task's detail, each scrolling on its own.
+const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
+  toolbar,
+  emptyState,
+  isLoadFailed = false,
+  isLoading,
+  isLoadingMore,
+  tasks,
+  groups,
+  selectedTaskId,
+  scrollRef,
+  sentinelRef,
+  setSelectedTaskId,
+  onOpenTask,
+  statusUserIds,
+  handleCommentsChanged,
+  handleResolved,
+  handleTaskUpdated,
+}) => {
+  const { t } = useTranslation();
+  const { isScrolled: isListScrolled, onScroll: onListScroll } =
+    useIsScrolled();
+
+  const renderRow = (task: Task) =>
+    onOpenTask ? (
+      <InboxTaskListItem
+        key={task.id}
+        statusBadge={
+          statusUserIds && getTaskStatusLabel(task, statusUserIds, t)
+        }
+        task={task}
+        onClick={(selected) => onOpenTask(selected.id)}
+      />
+    ) : (
+      <InboxTaskListItem
+        isActive={selectedTaskId === task.id}
+        key={task.id}
+        task={task}
+        onClick={(selected) => setSelectedTaskId(selected.id)}
+      />
+    );
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
   // not by type, so a later page can reopen a group that already appeared.
@@ -229,6 +380,53 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
     );
   });
 
+  const listColumn = (
+    <Box className="tw:min-h-0 tw:min-w-0 tw:flex-1" direction="col">
+      {/* Lifts off the rows with a light shadow once they scroll under it. */}
+      <div
+        className={classNames(
+          'tw:relative tw:z-10 tw:transition-shadow',
+          isListScrolled && 'tw:shadow-sm'
+        )}>
+        {toolbar}
+      </div>
+      <div
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+        data-testid="inbox-tasks-scroll"
+        ref={scrollRef}
+        onScroll={onListScroll}>
+        {isLoading ? (
+          <InboxTaskListSkeleton />
+        ) : (
+          <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
+            {/* Without a detail pane, the list is where "nothing here" shows. */}
+            {(onOpenTask && emptyState) ||
+              (groupedList ?? tasks.map(renderRow))}
+          </div>
+        )}
+
+        <div ref={sentinelRef} />
+        {isLoadingMore && (
+          <div className="tw:flex tw:justify-center tw:py-4">
+            <Loader />
+          </div>
+        )}
+      </div>
+    </Box>
+  );
+
+  if (isLoadFailed) {
+    return (
+      <Box className="tw:relative tw:min-h-0 tw:w-full tw:flex-1">
+        {emptyState}
+      </Box>
+    );
+  }
+
+  if (onOpenTask) {
+    return listColumn;
+  }
+
   return (
     // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
     // long unbreakable title would widen the list and push the detail off-screen.
@@ -236,42 +434,19 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
       {/* The rule sits inside the list's column, so it takes none of the
           detail's width. */}
       <Box className="tw:min-h-0">
-        <Box className="tw:min-h-0 tw:min-w-0 tw:flex-1" direction="col">
-          {/* Lifts off the rows with a light shadow once they scroll under it. */}
-          <div
-            className={classNames(
-              'tw:relative tw:z-10 tw:transition-shadow',
-              isListScrolled && 'tw:shadow-sm'
-            )}>
-            {toolbar}
-          </div>
-          <div
-            className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
-            data-testid="inbox-tasks-scroll"
-            ref={scrollRef}
-            onScroll={onListScroll}>
-            {isLoading ? (
-              <InboxTaskListSkeleton />
-            ) : (
-              <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-                {groupedList ?? tasks.map(renderRow)}
-              </div>
-            )}
-
-            <div ref={sentinelRef} />
-            {isLoadingMore && (
-              <div className="tw:flex tw:justify-center tw:py-4">
-                <Loader />
-              </div>
-            )}
-          </div>
-        </Box>
+        {listColumn}
         <Divider orientation="vertical" />
       </Box>
 
-      <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-        {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
-      </Box>
+      <TaskQueueDetailPane
+        emptyState={emptyState}
+        handleCommentsChanged={handleCommentsChanged}
+        handleResolved={handleResolved}
+        handleTaskUpdated={handleTaskUpdated}
+        isLoading={isLoading}
+        selectedTaskId={selectedTaskId}
+        tasks={tasks}
+      />
     </Box>
   );
 };

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonGroup,
   ButtonGroupItem,
@@ -49,6 +50,7 @@ import {
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { FeedFilter } from '../../../enums/mydata.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
@@ -76,6 +78,8 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import '../../MyData/Widgets/FeedsWidget/feeds-widget.less';
 import ActivityFeedListV1New from '../ActivityFeedList/ActivityFeedListV1New.component';
@@ -92,6 +96,8 @@ import {
   ActivityFeedTabs,
   TaskFilterBarProps,
 } from './ActivityFeedTab.interface';
+import { isListLoadFailed } from './ActivityFeedTab.utils';
+
 const ActivityFeedEntityTab = withSuspenseFallback(
   lazy(() => import('../../activity-feed/ActivityFeed/ActivityFeedEntityTab'))
 );
@@ -400,6 +406,40 @@ const ActivityFeedTabList = ({
   );
 };
 
+/**
+ * The list's empty placeholder, or why it is empty when its fetch failed: a
+ * failure must not read as "no tasks".
+ */
+// Rendered in place of the list, not as its empty text: the list wraps that
+// text in a legacy illustration the core placeholder would sit on top of.
+const ActivityFeedListError = ({
+  error,
+  isTaskList,
+  onRetry,
+}: {
+  error: AxiosError;
+  isTaskList: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  const entity = isTaskList ? t('label.task-plural') : t('label.activity-feed');
+
+  return (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_24rem)] tw:w-full">
+      {error.response?.status === ClientErrors.FORBIDDEN ? (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', { entity })}
+        />
+      ) : (
+        <SomethingWentWrongPlaceholder
+          description={t('server.entity-fetch-error', { entity })}
+          onReload={onRetry}
+        />
+      )}
+    </Box>
+  );
+};
+
 const ActivityFeedTabRightPanel = ({
   content,
   hasSelection,
@@ -492,6 +532,7 @@ const ClassicActivityFeedTab = ({
     getFeedData,
     getTaskData,
     loading,
+    listError,
     entityPaging,
     tasks,
     selectedTask,
@@ -561,7 +602,7 @@ const ClassicActivityFeedTab = ({
         description: t('message.no-activity-feed-description'),
       };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return { title: t('message.no-mentions') };
+      return { description: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return {
         title: t('message.no-closed-tasks-title'),
@@ -973,6 +1014,8 @@ const ClassicActivityFeedTab = ({
       : !isEmpty(entityThread);
   }, [isTaskActiveTab, isAllTab, tasks, activityEvents, entityThread]);
 
+  const showListError = isListLoadFailed(listError, loading, hasListRows);
+
   const getRightPanelContent = () => {
     if (isTaskActiveTab && selectedTask) {
       return (
@@ -1044,7 +1087,7 @@ const ClassicActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return { title: t('message.no-mentions') };
+      return { description: t('message.no-mentions') };
     }
 
     return {
@@ -1070,7 +1113,7 @@ const ClassicActivityFeedTab = ({
       />
       <div
         className={classNames('center-container', {
-          'full-width': isFullWidth,
+          'full-width': isFullWidth || showListError,
           'three-panel-layout':
             layoutType === ActivityFeedLayoutType.THREE_PANEL,
         })}
@@ -1083,27 +1126,35 @@ const ClassicActivityFeedTab = ({
           taskFilterOptions={taskFilterOptions}
           taskToggle={TaskToggle()}
         />
-        <ActivityFeedTabList
-          activityEvents={activityEvents}
-          emptyPlaceholderDescription={placeholderText.description}
-          emptyPlaceholderText={placeholderText.title}
-          entityThread={entityThread}
-          isActivityLoading={isActivityLoading}
-          isAllTab={isAllTab}
-          isFirstLoad={isFirstLoad}
-          isFullWidth={isFullWidth}
-          isTaskListTab={isTaskActiveTab}
-          loading={loading}
-          selectedActivity={selectedActivity}
-          selectedTask={selectedTask}
-          selectedThread={selectedThread}
-          tasks={tasks}
-          onActivityClick={handleActivityClick}
-          onAfterClose={handleAfterTaskClose}
-          onFeedClick={handleFeedClick}
-          onPanelResize={handlePanelResize}
-          onTaskClick={handleTaskClick}
-        />
+        {showListError ? (
+          <ActivityFeedListError
+            error={listError as AxiosError}
+            isTaskList={isTaskActiveTab}
+            onRetry={() => handleFeedFetchFromFeedList()}
+          />
+        ) : (
+          <ActivityFeedTabList
+            activityEvents={activityEvents}
+            emptyPlaceholderDescription={placeholderText.description}
+            emptyPlaceholderText={placeholderText.title}
+            entityThread={entityThread}
+            isActivityLoading={isActivityLoading}
+            isAllTab={isAllTab}
+            isFirstLoad={isFirstLoad}
+            isFullWidth={isFullWidth}
+            isTaskListTab={isTaskActiveTab}
+            loading={loading}
+            selectedActivity={selectedActivity}
+            selectedTask={selectedTask}
+            selectedThread={selectedThread}
+            tasks={tasks}
+            onActivityClick={handleActivityClick}
+            onAfterClose={handleAfterTaskClose}
+            onFeedClick={handleFeedClick}
+            onPanelResize={handlePanelResize}
+            onTaskClick={handleTaskClick}
+          />
+        )}
         {!isFirstLoad && loader}
         {hasListRows && !loading && (
           <div
@@ -1116,16 +1167,18 @@ const ClassicActivityFeedTab = ({
         )}
       </div>
 
-      <ActivityFeedTabRightPanel
-        content={getRightPanelContent()}
-        hasSelection={hasRightPanelSelection}
-        isFullWidth={isFullWidth}
-        layoutType={layoutType}
-        loader={loader}
-        loading={loading}
-        placeholder={getRightPanelPlaceholder.title}
-        placeholderDescription={getRightPanelPlaceholder.description}
-      />
+      {!showListError && (
+        <ActivityFeedTabRightPanel
+          content={getRightPanelContent()}
+          hasSelection={hasRightPanelSelection}
+          isFullWidth={isFullWidth}
+          layoutType={layoutType}
+          loader={loader}
+          loading={loading}
+          placeholder={getRightPanelPlaceholder.title}
+          placeholderDescription={getRightPanelPlaceholder.description}
+        />
+      )}
     </div>
   );
 };

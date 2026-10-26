@@ -76,10 +76,16 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
       STATUS_FILTERS.map(({ id, labelKey }) => ({
         value: id,
         label: t(labelKey),
-        count: String(queue.statusCounts[id]),
+        count: queue.statusCounts[id]?.toString(),
       })),
     [queue.statusCounts, t]
   );
+  const statusLabel = t(
+    STATUS_FILTERS.find(({ id }) => id === queue.status)?.labelKey ??
+      'label.open'
+  );
+  // A failed count shows the status alone rather than a misleading 0.
+  const statusCount = queue.statusCounts[queue.status];
   const groupingOptions = useMemo(
     () =>
       (Object.keys(TASK_GROUPING_LABEL_KEY) as InboxTaskGrouping[]).map(
@@ -105,13 +111,14 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
             options={statusOptions}
             title={t('label.status')}
             triggerIcon={CheckCircle}
-            triggerLabel={t('label.value-with-count', {
-              value: t(
-                STATUS_FILTERS.find(({ id }) => id === queue.status)
-                  ?.labelKey ?? 'label.open'
-              ),
-              count: queue.statusCounts[queue.status],
-            })}
+            triggerLabel={
+              statusCount === undefined
+                ? statusLabel
+                : t('label.value-with-count', {
+                    value: statusLabel,
+                    count: statusCount,
+                  })
+            }
             value={queue.status}
             onChange={(value) =>
               queue.handleStatusChange(value as TaskStatusFilter)

@@ -856,7 +856,7 @@ const ContainerPage = () => {
     );
 
   return (
-    <PageLayoutV1 pageTitle={getEntityName(containerData)}>
+    <PageLayoutV1 fillEntityTabs pageTitle={getEntityName(containerData)}>
       <Box direction="col" gap={3}>
         <div>
           <DataAssetsHeader

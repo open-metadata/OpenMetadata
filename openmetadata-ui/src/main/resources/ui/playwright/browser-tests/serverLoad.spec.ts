@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { Browser, chromium, expect, test } from '@playwright/test';
 import { createServer, ServerResponse } from 'http';
-import { AddressInfo } from 'net';
+import { AddressInfo, createServer as createTcpServer, Socket } from 'net';
 import { test as serverLoadTest } from '../support/fixtures/base';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 
@@ -300,5 +300,47 @@ test('a reset intercepted connection fails in the browser without retrying or ca
     await new Promise<void>((resolve, reject) =>
       server.close((error) => (error ? reject(error) : resolve()))
     );
+  }
+});
+
+test('a stalled scarf.sh pixel does not hold up the load event', async () => {
+  const stalled: Socket[] = [];
+  const blackhole = createTcpServer((socket) => stalled.push(socket));
+  const app = createServer((_, response) => {
+    response.writeHead(200, { 'Content-Type': 'text/html' });
+    response.end(
+      '<p id="rendered">ok</p><img src="https://static.scarf.sh/a.png" />'
+    );
+  });
+  await new Promise<void>((resolve) =>
+    blackhole.listen(0, '127.0.0.1', resolve)
+  );
+  await new Promise<void>((resolve) => app.listen(0, '127.0.0.1', resolve));
+  const url = `http://127.0.0.1:${(app.address() as AddressInfo).port}`;
+  let browser: Browser | undefined;
+  try {
+    browser = await chromium.launch({
+      args: [
+        `--host-resolver-rules=MAP static.scarf.sh 127.0.0.1:${
+          (blackhole.address() as AddressInfo).port
+        }`,
+      ],
+    });
+    // Without the route the page renders but `load` never fires — the CI flake.
+    const unrouted = await browser.newPage();
+    await expect(unrouted.goto(url, { timeout: 3_000 })).rejects.toThrow(
+      /Timeout 3000ms exceeded/
+    );
+    await expect(unrouted.locator('#rendered')).toHaveText('ok');
+
+    const routed = await browser.newPage();
+    await installServerLoadReducers(routed.context());
+    await routed.goto(url, { timeout: 3_000 });
+    await expect(routed.locator('#rendered')).toHaveText('ok');
+  } finally {
+    await browser?.close();
+    stalled.forEach((socket) => socket.destroy());
+    await new Promise<void>((resolve) => blackhole.close(() => resolve()));
+    await new Promise<void>((resolve) => app.close(() => resolve()));
   }
 });

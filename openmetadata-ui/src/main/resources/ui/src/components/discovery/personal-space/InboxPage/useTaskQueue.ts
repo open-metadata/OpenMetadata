@@ -12,7 +12,7 @@
  */
 
 import { useQueryClient } from '@tanstack/react-query';
-import { debounce } from 'lodash';
+import { debounce, uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MY_TASKS_QUERY_KEY } from '../../../../hooks/useMyTasks';
@@ -28,6 +28,8 @@ import {
   filterTasksByStatus,
   filterTasksByTypes,
   groupTasksByType,
+  hasNothingToShow,
+  isWholeTabLoadFailed,
   TaskStatusBucket,
 } from './taskList.utils';
 import {
@@ -77,21 +79,6 @@ const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
   open: TaskStatusGroup.Open,
   closed: TaskStatusGroup.Closed,
 };
-
-// Nothing more is coming: matching rows may still sit in pages being scanned.
-const isListSettled = ({
-  isLoading,
-  isLoadingMore,
-  hasMore,
-  canLoadMore,
-  tasks,
-}: {
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  hasMore: boolean;
-  canLoadMore: (loaded: Task[]) => boolean;
-  tasks: Task[];
-}) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
 
 export interface UseTaskQueueOptions {
   scope?: TaskListScope;
@@ -143,7 +130,10 @@ export const useTaskQueue = ({
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   // Narrows the active tab; nothing chosen shows all of it.
   const [statusFilter, setStatusFilter] = useState<TaskStatusBucket[]>([]);
-  const currentUserIds = useCurrentUserIds();
+  // Whose move "pending approval" means: the viewer's, or the scoped user's.
+  const currentUserIds = useCurrentUserIds(
+    scope.type === 'user' ? scope.user : undefined
+  );
 
   // A new tab offers other statuses, so a choice made for the last one would
   // only hide rows; start the new tab unfiltered.
@@ -232,11 +222,13 @@ export const useTaskQueue = ({
   );
 
   const {
-    items: tasks,
+    items: loadedTasks,
     isLoading,
     isLoadingMore,
     hasMore,
     total,
+    error,
+    refetch,
     scrollRef,
     sentinelRef,
     setItems,
@@ -246,6 +238,11 @@ export const useTaskQueue = ({
     fetchPage,
     canLoadMore
   );
+
+  // Pages are fetched at different times, so a task that changes in between
+  // (say, assigned to the user after it loaded as one they created) can land
+  // on two of them.
+  const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
 
   // Measured from what is loaded, not from the last cap: tasks paged in before
   // the narrowing already exceed it, and a fixed step would leave the click
@@ -401,9 +398,18 @@ export const useTaskQueue = ({
 
   // A search or filter that matches nothing must not read as an empty queue.
   const isNarrowed = Boolean(searchQuery) || isClientNarrowed;
-  const showEmptyState =
-    visibleTasks.length === 0 &&
-    isListSettled({ isLoading, isLoadingMore, hasMore, canLoadMore, tasks });
+  const showEmptyState = hasNothingToShow(error, visibleTasks, {
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    canLoadMore,
+    tasks,
+  });
+
+  const handleRetry = useCallback(() => {
+    refetch();
+    refreshStatusCounts();
+  }, [refetch, refreshStatusCounts]);
 
   return {
     status,
@@ -435,5 +441,10 @@ export const useTaskQueue = ({
     handleCommentsChanged,
     isNarrowed,
     showEmptyState,
+    error,
+    // A failed load with nothing listed leaves nothing to filter.
+    isLoadFailed: isWholeTabLoadFailed(error, tasks, isNarrowed),
+    handleRetry,
+    currentUserIds,
   };
 };

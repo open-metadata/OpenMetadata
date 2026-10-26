@@ -50,12 +50,13 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
-import { ActivityFilter } from './inbox.utils';
+import { ActivityFilter, getDefaultInboxDateRange } from './inbox.utils';
 import {
   fetchInboxActivity,
   INBOX_ACTIVITY_QUERY_KEY,
   useInboxActivity,
   useInboxActivityCounts,
+  useUserActivityCount,
   writeInboxReactions,
 } from './useInboxActivity';
 
@@ -182,16 +183,14 @@ describe('fetchInboxActivity', () => {
     expect(threads).toEqual([]);
   });
 
-  it('still returns conversations when the activity fetch fails', async () => {
-    mockGetActivityEvents.mockRejectedValue(new Error('boom'));
+  // The conversations alone would read as the whole feed, with counts to match.
+  it('fails when the activity fetch fails', async () => {
+    const failure = new Error('boom');
+    mockGetActivityEvents.mockRejectedValue(failure);
 
-    const { activities, threads } = await fetchInboxActivity(
-      ActivityFilter.All,
-      'u1'
+    await expect(fetchInboxActivity(ActivityFilter.All, 'u1')).rejects.toBe(
+      failure
     );
-
-    expect(activities).toEqual([]);
-    expect(threads).toHaveLength(2);
   });
 
   // The server's whole-day `days` reaches back past startTs (a 7-day preset
@@ -300,6 +299,78 @@ describe('fetchInboxActivity', () => {
     expect(result).toEqual({ activities: [], threads: [], isCapped: false });
     expect(mockGetActivityEvents).not.toHaveBeenCalled();
     expect(mockListConversations).not.toHaveBeenCalled();
+  });
+});
+
+// The viewer u1 reads another user's (u2) Inbox, as their member page shows it.
+describe('fetchInboxActivity for another user', () => {
+  // Their "All" is what they did, not everything the viewer can see.
+  it("fetches the user's own activity and conversations for All", async () => {
+    await fetchInboxActivity(ActivityFilter.All, 'u1', 100, 200, {
+      type: 'inbox',
+      userId: 'u2',
+    });
+
+    // A window that started long ago asks for the endpoint's 90-day max.
+    expect(mockGetUserActivity).toHaveBeenCalledWith('u2', {
+      days: 90,
+      limit: 200,
+    });
+    expect(mockGetActivityEvents).not.toHaveBeenCalled();
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterType: ConversationFilterType.OwnerOrFollows,
+        userId: 'u2',
+      })
+    );
+  });
+
+  // The endpoint counts `days` back from now, so 30 days would stop short of
+  // the default window's first midnight and drop that morning's events.
+  it("reaches the default window's first morning and clips what lies before it", async () => {
+    const { startTs = 0, endTs } = getDefaultInboxDateRange();
+    mockGetUserActivity.mockResolvedValue({
+      data: [
+        { id: 'first-morning', timestamp: startTs + 60 * 1000 },
+        { id: 'before-window', timestamp: startTs - 60 * 1000 },
+      ],
+    });
+
+    const result = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      startTs,
+      endTs,
+      { type: 'inbox', userId: 'u2' }
+    );
+
+    const [, { days }] = mockGetUserActivity.mock.calls[0];
+
+    expect(days * 24 * 60 * 60 * 1000).toBeGreaterThanOrEqual(
+      Date.now() - startTs
+    );
+    expect(result.activities.map(({ id }) => id)).toEqual(['first-morning']);
+  });
+
+  it.each([
+    [ActivityFilter.MyAssets, mockGetMyActivityFeed],
+    [ActivityFilter.Following, mockGetFollowingActivityFeed],
+    [ActivityFilter.Mentions, mockGetMentionsActivityFeed],
+  ])('asks the %s feed for the user', async (filter, activityRequest) => {
+    await fetchInboxActivity(filter, 'u1', undefined, undefined, {
+      type: 'inbox',
+      userId: 'u2',
+    });
+
+    expect(activityRequest).toHaveBeenCalledWith({
+      days: 30,
+      limit: 200,
+      startTs: undefined,
+      userId: 'u2',
+    });
+    expect(mockListConversations).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u2' })
+    );
   });
 });
 
@@ -579,5 +650,68 @@ describe('fetchInboxActivity per scope', () => {
 
     expect(mockGetMyActivityFeed).not.toHaveBeenCalled();
     expect(mockGetFollowingActivityFeed).not.toHaveBeenCalled();
+  });
+});
+
+describe('scoping to another user', () => {
+  it("scopes the hook's requests to the given user", async () => {
+    const { result } = renderHook(
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u2',
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetMyActivityFeed).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'u2' })
+    );
+  });
+
+  // The viewer's own profile is their inbox, not a scoped view of it.
+  it('keeps the inbox requests when the user is the viewer', async () => {
+    const { result } = renderHook(
+      () =>
+        useInboxActivity(ActivityFilter.MyAssets, undefined, {
+          type: 'inbox',
+          userId: 'u1',
+        }),
+      { wrapper: createWrapper() }
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(mockGetMyActivityFeed).toHaveBeenCalledWith({
+      days: 30,
+      limit: 200,
+      startTs: undefined,
+    });
+  });
+
+  it("counts the user's All feed", async () => {
+    // Inside the default window the count reads.
+    mockGetUserActivity.mockResolvedValue({
+      data: [{ id: '1', timestamp: Date.now() }],
+    });
+    const { result } = renderHook(() => useUserActivityCount('u2'), {
+      wrapper: createWrapper(),
+    });
+
+    // 1 event + 2 conversations.
+    await waitFor(() => expect(result.current).toBe(3));
+
+    expect(mockGetUserActivity).toHaveBeenCalledWith('u2', expect.anything());
+  });
+
+  it('counts nothing without a user', () => {
+    const { result } = renderHook(() => useUserActivityCount(undefined), {
+      wrapper: createWrapper(),
+    });
+
+    expect(result.current).toBeUndefined();
+    expect(mockGetUserActivity).not.toHaveBeenCalled();
   });
 });

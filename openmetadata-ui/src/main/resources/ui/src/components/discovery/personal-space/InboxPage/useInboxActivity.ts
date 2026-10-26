@@ -39,8 +39,10 @@ import {
   ActivityFilter,
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
+  DEFAULT_INBOX_DATE_PRESET,
   getActivityLookbackDays,
   getActivityWindowDays,
+  getDefaultInboxDateRange,
   getFeedSortTimestamp,
   InboxCount,
   InboxDateRange,
@@ -82,6 +84,35 @@ const ACTIVITY_REQUEST: Record<ActivityFilter, typeof getActivityEvents> = {
   [ActivityFilter.Mentions]: getMentionsActivityFeed,
 };
 
+// A `days`-only endpoint reaches back to the window's start, not just `days`.
+const getLookbackDays = (days: number, startTs?: number) =>
+  startTs ? getActivityLookbackDays(startTs) : days;
+
+interface ActivityWindowParams {
+  days: number;
+  startTs?: number;
+  limit: number;
+}
+
+// The same sub-tabs for another user. Their "All" is what they did plus the
+// conversations around their assets, not everything the viewer can see.
+const SCOPED_ACTIVITY_REQUEST: Record<
+  ActivityFilter,
+  (
+    userId: string,
+    params: ActivityWindowParams
+  ) => ReturnType<typeof getActivityEvents>
+> = {
+  [ActivityFilter.All]: (userId, { days, startTs, limit }) =>
+    getUserActivity(userId, { days: getLookbackDays(days, startTs), limit }),
+  [ActivityFilter.MyAssets]: (userId, params) =>
+    getMyActivityFeed({ ...params, userId }),
+  [ActivityFilter.Following]: (userId, params) =>
+    getFollowingActivityFeed({ ...params, userId }),
+  [ActivityFilter.Mentions]: (userId, params) =>
+    getMentionsActivityFeed({ ...params, userId }),
+};
+
 // "All" is everything the viewer is allowed to see, so no conversation filter.
 const CONVERSATION_FILTER: Record<
   ActivityFilter,
@@ -92,6 +123,13 @@ const CONVERSATION_FILTER: Record<
   [ActivityFilter.Following]: ConversationFilterType.Follows,
   [ActivityFilter.Mentions]: ConversationFilterType.Mentions,
 };
+
+// Another user's "All" conversations are the ones around them, not every
+// conversation the viewer can see.
+const getConversationFilter = (filter: ActivityFilter, isScoped: boolean) =>
+  isScoped && filter === ActivityFilter.All
+    ? ConversationFilterType.OwnerOrFollows
+    : CONVERSATION_FILTER[filter];
 
 // The activity API takes whole `days`, so its window reaches back past startTs;
 // clip to the exact window the conversations use. Mentions stay as served: that
@@ -114,10 +152,6 @@ interface FeedWindow {
   endTs?: number;
 }
 
-// A `days`-only endpoint reaches back to the window's start, not just `days`.
-const getLookbackDays = (days: number, startTs?: number) =>
-  startTs ? getActivityLookbackDays(startTs) : days;
-
 interface FeedRequests {
   activity: Promise<PagingResponse<ActivityEvent[]>>;
   conversations: Promise<PagingResponse<Conversation[]>>;
@@ -128,22 +162,26 @@ interface FeedRequests {
 const NO_CONVERSATIONS: Promise<PagingResponse<Conversation[]>> =
   Promise.resolve({ data: [], paging: { total: 0 } });
 
+// The viewer's Inbox, or another user's (`subjectId`) as their member page
+// shows it.
 const getInboxRequests = (
   filter: ActivityFilter,
   viewerId: string,
-  { days, startTs, endTs }: FeedWindow
+  { days, startTs, endTs }: FeedWindow,
+  subjectId?: string
 ): FeedRequests => {
-  const filterType = CONVERSATION_FILTER[filter];
+  const isScoped = Boolean(subjectId) && subjectId !== viewerId;
+  const params = { days, startTs, limit: ACTIVITY_LIMIT };
+  const filterType = getConversationFilter(filter, isScoped);
 
   return {
-    activity: ACTIVITY_REQUEST[filter]({
-      days,
-      startTs,
-      limit: ACTIVITY_LIMIT,
-    }),
+    activity:
+      isScoped && subjectId
+        ? SCOPED_ACTIVITY_REQUEST[filter](subjectId, params)
+        : ACTIVITY_REQUEST[filter](params),
     conversations: listConversations({
       filterType,
-      userId: filterType ? viewerId : undefined,
+      userId: filterType ? subjectId ?? viewerId : undefined,
       limit: CONVERSATION_LIMIT,
       startTs,
       endTs,
@@ -212,7 +250,7 @@ const getScopeRequests = (
     case 'user':
       return getUserRequests(scope.userName, window);
     default:
-      return getInboxRequests(filter, viewerId, window);
+      return getInboxRequests(filter, viewerId, window, scope.userId);
   }
 };
 
@@ -233,17 +271,21 @@ export const fetchInboxActivity = async (
   const { activity: activityRequest, conversations: conversationRequest } =
     getScopeRequests(scope, filter, userId, { days, startTs, endTs });
 
-  // allSettled, not all: these two feed independent halves of the tab, and the
-  // conversation list is only the fallback shown when there is no activity.
-  // Failing the pair together let a single bad conversation request blank the
-  // activity list as well, which is how a 400 on `limit` emptied the whole tab.
+  // allSettled, not all: the conversation list is only the fallback shown when
+  // there is no activity, so a bad conversation request (a 400 on `limit` once
+  // emptied the whole tab) must not blank the activity. A failed activity
+  // request does fail the fetch: the conversations alone would read as the
+  // whole feed, with counts to match.
   const [activityRes, conversationRes] = await Promise.allSettled([
     activityRequest,
     conversationRequest,
   ]);
 
-  const activities =
-    activityRes.status === 'fulfilled' ? activityRes.value?.data ?? [] : [];
+  if (activityRes.status === 'rejected') {
+    throw activityRes.reason;
+  }
+
+  const activities = activityRes.value?.data ?? [];
   const threads =
     conversationRes.status === 'fulfilled'
       ? conversationRes.value.data ?? []
@@ -315,9 +357,14 @@ const inboxActivityQuery = (
   staleTime: INBOX_ACTIVITY_STALE_TIME,
 });
 
+const getInboxTotal = (data: InboxActivityResult): number =>
+  pairFieldChanges(data.activities).length + data.threads.length;
+
 export interface UseInboxActivity extends InboxCount {
   items: InboxActivityItem[];
   isLoading: boolean;
+  error: unknown;
+  refetch: () => void;
 }
 
 /**
@@ -333,7 +380,7 @@ export const useInboxActivity = (
   const { currentUser } = useApplicationStore();
   const userId = currentUser?.id;
 
-  const { data, isLoading } = useQuery(
+  const { data, isLoading, error, refetch } = useQuery(
     inboxActivityQuery(filter, userId, dateRange, scope)
   );
 
@@ -364,6 +411,9 @@ export const useInboxActivity = (
     total: items.length,
     isCapped: data?.isCapped ?? false,
     isLoading,
+    // A failed background refresh keeps the cached feed on screen.
+    error: data ? null : error,
+    refetch,
   };
 };
 
@@ -394,9 +444,7 @@ export const useInboxActivityCounts = (
             [
               filter,
               {
-                total:
-                  pairFieldChanges(data.activities).length +
-                  data.threads.length,
+                total: getInboxTotal(data),
                 isCapped: data.isCapped,
               },
             ],
@@ -404,4 +452,30 @@ export const useInboxActivityCounts = (
         : [];
     })
   );
+};
+
+/**
+ * A user's "All" activity count in the default window: the badge on their
+ * member page's Activity tab, sharing its fetch with the tab's list.
+ */
+export const useUserActivityCount = (
+  userId: string | undefined
+): number | undefined => {
+  const { currentUser } = useApplicationStore();
+  const dateRange = useMemo(
+    () => ({ ...getDefaultInboxDateRange(), key: DEFAULT_INBOX_DATE_PRESET }),
+    []
+  );
+  const query = inboxActivityQuery(
+    ActivityFilter.All,
+    currentUser?.id,
+    dateRange,
+    { type: 'inbox', userId }
+  );
+  const { data } = useQuery({
+    ...query,
+    enabled: query.enabled && Boolean(userId),
+  });
+
+  return data && getInboxTotal(data);
 };

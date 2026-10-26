@@ -10,30 +10,59 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 import { Box, Tabs } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { User } from '../../../../../generated/entity/teams/user';
+import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import InboxTaskListToolbar from '../components/InboxTaskListToolbar';
 import TaskQueueBody, {
   TaskQueueEmptyState,
 } from '../components/TaskQueueBody';
-import { STATUS_FILTERS, TaskStatusFilter } from '../taskScope.utils';
+import {
+  STATUS_FILTERS,
+  TaskListScope,
+  TaskStatusFilter,
+  VISIBLE_TASKS,
+} from '../taskScope.utils';
 import { STATUS_OPTIONS_BY_TAB, useTaskQueue } from '../useTaskQueue';
 
 export interface TasksTabProps {
+  // When set, lists all tasks about this entity FQN (entity-page usage). Without
+  // it the tab shows the current user's *visible* tasks (assigned to me/my teams
+  // or about entities I own) — never every task in the system.
+  aboutEntity?: string;
+  // Scopes the tab to the tasks assigned to or created by this user, read from
+  // their side (whose move "pending approval" means).
+  user?: User;
+  // Set for a list-only layout: no detail pane, and a row opens its task here.
+  onOpenTask?: (taskId: string) => void;
   className?: string;
   onCountChange?: (count: number) => void;
 }
 
 /**
- * The Inbox's Triage: the viewer's visible tasks, with All / Open / Closed,
- * search and the Status / Type filters heading the list column.
+ * A task queue with All / Open / Closed, search and the Status / Type filters
+ * heading the list column: the Inbox's Triage, an entity's tasks, or a user's.
  */
-const TasksTab: React.FC<TasksTabProps> = ({ className, onCountChange }) => {
+const TasksTab: React.FC<TasksTabProps> = ({
+  aboutEntity,
+  user,
+  onOpenTask,
+  className,
+  onCountChange,
+}) => {
   const { t } = useTranslation();
-  const queue = useTaskQueue({ onCountChange });
+  const scope = useMemo((): TaskListScope => {
+    if (aboutEntity) {
+      return { type: 'entity', aboutEntity };
+    }
+
+    return user ? { type: 'user', user } : VISIBLE_TASKS;
+  }, [aboutEntity, user]);
+  const queue = useTaskQueue({ scope, onCountChange });
+  const userFirstName = useViewedUserFirstName(user);
 
   const statusTabs = (
     <Tabs
@@ -64,11 +93,14 @@ const TasksTab: React.FC<TasksTabProps> = ({ className, onCountChange }) => {
         emptyState={
           queue.showEmptyState ? (
             <TaskQueueEmptyState
+              error={queue.error}
               isNarrowed={queue.isNarrowed}
               scannedCount={queue.hasMore ? queue.tasks.length : undefined}
               status={queue.status}
+              userFirstName={userFirstName}
               onClearFilters={queue.handleClearFilters}
               onLoadMore={queue.handleScanFurther}
+              onRetry={queue.handleRetry}
             />
           ) : undefined
         }
@@ -76,16 +108,19 @@ const TasksTab: React.FC<TasksTabProps> = ({ className, onCountChange }) => {
         handleCommentsChanged={queue.handleCommentsChanged}
         handleResolved={queue.handleResolved}
         handleTaskUpdated={queue.handleTaskUpdated}
+        isLoadFailed={queue.isLoadFailed}
         isLoading={queue.isLoading}
         isLoadingMore={queue.isLoadingMore}
         scrollRef={queue.scrollRef}
         selectedTaskId={queue.selectedTaskId}
         sentinelRef={queue.sentinelRef}
         setSelectedTaskId={queue.setSelectedTaskId}
+        statusUserIds={queue.currentUserIds}
         tasks={queue.visibleTasks}
         toolbar={
           <InboxTaskListToolbar
             grouping={queue.grouping}
+            inline={Boolean(onOpenTask)}
             search={queue.search}
             statusFilter={queue.statusFilter}
             statusOptions={STATUS_OPTIONS_BY_TAB[queue.status]}
@@ -98,6 +133,7 @@ const TasksTab: React.FC<TasksTabProps> = ({ className, onCountChange }) => {
             onTypeFilterChange={queue.setTypeFilter}
           />
         }
+        onOpenTask={onOpenTask}
       />
     </Box>
   );
