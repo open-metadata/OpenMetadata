@@ -12,7 +12,7 @@
  */
 
 import { expect, Page, Response } from '@playwright/test';
-import { redirectToHomePage } from './common';
+import { redirectToHomePage, scrollIntoViewAndSettle } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 
 export const navigateToTestLibrary = async (page: Page) => {
@@ -27,8 +27,13 @@ export const navigateToTestLibrary = async (page: Page) => {
   await waitForAllLoadersToDisappear(page);
 };
 
+// After paging, the list can leave the page scrolled below the filters. The
+// click's own scroll then reaches react-aria a frame after the menu opened, and
+// it closes the non-modal popover on that ancestor scroll.
 export const openFilterDropdown = async (page: Page, filterLabel: string) => {
-  await page.getByTestId(`search-dropdown-${filterLabel}`).click();
+  const trigger = page.getByTestId(`search-dropdown-${filterLabel}`);
+  await scrollIntoViewAndSettle(trigger);
+  await trigger.click();
   await expect(page.getByTestId('drop-down-menu')).toBeVisible();
 };
 
