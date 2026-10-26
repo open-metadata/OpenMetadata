@@ -42,7 +42,14 @@ runs:
     - name: Install Yarn packages
       shell: bash
       working-directory: openmetadata-ui/src/main/resources/ui
-      run: yarn install --frozen-lockfile
+      # The registry occasionally answers 502; retry rather than fail the job.
+      run: |
+        for attempt in 1 2 3; do
+          yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+          echo "yarn install failed (attempt $attempt), retrying"
+          sleep 15
+        done
+        exit 1
     # Chromium is cached per Playwright version; the runner image already has
     # headless Chromium's system libraries, so no `--with-deps` (its apt fetch
     # from a slow mirror once cost a run ~10 minutes).
