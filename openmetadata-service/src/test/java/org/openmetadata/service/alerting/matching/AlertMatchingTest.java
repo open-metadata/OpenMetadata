@@ -87,6 +87,22 @@ class AlertMatchingTest {
   }
 
   @Test
+  void shouldTriggerAlert_threadOnClassification_tagCategoryResource_returnsTrue() {
+    ChangeEvent event =
+        threadChangeEvent(conversationThreadOn(Entity.CLASSIFICATION), EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("tagCategory");
+    assertTrue(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  @Test
+  void shouldTriggerAlert_threadOnTag_tagCategoryResource_returnsFalse() {
+    ChangeEvent event =
+        threadChangeEvent(conversationThreadOn(Entity.TAG), EventType.THREAD_CREATED);
+    FilteringRules config = filteringRules("tagCategory");
+    assertFalse(AlertMatching.shouldTriggerAlert(event, config));
+  }
+
+  @Test
   void entityTypeOfSource_resolvesRenamedSourceOnly() {
     assertEquals(Entity.CLASSIFICATION, AlertMatching.entityTypeOfSource("tagCategory"));
     assertEquals(Entity.TABLE, AlertMatching.entityTypeOfSource(Entity.TABLE));
@@ -385,6 +401,13 @@ class AlertMatchingTest {
         .withEventType(eventType)
         .withEntityType(Entity.CONVERSATION)
         .withEntity(conversation);
+  }
+
+  private static Thread conversationThreadOn(String entityType) {
+    return new Thread()
+        .withId(UUID.randomUUID())
+        .withType(ThreadType.Conversation)
+        .withEntityRef(ref(entityType));
   }
 
   private static ChangeEvent threadChangeEvent(Thread thread, EventType eventType) {
