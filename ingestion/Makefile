@@ -9,23 +9,31 @@ else
     ROOT_DIR := .
 endif
 
+PYTHON ?= python3
+PYTHON_RUNNER := $(abspath $(ROOT_DIR))/scripts/python_environment.py
+PYTHON_RUN = $(PYTHON) "$(PYTHON_RUNNER)"
+INGESTION_ABS := $(abspath $(INGESTION_DIR))
+ROOT_ABS := $(abspath $(ROOT_DIR))
+PYTHON_TOOLING_SCRIPTS := $(wildcard $(addprefix $(ROOT_ABS)/scripts/, \
+    python_environment.py generate_ingestion_models.py refresh_python_dependencies.py review_python_constraints.py \
+    build_python_artifacts.py python_artifact_smoke.py python_image_environment.py)) \
+    $(wildcard $(ROOT_ABS)/.github/scripts/python_ci.py)
+
 .PHONY: install
 install:  ## Install the ingestion module to the current environment
-	uv pip install $(INGESTION_DIR)/
+	$(PYTHON_RUN) --profile runtime
 
 .PHONY: install_dev
 install_dev:  ## Install the ingestion module with dev dependencies
-	uv pip install -e "$(INGESTION_DIR)/"
-	uv pip install --group "$(INGESTION_DIR)/pyproject.toml:dev"
+	$(PYTHON_RUN) --profile dev
 
 .PHONY: install_test
 install_test:  ## Install the ingestion module with test dependencies
-	uv pip install -e "$(INGESTION_DIR)[all,airflow,great-expectations]"
-	uv pip install --group "$(INGESTION_DIR)/pyproject.toml:test"
+	$(PYTHON_RUN) --profile test
 
 .PHONY: install_all
 install_all:  ## Install the ingestion module with all dependencies
-	uv pip install "$(INGESTION_DIR)[all]"
+	$(PYTHON_RUN) --profile all
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
@@ -33,49 +41,50 @@ install_apis:  ## Install the REST APIs module to the current environment
 
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)
-	cd $(INGESTION_DIR) && nox --no-venv -s static-checks
+	$(PYTHON_RUN) --profile test -- nox -f "$(INGESTION_ABS)/noxfile.py" --no-venv -s static-checks -- $(ARGS)
 
 .PHONY: precommit_install
 precommit_install:  ## Install the project's precommit hooks from .pre-commit-config.yaml
 	@echo "Installing pre-commit hooks"
-	@echo "Make sure to first run install_test first"
-	pre-commit install
+	$(PYTHON_RUN) --profile dev --environment "$(INGESTION_ABS)/.nox/dev-tools" -- pre-commit install
 
 .PHONY: py_format
 py_format:  ## Run ruff to lint-fix and format the Python codebase
-	ruff check --fix $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	ruff format $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	$(PYTHON_RUN) --profile style -- ruff check --fix "$(INGESTION_ABS)" "$(ROOT_ABS)/openmetadata-airflow-apis" $(PYTHON_TOOLING_SCRIPTS) --config "$(INGESTION_ABS)/pyproject.toml"
+	$(PYTHON_RUN) --profile style -- python "$(INGESTION_ABS)/scripts/check_ruff_suppressions.py" --prune
+	$(PYTHON_RUN) --profile style -- ruff format "$(INGESTION_ABS)" "$(ROOT_ABS)/openmetadata-airflow-apis" $(PYTHON_TOOLING_SCRIPTS) --config "$(INGESTION_ABS)/pyproject.toml"
 
 .PHONY: py_format_check
 py_format_check:  ## Check if Python sources are correctly formatted
-	ruff check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
-	ruff format --check $(INGESTION_DIR)/ $(ROOT_DIR)/openmetadata-airflow-apis/ --config $(INGESTION_DIR)/pyproject.toml
+	$(PYTHON_RUN) --profile style -- ruff check "$(INGESTION_ABS)" "$(ROOT_ABS)/openmetadata-airflow-apis" $(PYTHON_TOOLING_SCRIPTS) --config "$(INGESTION_ABS)/pyproject.toml"
+	$(PYTHON_RUN) --profile style -- python "$(INGESTION_ABS)/scripts/check_ruff_suppressions.py" --check
+	$(PYTHON_RUN) --profile style -- ruff format --check "$(INGESTION_ABS)" "$(ROOT_ABS)/openmetadata-airflow-apis" $(PYTHON_TOOLING_SCRIPTS) --config "$(INGESTION_ABS)/pyproject.toml"
 
 .PHONY: generate_settings_docs
 generate_settings_docs:  ## Regenerate ingestion/SETTINGS.md from the OM_ settings classes
-	python $(INGESTION_DIR)/scripts/generate_settings_docs.py
+	$(PYTHON_RUN) --profile dev --environment "$(INGESTION_ABS)/.nox/dev-tools" -- python "$(INGESTION_ABS)/scripts/generate_settings_docs.py"
 
 .PHONY: check_import_layers
 check_import_layers:  ## Fail if a module imports a higher layer (import-cost guard, see ingestion/.importlinter)
-	cd $(INGESTION_DIR) && lint-imports
+	$(PYTHON_RUN) --profile dev --environment "$(INGESTION_ABS)/.nox/dev-tools" --cwd "$(INGESTION_ABS)" -- lint-imports
 
 .PHONY: unit_ingestion
 unit_ingestion:  ## Run Python unit tests
-	cd $(INGESTION_DIR) && nox --no-venv -s unit-tests
+	$(PYTHON_RUN) --profile test -- nox -f "$(INGESTION_ABS)/noxfile.py" --no-venv -s unit-tests -- $(ARGS)
 
 # FIXME: This is a workaround to exclude the tests that require dependencies that are not straightforward to install
 # and might be omitted in unless the we are developing them. This only must be used for local development!
 ## Ingestion tests & QA
 .PHONY: run_ometa_integration_tests
 run_ometa_integration_tests:  ## Run Python integration tests
-	cd $(INGESTION_DIR) && nox --no-venv -s integration-tests
+	$(PYTHON_RUN) --profile test -- nox -f "$(INGESTION_ABS)/noxfile.py" --no-venv -s integration-tests -- $(ARGS)
 
 .PHONY: run_python_tests
 run_python_tests:  ## Run all Python tests with coverage
-	coverage erase
+	$(PYTHON_RUN) --profile coverage --cwd "$(INGESTION_ABS)" -- coverage erase --rcfile pyproject.toml
 	$(MAKE) unit_ingestion
 	$(MAKE) run_ometa_integration_tests
-	coverage report --rcfile $(INGESTION_DIR)/pyproject.toml || true
+	$(PYTHON_RUN) --profile coverage --cwd "$(INGESTION_ABS)" -- coverage report --rcfile pyproject.toml
 
 .PHONY: sonar_ingestion
 sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
@@ -103,9 +112,9 @@ coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
 .PHONY: coverage
 coverage:  ## Run all Python tests and generate the coverage XML report
 	$(MAKE) run_python_tests
-	coverage xml --rcfile $(INGESTION_DIR)/pyproject.toml -o $(INGESTION_DIR)/coverage.xml || true
+	$(PYTHON_RUN) --profile coverage --cwd "$(INGESTION_ABS)" -- coverage xml --rcfile pyproject.toml -o coverage.xml
 	sed 's|filename="[^"]*/site-packages/metadata/|filename="src/metadata/|g' $(INGESTION_DIR)/coverage.xml > $(INGESTION_DIR)/ci-coverage.xml
 
 .PHONY: clean-nox
 clean-nox:
-	rm -rf .nox
+	rm -rf "$(INGESTION_ABS)/.nox"

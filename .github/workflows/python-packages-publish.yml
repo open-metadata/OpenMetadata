@@ -10,48 +10,108 @@
 #  limitations under the License.
 
 name: Publish Python Packages
-
 on:
   workflow_dispatch:
-
 permissions:
   contents: read
-
 jobs:
-  publish:
+  build:
     runs-on: ubuntu-latest
-    environment: release
+    timeout-minutes: 45
+    env:
+      PYTHON_VERSIONS: '3.10'
     steps:
-      - uses: actions/checkout@v7
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
-      - name: Install Ubuntu related dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y libsasl2-dev unixodbc-dev python3-venv
-      - name: Install and Publish PyPi packages for OpenMetadata Ingestion
+          python-profile: dev
+          install-server: 'false'
+      - name: Build both wheel/sdist pairs once
+        run: >-
+          python scripts/build_python_artifacts.py build
+          --output-dir "$RUNNER_TEMP/python-artifacts"
+      - name: Check distribution metadata
+        run: twine check "$RUNNER_TEMP/python-artifacts/"*.whl "$RUNNER_TEMP/python-artifacts/"*.tar.gz
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: python-release-artifacts
+          path: ${{ runner.temp }}/python-artifacts/
+          if-no-files-found: error
+          retention-days: 14
+  validate:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.11', '3.12']
+    env:
+      PYTHON_VERSIONS: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.python }}
+          python-profile: dev
+          install-server: 'false'
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: python-release-artifacts
+          path: ${{ runner.temp }}/python-artifacts
+      - name: Clean-install and smoke-test both artifact formats
+        run: >-
+          python scripts/build_python_artifacts.py validate
+          --output-dir "$RUNNER_TEMP/python-artifacts"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: python-release-validation-${{ matrix.python }}
+          path: ${{ runner.temp }}/python-artifacts/*-validation.json
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-environment
+        with:
+          python-version: '3.10'
+          profile: style
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: python-release-artifacts
+          path: ${{ runner.temp }}/python-artifacts
+      - name: Prepare locked release tools
+        env:
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/python-release-tools
+        run: uv sync --locked --project ingestion --only-group dev --python "$VIRTUAL_ENV/bin/python"
+      - name: Verify the tested bytes before publication
+        run: >-
+          python scripts/build_python_artifacts.py check
+          --output-dir "$RUNNER_TEMP/python-artifacts"
+      - name: Publish tested ingestion artifacts
         env:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          sudo make install_antlr_cli
-          make install_dev generate
-          cd ingestion; \
-            python -m build; \
-            twine check dist/*; \
-            twine upload dist/* --verbose
-      - name: Install and Publish PyPi packages for OpenMetadata Managed (Airflow) APIs
+        run: >-
+          "$RUNNER_TEMP/python-release-tools/bin/twine" upload
+          "$RUNNER_TEMP/python-artifacts/"openmetadata_ingestion-*.whl
+          "$RUNNER_TEMP/python-artifacts/"openmetadata_ingestion-*.tar.gz
+      - name: Publish tested managed API artifacts
         env:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_PASSWORD }}'
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          make install_dev install_apis
-          cd openmetadata-airflow-apis; \
-            python -m build; \
-            twine check dist/*; \
-            twine upload dist/* --verbose
+        run: >-
+          "$RUNNER_TEMP/python-release-tools/bin/twine" upload
+          "$RUNNER_TEMP/python-artifacts/"openmetadata_managed_apis-*.whl
+          "$RUNNER_TEMP/python-artifacts/"openmetadata_managed_apis-*.tar.gz

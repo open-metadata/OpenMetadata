@@ -22,7 +22,7 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 GENERATED_ROOT = ROOT / "ingestion/src/metadata/generated"
 MANIFEST = GENERATED_ROOT / ".generation-manifest.json"
-MANIFEST_VERSION = 1
+MANIFEST_VERSION = 2
 
 INPUT_ROOTS = (
     ROOT / "openmetadata-spec/src/main/resources/json/schema",
@@ -31,7 +31,10 @@ INPUT_ROOTS = (
 INPUT_FILES = (
     ROOT / "Makefile",
     ROOT / "ingestion/pyproject.toml",
+    ROOT / "ingestion/uv.lock",
+    ROOT / "scripts/python_environment.py",
     ROOT / "scripts/datamodel_generation.py",
+    ROOT / "scripts/generate_ingestion_models.py",
     Path(__file__).resolve(),
 )
 

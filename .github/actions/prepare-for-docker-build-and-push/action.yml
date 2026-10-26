@@ -45,22 +45,6 @@ runs:
         username: ${{ inputs.dockerhub_username }}
         password: ${{ inputs.dockerhub_token }}
 
-    - name: Install Ubuntu dependencies
-      if: inputs.is_ingestion == true
-      shell: bash
-      run: |
-        sudo apt-get install -y python3-venv
-
-    - name: Install open-metadata dependencies
-      if: inputs.is_ingestion == true
-      shell: bash
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        pip install --upgrade pip
-        sudo make install_antlr_cli
-        make install_dev generate
-    
     - name: Docker Meta
       id: meta
       uses: docker/metadata-action@v6

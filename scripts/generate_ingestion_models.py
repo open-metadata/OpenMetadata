@@ -14,7 +14,7 @@
 from __future__ import annotations
 
 import argparse
-import glob
+import os
 import shutil
 import subprocess
 import sys
@@ -31,9 +31,7 @@ def run(command: list[str]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Generate ingestion models and ANTLR parsers."
-    )
+    parser = argparse.ArgumentParser(description="Generate ingestion models and ANTLR parsers.")
     parser.add_argument(
         "--python-only",
         action="store_true",
@@ -44,22 +42,36 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    print("Running Datamodel Code Generator")
-    print("Make sure the dev dependency group is installed first")
+    if os.environ.get("OM_GENERATION_PREPARED") != str(Path(sys.prefix).resolve()):
+        run(
+            [
+                sys.executable,
+                str(ROOT / "scripts/python_environment.py"),
+                "--profile",
+                "generation",
+                "--",
+                "python",
+                str(Path(__file__).resolve()),
+                *sys.argv[1:],
+            ]
+        )
+        return
+    sys.stdout.write("Running Datamodel Code Generator\n")
 
     shutil.rmtree(GENERATED_ROOT, ignore_errors=True)
     GENERATED_ROOT.mkdir(parents=True)
 
     run([sys.executable, "scripts/datamodel_generation.py"])
 
-    grammar_files = sorted(glob.glob(str(ANTLR_GRAMMAR / "*.g4")))
+    grammar_files = sorted(str(path) for path in ANTLR_GRAMMAR.glob("*.g4"))
     run(
         [
             "antlr4",
             "-Dlanguage=Python3",
+            "-Xexact-output-dir",
             "-o",
             str(GENERATED_ROOT / "antlr"),
-            *grammar_files,
+            *[str(Path(path).relative_to(ROOT)) for path in grammar_files],
         ]
     )
     if not args.python_only:

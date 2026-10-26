@@ -67,3 +67,5 @@ jobs:
           push: true
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./ingestion/operators/docker/Dockerfile
+          build-args: |
+            RI_VERSION=${{ inputs.pypi_release_version }}

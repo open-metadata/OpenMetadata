@@ -91,6 +91,226 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 
 ---
 
+## Locked Python commands
+
+Run `make install_dev` for the slim development profile or `make install_test` for
+all connector and test dependencies. Both synchronize `ingestion/uv.lock` with
+`uv sync --locked` into the existing repository `env/`; they remove packages outside
+the selected profile. `make install` and `make install_all` retain their base and
+all-connector selections. Set `OM_VENV_DIR` to a repository directory name to reuse
+another existing application environment, or explicitly set `OM_PYTHON_ENVIRONMENT`
+to an absolute task-specific venv path. No `ingestion/.venv` is created.
+
+Formatting, generation and coverage tools use explicit caches under
+`ingestion/.nox/{style,generation,coverage,dev-tools}`. These tool profiles do not prune the
+application's connector drivers. The runner bootstraps pinned uv in the selected
+venv if needed; setuptools/setup.py remain the packaging authority.
+
+```sh
+make install_dev
+make generate ARGS=--python-only
+make py_format_check
+make static-checks
+make unit_ingestion ARGS='-k selected_test --maxfail 1'
+make run_ometa_integration_tests ARGS='--standalone --workers 0 tests/integration/sdk'
+```
+
+Make commands work from the root and `ingestion/`, except `make generate`, which
+is root-only. `nox -f ingestion/noxfile.py -s unit-tests -- -k selected_test` also
+works from the root. Direct Nox sessions synchronize their own session venv;
+`--no-venv` selects the same application/tool environment as Make. Type checking
+uses the full test profile because it checks optional connector imports.
+
+Project profiles first synchronize generation tools and generate stale Python
+models, then install the editable project. Test synchronization provisions and
+verifies the release-pinned English, Spanish, Italian and Polish spaCy models;
+downloads require the GitHub release-asset host. Repeated nested Make/Nox calls
+reuse preparation only when the profile, environment and dependency inputs match.
+The generation manifest hashes the lock and runner, and Python generation omits
+timestamps so repeated output is byte-identical. Full generation still includes
+the UI parser; use `--python-only` when UI changes are not intended.
+
+The managed Airflow API CI lane uses the `api` profile: the test dependencies plus
+the local API project and its dependencies, resolved in the same lock. Run it locally
+with `python scripts/python_environment.py --profile api -- make coverage_apis`.
+The legacy `install_apis` packaging command remains separate pending artifact work.
+Run commands sharing an application environment sequentially.
+
+Routine CI and the cache warmer use the same profile action. Cache keys include
+the lock, profile, full interpreter identity, OS and architecture; every restore
+is followed by locked synchronization. Coverage jobs require every expected
+suite artifact before combining reports; Sonar uploads remain optional. Startup
+attempt logs are retained separately, and service readiness waits are bounded by
+`SERVICE_READY_TIMEOUT_SECONDS` (default 300 seconds per service).
+
+### Dependency updates
+
+Dependabot proposes weekly `uv.lock` updates within the existing constraints,
+including dependencies composed by `setup.py`. Tooling minor/patch updates are
+grouped separately from runtime updates; major updates remain individual. Shared
+pins and bounds in `setup.py` remain maintainer-managed. A pinned dependency cannot
+advance until its constraint is deliberately changed. The old urllib3 exclusion
+is removed: Tableau 0.40 allows urllib3 2.x, which the current lock already uses.
+
+Resolve and test a candidate outside the checkout:
+
+```sh
+python scripts/refresh_python_dependencies.py --package urllib3 \
+  --output-dir /tmp/om-python-candidate -- \
+  python scripts/python_environment.py --profile test -- make unit_ingestion
+```
+
+Repeat `--package` for coupled updates, or use `--all` for a broad refresh.
+The output directory must be empty. `report.json`, both locks, and complete
+resolution/validation logs remain there even after failure. The accepted lock and
+existing application environment are preserved. Inspect the candidate diff, then
+use a new output directory and `--accept` to resolve, validate, and replace only
+the lock. Acceptance refuses concurrent checkout edits or validation that changes
+the candidate's lock/source files. The normal install/test commands never refresh.
+
+The weekly/manual `Python dependency canary` workflow runs a targeted test sample
+against an isolated broad refresh, retains evidence for 14 days, and has only read
+permissions. It neither accepts a lock nor opens a PR. Its sample is an early
+compatibility signal; dependency PRs still need the ordinary supported CI matrix
+and relevant connector tests before merge.
+
+The weekly/manual `Python constraint review` runs Mondays at 07:00 UTC on the
+default branch. It evaluates every `setup.py` extra, checks stable non-yanked PyPI
+releases, and reports upgrades blocked by shared pins or upper bounds. The report
+includes locked versions, Python 3.10/3.11/3.12 release compatibility, affected
+extras, requirement markers, and adjacent constraint comments. This is an advisory
+check: file `Requires-Python` metadata does not prove platform wheel availability,
+marker applicability, or that the complete dependency graph can resolve.
+
+```sh
+python scripts/review_python_constraints.py scan --output-dir /tmp/om-constraint-review
+```
+
+Local scanning writes only `report.json` and `report.md`; it does not change
+constraints, refresh the lock, install candidate packages, or contact GitHub.
+The workflow's separate issue-writing job maintains one bot-owned review issue,
+mentions `@open-metadata/ingestion` for newly actionable constraint/version pairs,
+and leaves unchanged reports untouched. New findings reopen a closed issue;
+human notes outside its marked report section are preserved. Index failures fail
+the scan and prevent publication. The issue-writing permission is confined to the
+report job, and publication never runs on PR events. Security alerts remain
+independent. Review each finding before changing its shared constraint and using
+the tested refresh flow above.
+
+The ingestion CODEOWNERS review Python updates and own the refresh command; CI
+owners review the canary. For a security fix, use a narrow package refresh and
+deliberately adjust its shared constraint if necessary. Record the advisory,
+compatibility evidence, owner, and review/removal date for any temporary exception;
+do not add a blanket ignore or override to bypass resolution. Keep the existing
+tested metadata exceptions narrow. To roll back locally, restore the saved
+`accepted.uv.lock` and synchronize the same profile with `--locked`. For an already
+merged update, use a new revert commit with the earlier lock and matching manifests,
+then rerun its checks. Never rewrite reviewed history.
+
+Dependency maintenance belongs to `@open-metadata/ingestion`; workflow changes
+also require the existing `.github` owners. Review shared constraints, build-tool
+pins, image roots and metadata exceptions when their dependencies change. The
+weekly constraint report is the review queue, not permission to lift bounds.
+For a temporary exception, record its exact package/version, reason or advisory,
+owner, regression command, removal condition and next review date in the PR.
+Check whether the upstream fix now permits removing it before renewing it.
+The SQLAlchemy/IBMi exception must retain its dialect regression; the image's
+psycopg2 substitution must retain its exact-version metadata and native checks.
+Remove the IBMi override when upstream metadata supports SQLAlchemy 2 and the
+dialect regression passes without the override. Remove the psycopg2 substitution
+only after binary-driver authentication/startup passes on both image architectures.
+Revisit the image mysqlclient pin and build-backend pin on Airflow/backend updates;
+changing them requires clean artifact, native-driver and startup checks.
+
+Retire dependencies only after checking imports, CLI/script use, published extras
+and downstream requirements. Compare wheel metadata and both lock changes, retain
+any runtime dependency previously supplied transitively, and test affected public
+commands/connectors from installed artifacts. `google-cloud` was an empty legacy
+distribution; concrete Google client libraries remain required. `memory-profiler`
+had no callers; runtime metrics and diagnostics use the now-direct `psutil`
+dependency. Optional developer profiling tools can be installed separately.
+
+Downstream repositories keep their own environment authority. A locked upstream
+sync is exact and removes unrelated overlay packages: install Collate into its
+own environment or derive and test a combined environment instead of syncing the
+upstream-only profile after installing it. Check the downstream revision,
+package constraints, module overlays, CLI entry points and final image environment
+against the actual upstream wheels before adopting an update.
+Both distributions publish the `metadata` command. Install the SDK first, generate
+and build Collate's models, then install Collate last so its entry point remains
+active. A source-only Collate wheel lacks the additional generated models needed
+by its CLI; dependency resolution alone does not establish compatibility.
+
+### Python artifacts and images
+
+Build both distributions once, then validate those exact bytes in clean wheel
+and sdist environments outside the checkout:
+
+```sh
+python scripts/build_python_artifacts.py build --output-dir /tmp/om-python-artifacts
+python scripts/build_python_artifacts.py validate --output-dir /tmp/om-python-artifacts
+python scripts/build_python_artifacts.py check --output-dir /tmp/om-python-artifacts
+```
+
+The build output directory must be empty. Python-only generation runs through its
+locked tooling profile before packaging. Setuptools remains the backend, with
+hash-checked build constraints in `ingestion/build-constraints.txt`; wheels are
+built from their sdists. The output retains both pairs, SHA256 sums, a manifest,
+and validation reports. Validation checks installed versions, CLI startup,
+generated-model/parser imports, packaged resources, dependency consistency, and
+absence of source/editable dependencies. Airflow receives a private temporary
+home during validation. The release workflow builds once, checks those artifacts
+on Python 3.10/3.11/3.12, and only then exposes the existing upload credentials
+to a separate job that verifies and uploads the original artifacts.
+
+Images use `ingestion/images/runtime/uv.lock`, independently of the development
+lock: their final environment includes Airflow, selected providers, source-built
+psycopg2, and the existing mysqlclient 2.1.1 pin. Runtime dependency constraints
+still come from `setup.py`; image extra aliases are checked against the actual
+built wheel metadata. Both architectures use built wheels in an isolated venv,
+without a source checkout or editable project in the runtime image. CI and
+release Dockerfiles use the same builder and lock; `RI_VERSION` must match the
+source artifact version. `INGESTION_DEPENDENCY` accepts existing extras and
+comma-separated selections, including an empty base-only selection. Automatic
+DB2 installation remains AMD64-only. Required providers remain installed instead
+of being removed after dependency resolution.
+
+The image policy replaces psycopg2-binary with psycopg2 at its exact tested
+version and checks that replacement explicitly; ordinary `pip check` cannot
+represent that distribution-name substitution. The existing exact
+sqlalchemy-ibmi metadata exception also applies, with its SQLAlchemy constraint
+checked rather than ignored. No published package metadata is rewritten.
+
+After changing dependency constraints, rebuild artifacts, check/update image
+aliases, and deliberately refresh the image lock before testing the images:
+
+```sh
+python scripts/python_image_environment.py manifest --artifacts /tmp/om-python-artifacts
+# Use manifest --write only when the checked aliases/image policy need updating.
+uv lock --project ingestion/images/runtime
+uv lock --check --project ingestion/images/runtime
+python scripts/python_image_environment.py export --artifacts /tmp/om-python-artifacts \
+  --kind airflow --extras slim --architecture arm64 --output-dir /tmp/om-image-runtime
+```
+
+Exports retain package hashes and the selected lock identity. Dependabot checks
+both locks weekly without changing shared constraints. Base images are pinned by
+multi-architecture digest. Debian repositories and native driver downloads remain
+external build inputs: the Python lock does not freeze OS packages, native
+compiler output, or optional classification-model downloads. Validate native
+inputs using `/opt/openmetadata-runtime/native-packages.txt` and
+`/oracle-instantclient.sha256`, which record the actual OS versions and Oracle
+archive checksum used by each build. Validate native
+imports after cleanup and test both image architectures before a release; a lock
+check alone is insufficient. Neither the local artifact commands nor Docker
+builds publish anything.
+
+Airflow's Bookworm base cannot load mysql-connector-python 26.7's optional C
+extension, which requires OpenSSL 3.2. Its normal connection API falls back to
+Python (tested against MySQL on both architectures); explicitly requesting
+`use_pure=False` fails on that base. The separate mysqlclient driver remains
+native. The operator's Trixie base supports the C extension.
+
 ## Using the Skills
 
 ### Slash Commands Quick Reference

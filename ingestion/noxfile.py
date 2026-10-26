@@ -12,7 +12,10 @@
 Nox sessions for testing and formatting checks.
 """
 
+import importlib.util
 import os
+import shlex
+from pathlib import Path
 
 import nox
 from nox.virtualenv import PassthroughEnv
@@ -37,36 +40,34 @@ def get_python_versions():
     return SUPPORTED_PYTHON_VERSIONS
 
 
-def install(session, *args, **kwargs):
-    """Install packages unless running with --no-venv (packages already installed)."""
-    if not isinstance(session.virtualenv, PassthroughEnv):
-        session.install(*args, **kwargs)
+INGESTION_ROOT = Path(__file__).resolve().parent
+nox.options.envdir = str(INGESTION_ROOT / ".nox")
+ROOT = INGESTION_ROOT.parent
+SPEC = importlib.util.spec_from_file_location("python_environment", ROOT / "scripts/python_environment.py")
+ENVIRONMENT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(ENVIRONMENT)
 
 
-def install_group(session, group):
-    """Install a PEP 735 dependency group unless using the active environment."""
-    if not isinstance(session.virtualenv, PassthroughEnv):
-        session.run("uv", "pip", "install", "--group", f"pyproject.toml:{group}", external=True)
-
-
-def ensure_generated_models(session):
-    """Check generated files and regenerate them when stale."""
-    result = session.run(
-        "python",
-        "../scripts/check_generated_models.py",
-        "--check",
-        silent=True,
-        success_codes=[0, 1],
+def prepare(session, profile):
+    """Synchronize the locked profile into the selected Nox environment."""
+    session.chdir(INGESTION_ROOT)
+    path = (
+        ENVIRONMENT.default_environment(profile)
+        if isinstance(session.virtualenv, PassthroughEnv)
+        else Path(session.virtualenv.location).resolve()
     )
-    if result:
-        session.log(result.rstrip())
-    if result and not result.startswith("Generated models are up to date."):
-        session.run(
-            "python",
-            "../scripts/generate_ingestion_models.py",
-            "--python-only",
-            external=True,
-        )
+    session.run(
+        "python",
+        str(ROOT / "scripts/python_environment.py"),
+        "--profile",
+        profile,
+        "--environment",
+        str(path),
+        external=True,
+    )
+    session.env["VIRTUAL_ENV"] = str(path)
+    session.env["PATH"] = str(path / "bin") + os.pathsep + os.environ["PATH"]
+    return path
 
 
 @nox.session(
@@ -75,13 +76,11 @@ def ensure_generated_models(session):
     venv_backend="uv|venv",
 )
 def lint(session):
-    # Single-tool replacement for the old black + isort + pycln stack.
-    # Mirrors `make py_format_check` so local nox and Makefile stay in sync.
-    install(session, "-e", ".")
-    install_group(session, "style")
-    session.run("ruff", "check", ".", "../openmetadata-airflow-apis/")
-    session.run("python", "scripts/check_ruff_suppressions.py", "--check")
-    session.run("ruff", "format", "--check", ".", "../openmetadata-airflow-apis/")
+    path = prepare(session, "style")
+    runner = shlex.join(
+        [str(path / "bin/python"), str(ROOT / "scripts/python_environment.py"), "--environment", str(path)]
+    )
+    session.run("make", "py_format_check", f"PYTHON_RUN={runner}", external=True)
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +93,7 @@ def lint(session):
     python=get_python_versions(),
 )
 def static_checks(session):
-    install(session, "-e", ".")
-    install_group(session, "dev")
+    prepare(session, "test")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current
@@ -131,18 +129,13 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    install(session, "-e", ".[all,airflow,great-expectations]")
-    install_group(session, "test")
-    ensure_generated_models(session)
-
-    # Separate test paths from pytest flags in posargs
-    args = list(session.posargs)
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
+    prepare(session, "test")
 
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/unit/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -156,8 +149,7 @@ def unit_tests(session):
         "--durations=20",
     ]
 
-    pytest_args.extend(test_paths or ["tests/unit/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(session.posargs)
 
     session.run("pytest", *pytest_args)
 
@@ -181,9 +173,7 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    install(session, "-e", ".[all,airflow,great-expectations]")
-    install_group(session, "test")
-    ensure_generated_models(session)
+    prepare(session, "test")
 
     args = list(session.posargs)
     standalone = "--standalone" in args
@@ -196,13 +186,11 @@ def integration_tests(session):
         workers = args[idx + 1]
         args = args[:idx] + args[idx + 2 :]
 
-    # Separate test paths from pytest flags in posargs
-    test_paths = [a for a in args if not a.startswith("-")]
-    extra_flags = [a for a in args if a.startswith("-")]
-
     pytest_args = [
         "-c",
         "pyproject.toml",
+        "-o",
+        "testpaths=tests/integration/",
         "--cov=metadata",
         "--cov-branch",
         "--cov-config=pyproject.toml",
@@ -215,8 +203,7 @@ def integration_tests(session):
     if use_xdist:
         pytest_args.extend([f"-n{workers}", "--dist=loadgroup"])
 
-    pytest_args.extend(test_paths or ["tests/integration/"])
-    pytest_args.extend(extra_flags)
+    pytest_args.extend(args)
 
     session.run("pytest", *pytest_args)
 
@@ -238,7 +225,7 @@ def combine_coverage(session):
     Example:
         nox -s combine-coverage
     """
-    install(session, "coverage[toml]")
+    prepare(session, "coverage")
     session.run("coverage", "combine")
     session.run(
         "coverage",

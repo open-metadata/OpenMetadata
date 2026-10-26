@@ -79,7 +79,7 @@ check-generated:  ## Check whether ingestion generated files are current
 
 .PHONY: generate
 generate:  ## Generate the pydantic models from the JSON Schemas to the ingestion module
-	python scripts/generate_ingestion_models.py
+	$(PYTHON_RUN) --profile generation -- python scripts/generate_ingestion_models.py $(ARGS)
 
 ## Reference docs generation (deterministic; CI fails if the committed output drifts)
 .PHONY: generate-entity-index

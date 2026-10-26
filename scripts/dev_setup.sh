@@ -862,13 +862,12 @@ export_brew_build_flags() {
 
 install_ingestion() {
   export_brew_build_flags
-  run python -m pip install --upgrade pip "setuptools<81"
   if [ "$SLIM_PYTHON" -eq 1 ]; then
-    info "Slim mode: installing ingestion[dev] only."
-    run make -C "$REPO_ROOT" install_dev
+    info "Slim mode: installing the locked dev profile."
+    run make -C "$REPO_ROOT" install_dev OM_VENV_DIR="$VENV_DIR"
   else
     info "Installing the full dev environment; this pulls every connector's dependencies and takes a while."
-    run make -C "$REPO_ROOT" install_test
+    run make -C "$REPO_ROOT" install_test OM_VENV_DIR="$VENV_DIR"
   fi
   ok "Ingestion framework installed"
 }
@@ -889,7 +888,6 @@ install_ui_deps() {
 }
 
 install_precommit() {
-  run make -C "$REPO_ROOT" install_test
   run make -C "$REPO_ROOT" precommit_install
   ok "pre-commit hooks installed (format + license gate on every commit)"
 }

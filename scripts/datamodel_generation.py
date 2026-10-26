@@ -17,12 +17,14 @@ import glob
 import os
 import re
 import warnings
+from pathlib import Path
 
+from datamodel_code_generator import DataModelType, InputFileType, generate
+from datamodel_code_generator.format import Formatter
 from datamodel_code_generator.imports import Import
 # `model.pydantic` held the Pydantic v1 models and was removed in datamodel-code-generator 0.60+.
 # We generate with `--output-model-type pydantic_v2.BaseModel`, so patch the v2 type map.
 from datamodel_code_generator.model import pydantic_v2 as pydantic_model
-from datamodel_code_generator.__main__ import main
 
 pydantic_model.types.IMPORT_SECRET_STR = Import.from_full_path(
     "metadata.ingestion.models.custom_pydantic.CustomSecretStr"
@@ -65,12 +67,29 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-# `--formatters` is passed explicitly because the external formatters (black, isort) are about to
-# become opt-in upstream. Naming them keeps today's output shape, which the post-processing below
-# depends on: SOURCE_CONFIG_BLOCK matches black's parenthesised-annotation layout.
-args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schema --output-model-type pydantic_v2.BaseModel --use-annotated --base-class metadata.ingestion.models.custom_pydantic.BaseModel --input-file-type jsonschema --output {ingestion_path}src/metadata/generated/schema --set-default-enum-member --formatters black isort".split(" ")
-
-main(args)
+schema_root = Path(f"{directory_root}openmetadata-spec/src/main/resources/json/schema").resolve()
+output_root = Path(f"{ingestion_path}src/metadata/generated/schema").resolve()
+# The directory reader sorts only basenames; duplicate names need a stable path tie-breaker.
+schema_files = sorted(
+    (path for path in schema_root.rglob("*") if path.is_file()),
+    key=lambda path: (path.name, path.relative_to(schema_root).as_posix()),
+)
+os.chdir(schema_root)
+try:
+    generate(
+        schema_files,
+        input_file_type=InputFileType.JsonSchema,
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        output=output_root,
+        use_annotated=True,
+        field_constraints=True,
+        base_class="metadata.ingestion.models.custom_pydantic.BaseModel",
+        set_default_enum_member=True,
+        disable_timestamp=True,
+        formatters=[Formatter.BLACK, Formatter.ISORT],
+    )
+finally:
+    os.chdir(current_directory)
 
 # Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:

@@ -66,6 +66,8 @@ jobs:
           push: true
           tags: ${{ steps.prepare.outputs.tags }}
           file: ./ingestion/Dockerfile
+          build-args: |
+            RI_VERSION=${{ inputs.pypi_release_version }}
 
       # Publish the openmetadata/ingestion-slim image with fewer dependencies
       - name: Prepare Slim for Docker Build&Push
@@ -92,3 +94,4 @@ jobs:
           file: ./ingestion/Dockerfile
           build-args: |
             INGESTION_DEPENDENCY=slim
+            RI_VERSION=${{ inputs.pypi_release_version }}

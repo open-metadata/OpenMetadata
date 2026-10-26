@@ -31,7 +31,7 @@ DISCOVERY_RULES = ("G004", "UP006", "UP007", "UP035", "UP045")
 FORBIDDEN_SUPPRESSION_CODES = frozenset({"G004", "UP006", "UP007", "UP035", "UP045"})
 MODERN_TYPING_RULES = frozenset({"UP006", "UP007", "UP035", "UP045"})
 EXCLUDED_DISCOVERY_DIRS = frozenset(
-    {".mypy_cache", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist"}
+    {".mypy_cache", ".nox", ".pytest_cache", ".ruff_cache", ".tox", ".venv", "__pycache__", "build", "dist"}
 )
 _NOQA_CODES = re.compile(r"#\s*(?:ruff:\s*)?noqa\s*:\s*([^#\r\n]*)", re.IGNORECASE)
 _RULE_CODE = re.compile(r"[A-Z]+\d+")

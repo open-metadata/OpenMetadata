@@ -87,6 +87,18 @@ jobs:
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/setup-python-environment/**'
+              - '.github/scripts/python_ci.py'
+              - 'scripts/python_environment.py'
+              - 'scripts/refresh_python_dependencies.py'
+              - 'scripts/review_python_constraints.py'
+              - 'scripts/build_python_artifacts.py'
+              - 'scripts/python_artifact_smoke.py'
+              - 'scripts/python_image_environment.py'
+              - 'scripts/check_generated_models.py'
+              - 'scripts/generate_ingestion_models.py'
+              - 'scripts/datamodel_generation.py'
+              - 'Makefile'
               - 'openmetadata-spec/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
@@ -103,6 +115,13 @@ jobs:
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/setup-python-environment/**'
+              - '.github/scripts/python_ci.py'
+              - 'scripts/python_environment.py'
+              - 'scripts/check_generated_models.py'
+              - 'scripts/generate_ingestion_models.py'
+              - 'scripts/datamodel_generation.py'
+              - 'Makefile'
 
       - name: Wait for the labeler
         uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
@@ -223,17 +242,23 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
           persist-credentials: false
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: ${{ matrix.py-version }}
-          install-server: 'false'
-
       - name: Download spaCy model
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
+
+      - name: Use verified classification model wheel
+        run: |
+          echo "OM_CLASSIFICATION_MODEL_DIRECTORY=/tmp/spacy-model" >> "$GITHUB_ENV"
+          echo "OM_CLASSIFICATION_MODEL_SHA256=$SPACY_MODEL_SHA256" >> "$GITHUB_ENV"
+        shell: bash
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version }}
+          install-server: 'false'
 
       # pull_request_target runs main's workflow against release-branch heads (2.0, 1.13)
       # that predate the cli_e2e_v2 framework, so skip when the suite isn't checked out.
@@ -244,13 +269,6 @@ jobs:
           cd ingestion
           env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
             python -m pytest tests/cli_e2e_v2/meta -q
-        shell: bash
-
-      - name: Install and verify spaCy model
-        run: |
-          source env/bin/activate
-          uv pip install --no-deps /tmp/spacy-model/*.whl
-          python -c 'import spacy; spacy.load("en_core_web_md")'
         shell: bash
 
       - name: Run Static Checks
@@ -315,13 +333,13 @@ jobs:
           compression-level: 1
 
       - name: Upload coverage artifact
-        if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
-        continue-on-error: true
+        if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-unit
           path: ingestion/.coverage
           include-hidden-files: true
+          if-no-files-found: error
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
@@ -401,24 +419,23 @@ jobs:
           name: openmetadata-backend-distribution
           path: openmetadata-dist/target
 
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
-        with:
-          python-version: ${{ matrix.py-version}}
-          args: ${{ inputs.compose-args }}
-
       - name: Download spaCy model
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: spacy-en-model
           path: /tmp/spacy-model
 
-      - name: Install and verify spaCy model
+      - name: Use verified classification model wheel
         run: |
-          source env/bin/activate
-          uv pip install --no-deps /tmp/spacy-model/*.whl
-          python -c 'import spacy; spacy.load("en_core_web_md")'
+          echo "OM_CLASSIFICATION_MODEL_DIRECTORY=/tmp/spacy-model" >> "$GITHUB_ENV"
+          echo "OM_CLASSIFICATION_MODEL_SHA256=$SPACY_MODEL_SHA256" >> "$GITHUB_ENV"
         shell: bash
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ matrix.py-version}}
+          args: ${{ inputs.compose-args }}
 
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk
@@ -465,12 +482,12 @@ jobs:
 
       - name: Upload coverage artifact
         if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
-        continue-on-error: true
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: coverage-integration-${{ matrix.shard.name }}
           path: ingestion/.coverage
           include-hidden-files: true
+          if-no-files-found: error
 
       - name: Upload test results
         if: ${{ always() }}
@@ -586,7 +603,6 @@ jobs:
     if: ${{ always() && inputs.run-coverage && needs.changes.outputs.python == 'true' && needs.py-unit-tests.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.py-integration-tests.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -596,21 +612,11 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
-      - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Setup locked coverage profile
+        uses: ./.github/actions/setup-python-environment
         with:
           python-version: ${{ env.MAIN_PYTHON_VERSION }}
-
-      - name: Install uv
-        run: pip install uv
-        shell: bash
-
-      - name: Install coverage
-        run: |
-          python3 -m venv env
-          source env/bin/activate
-          uv pip install "coverage[toml]" nox
-        shell: bash
+          profile: coverage
 
       - name: Download coverage artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -618,25 +624,10 @@ jobs:
           pattern: coverage-*
           path: ingestion/coverage-data/
 
-      - name: Prepare coverage files
-        run: |
-          cd ingestion
-          shopt -s nullglob
-          # download-artifact extracts a lone match (unit-only PR runs) straight into path, not path/<name>/
-          for f in coverage-data/coverage-unit/.coverage coverage-data/.coverage; do
-            [ -f "$f" ] && mv "$f" .coverage.unit
-          done
-          for dir in coverage-data/coverage-integration-*/; do
-            shard=$(basename "$dir" | sed 's/coverage-integration-//')
-            [ -f "$dir/.coverage" ] && mv "$dir/.coverage" ".coverage.integration-$shard"
-          done
-        shell: bash
-
-      - name: Combine coverage
-        run: |
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s combine-coverage
+      - name: Require and combine expected coverage
+        env:
+          EXPECTED_COVERAGE_SHARDS: ${{ needs.changes.outputs.integration == 'true' && 'shard-1,shard-2,shard-3' || '' }}
+        run: python3 scripts/python_environment.py --profile coverage -- python .github/scripts/python_ci.py coverage --artifact-dir ingestion/coverage-data --shards "$EXPECTED_COVERAGE_SHARDS"
         shell: bash
 
       - name: Remove pom.xml

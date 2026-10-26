@@ -1,2 +1,13 @@
 docker/development/docker-volume
 docker/docker-compose-quickstart/docker-volume
+.git
+env
+.cache
+ingestion/.nox
+ingestion/.venv
+ingestion/build
+ingestion/dist
+ingestion/src/metadata/generated
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache

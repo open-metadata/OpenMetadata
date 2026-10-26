@@ -27,6 +27,13 @@ helpFunction() {
    exit 1
 }
 
+check_readiness_deadline() {
+  if [ "$SECONDS" -ge "$1" ]; then
+    echo "Timed out waiting for $2" >&2
+    return 1
+  fi
+}
+
 current_time_ms() {
   python3 -c "import time; print(int(time.time() * 1000))"
 }
@@ -433,7 +440,8 @@ run_local_docker_main() {
       echo "Please Use Virtual Environment and make sure to generate Pydantic Models"
     else
       echo "Generating Pydantic Models"
-      make install_dev generate
+      python scripts/python_environment.py --profile "${OM_PYTHON_PROFILE:-dev}"
+      make generate
     fi
   else
     echo "Skipping Pydantic Models generation (ingestion disabled)"
@@ -481,7 +489,14 @@ run_local_docker_main() {
     exit 1
   fi
 
-  until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
+  local readiness_timeout=${SERVICE_READY_TIMEOUT_SECONDS:-300}
+  if ! [[ "$readiness_timeout" =~ ^[1-9][0-9]*$ ]]; then
+    echo "SERVICE_READY_TIMEOUT_SECONDS must be a positive integer" >&2
+    return 1
+  fi
+  local readiness_deadline=$((SECONDS + readiness_timeout))
+  until curl --connect-timeout 5 --max-time 10 -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_index"; do
+    check_readiness_deadline "$readiness_deadline" "Search index" || return 1
     echo 'Checking if Elastic Search instance is up...\n'
     sleep 5
   done
@@ -491,7 +506,7 @@ run_local_docker_main() {
       local token_response
       local access_token
 
-      token_response=$(curl -s -X POST 'http://localhost:8080/auth/token' \
+      token_response=$(curl --connect-timeout 5 --max-time 10 -s -X POST 'http://localhost:8080/auth/token' \
         -H 'Content-Type: application/json' \
         -d '{"username": "admin", "password": "admin"}')
 
@@ -507,15 +522,19 @@ run_local_docker_main() {
     }
 
     echo "Waiting for Airflow API to be ready..."
+    readiness_deadline=$((SECONDS + readiness_timeout))
     until AIRFLOW_ACCESS_TOKEN=$(get_airflow_token) 2>/dev/null && [ -n "$AIRFLOW_ACCESS_TOKEN" ]; do
+      check_readiness_deadline "$readiness_deadline" "Airflow API" || return 1
       echo 'Checking if Airflow API is reachable...'
       sleep 5
     done
     echo "✓ Airflow API is ready, token obtained"
 
     echo "Checking if Sample Data DAG is available..."
-    until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
-      IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
+    readiness_deadline=$((SECONDS + readiness_timeout))
+    until curl --connect-timeout 5 --max-time 10 -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
+      check_readiness_deadline "$readiness_deadline" "Sample Data DAG" || return 1
+      IMPORT_ERRORS=$(curl --connect-timeout 5 --max-time 10 -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
       if [ -n "$IMPORT_ERRORS" ]; then
         echo "$IMPORT_ERRORS" | grep "airflow_sample_data.py" > /dev/null 2>&1
         if [ "$?" == "0" ]; then
@@ -531,7 +550,9 @@ run_local_docker_main() {
     echo "✓ Sample Data DAG is available"
   fi
 
-  until curl -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
+  readiness_deadline=$((SECONDS + readiness_timeout))
+  until curl --connect-timeout 5 --max-time 10 -s -f --header "Authorization: Bearer $authorizationToken" "http://localhost:8585/api/v1/tables"; do
+    check_readiness_deadline "$readiness_deadline" "OpenMetadata API" || return 1
     echo 'Checking if OM Server is reachable...\n'
     sleep 5
   done

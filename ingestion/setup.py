@@ -199,9 +199,9 @@ base_requirements = {
     "kubernetes>=21.0.0,<36",  # 36.0.0 regressed in-cluster auth (https://github.com/kubernetes-client/python/issues/2582)
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
-    "memory-profiler",
     "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
     "mypy_extensions>=0.4.3",
+    "psutil",
     "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
@@ -288,7 +288,6 @@ plugins: dict[str, set[str]] = {
         "dagster_graphql>=1.8.0",
     },
     "dbt": {
-        "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
         "collate-dbt-artifacts-parser",
