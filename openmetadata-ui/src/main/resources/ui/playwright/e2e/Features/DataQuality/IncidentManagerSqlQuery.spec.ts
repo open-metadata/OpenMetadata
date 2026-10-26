@@ -142,7 +142,8 @@ test.describe(
       const editor = dialog
         .getByTestId('sql-editor-container')
         .getByRole('textbox');
-      const editedQuery = `${initialQuery}\n-- edited`;
+      const editMarker = `edited ${uuid()}`;
+      const editedQuery = `${initialQuery}\n-- ${editMarker}`;
       const description = 'Inspection query saved from the incident';
 
       await test.step('Show the inspection query and reject an empty query', async () => {
@@ -200,6 +201,24 @@ test.describe(
         } finally {
           await afterAction();
         }
+      });
+
+      await test.step('Show the saved query on the table Queries tab', async () => {
+        const queryCard = page
+          .getByTestId('query-card')
+          .filter({ hasText: editMarker });
+        // The tab lists queries from the search index, which picks up the
+        // new query shortly after the save; reload until it does.
+        await expect(async () => {
+          await page.goto(
+            `/table/${encodeURIComponent(tableFqn)}/table_queries`,
+            { waitUntil: 'domcontentloaded' }
+          );
+          await expect(queryCard).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 30_000 });
+        await expect(
+          queryCard.getByTestId('code-mirror-container').getByRole('textbox')
+        ).toHaveText(editedQuery, { useInnerText: true });
       });
     });
   }
