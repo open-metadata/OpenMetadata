@@ -66,6 +66,7 @@ final class NativeOntologyCsvReader {
       throw new BadRequestException(
           "Failed to parse native CSV: " + firstLine(String.valueOf(exception.getMessage())));
     }
+    NativeOntologyDocument.linkInverses(properties);
     return new NativeOntologyDocument(header, concepts, properties, axioms);
   }
 

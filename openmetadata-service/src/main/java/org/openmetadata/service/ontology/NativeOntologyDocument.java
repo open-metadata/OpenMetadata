@@ -9,6 +9,7 @@ import java.net.URI;
 import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -16,6 +17,7 @@ import org.apache.jena.vocabulary.XSD;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /**
@@ -35,6 +37,25 @@ public record NativeOntologyDocument(
     concepts = sorted(concepts, concept -> concept.getIri().toString());
     properties = sorted(properties, property -> property.getIri().toString());
     axioms = sorted(axioms, NativeOntologyDocument::signature);
+  }
+
+  /**
+   * {@code inverse} is symmetric: a source that states it on one property still declares both
+   * sides, which is the pairing the repository stores. A partner that already names an inverse keeps
+   * it.
+   */
+  public static void linkInverses(final List<OntologyProperty> parsed) {
+    final Map<String, OntologyProperty> byIri = new HashMap<>();
+    parsed.forEach(property -> byIri.putIfAbsent(property.getIri().toString(), property));
+    for (final OntologyProperty property : parsed) {
+      final OntologyProperty partner =
+          property.getInverse() == null ? null : byIri.get(property.getInverse().toString());
+      if (partner != null
+          && partner.getInverse() == null
+          && partner.getKind() == OntologyPropertyKind.OBJECT) {
+        partner.setInverse(property.getIri());
+      }
+    }
   }
 
   public record Header(URI iri, String label, String description) {}
