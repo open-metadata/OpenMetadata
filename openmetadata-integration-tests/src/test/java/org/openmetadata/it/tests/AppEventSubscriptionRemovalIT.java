@@ -35,6 +35,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * An app does not bring its own alerts. A signed-up user can own an app and its definition, since
@@ -58,19 +59,23 @@ class AppEventSubscriptionRemovalIT {
       claim(asUser, "/v1/apps/" + app.getId(), user);
       String alertName = ns.prefix("tap");
 
-      assertThrows(
-          OpenMetadataException.class,
-          () ->
-              patch(
-                  asUser,
-                  "/v1/apps/marketplace/" + definition.getId(),
-                  plantedAlert(alertName, "http://localhost:9999/tap")));
+      OpenMetadataException planting =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  patch(
+                      asUser,
+                      "/v1/apps/marketplace/" + definition.getId(),
+                      plantedAlert(alertName, "http://localhost:9999/tap")));
+      assertEquals(400, planting.getStatusCode());
       asUser.executeForString(
           HttpMethod.POST, "/v1/apps/schedule/" + appName, null, RequestOptions.builder().build());
 
-      assertThrows(
-          OpenMetadataException.class,
-          () -> SdkClients.adminClient().eventSubscriptions().getByName(alertName));
+      OpenMetadataException missing =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> SdkClients.adminClient().eventSubscriptions().getByName(alertName));
+      assertEquals(404, missing.getStatusCode());
     } finally {
       uninstall(appName);
     }
@@ -81,14 +86,17 @@ class AppEventSubscriptionRemovalIT {
     String appName = "keepApp" + System.currentTimeMillis();
     try {
       EventSubscription alert = createAlert(ns.prefix("kept"));
+      ns.trackRoot(Entity.EVENT_SUBSCRIPTION, alert.getId());
       App app = createApp(createDefinition(appName));
       User user = UserTestFactory.createUser(ns, "appOwner");
       HttpClient asUser = clientOf(user).getHttpClient();
       claim(asUser, "/v1/apps/" + app.getId(), user);
 
-      assertThrows(
-          OpenMetadataException.class,
-          () -> patch(asUser, "/v1/apps/" + app.getId(), linkedAlert(alert.getId())));
+      OpenMetadataException linking =
+          assertThrows(
+              OpenMetadataException.class,
+              () -> patch(asUser, "/v1/apps/" + app.getId(), linkedAlert(alert.getId())));
+      assertEquals(400, linking.getStatusCode());
       asUser.execute(
           HttpMethod.DELETE, "/v1/apps/name/" + appName + "?hardDelete=true", null, Void.class);
 
@@ -209,20 +217,18 @@ class AppEventSubscriptionRemovalIT {
 
   private static void uninstall(String appName) {
     HttpClient admin = SdkClients.adminClient().getHttpClient();
+    deleteIfPresent(admin, "/v1/apps/name/" + appName + "?hardDelete=true");
+    deleteIfPresent(admin, "/v1/apps/marketplace/name/" + appName + "?hardDelete=true");
+  }
+
+  // The test may already have deleted it, or failed before creating it.
+  private static void deleteIfPresent(HttpClient admin, String path) {
     try {
-      admin.execute(
-          HttpMethod.DELETE, "/v1/apps/name/" + appName + "?hardDelete=true", null, Void.class);
-    } catch (OpenMetadataException ignored) {
-      // Already deleted by the test.
-    }
-    try {
-      admin.execute(
-          HttpMethod.DELETE,
-          "/v1/apps/marketplace/name/" + appName + "?hardDelete=true",
-          null,
-          Void.class);
-    } catch (OpenMetadataException ignored) {
-      // Never created.
+      admin.execute(HttpMethod.DELETE, path, null, Void.class);
+    } catch (OpenMetadataException e) {
+      if (e.getStatusCode() != 404) {
+        throw e;
+      }
     }
   }
 }
