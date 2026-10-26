@@ -85,6 +85,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
   private CostAnalysisConfig costAnalysisConfig;
   private DataAssetsConfig dataAssetsConfig;
   private AppAnalyticsConfig webAnalyticsConfig;
+  private BackfillConfiguration backfillConfiguration;
 
   private Optional<Boolean> recreateDataAssetsIndex;
 
@@ -221,17 +222,8 @@ public class DataInsightsApp extends AbstractNativeApplication {
     // Configure recreate
     recreateDataAssetsIndex = Optional.ofNullable(config.getRecreateDataAssetsIndex());
 
-    // Configure Backfill
-    Optional<BackfillConfiguration> backfillConfig =
-        Optional.ofNullable(config.getBackfillConfiguration());
-
+    backfillConfiguration = config.getBackfillConfiguration();
     backfill = Optional.empty();
-
-    if (backfillConfig.isPresent() && backfillConfig.get().getEnabled()) {
-      backfill =
-          Optional.of(
-              new Backfill(backfillConfig.get().getStartDate(), backfillConfig.get().getEndDate()));
-    }
 
     createOrUpdateDataAssetsDataStream();
 
@@ -267,8 +259,13 @@ public class DataInsightsApp extends AbstractNativeApplication {
       String runType =
           (String) jobExecutionContext.getJobDetail().getJobDataMap().get(TRIGGER_TYPE_KEY);
 
+      backfill =
+          runType.equals(ON_DEMAND_JOB)
+              ? Optional.ofNullable(backfillConfiguration)
+                  .filter(config -> Boolean.TRUE.equals(config.getEnabled()))
+                  .map(config -> new Backfill(config.getStartDate(), config.getEndDate()))
+              : Optional.empty();
       if (!runType.equals(ON_DEMAND_JOB)) {
-        backfill = Optional.empty();
         recreateDataAssetsIndex = Optional.empty();
       }
 
