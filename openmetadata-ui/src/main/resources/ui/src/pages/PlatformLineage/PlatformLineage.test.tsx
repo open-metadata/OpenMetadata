@@ -97,11 +97,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div>{children}</div>
   ));
 
-  return {
-    Card: CardMock,
-    Grid: GridMock,
-    FeaturedIcon: () => <span />,
-    PageLayout: {
+  const PageLayoutMock = Object.assign(
+    ({ children }: GridProps) => (
+      <div data-testid="page-layout">{children}</div>
+    ),
+    {
       PageHeader: ({
         title,
         actions,
@@ -114,7 +114,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
           {actions}
         </div>
       ),
-    },
+      Content: ({ children }: GridProps) => (
+        <main data-testid="page-layout-content">{children}</main>
+      ),
+    }
+  );
+
+  return {
+    Card: CardMock,
+    Grid: GridMock,
+    FeaturedIcon: () => <span />,
+    PageLayout: PageLayoutMock,
     Tooltip: jest
       .fn()
       .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -261,6 +271,11 @@ jest.mock('../../components/Entity/EntityLineage/LineageConfigModal', () => ({
 
     return <div data-testid="lineage-config-modal">Config Modal</div>;
   }),
+}));
+
+jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
+  __esModule: true,
+  default: () => null,
 }));
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -658,6 +673,8 @@ describe('PlatformLineage Component Logic', () => {
       expect(header).toContainElement(getByTestId('search-entity-select'));
       expect(header).toContainElement(getByTestId('export-button'));
       expect(queryByText('PageHeader')).not.toBeInTheDocument();
+      expect(getByTestId('page-layout-content')).toHaveTextContent('Lineage');
+      expect(mockPageLayoutV1).not.toHaveBeenCalled();
     });
   });
 
