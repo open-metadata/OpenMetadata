@@ -18,7 +18,6 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v207.MigrationUtil;
-import org.openmetadata.service.migration.utils.v207.NegatedListRuleMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -32,21 +31,21 @@ public class Migration extends MigrationProcessImpl {
     runOnce(
         migrationDAO,
         getVersion(),
-        NegatedListRuleMigration.DATA_CONTRACT_STEP,
-        () -> NegatedListRuleMigration.rewriteDataContractRules(collectionDAO));
+        MigrationUtil.NEGATED_LIST_DATA_CONTRACT_STEP,
+        () -> MigrationUtil.rewriteDataContractRules(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
-        NegatedListRuleMigration.ENTITY_RULES_STEP,
-        NegatedListRuleMigration::rewriteEntityRules);
+        MigrationUtil.NEGATED_LIST_ENTITY_RULES_STEP,
+        MigrationUtil::rewriteEntityRules);
     // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
     runOnce(
         migrationDAO,
         getVersion(),
-        NegatedListRuleMigration.WORKFLOW_STEP,
+        MigrationUtil.NEGATED_LIST_WORKFLOW_STEP,
         () -> {
           initializeWorkflowHandler();
-          NegatedListRuleMigration.rewriteWorkflowRules();
+          MigrationUtil.rewriteWorkflowRules();
         });
   }
 }

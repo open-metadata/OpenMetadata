@@ -39,7 +39,7 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
-import org.openmetadata.service.migration.utils.v207.NegatedListRuleMigration;
+import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 
 /**
  * Runs the 2.0.7 rewrite of negated list rules on one stored contract and one stored workflow, so
@@ -75,7 +75,7 @@ class NegatedListRuleMigrationIT {
                                 .withRule(LEGACY_IS_NOT))));
     assertEquals(1, failedSemantics(contract), "the old shape fails an untagged table");
 
-    NegatedListRuleMigration.rewriteAndStore(
+    MigrationUtil.rewriteAndStore(
         Entity.getCollectionDAO().dataContractDAO(), storedJson(contract.getId()));
     EntityRepository.invalidateCacheForEntity(
         Entity.DATA_CONTRACT, contract.getId(), contract.getFullyQualifiedName());
@@ -102,7 +102,7 @@ class NegatedListRuleMigrationIT {
       WorkflowDefinitionRepository repository =
           (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-      NegatedListRuleMigration.rewriteAndRedeploy(
+      MigrationUtil.rewriteAndRedeploy(
           repository, repository.findByName(name, Include.NON_DELETED));
 
       WorkflowDefinition stored = repository.findByName(name, Include.NON_DELETED, false);
