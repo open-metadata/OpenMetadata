@@ -960,6 +960,45 @@ class CredentialVerifierTest {
   }
 
   @Test
+  void aDeepPassThatLeavesOneSubjectOutStillInstallsTheOthers() {
+    source.withPats(BOB, TOKEN_A).withPats(ALICE, "alice-old");
+    verifier(DEFAULTS);
+    assertAccepted(BOB, TOKEN_A);
+    assertAccepted(ALICE, "alice-old");
+    source.failConversionOf(BOB);
+    source.replacePatInPlace(ALICE, "alice-old", "alice-new");
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+
+    assertRejected(ALICE, "alice-old");
+    assertAccepted(ALICE, "alice-new");
+  }
+
+  @Test
+  void aSoftAndAHardDeletedPrincipalDoNotFailTheDeepPass() {
+    source.withJwtMechanism(ALICE, JWT_OLD).withJwtMechanism(BOB, JWT_NEW);
+    source.withJwtMechanism("carol", "bot-jwt-carol").withJwtMechanism("dave", "bot-jwt-dave");
+    verifier(DEFAULTS);
+    assertAccepted(ALICE, JWT_OLD);
+    assertAccepted(BOB, JWT_NEW);
+    assertAccepted("carol", "bot-jwt-carol");
+    assertAccepted("dave", "bot-jwt-dave");
+    source.softDelete(ALICE);
+    source.hardDelete(BOB);
+
+    ticker.advanceNanos(DEEP_VERIFY_INTERVAL_NANOS);
+    verifier.sweepOnce();
+    int decryptsAfterDeepPass = source.decrypts();
+    ticker.advanceNanos(MINUTE);
+    verifier.sweepOnce();
+
+    assertEquals(decryptsAfterDeepPass, source.decrypts(), "no deep read ran a minute later");
+    assertRejected(ALICE, JWT_OLD);
+    assertRejected(BOB, JWT_NEW);
+  }
+
+  @Test
   void aDeepPassCountsOneDecryptPerBotAndAnUnchangedSweepRereadCountsAReuse() {
     List<String> bots = List.of("u1", "u2", "u3");
     bots.forEach(bot -> source.withJwtMechanism(bot, "jwt-" + bot));
