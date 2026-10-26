@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Field;
@@ -25,10 +27,8 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -45,7 +45,9 @@ public final class ChangeEventMasking {
   private static final String ENTITY = "entity";
   private static final String ENTITY_TYPE = "entityType";
   private static final String SCHEMA_PACKAGE = "org.openmetadata.schema.";
-  private static final Map<Class<?>, Boolean> HAS_MASKED_FIELDS = new ConcurrentHashMap<>();
+  // One entry per entity class, so the cap is never reached; it is there to bound the cache.
+  private static final Cache<Class<?>, Boolean> HAS_MASKED_FIELDS =
+      Caffeine.newBuilder().maximumSize(1_000).build();
 
   private ChangeEventMasking() {}
 
@@ -89,8 +91,7 @@ public final class ChangeEventMasking {
   }
 
   static boolean hasMaskedFields(Class<?> entityClass) {
-    return HAS_MASKED_FIELDS.computeIfAbsent(
-        entityClass, type -> declaresMaskedField(type, new HashSet<>()));
+    return HAS_MASKED_FIELDS.get(entityClass, type -> declaresMaskedField(type, new HashSet<>()));
   }
 
   private static boolean declaresMaskedField(Class<?> type, Set<Class<?>> seen) {

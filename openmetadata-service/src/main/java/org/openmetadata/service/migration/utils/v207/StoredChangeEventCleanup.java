@@ -122,7 +122,7 @@ public final class StoredChangeEventCleanup {
       List<Map<String, Object>> batch = nextBatch(handle, connectionType, entityTypes, null);
       while (!batch.isEmpty()) {
         cleaned += cleanBatch(handle, connectionType, batch, fields);
-        Map<String, Object> last = batch.get(batch.size() - 1);
+        Map<String, Object> last = batch.getLast();
         batch = nextBatch(handle, connectionType, entityTypes, last);
       }
       return cleaned;
