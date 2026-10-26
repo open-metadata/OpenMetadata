@@ -198,12 +198,11 @@ const ProfileSectionUserDetailsCard = ({
   const userEmailRender = useMemo(
     () =>
       !isMaskedEmail(userData.email) && (
-        <Typography
-          as="p"
-          className="tw:wrap-break-word m-b-0 profile-details-email"
+        <p
+          className="tw:m-0 tw:wrap-break-word tw:text-center tw:text-sm tw:leading-5 tw:text-brand-secondary"
           data-testid="user-email-value">
           {userData.email}
-        </Typography>
+        </p>
       ),
     [userData.email]
   );
@@ -249,7 +248,7 @@ const ProfileSectionUserDetailsCard = ({
   };
 
   return (
-    <div className="d-flex flex-col w-full flex-center relative profile-section-user-details-card">
+    <div className="tw:relative tw:mb-5 tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-5">
       {(isAdminUser || isLoggedInUser) && (
         <PopoverTrigger
           isOpen={isPopoverVisible}
@@ -258,7 +257,7 @@ const ProfileSectionUserDetailsCard = ({
             aria-label={t('label.manage-entity', {
               entity: t('label.profile'),
             })}
-            className="user-details-menu-icon"
+            className="tw:absolute tw:top-2.5 tw:right-2.5"
             color="tertiary"
             data-testid="user-profile-manage-btn"
             icon={<MenuDots height={24} width={24} />}
@@ -283,7 +282,9 @@ const ProfileSectionUserDetailsCard = ({
         </UserPopOverCard>
       </div>
       <div className="d-flex flex-col items-center">
-        <p className="profile-details-title" data-testid="user-display-name">
+        <p
+          className="tw:mt-5 tw:mb-0 tw:text-center tw:text-lg tw:font-semibold tw:leading-7 tw:break-words tw:text-primary"
+          data-testid="user-display-name">
           {getEntityName(userData)}
         </p>
         {userEmailRender}
@@ -337,25 +338,23 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {showRestoreModal && (
-        <div role="presentation" onClick={(e) => e.stopPropagation()}>
-          <SimpleModal
-            data-testid="restore-user-modal"
-            isDismissable={false}
-            isOkLoading={isRestoring}
-            isOpen={showRestoreModal}
-            okText={t('label.restore')}
-            title={t('label.restore-entity', {
-              entity: EntityType.USER,
+        <SimpleModal
+          data-testid="restore-user-modal"
+          isDismissable={false}
+          isOkLoading={isRestoring}
+          isOpen={showRestoreModal}
+          okText={t('label.restore')}
+          title={t('label.restore-entity', {
+            entity: EntityType.USER,
+          })}
+          onCancel={() => setShowRestoreModal(false)}
+          onOk={handleRestore}>
+          <Typography data-testid="restore-modal-body">
+            {t('message.are-you-want-to-restore', {
+              entity: getEntityName(userData),
             })}
-            onCancel={() => setShowRestoreModal(false)}
-            onOk={handleRestore}>
-            <Typography data-testid="restore-modal-body">
-              {t('message.are-you-want-to-restore', {
-                entity: getEntityName(userData),
-              })}
-            </Typography>
-          </SimpleModal>
-        </div>
+          </Typography>
+        </SimpleModal>
       )}
     </div>
   );
