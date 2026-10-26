@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { MemoryRouter } from 'react-router-dom';
+import enUS from '../../../../locale/languages/en-us.json';
 import {
   Ontology,
   OntologyApprovalRule,
@@ -987,6 +988,10 @@ describe('OntologyReleasePanel', () => {
       expect(put).not.toHaveBeenCalled();
     }
   );
+
+  it('ships the Open task label the button renders', () => {
+    expect(enUS.label['open-task']).toBe('Open task');
+  });
 
   it('opens the native task UUID through the Studio callback', async () => {
     currentRelease = {

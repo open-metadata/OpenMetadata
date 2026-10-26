@@ -2432,6 +2432,7 @@
     "open-original": "원본 열기",
     "open-session": "세션 열기",
     "open-socket": "소켓 열기",
+    "open-task": "작업 열기",
     "open-task-plural": "열린 작업들",
     "opened-on": "오픈일",
     "openmetadata-role-plural": "{{brandName}} 역할",
