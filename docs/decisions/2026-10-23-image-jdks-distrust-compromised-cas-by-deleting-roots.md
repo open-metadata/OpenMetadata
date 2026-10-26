@@ -40,8 +40,8 @@ Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
 
 - A root that a JDK vendor removes from `cacerts` after the compromise is deleted too, even when
   no compromised chain we can see ends at it.
-- A root is listed even when no base ships it today (G2 and AAA), so the build fails if a base
-  later brings it in.
+- A root is listed even when no base ships it today (G2 and AAA), so the step removes it if a
+  base later brings it in. The build fails only if a listed root remains after deletion.
 - This replaces the v1 consequence that the step deletes nothing once every base is on Temurin
   21.0.13. Temurin is not known to remove G1, G2 or AAA, so the step can only be dropped once no
   base ships any root in its list.
