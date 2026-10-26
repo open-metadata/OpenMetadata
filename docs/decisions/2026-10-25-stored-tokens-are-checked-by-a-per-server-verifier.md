@@ -41,8 +41,13 @@ path, and a freshness bound that holds for every writer, including the ops CLI a
   (4000 at most), not with request rate.
 - While the database is unreachable, bot and PAT requests answer 503 once their entries are older
   than `maxStaleness`. Session and identity-provider tokens are not affected.
-- Operators alert when `om.credential.sweep.last.complete.age.seconds` exceeds `maxStaleness`, and
-  watch `om.credential.unavailable`.
+- Operators alert when `om.credential.sweep.last.complete.age.seconds` (Prometheus name
+  `om_credential_sweep_last_complete_age_seconds`) exceeds `maxStaleness`, and watch
+  `om.credential.unavailable`. The gauge is the age of the last sweep that re-confirmed every cached
+  principal. Past `maxStaleness`, the entries of the batches that were not re-confirmed are too
+  old to answer from, so their checks read the database on the request thread and answer 503 when
+  that read fails or exceeds `loadTimeout`. `/healthcheck` stays a liveness check and does not
+  report this.
 - Rejected alternatives:
   - a change-log table read through per-server cursors, because every writer must emit and the ops
     CLI and direct SQL emit nothing;

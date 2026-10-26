@@ -333,9 +333,10 @@ public final class CredentialVerifier implements Managed {
    * reconfirmed. When the deep verify is due, each batch is reconfirmed first and then read in full
    * with every decrypt forced. A deep read that fails leaves its entries trusted by their
    * fingerprints and the pass still complete.
-   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails only
-   * on a statement failure, since the source converts subjects on their own, so the whole pass is
-   * what to retry, and one stamp holds that decision.
+   * The deep pass is then retried after {@code min(deepVerifyInterval, 1 min)}: a batch fails on a
+   * statement failure, or on an {@link Error} for one subject, which the source's per-subject guard
+   * does not catch and which fails its whole batch. So the whole pass is what to retry, and one
+   * stamp holds that decision.
    */
   void sweepOnce() {
     long sweepStart = ticker.read();

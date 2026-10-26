@@ -1032,6 +1032,11 @@ cache:
       tokenRefreshIntervalSeconds: ${CACHE_REDIS_TOKEN_REFRESH:-900}  # 15 minutes
 
 # In-memory checks of bot and personal access tokens against their stored credentials.
+# Alert on the gauge om_credential_sweep_last_complete_age_seconds (Prometheus name) when it exceeds
+# maxStaleness. It is the age of the last sweep that re-confirmed every cached principal. Past
+# maxStaleness the entries of the batches that were not re-confirmed are too old to answer from, so
+# their checks read the database on the request thread, and answer 503 when that read fails or
+# exceeds loadTimeout. Also watch om_credential_unavailable_total.
 credentialVerification:
   # Oldest database read a token check may be answered from.
   maxStaleness: ${CREDENTIAL_VERIFICATION_MAX_STALENESS:-5s}
