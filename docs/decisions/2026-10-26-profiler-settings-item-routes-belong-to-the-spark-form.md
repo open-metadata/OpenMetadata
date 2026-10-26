@@ -18,7 +18,8 @@ had no route a downstream form could own.
   `profilerConfigurationClassBase.getSparkAgentConfigForm()` with `PlatformSettingsFormProps`, and
   the header title comes from `getSparkAgentConfigFormTitle(t, itemId)`.
 - OpenMetadata does not interpret the item id; its format belongs to the implementer. Collate uses
-  `spark` to add and `spark/<runnerName>` to edit.
+  `spark` to add and `spark/<runner FQN>` to edit. The FQN, not the name: a name containing `.` or
+  `"` is stored quoted, so a get-by-name on the raw name misses.
 - `getSparkAgentConfigComponent()` receives the page's `PlatformSettingsPageProps` in the modal so
   it can navigate to those routes; on the classic settings page it gets none and keeps its drawer.
 - `SettingsFormLayout` takes an optional `contentClassName` so a form can set its column width;
