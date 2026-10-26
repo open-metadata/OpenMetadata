@@ -13,9 +13,7 @@
 
 import jwtDecode from 'jwt-decode';
 import { ServiceTokenEnum } from '../generated/auth/serviceTokenEnum';
-import { t } from './i18next/LocalUtil';
 import { swTokenStorage } from './SwTokenStorage';
-import { showErrorToast } from './ToastUtils';
 
 // Internal keys for the AppState JSON - obscured for security
 const APP_STATE_KEY = 'app_state';
@@ -210,15 +208,23 @@ export const isApiOnlyToken = (token: string) => {
   }
 };
 
-// Concurrent reads of the same rejected token share one clear and one toast.
+// AuthProvider registers here to sign the user out when a token is rejected;
+// kept as a callback so this boot-path module stays free of UI imports.
+let apiOnlyTokenListener: (() => void) | undefined;
+
+export const setApiOnlyTokenListener = (listener?: () => void) => {
+  apiOnlyTokenListener = listener;
+};
+
+// Concurrent reads of the same rejected token share one clear and one sign-out.
 let apiOnlyTokenRejection: Promise<void> | null = null;
 
 const rejectApiOnlyToken = () => {
   if (!apiOnlyTokenRejection) {
-    showErrorToast(t('server.api-only-token-ui-access-denied'));
-    apiOnlyTokenRejection = clearOidcToken().finally(() => {
+    apiOnlyTokenRejection = clearAppState().finally(() => {
       apiOnlyTokenRejection = null;
     });
+    apiOnlyTokenListener?.();
   }
 
   return apiOnlyTokenRejection;

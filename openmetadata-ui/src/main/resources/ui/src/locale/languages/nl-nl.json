@@ -6267,7 +6267,7 @@
     "account-verify-success": "E-mail succesvol geverifieerd",
     "add-entity-error": "Fout bij het toevoegen van {{entity}}!",
     "api-error": "Er is een probleem opgetreden, probeer het opnieuw!",
-    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
+    "api-only-token-ui-access-denied": "Bot- en persoonlijke toegangstokens kunnen alleen met de API’s worden gebruikt. Meld je aan om de UI te gebruiken.",
     "article-fetch-error": "Fout bij het ophalen van artikelinhoud",
     "auth-provider-not-supported-renewing": "Auth-provider {{provider}} wordt niet ondersteund voor het vernieuwen van tokens.",
     "bulk-update-initiated": "Bulkupdate voltooid voor {{count}} {{entity}}.",

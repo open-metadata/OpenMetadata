@@ -6267,7 +6267,7 @@
     "account-verify-success": "E-posta başarıyla doğrulandı",
     "add-entity-error": "{{entity}} eklenirken hata oluştu!",
     "api-error": "Bir sorun oluştu, lütfen tekrar deneyin!",
-    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
+    "api-only-token-ui-access-denied": "Bot belirteçleri ve kişisel erişim belirteçleri yalnızca API’lerle kullanılabilir. Arayüzü kullanmak için oturum açın.",
     "article-fetch-error": "Makale içeriği alınırken hata oluştu",
     "auth-provider-not-supported-renewing": "Auth Sağlayıcısı {{provider}}, anahtarları yenilemek için desteklenmiyor.",
     "bulk-update-initiated": "{{count}} {{entity}} için toplu güncelleme tamamlandı.",

@@ -6267,7 +6267,7 @@
     "account-verify-success": "Verificación de correo electrónico realizada con éxito",
     "add-entity-error": "¡Error al agregar {{entity}}!",
     "api-error": "Hubo algún problema, ¡inténtelo de nuevo!",
-    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
+    "api-only-token-ui-access-denied": "Los tokens de bot y los tokens de acceso personal solo se pueden usar con las API. Inicia sesión para usar la interfaz.",
     "article-fetch-error": "Error al recuperar el contenido del artículo",
     "auth-provider-not-supported-renewing": "Proveedor de autenticación {{provider}} no soportado para renovar tokens.",
     "bulk-update-initiated": "Actualización masiva completada para {{count}} {{entity}}.",

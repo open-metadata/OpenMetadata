@@ -6267,7 +6267,7 @@
     "account-verify-success": "تم التحقق من البريد الإلكتروني بنجاح",
     "add-entity-error": "خطأ أثناء إضافة {{entity}}!",
     "api-error": "حدثت مشكلة ما، يرجى المحاولة مرة أخرى!",
-    "api-only-token-ui-access-denied": "Bot and personal access tokens can only be used with the APIs. Sign in to use the UI.",
+    "api-only-token-ui-access-denied": "لا يمكن استخدام رموز البوت ورموز الوصول الشخصية إلا مع واجهات برمجة التطبيقات. سجّل الدخول لاستخدام واجهة المستخدم.",
     "article-fetch-error": "خطأ أثناء جلب محتوى المقال",
     "auth-provider-not-supported-renewing": "مزود المصادقة {{provider}} غير مدعوم لتجديد الرموز المميزة.",
     "bulk-update-initiated": "تم إكمال التحديث المجمع لـ {{count}} {{entity}}.",

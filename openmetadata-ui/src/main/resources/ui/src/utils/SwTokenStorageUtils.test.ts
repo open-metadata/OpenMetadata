@@ -18,6 +18,7 @@ import {
   isApiOnlyToken,
   isServiceWorkerAvailable,
   resetSwTokenStorageState,
+  setApiOnlyTokenListener,
   setOidcToken,
   setOidcTokenStrict,
   setRefreshToken,
@@ -27,12 +28,6 @@ import {
 const mockSetItem = jest.fn();
 const mockGetItem = jest.fn();
 const mockRemoveItem = jest.fn();
-
-const mockShowErrorToast = jest.fn();
-
-jest.mock('./ToastUtils', () => ({
-  showErrorToast: (message: string) => mockShowErrorToast(message),
-}));
 
 jest.mock('./SwTokenStorage', () => ({
   swTokenStorage: {
@@ -188,16 +183,19 @@ describe('SwTokenStorageUtils', () => {
       expect(result).toBe('');
     });
 
-    it('drops a bot token written into storage, clearing it with a single toast', async () => {
+    it('drops a bot token written into storage, clearing it and signing out once', async () => {
+      const onRejected = jest.fn();
+      setApiOnlyTokenListener(onRejected);
       const botToken = tokenWith({ isBot: true, tokenType: 'BOT' });
       mockGetItem.mockResolvedValue(JSON.stringify({ primary: botToken }));
       mockRemoveItem.mockResolvedValue(undefined);
 
       const results = await Promise.all([getOidcToken(), getOidcToken()]);
+      setApiOnlyTokenListener();
 
       expect(results).toEqual(['', '']);
       expect(mockRemoveItem).toHaveBeenCalledWith('app_state');
-      expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+      expect(onRejected).toHaveBeenCalledTimes(1);
     });
   });
 
