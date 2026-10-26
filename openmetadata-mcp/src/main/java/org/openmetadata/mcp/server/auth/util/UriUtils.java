@@ -161,7 +161,7 @@ public class UriUtils {
    * The MCP base URL as configured may end in a slash, the way BASE_PATH is written. Every MCP
    * OAuth URL is built as baseUrl + "/mcp/...", so the slash has to go or it doubles.
    */
-  public static String withoutTrailingSlash(String url) {
+  public static String withoutTrailingSlash(final String url) {
     return url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
   }
 }

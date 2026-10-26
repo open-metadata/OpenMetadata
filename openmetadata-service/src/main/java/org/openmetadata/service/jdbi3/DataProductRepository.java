@@ -83,6 +83,7 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
@@ -147,6 +148,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override

@@ -136,6 +136,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAs
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -775,6 +776,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    // Term labels on assets carry a copy of the term's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     if (SettingsCache.isGlossaryTagPropagationEnabled()) {
       descriptors.add(
           new PropagationDescriptor(
@@ -932,8 +938,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * An automation's term starts in Draft and is decided by people, so only an automation, which
-   * writes as a bot, may say it provides a term; a person's request for it gets a person's term.
+   * An automation's term is a proposal that the approval workflow always sends to people, so only an
+   * automation, which writes as a bot, may say it provides a term; a person's request for it gets a
+   * person's term.
    */
   private static void keepAutomationToBots(GlossaryTerm entity) {
     if (isProvidedByAutomation(entity) && !isWrittenByBot(entity.getUpdatedBy())) {
@@ -1040,12 +1047,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   /**
-   * An automation's Draft term is usually written by a bot, and bot changes never start the approval
-   * workflow, so people decide it directly instead of waiting for a task that is never opened.
+   * A term an automation proposed is published only by a person's decision: a bot, or a workflow
+   * writing for one, never approves it, however the approval workflow is configured.
    */
   @Override
-  protected boolean isStageDecidedByPeople(GlossaryTerm current, String from) {
-    return isProvidedByAutomation(current) && EntityStatus.DRAFT.value().equals(from);
+  protected void checkStageDecision(
+      GlossaryTerm current, GlossaryTerm change, String from, String to) {
+    if (isApprovalOfAutomationProposal(current, from, to)
+        && isWrittenByBot(change.getUpdatedBy())) {
+      throw new AuthorizationException(
+          String.format(
+              "A person must approve glossary term '%s', which an automation proposed",
+              current.getFullyQualifiedName()));
+    }
+  }
+
+  private static boolean isApprovalOfAutomationProposal(
+      GlossaryTerm current, String from, String to) {
+    return isProvidedByAutomation(current)
+        && !EntityStatus.APPROVED.value().equals(from)
+        && EntityStatus.APPROVED.value().equals(to);
   }
 
   private static boolean isProvidedByAutomation(GlossaryTerm term) {
@@ -2446,8 +2467,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     @Override
-    protected void updateTags(
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -2481,6 +2503,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
+      return updatedTags.isEmpty() ? requestedTags : updatedTags;
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -2649,6 +2672,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     /**
@@ -2715,6 +2739,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateAssetIndexes(oldFqn, newFqn);
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     private void validateParent() {

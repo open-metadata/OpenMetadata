@@ -319,7 +319,7 @@
     "cookie": "0.7.0",
     "qs": "6.16.1",
     "cross-spawn": "7.0.5",
-    "serialize-javascript": "7.0.5",
+    "serialize-javascript": "7.1.4",
     "@melloware/react-logviewer/immutable": "5.1.9",
     "@react-awesome-query-builder/core/immutable": "4.3.9",
     "@tootallnate/once": "3.0.1",
@@ -328,7 +328,7 @@
     "tar-fs": "2.1.4",
     "brace-expansion": "1.1.21",
     "browserslist": "4.28.8",
-    "fast-uri": "3.1.8",
+    "fast-uri": "3.1.9",
     "linkify-it": "5.0.2",
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
@@ -341,7 +341,7 @@
     "postcss": "8.5.29",
     "postcss-selector-parser": "7.1.7",
     "socket.io-parser": "4.2.7",
-    "undici": "^6.28.1",
+    "undici": "^6.29.1",
     "@codemirror/state": "^6",
     "@codemirror/view": "^6"
   }
