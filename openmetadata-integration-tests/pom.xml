@@ -22,7 +22,7 @@
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CredentialLegacyKeyShimIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against a Fuseki the bootstrap
          builds from docker/rdf-store; every other run leaves RDF off and they skip. -->
@@ -477,6 +477,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -542,6 +543,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -638,6 +640,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -703,6 +706,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -800,6 +804,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -866,6 +871,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -963,6 +969,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1028,6 +1035,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1124,6 +1132,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1189,6 +1198,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1284,6 +1294,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1350,6 +1361,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1462,6 +1474,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1529,6 +1542,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
@@ -1631,6 +1645,7 @@
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
+                    <include>**/CredentialLegacyKeyShimIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
@@ -1697,6 +1712,7 @@
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
+                    <exclude>**/CredentialLegacyKeyShimIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
                     <exclude>**/*UIIT.java</exclude>
