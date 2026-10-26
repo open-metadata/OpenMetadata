@@ -60,7 +60,8 @@ const loadOntologyStudioModel = async (
           {
             ...params,
             after,
-            fields: 'conceptMappings,owners,subClasses,superClasses',
+            fields:
+              'conceptMappings,lifecycleStatus,owners,subClasses,superClasses',
           },
           signal
         ),

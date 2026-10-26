@@ -36,6 +36,7 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: () => void;
+  onRequestGraphSurface: () => void;
   onStatsChange?: (stats: OntologyModelStats) => void;
   onWorkingChange?: () => void;
 }
@@ -56,6 +57,7 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onRequestGraphSurface,
   onStatsChange,
   onWorkingChange,
 }: OntologyStudioWorkspaceProps) => {
@@ -133,6 +135,7 @@ const OntologyStudioWorkspace = ({
             selectedConceptId={selectedConceptId}
             surface={viewSurface}
             onRequestEdit={onRequestEdit}
+            onRequestGraphSurface={onRequestGraphSurface}
             onSelectedConceptChange={onSelectedConceptChange}
             onStatsChange={onStatsChange}
             onWorkingChange={onWorkingChange}
