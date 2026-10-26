@@ -52,14 +52,25 @@ const SCOPE_INDEXES: Record<
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 250;
 
-interface OntologyDataAssetPickerProps {
-  readonly term: GlossaryTerm;
+type OntologyDataAssetPickerProps = {
   readonly onCancel: () => void;
   /** Every selected asset was added. */
   readonly onSave: () => void;
   /** Some assets were added and others were not; the picker stays open. */
   readonly onPartialSave: () => void;
-}
+} & (
+  | { readonly term: GlossaryTerm; readonly native?: never }
+  | {
+      readonly term?: never;
+      readonly native: {
+        readonly assetTypes: string[];
+        readonly linkedIds: string[];
+        readonly saveAssets: (
+          assets: EntityReference[]
+        ) => ReturnType<typeof addAssetsToGlossaryTerm>;
+      };
+    }
+);
 
 const SearchIcon = ({ className }: { className?: string }) => (
   <Search aria-hidden className={className} />
@@ -74,6 +85,7 @@ const getAssetPath = (asset: EntityReference): string =>
 /** Tables and columns to tag with the concept, picked from one inline search. */
 const OntologyDataAssetPicker = ({
   term,
+  native,
   onCancel,
   onSave,
   onPartialSave,
@@ -96,7 +108,8 @@ const OntologyDataAssetPicker = ({
     () => new Map()
   );
   const [isSaving, setIsSaving] = useState(false);
-  const termFqn = term.fullyQualifiedName ?? term.name;
+  const termFqn = term?.fullyQualifiedName ?? term?.name;
+  const nativeAssetTypes = native?.assetTypes;
 
   // A new search drops the old rows at once, so nothing on screen belongs to it.
   useEffect(() => {
@@ -117,7 +130,13 @@ const OntologyDataAssetPicker = ({
           pageSize: PAGE_SIZE,
           includeDeleted: false,
           query: query.trim() ? `*${query.trim()}*` : '',
-          queryFilter: getQueryFilterToExcludeTerm(termFqn),
+          queryFilter: termFqn
+            ? getQueryFilterToExcludeTerm(termFqn)
+            : {
+                query: {
+                  bool: { must: [{ terms: { entityType: nativeAssetTypes } }] },
+                },
+              },
           searchIndex: SCOPE_INDEXES[scope],
         });
         if (isCurrent) {
@@ -149,7 +168,7 @@ const OntologyDataAssetPicker = ({
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [request, query, scope, termFqn]);
+  }, [request, query, scope, termFqn, nativeAssetTypes]);
 
   // The next page follows the last one that loaded, so a failed page is asked
   // for again rather than skipped.
@@ -171,13 +190,17 @@ const OntologyDataAssetPicker = ({
       return next;
     });
 
+  const selectable = results.filter(
+    (asset) => !native?.linkedIds.includes(asset.id)
+  );
   const isAllSelected =
-    results.length > 0 && results.every((asset) => selected.has(asset.id));
+    selectable.length > 0 &&
+    selectable.every((asset) => selected.has(asset.id));
 
   const toggleAll = (isSelected: boolean) =>
     setSelected((current) => {
       const next = new Map(current);
-      results.forEach((asset) =>
+      selectable.forEach((asset) =>
         isSelected ? next.set(asset.id, asset) : next.delete(asset.id)
       );
 
@@ -188,9 +211,9 @@ const OntologyDataAssetPicker = ({
     setIsSaving(true);
     try {
       // Full references: a column is resolved through its FQN.
-      const result = await addAssetsToGlossaryTerm(term, [
-        ...selected.values(),
-      ]);
+      const result = native
+        ? await native.saveAssets([...selected.values()])
+        : await addAssetsToGlossaryTerm(term, [...selected.values()]);
       const refused = result.failedRequest ?? [];
       if (refused.length === 0) {
         onSave();
@@ -291,10 +314,18 @@ const OntologyDataAssetPicker = ({
         />
       </Box>
       <Input
-        aria-label={t('message.search-tables-and-columns')}
+        aria-label={
+          native
+            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+            : t('message.search-tables-and-columns')
+        }
         data-testid="ontology-data-asset-search"
         icon={SearchIcon}
-        placeholder={t('message.search-tables-and-columns')}
+        placeholder={
+          native
+            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+            : t('message.search-tables-and-columns')
+        }
         value={query}
         onChange={setQuery}
       />
@@ -306,7 +337,9 @@ const OntologyDataAssetPicker = ({
             <Tabs.List size="sm" type="button-border">
               <Tabs.Item id="all" label={t('label.all')} />
               <Tabs.Item id="tables" label={t('label.table-plural')} />
-              <Tabs.Item id="columns" label={t('label.column-plural')} />
+              {!native ? (
+                <Tabs.Item id="columns" label={t('label.column-plural')} />
+              ) : null}
             </Tabs.List>
             <Tabs.Panel className="tw:hidden" id="all" />
             <Tabs.Panel className="tw:hidden" id="tables" />
@@ -328,6 +361,7 @@ const OntologyDataAssetPicker = ({
               <Checkbox
                 aria-label={asset.displayName ?? asset.name}
                 data-testid={`ontology-data-asset-option-${asset.id}`}
+                isDisabled={native?.linkedIds.includes(asset.id)}
                 isSelected={selected.has(asset.id)}
                 label={
                   <span className="tw:flex tw:min-w-0 tw:flex-col">

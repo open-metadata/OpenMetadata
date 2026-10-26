@@ -79,6 +79,16 @@
       "minimum": 1,
       "existingJavaType": "java.lang.Long"
     },
+    "semanticVersion": {
+      "description": "Immutable semantic version allocated by the server. Absent on legacy releases; independent of entity version, release revision and version IRI.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "releaseNotes": {
+      "description": "Immutable publication notes preserved exactly as captured, independently of the semantic content digest.",
+      "type": "string",
+      "maxLength": 16384
+    },
     "sourceWorkingRevision": {
       "$ref": "../../type/ontologyState.json#/properties/workingRevision"
     },

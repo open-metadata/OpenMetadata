@@ -70,9 +70,7 @@ export class DataQualityPageObject extends RightPanelBase {
     this.searchBar = this.container.getByTestId('searchbar');
     this.incidentsTabContent = this.container.locator('.incidents-tab-content');
     this.noDataPlaceholder = this.container
-      .locator(
-        '[data-testid="no-data-placeholder"], .no-data-placeholder, .ant-empty'
-      )
+      .locator('[data-testid="no-data-placeholder"], .ant-empty')
       .first();
   }
 

@@ -183,7 +183,9 @@ def test_data_property_enumerations_are_bounded():
 
 def test_capture_has_no_import_selection_and_native_imports_are_rejected():
     request = CaptureOntologyRelease(expectedWorkingRevision=3)
-    assert request.model_dump(mode="json") == {"expectedWorkingRevision": 3}
+    assert request.model_dump(mode="json", exclude_none=True) == {"expectedWorkingRevision": 3}
+    with pytest.raises(ValueError):
+        CaptureOntologyRelease(expectedWorkingRevision=3, imports=["urn:Other"])
     with pytest.raises(ValueError):
         CreateOntologyRequest(
             name="Sales",

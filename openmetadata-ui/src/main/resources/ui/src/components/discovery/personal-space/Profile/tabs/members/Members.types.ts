@@ -27,6 +27,15 @@ export type TeamNode = {
   children?: TeamNode[];
 };
 
+export type UserDetailTab =
+  | 'overview'
+  | 'access'
+  | 'activity'
+  | 'tasks'
+  | 'owned-assets'
+  | 'following'
+  | 'custom-properties';
+
 export type MembersView =
   | { type: 'landing' }
   | { type: 'teams' }
@@ -34,6 +43,12 @@ export type MembersView =
   | { type: 'teams-add'; parentFqn?: string }
   | { type: 'teams-import'; fqn: string; importType: MembersImportType }
   | { type: 'users' }
+  | {
+      type: 'user-detail';
+      name: string;
+      tab: UserDetailTab;
+      taskId?: string;
+    }
   | { type: 'admins' }
   | { type: 'user-create'; isAdmin?: boolean }
   | { type: 'online-users' }
@@ -53,6 +68,22 @@ export interface MembersLandingCard {
 export interface MembersPanelProps {
   onHeaderChange?: (
     override: import('../../profileNavConfig').ProfileHeaderOverride | null
+  ) => void;
+}
+
+export type MembersUserDetailView = Extract<
+  MembersView,
+  { type: 'user-detail' }
+>;
+
+export interface MembersUserDetailProps {
+  view: MembersUserDetailView;
+  onNavigate: (view: MembersView) => void;
+  /** Header slots (title, avatar, tabs, delete…) merged over the Members header. */
+  onSetHeader: (
+    header:
+      | Partial<import('../../profileNavConfig').ProfileHeaderOverride>
+      | undefined
   ) => void;
 }
 

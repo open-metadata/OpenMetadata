@@ -25,15 +25,23 @@ import { isAxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
+import { Ontology } from '../../generated/entity/data/ontology';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { useAuth } from '../../hooks/authHooks';
+import { useOntologyStudioModel } from '../../hooks/governance/ontology/useOntologyStudioModel';
 import { getGlossaryTerms } from '../../rest/glossaryAPI';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import {
   runGlossarySparqlQuery,
+  runOntologySparqlQuery,
   runSparqlQuery,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import {
+  buildNativeVisualSparqlQuery,
+  getNativeQueryRelations,
+} from '../../utils/governance/ontology/OntologyNativeQuery.utils';
+import { humanizeName } from '../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { DEFAULT_RELATIONSHIP_TYPE } from './OntologyExplorer.constants';
 import { OntologyGraphData, OntologyNode } from './OntologyExplorer.interface';
@@ -66,6 +74,7 @@ interface VisualQueryTerm {
 }
 
 interface OntologyVisualQueryBuilderProps {
+  ontology?: Ontology;
   graphData?: OntologyGraphData | null;
   relationTypes?: RelationshipType[];
   selectedGlossaryIds?: string[];
@@ -177,6 +186,7 @@ function getInitialBuilderSelection(
 }
 
 const OntologyVisualQueryBuilder = ({
+  ontology,
   graphData,
   relationTypes: suppliedRelationTypes,
   selectedGlossaryIds,
@@ -196,10 +206,40 @@ const OntologyVisualQueryBuilder = ({
   const [result, setResult] = useState<SparqlPlaygroundResult>();
   const [errorMessage, setErrorMessage] = useState<string>();
   const selectedGlossaryId = selectedGlossaryIds?.[0];
+  const native = useOntologyStudioModel(ontology);
+  const nativeRelations = useMemo(
+    () => getNativeQueryRelations(native.relations),
+    [native.relations]
+  );
+  const nativeRelation = nativeRelations.find(
+    (item) => item.id === selectedRelation
+  );
+  const nativeTarget = native.model?.concepts.find(
+    (concept) => concept.id === selectedTarget
+  );
 
   useEffect(() => {
     let active = true;
 
+    if (ontology) {
+      setIsLoading(native.isLoading);
+      if (native.isError) {
+        setErrorMessage(t('message.temporary-error-try-reloading'));
+      }
+      if (native.model) {
+        setTerms([...native.model.concepts]);
+        setSelectedRelation(nativeRelations[0]?.id ?? '');
+        setSelectedTarget(
+          nativeRelations[0]?.relation.to.id ??
+            native.model.concepts[0]?.id ??
+            ''
+        );
+      }
+
+      return () => {
+        active = false;
+      };
+    }
     const loadBuilderData = async () => {
       const scopedGraphTerms = getGraphTerms(
         graphData,
@@ -249,7 +289,17 @@ const OntologyVisualQueryBuilder = ({
     return () => {
       active = false;
     };
-  }, [graphData, selectedGlossaryId, suppliedRelationTypes]);
+  }, [
+    graphData,
+    selectedGlossaryId,
+    suppliedRelationTypes,
+    ontology,
+    native.isLoading,
+    native.isError,
+    native.model,
+    nativeRelations,
+    t,
+  ]);
 
   const relationOptions = useMemo(
     () => (relationTypes.length ? relationTypes : [DEFAULT_RELATIONSHIP_TYPE]),
@@ -265,15 +315,26 @@ const OntologyVisualQueryBuilder = ({
     () => terms.find((term) => term.id === selectedTarget),
     [terms, selectedTarget]
   );
-  const generatedQuery = useMemo(
-    () =>
-      buildVisualSparqlQuery(
-        selectedRelationType,
-        selectedTargetTerm,
-        findKind
-      ),
-    [findKind, selectedRelationType, selectedTargetTerm]
-  );
+  const generatedQuery = useMemo(() => {
+    if (ontology) {
+      return nativeRelation && nativeTarget
+        ? buildNativeVisualSparqlQuery(nativeRelation.relation, nativeTarget)
+        : '';
+    }
+
+    return buildVisualSparqlQuery(
+      selectedRelationType,
+      selectedTargetTerm,
+      findKind
+    );
+  }, [
+    ontology,
+    nativeRelation,
+    nativeTarget,
+    findKind,
+    selectedRelationType,
+    selectedTargetTerm,
+  ]);
 
   const getRelationLabel = useCallback(
     (relation: RelationshipType) =>
@@ -285,18 +346,35 @@ const OntologyVisualQueryBuilder = ({
   );
   const relationSelectItems = useMemo<SelectItemType[]>(
     () =>
-      relationOptions.map((relation) => ({
-        id: relation.name,
-        label: getRelationLabel(relation),
-        icon: (
-          <span
-            aria-hidden="true"
-            className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-quaternary"
-            style={{ backgroundColor: getRelationshipColor(relation) }}
-          />
-        ),
-      })),
-    [getRelationLabel, relationOptions]
+      ontology
+        ? nativeRelations.map((item) => ({
+            id: item.id,
+            label: [
+              item.label,
+              humanizeName(item.relation.kind),
+              item.relation.restriction &&
+                [
+                  humanizeName(item.relation.restriction.kind),
+                  item.relation.restriction.cardinality,
+                ]
+                  .filter((value) => value !== undefined)
+                  .join(' '),
+            ]
+              .filter(Boolean)
+              .join(' · '),
+          }))
+        : relationOptions.map((relation) => ({
+            id: relation.name,
+            label: getRelationLabel(relation),
+            icon: (
+              <span
+                aria-hidden="true"
+                className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-quaternary"
+                style={{ backgroundColor: getRelationshipColor(relation) }}
+              />
+            ),
+          })),
+    [ontology, nativeRelations, getRelationLabel, relationOptions]
   );
   const termSelectItems = useMemo<SelectItemType[]>(
     () =>
@@ -317,15 +395,20 @@ const OntologyVisualQueryBuilder = ({
         format: 'json' as const,
         inference: 'none' as const,
       };
-      if (!selectedGlossaryId && !isAdminUser) {
+      if (!ontology && !selectedGlossaryId && !isAdminUser) {
         throw new Error(
           t('label.please-select-entity', { entity: t('label.glossary') })
         );
       }
-      const nextResult = selectedGlossaryId
-        ? await runGlossarySparqlQuery(selectedGlossaryId, queryParams)
-        : await runSparqlQuery(queryParams);
-      setResult(nextResult);
+      if (ontology) {
+        setResult(await runOntologySparqlQuery(ontology.id, queryParams));
+      } else if (selectedGlossaryId) {
+        setResult(
+          await runGlossarySparqlQuery(selectedGlossaryId, queryParams)
+        );
+      } else {
+        setResult(await runSparqlQuery(queryParams));
+      }
     } catch (error) {
       let message: string;
       if (isAxiosError(error)) {
@@ -341,13 +424,173 @@ const OntologyVisualQueryBuilder = ({
     } finally {
       setIsRunning(false);
     }
-  }, [generatedQuery, isAdminUser, selectedGlossaryId, t]);
+  }, [ontology, generatedQuery, isAdminUser, selectedGlossaryId, t]);
 
   const resetResult = () => {
     setResult(undefined);
     setErrorMessage(undefined);
   };
   const matchCount = result?.parsed?.results?.bindings?.length;
+
+  const renderQueryControls = () => (
+    <>
+      <Box direction="col" gap={3}>
+        <Box align="center" gap={3}>
+          <Typography
+            className="tw:w-14 tw:shrink-0 tw:text-right tw:text-tertiary"
+            size="text-sm"
+            weight="medium">
+            {t('label.find')}
+          </Typography>
+          <Tabs
+            className="tw:w-auto"
+            selectedKey={findKind}
+            onSelectionChange={(key) => {
+              setFindKind(key as VisualQueryFindKind);
+              resetResult();
+            }}>
+            <Tabs.List size="sm" type="button-border">
+              {(ontology
+                ? ['concepts']
+                : (['concepts', 'metrics', 'any'] as VisualQueryFindKind[])
+              ).map((kind) => (
+                <Tabs.Item
+                  data-testid={`ontology-builder-find-${kind}`}
+                  id={kind}
+                  key={kind}>
+                  {t(FIND_KIND_LABEL_KEYS[kind as VisualQueryFindKind])}
+                </Tabs.Item>
+              ))}
+            </Tabs.List>
+          </Tabs>
+        </Box>
+
+        <Box align="center" gap={3}>
+          <Typography
+            className="tw:w-14 tw:shrink-0 tw:text-right tw:text-tertiary tw:lowercase"
+            size="text-sm"
+            weight="medium">
+            {t('label.where')}
+          </Typography>
+          <Box className="tw:min-w-0 tw:flex-1" gap={2} wrap="wrap">
+            <Select
+              aria-label={t('label.relationship-type')}
+              className="tw:min-w-50 tw:flex-1"
+              data-testid="ontology-builder-relation"
+              fontSize="sm"
+              isDisabled={isLoading}
+              items={relationSelectItems}
+              placeholder={t('label.relationship-type')}
+              value={selectedRelation}
+              onChange={(key) => {
+                setSelectedRelation(String(key ?? ''));
+                resetResult();
+              }}>
+              {(item) => (
+                <Select.Item
+                  icon={item.icon}
+                  id={item.id}
+                  key={item.id}
+                  label={item.label}
+                />
+              )}
+            </Select>
+            <Select.ComboBox
+              showSearchIcon
+              aria-label={t(ontology ? 'label.concept' : 'label.target-term')}
+              className="tw:min-w-60 tw:flex-1"
+              data-testid="ontology-builder-target"
+              emptyState={
+                ontology
+                  ? t('label.no-entity-found', {
+                      entity: t('label.concept-plural'),
+                    })
+                  : t('message.no-terms-found')
+              }
+              fontSize="sm"
+              isDisabled={isLoading}
+              items={termSelectItems}
+              placeholder={
+                ontology
+                  ? t('label.search-entity', {
+                      entity: t('label.concept-plural'),
+                    })
+                  : t('message.bulk-edit-glossary-terms-search-placeholder')
+              }
+              shortcut={false}
+              value={selectedTarget || null}
+              onChange={(key) => {
+                setSelectedTarget(String(key ?? ''));
+                resetResult();
+              }}>
+              {(item) => (
+                <Select.Item id={item.id} key={item.id} label={item.label} />
+              )}
+            </Select.ComboBox>
+          </Box>
+        </Box>
+      </Box>
+    </>
+  );
+
+  const renderRunActions = () => (
+    <Box align="center" gap={2} wrap="wrap">
+      <Button
+        color="primary"
+        data-testid="ontology-builder-run"
+        iconLeading={Play}
+        isDisabled={
+          isLoading || isRunning || !selectedTarget || !generatedQuery
+        }
+        size="sm"
+        onClick={() => void handleRun()}>
+        {isRunning ? t('label.running') : t('label.run-query')}
+      </Button>
+
+      {onEditAsSparql ? (
+        <Button
+          color="secondary"
+          data-testid="ontology-builder-edit-as-sparql"
+          isDisabled={!selectedTarget || !generatedQuery}
+          size="sm"
+          onClick={() => onEditAsSparql(generatedQuery)}>
+          {t('label.edit-as-sparql')}
+        </Button>
+      ) : null}
+
+      {matchCount === undefined ? null : (
+        <Badge
+          color="success"
+          data-testid="ontology-builder-result"
+          size="md"
+          type="pill-color">
+          {t('message.ontology-query-concepts-match', {
+            count: matchCount,
+          })}
+        </Badge>
+      )}
+    </Box>
+  );
+
+  const renderQueryResults = () => (
+    <>
+      {renderRunActions()}
+      {errorMessage ? (
+        <Box className="tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-3 tw:py-2">
+          <Typography className="tw:text-utility-error-700" size="text-sm">
+            {errorMessage}
+          </Typography>
+        </Box>
+      ) : null}
+      {result ? (
+        <OntologyQueryResults
+          graphData={ontology ? native.graph : graphData ?? null}
+          relationshipTypes={ontology ? [] : relationOptions}
+          result={result}
+        />
+      ) : null}
+    </>
+  );
 
   return (
     <Box
@@ -363,96 +606,15 @@ const OntologyVisualQueryBuilder = ({
             {t('label.visual-query-builder')}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-sm">
-            {t('message.visual-query-builder-hint')}
+            {t(
+              ontology
+                ? 'message.ontology-native-builder-scope'
+                : 'message.visual-query-builder-hint'
+            )}
           </Typography>
         </Box>
 
-        <Box direction="col" gap={3}>
-          <Box align="center" gap={3}>
-            <Typography
-              className="tw:w-14 tw:shrink-0 tw:text-right tw:text-tertiary"
-              size="text-sm"
-              weight="medium">
-              {t('label.find')}
-            </Typography>
-            <Tabs
-              className="tw:w-auto"
-              selectedKey={findKind}
-              onSelectionChange={(key) => {
-                setFindKind(key as VisualQueryFindKind);
-                resetResult();
-              }}>
-              <Tabs.List size="sm" type="button-border">
-                {(['concepts', 'metrics', 'any'] as VisualQueryFindKind[]).map(
-                  (kind) => (
-                    <Tabs.Item
-                      data-testid={`ontology-builder-find-${kind}`}
-                      id={kind}
-                      key={kind}>
-                      {t(FIND_KIND_LABEL_KEYS[kind])}
-                    </Tabs.Item>
-                  )
-                )}
-              </Tabs.List>
-            </Tabs>
-          </Box>
-
-          <Box align="center" gap={3}>
-            <Typography
-              className="tw:w-14 tw:shrink-0 tw:text-right tw:text-tertiary tw:lowercase"
-              size="text-sm"
-              weight="medium">
-              {t('label.where')}
-            </Typography>
-            <Box className="tw:min-w-0 tw:flex-1" gap={2} wrap="wrap">
-              <Select
-                aria-label={t('label.relationship-type')}
-                className="tw:min-w-50 tw:flex-1"
-                data-testid="ontology-builder-relation"
-                fontSize="sm"
-                isDisabled={isLoading}
-                items={relationSelectItems}
-                placeholder={t('label.relationship-type')}
-                value={selectedRelation}
-                onChange={(key) => {
-                  setSelectedRelation(String(key ?? ''));
-                  resetResult();
-                }}>
-                {(item) => (
-                  <Select.Item
-                    icon={item.icon}
-                    id={item.id}
-                    key={item.id}
-                    label={item.label}
-                  />
-                )}
-              </Select>
-              <Select.ComboBox
-                showSearchIcon
-                aria-label={t('label.target-term')}
-                className="tw:min-w-60 tw:flex-1"
-                data-testid="ontology-builder-target"
-                emptyState={t('message.no-terms-found')}
-                fontSize="sm"
-                isDisabled={isLoading}
-                items={termSelectItems}
-                placeholder={t(
-                  'message.bulk-edit-glossary-terms-search-placeholder'
-                )}
-                shortcut={false}
-                value={selectedTarget || null}
-                onChange={(key) => {
-                  setSelectedTarget(String(key ?? ''));
-                  resetResult();
-                }}>
-                {(item) => (
-                  <Select.Item id={item.id} key={item.id} label={item.label} />
-                )}
-              </Select.ComboBox>
-            </Box>
-          </Box>
-        </Box>
-
+        {renderQueryControls()}
         <Box direction="col" gap={2}>
           <Typography
             className="tw:tracking-wide tw:text-tertiary tw:uppercase"
@@ -467,56 +629,7 @@ const OntologyVisualQueryBuilder = ({
           </pre>
         </Box>
 
-        <Box align="center" gap={2} wrap="wrap">
-          <Button
-            color="primary"
-            data-testid="ontology-builder-run"
-            iconLeading={Play}
-            isDisabled={isLoading || isRunning || !selectedTarget}
-            size="sm"
-            onClick={() => void handleRun()}>
-            {isRunning ? t('label.running') : t('label.run-query')}
-          </Button>
-
-          {onEditAsSparql ? (
-            <Button
-              color="secondary"
-              data-testid="ontology-builder-edit-as-sparql"
-              isDisabled={!selectedTarget}
-              size="sm"
-              onClick={() => onEditAsSparql(generatedQuery)}>
-              {t('label.edit-as-sparql')}
-            </Button>
-          ) : null}
-
-          {matchCount === undefined ? null : (
-            <Badge
-              color="success"
-              data-testid="ontology-builder-result"
-              size="md"
-              type="pill-color">
-              {t('message.ontology-query-concepts-match', {
-                count: matchCount,
-              })}
-            </Badge>
-          )}
-        </Box>
-
-        {errorMessage ? (
-          <Box className="tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-3 tw:py-2">
-            <Typography className="tw:text-utility-error-700" size="text-sm">
-              {errorMessage}
-            </Typography>
-          </Box>
-        ) : null}
-
-        {result ? (
-          <OntologyQueryResults
-            graphData={graphData ?? null}
-            relationshipTypes={relationOptions}
-            result={result}
-          />
-        ) : null}
+        {renderQueryResults()}
       </Box>
     </Box>
   );

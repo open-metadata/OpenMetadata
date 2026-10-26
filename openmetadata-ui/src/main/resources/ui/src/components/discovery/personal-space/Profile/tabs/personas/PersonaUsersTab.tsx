@@ -16,7 +16,6 @@ import {
   Button,
   ButtonUtility,
   Card,
-  EmptyPlaceholder,
   FormFields,
   HookForm,
   Skeleton,
@@ -43,6 +42,7 @@ import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };
@@ -211,7 +211,7 @@ const PersonaUsersTab = ({
           align="center"
           className="tw:min-h-32 tw:relative"
           justify="center">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             title={t('label.no-entity-found', {
               entity: t('label.user-plural'),
             })}
@@ -252,7 +252,7 @@ const PersonaUsersTab = ({
         </Card>
       )}
       <TableCard.Root
-        className="tw:flex tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
+        className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
         size="compact">
         {canEdit && !isAdding && (
           <TableCard.Header

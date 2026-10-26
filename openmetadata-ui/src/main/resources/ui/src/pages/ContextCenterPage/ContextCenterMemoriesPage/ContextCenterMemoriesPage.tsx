@@ -15,7 +15,6 @@ import {
   Button,
   Card,
   Dropdown,
-  EmptyPlaceholder,
   Input,
   PageLayout,
   PaginationCardMinimal,
@@ -42,6 +41,7 @@ import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/f
 import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
+import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
@@ -70,6 +70,7 @@ import {
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   ContextMemoryListParams,
@@ -303,6 +304,7 @@ const ContextCenterMemoriesModals = ({
 
 const ContextCenterMemoriesPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -854,7 +856,9 @@ const ContextCenterMemoriesPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:w-full tw:h-full tw:overflow-scroll ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-memories-page"
       direction="col">
       <DocumentTitle title={t('label.memory-plural')} />
@@ -884,7 +888,7 @@ const ContextCenterMemoriesPage: FC = () => {
           )}>
           {showMemoriesEmptyState ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
-              <EmptyPlaceholder
+              <FeaturesPlaceholder
                 actions={getMemoryEmptyActions(
                   hasCreatePermission,
                   t('label.new-memory'),
@@ -925,7 +929,6 @@ const ContextCenterMemoriesPage: FC = () => {
                   },
                 ]}
                 title={t('label.teach-the-ai-once-it-remembers-for-everyone')}
-                variant="features"
               />
             </div>
           ) : (

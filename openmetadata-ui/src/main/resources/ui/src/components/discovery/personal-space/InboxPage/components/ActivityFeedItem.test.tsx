@@ -120,7 +120,7 @@ jest.mock('react-router-dom', () => ({
 }));
 
 jest.mock('utils/ToastUtils', () => ({
-  showErrorToast: mockShowErrorToast,
+  showErrorToast: (...args: unknown[]) => mockShowErrorToast(...args),
 }));
 
 jest.mock('components/ActivityFeed/Reactions/Reactions', () => ({
@@ -270,7 +270,9 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
     ].map((name) => [name, () => <span data-testid={name} />])
   ),
   ChevronDown: () => <span />,
+  ChevronRight: () => <span />,
   ChevronUp: () => <span />,
+  Column: () => <span />,
   Edit05: () => <span />,
   File02: () => <span />,
   Globe01: () => <span />,
@@ -418,11 +420,65 @@ describe('ActivityFeedItem', () => {
       />
     );
 
-    expect(screen.getByText('dim_address.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
     expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
       'href',
       '/table/svc.db.sch.dim.email'
     );
+  });
+
+  it('names and links the column a conversation was started on', () => {
+    render(
+      <ActivityFeedItem
+        feed={{
+          ...baseFeed,
+          about: '<#E::table::svc.db.sch.dim::columns::email::description>',
+          entityRef: {
+            ...baseFeed.entityRef,
+            fullyQualifiedName: 'svc.db.sch.dim',
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+    expect(screen.getByRole('link', { name: 'email' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim.email'
+    );
+  });
+
+  it('links a non-column field change to the entity without an ANTLR error', () => {
+    // `entityStatus` is not in the EntityLink grammar: parsing it made ANTLR
+    // log a syntax error on every render.
+    const errorSpy = jest.spyOn(console, 'error');
+
+    render(
+      <ActivityFeedItem
+        activity={
+          {
+            ...baseActivity,
+            about: '<#E::table::svc.db.sch.dim::entityStatus>',
+          } as ActivityEvent
+        }
+      />
+    );
+
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('no viable alternative')
+    );
+    expect(screen.getByRole('link', { name: 'dim_address' })).toHaveAttribute(
+      'href',
+      '/table/svc.db.sch.dim'
+    );
+
+    errorSpy.mockRestore();
   });
 
   it('flags a card that mentions the viewer, and only then', () => {

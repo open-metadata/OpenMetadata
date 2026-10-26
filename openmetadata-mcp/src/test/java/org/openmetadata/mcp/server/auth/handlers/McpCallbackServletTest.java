@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.security.SecurityUtil.findEmailFromClaims;
+import static org.openmetadata.service.security.SecurityUtil.findUserNameFromClaims;
 
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.WriteListener;
@@ -21,11 +24,15 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class McpCallbackServletTest {
 
@@ -349,6 +356,30 @@ class McpCallbackServletTest {
   }
 
   @Test
+  void getClaimsMapping_keepsClaimNamesThatContainAColon() throws Exception {
+    // Without the colon-safe split, both entries are dropped and the username falls back to the
+    // email prefix, which can name a different OpenMetadata user than the web login resolves.
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withJwtPrincipalClaimsMapping(List.of("username:custom:login", "email:custom:mail"));
+    Map<String, Object> claims =
+        Map.of(
+            "custom:login", "employee42",
+            "custom:mail", "employee42@corp.example",
+            "email", "jdoe@example.com");
+
+    try (MockedStatic<SecurityConfigurationManager> scm =
+        mockStatic(SecurityConfigurationManager.class)) {
+      scm.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(authConfig);
+      Map<String, String> mapping = invokeGetClaimsMapping(makeServlet());
+
+      assertThat(findUserNameFromClaims(mapping, List.of("email"), claims)).isEqualTo("employee42");
+      assertThat(findEmailFromClaims(mapping, List.of("email"), claims, ""))
+          .isEqualTo("employee42@corp.example");
+    }
+  }
+
+  @Test
   void doGet_idpErrorCallback_loginRequired_relaysErrorToMcpClient() throws Exception {
     // Silent-auth error (prompt=none, no IdP session) must reach the MCP client as an OAuth
     // error redirect rather than being swallowed into an opaque 500.
@@ -521,6 +552,14 @@ class McpCallbackServletTest {
           }
         };
     return servlet.resolveServerOrigin();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, String> invokeGetClaimsMapping(McpCallbackServlet servlet)
+      throws Exception {
+    Method m = McpCallbackServlet.class.getDeclaredMethod("getClaimsMapping");
+    m.setAccessible(true);
+    return (Map<String, String>) m.invoke(servlet);
   }
 
   private static void invokeServeFragmentExtractionPage(

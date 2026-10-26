@@ -18,9 +18,11 @@ import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
  * Home module — the AI sidebar's landing entry. Owns no routes of its
- * own: the My Data page is served by the shell's page-table fallback
- * (`applicationRoutesClass.getRouteElements()`); this module exists purely to
- * surface the sidebar icon and point it at `/my-data`.
+ * own: the home landing page at `/` is served by the shell's page-table
+ * fallback (`applicationRoutesClass.getRouteElements()`); this module exists
+ * purely to surface the sidebar icon and point it at `/`. It must not point at
+ * `/my-data`: in app mode that path is the personal-space My Data page.
+ * A `/` prefix matches `/` alone, so Home is active only on the landing page.
  */
 export const homeModule: AppModule = {
   id: 'home',
@@ -28,7 +30,7 @@ export const homeModule: AppModule = {
   labelKey: 'label.home',
   icon: HomeIcon,
   activeIcon: HomeActiveIcon,
-  prefix: ROUTES.MY_DATA,
-  defaultPath: ROUTES.MY_DATA,
+  prefix: ROUTES.HOME,
+  defaultPath: ROUTES.HOME,
   routes: [],
 };

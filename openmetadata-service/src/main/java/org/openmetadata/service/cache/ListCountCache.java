@@ -161,10 +161,11 @@ public final class ListCountCache {
    * Drop every cached filter variant for an entity type in one DEL. Wired into
    * {@code postCreate}, {@code postDelete}, and {@code restoreEntity} on {@link
    * org.openmetadata.service.jdbi3.EntityRepository EntityRepository} so {@code paging.total}
-   * reflects state changes within a round-trip rather than waiting out the TTL window. Routine
-   * updates (description, tags, owners) deliberately do not invalidate — they don't change the
-   * count, and over-invalidation would defeat the cache on heavy editing workloads. Note the
-   * commit-ordering trade-off documented at the class level.
+   * reflects state changes within a round-trip rather than waiting out the TTL window. An update
+   * invalidates only when it changes the entity's lifecycle stage, which moves it between
+   * stage-filtered listings. Routine updates (description, tags, owners) deliberately do not —
+   * they don't change the count, and over-invalidation would defeat the cache on heavy editing
+   * workloads. Note the commit-ordering trade-off documented at the class level.
    */
   public static void invalidate(String entityType) {
     if (EntityCacheBypass.isSkipped()) {

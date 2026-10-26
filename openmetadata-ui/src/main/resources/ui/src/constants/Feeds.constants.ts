@@ -95,3 +95,10 @@ export const ANNOUNCEMENT_BG = '#FFFDF8';
 export const ANNOUNCEMENT_BORDER = '#FFC143';
 export const TASK_BORDER = '#C6B5F6';
 export const GLOBAL_BORDER = '#dde3ea';
+
+// Matches the feed footer avatar button (a 24px avatar plus the xs padding) so each AvatarStack slot fits it.
+export const FEED_FOOTER_AVATAR_SIZE = 28;
+
+// Feed message content that renders without text, such as an image-only post or a divider.
+export const FEED_MESSAGE_RENDERED_CONTENT_SELECTOR =
+  'img, hr, table, iframe, video, svg, [data-type]';

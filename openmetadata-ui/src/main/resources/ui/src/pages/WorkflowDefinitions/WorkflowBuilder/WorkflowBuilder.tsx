@@ -27,6 +27,8 @@ import { useTranslation } from 'react-i18next';
 import { Navigate } from 'react-router-dom';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../../components/common/Loader/Loader';
@@ -48,6 +50,7 @@ import {
   useWorkflowModeContext,
   WorkflowModeProvider,
 } from '../../../contexts/WorkflowModeContext';
+import { ClientErrors } from '../../../enums/Axios.enum';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
 import { ApprovalMode } from '../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
@@ -96,6 +99,57 @@ const isEnforceApproval = (
     get(workflowDefinition, 'trigger.config.approvalMode')) ===
   ApprovalMode.Enforce;
 
+interface WorkflowBuilderLoadErrorProps {
+  breadcrumb: React.ReactNode;
+  embedded: boolean;
+  error: AxiosError;
+  onReload: () => void;
+}
+
+const WorkflowBuilderLoadError: React.FC<WorkflowBuilderLoadErrorProps> = ({
+  breadcrumb,
+  embedded,
+  error,
+  onReload,
+}) => {
+  const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+  const placeholder = (
+    <div className="tw:relative tw:flex-1 tw:min-h-0">
+      {error.response?.status === ClientErrors.FORBIDDEN ? (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', {
+            entity: t('label.workflow'),
+          })}
+        />
+      ) : (
+        <SomethingWentWrongPlaceholder
+          title={t('server.entity-fetch-error', {
+            entity: t('label.workflow'),
+          })}
+          onReload={onReload}
+        />
+      )}
+    </div>
+  );
+
+  if (embedded) {
+    return placeholder;
+  }
+
+  return (
+    <PageLayoutV1
+      fullHeight
+      pageTitle={t('label.workflow-plural')}
+      variant={isAiMode ? 'compact' : 'default'}>
+      <div className="tw:flex tw:flex-1 tw:min-h-0 tw:flex-col">
+        <div className="tw:mb-4">{breadcrumb}</div>
+        {placeholder}
+      </div>
+    </PageLayoutV1>
+  );
+};
+
 const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
   workflowLogic,
   workflowFqn,
@@ -138,6 +192,8 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
     workflowDefinition,
     workflowMetadata,
     isNodeDragEnabled,
+    loadError,
+    reloadWorkflow,
   } = workflowLogic;
 
   const syncWithStore = workflowLogic.syncWithStore;
@@ -507,6 +563,19 @@ const WorkflowBuilderInternal: React.FC<WorkflowBuilderInternalProps> = ({
 
   if (loading) {
     return <Loader />;
+  }
+
+  if (loadError) {
+    return (
+      <WorkflowBuilderLoadError
+        breadcrumb={
+          isAiMode ? breadcrumb : <TitleBreadcrumb titleLinks={breadcrumbs} />
+        }
+        embedded={embedded}
+        error={loadError}
+        onReload={reloadWorkflow}
+      />
+    );
   }
 
   const sidebarClassName = classNames(
