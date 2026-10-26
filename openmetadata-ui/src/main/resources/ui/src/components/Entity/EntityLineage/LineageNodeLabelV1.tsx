@@ -64,18 +64,26 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
     [node.id]
   );
 
+  // Temp tables have no service / database / schema to show, so their
+  // breadcrumb would only be empty separators.
   const breadcrumbItems = useMemo(
     () =>
-      getEntityBreadcrumbs(
-        node as unknown as Table,
-        node.entityType as EntityType,
-        false
-      ).map((breadcrumb, index) => ({
-        id: `${index}-${breadcrumb.name}`,
-        label: (
-          <span className="lineage-breadcrumb-item">{breadcrumb.name}</span>
-        ),
-      })),
+      node.isTempTable
+        ? []
+        : getEntityBreadcrumbs(
+            node as unknown as Table,
+            node.entityType as EntityType,
+            false
+          )
+            .filter((breadcrumb) => Boolean(breadcrumb.name))
+            .map((breadcrumb, index) => ({
+              id: `${index}-${breadcrumb.name}`,
+              label: (
+                <span className="lineage-breadcrumb-item">
+                  {breadcrumb.name}
+                </span>
+              ),
+            })),
     [node]
   );
 
@@ -105,13 +113,15 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
             {entityName}
           </Typography>
 
-          <Breadcrumbs
-            autoCollapse
-            className="m-b-xs lineage-breadcrumbs"
-            data-testid="lineage-breadcrumbs"
-            items={breadcrumbItems}
-            size="xs"
-          />
+          {breadcrumbItems.length > 0 && (
+            <Breadcrumbs
+              autoCollapse
+              className="m-b-xs lineage-breadcrumbs"
+              data-testid="lineage-breadcrumbs"
+              items={breadcrumbItems}
+              size="xs"
+            />
+          )}
         </Box>
         {!showDeletedIcon && showDbtIcon && (
           <div className="m-r-xs" data-testid="dbt-icon">
